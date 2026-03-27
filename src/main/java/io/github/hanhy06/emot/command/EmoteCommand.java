@@ -130,9 +130,9 @@ public final class EmoteCommand {
 		EmoteDialogShortcutManager emoteDialogShortcutManager
 	) {
 		boolean configLoaded = configManager.readConfig();
+		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		emoteDialogShortcutManager.updateDatapack(source.getServer());
 		emoteDialogShortcutManager.reload(source.getServer());
-		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		source.sendSuccess(
 			() -> Component.literal("Reloading: cfg=" + configLoaded + ", emotes=" + emoteCount),
 			true

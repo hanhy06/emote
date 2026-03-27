@@ -67,7 +67,7 @@ public class Emote implements ModInitializer {
 	}
 
 	private void handleServerStarting(MinecraftServer server) {
-		this.emoteDialogShortcutManager.updateDatapack(server);
+		prepareQuickActionDialog(server);
 	}
 
 	private void handleServerStarted(MinecraftServer server) {
@@ -81,6 +81,7 @@ public class Emote implements ModInitializer {
 
 	private void handleDataPackReloadStart(MinecraftServer server) {
 		this.configManager.readConfig();
+		prepareQuickActionDialog(server);
 	}
 
 	private void handleDataPackReload(MinecraftServer server, boolean success) {
@@ -97,5 +98,10 @@ public class Emote implements ModInitializer {
 	private void handleServerStopping(MinecraftServer server) {
 		this.emotePlaybackManager.stopAllEmotes(server);
 		LOGGER.info("stop emotes");
+	}
+
+	private void prepareQuickActionDialog(MinecraftServer server) {
+		this.bdEngineDatapackProcessor.reloadServerEmotes(server);
+		this.emoteDialogShortcutManager.updateDatapack(server);
 	}
 }
