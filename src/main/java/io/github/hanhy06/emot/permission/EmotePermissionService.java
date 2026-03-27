@@ -40,7 +40,7 @@ public class EmotePermissionService implements ConfigListener {
 			return false;
 		}
 
-		return hasPermission(player, findDatapackPermission(namespace, animationName), 2);
+		return hasPermission(player, findDatapackPermission(namespace), 2);
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -77,14 +77,8 @@ public class EmotePermissionService implements ConfigListener {
 		return entity instanceof ServerPlayer player ? player : null;
 	}
 
-	private String findDatapackPermission(String namespace, String animationName) {
+	private String findDatapackPermission(String namespace) {
 		Map<String, String> emotePermissionMap = this.config.emote_permissions();
-		String animationKey = namespace + ":" + animationName;
-
-		if (emotePermissionMap.containsKey(animationKey)) {
-			return normalizePermission(emotePermissionMap.get(animationKey));
-		}
-
 		if (emotePermissionMap.containsKey(namespace)) {
 			return normalizePermission(emotePermissionMap.get(namespace));
 		}

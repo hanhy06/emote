@@ -48,7 +48,7 @@ public class ConfigManager {
 			}
 
 			writeIfAbsent();
-			writeDatapackExampleIfAbsent();
+			writeDatapackExample();
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
 		}
@@ -121,21 +121,16 @@ public class ConfigManager {
 		writeJsonFile(this.config);
 	}
 
-	private void writeDatapackExampleIfAbsent() throws IOException {
+	private void writeDatapackExample() throws IOException {
 		Path datapackDirPath = this.configDirPath.resolve(DATAPACK_DIR_NAME);
 		if (!Files.exists(datapackDirPath)) {
 			Files.createDirectories(datapackDirPath);
 		}
 
 		Path exampleFilePath = datapackDirPath.resolve(DATAPACK_EXAMPLE_FILE_NAME);
-		if (Files.exists(exampleFilePath)) {
-			return;
-		}
-
 		LinkedHashMap<String, Object> exampleJson = new LinkedHashMap<>();
-		exampleJson.put("type", "bdengine");
-		exampleJson.put("format", 1);
-		exampleJson.put("description", "Copy this file into the root of an emote datapack and rename it to emote-datapack.json");
+		exampleJson.put("name", "Example Emote");
+		exampleJson.put("description", "Shown in the emote dialog.");
 
 		try (BufferedWriter writer = Files.newBufferedWriter(
 			exampleFilePath,
@@ -195,26 +190,7 @@ public class ConfigManager {
 
 	private String readEmotePermission(JsonObject object, String defaultValue) {
 		String emotePermission = readOptionalString(object, "emote_permission");
-		if (emotePermission != null) {
-			return emotePermission;
-		}
-
-		String legacyPlayPermission = readOptionalString(object, "play_permission");
-		if (legacyPlayPermission != null) {
-			return legacyPlayPermission;
-		}
-
-		String legacyStopPermission = readOptionalString(object, "stop_permission");
-		if (legacyStopPermission != null) {
-			return legacyStopPermission;
-		}
-
-		String legacyDialogPermission = readOptionalString(object, "dialog_permission");
-		if (legacyDialogPermission != null) {
-			return legacyDialogPermission;
-		}
-
-		return defaultValue;
+		return emotePermission == null ? defaultValue : emotePermission;
 	}
 
 	private LinkedHashMap<String, String> readPermissionMap(JsonObject object) {

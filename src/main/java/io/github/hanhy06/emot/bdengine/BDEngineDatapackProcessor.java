@@ -28,7 +28,6 @@ public class BDEngineDatapackProcessor {
 	private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
 	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
-	private static final String DATAPACK_META_TYPE = "bdengine";
 	private final EmoteRegistry emoteRegistry;
 
 	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
@@ -83,7 +82,8 @@ public class BDEngineDatapackProcessor {
 			return List.of();
 		}
 
-		if (!hasEmoteDatapackMeta(packPath, packRootPath)) {
+		Optional<EmoteDatapackMeta> datapackMeta = readDatapackMeta(packPath, packRootPath);
+		if (datapackMeta.isEmpty()) {
 			return List.of();
 		}
 
@@ -96,7 +96,7 @@ public class BDEngineDatapackProcessor {
 
 		try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
 			for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-				readDefinition(packPath, namespacePath).ifPresent(definitions::add);
+				readDefinition(packPath, namespacePath, datapackMeta.get()).ifPresent(definitions::add);
 			}
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to read datapack namespaces from {}", packPath, exception);
@@ -105,7 +105,7 @@ public class BDEngineDatapackProcessor {
 		return List.copyOf(definitions);
 	}
 
-	private Optional<EmoteDefinition> readDefinition(Path packPath, Path namespacePath) {
+	private Optional<EmoteDefinition> readDefinition(Path packPath, Path namespacePath, EmoteDatapackMeta datapackMeta) {
 		Path functionPath = findFunctionPath(namespacePath);
 		if (functionPath == null) {
 			return Optional.empty();
@@ -119,7 +119,14 @@ public class BDEngineDatapackProcessor {
 		String namespace = namespacePath.getFileName().toString();
 		List<EmoteAnimation> animations = readAnimations(functionPath);
 		int partCount = countParts(createFunctionPath);
-		return Optional.of(new EmoteDefinition(namespace, packPath, partCount, animations));
+		return Optional.of(new EmoteDefinition(
+			namespace,
+			datapackMeta.name(),
+			datapackMeta.description(),
+			packPath,
+			partCount,
+			animations
+		));
 	}
 
 	private Path findFunctionPath(Path namespacePath) {
@@ -195,30 +202,44 @@ public class BDEngineDatapackProcessor {
 		return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
 	}
 
-	private boolean hasEmoteDatapackMeta(Path packPath, Path packRootPath) {
+	private Optional<EmoteDatapackMeta> readDatapackMeta(Path packPath, Path packRootPath) {
 		Path datapackMetaPath = packRootPath.resolve(DATAPACK_META_FILE_NAME);
 		if (!Files.exists(datapackMetaPath)) {
-			return false;
+			return Optional.empty();
 		}
 
 		try (Reader reader = Files.newBufferedReader(datapackMetaPath)) {
 			JsonElement element = JsonParser.parseReader(reader);
 			if (!element.isJsonObject()) {
-				Emote.LOGGER.warn("Skipped datapack {} because {} is not a JSON object", packPath, DATAPACK_META_FILE_NAME);
-				return false;
+				Emote.LOGGER.warn("Skip {}: {} must be a JSON object.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
+				return Optional.empty();
 			}
 
 			JsonObject object = element.getAsJsonObject();
-			String type = object.has("type") ? object.get("type").getAsString() : "";
-			if (!DATAPACK_META_TYPE.equals(type)) {
-				Emote.LOGGER.warn("Skipped datapack {} because {} type must be {}", packPath, DATAPACK_META_FILE_NAME, DATAPACK_META_TYPE);
-				return false;
+			String name = readRequiredString(object, "name");
+			String description = readRequiredString(object, "description");
+			if (name == null || description == null) {
+				Emote.LOGGER.warn("Skip {}: {} needs name and description.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
+				return Optional.empty();
 			}
 
-			return true;
+			return Optional.of(new EmoteDatapackMeta(name, description));
 		} catch (IOException | RuntimeException exception) {
-			Emote.LOGGER.warn("Skipped datapack {} because {} could not be read", packPath, DATAPACK_META_FILE_NAME, exception);
-			return false;
+			Emote.LOGGER.warn("Skip {}: failed to read {}.", packPath.getFileName(), DATAPACK_META_FILE_NAME, exception);
+			return Optional.empty();
 		}
+	}
+
+	private String readRequiredString(JsonObject object, String key) {
+		JsonElement element = object.get(key);
+		if (element == null || element.isJsonNull()) {
+			return null;
+		}
+
+		String value = element.getAsString().trim();
+		return value.isEmpty() ? null : value;
+	}
+
+	private record EmoteDatapackMeta(String name, String description) {
 	}
 }

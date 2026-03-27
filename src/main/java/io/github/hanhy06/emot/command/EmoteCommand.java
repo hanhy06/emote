@@ -112,6 +112,7 @@ public final class EmoteCommand {
 
 			source.sendSystemMessage(Component.literal(
 				"- " + definition.namespace()
+					+ " name=" + definition.name()
 					+ " parts=" + definition.partCount()
 					+ " clips=" + animationSummary
 			));
@@ -163,8 +164,9 @@ public final class EmoteCommand {
 		}
 
 		emotePlaybackManager.startEmote(player, namespace, animationName, animation.get().keyframeCount());
+		String displayName = definition.get().createDisplayName(animationName);
 		source.sendSuccess(
-			() -> Component.literal("Play: " + namespace + ":" + animationName),
+			() -> Component.literal("Play: " + displayName),
 			false
 		);
 		return 1;

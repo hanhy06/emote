@@ -62,8 +62,8 @@ public class EmoteDialogManager {
 		List<ActionButton> actionButtons = new ArrayList<>();
 		for (PlayableEmote playableEmote : playableEmoteList.subList(startIndex, endIndex)) {
 			actionButtons.add(createRunCommandButton(
-				playableEmote.namespace() + ":" + playableEmote.animationName(),
-				"Run " + playableEmote.namespace() + ":" + playableEmote.animationName(),
+				playableEmote.displayName(),
+				playableEmote.description(),
 				"/emote play " + playableEmote.namespace() + " " + playableEmote.animationName()
 			));
 		}
@@ -114,9 +114,14 @@ public class EmoteDialogManager {
 
 	private List<PlayableEmote> getPlayableEmoteList(ServerPlayer player) {
 		return this.emoteRegistry.getDefinitions().stream()
-			.flatMap(definition -> definition.animations().stream().map(animation -> new PlayableEmote(definition.namespace(), animation.name())))
+			.flatMap(definition -> definition.animations().stream().map(animation -> new PlayableEmote(
+				definition.namespace(),
+				animation.name(),
+				definition.createDisplayName(animation.name()),
+				definition.createDisplayDescription(animation.name())
+			)))
 			.filter(playableEmote -> this.emotePermissionService.canPlay(player, playableEmote.namespace(), playableEmote.animationName()))
-			.sorted(Comparator.comparing(PlayableEmote::namespace).thenComparing(PlayableEmote::animationName))
+			.sorted(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName))
 			.toList();
 	}
 
@@ -134,7 +139,9 @@ public class EmoteDialogManager {
 
 		Optional<ActiveEmote> activeEmote = this.emotePlaybackManager.findActiveEmote(player.getUUID());
 		String activeEmoteText = activeEmote
-			.map(value -> " Active: " + value.namespace() + ":" + value.animationName())
+			.map(value -> " Active: " + this.emoteRegistry.findDefinition(value.namespace())
+				.map(definition -> definition.createDisplayName(value.animationName()))
+				.orElse(value.namespace() + ":" + value.animationName()))
 			.orElse("");
 
 		if (playableEmoteCount == 0) {
@@ -149,6 +156,6 @@ public class EmoteDialogManager {
 			+ " | " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
 	}
 
-	private record PlayableEmote(String namespace, String animationName) {
+	private record PlayableEmote(String namespace, String animationName, String displayName, String description) {
 	}
 }
