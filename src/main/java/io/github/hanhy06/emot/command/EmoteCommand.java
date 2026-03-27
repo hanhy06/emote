@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
+import io.github.hanhy06.emot.dialog.EmoteDialogShortcutManager;
 import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
@@ -35,7 +36,8 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService
+		EmotePermissionService emotePermissionService,
+		EmoteDialogShortcutManager emoteDialogShortcutManager
 	) {
 		dispatcher.register(Commands.literal("emote")
 			.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
@@ -54,7 +56,7 @@ public final class EmoteCommand {
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
 				.requires(emotePermissionService.requireReload())
-				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager)))
+				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager, emoteDialogShortcutManager)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("namespace", StringArgumentType.word())
@@ -124,12 +126,15 @@ public final class EmoteCommand {
 	private static int reloadEmotes(
 		CommandSourceStack source,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
-		ConfigManager configManager
+		ConfigManager configManager,
+		EmoteDialogShortcutManager emoteDialogShortcutManager
 	) {
 		boolean configLoaded = configManager.readConfig();
+		emoteDialogShortcutManager.updateDatapack(source.getServer());
+		emoteDialogShortcutManager.reload(source.getServer());
 		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		source.sendSuccess(
-			() -> Component.literal("Reloaded: cfg=" + configLoaded + ", emotes=" + emoteCount),
+			() -> Component.literal("Reloading: cfg=" + configLoaded + ", emotes=" + emoteCount),
 			true
 		);
 		return emoteCount;

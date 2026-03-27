@@ -183,6 +183,7 @@ public class ConfigManager {
 		return new Config(
 			readString(object, "version", defaultConfig.version()),
 			readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
+			readBoolean(object, "quick_action_enabled", defaultConfig.quick_action_enabled()),
 			readEmotePermission(object, defaultConfig.emote_permission()),
 			readPermissionMap(object)
 		);
@@ -228,5 +229,14 @@ public class ConfigManager {
 		}
 
 		return element.getAsInt();
+	}
+
+	private boolean readBoolean(JsonObject object, String key, boolean defaultValue) {
+		JsonElement element = object.get(key);
+		if (element == null || element.isJsonNull()) {
+			return defaultValue;
+		}
+
+		return element.getAsBoolean();
 	}
 }

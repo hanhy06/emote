@@ -4,6 +4,7 @@ import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.command.EmoteCommand;
 import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
+import io.github.hanhy06.emot.dialog.EmoteDialogShortcutManager;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
 import io.github.hanhy06.emot.permission.EmotePermissionService;
 import io.github.hanhy06.emot.playback.EmotePlaybackManager;
@@ -31,6 +32,7 @@ public class Emote implements ModInitializer {
 		this.emotePermissionService,
 		this.emotePlaybackManager
 	);
+	private final EmoteDialogShortcutManager emoteDialogShortcutManager = new EmoteDialogShortcutManager();
 
 	@Override
 	public void onInitialize() {
@@ -42,7 +44,9 @@ public class Emote implements ModInitializer {
 	}
 
 	private void registerLifecycleCallbacks() {
+		ServerLifecycleEvents.SERVER_STARTING.register(this::handleServerStarting);
 		ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
+		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resourceManager) -> handleDataPackReloadStart(server));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
 		ServerTickEvents.END_SERVER_TICK.register(this.emotePlaybackManager::tick);
@@ -57,13 +61,26 @@ public class Emote implements ModInitializer {
 			this.bdEngineDatapackProcessor,
 			this.configManager,
 			this.emoteDialogManager,
-			this.emotePermissionService
+			this.emotePermissionService,
+			this.emoteDialogShortcutManager
 		));
 	}
 
+	private void handleServerStarting(MinecraftServer server) {
+		this.emoteDialogShortcutManager.updateDatapack(server);
+	}
+
 	private void handleServerStarted(MinecraftServer server) {
+		if (this.emoteDialogShortcutManager.reloadIfNeeded(server)) {
+			return;
+		}
+
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
 		LOGGER.info("emotes={}", emoteCount);
+	}
+
+	private void handleDataPackReloadStart(MinecraftServer server) {
+		this.configManager.readConfig();
 	}
 
 	private void handleDataPackReload(MinecraftServer server, boolean success) {
