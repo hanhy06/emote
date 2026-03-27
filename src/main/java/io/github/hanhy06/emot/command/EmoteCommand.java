@@ -8,7 +8,6 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
-import io.github.hanhy06.emot.dialog.EmoteDialogShortcutManager;
 import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
@@ -36,8 +35,7 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService,
-		EmoteDialogShortcutManager emoteDialogShortcutManager
+		EmotePermissionService emotePermissionService
 	) {
 		dispatcher.register(Commands.literal("emote")
 			.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
@@ -56,7 +54,7 @@ public final class EmoteCommand {
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
 				.requires(emotePermissionService.requireReload())
-				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager, emoteDialogShortcutManager)))
+				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("namespace", StringArgumentType.word())
@@ -126,13 +124,10 @@ public final class EmoteCommand {
 	private static int reloadEmotes(
 		CommandSourceStack source,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
-		ConfigManager configManager,
-		EmoteDialogShortcutManager emoteDialogShortcutManager
+		ConfigManager configManager
 	) {
 		boolean configLoaded = configManager.readConfig();
 		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
-		emoteDialogShortcutManager.updateDatapack(source.getServer());
-		emoteDialogShortcutManager.reload(source.getServer());
 		source.sendSuccess(
 			() -> Component.literal("Reloading: cfg=" + configLoaded + ", emotes=" + emoteCount),
 			true
