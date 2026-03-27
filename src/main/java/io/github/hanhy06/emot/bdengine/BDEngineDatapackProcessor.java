@@ -9,6 +9,7 @@ import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
 import io.github.hanhy06.emot.skin.EmoteSkinPart;
 import io.github.hanhy06.emot.skin.PlayerSkinPart;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -19,7 +20,9 @@ import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -42,9 +45,110 @@ public class BDEngineDatapackProcessor {
 
 	public int reloadServerEmotes(MinecraftServer server) {
 		Path datapackDirPath = server.getWorldPath(LevelResource.DATAPACK_DIR);
-		List<EmoteDefinition> definitions = readDefinitions(datapackDirPath);
+		List<EmoteDefinition> definitions = filterLoadedDefinitions(server, readDefinitions(datapackDirPath));
 		this.emoteRegistry.replaceDefinitions(definitions);
 		return definitions.size();
+	}
+
+	public boolean enableEmoteDatapacks(MinecraftServer server) {
+		server.getPackRepository().reload();
+
+		LinkedHashSet<String> selectedPackIds = new LinkedHashSet<>(server.getPackRepository().getSelectedIds());
+		Collection<String> availablePackIds = server.getPackRepository().getAvailableIds();
+		boolean changed = false;
+
+		for (String packId : findEmotePackIds(server.getWorldPath(LevelResource.DATAPACK_DIR))) {
+			if (!availablePackIds.contains(packId)) {
+				continue;
+			}
+
+			if (selectedPackIds.add(packId)) {
+				changed = true;
+			}
+		}
+
+		if (changed) {
+			server.reloadResources(selectedPackIds).join();
+		}
+
+		return changed;
+	}
+
+	private List<EmoteDefinition> filterLoadedDefinitions(MinecraftServer server, List<EmoteDefinition> definitions) {
+		List<EmoteDefinition> filteredDefinitions = new ArrayList<>();
+
+		for (EmoteDefinition definition : definitions) {
+			if (!isLoadedFunction(server, definition.namespace() + ":_/create")) {
+				continue;
+			}
+
+			List<EmoteAnimation> loadedAnimations = definition.animations().stream()
+				.filter(animation -> isLoadedFunction(server, definition.namespace() + ":a/" + animation.name() + "/play_anim"))
+				.toList();
+			if (loadedAnimations.isEmpty()) {
+				continue;
+			}
+
+			filteredDefinitions.add(new EmoteDefinition(
+				definition.namespace(),
+				definition.name(),
+				definition.description(),
+				definition.commandName(),
+				definition.defaultAnimationName(),
+				definition.datapackPath(),
+				definition.partCount(),
+				loadedAnimations,
+				definition.skinParts()
+			));
+		}
+
+		return List.copyOf(filteredDefinitions);
+	}
+
+	private boolean isLoadedFunction(MinecraftServer server, String functionId) {
+		Identifier identifier = Identifier.tryParse(functionId);
+		return identifier != null && server.getFunctions().get(identifier).isPresent();
+	}
+
+	private List<String> findEmotePackIds(Path datapackDirPath) {
+		if (!Files.isDirectory(datapackDirPath)) {
+			return List.of();
+		}
+
+		List<String> packIds = new ArrayList<>();
+		try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
+			for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
+				if (isEmotePack(packPath)) {
+					packIds.add("file/" + packPath.getFileName());
+				}
+			}
+		} catch (IOException exception) {
+			Emote.LOGGER.warn("Failed to scan datapack ids from {}", datapackDirPath, exception);
+		}
+
+		return List.copyOf(packIds);
+	}
+
+	private boolean isEmotePack(Path packPath) {
+		if (Files.isDirectory(packPath)) {
+			return hasDatapackFiles(packPath);
+		}
+
+		String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
+		if (!Files.isRegularFile(packPath) || !fileName.endsWith(".zip")) {
+			return false;
+		}
+
+		try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
+			return hasDatapackFiles(fileSystem.getPath("/"));
+		} catch (IOException exception) {
+			Emote.LOGGER.warn("Failed to inspect datapack {}", packPath, exception);
+			return false;
+		}
+	}
+
+	private boolean hasDatapackFiles(Path packRootPath) {
+		return Files.exists(packRootPath.resolve("pack.mcmeta")) && Files.exists(packRootPath.resolve(DATAPACK_META_FILE_NAME));
 	}
 
 	private List<EmoteDefinition> readDefinitions(Path datapackDirPath) {

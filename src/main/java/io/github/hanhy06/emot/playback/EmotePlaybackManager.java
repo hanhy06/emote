@@ -6,11 +6,14 @@ import io.github.hanhy06.emot.skin.PlayerSkinManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Display;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
@@ -26,6 +29,7 @@ public class EmotePlaybackManager {
 	private static final long PLAYBACK_BUFFER_TICKS = 8L;
 	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
 	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
+	private static final double ROOT_SEARCH_DISTANCE = 8.0D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 	private final PlayerSkinManager playerSkinManager;
 
@@ -33,17 +37,32 @@ public class EmotePlaybackManager {
 		this.playerSkinManager = playerSkinManager;
 	}
 
-	public void startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
+	public Optional<String> startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
 		MinecraftServer server = player.level().getServer();
+		if (server == null) {
+			return Optional.of("Play failed.");
+		}
+
 		String namespace = definition.namespace();
 		String animationName = animation.name();
+		String createFunctionId = namespace + ":_/create";
+		String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
+		if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
+			return Optional.of("Datapack not loaded.");
+		}
+
 		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
 		this.stopEmote(player);
 
-		executeFunction(player, namespace + ":_/create");
+		executeFunction(player, createFunctionId);
+		if (!hasRoot(player, namespace)) {
+			cleanupFailedEmote(player, namespace);
+			return Optional.of("Create failed.");
+		}
+
 		alignRootWithPlayer(player, namespace);
 		this.playerSkinManager.applyPlayerSkin(player, definition);
-		executeFunction(player, namespace + ":a/" + animationName + "/play_anim");
+		executeFunction(player, playFunctionId);
 		boolean wasInvisible = player.isInvisible();
 		player.setInvisible(true);
 
@@ -58,6 +77,7 @@ public class EmotePlaybackManager {
 			wasInvisible
 		);
 		this.activeEmoteMap.put(player.getUUID(), activeEmote);
+		return Optional.empty();
 	}
 
 	public Optional<ActiveEmote> stopEmote(ServerPlayer player) {
@@ -143,6 +163,34 @@ public class EmotePlaybackManager {
 		double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
 		double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
 		return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+	}
+
+	private boolean isLoadedFunction(MinecraftServer server, String functionId) {
+		Identifier identifier = Identifier.tryParse(functionId);
+		return identifier != null && server.getFunctions().get(identifier).isPresent();
+	}
+
+	private boolean hasRoot(ServerPlayer player, String namespace) {
+		if (!(player.level() instanceof ServerLevel serverLevel)) {
+			return false;
+		}
+
+		AABB searchBox = player.getBoundingBox().inflate(ROOT_SEARCH_DISTANCE);
+		String rootTag = namespace + "_root";
+		return !serverLevel.getEntitiesOfClass(
+			Display.BlockDisplay.class,
+			searchBox,
+			blockDisplay -> blockDisplay.entityTags().contains(rootTag)
+		).isEmpty();
+	}
+
+	private void cleanupFailedEmote(ServerPlayer player, String namespace) {
+		MinecraftServer server = player.level().getServer();
+		if (server == null || !isLoadedFunction(server, namespace + ":_/delete")) {
+			return;
+		}
+
+		executeFunction(player, namespace + ":_/delete");
 	}
 
 	private void alignRootWithPlayer(ServerPlayer player, String namespace) {

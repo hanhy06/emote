@@ -9,6 +9,7 @@ import java.util.LinkedHashMap;
 public record Config(
 	String version,
 	int menu_page_size,
+	int player_skin_port,
 	String emote_permission,
 	LinkedHashMap<String, String> emote_permissions
 ) {
@@ -21,6 +22,7 @@ public record Config(
 				.getVersion()
 				.getFriendlyString(),
 			6,
+			0,
 			EmotePermission.DEFAULT_EMOTE_PERMISSION,
 			new LinkedHashMap<>()
 		);

@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.hanhy06.emot.Emote;
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
@@ -160,6 +161,8 @@ public final class EmoteCommand {
 		ConfigManager configManager
 	) {
 		boolean configLoaded = configManager.readConfig();
+		Emote.getPlayerSkinManager().reloadHttpServer(source.getServer());
+		bdEngineDatapackProcessor.enableEmoteDatapacks(source.getServer());
 		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		source.sendSuccess(
 			() -> Component.literal("Reloading: cfg=" + configLoaded + ", emotes=" + emoteCount),
@@ -195,7 +198,12 @@ public final class EmoteCommand {
 			return 0;
 		}
 
-		emotePlaybackManager.startEmote(player, definition.get(), animation.get());
+		Optional<String> playError = emotePlaybackManager.startEmote(player, definition.get(), animation.get());
+		if (playError.isPresent()) {
+			source.sendFailure(Component.literal(playError.get()));
+			return 0;
+		}
+
 		String displayName = definition.get().createDisplayName(animationName);
 		source.sendSuccess(
 			() -> Component.literal("Play: " + displayName),

@@ -44,6 +44,7 @@ public class Emote implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		this.configManager.addListener(this.emotePermissionService);
+		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
 		registerLifecycleCallbacks();
 		registerCommands();
@@ -81,12 +82,15 @@ public class Emote implements ModInitializer {
 	}
 
 	private void handleServerStarted(MinecraftServer server) {
+		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
+		this.bdEngineDatapackProcessor.enableEmoteDatapacks(server);
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
 		LOGGER.info("emotes={}", emoteCount);
 	}
 
 	private void handleDataPackReloadStart(MinecraftServer server) {
 		this.configManager.readConfig();
+		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
 	}
 
 	private void handleDataPackReload(MinecraftServer server, boolean success) {

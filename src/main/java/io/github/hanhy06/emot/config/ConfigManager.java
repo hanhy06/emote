@@ -164,6 +164,7 @@ public class ConfigManager {
 	private String validateConfig(Config config) {
 		if (config.version() == null) return "version is missing";
 		if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
+		if (config.player_skin_port() < 0 || config.player_skin_port() > 65535) return "player_skin_port must be between 0 and 65535";
 		if (config.emote_permission() == null) return "emote_permission is missing";
 		if (config.emote_permissions() == null) return "emote_permissions is missing";
 
@@ -185,6 +186,7 @@ public class ConfigManager {
 		return new Config(
 			readString(object, "version", defaultConfig.version()),
 			readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
+			readInt(object, "player_skin_port", defaultConfig.player_skin_port()),
 			readEmotePermission(object, defaultConfig.emote_permission()),
 			readPermissionMap(object)
 		);
