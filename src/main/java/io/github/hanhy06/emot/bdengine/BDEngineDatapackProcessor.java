@@ -1,5 +1,8 @@
 package io.github.hanhy06.emot.bdengine;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.hanhy06.emot.Emote;
 import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
@@ -8,6 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.IOException;
+import java.io.Reader;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -23,6 +27,8 @@ import java.util.stream.Stream;
 public class BDEngineDatapackProcessor {
 	private static final String CREATE_FUNCTION_NAME = "_create.mcfunction";
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
+	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
+	private static final String DATAPACK_META_TYPE = "bdengine";
 	private final EmoteRegistry emoteRegistry;
 
 	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
@@ -74,6 +80,10 @@ public class BDEngineDatapackProcessor {
 
 	private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath) {
 		if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
+			return List.of();
+		}
+
+		if (!hasEmoteDatapackMeta(packPath, packRootPath)) {
 			return List.of();
 		}
 
@@ -183,5 +193,32 @@ public class BDEngineDatapackProcessor {
 
 	private Comparator<Path> pathComparator() {
 		return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
+	}
+
+	private boolean hasEmoteDatapackMeta(Path packPath, Path packRootPath) {
+		Path datapackMetaPath = packRootPath.resolve(DATAPACK_META_FILE_NAME);
+		if (!Files.exists(datapackMetaPath)) {
+			return false;
+		}
+
+		try (Reader reader = Files.newBufferedReader(datapackMetaPath)) {
+			JsonElement element = JsonParser.parseReader(reader);
+			if (!element.isJsonObject()) {
+				Emote.LOGGER.warn("Skipped datapack {} because {} is not a JSON object", packPath, DATAPACK_META_FILE_NAME);
+				return false;
+			}
+
+			JsonObject object = element.getAsJsonObject();
+			String type = object.has("type") ? object.get("type").getAsString() : "";
+			if (!DATAPACK_META_TYPE.equals(type)) {
+				Emote.LOGGER.warn("Skipped datapack {} because {} type must be {}", packPath, DATAPACK_META_FILE_NAME, DATAPACK_META_TYPE);
+				return false;
+			}
+
+			return true;
+		} catch (IOException | RuntimeException exception) {
+			Emote.LOGGER.warn("Skipped datapack {} because {} could not be read", packPath, DATAPACK_META_FILE_NAME, exception);
+			return false;
+		}
 	}
 }

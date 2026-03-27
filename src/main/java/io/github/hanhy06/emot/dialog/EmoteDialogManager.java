@@ -80,6 +80,10 @@ public class EmoteDialogManager {
 			actionButtons.add(createRunCommandButton("Stop", "Stop the current emote session", "/emote stop"));
 		}
 
+		if (actionButtons.isEmpty()) {
+			actionButtons.add(createStaticButton("Close", "Close this dialog"));
+		}
+
 		List<DialogBody> dialogBody = List.of(new PlainMessage(
 			Component.literal(createBodyText(playableEmoteList.size(), pageNumber, totalPageCount, startIndex, endIndex, player)),
 			240
@@ -101,6 +105,11 @@ public class EmoteDialogManager {
 		CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
 		Action action = new StaticAction(new ClickEvent.RunCommand(command));
 		return new ActionButton(buttonData, Optional.of(action));
+	}
+
+	private ActionButton createStaticButton(String label, String tooltip) {
+		CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
+		return new ActionButton(buttonData, Optional.empty());
 	}
 
 	private List<PlayableEmote> getPlayableEmoteList(ServerPlayer player) {

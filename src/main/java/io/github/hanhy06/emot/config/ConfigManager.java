@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -22,6 +23,8 @@ public class ConfigManager {
 
 	private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
 	private static final String CONFIG_FILE_NAME = "config.json";
+	private static final String DATAPACK_DIR_NAME = "datapack";
+	private static final String DATAPACK_EXAMPLE_FILE_NAME = "emote-datapack.example.json";
 
 	private final Path configDirPath;
 	private final Gson gson = new GsonBuilder()
@@ -42,6 +45,7 @@ public class ConfigManager {
 			}
 
 			writeIfAbsent();
+			writeDatapackExampleIfAbsent();
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
 		}
@@ -111,6 +115,33 @@ public class ConfigManager {
 		}
 
 		writeJsonFile(this.config);
+	}
+
+	private void writeDatapackExampleIfAbsent() throws IOException {
+		Path datapackDirPath = this.configDirPath.resolve(DATAPACK_DIR_NAME);
+		if (!Files.exists(datapackDirPath)) {
+			Files.createDirectories(datapackDirPath);
+		}
+
+		Path exampleFilePath = datapackDirPath.resolve(DATAPACK_EXAMPLE_FILE_NAME);
+		if (Files.exists(exampleFilePath)) {
+			return;
+		}
+
+		LinkedHashMap<String, Object> exampleJson = new LinkedHashMap<>();
+		exampleJson.put("type", "bdengine");
+		exampleJson.put("format", 1);
+		exampleJson.put("description", "Copy this file into the root of an emote datapack and rename it to emote-datapack.json");
+
+		try (BufferedWriter writer = Files.newBufferedWriter(
+			exampleFilePath,
+			StandardCharsets.UTF_8,
+			StandardOpenOption.CREATE,
+			StandardOpenOption.TRUNCATE_EXISTING
+		)) {
+			this.gson.toJson(exampleJson, writer);
+			Emote.LOGGER.info("Saved {}", this.configDirPath.relativize(exampleFilePath));
+		}
 	}
 
 	private void writeJsonFile(Config config) {
