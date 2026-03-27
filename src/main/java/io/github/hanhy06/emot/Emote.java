@@ -10,6 +10,8 @@ import io.github.hanhy06.emot.playback.EmotePlaybackManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
@@ -43,6 +45,8 @@ public class Emote implements ModInitializer {
 		ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
+		ServerTickEvents.END_SERVER_TICK.register(this.emotePlaybackManager::tick);
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> this.emotePlaybackManager.stopEmote(handler.player));
 	}
 
 	private void registerCommands() {
@@ -68,12 +72,13 @@ public class Emote implements ModInitializer {
 			return;
 		}
 
+		this.emotePlaybackManager.stopAllEmotes(server);
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
 		LOGGER.info("Reloaded {} emotes from datapacks", emoteCount);
 	}
 
 	private void handleServerStopping(MinecraftServer server) {
-		this.emotePlaybackManager.clear();
-		LOGGER.info("Cleared active emote sessions for server shutdown");
+		this.emotePlaybackManager.stopAllEmotes(server);
+		LOGGER.info("Stopped active emote sessions for server shutdown");
 	}
 }

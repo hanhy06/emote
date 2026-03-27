@@ -25,7 +25,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 public class BDEngineDatapackProcessor {
-	private static final String CREATE_FUNCTION_NAME = "_create.mcfunction";
+	private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
 	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
 	private static final String DATAPACK_META_TYPE = "bdengine";

@@ -8,6 +8,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
+import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
 import io.github.hanhy06.emot.permission.EmotePermissionService;
@@ -150,7 +151,8 @@ public final class EmoteCommand {
 			return 0;
 		}
 
-		if (definition.get().findAnimation(animationName).isEmpty()) {
+		Optional<EmoteAnimation> animation = definition.get().findAnimation(animationName);
+		if (animation.isEmpty()) {
 			source.sendFailure(Component.literal("Unknown animation: " + namespace + ":" + animationName));
 			return 0;
 		}
@@ -160,9 +162,9 @@ public final class EmoteCommand {
 			return 0;
 		}
 
-		emotePlaybackManager.startEmote(player, namespace, animationName);
+		emotePlaybackManager.startEmote(player, namespace, animationName, animation.get().keyframeCount());
 		source.sendSuccess(
-			() -> Component.literal("Started emote session for " + namespace + ":" + animationName + ". Visual playback is not implemented yet."),
+			() -> Component.literal("Started " + namespace + ":" + animationName + " at your current position."),
 			false
 		);
 		return 1;
@@ -170,7 +172,7 @@ public final class EmoteCommand {
 
 	private static int stopEmote(CommandSourceStack source, EmotePlaybackManager emotePlaybackManager) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-		Optional<ActiveEmote> activeEmote = emotePlaybackManager.stopEmote(player.getUUID());
+		Optional<ActiveEmote> activeEmote = emotePlaybackManager.stopEmote(player);
 		if (activeEmote.isEmpty()) {
 			source.sendFailure(Component.literal("You do not have an active emote session."));
 			return 0;
