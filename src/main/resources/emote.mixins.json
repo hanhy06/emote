@@ -1,6 +1,6 @@
 {
 	"required": true,
-	"package": "io.github.hanhy06.mixin",
+	"package": "io.github.hanhy06.emot.mixin",
 	"compatibilityLevel": "JAVA_25",
 	"mixins": [
 		"ExampleMixin"

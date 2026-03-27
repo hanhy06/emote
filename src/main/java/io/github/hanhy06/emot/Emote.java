@@ -1,4 +1,4 @@
-package io.github.hanhy06;
+package io.github.hanhy06.emot;
 
 import net.fabricmc.api.ModInitializer;
 

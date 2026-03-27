@@ -1,4 +1,4 @@
-package io.github.hanhy06.mixin;
+package io.github.hanhy06.emot.mixin;
 
 import net.minecraft.server.MinecraftServer;
 import org.spongepowered.asm.mixin.Mixin;
