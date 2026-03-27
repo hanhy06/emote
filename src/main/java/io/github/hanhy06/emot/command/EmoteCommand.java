@@ -86,7 +86,7 @@ public final class EmoteCommand {
 	) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
 		if (!emotePermissionService.canOpenDialog(player)) {
-			source.sendFailure(Component.literal("You do not have permission to open the emote menu."));
+			source.sendFailure(Component.literal("No menu permission."));
 			return 0;
 		}
 
@@ -97,15 +97,15 @@ public final class EmoteCommand {
 	private static int listEmotes(CommandSourceStack source, EmoteRegistry emoteRegistry) {
 		List<EmoteDefinition> definitions = emoteRegistry.getDefinitions();
 		if (definitions.isEmpty()) {
-			source.sendSuccess(() -> Component.literal("No emotes were loaded from datapacks."), false);
+			source.sendSuccess(() -> Component.literal("No emotes."), false);
 			return 0;
 		}
 
-		source.sendSuccess(() -> Component.literal("Loaded " + definitions.size() + " emotes."), false);
+		source.sendSuccess(() -> Component.literal("Emotes: " + definitions.size()), false);
 
 		for (EmoteDefinition definition : definitions) {
 			String animationSummary = definition.animations().isEmpty()
-				? "no animations"
+				? "-"
 				: definition.animations().stream()
 					.map(animation -> animation.name() + "(" + animation.keyframeCount() + ")")
 					.collect(Collectors.joining(", "));
@@ -113,7 +113,7 @@ public final class EmoteCommand {
 			source.sendSystemMessage(Component.literal(
 				"- " + definition.namespace()
 					+ " parts=" + definition.partCount()
-					+ " animations=" + animationSummary
+					+ " clips=" + animationSummary
 			));
 		}
 
@@ -128,7 +128,7 @@ public final class EmoteCommand {
 		boolean configLoaded = configManager.readConfig();
 		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		source.sendSuccess(
-			() -> Component.literal("Reloaded config=" + configLoaded + ", emotes=" + emoteCount + "."),
+			() -> Component.literal("Reloaded: cfg=" + configLoaded + ", emotes=" + emoteCount),
 			true
 		);
 		return emoteCount;
@@ -147,24 +147,24 @@ public final class EmoteCommand {
 
 		Optional<EmoteDefinition> definition = emoteRegistry.findDefinition(namespace);
 		if (definition.isEmpty()) {
-			source.sendFailure(Component.literal("Unknown emote: " + namespace));
+			source.sendFailure(Component.literal("Unknown: " + namespace));
 			return 0;
 		}
 
 		Optional<EmoteAnimation> animation = definition.get().findAnimation(animationName);
 		if (animation.isEmpty()) {
-			source.sendFailure(Component.literal("Unknown animation: " + namespace + ":" + animationName));
+			source.sendFailure(Component.literal("Unknown: " + namespace + ":" + animationName));
 			return 0;
 		}
 
 		if (!emotePermissionService.canPlay(player, namespace, animationName)) {
-			source.sendFailure(Component.literal("You do not have permission to play that emote."));
+			source.sendFailure(Component.literal("No emote permission."));
 			return 0;
 		}
 
 		emotePlaybackManager.startEmote(player, namespace, animationName, animation.get().keyframeCount());
 		source.sendSuccess(
-			() -> Component.literal("Started " + namespace + ":" + animationName + " at your current position."),
+			() -> Component.literal("Play: " + namespace + ":" + animationName),
 			false
 		);
 		return 1;
@@ -174,13 +174,13 @@ public final class EmoteCommand {
 		ServerPlayer player = source.getPlayerOrException();
 		Optional<ActiveEmote> activeEmote = emotePlaybackManager.stopEmote(player);
 		if (activeEmote.isEmpty()) {
-			source.sendFailure(Component.literal("You do not have an active emote session."));
+			source.sendFailure(Component.literal("No active emote."));
 			return 0;
 		}
 
 		ActiveEmote removedEmote = activeEmote.get();
 		source.sendSuccess(
-			() -> Component.literal("Stopped " + removedEmote.namespace() + ":" + removedEmote.animationName() + "."),
+			() -> Component.literal("Stop: " + removedEmote.namespace() + ":" + removedEmote.animationName()),
 			false
 		);
 		return 1;

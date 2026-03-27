@@ -38,7 +38,7 @@ public class Emote implements ModInitializer {
 		this.configManager.readConfig();
 		registerLifecycleCallbacks();
 		registerCommands();
-		LOGGER.info("Initialized {} bootstrap", MOD_ID);
+		LOGGER.info("{} ready", MOD_ID);
 	}
 
 	private void registerLifecycleCallbacks() {
@@ -63,22 +63,22 @@ public class Emote implements ModInitializer {
 
 	private void handleServerStarted(MinecraftServer server) {
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
-		LOGGER.info("Loaded {} emotes from datapacks", emoteCount);
+		LOGGER.info("emotes={}", emoteCount);
 	}
 
 	private void handleDataPackReload(MinecraftServer server, boolean success) {
 		if (!success) {
-			LOGGER.warn("Skipped emote reload because the datapack reload failed");
+			LOGGER.warn("Datapack reload failed");
 			return;
 		}
 
 		this.emotePlaybackManager.stopAllEmotes(server);
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
-		LOGGER.info("Reloaded {} emotes from datapacks", emoteCount);
+		LOGGER.info("reload emotes={}", emoteCount);
 	}
 
 	private void handleServerStopping(MinecraftServer server) {
 		this.emotePlaybackManager.stopAllEmotes(server);
-		LOGGER.info("Stopped active emote sessions for server shutdown");
+		LOGGER.info("stop emotes");
 	}
 }

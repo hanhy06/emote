@@ -77,11 +77,11 @@ public class EmoteDialogManager {
 		}
 
 		if (this.emotePermissionService.canStop(player) && this.emotePlaybackManager.findActiveEmote(player.getUUID()).isPresent()) {
-			actionButtons.add(createRunCommandButton("Stop", "Stop the current emote session", "/emote stop"));
+			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
 
 		if (actionButtons.isEmpty()) {
-			actionButtons.add(createStaticButton("Close", "Close this dialog"));
+			actionButtons.add(createStaticButton("Close", "Close"));
 		}
 
 		List<DialogBody> dialogBody = List.of(new PlainMessage(
@@ -129,24 +129,24 @@ public class EmoteDialogManager {
 		ServerPlayer player
 	) {
 		if (this.emoteRegistry.size() == 0) {
-			return "No BD Engine emotes were found in the world datapacks folder.";
+			return "No emotes.";
 		}
 
 		Optional<ActiveEmote> activeEmote = this.emotePlaybackManager.findActiveEmote(player.getUUID());
 		String activeEmoteText = activeEmote
-			.map(value -> " Active: " + value.namespace() + ":" + value.animationName() + ".")
+			.map(value -> " Active: " + value.namespace() + ":" + value.animationName())
 			.orElse("");
 
 		if (playableEmoteCount == 0) {
-			return "No emotes are available for your current permissions." + activeEmoteText;
+			return "No usable emotes." + activeEmoteText;
 		}
 
 		if (totalPageCount == 1) {
-			return "Showing " + playableEmoteCount + " emotes you can run right now." + activeEmoteText;
+			return "Emotes: " + playableEmoteCount + "." + activeEmoteText;
 		}
 
-		return "Showing emotes " + (startIndex + 1) + "-" + endIndex + " of " + playableEmoteCount
-			+ ". Page " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
+		return (startIndex + 1) + "-" + endIndex + "/" + playableEmoteCount
+			+ " | " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
 	}
 
 	private record PlayableEmote(String namespace, String animationName) {

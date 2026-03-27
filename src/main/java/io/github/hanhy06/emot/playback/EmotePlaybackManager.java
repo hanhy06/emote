@@ -1,11 +1,14 @@
 package io.github.hanhy06.emot.playback;
 
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.util.Mth;
+import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -18,7 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
 public class EmotePlaybackManager {
 	private static final long TICKS_PER_KEYFRAME = 2L;
 	private static final long PLAYBACK_BUFFER_TICKS = 8L;
-	private static final double MOVE_STOP_DISTANCE_SQUARED = 0.0004D;
+	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
+	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 
 	public void startEmote(ServerPlayer player, String namespace, String animationName, int keyframeCount) {
@@ -27,6 +31,7 @@ public class EmotePlaybackManager {
 		this.stopEmote(player);
 
 		executeFunction(player, namespace + ":_/create");
+		alignRootWithPlayer(player, namespace);
 		executeFunction(player, namespace + ":a/" + animationName + "/play_anim");
 		boolean wasInvisible = player.isInvisible();
 		player.setInvisible(true);
@@ -79,7 +84,7 @@ public class EmotePlaybackManager {
 
 			if (hasMoved(player.position(), activeEmote.startPosition())) {
 				playerUuidListToStop.add(activeEmote.playerUuid());
-				player.sendSystemMessage(Component.literal("Emote stopped because you moved."));
+				player.sendSystemMessage(Component.literal("Stop: moved"));
 			}
 		}
 
@@ -122,7 +127,23 @@ public class EmotePlaybackManager {
 	}
 
 	private boolean hasMoved(Vec3 currentPosition, Vec3 startPosition) {
-		return currentPosition.distanceToSqr(startPosition) > MOVE_STOP_DISTANCE_SQUARED;
+		double xDistance = currentPosition.x - startPosition.x;
+		double zDistance = currentPosition.z - startPosition.z;
+		double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
+		double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
+		return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+	}
+
+	private void alignRootWithPlayer(ServerPlayer player, String namespace) {
+		float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
+		CommandSourceStack source = player.createCommandSourceStack()
+			.withAnchor(EntityAnchorArgument.Anchor.FEET)
+			.withRotation(new Vec2(0.0F, yaw))
+			.withMaximumPermission(LevelBasedPermissionSet.OWNER)
+			.withSuppressedOutput();
+		String rootSelector = "@e[type=minecraft:block_display,tag=" + namespace + "_root,limit=1,sort=nearest]";
+		String command = "tp " + rootSelector + " ^ ^ ^ " + yaw + " 0";
+		player.level().getServer().getCommands().performPrefixedCommand(source, command);
 	}
 
 	private void executeFunction(ServerPlayer player, String functionId) {

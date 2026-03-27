@@ -19,28 +19,28 @@ public class EmotePermissionService implements ConfigListener {
 	}
 
 	public boolean canOpenDialog(ServerPlayer player) {
-		return hasPermission(player, this.config.dialog_permission(), 2);
+		return hasBasePermission(player);
 	}
 
 	public boolean canList(CommandSourceStack source) {
-		return hasPermission(source, this.config.command_list_permission(), 2);
+		ServerPlayer player = findPlayer(source);
+		return player != null && hasBasePermission(player);
 	}
 
 	public boolean canReload(CommandSourceStack source) {
-		return hasPermission(source, this.config.command_reload_permission(), 4);
+		return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN);
 	}
 
 	public boolean canStop(ServerPlayer player) {
-		return hasPermission(player, this.config.stop_permission(), 2);
+		return hasBasePermission(player);
 	}
 
 	public boolean canPlay(ServerPlayer player, String namespace, String animationName) {
-		if (!hasPermission(player, this.config.play_permission(), 2)) {
+		if (!hasBasePermission(player)) {
 			return false;
 		}
 
-		String emotePermission = findEmotePermission(namespace, animationName);
-		return hasPermission(player, emotePermission, 2);
+		return hasPermission(player, findDatapackPermission(namespace, animationName), 2);
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -61,7 +61,7 @@ public class EmotePermissionService implements ConfigListener {
 	public Predicate<CommandSourceStack> requirePlay() {
 		return source -> {
 			ServerPlayer player = findPlayer(source);
-			return player != null && hasPermission(player, this.config.play_permission(), 2);
+			return player != null && hasBasePermission(player);
 		};
 	}
 
@@ -77,7 +77,7 @@ public class EmotePermissionService implements ConfigListener {
 		return entity instanceof ServerPlayer player ? player : null;
 	}
 
-	private String findEmotePermission(String namespace, String animationName) {
+	private String findDatapackPermission(String namespace, String animationName) {
 		Map<String, String> emotePermissionMap = this.config.emote_permissions();
 		String animationKey = namespace + ":" + animationName;
 
@@ -89,11 +89,11 @@ public class EmotePermissionService implements ConfigListener {
 			return normalizePermission(emotePermissionMap.get(namespace));
 		}
 
-		return normalizePermission(EmotePermission.resolveEmotePermission(
-			this.config.default_emote_permission(),
-			namespace,
-			animationName
-		));
+		return "";
+	}
+
+	private boolean hasBasePermission(ServerPlayer player) {
+		return hasPermission(player, this.config.emote_permission(), 2);
 	}
 
 	private boolean hasPermission(ServerPlayer player, String permission, int fallbackLevel) {

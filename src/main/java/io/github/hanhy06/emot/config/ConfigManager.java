@@ -2,6 +2,9 @@ package io.github.hanhy06.emot.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import io.github.hanhy06.emot.Emote;
 
 import java.io.BufferedReader;
@@ -59,7 +62,8 @@ public class ConfigManager {
 		Path configFilePath = this.configDirPath.resolve(CONFIG_FILE_NAME);
 
 		try (BufferedReader reader = Files.newBufferedReader(configFilePath, StandardCharsets.UTF_8)) {
-			Config loadedConfig = this.gson.fromJson(reader, Config.class);
+			JsonElement element = JsonParser.parseReader(reader);
+			Config loadedConfig = readConfig(element);
 			Config defaultConfig = Config.createDefault();
 
 			if (loadedConfig == null) {
@@ -83,7 +87,7 @@ public class ConfigManager {
 
 			this.config = loadedConfig;
 			broadcastConfig();
-			Emote.LOGGER.info("Config loaded successfully.");
+			Emote.LOGGER.info("Config loaded");
 			return true;
 		} catch (IOException | RuntimeException exception) {
 			Emote.LOGGER.warn("Failed to read config. Keeping current config.", exception);
@@ -163,6 +167,7 @@ public class ConfigManager {
 	private String validateConfig(Config config) {
 		if (config.version() == null) return "version is missing";
 		if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
+		if (config.emote_permission() == null) return "emote_permission is missing";
 		if (config.emote_permissions() == null) return "emote_permissions is missing";
 
 		for (Map.Entry<String, String> entry : config.emote_permissions().entrySet()) {
@@ -171,5 +176,81 @@ public class ConfigManager {
 		}
 
 		return null;
+	}
+
+	private Config readConfig(JsonElement element) {
+		if (element == null || !element.isJsonObject()) {
+			return null;
+		}
+
+		JsonObject object = element.getAsJsonObject();
+		Config defaultConfig = Config.createDefault();
+		return new Config(
+			readString(object, "version", defaultConfig.version()),
+			readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
+			readEmotePermission(object, defaultConfig.emote_permission()),
+			readPermissionMap(object)
+		);
+	}
+
+	private String readEmotePermission(JsonObject object, String defaultValue) {
+		String emotePermission = readOptionalString(object, "emote_permission");
+		if (emotePermission != null) {
+			return emotePermission;
+		}
+
+		String legacyPlayPermission = readOptionalString(object, "play_permission");
+		if (legacyPlayPermission != null) {
+			return legacyPlayPermission;
+		}
+
+		String legacyStopPermission = readOptionalString(object, "stop_permission");
+		if (legacyStopPermission != null) {
+			return legacyStopPermission;
+		}
+
+		String legacyDialogPermission = readOptionalString(object, "dialog_permission");
+		if (legacyDialogPermission != null) {
+			return legacyDialogPermission;
+		}
+
+		return defaultValue;
+	}
+
+	private LinkedHashMap<String, String> readPermissionMap(JsonObject object) {
+		LinkedHashMap<String, String> emotePermissionMap = new LinkedHashMap<>();
+		JsonElement element = object.get("emote_permissions");
+		if (element == null || !element.isJsonObject()) {
+			return emotePermissionMap;
+		}
+
+		for (Map.Entry<String, JsonElement> entry : element.getAsJsonObject().entrySet()) {
+			emotePermissionMap.put(entry.getKey(), entry.getValue().isJsonNull() ? "" : entry.getValue().getAsString());
+		}
+
+		return emotePermissionMap;
+	}
+
+	private String readString(JsonObject object, String key, String defaultValue) {
+		String value = readOptionalString(object, key);
+		return value == null ? defaultValue : value;
+	}
+
+	private String readOptionalString(JsonObject object, String key) {
+		JsonElement element = object.get(key);
+		if (element == null || element.isJsonNull()) {
+			return null;
+		}
+
+		return element.getAsString();
+	}
+
+	private int readInt(JsonObject object, String key, int defaultValue) {
+		JsonElement element = object.get(key);
+		if (element == null || element.isJsonNull()) {
+			return defaultValue;
+		}
+
+		return element.getAsInt();
 	}
 }
