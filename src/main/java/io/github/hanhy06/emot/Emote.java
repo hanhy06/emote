@@ -32,7 +32,7 @@ public class Emote implements ModInitializer {
 		this.emotePermissionService,
 		this.emotePlaybackManager
 	);
-	private final EmoteDialogShortcutManager emoteDialogShortcutManager = new EmoteDialogShortcutManager();
+	private final EmoteDialogShortcutManager emoteDialogShortcutManager = new EmoteDialogShortcutManager(this.emoteRegistry);
 
 	@Override
 	public void onInitialize() {

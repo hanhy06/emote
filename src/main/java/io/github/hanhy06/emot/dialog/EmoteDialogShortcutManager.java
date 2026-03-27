@@ -10,6 +10,8 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emot.Emote;
 import io.github.hanhy06.emot.config.ConfigManager;
+import io.github.hanhy06.emot.emote.EmoteDefinition;
+import io.github.hanhy06.emot.emote.EmoteRegistry;
 import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -51,6 +53,11 @@ public class EmoteDialogShortcutManager {
 		.setPrettyPrinting()
 		.disableHtmlEscaping()
 		.create();
+	private final EmoteRegistry emoteRegistry;
+
+	public EmoteDialogShortcutManager(EmoteRegistry emoteRegistry) {
+		this.emoteRegistry = emoteRegistry;
+	}
 
 	public void updateDatapack(MinecraftServer server) {
 		Path packDirPath = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve(PACK_DIR_NAME);
@@ -121,24 +128,18 @@ public class EmoteDialogShortcutManager {
 	}
 
 	private Dialog createDialog() {
-		CommonButtonData buttonData = new CommonButtonData(
-			Component.literal("Open Emotes"),
-			Optional.of(Component.literal("Open emote menu")),
-			170
-		);
-		Action action = new StaticAction(new ClickEvent.RunCommand("/emote menu"));
-		ActionButton actionButton = new ActionButton(buttonData, Optional.of(action));
+		List<ActionButton> actionButtons = createEmoteButtons();
 		CommonDialogData dialogData = new CommonDialogData(
 			Component.literal("Emotes"),
-			Optional.of(Component.literal("Quick Action")),
+			Optional.of(Component.literal("Quick Actions")),
 			true,
 			false,
 			DialogAction.CLOSE,
-			List.of(new PlainMessage(Component.literal("Open the emote menu."), 220)),
+			List.of(new PlainMessage(Component.literal(createBodyText()), 220)),
 			List.of()
 		);
 
-		return new MultiActionDialog(dialogData, List.of(actionButton), Optional.empty(), 1);
+		return new MultiActionDialog(dialogData, actionButtons, Optional.empty(), 2);
 	}
 
 	private JsonElement encodeJson(DataResult<JsonElement> result, String fileName) throws IOException {
@@ -202,5 +203,49 @@ public class EmoteDialogShortcutManager {
 			Emote.LOGGER.warn("Failed to reload quick action datapack", throwable);
 			return null;
 		});
+	}
+
+	private List<ActionButton> createEmoteButtons() {
+		List<ActionButton> actionButtons = new ArrayList<>();
+
+		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
+			definition.animations().stream()
+				.sorted(Comparator.comparing(animation -> animation.name()))
+				.forEach(animation -> actionButtons.add(createRunCommandButton(
+					definition.createDisplayName(animation.name()),
+					definition.createDisplayDescription(animation.name()),
+					"/emote play " + definition.namespace() + " " + animation.name()
+				)));
+		}
+
+		if (!actionButtons.isEmpty()) {
+			actionButtons.add(createRunCommandButton("Stop", "Stop current emote", "/emote stop"));
+			return List.copyOf(actionButtons);
+		}
+
+		return List.of(createStaticButton("Close", "Close"));
+	}
+
+	private String createBodyText() {
+		int animationCount = this.emoteRegistry.getDefinitions().stream()
+			.mapToInt(definition -> definition.animations().size())
+			.sum();
+
+		if (animationCount == 0) {
+			return "No emotes.";
+		}
+
+		return "Emotes: " + animationCount + ".";
+	}
+
+	private ActionButton createRunCommandButton(String label, String tooltip, String command) {
+		CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 170);
+		Action action = new StaticAction(new ClickEvent.RunCommand(command));
+		return new ActionButton(buttonData, Optional.of(action));
+	}
+
+	private ActionButton createStaticButton(String label, String tooltip) {
+		CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 170);
+		return new ActionButton(buttonData, Optional.empty());
 	}
 }
