@@ -1,32 +1,46 @@
 package io.github.hanhy06.emot.permission;
 
+import io.github.hanhy06.emot.config.Config;
+import io.github.hanhy06.emot.config.ConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.server.level.ServerPlayer;
 
+import java.util.Map;
 import java.util.function.Predicate;
 
-public class EmotePermissionService {
+public class EmotePermissionService implements ConfigListener {
+	private Config config = Config.createDefault();
+
+	@Override
+	public void onConfigReload(Config newConfig) {
+		this.config = newConfig;
+	}
+
 	public boolean canOpenDialog(ServerPlayer player) {
-		return Permissions.check(player, EmotePermission.DIALOG_OPEN, 2);
+		return hasPermission(player, this.config.dialog_permission(), 2);
 	}
 
 	public boolean canList(CommandSourceStack source) {
-		return Permissions.check(source, EmotePermission.COMMAND_LIST, 2);
+		return hasPermission(source, this.config.command_list_permission(), 2);
 	}
 
 	public boolean canReload(CommandSourceStack source) {
-		return Permissions.check(source, EmotePermission.COMMAND_RELOAD, 4);
+		return hasPermission(source, this.config.command_reload_permission(), 4);
 	}
 
 	public boolean canStop(ServerPlayer player) {
-		return Permissions.check(player, EmotePermission.STOP, 2);
+		return hasPermission(player, this.config.stop_permission(), 2);
 	}
 
 	public boolean canPlay(ServerPlayer player, String namespace, String animationName) {
-		return Permissions.check(player, EmotePermission.PLAY, 2)
-			&& Permissions.check(player, EmotePermission.createPlayPermission(namespace, animationName), 2);
+		if (!hasPermission(player, this.config.play_permission(), 2)) {
+			return false;
+		}
+
+		String emotePermission = findEmotePermission(namespace, animationName);
+		return hasPermission(player, emotePermission, 2);
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -37,17 +51,17 @@ public class EmotePermissionService {
 	}
 
 	public Predicate<CommandSourceStack> requireList() {
-		return Permissions.require(EmotePermission.COMMAND_LIST, 2);
+		return source -> canList(source);
 	}
 
 	public Predicate<CommandSourceStack> requireReload() {
-		return Permissions.require(EmotePermission.COMMAND_RELOAD, 4);
+		return source -> canReload(source);
 	}
 
 	public Predicate<CommandSourceStack> requirePlay() {
 		return source -> {
 			ServerPlayer player = findPlayer(source);
-			return player != null && Permissions.check(player, EmotePermission.PLAY, 2);
+			return player != null && hasPermission(player, this.config.play_permission(), 2);
 		};
 	}
 
@@ -61,5 +75,44 @@ public class EmotePermissionService {
 	private ServerPlayer findPlayer(CommandSourceStack source) {
 		Entity entity = source.getEntity();
 		return entity instanceof ServerPlayer player ? player : null;
+	}
+
+	private String findEmotePermission(String namespace, String animationName) {
+		Map<String, String> emotePermissionMap = this.config.emote_permissions();
+		String animationKey = namespace + ":" + animationName;
+
+		if (emotePermissionMap.containsKey(animationKey)) {
+			return normalizePermission(emotePermissionMap.get(animationKey));
+		}
+
+		if (emotePermissionMap.containsKey(namespace)) {
+			return normalizePermission(emotePermissionMap.get(namespace));
+		}
+
+		return normalizePermission(EmotePermission.resolveEmotePermission(
+			this.config.default_emote_permission(),
+			namespace,
+			animationName
+		));
+	}
+
+	private boolean hasPermission(ServerPlayer player, String permission, int fallbackLevel) {
+		if (permission == null || permission.isBlank()) {
+			return true;
+		}
+
+		return Permissions.check(player, permission, fallbackLevel);
+	}
+
+	private boolean hasPermission(CommandSourceStack source, String permission, int fallbackLevel) {
+		if (permission == null || permission.isBlank()) {
+			return true;
+		}
+
+		return Permissions.check(source, permission, fallbackLevel);
+	}
+
+	private String normalizePermission(String permission) {
+		return permission == null ? "" : permission.trim();
 	}
 }

@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
+import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
@@ -31,6 +32,7 @@ public final class EmoteCommand {
 		EmoteRegistry emoteRegistry,
 		EmotePlaybackManager emotePlaybackManager,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
+		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
 		EmotePermissionService emotePermissionService
 	) {
@@ -51,7 +53,7 @@ public final class EmoteCommand {
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
 				.requires(emotePermissionService.requireReload())
-				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor)))
+				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("namespace", StringArgumentType.word())
@@ -117,9 +119,17 @@ public final class EmoteCommand {
 		return definitions.size();
 	}
 
-	private static int reloadEmotes(CommandSourceStack source, BDEngineDatapackProcessor bdEngineDatapackProcessor) {
+	private static int reloadEmotes(
+		CommandSourceStack source,
+		BDEngineDatapackProcessor bdEngineDatapackProcessor,
+		ConfigManager configManager
+	) {
+		boolean configLoaded = configManager.readConfig();
 		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
-		source.sendSuccess(() -> Component.literal("Reloaded " + emoteCount + " emotes from datapacks."), true);
+		source.sendSuccess(
+			() -> Component.literal("Reloaded config=" + configLoaded + ", emotes=" + emoteCount + "."),
+			true
+		);
 		return emoteCount;
 	}
 

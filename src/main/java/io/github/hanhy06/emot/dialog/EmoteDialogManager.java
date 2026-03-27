@@ -1,5 +1,6 @@
 package io.github.hanhy06.emot.dialog;
 
+import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
@@ -27,7 +28,6 @@ import java.util.List;
 import java.util.Optional;
 
 public class EmoteDialogManager {
-	private static final int PLAY_BUTTONS_PER_PAGE = 6;
 	private final EmoteRegistry emoteRegistry;
 	private final EmotePermissionService emotePermissionService;
 	private final EmotePlaybackManager emotePlaybackManager;
@@ -53,10 +53,11 @@ public class EmoteDialogManager {
 
 	private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber) {
 		List<PlayableEmote> playableEmoteList = getPlayableEmoteList(player);
-		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteList.size() / PLAY_BUTTONS_PER_PAGE));
+		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
+		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteList.size() / playButtonsPerPage));
 		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
-		int startIndex = Math.min((pageNumber - 1) * PLAY_BUTTONS_PER_PAGE, playableEmoteList.size());
-		int endIndex = Math.min(startIndex + PLAY_BUTTONS_PER_PAGE, playableEmoteList.size());
+		int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteList.size());
+		int endIndex = Math.min(startIndex + playButtonsPerPage, playableEmoteList.size());
 
 		List<ActionButton> actionButtons = new ArrayList<>();
 		for (PlayableEmote playableEmote : playableEmoteList.subList(startIndex, endIndex)) {

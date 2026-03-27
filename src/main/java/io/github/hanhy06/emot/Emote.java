@@ -2,6 +2,7 @@ package io.github.hanhy06.emot;
 
 import io.github.hanhy06.emot.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emot.command.EmoteCommand;
+import io.github.hanhy06.emot.config.ConfigManager;
 import io.github.hanhy06.emot.dialog.EmoteDialogManager;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
 import io.github.hanhy06.emot.permission.EmotePermissionService;
@@ -9,6 +10,7 @@ import io.github.hanhy06.emot.playback.EmotePlaybackManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -17,6 +19,7 @@ public class Emote implements ModInitializer {
 	public static final String MOD_ID = "emote";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 
+	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
 	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager();
 	private final EmotePermissionService emotePermissionService = new EmotePermissionService();
@@ -29,6 +32,8 @@ public class Emote implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		this.configManager.addListener(this.emotePermissionService);
+		this.configManager.readConfig();
 		registerLifecycleCallbacks();
 		registerCommands();
 		LOGGER.info("Initialized {} bootstrap", MOD_ID);
@@ -46,6 +51,7 @@ public class Emote implements ModInitializer {
 			this.emoteRegistry,
 			this.emotePlaybackManager,
 			this.bdEngineDatapackProcessor,
+			this.configManager,
 			this.emoteDialogManager,
 			this.emotePermissionService
 		));
