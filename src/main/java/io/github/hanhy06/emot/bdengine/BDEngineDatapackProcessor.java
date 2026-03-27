@@ -7,6 +7,8 @@ import io.github.hanhy06.emot.Emote;
 import io.github.hanhy06.emot.emote.EmoteAnimation;
 import io.github.hanhy06.emot.emote.EmoteDefinition;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
+import io.github.hanhy06.emot.skin.EmoteSkinPart;
+import io.github.hanhy06.emot.skin.PlayerSkinPart;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -22,12 +24,16 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 public class BDEngineDatapackProcessor {
 	private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
 	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
+	private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
+	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"emote:skin:([a-z_]+)\"");
 	private final EmoteRegistry emoteRegistry;
 
 	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
@@ -118,14 +124,17 @@ public class BDEngineDatapackProcessor {
 
 		String namespace = namespacePath.getFileName().toString();
 		List<EmoteAnimation> animations = readAnimations(functionPath);
-		int partCount = countParts(createFunctionPath);
+		CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
 		return Optional.of(new EmoteDefinition(
 			namespace,
 			datapackMeta.name(),
 			datapackMeta.description(),
+			createCommandName(packPath, namespace, datapackMeta.commandName()),
+			createDefaultAnimationName(datapackMeta.defaultAnimationName()),
 			packPath,
-			partCount,
-			animations
+			createFunctionData.partCount(),
+			animations,
+			createFunctionData.skinParts()
 		));
 	}
 
@@ -187,15 +196,45 @@ public class BDEngineDatapackProcessor {
 		}
 	}
 
-	private int countParts(Path createFunctionPath) {
-		try (Stream<String> lineStream = Files.lines(createFunctionPath)) {
-			return (int) lineStream
-				.filter(line -> line.contains("summon item_display"))
-				.count();
+	private CreateFunctionData readCreateFunctionData(Path createFunctionPath, String namespace) {
+		try {
+			String createFunction = Files.readString(createFunctionPath);
+			Matcher itemDisplayMatcher = createItemDisplayPattern(namespace).matcher(createFunction);
+			List<EmoteSkinPart> skinParts = new ArrayList<>();
+			int partCount = 0;
+
+			while (itemDisplayMatcher.find()) {
+				partCount++;
+
+				String itemData = itemDisplayMatcher.group(1);
+				int partIndex = Integer.parseInt(itemDisplayMatcher.group(2));
+				readSkinPart(itemData, partIndex).ifPresent(skinParts::add);
+			}
+
+			return new CreateFunctionData(partCount, List.copyOf(skinParts));
 		} catch (IOException exception) {
-			Emote.LOGGER.warn("Failed to count parts from {}", createFunctionPath, exception);
-			return 0;
+			Emote.LOGGER.warn("Failed to read parts from {}", createFunctionPath, exception);
+			return new CreateFunctionData(0, List.of());
 		}
+	}
+
+	private Pattern createItemDisplayPattern(String namespace) {
+		String pattern = "\\{id:\"minecraft:item_display\",item:\\{(.*?)\\},.*?Tags:\\[[^\\]]*?\"" + Pattern.quote(namespace) + "_(\\d+)\"[^\\]]*?\\]\\}";
+		return Pattern.compile(pattern, Pattern.DOTALL);
+	}
+
+	private Optional<EmoteSkinPart> readSkinPart(String itemData, int partIndex) {
+		if (!itemData.contains("id:\"minecraft:player_head\"")) {
+			return Optional.empty();
+		}
+
+		Matcher markerMatcher = PLAYER_SKIN_MARKER_PATTERN.matcher(itemData);
+		if (!markerMatcher.find()) {
+			return Optional.empty();
+		}
+
+		return PlayerSkinPart.fromId(markerMatcher.group(1))
+			.map(playerSkinPart -> new EmoteSkinPart(partIndex, playerSkinPart));
 	}
 
 	private Comparator<Path> pathComparator() {
@@ -223,11 +262,38 @@ public class BDEngineDatapackProcessor {
 				return Optional.empty();
 			}
 
-			return Optional.of(new EmoteDatapackMeta(name, description));
+			return Optional.of(new EmoteDatapackMeta(
+				name,
+				description,
+				readOptionalString(object, "command_name"),
+				readOptionalString(object, "default_animation")
+			));
 		} catch (IOException | RuntimeException exception) {
 			Emote.LOGGER.warn("Skip {}: failed to read {}.", packPath.getFileName(), DATAPACK_META_FILE_NAME, exception);
 			return Optional.empty();
 		}
+	}
+
+	private String createCommandName(Path packPath, String namespace, String commandName) {
+		String normalizedCommandName = commandName == null ? "" : commandName.trim().toLowerCase(Locale.ROOT);
+		if (normalizedCommandName.isEmpty()) {
+			return namespace;
+		}
+
+		if (!COMMAND_NAME_PATTERN.matcher(normalizedCommandName).matches()) {
+			Emote.LOGGER.warn("Invalid command_name in {}. Using namespace.", packPath.getFileName());
+			return namespace;
+		}
+
+		return normalizedCommandName;
+	}
+
+	private String createDefaultAnimationName(String defaultAnimationName) {
+		if (defaultAnimationName == null || defaultAnimationName.isBlank()) {
+			return "default";
+		}
+
+		return defaultAnimationName.trim();
 	}
 
 	private String readRequiredString(JsonObject object, String key) {
@@ -240,6 +306,24 @@ public class BDEngineDatapackProcessor {
 		return value.isEmpty() ? null : value;
 	}
 
-	private record EmoteDatapackMeta(String name, String description) {
+	private String readOptionalString(JsonObject object, String key) {
+		JsonElement element = object.get(key);
+		if (element == null || element.isJsonNull()) {
+			return null;
+		}
+
+		String value = element.getAsString().trim();
+		return value.isEmpty() ? null : value;
+	}
+
+	private record EmoteDatapackMeta(
+		String name,
+		String description,
+		String commandName,
+		String defaultAnimationName
+	) {
+	}
+
+	private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {
 	}
 }

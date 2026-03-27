@@ -7,6 +7,7 @@ import io.github.hanhy06.emot.dialog.EmoteDialogManager;
 import io.github.hanhy06.emot.emote.EmoteRegistry;
 import io.github.hanhy06.emot.permission.EmotePermissionService;
 import io.github.hanhy06.emot.playback.EmotePlaybackManager;
+import io.github.hanhy06.emot.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -26,11 +27,12 @@ import java.util.Comparator;
 public class Emote implements ModInitializer {
 	public static final String MOD_ID = "emote";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+	private static final PlayerSkinManager PLAYER_SKIN_MANAGER = new PlayerSkinManager();
 	private static final String LEGACY_QUICK_ACTION_PACK_DIR = "emote-dialog-shortcut";
 
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
-	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager();
+	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager(PLAYER_SKIN_MANAGER);
 	private final EmotePermissionService emotePermissionService = new EmotePermissionService();
 	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.emoteRegistry);
 	private final EmoteDialogManager emoteDialogManager = new EmoteDialogManager(
@@ -46,6 +48,10 @@ public class Emote implements ModInitializer {
 		registerLifecycleCallbacks();
 		registerCommands();
 		LOGGER.info("{} ready", MOD_ID);
+	}
+
+	public static PlayerSkinManager getPlayerSkinManager() {
+		return PLAYER_SKIN_MANAGER;
 	}
 
 	private void registerLifecycleCallbacks() {
@@ -96,6 +102,7 @@ public class Emote implements ModInitializer {
 
 	private void handleServerStopping(MinecraftServer server) {
 		this.emotePlaybackManager.stopAllEmotes(server);
+		PLAYER_SKIN_MANAGER.clear();
 		LOGGER.info("stop emotes");
 	}
 

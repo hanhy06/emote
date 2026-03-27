@@ -1,5 +1,8 @@
 package io.github.hanhy06.emot.playback;
 
+import io.github.hanhy06.emot.emote.EmoteAnimation;
+import io.github.hanhy06.emot.emote.EmoteDefinition;
+import io.github.hanhy06.emot.skin.PlayerSkinManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.chat.Component;
@@ -24,19 +27,27 @@ public class EmotePlaybackManager {
 	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
 	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
+	private final PlayerSkinManager playerSkinManager;
 
-	public void startEmote(ServerPlayer player, String namespace, String animationName, int keyframeCount) {
+	public EmotePlaybackManager(PlayerSkinManager playerSkinManager) {
+		this.playerSkinManager = playerSkinManager;
+	}
+
+	public void startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
 		MinecraftServer server = player.level().getServer();
+		String namespace = definition.namespace();
+		String animationName = animation.name();
 		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
 		this.stopEmote(player);
 
 		executeFunction(player, namespace + ":_/create");
 		alignRootWithPlayer(player, namespace);
+		this.playerSkinManager.applyPlayerSkin(player, definition);
 		executeFunction(player, namespace + ":a/" + animationName + "/play_anim");
 		boolean wasInvisible = player.isInvisible();
 		player.setInvisible(true);
 
-		long stopTick = server.getTickCount() + calculatePlaybackTicks(keyframeCount);
+		long stopTick = server.getTickCount() + calculatePlaybackTicks(animation.keyframeCount());
 		ActiveEmote activeEmote = new ActiveEmote(
 			player.getUUID(),
 			player.level().dimension(),

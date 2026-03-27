@@ -131,6 +131,8 @@ public class ConfigManager {
 		LinkedHashMap<String, Object> exampleJson = new LinkedHashMap<>();
 		exampleJson.put("name", "Example Emote");
 		exampleJson.put("description", "Shown in the emote dialog.");
+		exampleJson.put("command_name", "example");
+		exampleJson.put("default_animation", "default");
 
 		try (BufferedWriter writer = Files.newBufferedWriter(
 			exampleFilePath,

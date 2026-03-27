@@ -1,6 +1,7 @@
 package io.github.hanhy06.emot.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
@@ -37,7 +38,36 @@ public final class EmoteCommand {
 		EmoteDialogManager emoteDialogManager,
 		EmotePermissionService emotePermissionService
 	) {
-		dispatcher.register(Commands.literal("emote")
+		dispatcher.register(createRootCommand(
+			"emote",
+			emoteRegistry,
+			emotePlaybackManager,
+			bdEngineDatapackProcessor,
+			configManager,
+			emoteDialogManager,
+			emotePermissionService
+		));
+		dispatcher.register(createRootCommand(
+			"emot",
+			emoteRegistry,
+			emotePlaybackManager,
+			bdEngineDatapackProcessor,
+			configManager,
+			emoteDialogManager,
+			emotePermissionService
+		));
+	}
+
+	private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(
+		String rootName,
+		EmoteRegistry emoteRegistry,
+		EmotePlaybackManager emotePlaybackManager,
+		BDEngineDatapackProcessor bdEngineDatapackProcessor,
+		ConfigManager configManager,
+		EmoteDialogManager emoteDialogManager,
+		EmotePermissionService emotePermissionService
+	) {
+		return Commands.literal(rootName)
 			.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
 			.then(Commands.literal("menu")
 				.requires(emotePermissionService.requireDialogOpen())
@@ -57,17 +87,18 @@ public final class EmoteCommand {
 				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
-				.then(Commands.argument("namespace", StringArgumentType.word())
-					.suggests((context, builder) -> SharedSuggestionProvider.suggest(emoteRegistry.getNamespaces(), builder))
+				.then(Commands.argument("emote", StringArgumentType.word())
+					.suggests((context, builder) -> SharedSuggestionProvider.suggest(emoteRegistry.getPlayNames(), builder))
+					.executes(context -> playDefaultEmote(context, emoteRegistry, emotePlaybackManager, emotePermissionService))
 					.then(Commands.argument("animation", StringArgumentType.word())
 						.suggests((context, builder) -> SharedSuggestionProvider.suggest(
-							emoteRegistry.getAnimationNames(StringArgumentType.getString(context, "namespace")),
+							emoteRegistry.getAnimationNamesForPlay(StringArgumentType.getString(context, "emote")),
 							builder
 						))
-						.executes(context -> playEmote(context, emoteRegistry, emotePlaybackManager, emotePermissionService)))))
+						.executes(context -> playSelectedAnimation(context, emoteRegistry, emotePlaybackManager, emotePermissionService)))))
 			.then(Commands.literal("stop")
 				.requires(emotePermissionService.requireStop())
-				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager))));
+				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager)));
 	}
 
 	private static int openMenu(
@@ -112,6 +143,8 @@ public final class EmoteCommand {
 
 			source.sendSystemMessage(Component.literal(
 				"- " + definition.namespace()
+					+ " cmd=" + definition.commandName()
+					+ " default=" + definition.defaultAnimationName()
 					+ " name=" + definition.name()
 					+ " parts=" + definition.partCount()
 					+ " clips=" + animationSummary
@@ -136,40 +169,85 @@ public final class EmoteCommand {
 	}
 
 	private static int playEmote(
-		CommandContext<CommandSourceStack> context,
+		CommandSourceStack source,
 		EmoteRegistry emoteRegistry,
 		EmotePlaybackManager emotePlaybackManager,
-		EmotePermissionService emotePermissionService
+		EmotePermissionService emotePermissionService,
+		String emoteName,
+		String animationName
 	) throws CommandSyntaxException {
-		CommandSourceStack source = context.getSource();
 		ServerPlayer player = source.getPlayerOrException();
-		String namespace = StringArgumentType.getString(context, "namespace");
-		String animationName = StringArgumentType.getString(context, "animation");
 
-		Optional<EmoteDefinition> definition = emoteRegistry.findDefinition(namespace);
+		Optional<EmoteDefinition> definition = emoteRegistry.findDefinitionForPlay(emoteName);
 		if (definition.isEmpty()) {
-			source.sendFailure(Component.literal("Unknown: " + namespace));
+			source.sendFailure(Component.literal("Unknown: " + emoteName));
 			return 0;
 		}
 
 		Optional<EmoteAnimation> animation = definition.get().findAnimation(animationName);
 		if (animation.isEmpty()) {
-			source.sendFailure(Component.literal("Unknown: " + namespace + ":" + animationName));
+			source.sendFailure(Component.literal("Unknown: " + definition.get().commandName() + ":" + animationName));
 			return 0;
 		}
 
-		if (!emotePermissionService.canPlay(player, namespace, animationName)) {
+		if (!emotePermissionService.canPlay(player, definition.get().namespace(), animationName)) {
 			source.sendFailure(Component.literal("No emote permission."));
 			return 0;
 		}
 
-		emotePlaybackManager.startEmote(player, namespace, animationName, animation.get().keyframeCount());
+		emotePlaybackManager.startEmote(player, definition.get(), animation.get());
 		String displayName = definition.get().createDisplayName(animationName);
 		source.sendSuccess(
 			() -> Component.literal("Play: " + displayName),
 			false
 		);
 		return 1;
+	}
+
+	private static int playDefaultEmote(
+		CommandContext<CommandSourceStack> context,
+		EmoteRegistry emoteRegistry,
+		EmotePlaybackManager emotePlaybackManager,
+		EmotePermissionService emotePermissionService
+	) throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		String emoteName = StringArgumentType.getString(context, "emote");
+		Optional<EmoteDefinition> definition = emoteRegistry.findDefinitionForPlay(emoteName);
+		if (definition.isEmpty()) {
+			source.sendFailure(Component.literal("Unknown: " + emoteName));
+			return 0;
+		}
+
+		Optional<EmoteAnimation> defaultAnimation = definition.get().findDefaultAnimation();
+		if (defaultAnimation.isEmpty()) {
+			source.sendFailure(Component.literal("No default: " + definition.get().commandName()));
+			return 0;
+		}
+
+		return playEmote(
+			source,
+			emoteRegistry,
+			emotePlaybackManager,
+			emotePermissionService,
+			emoteName,
+			defaultAnimation.get().name()
+		);
+	}
+
+	private static int playSelectedAnimation(
+		CommandContext<CommandSourceStack> context,
+		EmoteRegistry emoteRegistry,
+		EmotePlaybackManager emotePlaybackManager,
+		EmotePermissionService emotePermissionService
+	) throws CommandSyntaxException {
+		return playEmote(
+			context.getSource(),
+			emoteRegistry,
+			emotePlaybackManager,
+			emotePermissionService,
+			StringArgumentType.getString(context, "emote"),
+			StringArgumentType.getString(context, "animation")
+		);
 	}
 
 	private static int stopEmote(CommandSourceStack source, EmotePlaybackManager emotePlaybackManager) throws CommandSyntaxException {

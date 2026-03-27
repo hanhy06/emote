@@ -61,10 +61,13 @@ public class EmoteDialogManager {
 
 		List<ActionButton> actionButtons = new ArrayList<>();
 		for (PlayableEmote playableEmote : playableEmoteList.subList(startIndex, endIndex)) {
+			String command = playableEmote.defaultAnimation()
+				? "/emote play " + playableEmote.commandName()
+				: "/emote play " + playableEmote.commandName() + " " + playableEmote.animationName();
 			actionButtons.add(createRunCommandButton(
 				playableEmote.displayName(),
 				playableEmote.description(),
-				"/emote play " + playableEmote.namespace() + " " + playableEmote.animationName()
+				command
 			));
 		}
 
@@ -115,12 +118,19 @@ public class EmoteDialogManager {
 	private List<PlayableEmote> getPlayableEmoteList(ServerPlayer player) {
 		return this.emoteRegistry.getDefinitions().stream()
 			.flatMap(definition -> definition.animations().stream().map(animation -> new PlayableEmote(
-				definition.namespace(),
+				definition.commandName(),
 				animation.name(),
+				definition.isDefaultAnimation(animation.name()),
 				definition.createDisplayName(animation.name()),
 				definition.createDisplayDescription(animation.name())
 			)))
-			.filter(playableEmote -> this.emotePermissionService.canPlay(player, playableEmote.namespace(), playableEmote.animationName()))
+			.filter(playableEmote -> this.emotePermissionService.canPlay(
+				player,
+				this.emoteRegistry.findDefinitionByCommandName(playableEmote.commandName())
+					.map(EmoteDefinition::namespace)
+					.orElse(""),
+				playableEmote.animationName()
+			))
 			.sorted(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName))
 			.toList();
 	}
@@ -156,6 +166,12 @@ public class EmoteDialogManager {
 			+ " | " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
 	}
 
-	private record PlayableEmote(String namespace, String animationName, String displayName, String description) {
+	private record PlayableEmote(
+		String commandName,
+		String animationName,
+		boolean defaultAnimation,
+		String displayName,
+		String description
+	) {
 	}
 }
