@@ -1,8 +1,10 @@
 package io.github.hanhy06.emote.client;
 
 import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.network.EmoteWheelPlayPayload;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
@@ -49,6 +51,11 @@ public class EmoteWheelController {
 		}
 
 		this.lastSelectionKey = playableEmote.selectionKey();
+		if (ClientPlayNetworking.canSend(EmoteWheelPlayPayload.TYPE)) {
+			ClientPlayNetworking.send(new EmoteWheelPlayPayload(playableEmote.commandName(), playableEmote.animationName()));
+			return;
+		}
+
 		player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
 	}
 

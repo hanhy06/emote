@@ -8,6 +8,8 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.network.EmotePlaybackStateService;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
+import io.github.hanhy06.emote.network.EmoteWheelPlayPayload;
+import io.github.hanhy06.emote.network.EmoteWheelPlayService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
@@ -48,6 +50,11 @@ public class Emote implements ModInitializer {
 		this.emotePlaybackManager
 	);
 	private final EmotePlaybackStateService emotePlaybackStateService = new EmotePlaybackStateService();
+	private final EmoteWheelPlayService emoteWheelPlayService = new EmoteWheelPlayService(
+		this.emoteRegistry,
+		this.emoteDialogManager,
+		this.emotePlaybackManager
+	);
 	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.emoteDialogManager);
 
 	@Override
@@ -78,6 +85,7 @@ public class Emote implements ModInitializer {
 
 	private void registerNetworking() {
 		PayloadTypeRegistry.serverboundPlay().register(EmoteSkinSupportPayload.TYPE, EmoteSkinSupportPayload.STREAM_CODEC);
+		PayloadTypeRegistry.serverboundPlay().register(EmoteWheelPlayPayload.TYPE, EmoteWheelPlayPayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(EmotePlaybackStatePayload.TYPE, EmotePlaybackStatePayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(EmoteWheelSyncPayload.TYPE, EmoteWheelSyncPayload.STREAM_CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
@@ -85,6 +93,9 @@ public class Emote implements ModInitializer {
 				PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player());
 				this.emoteWheelSyncService.syncPlayer(context.player());
 			})
+		);
+		ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) ->
+			context.server().execute(() -> this.emoteWheelPlayService.playPlayerSelection(context.player(), payload))
 		);
 	}
 

@@ -70,17 +70,11 @@ public class EmoteDialogManager {
 			));
 		}
 
-		if (pageNumber > 1) {
-			actionButtons.add(createRunCommandButton("Prev", "Open the previous emote page", "/emote menu " + (pageNumber - 1)));
-		}
-
-		if (pageNumber < totalPageCount) {
-			actionButtons.add(createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (pageNumber + 1)));
-		}
-
 		if (this.emotePermissionService.canStop(player) && this.emotePlaybackManager.findActiveEmote(player.getUUID()).isPresent()) {
 			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
+
+		appendPageButtons(actionButtons, pageNumber, totalPageCount);
 
 		if (actionButtons.isEmpty()) {
 			actionButtons.add(createStaticButton("Close", "Close"));
@@ -112,6 +106,23 @@ public class EmoteDialogManager {
 	private ActionButton createStaticButton(String label, String tooltip) {
 		CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
 		return new ActionButton(buttonData, Optional.empty());
+	}
+
+	private void appendPageButtons(List<ActionButton> actionButtons, int pageNumber, int totalPageCount) {
+		if (totalPageCount <= 1) {
+			return;
+		}
+
+		if ((actionButtons.size() & 1) != 0) {
+			actionButtons.add(createStaticButton(" ", ""));
+		}
+
+		actionButtons.add(pageNumber > 1
+			? createRunCommandButton("Prev", "Open the previous emote page", "/emote menu " + (pageNumber - 1))
+			: createStaticButton("Prev", "No previous page"));
+		actionButtons.add(pageNumber < totalPageCount
+			? createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (pageNumber + 1))
+			: createStaticButton("Next", "No next page"));
 	}
 
 	public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
