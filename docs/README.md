@@ -57,9 +57,9 @@ Client installation is optional.
 
 Emotes are loaded from datapacks.
 
-Datapacks are usually prepared directly from a BD Engine export zip with `prepare_emote_datapack.py`. The tool generates the required metadata, adds the `emote:*` markers needed for player skin support, and writes the result as a `.emote.zip` file that can be placed in the `datapacks` folder.
+Datapacks are usually prepared directly from a BD Engine export zip with [`prepare_emote_datapack.py`](https://github.com/hanhy06/emote/blob/master/docs/prepare_emote_datapack.py). The tool generates the required metadata, adds the `emote:*` markers needed for player skin support, and writes the result as a `.emote.zip` file that can be placed in the `datapacks` folder.
 
-Usage:
+[Usage](https://github.com/hanhy06/emote/blob/master/docs/prepare_emote_datapack.py)
 
 ```powershell
 python docs\prepare_emote_datapack.py path\to\project.zip
