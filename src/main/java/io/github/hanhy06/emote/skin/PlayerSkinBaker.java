@@ -134,37 +134,28 @@ public class PlayerSkinBaker {
 	}
 
 	private FaceMap createSegmentFaces(FaceMap fullFaces, PlayerSkinSegment skinSegment) {
-		return switch (skinSegment) {
-			case FULL -> fullFaces;
-			case UPPER -> new FaceMap(
-				fullFaces.top(),
-				fullFaces.bottom(),
-				createUpperSegment(fullFaces.right()),
-				createUpperSegment(fullFaces.front()),
-				createUpperSegment(fullFaces.left()),
-				createUpperSegment(fullFaces.back())
-			);
-			case LOWER -> new FaceMap(
-				fullFaces.top(),
-				fullFaces.bottom(),
-				createLowerSegment(fullFaces.right()),
-				createLowerSegment(fullFaces.front()),
-				createLowerSegment(fullFaces.left()),
-				createLowerSegment(fullFaces.back())
-			);
-		};
-	}
-
-	private FaceRect createUpperSegment(FaceRect faceRect) {
-		return new FaceRect(faceRect.x(), faceRect.y(), faceRect.width(), Math.min(4, faceRect.height()));
-	}
-
-	private FaceRect createLowerSegment(FaceRect faceRect) {
-		if (faceRect.height() <= 4) {
-			return faceRect;
+		if (skinSegment.isFull()) {
+			return fullFaces;
 		}
 
-		return new FaceRect(faceRect.x(), faceRect.y() + 4, faceRect.width(), faceRect.height() - 4);
+		return new FaceMap(
+			fullFaces.top(),
+			fullFaces.bottom(),
+			createSegment(fullFaces.right(), skinSegment),
+			createSegment(fullFaces.front(), skinSegment),
+			createSegment(fullFaces.left(), skinSegment),
+			createSegment(fullFaces.back(), skinSegment)
+		);
+	}
+
+	private FaceRect createSegment(FaceRect faceRect, PlayerSkinSegment skinSegment) {
+		int startOffset = faceRect.height() * skinSegment.startY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
+		int endOffset = faceRect.height() * skinSegment.endY() / PlayerSkinSegment.SIDE_FACE_HEIGHT;
+		if (endOffset <= startOffset) {
+			endOffset = Math.min(faceRect.height(), startOffset + 1);
+		}
+
+		return new FaceRect(faceRect.x(), faceRect.y() + startOffset, faceRect.width(), endOffset - startOffset);
 	}
 
 	private FaceMap createHeadFaces() {

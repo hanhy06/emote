@@ -348,11 +348,13 @@ public class BDEngineDatapackProcessor {
 			return Optional.empty();
 		}
 
+		double[] transformationValues = readTransformationValues(itemDisplayData);
 		return PlayerSkinPart.fromId(markerMatcher.group(1))
 			.map(playerSkinPart -> new RawSkinPart(
 				partIndex,
 				playerSkinPart,
-				readLocalYScale(itemDisplayData)
+				readLocalY(transformationValues),
+				readLocalYScale(transformationValues)
 			));
 	}
 
@@ -371,46 +373,124 @@ public class BDEngineDatapackProcessor {
 			PlayerSkinPart skinPart = entry.getKey();
 			List<RawSkinPart> partsForSkin = new ArrayList<>(entry.getValue());
 			partsForSkin.sort(
-				Comparator.comparingDouble(RawSkinPart::localYScale)
+				Comparator.comparingDouble(RawSkinPart::localY).reversed()
 					.thenComparingInt(RawSkinPart::partIndex)
 			);
 
-			if (skinPart == PlayerSkinPart.HEAD || partsForSkin.size() <= 1) {
-				for (RawSkinPart rawSkinPart : partsForSkin) {
-					skinParts.add(new EmoteSkinPart(rawSkinPart.partIndex(), rawSkinPart.skinPart(), PlayerSkinSegment.FULL));
-				}
-				continue;
-			}
-
-			skinParts.add(new EmoteSkinPart(partsForSkin.get(0).partIndex(), skinPart, PlayerSkinSegment.UPPER));
-			for (int index = 1; index < partsForSkin.size(); index++) {
-				skinParts.add(new EmoteSkinPart(partsForSkin.get(index).partIndex(), skinPart, PlayerSkinSegment.LOWER));
-			}
+			skinParts.addAll(createSkinParts(skinPart, partsForSkin));
 		}
 
 		skinParts.sort(Comparator.comparingInt(EmoteSkinPart::partIndex));
 		return List.copyOf(skinParts);
 	}
 
-	private double readLocalYScale(String itemDisplayData) {
+	private List<EmoteSkinPart> createSkinParts(PlayerSkinPart skinPart, List<RawSkinPart> partsForSkin) {
+		if (partsForSkin.isEmpty()) {
+			return List.of();
+		}
+
+		if (skinPart == PlayerSkinPart.HEAD || partsForSkin.size() == 1) {
+			List<EmoteSkinPart> fullSkinParts = new ArrayList<>(partsForSkin.size());
+			for (RawSkinPart rawSkinPart : partsForSkin) {
+				fullSkinParts.add(new EmoteSkinPart(rawSkinPart.partIndex(), rawSkinPart.skinPart(), PlayerSkinSegment.FULL));
+			}
+			return fullSkinParts;
+		}
+
+		if (partsForSkin.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
+			Emote.LOGGER.warn("Too many vertical skin segments for {}: {}", skinPart.id(), partsForSkin.size());
+			List<EmoteSkinPart> fallbackSkinParts = new ArrayList<>(partsForSkin.size());
+			for (RawSkinPart rawSkinPart : partsForSkin) {
+				fallbackSkinParts.add(new EmoteSkinPart(rawSkinPart.partIndex(), rawSkinPart.skinPart(), PlayerSkinSegment.FULL));
+			}
+			return fallbackSkinParts;
+		}
+
+		double totalScale = partsForSkin.stream()
+			.mapToDouble(rawSkinPart -> Math.max(rawSkinPart.localYScale(), 0.0D))
+			.sum();
+		if (totalScale <= 0.0D) {
+			totalScale = partsForSkin.size();
+		}
+
+		List<EmoteSkinPart> segmentedSkinParts = new ArrayList<>(partsForSkin.size());
+		int segmentStart = 0;
+		double accumulatedScale = 0.0D;
+		for (int index = 0; index < partsForSkin.size(); index++) {
+			RawSkinPart rawSkinPart = partsForSkin.get(index);
+			double partScale = Math.max(rawSkinPart.localYScale(), 0.0D);
+			if (partScale <= 0.0D) {
+				partScale = 1.0D;
+			}
+
+			accumulatedScale += partScale;
+			int remainingPartCount = partsForSkin.size() - index - 1;
+			int segmentEnd = calculateSegmentEnd(segmentStart, accumulatedScale, totalScale, remainingPartCount);
+			segmentedSkinParts.add(new EmoteSkinPart(
+				rawSkinPart.partIndex(),
+				rawSkinPart.skinPart(),
+				new PlayerSkinSegment(segmentStart, segmentEnd)
+			));
+			segmentStart = segmentEnd;
+		}
+
+		return segmentedSkinParts;
+	}
+
+	private int calculateSegmentEnd(int segmentStart, double accumulatedScale, double totalScale, int remainingPartCount) {
+		int minEnd = segmentStart + 1;
+		int maxEnd = Math.max(minEnd, PlayerSkinSegment.SIDE_FACE_HEIGHT - remainingPartCount);
+		int suggestedEnd = (int) Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
+		if (suggestedEnd < minEnd) {
+			return minEnd;
+		}
+
+		return Math.min(suggestedEnd, maxEnd);
+	}
+
+	private double[] readTransformationValues(String itemDisplayData) {
 		Matcher transformationMatcher = TRANSFORMATION_PATTERN.matcher(itemDisplayData);
 		if (!transformationMatcher.find()) {
-			return 1.0D;
+			return null;
 		}
 
 		String[] values = transformationMatcher.group(1).split(",");
-		if (values.length < 10) {
+		if (values.length < 16) {
+			return null;
+		}
+
+		double[] transformationValues = new double[16];
+		try {
+			for (int index = 0; index < transformationValues.length; index++) {
+				transformationValues[index] = parseMatrixNumber(values[index]);
+			}
+			return transformationValues;
+		} catch (NumberFormatException ignored) {
+			return null;
+		}
+	}
+
+	private double readLocalY(double[] transformationValues) {
+		if (transformationValues == null) {
+			return 0.0D;
+		}
+
+		return transformationValues[7];
+	}
+
+	private double readLocalYScale(double[] transformationValues) {
+		if (transformationValues == null) {
 			return 1.0D;
 		}
 
-		try {
-			double x = parseMatrixNumber(values[1]);
-			double y = parseMatrixNumber(values[5]);
-			double z = parseMatrixNumber(values[9]);
-			return Math.sqrt(x * x + y * y + z * z);
-		} catch (NumberFormatException ignored) {
-			return 1.0D;
-		}
+		return readAxisScale(transformationValues, 1, 5, 9);
+	}
+
+	private double readAxisScale(double[] transformationValues, int firstIndex, int secondIndex, int thirdIndex) {
+		double firstValue = transformationValues[firstIndex];
+		double secondValue = transformationValues[secondIndex];
+		double thirdValue = transformationValues[thirdIndex];
+		return Math.sqrt(firstValue * firstValue + secondValue * secondValue + thirdValue * thirdValue);
 	}
 
 	private double parseMatrixNumber(String value) {
@@ -512,6 +592,6 @@ public class BDEngineDatapackProcessor {
 	private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {
 	}
 
-	private record RawSkinPart(int partIndex, PlayerSkinPart skinPart, double localYScale) {
+	private record RawSkinPart(int partIndex, PlayerSkinPart skinPart, double localY, double localYScale) {
 	}
 }

@@ -42,6 +42,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -58,29 +59,11 @@ public class PlayerSkinManager implements ConfigListener {
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
 	private static final AttributeKey<byte[]> HTTP_REQUEST_BUFFER = AttributeKey.valueOf("emote_http_request_buffer");
-	private static final List<PlayerSkinTextureKey> TEXTURE_KEYS = List.of(
-		new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.UPPER),
-		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.LOWER),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.UPPER),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.LOWER),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.UPPER),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.LOWER),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.UPPER),
-		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.LOWER),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.FULL),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.UPPER),
-		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.LOWER)
-	);
 
 	private final PlayerSkinHostStore playerSkinHostStore = new PlayerSkinHostStore();
 	private final PlayerSkinTextureStore playerSkinTextureStore = new PlayerSkinTextureStore();
 	private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
-	private final ConcurrentMap<String, PlayerSkinTextureSet> playerSkinTextureSetMap = new ConcurrentHashMap<>();
+	private final ConcurrentMap<String, ConcurrentMap<PlayerSkinTextureKey, String>> playerSkinTextureSetMap = new ConcurrentHashMap<>();
 	private final Set<UUID> clientSkinSupportPlayerSet = ConcurrentHashMap.newKeySet();
 	private final ConcurrentMap<UUID, PendingPlayerSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
 	private final Object httpServerLock = new Object();
@@ -228,7 +211,7 @@ public class PlayerSkinManager implements ConfigListener {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
-		Optional<PlayerSkinTextureSet> playerSkinTextureSet = loadPlayerSkinTextureSet(player);
+		Optional<Map<PlayerSkinTextureKey, String>> playerSkinTextureSet = loadPlayerSkinTextureSet(player, skinParts);
 		if (playerSkinTextureSet.isEmpty()) {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
@@ -389,7 +372,7 @@ public class PlayerSkinManager implements ConfigListener {
 		return Optional.of(new PlayerSkinHost(localIp, resolvedPort));
 	}
 
-	private Optional<PlayerSkinTextureSet> loadPlayerSkinTextureSet(ServerPlayer player) {
+	private Optional<Map<PlayerSkinTextureKey, String>> loadPlayerSkinTextureSet(ServerPlayer player, List<EmoteSkinPart> skinParts) {
 		Optional<PlayerSkinSource> playerSkinSource = readPlayerSkinSource(player);
 		if (playerSkinSource.isEmpty()) {
 			return Optional.empty();
@@ -397,27 +380,50 @@ public class PlayerSkinManager implements ConfigListener {
 
 		PlayerSkinSource skinSource = playerSkinSource.get();
 		String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
-		PlayerSkinTextureSet currentTextureSet = this.playerSkinTextureSetMap.get(cacheKey);
-		if (currentTextureSet != null) {
-			return Optional.of(currentTextureSet);
-		}
+		ConcurrentMap<PlayerSkinTextureKey, String> cachedTextureTokens = this.playerSkinTextureSetMap.computeIfAbsent(
+			cacheKey,
+			ignored -> new ConcurrentHashMap<>()
+		);
+		Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
 
 		try {
-			BufferedImage sourceImage = downloadSkinImage(skinSource.textureUrl());
-			Map<PlayerSkinTextureKey, String> tokenMap = new HashMap<>(TEXTURE_KEYS.size());
-			for (PlayerSkinTextureKey textureKey : TEXTURE_KEYS) {
+			BufferedImage sourceImage = null;
+			for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
+				if (cachedTextureTokens.containsKey(textureKey)) {
+					continue;
+				}
+
+				if (sourceImage == null) {
+					sourceImage = downloadSkinImage(skinSource.textureUrl());
+				}
+
 				String token = buildTextureToken(skinSource.textureHash(), skinSource.slimModel(), textureKey.skinPart(), textureKey.skinSegment());
 				this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel()));
-				tokenMap.put(textureKey, token);
+				cachedTextureTokens.putIfAbsent(textureKey, token);
 			}
 
-			PlayerSkinTextureSet loadedTextureSet = new PlayerSkinTextureSet(Map.copyOf(tokenMap));
-			PlayerSkinTextureSet existingTextureSet = this.playerSkinTextureSetMap.putIfAbsent(cacheKey, loadedTextureSet);
-			return Optional.of(existingTextureSet != null ? existingTextureSet : loadedTextureSet);
+			Map<PlayerSkinTextureKey, String> tokenMap = new HashMap<>(requiredTextureKeys.size());
+			for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
+				String token = cachedTextureTokens.get(textureKey);
+				if (token != null) {
+					tokenMap.put(textureKey, token);
+				}
+			}
+
+			return Optional.of(Map.copyOf(tokenMap));
 		} catch (IOException | IllegalArgumentException exception) {
 			Emote.LOGGER.warn("skin load failed for " + player.getGameProfile().name(), exception);
 			return Optional.empty();
 		}
+	}
+
+	private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
+		Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
+		for (EmoteSkinPart skinPart : skinParts) {
+			textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+		}
+
+		return textureKeys;
 	}
 
 	private Optional<PlayerSkinSource> readPlayerSkinSource(ServerPlayer player) {
@@ -468,10 +474,10 @@ public class PlayerSkinManager implements ConfigListener {
 	private Map<PlayerSkinTextureKey, ResolvableProfile> createProfileMap(
 		ServerPlayer player,
 		PlayerSkinHost playerSkinHost,
-		PlayerSkinTextureSet playerSkinTextureSet
+		Map<PlayerSkinTextureKey, String> textureTokenMap
 	) {
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new HashMap<>(playerSkinTextureSet.textureTokenMap().size());
-		for (Map.Entry<PlayerSkinTextureKey, String> entry : playerSkinTextureSet.textureTokenMap().entrySet()) {
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new HashMap<>(textureTokenMap.size());
+		for (Map.Entry<PlayerSkinTextureKey, String> entry : textureTokenMap.entrySet()) {
 			String textureUrl = playerSkinHost.createBaseUrl() + HTTP_PATH_PREFIX + entry.getValue() + ".png";
 			profileMap.put(entry.getKey(), createProfile(player, textureUrl));
 		}
@@ -736,12 +742,6 @@ public class PlayerSkinManager implements ConfigListener {
 		private PlayerSkinSource {
 			Objects.requireNonNull(textureHash, "textureHash");
 			Objects.requireNonNull(textureUrl, "textureUrl");
-		}
-	}
-
-	private record PlayerSkinTextureSet(Map<PlayerSkinTextureKey, String> textureTokenMap) {
-		private PlayerSkinTextureSet {
-			textureTokenMap = Map.copyOf(textureTokenMap);
 		}
 	}
 
