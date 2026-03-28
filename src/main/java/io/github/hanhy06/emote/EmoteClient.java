@@ -13,7 +13,6 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
-import net.minecraft.network.chat.Component;
 import org.lwjgl.glfw.GLFW;
 
 public class EmoteClient implements ClientModInitializer {
@@ -51,9 +50,7 @@ public class EmoteClient implements ClientModInitializer {
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			boolean middleMouseDown = isMouseButtonDown(client, GLFW.GLFW_MOUSE_BUTTON_MIDDLE);
-			boolean emoteBindingDown = isEmoteBindingDown(client);
-			boolean wheelHoldDown = middleMouseDown || emoteBindingDown;
+			boolean wheelHoldDown = isEmoteBindingDown(client);
 
 			if (client.screen instanceof EmoteWheelScreen emoteWheelScreen) {
 				if (wheelHoldDown) {
@@ -73,10 +70,10 @@ public class EmoteClient implements ClientModInitializer {
 			}
 
 			if (wheelHoldDown && !wheelHoldWasDown) {
-				if (middleMouseDown || EMOTE_WHEEL_KEY.same(client.options.keyPickItem)) {
+				if (EMOTE_WHEEL_KEY.same(client.options.keyPickItem)) {
 					drainPickItemClicks(client.options.keyPickItem);
 				}
-				EMOTE_WHEEL_CONTROLLER.openWheel(findBindingLabel(middleMouseDown));
+				EMOTE_WHEEL_CONTROLLER.openWheel(EMOTE_WHEEL_KEY.getTranslatedKeyMessage());
 				wheelBindingReleaseArmed = true;
 			}
 
@@ -104,11 +101,5 @@ public class EmoteClient implements ClientModInitializer {
 			case MOUSE -> isMouseButtonDown(client, key.getValue());
 			case SCANCODE -> EMOTE_WHEEL_KEY.isDown();
 		};
-	}
-
-	private static Component findBindingLabel(boolean middleMouseDown) {
-		return middleMouseDown
-			? Component.translatable("key.mouse.middle")
-			: EMOTE_WHEEL_KEY.getTranslatedKeyMessage();
 	}
 }
