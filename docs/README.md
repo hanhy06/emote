@@ -3,6 +3,8 @@
 Emote is a Minecraft Fabric emote player compatible with BD Engine humanoid exports.
 It supports server-side emote playback from datapacks, and if the client also has the mod installed, the emote model can use the player's current skin so it looks more like the player.
 
+![Emote demo](docs/Emote.gif)
+
 ---
 
 ## Key Features
