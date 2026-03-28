@@ -13,6 +13,7 @@ import io.github.hanhy06.emote.dialog.EmoteDialogManager;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
@@ -37,7 +38,8 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService
+		EmotePermissionService emotePermissionService,
+		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		dispatcher.register(createRootCommand(
 			"emote",
@@ -46,7 +48,8 @@ public final class EmoteCommand {
 			bdEngineDatapackProcessor,
 			configManager,
 			emoteDialogManager,
-			emotePermissionService
+			emotePermissionService,
+			emoteWheelSyncService
 		));
 	}
 
@@ -57,7 +60,8 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService
+		EmotePermissionService emotePermissionService,
+		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		return Commands.literal(rootName)
 			.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
@@ -76,7 +80,13 @@ public final class EmoteCommand {
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
 				.requires(emotePermissionService.requireReload())
-				.executes(context -> reloadEmotes(context.getSource(), emoteRegistry, bdEngineDatapackProcessor, configManager)))
+				.executes(context -> reloadEmotes(
+					context.getSource(),
+					emoteRegistry,
+					bdEngineDatapackProcessor,
+					configManager,
+					emoteWheelSyncService
+				)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("emote", StringArgumentType.word())
@@ -150,7 +160,8 @@ public final class EmoteCommand {
 		CommandSourceStack source,
 		EmoteRegistry emoteRegistry,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
-		ConfigManager configManager
+		ConfigManager configManager,
+		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		boolean configLoaded = configManager.readConfig();
 		Emote.getPlayerSkinManager().reloadHttpServer(source.getServer());
@@ -158,6 +169,9 @@ public final class EmoteCommand {
 		int emoteCount = reloadedResources
 			? emoteRegistry.size()
 			: bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
+		if (!reloadedResources) {
+			emoteWheelSyncService.syncAll(source.getServer());
+		}
 		source.sendSuccess(
 			() -> Component.literal(
 				"Reloading: cfg=" + configLoaded

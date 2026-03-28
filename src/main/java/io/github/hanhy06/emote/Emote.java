@@ -6,6 +6,8 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.EmoteDialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
+import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
+import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -43,6 +45,7 @@ public class Emote implements ModInitializer {
 		this.emotePermissionService,
 		this.emotePlaybackManager
 	);
+	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.emoteDialogManager);
 
 	@Override
 	public void onInitialize() {
@@ -61,8 +64,12 @@ public class Emote implements ModInitializer {
 
 	private void registerNetworking() {
 		PayloadTypeRegistry.serverboundPlay().register(EmoteSkinSupportPayload.TYPE, EmoteSkinSupportPayload.STREAM_CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(EmoteWheelSyncPayload.TYPE, EmoteWheelSyncPayload.STREAM_CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
-			context.server().execute(() -> PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player()))
+			context.server().execute(() -> {
+				PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player());
+				this.emoteWheelSyncService.syncPlayer(context.player());
+			})
 		);
 	}
 
@@ -78,6 +85,8 @@ public class Emote implements ModInitializer {
 			if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {
 				PLAYER_SKIN_MANAGER.markClientSkinSupport(handler.player);
 			}
+
+			this.emoteWheelSyncService.syncPlayer(handler.player);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
 			this.emotePlaybackManager.stopEmote(handler.player);
@@ -93,7 +102,8 @@ public class Emote implements ModInitializer {
 			this.bdEngineDatapackProcessor,
 			this.configManager,
 			this.emoteDialogManager,
-			this.emotePermissionService
+			this.emotePermissionService,
+			this.emoteWheelSyncService
 		));
 	}
 
@@ -125,6 +135,7 @@ public class Emote implements ModInitializer {
 
 		this.emotePlaybackManager.stopAllEmotes(server);
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
+		this.emoteWheelSyncService.syncAll(server);
 		LOGGER.info("reload emotes={}", emoteCount);
 	}
 

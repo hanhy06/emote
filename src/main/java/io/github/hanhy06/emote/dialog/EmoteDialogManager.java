@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
@@ -52,7 +53,7 @@ public class EmoteDialogManager {
 	}
 
 	private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber) {
-		List<PlayableEmote> playableEmoteList = getPlayableEmoteList(player);
+		List<PlayableEmote> playableEmoteList = getPlayableEmotes(player);
 		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
 		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteList.size() / playButtonsPerPage));
 		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
@@ -61,9 +62,7 @@ public class EmoteDialogManager {
 
 		List<ActionButton> actionButtons = new ArrayList<>();
 		for (PlayableEmote playableEmote : playableEmoteList.subList(startIndex, endIndex)) {
-			String command = playableEmote.defaultAnimation()
-				? "/emote play " + playableEmote.commandName()
-				: "/emote play " + playableEmote.commandName() + " " + playableEmote.animationName();
+			String command = "/" + playableEmote.createPlayCommand();
 			actionButtons.add(createRunCommandButton(
 				playableEmote.displayName(),
 				playableEmote.description(),
@@ -115,7 +114,7 @@ public class EmoteDialogManager {
 		return new ActionButton(buttonData, Optional.empty());
 	}
 
-	private List<PlayableEmote> getPlayableEmoteList(ServerPlayer player) {
+	public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
 		List<PlayableEmote> playableEmotes = new ArrayList<>();
 		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
 			String defaultAnimationName = definition.findDefaultAnimation()
@@ -178,14 +177,5 @@ public class EmoteDialogManager {
 
 		return (startIndex + 1) + "-" + endIndex + "/" + playableEmoteCount
 			+ " | " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
-	}
-
-	private record PlayableEmote(
-		String commandName,
-		String animationName,
-		boolean defaultAnimation,
-		String displayName,
-		String description
-	) {
 	}
 }
