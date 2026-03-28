@@ -20,7 +20,10 @@ public class PlayerSkinHostStore {
 			return;
 		}
 
-		this.hostMap.put(connection, new PlayerSkinHost(normalizedHost, port));
+		try {
+			this.hostMap.put(connection, new PlayerSkinHost(normalizedHost, port));
+		} catch (IllegalArgumentException ignored) {
+		}
 	}
 
 	public Optional<PlayerSkinHost> find(Connection connection) {
@@ -44,6 +47,22 @@ public class PlayerSkinHostStore {
 		int forwardingSeparatorIndex = normalizedHost.indexOf('\0');
 		if (forwardingSeparatorIndex >= 0) {
 			normalizedHost = normalizedHost.substring(0, forwardingSeparatorIndex);
+		}
+
+		normalizedHost = normalizedHost.trim();
+		if (normalizedHost.startsWith("[")) {
+			int closingBracketIndex = normalizedHost.indexOf(']');
+			if (closingBracketIndex > 1) {
+				normalizedHost = normalizedHost.substring(1, closingBracketIndex);
+			}
+		} else {
+			int firstColonIndex = normalizedHost.indexOf(':');
+			if (firstColonIndex >= 0 && normalizedHost.indexOf(':', firstColonIndex + 1) < 0) {
+				String portSuffix = normalizedHost.substring(firstColonIndex + 1);
+				if (!portSuffix.isBlank() && portSuffix.chars().allMatch(Character::isDigit)) {
+					normalizedHost = normalizedHost.substring(0, firstColonIndex);
+				}
+			}
 		}
 
 		normalizedHost = normalizedHost.trim();

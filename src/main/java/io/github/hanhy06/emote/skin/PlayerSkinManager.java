@@ -111,6 +111,14 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	public void applyPlayerSkin(ServerPlayer player, EmoteDefinition definition) {
+		try {
+			applyPlayerSkinInternal(player, definition);
+		} catch (RuntimeException exception) {
+			Emote.LOGGER.warn("skin apply failed for " + player.getGameProfile().name(), exception);
+		}
+	}
+
+	private void applyPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
 		List<EmoteSkinPart> skinParts = definition.skinParts();
 		if (skinParts.isEmpty()) {
 			return;
@@ -310,7 +318,7 @@ public class PlayerSkinManager implements ConfigListener {
 			PlayerSkinTextureSet existingTextureSet = this.playerSkinTextureSetMap.putIfAbsent(cacheKey, loadedTextureSet);
 			return Optional.of(existingTextureSet != null ? existingTextureSet : loadedTextureSet);
 		} catch (IOException | IllegalArgumentException exception) {
-			Emote.LOGGER.warn("skin load failed: {}", player.getGameProfile().name());
+			Emote.LOGGER.warn("skin load failed for " + player.getGameProfile().name(), exception);
 			return Optional.empty();
 		}
 	}
