@@ -225,13 +225,18 @@ public class PlayerSkinManager implements ConfigListener {
 			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost, playerSkinTextureSet);
-		if (profileMap.isEmpty()) {
+		Map<String, ResolvableProfile> taggedProfileMap = createTaggedProfileMap(
+			player,
+			playerSkinHost,
+			definition.namespace(),
+			skinParts,
+			playerSkinTextureSet
+		);
+		if (taggedProfileMap.isEmpty()) {
 			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
 		AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
-		Map<String, ResolvableProfile> taggedProfileMap = createTaggedProfileMap(definition.namespace(), skinParts, profileMap);
 		int appliedPartCount = applyProfiles(player, searchBox, taggedProfileMap);
 
 		return PlayerSkinApplyResult.ofApplied(skinParts.size(), appliedPartCount);
@@ -458,33 +463,23 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 	}
 
-	private Map<PlayerSkinTextureKey, ResolvableProfile> createProfileMap(
+	private Map<String, ResolvableProfile> createTaggedProfileMap(
 		ServerPlayer player,
 		PlayerSkinHost playerSkinHost,
-		Map<PlayerSkinTextureKey, String> textureTokenMap
-	) {
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new HashMap<>(textureTokenMap.size());
-		for (Map.Entry<PlayerSkinTextureKey, String> entry : textureTokenMap.entrySet()) {
-			String textureUrl = playerSkinHost.createBaseUrl() + HTTP_PATH_PREFIX + entry.getValue() + ".png";
-			profileMap.put(entry.getKey(), createProfile(player, textureUrl));
-		}
-
-		return profileMap;
-	}
-
-	private Map<String, ResolvableProfile> createTaggedProfileMap(
 		String namespace,
 		List<EmoteSkinPart> skinParts,
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap
+		Map<PlayerSkinTextureKey, String> textureTokenMap
 	) {
+		String baseUrl = playerSkinHost.createBaseUrl();
 		Map<String, ResolvableProfile> taggedProfileMap = new HashMap<>(skinParts.size());
 		for (EmoteSkinPart skinPart : skinParts) {
-			ResolvableProfile profile = profileMap.get(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
-			if (profile == null) {
+			String textureToken = textureTokenMap.get(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+			if (textureToken == null) {
 				continue;
 			}
 
-			taggedProfileMap.put(namespace + "_" + skinPart.partIndex(), profile);
+			String textureUrl = baseUrl + HTTP_PATH_PREFIX + textureToken + PNG_PATH_SUFFIX;
+			taggedProfileMap.put(namespace + "_" + skinPart.partIndex(), createProfile(player, textureUrl));
 		}
 
 		return taggedProfileMap;
