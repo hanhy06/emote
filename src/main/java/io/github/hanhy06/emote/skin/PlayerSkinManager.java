@@ -19,6 +19,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.util.AttributeKey;
+import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.Connection;
 import net.minecraft.server.MinecraftServer;
@@ -39,7 +40,11 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.Base64;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -55,7 +60,8 @@ import java.util.concurrent.ConcurrentMap;
 
 public class PlayerSkinManager implements ConfigListener {
 	private static final String HTTP_PATH_PREFIX = "/emote/skin/";
-	private static final String TEXTURE_TOKEN_VERSION = "v6";
+	private static final String TEXTURE_TOKEN_VERSION = "v25";
+	private static final Path DEBUG_EXPORT_DIR_PATH = FabricLoader.getInstance().getGameDir().resolve("emote-skin-debug");
 	private static final byte[] HEADER_END = new byte[]{'\r', '\n', '\r', '\n'};
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
@@ -411,11 +417,143 @@ public class PlayerSkinManager implements ConfigListener {
 				}
 			}
 
-			return Optional.of(Map.copyOf(tokenMap));
+			Map<PlayerSkinTextureKey, String> immutableTokenMap = Map.copyOf(tokenMap);
+			exportDebugTextureSet(player, skinParts, skinSource, sourceImage, immutableTokenMap);
+			return Optional.of(immutableTokenMap);
 		} catch (IOException | IllegalArgumentException exception) {
 			Emote.LOGGER.warn("skin load failed for " + player.getGameProfile().name(), exception);
 			return Optional.empty();
 		}
+	}
+
+	private void exportDebugTextureSet(
+		ServerPlayer player,
+		List<EmoteSkinPart> skinParts,
+		PlayerSkinSource skinSource,
+		BufferedImage sourceImage,
+		Map<PlayerSkinTextureKey, String> tokenMap
+	) {
+		if (tokenMap.isEmpty()) {
+			return;
+		}
+
+		try {
+			BufferedImage debugSourceImage = sourceImage != null ? sourceImage : downloadSkinImage(skinSource.textureUrl());
+			Path exportDirPath = createDebugExportDirPath(player, skinSource);
+			Files.createDirectories(exportDirPath);
+
+			writeDebugTexture(
+				exportDirPath.resolve("source.png"),
+				this.playerSkinBaker.bake(debugSourceImage, PlayerSkinPart.HEAD, PlayerSkinSegment.FULL, skinSource.slimModel())
+			);
+
+			for (EmoteSkinPart skinPart : skinParts.stream().sorted(Comparator.comparingInt(EmoteSkinPart::partIndex)).toList()) {
+				PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment());
+				String token = tokenMap.get(textureKey);
+				if (token == null) {
+					continue;
+				}
+
+				Optional<byte[]> pngBytes = this.playerSkinTextureStore.find(token);
+				if (pngBytes.isEmpty()) {
+					continue;
+				}
+
+				writeDebugTexture(
+					exportDirPath.resolve(createDebugTextureFileName(skinPart)),
+					pngBytes.get()
+				);
+			}
+
+			writeDebugManifest(exportDirPath, player, skinSource, skinParts, tokenMap);
+			Emote.LOGGER.info("skin debug export={}", exportDirPath.toAbsolutePath());
+		} catch (IOException exception) {
+			Emote.LOGGER.warn("skin debug export failed for " + player.getGameProfile().name(), exception);
+		}
+	}
+
+	private Path createDebugExportDirPath(ServerPlayer player, PlayerSkinSource skinSource) {
+		return DEBUG_EXPORT_DIR_PATH.resolve(
+			sanitizeFileName(player.getGameProfile().name())
+				+ "-"
+				+ skinSource.textureHash().toLowerCase(Locale.ROOT)
+				+ "-"
+				+ (skinSource.slimModel() ? "slim" : "wide")
+		);
+	}
+
+	private String createDebugTextureFileName(EmoteSkinPart skinPart) {
+		return String.format(
+			Locale.ROOT,
+			"part-%02d-%s-%s.png",
+			skinPart.partIndex(),
+			skinPart.skinPart().id(),
+			skinPart.skinSegment().id()
+		);
+	}
+
+	private void writeDebugManifest(
+		Path exportDirPath,
+		ServerPlayer player,
+		PlayerSkinSource skinSource,
+		List<EmoteSkinPart> skinParts,
+		Map<PlayerSkinTextureKey, String> tokenMap
+	) throws IOException {
+		StringBuilder builder = new StringBuilder();
+		builder.append("player=").append(player.getGameProfile().name()).append('\n');
+		builder.append("uuid=").append(player.getUUID()).append('\n');
+		builder.append("texture_hash=").append(skinSource.textureHash()).append('\n');
+		builder.append("model=").append(skinSource.slimModel() ? "slim" : "wide").append('\n');
+		builder.append("texture_url=").append(skinSource.textureUrl()).append('\n');
+		builder.append('\n');
+		builder.append("source=source.png").append('\n');
+
+		for (EmoteSkinPart skinPart : skinParts.stream().sorted(Comparator.comparingInt(EmoteSkinPart::partIndex)).toList()) {
+			PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment());
+			String token = tokenMap.get(textureKey);
+			builder.append("part_index=").append(skinPart.partIndex())
+				.append(" part=").append(skinPart.skinPart().id())
+				.append(" segment=").append(skinPart.skinSegment().id())
+				.append(" file=").append(createDebugTextureFileName(skinPart))
+				.append(" token=").append(token == null ? "missing" : token)
+				.append('\n');
+		}
+
+		Files.writeString(
+			exportDirPath.resolve("manifest.txt"),
+			builder.toString(),
+			StandardCharsets.UTF_8,
+			StandardOpenOption.CREATE,
+			StandardOpenOption.TRUNCATE_EXISTING
+		);
+	}
+
+	private void writeDebugTexture(Path filePath, byte[] pngBytes) throws IOException {
+		Files.write(
+			filePath,
+			pngBytes,
+			StandardOpenOption.CREATE,
+			StandardOpenOption.TRUNCATE_EXISTING
+		);
+	}
+
+	private String sanitizeFileName(String value) {
+		StringBuilder builder = new StringBuilder(value.length());
+		for (int index = 0; index < value.length(); index++) {
+			char character = value.charAt(index);
+			if ((character >= 'a' && character <= 'z')
+				|| (character >= 'A' && character <= 'Z')
+				|| (character >= '0' && character <= '9')
+				|| character == '-'
+				|| character == '_') {
+				builder.append(character);
+				continue;
+			}
+
+			builder.append('_');
+		}
+
+		return builder.isEmpty() ? "player" : builder.toString();
 	}
 
 	private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
