@@ -32,9 +32,22 @@ public class EmotePlaybackManager {
 	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 	private final PlayerSkinManager playerSkinManager;
+	private EmotePlaybackStateListener stateListener = new EmotePlaybackStateListener() {
+		@Override
+		public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
+		}
+
+		@Override
+		public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
+		}
+	};
 
 	public EmotePlaybackManager(PlayerSkinManager playerSkinManager) {
 		this.playerSkinManager = playerSkinManager;
+	}
+
+	public void setStateListener(EmotePlaybackStateListener stateListener) {
+		this.stateListener = stateListener;
 	}
 
 	public Optional<String> startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
@@ -73,6 +86,7 @@ public class EmotePlaybackManager {
 			wasInvisible
 		);
 		this.activeEmoteMap.put(player.getUUID(), activeEmote);
+		this.stateListener.onEmoteStarted(player, activeEmote);
 		return Optional.empty();
 	}
 
@@ -150,6 +164,7 @@ public class EmotePlaybackManager {
 		ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
 		if (player != null) {
 			player.setInvisible(activeEmote.wasInvisible());
+			this.stateListener.onEmoteStopped(player, activeEmote);
 		}
 	}
 

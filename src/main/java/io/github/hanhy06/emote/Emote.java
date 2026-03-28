@@ -5,6 +5,8 @@ import io.github.hanhy06.emote.command.EmoteCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.EmoteDialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
+import io.github.hanhy06.emote.network.EmotePlaybackStateService;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
@@ -45,6 +47,7 @@ public class Emote implements ModInitializer {
 		this.emotePermissionService,
 		this.emotePlaybackManager
 	);
+	private final EmotePlaybackStateService emotePlaybackStateService = new EmotePlaybackStateService();
 	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.emoteDialogManager);
 
 	@Override
@@ -52,6 +55,17 @@ public class Emote implements ModInitializer {
 		this.configManager.addListener(this.emotePermissionService);
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
+		this.emotePlaybackManager.setStateListener(new io.github.hanhy06.emote.playback.EmotePlaybackStateListener() {
+			@Override
+			public void onEmoteStarted(net.minecraft.server.level.ServerPlayer player, io.github.hanhy06.emote.playback.ActiveEmote activeEmote) {
+				emotePlaybackStateService.syncActive(player);
+			}
+
+			@Override
+			public void onEmoteStopped(net.minecraft.server.level.ServerPlayer player, io.github.hanhy06.emote.playback.ActiveEmote activeEmote) {
+				emotePlaybackStateService.syncInactive(player);
+			}
+		});
 		registerNetworking();
 		registerLifecycleCallbacks();
 		registerCommands();
@@ -64,6 +78,7 @@ public class Emote implements ModInitializer {
 
 	private void registerNetworking() {
 		PayloadTypeRegistry.serverboundPlay().register(EmoteSkinSupportPayload.TYPE, EmoteSkinSupportPayload.STREAM_CODEC);
+		PayloadTypeRegistry.clientboundPlay().register(EmotePlaybackStatePayload.TYPE, EmotePlaybackStatePayload.STREAM_CODEC);
 		PayloadTypeRegistry.clientboundPlay().register(EmoteWheelSyncPayload.TYPE, EmoteWheelSyncPayload.STREAM_CODEC);
 		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
 			context.server().execute(() -> {

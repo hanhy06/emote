@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote;
 
+import io.github.hanhy06.emote.client.EmotePerspectiveController;
 import io.github.hanhy06.emote.client.EmoteWheelController;
+import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
 import net.fabricmc.api.ClientModInitializer;
@@ -12,6 +14,7 @@ import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class EmoteClient implements ClientModInitializer {
+	private static final EmotePerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new EmotePerspectiveController();
 	private static final EmoteWheelController EMOTE_WHEEL_CONTROLLER = new EmoteWheelController();
 	private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
 		new KeyMapping("key.emote.wheel", GLFW.GLFW_MOUSE_BUTTON_MIDDLE, KeyMapping.Category.MISC)
@@ -19,18 +22,26 @@ public class EmoteClient implements ClientModInitializer {
 
 	@Override
 	public void onInitializeClient() {
+		ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, context) ->
+			context.client().execute(() -> EMOTE_PERSPECTIVE_CONTROLLER.handlePlaybackState(payload.active()))
+		);
+
 		ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, context) ->
 			context.client().execute(() -> EMOTE_WHEEL_CONTROLLER.updateEmotes(payload.emotes()))
 		);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+			EMOTE_PERSPECTIVE_CONTROLLER.clear();
 			EMOTE_WHEEL_CONTROLLER.clear();
 			if (ClientPlayNetworking.canSend(EmoteSkinSupportPayload.TYPE)) {
 				ClientPlayNetworking.send(EmoteSkinSupportPayload.INSTANCE);
 			}
 		});
 
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> EMOTE_WHEEL_CONTROLLER.clear());
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+			EMOTE_PERSPECTIVE_CONTROLLER.clear();
+			EMOTE_WHEEL_CONTROLLER.clear();
+		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			if (client.screen != null || client.player == null) {
