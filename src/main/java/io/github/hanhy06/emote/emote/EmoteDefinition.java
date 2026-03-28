@@ -53,15 +53,34 @@ public record EmoteDefinition(
 	}
 
 	public Optional<EmoteAnimation> findAnimation(String animationName) {
-		return this.animations.stream()
-			.filter(animation -> animation.name().equals(animationName))
-			.findFirst();
+		for (EmoteAnimation animation : this.animations) {
+			if (animation.name().equals(animationName)) {
+				return Optional.of(animation);
+			}
+		}
+
+		return Optional.empty();
 	}
 
 	public Optional<EmoteAnimation> findDefaultAnimation() {
-		return findAnimation(this.defaultAnimationName)
-			.or(() -> findAnimation("default"))
-			.or(() -> this.animations.stream().findFirst());
+		EmoteAnimation fallbackAnimation = null;
+		for (EmoteAnimation animation : this.animations) {
+			if (animation.name().equals(this.defaultAnimationName)) {
+				return Optional.of(animation);
+			}
+
+			if (fallbackAnimation == null && animation.name().equals("default")) {
+				fallbackAnimation = animation;
+			}
+		}
+
+		if (fallbackAnimation != null) {
+			return Optional.of(fallbackAnimation);
+		}
+
+		return this.animations.isEmpty()
+			? Optional.empty()
+			: Optional.of(this.animations.get(0));
 	}
 
 	public boolean isDefaultAnimation(String animationName) {

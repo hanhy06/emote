@@ -1,0 +1,491 @@
+from __future__ import annotations
+
+import argparse
+import json
+import math
+import re
+import tempfile
+import zipfile
+from dataclasses import dataclass
+from pathlib import Path
+
+
+PACK_META_FILE_NAME = "emote-datapack.json"
+CREATE_FUNCTION_PATTERNS = (
+	"data/*/function/_/create.mcfunction",
+	"data/*/functions/_/create.mcfunction",
+)
+ITEM_DISPLAY_PATTERN_TEMPLATE = r'\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"{namespace}_(\d+)"[^\]]*?\]\}'
+TRANSFORMATION_PATTERN = re.compile(r"transformation:\[(.*?)\]")
+CLUSTER_TOLERANCE = 0.05
+
+
+@dataclass(frozen=True)
+class PlayerHeadPart:
+	part_index: int
+	start_index: int
+	end_index: int
+	item_display_text: str
+	x: float
+	y: float
+	z: float
+	scale_x: float
+	scale_y: float
+	scale_z: float
+
+	@property
+	def abs_x(self) -> float:
+		return abs(self.x)
+
+
+def main() -> int:
+	parser = build_argument_parser()
+	args = parser.parse_args()
+
+	exit_code = 0
+	for zip_path in args.zip_paths:
+		try:
+			output_path = process_zip(zip_path.resolve())
+		except SystemExit as exception:
+			message = str(exception)
+			if message:
+				print(f"[skip] {zip_path}: {message}")
+			exit_code = 1
+			continue
+
+		print(f"[ok] {zip_path} -> {output_path}")
+
+	return exit_code
+
+
+def build_argument_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(
+		description=(
+			"Drop a BD Engine datapack zip onto this script, and it will create "
+			"a sibling .emote.zip with emote:* skin markers and emote-datapack.json."
+		)
+	)
+	parser.add_argument("zip_paths", nargs="+", type=Path, help="One or more datapack .zip files")
+	return parser
+
+
+def process_zip(zip_path: Path) -> Path:
+	validate_zip_path(zip_path)
+	output_path = create_output_path(zip_path)
+
+	with tempfile.TemporaryDirectory(prefix="emote-datapack-") as temp_dir_name:
+		temp_dir = Path(temp_dir_name)
+		extract_dir = temp_dir / "extract"
+		extract_dir.mkdir(parents=True, exist_ok=True)
+
+		with zipfile.ZipFile(zip_path) as input_zip_file:
+			input_zip_file.extractall(extract_dir)
+
+		pack_root = find_pack_root(extract_dir)
+		create_function_paths = find_create_function_paths(pack_root)
+		if not create_function_paths:
+			raise SystemExit("No compatible create.mcfunction file was found.")
+
+		namespaces: list[str] = []
+		updated_files = 0
+		for create_function_path in create_function_paths:
+			namespace = create_function_path.parents[2].name
+			namespaces.append(namespace)
+
+			original_text = create_function_path.read_text(encoding="utf-8")
+			updated_text, replaced_count = update_create_function(original_text, namespace)
+			if replaced_count == 0:
+				continue
+
+			create_function_path.write_text(updated_text, encoding="utf-8", newline="\n")
+			updated_files += 1
+
+		if updated_files == 0:
+			raise SystemExit("No player_head parts were found in create.mcfunction.")
+
+		ensure_emote_datapack_meta(pack_root, zip_path, namespaces)
+		write_zip(pack_root, output_path)
+
+	return output_path
+
+
+def validate_zip_path(zip_path: Path) -> None:
+	if not zip_path.is_file():
+		raise SystemExit("The input path is not a file.")
+	if zip_path.suffix.lower() != ".zip":
+		raise SystemExit("The input file must be a .zip.")
+
+
+def create_output_path(zip_path: Path) -> Path:
+	stem = zip_path.stem
+	if stem.endswith(".emote"):
+		stem = stem[:-6]
+	return zip_path.with_name(f"{stem}.emote.zip")
+
+
+def find_pack_root(extract_dir: Path) -> Path:
+	pack_meta_paths = sorted(
+		extract_dir.rglob("pack.mcmeta"),
+		key=lambda path: (len(path.parts), str(path).lower()),
+	)
+	if not pack_meta_paths:
+		raise SystemExit("pack.mcmeta was not found inside the zip.")
+
+	return pack_meta_paths[0].parent
+
+
+def find_create_function_paths(pack_root: Path) -> list[Path]:
+	create_function_paths: list[Path] = []
+	for pattern in CREATE_FUNCTION_PATTERNS:
+		create_function_paths.extend(sorted(pack_root.glob(pattern)))
+	return create_function_paths
+
+
+def update_create_function(create_function_text: str, namespace: str) -> tuple[str, int]:
+	pattern_text = ITEM_DISPLAY_PATTERN_TEMPLATE.replace("{namespace}", re.escape(namespace))
+	pattern = re.compile(pattern_text, re.DOTALL)
+	matches = [match for match in pattern.finditer(create_function_text) if 'id:"minecraft:player_head"' in match.group(1)]
+	if not matches:
+		return create_function_text, 0
+
+	player_head_parts = [parse_player_head_part(match) for match in matches]
+	part_names = infer_part_names(player_head_parts)
+
+	updated_chunks: list[str] = []
+	last_index = 0
+	for match, player_head_part in zip(matches, player_head_parts, strict=True):
+		updated_chunks.append(create_function_text[last_index:match.start()])
+		marker_name = part_names[player_head_part.part_index]
+		updated_chunks.append(inject_profile_name(match.group(0), marker_name))
+		last_index = match.end()
+
+	updated_chunks.append(create_function_text[last_index:])
+	return "".join(updated_chunks), len(player_head_parts)
+
+
+def parse_player_head_part(match: re.Match[str]) -> PlayerHeadPart:
+	item_display_text = match.group(0)
+	values = read_transformation_values(item_display_text)
+
+	return PlayerHeadPart(
+		part_index=int(match.group(2)),
+		start_index=match.start(),
+		end_index=match.end(),
+		item_display_text=item_display_text,
+		x=values[3],
+		y=values[7],
+		z=values[11],
+		scale_x=read_axis_scale(values, 0, 4, 8),
+		scale_y=read_axis_scale(values, 1, 5, 9),
+		scale_z=read_axis_scale(values, 2, 6, 10),
+	)
+
+
+def read_transformation_values(item_display_text: str) -> list[float]:
+	transformation_match = TRANSFORMATION_PATTERN.search(item_display_text)
+	if transformation_match is None:
+		return [
+			1.0, 0.0, 0.0, 0.0,
+			0.0, 1.0, 0.0, 0.0,
+			0.0, 0.0, 1.0, 0.0,
+			0.0, 0.0, 0.0, 1.0,
+		]
+
+	values = [parse_matrix_number(value) for value in transformation_match.group(1).split(",")]
+	if len(values) != 16:
+		raise SystemExit("A player_head transformation did not contain 16 matrix values.")
+	return values
+
+
+def parse_matrix_number(value: str) -> float:
+	normalized_value = value.strip()
+	if normalized_value.endswith(("f", "d")):
+		normalized_value = normalized_value[:-1]
+	return float(normalized_value)
+
+
+def read_axis_scale(values: list[float], first_index: int, second_index: int, third_index: int) -> float:
+	first_value = values[first_index]
+	second_value = values[second_index]
+	third_value = values[third_index]
+	return math.sqrt(first_value * first_value + second_value * second_value + third_value * third_value)
+
+
+def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
+	if not player_head_parts:
+		raise SystemExit("No player_head parts were found.")
+
+	assignments: dict[int, str] = {}
+	head_part = select_head_part(player_head_parts)
+	assignments[head_part.part_index] = "emote:head"
+
+	remaining_parts = [part for part in player_head_parts if part.part_index != head_part.part_index]
+	if not remaining_parts:
+		return assignments
+
+	abs_x_clusters = cluster_by_abs_x(remaining_parts)
+	if not abs_x_clusters:
+		return assignments
+
+	center_cluster = abs_x_clusters[0]
+	for part in center_cluster:
+		assignments[part.part_index] = "emote:body"
+
+	side_parts = [part for cluster in abs_x_clusters[1:] for part in cluster]
+	assign_side_parts([part for part in side_parts if part.x >= 0.0], "emote:left_arm", "emote:left_leg", assignments)
+	assign_side_parts([part for part in side_parts if part.x < 0.0], "emote:right_arm", "emote:right_leg", assignments)
+
+	for part in player_head_parts:
+		assignments.setdefault(part.part_index, "emote:body")
+
+	return assignments
+
+
+def select_head_part(player_head_parts: list[PlayerHeadPart]) -> PlayerHeadPart:
+	return max(
+		player_head_parts,
+		key=lambda part: (
+			part.y,
+			-cube_deviation(part),
+			part.scale_x * part.scale_y * part.scale_z,
+		),
+	)
+
+
+def cube_deviation(player_head_part: PlayerHeadPart) -> float:
+	return (
+		abs(player_head_part.scale_x - player_head_part.scale_y)
+		+ abs(player_head_part.scale_y - player_head_part.scale_z)
+		+ abs(player_head_part.scale_z - player_head_part.scale_x)
+	)
+
+
+def cluster_by_abs_x(player_head_parts: list[PlayerHeadPart]) -> list[list[PlayerHeadPart]]:
+	clusters: list[list[PlayerHeadPart]] = []
+	for player_head_part in sorted(player_head_parts, key=lambda part: (part.abs_x, -part.y, part.part_index)):
+		if not clusters:
+			clusters.append([player_head_part])
+			continue
+
+		cluster_anchor = average_abs_x(clusters[-1])
+		if abs(player_head_part.abs_x - cluster_anchor) <= CLUSTER_TOLERANCE:
+			clusters[-1].append(player_head_part)
+			continue
+
+		clusters.append([player_head_part])
+
+	return clusters
+
+
+def average_abs_x(player_head_parts: list[PlayerHeadPart]) -> float:
+	return sum(part.abs_x for part in player_head_parts) / len(player_head_parts)
+
+
+def assign_side_parts(
+	side_parts: list[PlayerHeadPart],
+	arm_marker_name: str,
+	leg_marker_name: str,
+	assignments: dict[int, str],
+) -> None:
+	if not side_parts:
+		return
+
+	abs_x_clusters = cluster_by_abs_x(side_parts)
+	if len(abs_x_clusters) >= 2:
+		for part in abs_x_clusters[0]:
+			assignments[part.part_index] = leg_marker_name
+		for part in abs_x_clusters[-1]:
+			assignments[part.part_index] = arm_marker_name
+
+		for cluster in abs_x_clusters[1:-1]:
+			assign_cluster_by_height(cluster, arm_marker_name, leg_marker_name, assignments)
+		return
+
+	assign_cluster_by_height(side_parts, arm_marker_name, leg_marker_name, assignments)
+
+
+def assign_cluster_by_height(
+	player_head_parts: list[PlayerHeadPart],
+	arm_marker_name: str,
+	leg_marker_name: str,
+	assignments: dict[int, str],
+) -> None:
+	sorted_parts = sorted(player_head_parts, key=lambda part: (-part.y, part.part_index))
+	if len(sorted_parts) == 1:
+		assignments[sorted_parts[0].part_index] = arm_marker_name
+		return
+
+	arm_count = len(sorted_parts) // 2
+	if arm_count == 0:
+		arm_count = 1
+
+	for part in sorted_parts[:arm_count]:
+		assignments[part.part_index] = arm_marker_name
+	for part in sorted_parts[arm_count:]:
+		assignments[part.part_index] = leg_marker_name
+
+
+def inject_profile_name(item_display_text: str, marker_name: str) -> str:
+	profile_key = '"minecraft:profile":{'
+	profile_index = item_display_text.find(profile_key)
+	if profile_index >= 0:
+		start_index = profile_index + len(profile_key) - 1
+		end_index = find_matching_brace(item_display_text, start_index)
+		profile_body = item_display_text[start_index + 1:end_index]
+		fields = split_top_level_fields(profile_body)
+		filtered_fields = [field for field in fields if not field.lstrip().startswith("name:")]
+		new_profile_body = ",".join([f'name:"{marker_name}"', *filtered_fields])
+		return item_display_text[:start_index + 1] + new_profile_body + item_display_text[end_index:]
+
+	components_key = "components:{"
+	components_index = item_display_text.find(components_key)
+	if components_index >= 0:
+		start_index = components_index + len(components_key) - 1
+		end_index = find_matching_brace(item_display_text, start_index)
+		components_body = item_display_text[start_index + 1:end_index]
+		new_entry = f'"minecraft:profile":{{name:"{marker_name}"}}'
+		new_components_body = new_entry if not components_body.strip() else new_entry + "," + components_body
+		return item_display_text[:start_index + 1] + new_components_body + item_display_text[end_index:]
+
+	item_key = "item:{"
+	item_index = item_display_text.find(item_key)
+	if item_index < 0:
+		raise SystemExit("An item_display did not contain item:{}.")
+
+	start_index = item_index + len(item_key) - 1
+	end_index = find_matching_brace(item_display_text, start_index)
+	item_body = item_display_text[start_index + 1:end_index]
+	new_item_body = item_body + f',components:{{"minecraft:profile":{{name:"{marker_name}"}}}}'
+	return item_display_text[:start_index + 1] + new_item_body + item_display_text[end_index:]
+
+
+def split_top_level_fields(value: str) -> list[str]:
+	fields: list[str] = []
+	current: list[str] = []
+	brace_depth = 0
+	bracket_depth = 0
+	in_string = False
+	escaped = False
+
+	for character in value:
+		if in_string:
+			current.append(character)
+			if escaped:
+				escaped = False
+			elif character == "\\":
+				escaped = True
+			elif character == '"':
+				in_string = False
+			continue
+
+		if character == '"':
+			in_string = True
+			current.append(character)
+			continue
+
+		if character == "{":
+			brace_depth += 1
+			current.append(character)
+			continue
+
+		if character == "}":
+			brace_depth -= 1
+			current.append(character)
+			continue
+
+		if character == "[":
+			bracket_depth += 1
+			current.append(character)
+			continue
+
+		if character == "]":
+			bracket_depth -= 1
+			current.append(character)
+			continue
+
+		if character == "," and brace_depth == 0 and bracket_depth == 0:
+			field = "".join(current).strip()
+			if field:
+				fields.append(field)
+			current = []
+			continue
+
+		current.append(character)
+
+	field = "".join(current).strip()
+	if field:
+		fields.append(field)
+	return fields
+
+
+def find_matching_brace(value: str, open_index: int) -> int:
+	depth = 0
+	in_string = False
+	escaped = False
+
+	for index in range(open_index, len(value)):
+		character = value[index]
+		if in_string:
+			if escaped:
+				escaped = False
+			elif character == "\\":
+				escaped = True
+			elif character == '"':
+				in_string = False
+			continue
+
+		if character == '"':
+			in_string = True
+			continue
+
+		if character == "{":
+			depth += 1
+			continue
+
+		if character == "}":
+			depth -= 1
+			if depth == 0:
+				return index
+
+	raise SystemExit("A closing brace could not be found.")
+
+
+def ensure_emote_datapack_meta(pack_root: Path, zip_path: Path, namespaces: list[str]) -> None:
+	meta_path = pack_root / PACK_META_FILE_NAME
+	if meta_path.exists():
+		return
+
+	display_name = prettify_name(zip_path.stem.removesuffix(".emote"))
+	command_source = namespaces[0] if len(namespaces) == 1 else zip_path.stem.removesuffix(".emote")
+	meta = {
+		"name": display_name,
+		"description": f"{display_name} emote.",
+		"command_name": sanitize_command_name(command_source),
+		"default_animation": "default",
+	}
+	meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+
+
+def prettify_name(value: str) -> str:
+	prettified_value = value.replace("_", " ").replace("-", " ").strip()
+	return prettified_value or value
+
+
+def sanitize_command_name(value: str) -> str:
+	command_name = re.sub(r"[^a-z0-9_-]+", "_", value.lower()).strip("_")
+	return command_name or "emote"
+
+
+def write_zip(pack_root: Path, output_path: Path) -> None:
+	if output_path.exists():
+		output_path.unlink()
+
+	with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as output_zip_file:
+		for path in sorted(pack_root.rglob("*")):
+			if path.is_dir():
+				continue
+			output_zip_file.write(path, arcname=path.relative_to(pack_root))
+
+
+if __name__ == "__main__":
+	raise SystemExit(main())

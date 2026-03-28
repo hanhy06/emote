@@ -40,7 +40,8 @@ import java.net.InetSocketAddress;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.EnumMap;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -166,7 +167,7 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		long currentTick = server.getTickCount();
-		for (Map.Entry<UUID, PendingPlayerSkinApplication> entry : List.copyOf(this.pendingSkinApplicationMap.entrySet())) {
+		for (Map.Entry<UUID, PendingPlayerSkinApplication> entry : this.pendingSkinApplicationMap.entrySet()) {
 			PendingPlayerSkinApplication pendingApplication = entry.getValue();
 			if (pendingApplication == null || currentTick < pendingApplication.nextAttemptTick()) {
 				continue;
@@ -238,17 +239,8 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
-		int appliedPartCount = 0;
-		for (EmoteSkinPart skinPart : skinParts) {
-			ResolvableProfile profile = profileMap.get(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
-			if (profile == null) {
-				continue;
-			}
-
-			if (applyProfile(player, searchBox, definition.namespace(), skinPart.partIndex(), profile)) {
-				appliedPartCount++;
-			}
-		}
+		Map<String, ResolvableProfile> taggedProfileMap = createTaggedProfileMap(definition.namespace(), skinParts, profileMap);
+		int appliedPartCount = applyProfiles(player, searchBox, taggedProfileMap);
 
 		return new PlayerSkinApplyResult(appliedPartCount >= skinParts.size(), appliedPartCount < skinParts.size(), skinParts.size(), appliedPartCount);
 	}
@@ -412,7 +404,7 @@ public class PlayerSkinManager implements ConfigListener {
 
 		try {
 			BufferedImage sourceImage = downloadSkinImage(skinSource.textureUrl());
-			Map<PlayerSkinTextureKey, String> tokenMap = new ConcurrentHashMap<>();
+			Map<PlayerSkinTextureKey, String> tokenMap = new HashMap<>(TEXTURE_KEYS.size());
 			for (PlayerSkinTextureKey textureKey : TEXTURE_KEYS) {
 				String token = buildTextureToken(skinSource.textureHash(), skinSource.slimModel(), textureKey.skinPart(), textureKey.skinSegment());
 				this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel()));
@@ -478,13 +470,31 @@ public class PlayerSkinManager implements ConfigListener {
 		PlayerSkinHost playerSkinHost,
 		PlayerSkinTextureSet playerSkinTextureSet
 	) {
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new ConcurrentHashMap<>();
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new HashMap<>(playerSkinTextureSet.textureTokenMap().size());
 		for (Map.Entry<PlayerSkinTextureKey, String> entry : playerSkinTextureSet.textureTokenMap().entrySet()) {
 			String textureUrl = playerSkinHost.createBaseUrl() + HTTP_PATH_PREFIX + entry.getValue() + ".png";
 			profileMap.put(entry.getKey(), createProfile(player, textureUrl));
 		}
 
 		return profileMap;
+	}
+
+	private Map<String, ResolvableProfile> createTaggedProfileMap(
+		String namespace,
+		List<EmoteSkinPart> skinParts,
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap
+	) {
+		Map<String, ResolvableProfile> taggedProfileMap = new HashMap<>(skinParts.size());
+		for (EmoteSkinPart skinPart : skinParts) {
+			ResolvableProfile profile = profileMap.get(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+			if (profile == null) {
+				continue;
+			}
+
+			taggedProfileMap.put(namespace + "_" + skinPart.partIndex(), profile);
+		}
+
+		return taggedProfileMap;
 	}
 
 	private ResolvableProfile createProfile(ServerPlayer player, String textureUrl) {
@@ -516,41 +526,74 @@ public class PlayerSkinManager implements ConfigListener {
 		return Base64.getEncoder().encodeToString(rootObject.toString().getBytes(StandardCharsets.UTF_8));
 	}
 
-	private boolean applyProfile(ServerPlayer player, AABB searchBox, String namespace, int partIndex, ResolvableProfile profile) {
+	private int applyProfiles(ServerPlayer player, AABB searchBox, Map<String, ResolvableProfile> taggedProfileMap) {
 		if (!(player.level() instanceof ServerLevel serverLevel)) {
-			return false;
+			return 0;
 		}
 
-		String partTag = namespace + "_" + partIndex;
+		if (taggedProfileMap.isEmpty()) {
+			return 0;
+		}
+
+		Set<String> requestedTags = taggedProfileMap.keySet();
 		List<Display.ItemDisplay> itemDisplays = serverLevel.getEntitiesOfClass(
 			Display.ItemDisplay.class,
 			searchBox,
-			itemDisplay -> itemDisplay.entityTags().contains(partTag)
+			itemDisplay -> containsRequestedTag(itemDisplay.entityTags(), requestedTags)
 		);
-		if (itemDisplays.isEmpty()) {
+
+		Set<String> appliedTags = new HashSet<>(requestedTags.size());
+		for (Display.ItemDisplay itemDisplay : itemDisplays) {
+			String requestedTag = findRequestedTag(itemDisplay.entityTags(), requestedTags);
+			if (requestedTag == null) {
+				continue;
+			}
+
+			if (applyProfile(itemDisplay, taggedProfileMap.get(requestedTag))) {
+				appliedTags.add(requestedTag);
+				if (appliedTags.size() == requestedTags.size()) {
+					break;
+				}
+			}
+		}
+
+		return appliedTags.size();
+	}
+
+	private boolean containsRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
+		for (String entityTag : entityTags) {
+			if (requestedTags.contains(entityTag)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
+		for (String entityTag : entityTags) {
+			if (requestedTags.contains(entityTag)) {
+				return entityTag;
+			}
+		}
+
+		return null;
+	}
+
+	private boolean applyProfile(Display.ItemDisplay itemDisplay, ResolvableProfile profile) {
+		SlotAccess slot = itemDisplay.getSlot(0);
+		if (slot == null) {
 			return false;
 		}
 
-		boolean applied = false;
-		for (Display.ItemDisplay itemDisplay : itemDisplays) {
-			SlotAccess slot = itemDisplay.getSlot(0);
-			if (slot == null) {
-				continue;
-			}
-
-			ItemStack currentStack = slot.get();
-			if (!currentStack.is(Items.PLAYER_HEAD)) {
-				continue;
-			}
-
-			ItemStack itemStack = currentStack.copy();
-			itemStack.set(DataComponents.PROFILE, profile);
-			if (slot.set(itemStack)) {
-				applied = true;
-			}
+		ItemStack currentStack = slot.get();
+		if (!currentStack.is(Items.PLAYER_HEAD)) {
+			return false;
 		}
 
-		return applied;
+		ItemStack itemStack = currentStack.copy();
+		itemStack.set(DataComponents.PROFILE, profile);
+		return slot.set(itemStack);
 	}
 
 	private String buildTextureToken(String textureHash, boolean slimModel, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {

@@ -103,7 +103,11 @@ public class Emote implements ModInitializer {
 
 	private void handleServerStarted(MinecraftServer server) {
 		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
-		this.bdEngineDatapackProcessor.enableEmoteDatapacks(server);
+		boolean reloadedResources = this.bdEngineDatapackProcessor.enableEmoteDatapacks(server);
+		if (reloadedResources) {
+			return;
+		}
+
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
 		LOGGER.info("emotes={}", emoteCount);
 	}

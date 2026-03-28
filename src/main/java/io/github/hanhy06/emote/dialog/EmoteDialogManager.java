@@ -116,23 +116,37 @@ public class EmoteDialogManager {
 	}
 
 	private List<PlayableEmote> getPlayableEmoteList(ServerPlayer player) {
-		return this.emoteRegistry.getDefinitions().stream()
-			.flatMap(definition -> definition.animations().stream().map(animation -> new PlayableEmote(
-				definition.commandName(),
-				animation.name(),
-				definition.isDefaultAnimation(animation.name()),
-				definition.createDisplayName(animation.name()),
-				definition.createDisplayDescription(animation.name())
-			)))
-			.filter(playableEmote -> this.emotePermissionService.canPlay(
-				player,
-				this.emoteRegistry.findDefinitionByCommandName(playableEmote.commandName())
-					.map(EmoteDefinition::namespace)
-					.orElse(""),
-				playableEmote.animationName()
-			))
-			.sorted(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName))
-			.toList();
+		List<PlayableEmote> playableEmotes = new ArrayList<>();
+		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
+			String defaultAnimationName = definition.findDefaultAnimation()
+				.map(EmoteAnimation::name)
+				.orElse("");
+			for (EmoteAnimation animation : definition.animations()) {
+				String animationName = animation.name();
+				if (!this.emotePermissionService.canPlay(player, definition.namespace(), animationName)) {
+					continue;
+				}
+
+				boolean isDefaultAnimation = animationName.equals(defaultAnimationName);
+				String displayName = definition.animations().size() <= 1 || isDefaultAnimation
+					? definition.name()
+					: definition.name() + " - " + animationName;
+				String description = definition.animations().size() <= 1 || isDefaultAnimation
+					? definition.description()
+					: definition.description() + " (" + animationName + ")";
+
+				playableEmotes.add(new PlayableEmote(
+					definition.commandName(),
+					animationName,
+					isDefaultAnimation,
+					displayName,
+					description
+				));
+			}
+		}
+
+		playableEmotes.sort(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName));
+		return List.copyOf(playableEmotes);
 	}
 
 	private String createBodyText(

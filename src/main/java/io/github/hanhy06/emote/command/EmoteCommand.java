@@ -76,7 +76,7 @@ public final class EmoteCommand {
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
 				.requires(emotePermissionService.requireReload())
-				.executes(context -> reloadEmotes(context.getSource(), bdEngineDatapackProcessor, configManager)))
+				.executes(context -> reloadEmotes(context.getSource(), emoteRegistry, bdEngineDatapackProcessor, configManager)))
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("emote", StringArgumentType.word())
@@ -148,15 +148,22 @@ public final class EmoteCommand {
 
 	private static int reloadEmotes(
 		CommandSourceStack source,
+		EmoteRegistry emoteRegistry,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager
 	) {
 		boolean configLoaded = configManager.readConfig();
 		Emote.getPlayerSkinManager().reloadHttpServer(source.getServer());
-		bdEngineDatapackProcessor.enableEmoteDatapacks(source.getServer());
-		int emoteCount = bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
+		boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks(source.getServer());
+		int emoteCount = reloadedResources
+			? emoteRegistry.size()
+			: bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		source.sendSuccess(
-			() -> Component.literal("Reloading: cfg=" + configLoaded + ", emotes=" + emoteCount),
+			() -> Component.literal(
+				"Reloading: cfg=" + configLoaded
+					+ ", emotes=" + emoteCount
+					+ (reloadedResources ? " (resource reload)" : "")
+			),
 			true
 		);
 		return emoteCount;
