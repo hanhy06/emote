@@ -46,6 +46,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -61,6 +62,7 @@ public class PlayerSkinManager implements ConfigListener {
 	private final PlayerSkinTextureStore playerSkinTextureStore = new PlayerSkinTextureStore();
 	private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
 	private final ConcurrentMap<String, PlayerSkinTextureSet> playerSkinTextureSetMap = new ConcurrentHashMap<>();
+	private final Set<UUID> clientSkinSupportPlayerSet = ConcurrentHashMap.newKeySet();
 	private final Object httpServerLock = new Object();
 
 	private volatile int configuredPort;
@@ -112,6 +114,14 @@ public class PlayerSkinManager implements ConfigListener {
 		this.playerSkinHostStore.remember(connection, host, port);
 	}
 
+	public void markClientSkinSupport(ServerPlayer player) {
+		this.clientSkinSupportPlayerSet.add(player.getUUID());
+	}
+
+	public void forgetClientSkinSupport(ServerPlayer player) {
+		this.clientSkinSupportPlayerSet.remove(player.getUUID());
+	}
+
 	public void applyPlayerSkin(ServerPlayer player, EmoteDefinition definition) {
 		try {
 			applyPlayerSkinInternal(player, definition);
@@ -122,7 +132,7 @@ public class PlayerSkinManager implements ConfigListener {
 
 	private void applyPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
 		List<EmoteSkinPart> skinParts = definition.skinParts();
-		if (skinParts.isEmpty()) {
+		if (skinParts.isEmpty() || !this.clientSkinSupportPlayerSet.contains(player.getUUID())) {
 			return;
 		}
 
@@ -232,6 +242,7 @@ public class PlayerSkinManager implements ConfigListener {
 		this.playerSkinHostStore.clear();
 		this.playerSkinTextureStore.clear();
 		this.playerSkinTextureSetMap.clear();
+		this.clientSkinSupportPlayerSet.clear();
 	}
 
 	private int resolvePlayerSkinPort(MinecraftServer server, int fallbackPort) {

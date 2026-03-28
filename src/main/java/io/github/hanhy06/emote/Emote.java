@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.command.EmoteCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.EmoteDialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -12,7 +13,9 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -46,6 +49,7 @@ public class Emote implements ModInitializer {
 		this.configManager.addListener(this.emotePermissionService);
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
+		registerNetworking();
 		registerLifecycleCallbacks();
 		registerCommands();
 		LOGGER.info("{} ready", MOD_ID);
@@ -55,6 +59,13 @@ public class Emote implements ModInitializer {
 		return PLAYER_SKIN_MANAGER;
 	}
 
+	private void registerNetworking() {
+		PayloadTypeRegistry.serverboundPlay().register(EmoteSkinSupportPayload.TYPE, EmoteSkinSupportPayload.STREAM_CODEC);
+		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
+			context.server().execute(() -> PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player()))
+		);
+	}
+
 	private void registerLifecycleCallbacks() {
 		ServerLifecycleEvents.SERVER_STARTING.register(this::handleServerStarting);
 		ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
@@ -62,7 +73,15 @@ public class Emote implements ModInitializer {
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
 		ServerTickEvents.END_SERVER_TICK.register(this.emotePlaybackManager::tick);
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> this.emotePlaybackManager.stopEmote(handler.player));
+		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
+			if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {
+				PLAYER_SKIN_MANAGER.markClientSkinSupport(handler.player);
+			}
+		});
+		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
+			this.emotePlaybackManager.stopEmote(handler.player);
+			PLAYER_SKIN_MANAGER.forgetClientSkinSupport(handler.player);
+		});
 	}
 
 	private void registerCommands() {

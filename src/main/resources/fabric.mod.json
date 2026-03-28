@@ -17,6 +17,9 @@
 	"entrypoints": {
 		"main": [
 			"io.github.hanhy06.emote.Emote"
+		],
+		"client": [
+			"io.github.hanhy06.emote.EmoteClient"
 		]
 	},
 	"mixins": [
