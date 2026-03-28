@@ -21,7 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class ConfigManager {
-	private static ConfigManager instance;
+	public static ConfigManager INSTANCE;
 
 	private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
 	private static final String CONFIG_FILE_NAME = "config.json";
@@ -39,7 +39,7 @@ public class ConfigManager {
 	private Config config = Config.createDefault();
 
 	public ConfigManager(Path configBasePath) {
-		instance = this;
+		INSTANCE = this;
 		this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
 
 		try {
@@ -54,8 +54,8 @@ public class ConfigManager {
 		}
 	}
 
-	public static Config getConfig() {
-		return Objects.requireNonNull(instance, "ConfigManager not initialized").config;
+	public Config getConfig() {
+		return this.config;
 	}
 
 	public boolean readConfig() {

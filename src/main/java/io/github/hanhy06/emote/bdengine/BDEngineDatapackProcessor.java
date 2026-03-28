@@ -202,7 +202,7 @@ public class BDEngineDatapackProcessor {
 			return List.of();
 		}
 
-		EmoteDatapackMeta datapackMeta = readDatapackMeta(packPath, packRootPath).orElse(null);
+		EmoteDatapackMeta datapackMeta = readDatapackMeta(packPath, packRootPath);
 		if (datapackMeta == null) {
 			return List.of();
 		}
@@ -507,17 +507,17 @@ public class BDEngineDatapackProcessor {
 		return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
 	}
 
-	private Optional<EmoteDatapackMeta> readDatapackMeta(Path packPath, Path packRootPath) {
+	private EmoteDatapackMeta readDatapackMeta(Path packPath, Path packRootPath) {
 		Path datapackMetaPath = packRootPath.resolve(DATAPACK_META_FILE_NAME);
 		if (!Files.exists(datapackMetaPath)) {
-			return Optional.empty();
+			return null;
 		}
 
 		try (Reader reader = Files.newBufferedReader(datapackMetaPath)) {
 			JsonElement element = JsonParser.parseReader(reader);
 			if (!element.isJsonObject()) {
 				Emote.LOGGER.warn("Skip {}: {} must be a JSON object.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
-				return Optional.empty();
+				return null;
 			}
 
 			JsonObject object = element.getAsJsonObject();
@@ -525,18 +525,18 @@ public class BDEngineDatapackProcessor {
 			String description = readRequiredString(object, "description");
 			if (name == null || description == null) {
 				Emote.LOGGER.warn("Skip {}: {} needs name and description.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
-				return Optional.empty();
+				return null;
 			}
 
-			return Optional.of(new EmoteDatapackMeta(
+			return new EmoteDatapackMeta(
 				name,
 				description,
 				readOptionalString(object, "command_name"),
 				readOptionalString(object, "default_animation")
-			));
+			);
 		} catch (IOException | RuntimeException exception) {
 			Emote.LOGGER.warn("Skip {}: failed to read {}.", packPath.getFileName(), DATAPACK_META_FILE_NAME, exception);
-			return Optional.empty();
+			return null;
 		}
 	}
 

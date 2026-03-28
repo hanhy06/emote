@@ -139,7 +139,7 @@ public class EmoteDialogManager {
 	}
 
 	private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
-		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
+		int playButtonsPerPage = Math.max(1, ConfigManager.INSTANCE.getConfig().menu_page_size());
 		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteCount / playButtonsPerPage));
 		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
 		int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);

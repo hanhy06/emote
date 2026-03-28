@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
+import io.github.hanhy06.emote.playback.EmotePlaybackStartResult;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -31,7 +32,9 @@ public class EmoteWheelPlayService {
 		}
 
 		PlayableEmoteSelection selection = selectionResult.selection();
-		this.emotePlaybackManager.startEmote(player, selection.definition(), selection.animation())
-			.ifPresent(errorMessage -> player.sendSystemMessage(Component.literal(errorMessage)));
+		EmotePlaybackStartResult playResult = this.emotePlaybackManager.startEmote(player, selection.definition(), selection.animation());
+		if (!playResult.isSuccess()) {
+			player.sendSystemMessage(Component.literal(playResult.errorMessage()));
+		}
 	}
 }

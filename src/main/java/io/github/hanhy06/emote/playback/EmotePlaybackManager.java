@@ -52,10 +52,10 @@ public class EmotePlaybackManager {
 		this.stateListener = stateListener;
 	}
 
-	public Optional<String> startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
+	public EmotePlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
 		MinecraftServer server = player.level().getServer();
 		if (server == null) {
-			return Optional.of("Play failed.");
+			return EmotePlaybackStartResult.failure("Play failed.");
 		}
 
 		String namespace = definition.namespace();
@@ -63,7 +63,7 @@ public class EmotePlaybackManager {
 		String createFunctionId = namespace + ":_/create";
 		String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
 		if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
-			return Optional.of("Datapack not loaded.");
+			return EmotePlaybackStartResult.failure("Datapack not loaded.");
 		}
 
 		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
@@ -89,7 +89,7 @@ public class EmotePlaybackManager {
 		);
 		this.activeEmoteMap.put(player.getUUID(), activeEmote);
 		this.stateListener.onEmoteStarted(player, activeEmote);
-		return Optional.empty();
+		return EmotePlaybackStartResult.SUCCESS;
 	}
 
 	public Optional<ActiveEmote> stopEmote(ServerPlayer player) {

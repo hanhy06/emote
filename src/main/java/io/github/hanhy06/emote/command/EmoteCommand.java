@@ -19,6 +19,7 @@ import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
+import io.github.hanhy06.emote.playback.EmotePlaybackStartResult;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -232,9 +233,9 @@ public final class EmoteCommand {
 
 		PlayableEmoteSelection selection = selectionResult.selection();
 
-		String playError = emotePlaybackManager.startEmote(player, selection.definition(), selection.animation()).orElse(null);
-		if (playError != null) {
-			source.sendFailure(Component.literal(playError));
+		EmotePlaybackStartResult playResult = emotePlaybackManager.startEmote(player, selection.definition(), selection.animation());
+		if (!playResult.isSuccess()) {
+			source.sendFailure(Component.literal(playResult.errorMessage()));
 			return 0;
 		}
 

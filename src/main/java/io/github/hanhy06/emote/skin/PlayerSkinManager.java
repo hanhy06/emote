@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,9 +55,15 @@ import java.util.concurrent.ConcurrentMap;
 public class PlayerSkinManager implements ConfigListener {
 	private static final String HTTP_PATH_PREFIX = "/emote/skin/";
 	private static final String PNG_PATH_SUFFIX = ".png";
+	private static final String TEXT_PLAIN_CONTENT_TYPE = "text/plain; charset=utf-8";
+	private static final String PNG_CONTENT_TYPE = "image/png";
 	private static final String TEXTURE_TOKEN_VERSION = "v25";
+	private static final byte[] BAD_REQUEST_RESPONSE_BODY = "Bad request.".getBytes(StandardCharsets.UTF_8);
 	private static final byte[] HEADER_END = new byte[]{'\r', '\n', '\r', '\n'};
+	private static final byte[] METHOD_NOT_ALLOWED_RESPONSE_BODY = "Method not allowed.".getBytes(StandardCharsets.UTF_8);
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
+	private static final byte[] NOT_FOUND_RESPONSE_BODY = "Not found.".getBytes(StandardCharsets.UTF_8);
+	private static final byte[] REQUEST_TOO_LARGE_RESPONSE_BODY = "Request too large.".getBytes(StandardCharsets.UTF_8);
 	private static final int SKIN_APPLY_RETRY_COUNT = 10;
 	private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
@@ -196,40 +201,40 @@ public class PlayerSkinManager implements ConfigListener {
 			return applyPlayerSkinInternal(player, definition);
 		} catch (RuntimeException exception) {
 			Emote.LOGGER.warn("skin apply failed for " + player.getGameProfile().name(), exception);
-			return new PlayerSkinApplyResult(false, false, definition.skinParts().size(), 0);
+			return PlayerSkinApplyResult.failure(definition.skinParts().size());
 		}
 	}
 
 	private PlayerSkinApplyResult applyPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
 		List<EmoteSkinPart> skinParts = definition.skinParts();
 		if (skinParts.isEmpty()) {
-			return new PlayerSkinApplyResult(true, false, 0, 0);
+			return PlayerSkinApplyResult.empty();
 		}
 
 		if (!this.clientSkinSupportPlayerSet.contains(player.getUUID())) {
-			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
+			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
-		PlayerSkinHost playerSkinHost = findPlayerSkinHost(player).orElse(null);
+		PlayerSkinHost playerSkinHost = findPlayerSkinHost(player);
 		if (playerSkinHost == null) {
-			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
+			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
-		Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(player, skinParts).orElse(null);
+		Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(player, skinParts);
 		if (playerSkinTextureSet == null) {
-			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
+			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
 		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost, playerSkinTextureSet);
 		if (profileMap.isEmpty()) {
-			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
+			return PlayerSkinApplyResult.retry(skinParts.size());
 		}
 
 		AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
 		Map<String, ResolvableProfile> taggedProfileMap = createTaggedProfileMap(definition.namespace(), skinParts, profileMap);
 		int appliedPartCount = applyProfiles(player, searchBox, taggedProfileMap);
 
-		return new PlayerSkinApplyResult(appliedPartCount >= skinParts.size(), appliedPartCount < skinParts.size(), skinParts.size(), appliedPartCount);
+		return PlayerSkinApplyResult.ofApplied(skinParts.size(), appliedPartCount);
 	}
 
 	public boolean handleHttpRequest(ChannelHandlerContext context, ByteBuf input) {
@@ -240,7 +245,7 @@ public class PlayerSkinManager implements ConfigListener {
 
 		if (bufferedRequest.length > MAX_HTTP_REQUEST_SIZE) {
 			clearHttpRequestBuffer(context);
-			writeResponse(context, 413, "Request Too Large", "text/plain; charset=utf-8", "Request too large.".getBytes(StandardCharsets.UTF_8), false);
+			writeResponse(context, PlayerSkinHttpResponse.text(413, "Request Too Large", REQUEST_TOO_LARGE_RESPONSE_BODY, false));
 			return true;
 		}
 
@@ -255,40 +260,23 @@ public class PlayerSkinManager implements ConfigListener {
 		String requestLine = requestLineEndIndex >= 0 ? headerText.substring(0, requestLineEndIndex) : headerText;
 		ParsedHttpRequest request = parseRequestLine(requestLine);
 		if (request == null) {
-			writeResponse(context, 400, "Bad Request", "text/plain; charset=utf-8", "Bad request.".getBytes(StandardCharsets.UTF_8), false);
+			writeResponse(context, PlayerSkinHttpResponse.text(400, "Bad Request", BAD_REQUEST_RESPONSE_BODY, false));
 			return true;
 		}
 
-		byte[] pngBytes = findTextureBytes(request.path());
-		if (pngBytes == null) {
-			writeResponse(context, 404, "Not Found", "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), request.headOnly());
-			return true;
-		}
-
-		writeResponse(context, 200, "OK", "image/png", pngBytes, request.headOnly());
+		writeResponse(context, createTextureResponse(request.path(), request.headOnly()));
 		return true;
 	}
 
 	private void handleHttpExchange(HttpExchange exchange) throws IOException {
 		try {
-			String method = exchange.getRequestMethod();
-			boolean headOnly;
-			if ("GET".equalsIgnoreCase(method)) {
-				headOnly = false;
-			} else if ("HEAD".equalsIgnoreCase(method)) {
-				headOnly = true;
-			} else {
-				writeExchangeResponse(exchange, 405, "text/plain; charset=utf-8", "Method not allowed.".getBytes(StandardCharsets.UTF_8), false);
+			Boolean headOnly = parseHeadOnly(exchange.getRequestMethod());
+			if (headOnly == null) {
+				writeExchangeResponse(exchange, PlayerSkinHttpResponse.text(405, "Method Not Allowed", METHOD_NOT_ALLOWED_RESPONSE_BODY, false));
 				return;
 			}
 
-			byte[] pngBytes = findTextureBytes(exchange.getRequestURI().getPath());
-			if (pngBytes == null) {
-				writeExchangeResponse(exchange, 404, "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), headOnly);
-				return;
-			}
-
-			writeExchangeResponse(exchange, 200, "image/png", pngBytes, headOnly);
+			writeExchangeResponse(exchange, createTextureResponse(exchange.getRequestURI().getPath(), headOnly));
 		} finally {
 			exchange.close();
 		}
@@ -330,10 +318,10 @@ public class PlayerSkinManager implements ConfigListener {
 		this.httpServerPort = 0;
 	}
 
-	private Optional<PlayerSkinHost> findPlayerSkinHost(ServerPlayer player) {
+	private PlayerSkinHost findPlayerSkinHost(ServerPlayer player) {
 		MinecraftServer server = player.level().getServer();
 		if (server == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		Connection connection = ((ServerCommonPacketListenerImplAccessor) player.connection).emote$getConnection();
@@ -341,13 +329,13 @@ public class PlayerSkinManager implements ConfigListener {
 		if (storedHost != null) {
 			int resolvedPort = resolvePlayerSkinPort(server, storedHost.port());
 			if (resolvedPort <= 0) {
-				return Optional.empty();
+				return null;
 			}
 
-			return Optional.of(new PlayerSkinHost(
+			return new PlayerSkinHost(
 				storedHost.host(),
 				resolvedPort
-			));
+			);
 		}
 
 		String localIp = server.getLocalIp();
@@ -357,16 +345,16 @@ public class PlayerSkinManager implements ConfigListener {
 
 		int resolvedPort = resolvePlayerSkinPort(server, server.getPort());
 		if (resolvedPort <= 0) {
-			return Optional.empty();
+			return null;
 		}
 
-		return Optional.of(new PlayerSkinHost(localIp, resolvedPort));
+		return new PlayerSkinHost(localIp, resolvedPort);
 	}
 
-	private Optional<Map<PlayerSkinTextureKey, String>> loadPlayerSkinTextureSet(ServerPlayer player, List<EmoteSkinPart> skinParts) {
-		PlayerSkinSource skinSource = readPlayerSkinSource(player).orElse(null);
+	private Map<PlayerSkinTextureKey, String> loadPlayerSkinTextureSet(ServerPlayer player, List<EmoteSkinPart> skinParts) {
+		PlayerSkinSource skinSource = readPlayerSkinSource(player);
 		if (skinSource == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
@@ -400,10 +388,10 @@ public class PlayerSkinManager implements ConfigListener {
 				}
 			}
 
-			return Optional.of(Map.copyOf(tokenMap));
+			return Map.copyOf(tokenMap);
 		} catch (IOException | IllegalArgumentException exception) {
 			Emote.LOGGER.warn("skin load failed for " + player.getGameProfile().name(), exception);
-			return Optional.empty();
+			return null;
 		}
 	}
 
@@ -416,25 +404,34 @@ public class PlayerSkinManager implements ConfigListener {
 		return textureKeys;
 	}
 
-	private Optional<PlayerSkinSource> readPlayerSkinSource(ServerPlayer player) {
+	private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
 		MinecraftServer server = player.level().getServer();
 		if (server == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
 		if (packedTextures == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		MinecraftProfileTextures unpackedTextures = server.services().sessionService().unpackTextures(packedTextures);
 		MinecraftProfileTexture skinTexture = unpackedTextures.skin();
 		if (skinTexture == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
-		return Optional.of(new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel));
+		return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
+	}
+
+	private PlayerSkinHttpResponse createTextureResponse(String path, boolean headOnly) {
+		byte[] pngBytes = findTextureBytes(path);
+		if (pngBytes == null) {
+			return PlayerSkinHttpResponse.text(404, "Not Found", NOT_FOUND_RESPONSE_BODY, headOnly);
+		}
+
+		return new PlayerSkinHttpResponse(200, "OK", PNG_CONTENT_TYPE, pngBytes, headOnly);
 	}
 
 	private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
@@ -670,12 +667,8 @@ public class PlayerSkinManager implements ConfigListener {
 			return null;
 		}
 
-		boolean headOnly;
-		if ("GET".equals(requestParts[0])) {
-			headOnly = false;
-		} else if ("HEAD".equals(requestParts[0])) {
-			headOnly = true;
-		} else {
+		Boolean headOnly = parseHeadOnly(requestParts[0]);
+		if (headOnly == null) {
 			return null;
 		}
 
@@ -686,55 +679,72 @@ public class PlayerSkinManager implements ConfigListener {
 		return new ParsedHttpRequest(requestParts[1], headOnly);
 	}
 
+	private Boolean parseHeadOnly(String method) {
+		if ("GET".equalsIgnoreCase(method)) {
+			return false;
+		}
+
+		if ("HEAD".equalsIgnoreCase(method)) {
+			return true;
+		}
+
+		return null;
+	}
+
 	private void clearHttpRequestBuffer(ChannelHandlerContext context) {
 		context.channel().attr(HTTP_REQUEST_BUFFER).set(null);
 	}
 
-	private void writeExchangeResponse(
-		HttpExchange exchange,
-		int statusCode,
-		String contentType,
-		byte[] bodyBytes,
-		boolean headOnly
-	) throws IOException {
-		exchange.getResponseHeaders().set("Content-Type", contentType);
-		exchange.getResponseHeaders().set("Content-Length", Integer.toString(bodyBytes.length));
+	private void writeExchangeResponse(HttpExchange exchange, PlayerSkinHttpResponse response) throws IOException {
+		exchange.getResponseHeaders().set("Content-Type", response.contentType());
+		exchange.getResponseHeaders().set("Content-Length", Integer.toString(response.bodyBytes().length));
 		exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
 		exchange.getResponseHeaders().set("Pragma", "no-cache");
 		exchange.getResponseHeaders().set("Expires", "0");
-		if (headOnly) {
-			exchange.sendResponseHeaders(statusCode, -1);
+		if (response.headOnly()) {
+			exchange.sendResponseHeaders(response.statusCode(), -1);
 			return;
 		}
 
-		exchange.sendResponseHeaders(statusCode, bodyBytes.length);
-		exchange.getResponseBody().write(bodyBytes);
+		exchange.sendResponseHeaders(response.statusCode(), response.bodyBytes().length);
+		exchange.getResponseBody().write(response.bodyBytes());
 	}
 
-	private void writeResponse(
-		ChannelHandlerContext context,
-		int statusCode,
-		String statusText,
-		String contentType,
-		byte[] bodyBytes,
-		boolean headOnly
-	) {
-		String headerText = "HTTP/1.1 " + statusCode + " " + statusText + "\r\n"
-			+ "Content-Type: " + contentType + "\r\n"
-			+ "Content-Length: " + bodyBytes.length + "\r\n"
+	private void writeResponse(ChannelHandlerContext context, PlayerSkinHttpResponse response) {
+		String headerText = "HTTP/1.1 " + response.statusCode() + " " + response.statusText() + "\r\n"
+			+ "Content-Type: " + response.contentType() + "\r\n"
+			+ "Content-Length: " + response.bodyBytes().length + "\r\n"
 			+ "Cache-Control: no-store, no-cache, must-revalidate\r\n"
 			+ "Pragma: no-cache\r\n"
 			+ "Expires: 0\r\n"
 			+ "Connection: close\r\n\r\n";
 
 		ByteBuf headerBuffer = Unpooled.copiedBuffer(headerText, StandardCharsets.US_ASCII);
-		ByteBuf responseBuffer = headOnly
+		ByteBuf responseBuffer = response.headOnly()
 			? headerBuffer
-			: Unpooled.wrappedBuffer(headerBuffer, Unpooled.wrappedBuffer(bodyBytes));
+			: Unpooled.wrappedBuffer(headerBuffer, Unpooled.wrappedBuffer(response.bodyBytes()));
 		context.pipeline().firstContext().writeAndFlush(responseBuffer).addListener(ChannelFutureListener.CLOSE);
 	}
 
 	private record ParsedHttpRequest(String path, boolean headOnly) {
+	}
+
+	private record PlayerSkinHttpResponse(
+		int statusCode,
+		String statusText,
+		String contentType,
+		byte[] bodyBytes,
+		boolean headOnly
+	) {
+		private PlayerSkinHttpResponse {
+			Objects.requireNonNull(statusText, "statusText");
+			Objects.requireNonNull(contentType, "contentType");
+			Objects.requireNonNull(bodyBytes, "bodyBytes");
+		}
+
+		private static PlayerSkinHttpResponse text(int statusCode, String statusText, byte[] bodyBytes, boolean headOnly) {
+			return new PlayerSkinHttpResponse(statusCode, statusText, TEXT_PLAIN_CONTENT_TYPE, bodyBytes, headOnly);
+		}
 	}
 
 	private record PlayerSkinSource(
@@ -758,5 +768,25 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private record PlayerSkinApplyResult(boolean complete, boolean retryable, int expectedPartCount, int appliedPartCount) {
+		private static PlayerSkinApplyResult empty() {
+			return new PlayerSkinApplyResult(true, false, 0, 0);
+		}
+
+		private static PlayerSkinApplyResult retry(int expectedPartCount) {
+			return new PlayerSkinApplyResult(false, true, expectedPartCount, 0);
+		}
+
+		private static PlayerSkinApplyResult failure(int expectedPartCount) {
+			return new PlayerSkinApplyResult(false, false, expectedPartCount, 0);
+		}
+
+		private static PlayerSkinApplyResult ofApplied(int expectedPartCount, int appliedPartCount) {
+			return new PlayerSkinApplyResult(
+				appliedPartCount >= expectedPartCount,
+				appliedPartCount < expectedPartCount,
+				expectedPartCount,
+				appliedPartCount
+			);
+		}
 	}
 }
