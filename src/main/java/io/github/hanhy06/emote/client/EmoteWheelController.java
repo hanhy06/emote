@@ -5,6 +5,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.network.chat.Component;
 
 import java.util.List;
 
@@ -27,7 +28,7 @@ public class EmoteWheelController {
 		this.syncedFromServer = true;
 	}
 
-	public void openWheel() {
+	public void openWheel(Component bindingLabel) {
 		Minecraft client = Minecraft.getInstance();
 		if (client.player == null || client.screen != null) {
 			return;
@@ -38,7 +39,7 @@ public class EmoteWheelController {
 			return;
 		}
 
-		client.setScreen(new EmoteWheelScreen(this, this.syncedEmotes, findInitialPageIndex()));
+		client.setScreen(new EmoteWheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
 	}
 
 	public void playEmote(PlayableEmote playableEmote) {

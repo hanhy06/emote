@@ -1,0 +1,12 @@
+{
+  "key.emote.wheel": "Emote Wheel",
+  "screen.emote.wheel.title": "Emote Wheel",
+  "screen.emote.wheel.center.no_usable": "No usable",
+  "screen.emote.wheel.center.emotes": "emotes",
+  "screen.emote.wheel.center.release": "Release",
+  "screen.emote.wheel.center.to_play": "to play",
+  "screen.emote.wheel.footer.no_usable": "Wheel synced, but you cannot use any emotes.",
+  "screen.emote.wheel.footer.release_to_play": "Release %s to play.",
+  "screen.emote.wheel.footer.close": "Release away from a slot or press Esc to close.",
+  "screen.emote.wheel.footer.page_click": "Left click: previous page, right click: next page."
+}

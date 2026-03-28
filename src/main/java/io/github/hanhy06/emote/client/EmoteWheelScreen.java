@@ -18,7 +18,6 @@ public class EmoteWheelScreen extends Screen {
 	private static final int SLOT_COUNT = 6;
 	private static final int LEFT_MOUSE_BUTTON = 0;
 	private static final int RIGHT_MOUSE_BUTTON = 1;
-	private static final int MIDDLE_MOUSE_BUTTON = 2;
 	private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
 	private static final int BACKGROUND_BOTTOM_COLOR = 0xAD091117;
 	private static final int SLOT_BORDER_COLOR = 0xFFA9C7D8;
@@ -32,16 +31,18 @@ public class EmoteWheelScreen extends Screen {
 	private static final int MUTED_COLOR = 0xFF9DB0BC;
 	private final EmoteWheelController controller;
 	private final List<PlayableEmote> emotes;
+	private final Component bindingLabel;
 	private int pageIndex;
 	private double lastMouseX;
 	private double lastMouseY;
 	private int hoveredSlotIndex = -1;
 
-	public EmoteWheelScreen(EmoteWheelController controller, List<PlayableEmote> emotes, int pageIndex) {
-		super(Component.literal("Emote Wheel"));
+	public EmoteWheelScreen(EmoteWheelController controller, List<PlayableEmote> emotes, int pageIndex, Component bindingLabel) {
+		super(Component.translatable("screen.emote.wheel.title"));
 		this.controller = controller;
 		this.emotes = List.copyOf(emotes);
 		this.pageIndex = clampPageIndex(pageIndex);
+		this.bindingLabel = bindingLabel;
 	}
 
 	@Override
@@ -101,16 +102,17 @@ public class EmoteWheelScreen extends Screen {
 		this.lastMouseY = event.y();
 		updateHoveredSlot(event.x(), event.y());
 
-		if (event.button() == RIGHT_MOUSE_BUTTON) {
-			this.onClose();
+		if (event.button() == LEFT_MOUSE_BUTTON) {
+			changePage(-1, event.x(), event.y());
 			return true;
 		}
 
-		if (event.button() == LEFT_MOUSE_BUTTON) {
-			return selectHoveredSlot();
+		if (event.button() == RIGHT_MOUSE_BUTTON) {
+			changePage(1, event.x(), event.y());
+			return true;
 		}
 
-		return event.button() == MIDDLE_MOUSE_BUTTON;
+		return false;
 	}
 
 	@Override
@@ -118,20 +120,7 @@ public class EmoteWheelScreen extends Screen {
 		this.lastMouseX = event.x();
 		this.lastMouseY = event.y();
 		updateHoveredSlot(event.x(), event.y());
-
-		if (event.button() == MIDDLE_MOUSE_BUTTON) {
-			if (!selectHoveredSlot()) {
-				this.onClose();
-			}
-			return true;
-		}
-
-		if (event.button() == RIGHT_MOUSE_BUTTON) {
-			this.onClose();
-			return true;
-		}
-
-		return false;
+		return event.button() == LEFT_MOUSE_BUTTON || event.button() == RIGHT_MOUSE_BUTTON;
 	}
 
 	@Override
@@ -152,6 +141,21 @@ public class EmoteWheelScreen extends Screen {
 		this.pageIndex = positiveModulo(this.pageIndex + direction, getPageCount());
 		updateHoveredSlot(x, y);
 		return true;
+	}
+
+	public void handleBindingReleased() {
+		if (!selectHoveredSlot()) {
+			this.onClose();
+		}
+	}
+
+	private void changePage(int direction, double mouseX, double mouseY) {
+		if (getPageCount() <= 1) {
+			return;
+		}
+
+		this.pageIndex = positiveModulo(this.pageIndex + direction, getPageCount());
+		updateHoveredSlot(mouseX, mouseY);
 	}
 
 	private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, PlayableEmote playableEmote, boolean hovered) {
@@ -186,14 +190,14 @@ public class EmoteWheelScreen extends Screen {
 		drawHex(graphics, xPoints, yPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
 
 		if (this.emotes.isEmpty()) {
-			graphics.centeredText(this.font, "No usable", metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
-			graphics.centeredText(this.font, "emotes", metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
+			graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_usable"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
+			graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.emotes"), metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
 			return;
 		}
 
 		graphics.centeredText(this.font, (this.pageIndex + 1) + "/" + getPageCount(), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
-		graphics.centeredText(this.font, "Release", metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
-		graphics.centeredText(this.font, "to play", metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
+		graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.release"), metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
+		graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
 	}
 
 	private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<PlayableEmote> pageEmotes) {
@@ -217,15 +221,22 @@ public class EmoteWheelScreen extends Screen {
 		}
 
 		if (this.emotes.isEmpty()) {
-			graphics.centeredText(this.font, "Wheel synced, but you cannot use any emotes.", metrics.centerX(), footerTop + 8, BODY_COLOR);
+			graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.no_usable"), metrics.centerX(), footerTop + 8, BODY_COLOR);
 			return;
 		}
 
-		graphics.centeredText(this.font, "Move the mouse and release middle click.", metrics.centerX(), footerTop, BODY_COLOR);
+		graphics.centeredText(
+			this.font,
+			Component.translatable("screen.emote.wheel.footer.release_to_play", this.bindingLabel),
+			metrics.centerX(),
+			footerTop,
+			BODY_COLOR
+		);
+		graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.close"), metrics.centerX(), footerTop + 14, MUTED_COLOR);
 		if (getPageCount() > 1) {
-			graphics.centeredText(this.font, "Scroll to change page.", metrics.centerX(), footerTop + 14, MUTED_COLOR);
+			graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.page_click"), metrics.centerX(), footerTop + 28, MUTED_COLOR);
+			return;
 		}
-		graphics.centeredText(this.font, "Right click or Esc to close.", metrics.centerX(), footerTop + 28, MUTED_COLOR);
 	}
 
 	private boolean selectHoveredSlot() {

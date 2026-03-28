@@ -2,6 +2,7 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.client.EmotePerspectiveController;
 import io.github.hanhy06.emote.client.EmoteWheelController;
+import io.github.hanhy06.emote.client.EmoteWheelScreen;
 import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
@@ -17,8 +18,9 @@ public class EmoteClient implements ClientModInitializer {
 	private static final EmotePerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new EmotePerspectiveController();
 	private static final EmoteWheelController EMOTE_WHEEL_CONTROLLER = new EmoteWheelController();
 	private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
-		new KeyMapping("key.emote.wheel", GLFW.GLFW_MOUSE_BUTTON_MIDDLE, KeyMapping.Category.MISC)
+		new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
 	);
+	private static boolean wheelBindingReleaseArmed;
 
 	@Override
 	public void onInitializeClient() {
@@ -44,13 +46,26 @@ public class EmoteClient implements ClientModInitializer {
 		});
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			if (client.screen instanceof EmoteWheelScreen emoteWheelScreen) {
+				if (EMOTE_WHEEL_KEY.isDown()) {
+					wheelBindingReleaseArmed = true;
+				} else if (wheelBindingReleaseArmed) {
+					wheelBindingReleaseArmed = false;
+					emoteWheelScreen.handleBindingReleased();
+				}
+				return;
+			}
+
+			wheelBindingReleaseArmed = false;
 			if (client.screen != null || client.player == null) {
 				return;
 			}
 
 			while (EMOTE_WHEEL_KEY.consumeClick()) {
-				drainPickItemClicks(client.options.keyPickItem);
-				EMOTE_WHEEL_CONTROLLER.openWheel();
+				if (EMOTE_WHEEL_KEY.same(client.options.keyPickItem)) {
+					drainPickItemClicks(client.options.keyPickItem);
+				}
+				EMOTE_WHEEL_CONTROLLER.openWheel(EMOTE_WHEEL_KEY.getTranslatedKeyMessage());
 			}
 		});
 	}
