@@ -6,7 +6,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 public class EmoteRegistry {
 	private volatile RegistryState state = RegistryState.empty();
@@ -46,21 +45,22 @@ public class EmoteRegistry {
 		return this.state.definitions();
 	}
 
-	public Optional<EmoteDefinition> findDefinition(String namespace) {
-		return Optional.ofNullable(this.state.definitionMap().get(namespace));
+	public EmoteDefinition findDefinition(String namespace) {
+		return this.state.definitionMap().get(namespace);
 	}
 
-	public Optional<EmoteDefinition> findDefinitionByCommandName(String commandName) {
-		return Optional.ofNullable(this.state.commandDefinitionMap().get(normalizeKey(commandName)));
+	public EmoteDefinition findDefinitionByCommandName(String commandName) {
+		return this.state.commandDefinitionMap().get(normalizeKey(commandName));
 	}
 
-	public Optional<EmoteDefinition> findDefinitionForPlay(String commandNameOrNamespace) {
-		return findDefinitionByCommandName(commandNameOrNamespace)
-			.or(() -> findDefinition(commandNameOrNamespace));
+	public EmoteDefinition findDefinitionForPlay(String commandNameOrNamespace) {
+		EmoteDefinition definition = findDefinitionByCommandName(commandNameOrNamespace);
+		return definition != null ? definition : findDefinition(commandNameOrNamespace);
 	}
 
-	public Optional<EmoteAnimation> findAnimation(String namespace, String animationName) {
-		return findDefinition(namespace).flatMap(definition -> definition.findAnimation(animationName));
+	public EmoteAnimation findAnimation(String namespace, String animationName) {
+		EmoteDefinition definition = findDefinition(namespace);
+		return definition == null ? null : definition.findAnimation(animationName);
 	}
 
 	public List<String> getNamespaces() {
@@ -72,15 +72,17 @@ public class EmoteRegistry {
 	}
 
 	public List<String> getAnimationNames(String namespace) {
-		return findDefinition(namespace)
-			.map(definition -> definition.animations().stream().map(EmoteAnimation::name).toList())
-			.orElseGet(List::of);
+		EmoteDefinition definition = findDefinition(namespace);
+		return definition == null
+			? List.of()
+			: definition.animations().stream().map(EmoteAnimation::name).toList();
 	}
 
 	public List<String> getAnimationNamesForPlay(String commandNameOrNamespace) {
-		return findDefinitionForPlay(commandNameOrNamespace)
-			.map(definition -> definition.animations().stream().map(EmoteAnimation::name).toList())
-			.orElseGet(List::of);
+		EmoteDefinition definition = findDefinitionForPlay(commandNameOrNamespace);
+		return definition == null
+			? List.of()
+			: definition.animations().stream().map(EmoteAnimation::name).toList();
 	}
 
 	public int size() {

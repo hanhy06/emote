@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 public record EmoteDefinition(
 	String namespace,
@@ -52,21 +51,21 @@ public record EmoteDefinition(
 		skinParts = List.copyOf(skinParts);
 	}
 
-	public Optional<EmoteAnimation> findAnimation(String animationName) {
+	public EmoteAnimation findAnimation(String animationName) {
 		for (EmoteAnimation animation : this.animations) {
 			if (animation.name().equals(animationName)) {
-				return Optional.of(animation);
+				return animation;
 			}
 		}
 
-		return Optional.empty();
+		return null;
 	}
 
-	public Optional<EmoteAnimation> findDefaultAnimation() {
+	public EmoteAnimation findDefaultAnimation() {
 		EmoteAnimation fallbackAnimation = null;
 		for (EmoteAnimation animation : this.animations) {
 			if (animation.name().equals(this.defaultAnimationName)) {
-				return Optional.of(animation);
+				return animation;
 			}
 
 			if (fallbackAnimation == null && animation.name().equals("default")) {
@@ -75,19 +74,16 @@ public record EmoteDefinition(
 		}
 
 		if (fallbackAnimation != null) {
-			return Optional.of(fallbackAnimation);
+			return fallbackAnimation;
 		}
 
-		return this.animations.isEmpty()
-			? Optional.empty()
-			: Optional.of(this.animations.get(0));
+		return this.animations.isEmpty() ? null : this.animations.get(0);
 	}
 
 	public boolean isDefaultAnimation(String animationName) {
 		Objects.requireNonNull(animationName, "animationName");
-		return findDefaultAnimation()
-			.map(animation -> animation.name().equals(animationName))
-			.orElse(false);
+		EmoteAnimation defaultAnimation = findDefaultAnimation();
+		return defaultAnimation != null && defaultAnimation.name().equals(animationName);
 	}
 
 	public String createDisplayName(String animationName) {

@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -92,22 +91,22 @@ public class EmotePlaybackManager {
 		return EmotePlaybackStartResult.SUCCESS;
 	}
 
-	public Optional<ActiveEmote> stopEmote(ServerPlayer player) {
+	public ActiveEmote stopEmote(ServerPlayer player) {
 		return stopEmote(player.level().getServer(), player.getUUID());
 	}
 
-	public Optional<ActiveEmote> stopEmote(MinecraftServer server, UUID playerUuid) {
+	public ActiveEmote stopEmote(MinecraftServer server, UUID playerUuid) {
 		ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
 		if (activeEmote == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		stopActiveEmote(server, activeEmote);
-		return Optional.of(activeEmote);
+		return activeEmote;
 	}
 
-	public Optional<ActiveEmote> findActiveEmote(UUID playerUuid) {
-		return Optional.ofNullable(this.activeEmoteMap.get(playerUuid));
+	public ActiveEmote findActiveEmote(UUID playerUuid) {
+		return this.activeEmoteMap.get(playerUuid);
 	}
 
 	public void tick(MinecraftServer server) {

@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.dialog;
 
 import io.github.hanhy06.emote.config.ConfigManager;
+import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
@@ -59,7 +60,7 @@ public class EmoteDialogManager {
 			));
 		}
 
-		if (this.emotePlaybackManager.findActiveEmote(player.getUUID()).isPresent()) {
+		if (this.emotePlaybackManager.findActiveEmote(player.getUUID()) != null) {
 			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
 
@@ -119,12 +120,10 @@ public class EmoteDialogManager {
 			return "No emotes.";
 		}
 
-		Optional<ActiveEmote> activeEmote = this.emotePlaybackManager.findActiveEmote(player.getUUID());
-		String activeEmoteText = activeEmote
-			.map(value -> " Active: " + this.emoteRegistry.findDefinition(value.namespace())
-				.map(definition -> definition.createDisplayName(value.animationName()))
-				.orElse(value.namespace() + ":" + value.animationName()))
-			.orElse("");
+		ActiveEmote activeEmote = this.emotePlaybackManager.findActiveEmote(player.getUUID());
+		String activeEmoteText = activeEmote == null
+			? ""
+			: createActiveEmoteText(activeEmote);
 
 		if (dialogPage.playableEmoteCount() == 0) {
 			return "No usable emotes." + activeEmoteText;
@@ -145,6 +144,14 @@ public class EmoteDialogManager {
 		int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);
 		int endIndex = Math.min(startIndex + playButtonsPerPage, playableEmoteCount);
 		return new DialogPage(playableEmoteCount, pageNumber, totalPageCount, startIndex, endIndex);
+	}
+
+	private String createActiveEmoteText(ActiveEmote activeEmote) {
+		EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.namespace());
+		String displayName = definition == null
+			? activeEmote.namespace() + ":" + activeEmote.animationName()
+			: definition.createDisplayName(activeEmote.animationName());
+		return " Active: " + displayName;
 	}
 
 	private record DialogPage(
