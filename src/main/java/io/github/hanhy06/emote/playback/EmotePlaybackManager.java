@@ -14,6 +14,7 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
@@ -30,6 +31,7 @@ public class EmotePlaybackManager {
 	private static final long PLAYBACK_BUFFER_TICKS = 8L;
 	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
 	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
+	private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 	private final PlayerSkinManager playerSkinManager;
 	private EmotePlaybackStateListener stateListener = new EmotePlaybackStateListener() {
@@ -158,7 +160,7 @@ public class EmotePlaybackManager {
 		executeFunction(server, activeEmote, activeEmote.namespace() + ":_/delete");
 		ServerLevel level = server.getLevel(activeEmote.levelKey());
 		if (level != null) {
-			cleanupNamespaceEntities(level, activeEmote.namespace());
+			cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
 		}
 
 		ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
@@ -193,6 +195,20 @@ public class EmotePlaybackManager {
 
 		if (player.level() instanceof ServerLevel serverLevel) {
 			cleanupNamespaceEntities(serverLevel, namespace);
+		}
+	}
+
+	private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
+		AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
+		List<Display> displaysToKill = level.getEntitiesOfClass(
+			Display.class,
+			searchBox,
+			entity -> matchesNamespaceDisplay(entity, namespace)
+		);
+		for (Entity entity : displaysToKill) {
+			if (!entity.isRemoved()) {
+				entity.kill(level);
+			}
 		}
 	}
 

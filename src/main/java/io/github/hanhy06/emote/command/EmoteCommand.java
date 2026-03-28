@@ -24,7 +24,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 public final class EmoteCommand {
@@ -192,31 +191,30 @@ public final class EmoteCommand {
 		String animationName
 	) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-
-		Optional<EmoteDefinition> definition = emoteRegistry.findDefinitionForPlay(emoteName);
-		if (definition.isEmpty()) {
+		EmoteDefinition definition = emoteRegistry.findDefinitionForPlay(emoteName).orElse(null);
+		if (definition == null) {
 			source.sendFailure(Component.literal("Unknown: " + emoteName));
 			return 0;
 		}
 
-		Optional<EmoteAnimation> animation = definition.get().findAnimation(animationName);
-		if (animation.isEmpty()) {
-			source.sendFailure(Component.literal("Unknown: " + definition.get().commandName() + ":" + animationName));
+		EmoteAnimation animation = definition.findAnimation(animationName).orElse(null);
+		if (animation == null) {
+			source.sendFailure(Component.literal("Unknown: " + definition.commandName() + ":" + animationName));
 			return 0;
 		}
 
-		if (!emotePermissionService.canPlay(player, definition.get().namespace(), animationName)) {
+		if (!emotePermissionService.canPlay(player, definition.namespace(), animation.name())) {
 			source.sendFailure(Component.literal("No emote permission."));
 			return 0;
 		}
 
-		Optional<String> playError = emotePlaybackManager.startEmote(player, definition.get(), animation.get());
-		if (playError.isPresent()) {
-			source.sendFailure(Component.literal(playError.get()));
+		String playError = emotePlaybackManager.startEmote(player, definition, animation).orElse(null);
+		if (playError != null) {
+			source.sendFailure(Component.literal(playError));
 			return 0;
 		}
 
-		String displayName = definition.get().createDisplayName(animationName);
+		String displayName = definition.createDisplayName(animation.name());
 		source.sendSuccess(
 			() -> Component.literal("Play: " + displayName),
 			false
@@ -232,15 +230,15 @@ public final class EmoteCommand {
 	) throws CommandSyntaxException {
 		CommandSourceStack source = context.getSource();
 		String emoteName = StringArgumentType.getString(context, "emote");
-		Optional<EmoteDefinition> definition = emoteRegistry.findDefinitionForPlay(emoteName);
-		if (definition.isEmpty()) {
+		EmoteDefinition definition = emoteRegistry.findDefinitionForPlay(emoteName).orElse(null);
+		if (definition == null) {
 			source.sendFailure(Component.literal("Unknown: " + emoteName));
 			return 0;
 		}
 
-		Optional<EmoteAnimation> defaultAnimation = definition.get().findDefaultAnimation();
-		if (defaultAnimation.isEmpty()) {
-			source.sendFailure(Component.literal("No default: " + definition.get().commandName()));
+		EmoteAnimation defaultAnimation = definition.findDefaultAnimation().orElse(null);
+		if (defaultAnimation == null) {
+			source.sendFailure(Component.literal("No default: " + definition.commandName()));
 			return 0;
 		}
 
@@ -250,7 +248,7 @@ public final class EmoteCommand {
 			emotePlaybackManager,
 			emotePermissionService,
 			emoteName,
-			defaultAnimation.get().name()
+			defaultAnimation.name()
 		);
 	}
 
@@ -272,15 +270,14 @@ public final class EmoteCommand {
 
 	private static int stopEmote(CommandSourceStack source, EmotePlaybackManager emotePlaybackManager) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-		Optional<ActiveEmote> activeEmote = emotePlaybackManager.stopEmote(player);
-		if (activeEmote.isEmpty()) {
+		ActiveEmote activeEmote = emotePlaybackManager.stopEmote(player).orElse(null);
+		if (activeEmote == null) {
 			source.sendFailure(Component.literal("No active emote."));
 			return 0;
 		}
 
-		ActiveEmote removedEmote = activeEmote.get();
 		source.sendSuccess(
-			() -> Component.literal("Stop: " + removedEmote.namespace() + ":" + removedEmote.animationName()),
+			() -> Component.literal("Stop: " + activeEmote.namespace() + ":" + activeEmote.animationName()),
 			false
 		);
 		return 1;

@@ -21,8 +21,7 @@ import java.util.Map;
 import java.util.Objects;
 
 public class ConfigManager {
-	public static ConfigManager INSTANCE;
-	public final Object LOCK_KEY = new Object();
+	private static ConfigManager instance;
 
 	private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
 	private static final String CONFIG_FILE_NAME = "config.json";
@@ -30,6 +29,7 @@ public class ConfigManager {
 	private static final String DATAPACK_EXAMPLE_FILE_NAME = "emote-datapack.example.json";
 
 	private final Path configDirPath;
+	private final Object writeLock = new Object();
 	private final Gson gson = new GsonBuilder()
 		.setPrettyPrinting()
 		.disableHtmlEscaping()
@@ -39,7 +39,7 @@ public class ConfigManager {
 	private Config config = Config.createDefault();
 
 	public ConfigManager(Path configBasePath) {
-		INSTANCE = this;
+		instance = this;
 		this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
 
 		try {
@@ -48,14 +48,14 @@ public class ConfigManager {
 			}
 
 			writeIfAbsent();
-			writeDatapackExample();
+			writeDatapackExampleIfAbsent();
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
 		}
 	}
 
 	public static Config getConfig() {
-		return INSTANCE.config;
+		return Objects.requireNonNull(instance, "ConfigManager not initialized").config;
 	}
 
 	public boolean readConfig() {
@@ -97,7 +97,7 @@ public class ConfigManager {
 	}
 
 	public void writeConfig() {
-		synchronized (this.LOCK_KEY) {
+		synchronized (this.writeLock) {
 			writeJsonFile(this.config);
 		}
 	}
@@ -121,18 +121,16 @@ public class ConfigManager {
 		writeJsonFile(this.config);
 	}
 
-	private void writeDatapackExample() throws IOException {
+	private void writeDatapackExampleIfAbsent() throws IOException {
 		Path datapackDirPath = this.configDirPath.resolve(DATAPACK_DIR_NAME);
 		if (!Files.exists(datapackDirPath)) {
 			Files.createDirectories(datapackDirPath);
 		}
 
 		Path exampleFilePath = datapackDirPath.resolve(DATAPACK_EXAMPLE_FILE_NAME);
-		LinkedHashMap<String, Object> exampleJson = new LinkedHashMap<>();
-		exampleJson.put("name", "Example Emote");
-		exampleJson.put("description", "Shown in the emote dialog.");
-		exampleJson.put("command_name", "example");
-		exampleJson.put("default_animation", "default");
+		if (Files.exists(exampleFilePath)) {
+			return;
+		}
 
 		try (BufferedWriter writer = Files.newBufferedWriter(
 			exampleFilePath,
@@ -140,9 +138,18 @@ public class ConfigManager {
 			StandardOpenOption.CREATE,
 			StandardOpenOption.TRUNCATE_EXISTING
 		)) {
-			this.gson.toJson(exampleJson, writer);
+			this.gson.toJson(createDatapackExampleJson(), writer);
 			Emote.LOGGER.info("Saved {}", this.configDirPath.relativize(exampleFilePath));
 		}
+	}
+
+	private LinkedHashMap<String, Object> createDatapackExampleJson() {
+		LinkedHashMap<String, Object> exampleJson = new LinkedHashMap<>();
+		exampleJson.put("name", "Example Emote");
+		exampleJson.put("description", "Shown in the emote dialog.");
+		exampleJson.put("command_name", "example");
+		exampleJson.put("default_animation", "default");
+		return exampleJson;
 	}
 
 	private void writeJsonFile(Config config) {

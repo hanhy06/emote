@@ -43,10 +43,6 @@ public class EmoteDialogManager {
 		this.emotePlaybackManager = emotePlaybackManager;
 	}
 
-	public void openRootDialog(ServerPlayer player) {
-		openDialog(player, 1);
-	}
-
 	public void openDialog(ServerPlayer player, int pageNumber) {
 		Dialog dialog = createRootDialog(player, pageNumber);
 		player.openDialog(Holder.direct(dialog));
@@ -128,29 +124,18 @@ public class EmoteDialogManager {
 	public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
 		List<PlayableEmote> playableEmotes = new ArrayList<>();
 		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
-			String defaultAnimationName = definition.findDefaultAnimation()
-				.map(EmoteAnimation::name)
-				.orElse("");
 			for (EmoteAnimation animation : definition.animations()) {
 				String animationName = animation.name();
 				if (!this.emotePermissionService.canPlay(player, definition.namespace(), animationName)) {
 					continue;
 				}
 
-				boolean isDefaultAnimation = animationName.equals(defaultAnimationName);
-				String displayName = definition.animations().size() <= 1 || isDefaultAnimation
-					? definition.name()
-					: definition.name() + " - " + animationName;
-				String description = definition.animations().size() <= 1 || isDefaultAnimation
-					? definition.description()
-					: definition.description() + " (" + animationName + ")";
-
 				playableEmotes.add(new PlayableEmote(
 					definition.commandName(),
 					animationName,
-					isDefaultAnimation,
-					displayName,
-					description
+					definition.isDefaultAnimation(animationName),
+					definition.createDisplayName(animationName),
+					definition.createDisplayDescription(animationName)
 				));
 			}
 		}

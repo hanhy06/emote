@@ -35,19 +35,13 @@ public class EmoteClient implements ClientModInitializer {
 		);
 
 		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			EMOTE_PERSPECTIVE_CONTROLLER.clear();
-			EMOTE_WHEEL_CONTROLLER.clear();
+			clearClientState();
 			if (ClientPlayNetworking.canSend(EmoteSkinSupportPayload.TYPE)) {
 				ClientPlayNetworking.send(EmoteSkinSupportPayload.INSTANCE);
 			}
 		});
 
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
-			EMOTE_PERSPECTIVE_CONTROLLER.clear();
-			EMOTE_WHEEL_CONTROLLER.clear();
-			wheelBindingReleaseArmed = false;
-			wheelHoldWasDown = false;
-		});
+		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clearClientState());
 
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			boolean wheelHoldDown = isEmoteBindingDown(client);
@@ -84,6 +78,13 @@ public class EmoteClient implements ClientModInitializer {
 	private static void drainPickItemClicks(KeyMapping keyMapping) {
 		while (keyMapping.consumeClick()) {
 		}
+	}
+
+	private static void clearClientState() {
+		EMOTE_PERSPECTIVE_CONTROLLER.clear();
+		EMOTE_WHEEL_CONTROLLER.clear();
+		wheelBindingReleaseArmed = false;
+		wheelHoldWasDown = false;
 	}
 
 	private static boolean isEmoteBindingDown(net.minecraft.client.Minecraft client) {

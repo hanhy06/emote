@@ -59,10 +59,6 @@ public class EmoteWheelController {
 		player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
 	}
 
-	public int pageSize() {
-		return PAGE_SIZE;
-	}
-
 	private void openMenuFallback(LocalPlayer player) {
 		player.connection.sendUnattendedCommand(MENU_FALLBACK_COMMAND, null);
 	}

@@ -98,14 +98,6 @@ public class EmotePermissionService implements ConfigListener {
 		return Permissions.check(player, permission, fallbackLevel);
 	}
 
-	private boolean hasPermission(CommandSourceStack source, String permission, int fallbackLevel) {
-		if (permission == null || permission.isBlank()) {
-			return true;
-		}
-
-		return Permissions.check(source, permission, fallbackLevel);
-	}
-
 	private String normalizePermission(String permission) {
 		return permission == null ? "" : permission.trim();
 	}

@@ -207,17 +207,17 @@ public class PlayerSkinManager implements ConfigListener {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
-		Optional<PlayerSkinHost> playerSkinHost = findPlayerSkinHost(player);
-		if (playerSkinHost.isEmpty()) {
+		PlayerSkinHost playerSkinHost = findPlayerSkinHost(player).orElse(null);
+		if (playerSkinHost == null) {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
-		Optional<Map<PlayerSkinTextureKey, String>> playerSkinTextureSet = loadPlayerSkinTextureSet(player, skinParts);
-		if (playerSkinTextureSet.isEmpty()) {
+		Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(player, skinParts).orElse(null);
+		if (playerSkinTextureSet == null) {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
-		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost.get(), playerSkinTextureSet.get());
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost, playerSkinTextureSet);
 		if (profileMap.isEmpty()) {
 			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
@@ -262,13 +262,13 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		String token = request.path().substring(HTTP_PATH_PREFIX.length(), request.path().length() - 4);
-		Optional<byte[]> pngBytes = this.playerSkinTextureStore.find(token);
-		if (pngBytes.isEmpty()) {
+		byte[] pngBytes = this.playerSkinTextureStore.find(token).orElse(null);
+		if (pngBytes == null) {
 			writeResponse(context, 404, "Not Found", "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), request.headOnly());
 			return true;
 		}
 
-		writeResponse(context, 200, "OK", "image/png", pngBytes.get(), request.headOnly());
+		writeResponse(context, 200, "OK", "image/png", pngBytes, request.headOnly());
 		return true;
 	}
 
@@ -292,13 +292,13 @@ public class PlayerSkinManager implements ConfigListener {
 			}
 
 			String token = path.substring(HTTP_PATH_PREFIX.length(), path.length() - 4);
-			Optional<byte[]> pngBytes = this.playerSkinTextureStore.find(token);
-			if (pngBytes.isEmpty()) {
+			byte[] pngBytes = this.playerSkinTextureStore.find(token).orElse(null);
+			if (pngBytes == null) {
 				writeExchangeResponse(exchange, 404, "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), headOnly);
 				return;
 			}
 
-			writeExchangeResponse(exchange, 200, "image/png", pngBytes.get(), headOnly);
+			writeExchangeResponse(exchange, 200, "image/png", pngBytes, headOnly);
 		} finally {
 			exchange.close();
 		}
@@ -347,15 +347,15 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		Connection connection = ((ServerCommonPacketListenerImplAccessor) player.connection).emote$getConnection();
-		Optional<PlayerSkinHost> storedHost = this.playerSkinHostStore.find(connection);
-		if (storedHost.isPresent()) {
-			int resolvedPort = resolvePlayerSkinPort(server, storedHost.get().port());
+		PlayerSkinHost storedHost = this.playerSkinHostStore.find(connection).orElse(null);
+		if (storedHost != null) {
+			int resolvedPort = resolvePlayerSkinPort(server, storedHost.port());
 			if (resolvedPort <= 0) {
 				return Optional.empty();
 			}
 
 			return Optional.of(new PlayerSkinHost(
-				storedHost.get().host(),
+				storedHost.host(),
 				resolvedPort
 			));
 		}
@@ -374,12 +374,11 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private Optional<Map<PlayerSkinTextureKey, String>> loadPlayerSkinTextureSet(ServerPlayer player, List<EmoteSkinPart> skinParts) {
-		Optional<PlayerSkinSource> playerSkinSource = readPlayerSkinSource(player);
-		if (playerSkinSource.isEmpty()) {
+		PlayerSkinSource skinSource = readPlayerSkinSource(player).orElse(null);
+		if (skinSource == null) {
 			return Optional.empty();
 		}
 
-		PlayerSkinSource skinSource = playerSkinSource.get();
 		String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
 		ConcurrentMap<PlayerSkinTextureKey, String> cachedTextureTokens = this.playerSkinTextureSetMap.computeIfAbsent(
 			cacheKey,

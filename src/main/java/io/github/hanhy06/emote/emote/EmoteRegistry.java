@@ -4,6 +4,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 
@@ -87,7 +88,7 @@ public class EmoteRegistry {
 	}
 
 	private String normalizeKey(String value) {
-		return value == null ? "" : value.trim().toLowerCase();
+		return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
 	}
 
 	private record RegistryState(

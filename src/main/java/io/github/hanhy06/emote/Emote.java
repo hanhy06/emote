@@ -13,7 +13,9 @@ import io.github.hanhy06.emote.network.EmoteWheelPlayService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
+import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
+import io.github.hanhy06.emote.playback.EmotePlaybackStateListener;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -24,6 +26,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,7 +55,7 @@ public class Emote implements ModInitializer {
 	private final EmotePlaybackStateService emotePlaybackStateService = new EmotePlaybackStateService();
 	private final EmoteWheelPlayService emoteWheelPlayService = new EmoteWheelPlayService(
 		this.emoteRegistry,
-		this.emoteDialogManager,
+		this.emotePermissionService,
 		this.emotePlaybackManager
 	);
 	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.emoteDialogManager);
@@ -62,14 +65,14 @@ public class Emote implements ModInitializer {
 		this.configManager.addListener(this.emotePermissionService);
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
-		this.emotePlaybackManager.setStateListener(new io.github.hanhy06.emote.playback.EmotePlaybackStateListener() {
+		this.emotePlaybackManager.setStateListener(new EmotePlaybackStateListener() {
 			@Override
-			public void onEmoteStarted(net.minecraft.server.level.ServerPlayer player, io.github.hanhy06.emote.playback.ActiveEmote activeEmote) {
+			public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
 				emotePlaybackStateService.syncActive(player);
 			}
 
 			@Override
-			public void onEmoteStopped(net.minecraft.server.level.ServerPlayer player, io.github.hanhy06.emote.playback.ActiveEmote activeEmote) {
+			public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
 				emotePlaybackStateService.syncInactive(player);
 			}
 		});

@@ -202,8 +202,8 @@ public class BDEngineDatapackProcessor {
 			return List.of();
 		}
 
-		Optional<EmoteDatapackMeta> datapackMeta = readDatapackMeta(packPath, packRootPath);
-		if (datapackMeta.isEmpty()) {
+		EmoteDatapackMeta datapackMeta = readDatapackMeta(packPath, packRootPath).orElse(null);
+		if (datapackMeta == null) {
 			return List.of();
 		}
 
@@ -216,7 +216,7 @@ public class BDEngineDatapackProcessor {
 
 		try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
 			for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-				readDefinition(packPath, namespacePath, datapackMeta.get()).ifPresent(definitions::add);
+				readDefinition(packPath, namespacePath, datapackMeta).ifPresent(definitions::add);
 			}
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to read datapack namespaces from {}", packPath, exception);
