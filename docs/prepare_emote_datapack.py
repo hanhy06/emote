@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 import math
+import shutil
 import re
 import tempfile
 import zipfile
@@ -38,22 +40,30 @@ class PlayerHeadPart:
 		return abs(self.x)
 
 
+@dataclass(frozen=True)
+class EmoteMetadata:
+	name: str
+	description: str
+	command_name: str
+	default_animation: str
+
+
 def main() -> int:
 	parser = build_argument_parser()
 	args = parser.parse_args()
 
 	exit_code = 0
-	for zip_path in args.zip_paths:
+	for input_path in args.input_paths:
 		try:
-			output_path = process_zip(zip_path.resolve())
+			output_path = process_input_path(input_path.resolve())
 		except SystemExit as exception:
 			message = str(exception)
 			if message:
-				print(f"[skip] {zip_path}: {message}")
+				print(f"[skip] {input_path}: {message}")
 			exit_code = 1
 			continue
 
-		print(f"[ok] {zip_path} -> {output_path}")
+		print(f"[ok] {input_path} -> {output_path}")
 
 	return exit_code
 
@@ -61,27 +71,23 @@ def main() -> int:
 def build_argument_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(
 		description=(
-			"Drop a BD Engine datapack zip onto this script, and it will create "
-			"a sibling .emote.zip with emote:* skin markers and emote-datapack.json."
+			"Drop a BD Engine datapack zip or folder onto this script, and it will create "
+			"a sibling emote.<name>.zip with emote:* skin markers and emote-datapack.json."
 		)
 	)
-	parser.add_argument("zip_paths", nargs="+", type=Path, help="One or more datapack .zip files")
+	parser.add_argument("input_paths", nargs="+", type=Path, help="One or more datapack .zip files or folders")
 	return parser
 
 
-def process_zip(zip_path: Path) -> Path:
-	validate_zip_path(zip_path)
-	output_path = create_output_path(zip_path)
+def process_input_path(input_path: Path) -> Path:
+	validate_input_path(input_path)
+	output_path = create_output_path(input_path)
 
 	with tempfile.TemporaryDirectory(prefix="emote-datapack-") as temp_dir_name:
 		temp_dir = Path(temp_dir_name)
-		extract_dir = temp_dir / "extract"
-		extract_dir.mkdir(parents=True, exist_ok=True)
+		work_dir = prepare_work_dir(input_path, temp_dir)
 
-		with zipfile.ZipFile(zip_path) as input_zip_file:
-			input_zip_file.extractall(extract_dir)
-
-		pack_root = find_pack_root(extract_dir)
+		pack_root = find_pack_root(work_dir)
 		create_function_paths = find_create_function_paths(pack_root)
 		if not create_function_paths:
 			raise SystemExit("No compatible create.mcfunction file was found.")
@@ -103,24 +109,42 @@ def process_zip(zip_path: Path) -> Path:
 		if updated_files == 0:
 			raise SystemExit("No player_head parts were found in create.mcfunction.")
 
-		ensure_emote_datapack_meta(pack_root, zip_path, namespaces)
+		meta = prompt_emote_metadata(pack_root, input_path, namespaces)
+		write_emote_datapack_meta(pack_root, meta)
 		write_zip(pack_root, output_path)
 
 	return output_path
 
 
-def validate_zip_path(zip_path: Path) -> None:
-	if not zip_path.is_file():
-		raise SystemExit("The input path is not a file.")
-	if zip_path.suffix.lower() != ".zip":
+def validate_input_path(input_path: Path) -> None:
+	if not input_path.exists():
+		raise SystemExit("The input path does not exist.")
+	if input_path.is_file() and input_path.suffix.lower() != ".zip":
 		raise SystemExit("The input file must be a .zip.")
+	if not input_path.is_file() and not input_path.is_dir():
+		raise SystemExit("The input path must be a .zip file or folder.")
 
 
-def create_output_path(zip_path: Path) -> Path:
-	stem = zip_path.stem
+def create_output_path(input_path: Path) -> Path:
+	stem = input_path.stem if input_path.is_file() else input_path.name
 	if stem.endswith(".emote"):
 		stem = stem[:-6]
-	return zip_path.with_name(f"{stem}.emote.zip")
+	return input_path.with_name(f"emote.{stem}.zip")
+
+
+def prepare_work_dir(input_path: Path, temp_dir: Path) -> Path:
+	work_dir = temp_dir / "work"
+	work_dir.mkdir(parents=True, exist_ok=True)
+	if input_path.is_dir():
+		copy_dir = work_dir / input_path.name
+		shutil.copytree(input_path, copy_dir)
+		return copy_dir
+
+	extract_dir = work_dir / "extract"
+	extract_dir.mkdir(parents=True, exist_ok=True)
+	with zipfile.ZipFile(input_path) as input_zip_file:
+		input_zip_file.extractall(extract_dir)
+	return extract_dir
 
 
 def find_pack_root(extract_dir: Path) -> Path:
@@ -129,7 +153,7 @@ def find_pack_root(extract_dir: Path) -> Path:
 		key=lambda path: (len(path.parts), str(path).lower()),
 	)
 	if not pack_meta_paths:
-		raise SystemExit("pack.mcmeta was not found inside the zip.")
+		raise SystemExit("pack.mcmeta was not found inside the input path.")
 
 	return pack_meta_paths[0].parent
 
@@ -450,18 +474,65 @@ def find_matching_brace(value: str, open_index: int) -> int:
 	raise SystemExit("A closing brace could not be found.")
 
 
-def ensure_emote_datapack_meta(pack_root: Path, zip_path: Path, namespaces: list[str]) -> None:
-	meta_path = pack_root / PACK_META_FILE_NAME
-	if meta_path.exists():
-		return
+def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[str]) -> EmoteMetadata:
+	existing_meta = load_existing_meta(pack_root)
+	default_name = str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
+	default_description = str(existing_meta.get("description") or f"{default_name} emote.")
+	default_command_name = str(
+		existing_meta.get("command_name")
+		or sanitize_command_name(namespaces[0] if len(namespaces) == 1 else get_input_stem(input_path))
+	)
+	default_animation = str(existing_meta.get("default_animation") or "default")
 
-	display_name = prettify_name(zip_path.stem.removesuffix(".emote"))
-	command_source = namespaces[0] if len(namespaces) == 1 else zip_path.stem.removesuffix(".emote")
+	print()
+	print(f"[meta] {input_path.name}")
+	name = prompt_value("name", default_name)
+	description = prompt_value("description", default_description)
+	command_name = sanitize_command_name(prompt_value("command_name", default_command_name))
+	default_animation = prompt_value("default_animation", default_animation)
+	print()
+
+	return EmoteMetadata(
+		name=name,
+		description=description,
+		command_name=command_name,
+		default_animation=default_animation,
+	)
+
+
+def load_existing_meta(pack_root: Path) -> dict[str, object]:
+	meta_path = pack_root / PACK_META_FILE_NAME
+	if not meta_path.exists():
+		return {}
+	try:
+		loaded_meta = json.loads(meta_path.read_text(encoding="utf-8"))
+	except json.JSONDecodeError:
+		return {}
+	if not isinstance(loaded_meta, dict):
+		return {}
+	return copy.deepcopy(loaded_meta)
+
+
+def prompt_value(label: str, default_value: str) -> str:
+	prompt = f"  {label} [{default_value}]: "
+	value = input(prompt).strip()
+	return value or default_value
+
+
+def get_input_stem(input_path: Path) -> str:
+	stem = input_path.stem if input_path.is_file() else input_path.name
+	if stem.endswith(".emote"):
+		stem = stem[:-6]
+	return stem
+
+
+def write_emote_datapack_meta(pack_root: Path, meta: EmoteMetadata) -> None:
+	meta_path = pack_root / PACK_META_FILE_NAME
 	meta = {
-		"name": display_name,
-		"description": f"{display_name} emote.",
-		"command_name": sanitize_command_name(command_source),
-		"default_animation": "default",
+		"name": meta.name,
+		"description": meta.description,
+		"command_name": meta.command_name,
+		"default_animation": meta.default_animation,
 	}
 	meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
