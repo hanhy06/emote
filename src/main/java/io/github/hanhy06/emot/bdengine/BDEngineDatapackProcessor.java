@@ -36,7 +36,7 @@ public class BDEngineDatapackProcessor {
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
 	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
 	private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
-	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"emote:skin:([a-z_]+)\"");
+	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
 	private final EmoteRegistry emoteRegistry;
 
 	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
@@ -53,25 +53,33 @@ public class BDEngineDatapackProcessor {
 	public boolean enableEmoteDatapacks(MinecraftServer server) {
 		server.getPackRepository().reload();
 
-		LinkedHashSet<String> selectedPackIds = new LinkedHashSet<>(server.getPackRepository().getSelectedIds());
+		List<String> selectedPackIds = List.copyOf(server.getPackRepository().getSelectedIds());
 		Collection<String> availablePackIds = server.getPackRepository().getAvailableIds();
-		boolean changed = false;
+		LinkedHashSet<String> emotePackIds = new LinkedHashSet<>();
 
 		for (String packId : findEmotePackIds(server.getWorldPath(LevelResource.DATAPACK_DIR))) {
 			if (!availablePackIds.contains(packId)) {
 				continue;
 			}
 
-			if (selectedPackIds.add(packId)) {
-				changed = true;
+			emotePackIds.add(packId);
+		}
+
+		List<String> reorderedPackIds = new ArrayList<>();
+		for (String selectedPackId : selectedPackIds) {
+			if (!emotePackIds.contains(selectedPackId)) {
+				reorderedPackIds.add(selectedPackId);
 			}
 		}
 
-		if (changed) {
-			server.reloadResources(selectedPackIds).join();
+		reorderedPackIds.addAll(emotePackIds);
+
+		if (!selectedPackIds.equals(reorderedPackIds)) {
+			server.reloadResources(reorderedPackIds).join();
+			return true;
 		}
 
-		return changed;
+		return false;
 	}
 
 	private List<EmoteDefinition> filterLoadedDefinitions(MinecraftServer server, List<EmoteDefinition> definitions) {

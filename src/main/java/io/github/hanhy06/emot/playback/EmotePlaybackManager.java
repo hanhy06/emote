@@ -53,13 +53,9 @@ public class EmotePlaybackManager {
 
 		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
 		this.stopEmote(player);
+		cleanupNamespace(player, namespace);
 
 		executeFunction(player, createFunctionId);
-		if (!hasRoot(player, namespace)) {
-			cleanupFailedEmote(player, namespace);
-			return Optional.of("Create failed.");
-		}
-
 		alignRootWithPlayer(player, namespace);
 		this.playerSkinManager.applyPlayerSkin(player, definition);
 		executeFunction(player, playFunctionId);
@@ -170,21 +166,7 @@ public class EmotePlaybackManager {
 		return identifier != null && server.getFunctions().get(identifier).isPresent();
 	}
 
-	private boolean hasRoot(ServerPlayer player, String namespace) {
-		if (!(player.level() instanceof ServerLevel serverLevel)) {
-			return false;
-		}
-
-		AABB searchBox = player.getBoundingBox().inflate(ROOT_SEARCH_DISTANCE);
-		String rootTag = namespace + "_root";
-		return !serverLevel.getEntitiesOfClass(
-			Display.BlockDisplay.class,
-			searchBox,
-			blockDisplay -> blockDisplay.entityTags().contains(rootTag)
-		).isEmpty();
-	}
-
-	private void cleanupFailedEmote(ServerPlayer player, String namespace) {
+	private void cleanupNamespace(ServerPlayer player, String namespace) {
 		MinecraftServer server = player.level().getServer();
 		if (server == null || !isLoadedFunction(server, namespace + ":_/delete")) {
 			return;
