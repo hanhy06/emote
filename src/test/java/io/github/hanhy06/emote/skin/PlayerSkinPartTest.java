@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerSkinPartTest {
 	@Test
@@ -14,8 +13,7 @@ class PlayerSkinPartTest {
 		Locale.setDefault(Locale.forLanguageTag("tr-TR"));
 
 		try {
-			assertTrue(PlayerSkinPart.fromId("EMOTE:LEFT_ARM").isPresent());
-			assertEquals(PlayerSkinPart.LEFT_ARM, PlayerSkinPart.fromId("EMOTE:LEFT_ARM").orElseThrow());
+			assertEquals(PlayerSkinPart.LEFT_ARM, PlayerSkinPart.fromId("EMOTE:LEFT_ARM"));
 		} finally {
 			Locale.setDefault(previousLocale);
 		}

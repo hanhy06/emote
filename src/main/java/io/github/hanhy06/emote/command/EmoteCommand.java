@@ -28,6 +28,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public final class EmoteCommand {
@@ -283,14 +284,15 @@ public final class EmoteCommand {
 
 	private static int stopEmote(CommandSourceStack source, EmotePlaybackManager emotePlaybackManager) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-		ActiveEmote activeEmote = emotePlaybackManager.stopEmote(player).orElse(null);
-		if (activeEmote == null) {
+		Optional<ActiveEmote> activeEmote = emotePlaybackManager.stopEmote(player);
+		if (activeEmote.isEmpty()) {
 			source.sendFailure(Component.literal("No active emote."));
 			return 0;
 		}
 
+		ActiveEmote activeEmoteValue = activeEmote.get();
 		source.sendSuccess(
-			() -> Component.literal("Stop: " + activeEmote.namespace() + ":" + activeEmote.animationName()),
+			() -> Component.literal("Stop: " + activeEmoteValue.namespace() + ":" + activeEmoteValue.animationName()),
 			false
 		);
 		return 1;

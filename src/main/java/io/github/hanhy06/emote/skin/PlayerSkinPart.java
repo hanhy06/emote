@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
 import java.util.Locale;
-import java.util.Optional;
 
 public enum PlayerSkinPart {
 	HEAD("head"),
@@ -21,20 +20,20 @@ public enum PlayerSkinPart {
 		return this.id;
 	}
 
-	public static Optional<PlayerSkinPart> fromId(String id) {
+	public static PlayerSkinPart fromId(String id) {
 		if (id == null || id.isBlank()) {
-			return Optional.empty();
+			return null;
 		}
 
 		String normalizedId = id.toLowerCase(Locale.ROOT);
 		return switch (normalizedId) {
-			case "emote:head" -> Optional.of(HEAD);
-			case "emote:body" -> Optional.of(BODY);
-			case "emote:right_arm" -> Optional.of(RIGHT_ARM);
-			case "emote:left_arm" -> Optional.of(LEFT_ARM);
-			case "emote:right_leg" -> Optional.of(RIGHT_LEG);
-			case "emote:left_leg" -> Optional.of(LEFT_LEG);
-			default -> Optional.empty();
+			case "emote:head" -> HEAD;
+			case "emote:body" -> BODY;
+			case "emote:right_arm" -> RIGHT_ARM;
+			case "emote:left_arm" -> LEFT_ARM;
+			case "emote:right_leg" -> RIGHT_LEG;
+			case "emote:left_leg" -> LEFT_LEG;
+			default -> null;
 		};
 	}
 }

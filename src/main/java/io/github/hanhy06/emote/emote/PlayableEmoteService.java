@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Optional;
 
 public class PlayableEmoteService {
 	private final EmoteRegistry emoteRegistry;
@@ -61,14 +62,15 @@ public class PlayableEmoteService {
 	}
 
 	public List<String> getPlayableAnimationNamesForPlay(ServerPlayer player, String commandNameOrNamespace) {
-		EmoteDefinition definition = this.emoteRegistry.findDefinitionForPlay(commandNameOrNamespace).orElse(null);
-		if (definition == null) {
+		Optional<EmoteDefinition> definition = this.emoteRegistry.findDefinitionForPlay(commandNameOrNamespace);
+		if (definition.isEmpty()) {
 			return List.of();
 		}
 
+		EmoteDefinition definitionValue = definition.get();
 		List<String> animationNames = new ArrayList<>();
-		for (EmoteAnimation animation : definition.animations()) {
-			if (!canPlay(player, definition, animation)) {
+		for (EmoteAnimation animation : definitionValue.animations()) {
+			if (!canPlay(player, definitionValue, animation)) {
 				continue;
 			}
 
@@ -82,31 +84,33 @@ public class PlayableEmoteService {
 		String commandName,
 		String animationName
 	) {
-		EmoteDefinition definition = this.emoteRegistry.findDefinitionForPlay(commandName).orElse(null);
-		if (definition == null) {
+		Optional<EmoteDefinition> definition = this.emoteRegistry.findDefinitionForPlay(commandName);
+		if (definition.isEmpty()) {
 			return PlayableEmoteSelectionResult.failure("Unknown: " + commandName);
 		}
 
-		EmoteAnimation animation = definition.findAnimation(animationName).orElse(null);
-		if (animation == null) {
-			return PlayableEmoteSelectionResult.failure("Unknown: " + definition.commandName() + ":" + animationName);
+		EmoteDefinition definitionValue = definition.get();
+		Optional<EmoteAnimation> animation = definitionValue.findAnimation(animationName);
+		if (animation.isEmpty()) {
+			return PlayableEmoteSelectionResult.failure("Unknown: " + definitionValue.commandName() + ":" + animationName);
 		}
 
-		return createSelectionResult(player, definition, animation);
+		return createSelectionResult(player, definitionValue, animation.get());
 	}
 
 	public PlayableEmoteSelectionResult findDefaultSelection(ServerPlayer player, String commandName) {
-		EmoteDefinition definition = this.emoteRegistry.findDefinitionForPlay(commandName).orElse(null);
-		if (definition == null) {
+		Optional<EmoteDefinition> definition = this.emoteRegistry.findDefinitionForPlay(commandName);
+		if (definition.isEmpty()) {
 			return PlayableEmoteSelectionResult.failure("Unknown: " + commandName);
 		}
 
-		EmoteAnimation animation = definition.findDefaultAnimation().orElse(null);
-		if (animation == null) {
-			return PlayableEmoteSelectionResult.failure("No default: " + definition.commandName());
+		EmoteDefinition definitionValue = definition.get();
+		Optional<EmoteAnimation> animation = definitionValue.findDefaultAnimation();
+		if (animation.isEmpty()) {
+			return PlayableEmoteSelectionResult.failure("No default: " + definitionValue.commandName());
 		}
 
-		return createSelectionResult(player, definition, animation);
+		return createSelectionResult(player, definitionValue, animation.get());
 	}
 
 	private boolean canPlay(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {

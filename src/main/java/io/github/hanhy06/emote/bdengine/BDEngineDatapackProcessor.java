@@ -27,7 +27,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -216,7 +215,10 @@ public class BDEngineDatapackProcessor {
 
 		try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
 			for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-				readDefinition(packPath, namespacePath, datapackMeta).ifPresent(definitions::add);
+				EmoteDefinition definition = readDefinition(packPath, namespacePath, datapackMeta);
+				if (definition != null) {
+					definitions.add(definition);
+				}
 			}
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to read datapack namespaces from {}", packPath, exception);
@@ -225,21 +227,21 @@ public class BDEngineDatapackProcessor {
 		return List.copyOf(definitions);
 	}
 
-	private Optional<EmoteDefinition> readDefinition(Path packPath, Path namespacePath, EmoteDatapackMeta datapackMeta) {
+	private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteDatapackMeta datapackMeta) {
 		Path functionPath = findFunctionPath(namespacePath);
 		if (functionPath == null) {
-			return Optional.empty();
+			return null;
 		}
 
 		Path createFunctionPath = functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME);
 		if (!Files.exists(createFunctionPath)) {
-			return Optional.empty();
+			return null;
 		}
 
 		String namespace = namespacePath.getFileName().toString();
 		List<EmoteAnimation> animations = readAnimations(functionPath);
 		CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
-		return Optional.of(new EmoteDefinition(
+		return new EmoteDefinition(
 			namespace,
 			datapackMeta.name(),
 			datapackMeta.description(),
@@ -249,7 +251,7 @@ public class BDEngineDatapackProcessor {
 			createFunctionData.partCount(),
 			animations,
 			createFunctionData.skinParts()
-		));
+		);
 	}
 
 	private Path findFunctionPath(Path namespacePath) {
@@ -323,7 +325,10 @@ public class BDEngineDatapackProcessor {
 				String itemDisplayData = itemDisplayMatcher.group();
 				String itemData = itemDisplayMatcher.group(1);
 				int partIndex = Integer.parseInt(itemDisplayMatcher.group(2));
-				readSkinPart(itemDisplayData, itemData, partIndex).ifPresent(rawSkinParts::add);
+				RawSkinPart rawSkinPart = readSkinPart(itemDisplayData, itemData, partIndex);
+				if (rawSkinPart != null) {
+					rawSkinParts.add(rawSkinPart);
+				}
 			}
 
 			return new CreateFunctionData(partCount, assignSkinSegments(rawSkinParts));
@@ -338,24 +343,28 @@ public class BDEngineDatapackProcessor {
 		return Pattern.compile(pattern, Pattern.DOTALL);
 	}
 
-	private Optional<RawSkinPart> readSkinPart(String itemDisplayData, String itemData, int partIndex) {
+	private RawSkinPart readSkinPart(String itemDisplayData, String itemData, int partIndex) {
 		if (!itemData.contains("id:\"minecraft:player_head\"")) {
-			return Optional.empty();
+			return null;
 		}
 
 		Matcher markerMatcher = PLAYER_SKIN_MARKER_PATTERN.matcher(itemData);
 		if (!markerMatcher.find()) {
-			return Optional.empty();
+			return null;
 		}
 
 		double[] transformationValues = readTransformationValues(itemDisplayData);
-		return PlayerSkinPart.fromId(markerMatcher.group(1))
-			.map(playerSkinPart -> new RawSkinPart(
-				partIndex,
-				playerSkinPart,
-				readLocalY(transformationValues),
-				readLocalYScale(transformationValues)
-			));
+		PlayerSkinPart playerSkinPart = PlayerSkinPart.fromId(markerMatcher.group(1));
+		if (playerSkinPart == null) {
+			return null;
+		}
+
+		return new RawSkinPart(
+			partIndex,
+			playerSkinPart,
+			readLocalY(transformationValues),
+			readLocalYScale(transformationValues)
+		);
 	}
 
 	private List<EmoteSkinPart> assignSkinSegments(List<RawSkinPart> rawSkinParts) {
