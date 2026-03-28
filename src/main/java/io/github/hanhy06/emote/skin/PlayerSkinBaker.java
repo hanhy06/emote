@@ -27,22 +27,22 @@ public class PlayerSkinBaker {
 		}
 
 		BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-		FaceMap baseFaces = getBaseFaces(skinPart, skinSegment, slimModel);
-		FaceMap overlayFaces = getOverlayFaces(skinPart, skinSegment, slimModel);
+		FaceMap baseFaces = getBaseFaces(skinPart, slimModel);
+		FaceMap overlayFaces = getOverlayFaces(skinPart, slimModel);
 
-		drawFace(outputImage, normalizedImage, baseFaces.top(), BASE_TOP);
-		drawFace(outputImage, normalizedImage, baseFaces.bottom(), BASE_BOTTOM);
-		drawFace(outputImage, normalizedImage, baseFaces.right(), BASE_RIGHT);
-		drawFace(outputImage, normalizedImage, baseFaces.front(), BASE_FRONT);
-		drawFace(outputImage, normalizedImage, baseFaces.left(), BASE_LEFT);
-		drawFace(outputImage, normalizedImage, baseFaces.back(), BASE_BACK);
+		drawTopFace(outputImage, normalizedImage, baseFaces, skinSegment, BASE_TOP);
+		drawBottomFace(outputImage, normalizedImage, baseFaces, skinSegment, BASE_BOTTOM);
+		drawFace(outputImage, normalizedImage, createSegment(baseFaces.right(), skinSegment), BASE_RIGHT);
+		drawFace(outputImage, normalizedImage, createSegment(baseFaces.front(), skinSegment), BASE_FRONT);
+		drawFace(outputImage, normalizedImage, createSegment(baseFaces.left(), skinSegment), BASE_LEFT);
+		drawFace(outputImage, normalizedImage, createSegment(baseFaces.back(), skinSegment), BASE_BACK);
 
-		drawFace(outputImage, normalizedImage, overlayFaces.top(), OVERLAY_TOP);
-		drawFace(outputImage, normalizedImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
-		drawFace(outputImage, normalizedImage, overlayFaces.right(), OVERLAY_RIGHT);
-		drawFace(outputImage, normalizedImage, overlayFaces.front(), OVERLAY_FRONT);
-		drawFace(outputImage, normalizedImage, overlayFaces.left(), OVERLAY_LEFT);
-		drawFace(outputImage, normalizedImage, overlayFaces.back(), OVERLAY_BACK);
+		drawTopFace(outputImage, normalizedImage, overlayFaces, skinSegment, OVERLAY_TOP);
+		drawBottomFace(outputImage, normalizedImage, overlayFaces, skinSegment, OVERLAY_BOTTOM);
+		drawFace(outputImage, normalizedImage, createSegment(overlayFaces.right(), skinSegment), OVERLAY_RIGHT);
+		drawFace(outputImage, normalizedImage, createSegment(overlayFaces.front(), skinSegment), OVERLAY_FRONT);
+		drawFace(outputImage, normalizedImage, createSegment(overlayFaces.left(), skinSegment), OVERLAY_LEFT);
+		drawFace(outputImage, normalizedImage, createSegment(overlayFaces.back(), skinSegment), OVERLAY_BACK);
 
 		return writePng(outputImage);
 	}
@@ -79,10 +79,25 @@ public class PlayerSkinBaker {
 
 	private void drawFace(BufferedImage outputImage, BufferedImage sourceImage, FaceRect sourceRect, FaceTarget targetRect) {
 		for (int x = 0; x < targetRect.width(); x++) {
-			int sourceX = sourceRect.x() + x * sourceRect.width() / targetRect.width();
+			int sourceX = x * sourceRect.width() / targetRect.width();
+			if (sourceRect.flipX()) {
+				sourceX = sourceRect.width() - 1 - sourceX;
+			}
+
+			sourceX += sourceRect.x();
 			for (int y = 0; y < targetRect.height(); y++) {
 				int sourceY = sourceRect.y() + y * sourceRect.height() / targetRect.height();
 				outputImage.setRGB(targetRect.x() + x, targetRect.y() + y, sourceImage.getRGB(sourceX, sourceY));
+			}
+		}
+	}
+
+	private void drawFace(BufferedImage outputImage, BufferedImage sourceFaceImage, FaceTarget targetRect) {
+		for (int x = 0; x < targetRect.width(); x++) {
+			int sourceX = x * sourceFaceImage.getWidth() / targetRect.width();
+			for (int y = 0; y < targetRect.height(); y++) {
+				int sourceY = y * sourceFaceImage.getHeight() / targetRect.height();
+				outputImage.setRGB(targetRect.x() + x, targetRect.y() + y, sourceFaceImage.getRGB(sourceX, sourceY));
 			}
 		}
 	}
@@ -93,8 +108,8 @@ public class PlayerSkinBaker {
 		return outputStream.toByteArray();
 	}
 
-	private FaceMap getBaseFaces(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) {
-		FaceMap fullFaces = switch (skinPart) {
+	private FaceMap getBaseFaces(PlayerSkinPart skinPart, boolean slimModel) {
+		return orientFaces(skinPart, switch (skinPart) {
 			case BODY -> new FaceMap(
 				new FaceRect(20, 16, 8, 4),
 				new FaceRect(28, 16, 8, 4),
@@ -108,13 +123,11 @@ public class PlayerSkinBaker {
 			case RIGHT_LEG -> createRightLegFaces();
 			case LEFT_LEG -> createLeftLegFaces();
 			case HEAD -> createHeadFaces();
-		};
-
-		return createSegmentFaces(fullFaces, skinSegment);
+		});
 	}
 
-	private FaceMap getOverlayFaces(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) {
-		FaceMap fullFaces = switch (skinPart) {
+	private FaceMap getOverlayFaces(PlayerSkinPart skinPart, boolean slimModel) {
+		return orientFaces(skinPart, switch (skinPart) {
 			case BODY -> new FaceMap(
 				new FaceRect(20, 32, 8, 4),
 				new FaceRect(28, 32, 8, 4),
@@ -128,24 +141,7 @@ public class PlayerSkinBaker {
 			case RIGHT_LEG -> createRightLegOverlayFaces();
 			case LEFT_LEG -> createLeftLegOverlayFaces();
 			case HEAD -> createHeadOverlayFaces();
-		};
-
-		return createSegmentFaces(fullFaces, skinSegment);
-	}
-
-	private FaceMap createSegmentFaces(FaceMap fullFaces, PlayerSkinSegment skinSegment) {
-		if (skinSegment.isFull()) {
-			return fullFaces;
-		}
-
-		return new FaceMap(
-			fullFaces.top(),
-			fullFaces.bottom(),
-			createSegment(fullFaces.right(), skinSegment),
-			createSegment(fullFaces.front(), skinSegment),
-			createSegment(fullFaces.left(), skinSegment),
-			createSegment(fullFaces.back(), skinSegment)
-		);
+		});
 	}
 
 	private FaceRect createSegment(FaceRect faceRect, PlayerSkinSegment skinSegment) {
@@ -155,7 +151,73 @@ public class PlayerSkinBaker {
 			endOffset = Math.min(faceRect.height(), startOffset + 1);
 		}
 
-		return new FaceRect(faceRect.x(), faceRect.y() + startOffset, faceRect.width(), endOffset - startOffset);
+		return new FaceRect(faceRect.x(), faceRect.y() + startOffset, faceRect.width(), endOffset - startOffset, faceRect.flipX());
+	}
+
+	private FaceMap orientFaces(PlayerSkinPart skinPart, FaceMap faceMap) {
+		return switch (skinPart) {
+			case HEAD, BODY -> faceMap;
+			case RIGHT_ARM -> new FaceMap(
+				flipX(faceMap.top()),
+				flipX(faceMap.bottom()),
+				flipX(faceMap.right()),
+				flipX(faceMap.front()),
+				flipX(faceMap.left()),
+				flipX(faceMap.back())
+			);
+			case LEFT_ARM -> new FaceMap(
+				flipX(faceMap.bottom()),
+				flipX(faceMap.top()),
+				flipX(faceMap.back()),
+				flipX(faceMap.left()),
+				flipX(faceMap.front()),
+				flipX(faceMap.right())
+			);
+			case RIGHT_LEG -> new FaceMap(
+				flipX(faceMap.top()),
+				flipX(faceMap.bottom()),
+				flipX(faceMap.right()),
+				flipX(faceMap.front()),
+				flipX(faceMap.left()),
+				flipX(faceMap.back())
+			);
+			case LEFT_LEG -> new FaceMap(
+				flipX(faceMap.bottom()),
+				flipX(faceMap.top()),
+				flipX(faceMap.back()),
+				flipX(faceMap.left()),
+				flipX(faceMap.front()),
+				flipX(faceMap.right())
+			);
+		};
+	}
+
+	private FaceRect flipX(FaceRect faceRect) {
+		if (faceRect.flipX()) {
+			return new FaceRect(faceRect.x(), faceRect.y(), faceRect.width(), faceRect.height());
+		}
+
+		return new FaceRect(faceRect.x(), faceRect.y(), faceRect.width(), faceRect.height(), true);
+	}
+
+	private void drawTopFace(
+		BufferedImage outputImage,
+		BufferedImage sourceImage,
+		FaceMap fullFaces,
+		PlayerSkinSegment skinSegment,
+		FaceTarget targetRect
+	) {
+		drawFace(outputImage, sourceImage, fullFaces.top(), targetRect);
+	}
+
+	private void drawBottomFace(
+		BufferedImage outputImage,
+		BufferedImage sourceImage,
+		FaceMap fullFaces,
+		PlayerSkinSegment skinSegment,
+		FaceTarget targetRect
+	) {
+		drawFace(outputImage, sourceImage, fullFaces.bottom(), targetRect);
 	}
 
 	private FaceMap createHeadFaces() {
@@ -228,10 +290,10 @@ public class PlayerSkinBaker {
 		return new FaceMap(
 			new FaceRect(44, 16, 3, 4),
 			new FaceRect(47, 16, 3, 4),
-			new FaceRect(40, 20, 3, 12),
+			new FaceRect(40, 20, 4, 12),
 			new FaceRect(44, 20, 3, 12),
-			new FaceRect(47, 20, 3, 12),
-			new FaceRect(50, 20, 3, 12)
+			new FaceRect(47, 20, 4, 12),
+			new FaceRect(51, 20, 3, 12)
 		);
 	}
 
@@ -239,10 +301,10 @@ public class PlayerSkinBaker {
 		return new FaceMap(
 			new FaceRect(44, 32, 3, 4),
 			new FaceRect(47, 32, 3, 4),
-			new FaceRect(40, 36, 3, 12),
+			new FaceRect(40, 36, 4, 12),
 			new FaceRect(44, 36, 3, 12),
-			new FaceRect(47, 36, 3, 12),
-			new FaceRect(50, 36, 3, 12)
+			new FaceRect(47, 36, 4, 12),
+			new FaceRect(51, 36, 3, 12)
 		);
 	}
 
@@ -250,10 +312,10 @@ public class PlayerSkinBaker {
 		return new FaceMap(
 			new FaceRect(36, 48, 3, 4),
 			new FaceRect(39, 48, 3, 4),
-			new FaceRect(32, 52, 3, 12),
+			new FaceRect(32, 52, 4, 12),
 			new FaceRect(36, 52, 3, 12),
-			new FaceRect(39, 52, 3, 12),
-			new FaceRect(42, 52, 3, 12)
+			new FaceRect(39, 52, 4, 12),
+			new FaceRect(43, 52, 3, 12)
 		);
 	}
 
@@ -261,10 +323,10 @@ public class PlayerSkinBaker {
 		return new FaceMap(
 			new FaceRect(52, 48, 3, 4),
 			new FaceRect(55, 48, 3, 4),
-			new FaceRect(48, 52, 3, 12),
+			new FaceRect(48, 52, 4, 12),
 			new FaceRect(52, 52, 3, 12),
-			new FaceRect(55, 52, 3, 12),
-			new FaceRect(58, 52, 3, 12)
+			new FaceRect(55, 52, 4, 12),
+			new FaceRect(59, 52, 3, 12)
 		);
 	}
 
@@ -312,7 +374,10 @@ public class PlayerSkinBaker {
 		);
 	}
 
-	private record FaceRect(int x, int y, int width, int height) {
+	private record FaceRect(int x, int y, int width, int height, boolean flipX) {
+		private FaceRect(int x, int y, int width, int height) {
+			this(x, y, width, height, false);
+		}
 	}
 
 	private record FaceTarget(int x, int y, int width, int height) {

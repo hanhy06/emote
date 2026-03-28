@@ -55,6 +55,7 @@ import java.util.concurrent.ConcurrentMap;
 
 public class PlayerSkinManager implements ConfigListener {
 	private static final String HTTP_PATH_PREFIX = "/emote/skin/";
+	private static final String TEXTURE_TOKEN_VERSION = "v6";
 	private static final byte[] HEADER_END = new byte[]{'\r', '\n', '\r', '\n'};
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
@@ -603,7 +604,7 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private String buildTextureToken(String textureHash, boolean slimModel, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
-		return textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "wide") + "-" + skinPart.id() + "-" + skinSegment.id();
+		return TEXTURE_TOKEN_VERSION + "-" + textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "wide") + "-" + skinPart.id() + "-" + skinSegment.id();
 	}
 
 	private byte[] appendHttpRequestBuffer(ChannelHandlerContext context, ByteBuf input) {
@@ -700,7 +701,9 @@ public class PlayerSkinManager implements ConfigListener {
 	) throws IOException {
 		exchange.getResponseHeaders().set("Content-Type", contentType);
 		exchange.getResponseHeaders().set("Content-Length", Integer.toString(bodyBytes.length));
-		exchange.getResponseHeaders().set("Cache-Control", "public, max-age=31536000, immutable");
+		exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
+		exchange.getResponseHeaders().set("Pragma", "no-cache");
+		exchange.getResponseHeaders().set("Expires", "0");
 		if (headOnly) {
 			exchange.sendResponseHeaders(statusCode, -1);
 			return;
@@ -721,7 +724,9 @@ public class PlayerSkinManager implements ConfigListener {
 		String headerText = "HTTP/1.1 " + statusCode + " " + statusText + "\r\n"
 			+ "Content-Type: " + contentType + "\r\n"
 			+ "Content-Length: " + bodyBytes.length + "\r\n"
-			+ "Cache-Control: public, max-age=31536000, immutable\r\n"
+			+ "Cache-Control: no-store, no-cache, must-revalidate\r\n"
+			+ "Pragma: no-cache\r\n"
+			+ "Expires: 0\r\n"
 			+ "Connection: close\r\n\r\n";
 
 		ByteBuf headerBuffer = Unpooled.copiedBuffer(headerText, StandardCharsets.US_ASCII);

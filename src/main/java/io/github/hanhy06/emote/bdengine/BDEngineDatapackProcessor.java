@@ -373,8 +373,9 @@ public class BDEngineDatapackProcessor {
 			PlayerSkinPart skinPart = entry.getKey();
 			List<RawSkinPart> partsForSkin = new ArrayList<>(entry.getValue());
 			partsForSkin.sort(
-				Comparator.comparingDouble(RawSkinPart::localY).reversed()
-					.thenComparingInt(RawSkinPart::partIndex)
+				// BDEngine export order stays stable even if a limb is posed upward in create.mcfunction.
+				Comparator.comparingInt(RawSkinPart::partIndex)
+					.thenComparing(Comparator.comparingDouble(RawSkinPart::localY).reversed())
 			);
 
 			skinParts.addAll(createSkinParts(skinPart, partsForSkin));
