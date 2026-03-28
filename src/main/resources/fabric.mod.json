@@ -16,7 +16,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"io.github.hanhy06.emot.Emote"
+			"io.github.hanhy06.emote.Emote"
 		]
 	},
 	"mixins": [
