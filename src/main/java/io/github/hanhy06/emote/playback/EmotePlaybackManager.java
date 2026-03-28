@@ -13,11 +13,12 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.phys.AABB;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,7 +30,6 @@ public class EmotePlaybackManager {
 	private static final long PLAYBACK_BUFFER_TICKS = 8L;
 	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
 	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
-	private static final double ROOT_SEARCH_DISTANCE = 8.0D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 	private final PlayerSkinManager playerSkinManager;
 
@@ -142,6 +142,10 @@ public class EmotePlaybackManager {
 	private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
 		executeFunction(server, activeEmote, activeEmote.namespace() + ":_/stop_anim");
 		executeFunction(server, activeEmote, activeEmote.namespace() + ":_/delete");
+		ServerLevel level = server.getLevel(activeEmote.levelKey());
+		if (level != null) {
+			cleanupNamespaceEntities(level, activeEmote.namespace());
+		}
 
 		ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
 		if (player != null) {
@@ -168,11 +172,78 @@ public class EmotePlaybackManager {
 
 	private void cleanupNamespace(ServerPlayer player, String namespace) {
 		MinecraftServer server = player.level().getServer();
-		if (server == null || !isLoadedFunction(server, namespace + ":_/delete")) {
+		if (server != null && isLoadedFunction(server, namespace + ":_/delete")) {
+			executeFunction(player, namespace + ":_/delete");
+		}
+
+		if (player.level() instanceof ServerLevel serverLevel) {
+			cleanupNamespaceEntities(serverLevel, namespace);
+		}
+	}
+
+	private void cleanupNamespaceEntities(ServerLevel level, String namespace) {
+		Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
+
+		for (Entity entity : level.getAllEntities()) {
+			if (!matchesNamespaceDisplay(entity, namespace)) {
+				continue;
+			}
+
+			collectEntityTree(entity, entitiesToKill);
+		}
+
+		for (Entity entity : entitiesToKill.values()) {
+			if (!entity.isRemoved()) {
+				entity.kill(level);
+			}
+		}
+	}
+
+	private void collectEntityTree(Entity entity, Map<Integer, Entity> entitiesToKill) {
+		if (entitiesToKill.containsKey(entity.getId())) {
 			return;
 		}
 
-		executeFunction(player, namespace + ":_/delete");
+		for (Entity passenger : entity.getPassengers()) {
+			collectEntityTree(passenger, entitiesToKill);
+		}
+
+		entitiesToKill.put(entity.getId(), entity);
+	}
+
+	private boolean matchesNamespaceDisplay(Entity entity, String namespace) {
+		if (!(entity instanceof Display)) {
+			return false;
+		}
+
+		for (String tag : entity.entityTags()) {
+			if (isCleanupTag(tag, namespace)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private boolean isCleanupTag(String tag, String namespace) {
+		if (tag.equals(namespace) || tag.equals(namespace + "_root") || tag.equals(namespace + "_camera")) {
+			return true;
+		}
+
+		if (!tag.startsWith(namespace + "_")) {
+			return false;
+		}
+
+		String suffix = tag.substring(namespace.length() + 1);
+		if (suffix.isEmpty()) {
+			return false;
+		}
+
+		if (suffix.charAt(0) == 'p') {
+			return suffix.length() > 1 && suffix.substring(1).chars().allMatch(Character::isDigit);
+		}
+
+		return suffix.chars().allMatch(Character::isDigit);
 	}
 
 	private void alignRootWithPlayer(ServerPlayer player, String namespace) {

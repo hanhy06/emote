@@ -5,7 +5,8 @@
 	"mixins": [
 		"LegacyQueryHandlerMixin",
 		"ServerCommonPacketListenerImplAccessor",
-		"ServerHandshakePacketListenerImplMixin"
+		"ServerHandshakePacketListenerImplMixin",
+		"TextureUrlCheckerMixin"
 	],
 	"injectors": {
 		"defaultRequire": 1

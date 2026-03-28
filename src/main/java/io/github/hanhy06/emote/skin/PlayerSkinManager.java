@@ -1,10 +1,12 @@
 package io.github.hanhy06.emote.skin;
 
+import com.google.common.collect.ImmutableMultimap;
 import com.google.gson.JsonObject;
 import com.mojang.authlib.GameProfile;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.properties.PropertyMap;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpServer;
 import io.github.hanhy06.emote.Emote;
@@ -383,8 +385,15 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private ResolvableProfile createProfile(ServerPlayer player, String textureUrl) {
-		GameProfile profile = new GameProfile(UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8)), player.getGameProfile().name());
-		profile.properties().put("textures", new Property("textures", encodeTextureValue(player, textureUrl)));
+		PropertyMap properties = new PropertyMap(ImmutableMultimap.of(
+			"textures",
+			new Property("textures", encodeTextureValue(player, textureUrl))
+		));
+		GameProfile profile = new GameProfile(
+			UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8)),
+			player.getGameProfile().name(),
+			properties
+		);
 		return ResolvableProfile.createResolved(profile);
 	}
 
