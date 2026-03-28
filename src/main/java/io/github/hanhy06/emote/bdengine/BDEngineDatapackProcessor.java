@@ -1,9 +1,9 @@
 package io.github.hanhy06.emote.bdengine;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.config.ConfigManager;
+import io.github.hanhy06.emote.config.EmotePack;
+import io.github.hanhy06.emote.config.PackConfig;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -15,7 +15,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.IOException;
-import java.io.Reader;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
@@ -23,10 +22,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -34,19 +35,20 @@ import java.util.stream.Stream;
 public class BDEngineDatapackProcessor {
 	private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
-	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
 	private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
 	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
 	private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)\\]");
+	private final ConfigManager configManager;
 	private final EmoteRegistry emoteRegistry;
 
-	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
+	public BDEngineDatapackProcessor(ConfigManager configManager, EmoteRegistry emoteRegistry) {
+		this.configManager = configManager;
 		this.emoteRegistry = emoteRegistry;
 	}
 
 	public int reloadServerEmotes(MinecraftServer server) {
 		Path datapackDirPath = server.getWorldPath(LevelResource.DATAPACK_DIR);
-		List<EmoteDefinition> definitions = filterLoadedDefinitions(server, readDefinitions(datapackDirPath));
+		List<EmoteDefinition> definitions = filterLoadedDefinitions(server, readDefinitions(datapackDirPath, this.configManager.getPackConfig()));
 		this.emoteRegistry.replaceDefinitions(definitions);
 		return definitions.size();
 	}
@@ -58,7 +60,7 @@ public class BDEngineDatapackProcessor {
 		Collection<String> availablePackIds = server.getPackRepository().getAvailableIds();
 		LinkedHashSet<String> emotePackIds = new LinkedHashSet<>();
 
-		for (String packId : findEmotePackIds(server.getWorldPath(LevelResource.DATAPACK_DIR))) {
+		for (String packId : findEmotePackIds(server.getWorldPath(LevelResource.DATAPACK_DIR), this.configManager.getPackConfig())) {
 			if (!availablePackIds.contains(packId)) {
 				continue;
 			}
@@ -119,16 +121,22 @@ public class BDEngineDatapackProcessor {
 		return identifier != null && server.getFunctions().get(identifier).isPresent();
 	}
 
-	private List<String> findEmotePackIds(Path datapackDirPath) {
+	List<String> findEmotePackIds(Path datapackDirPath, PackConfig packConfig) {
 		if (!Files.isDirectory(datapackDirPath)) {
+			return List.of();
+		}
+
+		Set<String> configuredNamespaces = Set.copyOf(createPackMap(packConfig).keySet());
+		if (configuredNamespaces.isEmpty()) {
 			return List.of();
 		}
 
 		List<String> packIds = new ArrayList<>();
 		try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
 			for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-				if (isEmotePack(packPath)) {
-					packIds.add("file/" + packPath.getFileName());
+				String packId = findConfiguredPackId(packPath, configuredNamespaces);
+				if (packId != null) {
+					packIds.add(packId);
 				}
 			}
 		} catch (IOException exception) {
@@ -138,30 +146,54 @@ public class BDEngineDatapackProcessor {
 		return List.copyOf(packIds);
 	}
 
-	private boolean isEmotePack(Path packPath) {
+	private String findConfiguredPackId(Path packPath, Set<String> configuredNamespaces) {
 		if (Files.isDirectory(packPath)) {
-			return hasDatapackFiles(packPath);
+			return hasConfiguredNamespaces(packPath, configuredNamespaces) ? "file/" + packPath.getFileName() : null;
 		}
 
 		String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
 		if (!Files.isRegularFile(packPath) || !fileName.endsWith(".zip")) {
-			return false;
+			return null;
 		}
 
 		try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-			return hasDatapackFiles(fileSystem.getPath("/"));
+			return hasConfiguredNamespaces(fileSystem.getPath("/"), configuredNamespaces) ? "file/" + packPath.getFileName() : null;
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to inspect datapack {}", packPath, exception);
-			return false;
+			return null;
 		}
 	}
 
-	private boolean hasDatapackFiles(Path packRootPath) {
-		return Files.exists(packRootPath.resolve("pack.mcmeta")) && Files.exists(packRootPath.resolve(DATAPACK_META_FILE_NAME));
+	private boolean hasConfiguredNamespaces(Path packRootPath, Set<String> configuredNamespaces) {
+		if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
+			return false;
+		}
+
+		Path dataPath = packRootPath.resolve("data");
+		if (!Files.isDirectory(dataPath)) {
+			return false;
+		}
+
+		try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
+			for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).toList()) {
+				if (configuredNamespaces.contains(namespacePath.getFileName().toString())) {
+					return true;
+				}
+			}
+		} catch (IOException exception) {
+			Emote.LOGGER.warn("Failed to scan datapack namespaces from {}", packRootPath, exception);
+		}
+
+		return false;
 	}
 
-	private List<EmoteDefinition> readDefinitions(Path datapackDirPath) {
+	List<EmoteDefinition> readDefinitions(Path datapackDirPath, PackConfig packConfig) {
 		if (!Files.isDirectory(datapackDirPath)) {
+			return List.of();
+		}
+
+		LinkedHashMap<String, EmotePack> packMap = createPackMap(packConfig);
+		if (packMap.isEmpty()) {
 			return List.of();
 		}
 
@@ -169,7 +201,7 @@ public class BDEngineDatapackProcessor {
 
 		try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
 			for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-				definitions.addAll(readPackDefinitions(packPath));
+				definitions.addAll(readPackDefinitions(packPath, packMap));
 			}
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to scan datapack directory {}", datapackDirPath, exception);
@@ -178,9 +210,9 @@ public class BDEngineDatapackProcessor {
 		return List.copyOf(definitions);
 	}
 
-	private List<EmoteDefinition> readPackDefinitions(Path packPath) {
+	private List<EmoteDefinition> readPackDefinitions(Path packPath, Map<String, EmotePack> packMap) {
 		if (Files.isDirectory(packPath)) {
-			return readPackRoot(packPath, packPath);
+			return readPackRoot(packPath, packPath, packMap);
 		}
 
 		String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
@@ -189,20 +221,15 @@ public class BDEngineDatapackProcessor {
 		}
 
 		try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-			return readPackRoot(packPath, fileSystem.getPath("/"));
+			return readPackRoot(packPath, fileSystem.getPath("/"), packMap);
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to read zipped datapack {}", packPath, exception);
 			return List.of();
 		}
 	}
 
-	private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath) {
+	private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath, Map<String, EmotePack> packMap) {
 		if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
-			return List.of();
-		}
-
-		EmoteDatapackMeta datapackMeta = readDatapackMeta(packPath, packRootPath);
-		if (datapackMeta == null) {
 			return List.of();
 		}
 
@@ -215,7 +242,12 @@ public class BDEngineDatapackProcessor {
 
 		try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
 			for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-				EmoteDefinition definition = readDefinition(packPath, namespacePath, datapackMeta);
+				EmotePack emotePack = packMap.get(namespacePath.getFileName().toString());
+				if (emotePack == null) {
+					continue;
+				}
+
+				EmoteDefinition definition = readDefinition(packPath, namespacePath, emotePack);
 				if (definition != null) {
 					definitions.add(definition);
 				}
@@ -227,7 +259,7 @@ public class BDEngineDatapackProcessor {
 		return List.copyOf(definitions);
 	}
 
-	private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteDatapackMeta datapackMeta) {
+	private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmotePack emotePack) {
 		Path functionPath = findFunctionPath(namespacePath);
 		if (functionPath == null) {
 			return null;
@@ -243,10 +275,10 @@ public class BDEngineDatapackProcessor {
 		CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
 		return new EmoteDefinition(
 			namespace,
-			datapackMeta.name(),
-			datapackMeta.description(),
-			createCommandName(packPath, namespace, datapackMeta.commandName()),
-			createDefaultAnimationName(datapackMeta.defaultAnimationName()),
+			emotePack.name().trim(),
+			emotePack.description().trim(),
+			createCommandName(packPath, namespace, emotePack.command_name()),
+			createDefaultAnimationName(emotePack.default_animation_name()),
 			packPath,
 			createFunctionData.partCount(),
 			animations,
@@ -516,37 +548,15 @@ public class BDEngineDatapackProcessor {
 		return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
 	}
 
-	private EmoteDatapackMeta readDatapackMeta(Path packPath, Path packRootPath) {
-		Path datapackMetaPath = packRootPath.resolve(DATAPACK_META_FILE_NAME);
-		if (!Files.exists(datapackMetaPath)) {
-			return null;
+	private LinkedHashMap<String, EmotePack> createPackMap(PackConfig packConfig) {
+		LinkedHashMap<String, EmotePack> packMap = new LinkedHashMap<>();
+		for (Map.Entry<String, List<EmotePack>> entry : packConfig.permissions().entrySet()) {
+			for (EmotePack emotePack : entry.getValue()) {
+				packMap.putIfAbsent(emotePack.datapack_identifier(), emotePack);
+			}
 		}
 
-		try (Reader reader = Files.newBufferedReader(datapackMetaPath)) {
-			JsonElement element = JsonParser.parseReader(reader);
-			if (!element.isJsonObject()) {
-				Emote.LOGGER.warn("Skip {}: {} must be a JSON object.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
-				return null;
-			}
-
-			JsonObject object = element.getAsJsonObject();
-			String name = readRequiredString(object, "name");
-			String description = readRequiredString(object, "description");
-			if (name == null || description == null) {
-				Emote.LOGGER.warn("Skip {}: {} needs name and description.", packPath.getFileName(), DATAPACK_META_FILE_NAME);
-				return null;
-			}
-
-			return new EmoteDatapackMeta(
-				name,
-				description,
-				readOptionalString(object, "command_name"),
-				readOptionalString(object, "default_animation")
-			);
-		} catch (IOException | RuntimeException exception) {
-			Emote.LOGGER.warn("Skip {}: failed to read {}.", packPath.getFileName(), DATAPACK_META_FILE_NAME, exception);
-			return null;
-		}
+		return packMap;
 	}
 
 	private String createCommandName(Path packPath, String namespace, String commandName) {
@@ -569,34 +579,6 @@ public class BDEngineDatapackProcessor {
 		}
 
 		return defaultAnimationName.trim();
-	}
-
-	private String readRequiredString(JsonObject object, String key) {
-		JsonElement element = object.get(key);
-		if (element == null || element.isJsonNull()) {
-			return null;
-		}
-
-		String value = element.getAsString().trim();
-		return value.isEmpty() ? null : value;
-	}
-
-	private String readOptionalString(JsonObject object, String key) {
-		JsonElement element = object.get(key);
-		if (element == null || element.isJsonNull()) {
-			return null;
-		}
-
-		String value = element.getAsString().trim();
-		return value.isEmpty() ? null : value;
-	}
-
-	private record EmoteDatapackMeta(
-		String name,
-		String description,
-		String commandName,
-		String defaultAnimationName
-	) {
 	}
 
 	private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {

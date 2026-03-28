@@ -2,22 +2,40 @@ package io.github.hanhy06.emote.permission;
 
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
+import io.github.hanhy06.emote.config.EmotePack;
+import io.github.hanhy06.emote.config.PackConfig;
+import io.github.hanhy06.emote.config.PackConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.entity.Entity;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-public class EmotePermissionService implements ConfigListener {
+public class EmotePermissionService implements ConfigListener, PackConfigListener {
 	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.GAMEMASTERS;
 	private Config config = Config.createDefault();
+	private Map<String, String> namespacePermissionMap = Map.of();
 
 	@Override
 	public void onConfigReload(Config newConfig) {
 		this.config = newConfig;
+	}
+
+	@Override
+	public void onPackConfigReload(PackConfig newPackConfig) {
+		LinkedHashMap<String, String> nextNamespacePermissionMap = new LinkedHashMap<>();
+		for (Map.Entry<String, java.util.List<EmotePack>> entry : newPackConfig.permissions().entrySet()) {
+			String permission = normalizePermission(entry.getKey());
+			for (EmotePack emotePack : entry.getValue()) {
+				nextNamespacePermissionMap.put(emotePack.datapack_identifier(), permission);
+			}
+		}
+
+		this.namespacePermissionMap = Map.copyOf(nextNamespacePermissionMap);
 	}
 
 	public boolean canOpenDialog(ServerPlayer player) {
@@ -79,10 +97,9 @@ public class EmotePermissionService implements ConfigListener {
 		return entity instanceof ServerPlayer player ? player : null;
 	}
 
-	private String findDatapackPermission(String namespace) {
-		Map<String, String> emotePermissionMap = this.config.emote_permissions();
-		if (emotePermissionMap.containsKey(namespace)) {
-			return normalizePermission(emotePermissionMap.get(namespace));
+	String findDatapackPermission(String namespace) {
+		if (this.namespacePermissionMap.containsKey(namespace)) {
+			return normalizePermission(this.namespacePermissionMap.get(namespace));
 		}
 
 		return "";

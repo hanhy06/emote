@@ -201,6 +201,7 @@ public final class EmoteCommand {
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		boolean configLoaded = configManager.readConfig();
+		boolean packConfigLoaded = configManager.readPackConfig();
 		Emote.getPlayerSkinManager().reloadHttpServer(source.getServer());
 		boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks(source.getServer());
 		int emoteCount = reloadedResources
@@ -212,6 +213,7 @@ public final class EmoteCommand {
 		source.sendSuccess(
 			() -> Component.literal(
 				"Reloading: cfg=" + configLoaded
+					+ ", pack=" + packConfigLoaded
 					+ ", emotes=" + emoteCount
 					+ (reloadedResources ? " (resource reload)" : "")
 			),

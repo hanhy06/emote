@@ -1,24 +1,22 @@
 package io.github.hanhy06.emote.config;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.permission.EmotePermission;
 import net.fabricmc.loader.api.FabricLoader;
 
-public record Config(
+import java.util.LinkedHashMap;
+import java.util.List;
+
+public record PackConfig(
 	String version,
-	int menu_page_size,
-	int player_skin_port,
-	String emote_permission
+	LinkedHashMap<String, List<EmotePack>> permissions
 ) {
-	public static Config createDefault() {
-		return new Config(
+	public static PackConfig createDefault() {
+		return new PackConfig(
 			FabricLoader.getInstance()
 				.getModContainer(Emote.MOD_ID)
 				.map(container -> container.getMetadata().getVersion().getFriendlyString())
 				.orElse("dev"),
-			6,
-			0,
-			EmotePermission.DEFAULT_EMOTE_PERMISSION
+			new LinkedHashMap<>()
 		);
 	}
 }

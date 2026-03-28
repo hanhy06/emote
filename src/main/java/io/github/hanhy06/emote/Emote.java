@@ -51,7 +51,7 @@ public class Emote implements ModInitializer {
 		this.emoteRegistry,
 		this.emotePermissionService
 	);
-	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.emoteRegistry);
+	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.configManager, this.emoteRegistry);
 	private final EmoteDialogManager emoteDialogManager = new EmoteDialogManager(
 		this.emoteRegistry,
 		this.playableEmoteService,
@@ -67,8 +67,10 @@ public class Emote implements ModInitializer {
 	@Override
 	public void onInitialize() {
 		this.configManager.addListener(this.emotePermissionService);
+		this.configManager.addPackListener(this.emotePermissionService);
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
+		this.configManager.readPackConfig();
 		this.emotePlaybackManager.setStateListener(new EmotePlaybackStateListener() {
 			@Override
 			public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
@@ -158,6 +160,7 @@ public class Emote implements ModInitializer {
 
 	private void handleDataPackReloadStart(MinecraftServer server) {
 		this.configManager.readConfig();
+		this.configManager.readPackConfig();
 		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
 	}
 
