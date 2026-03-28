@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.skin;
 
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -11,8 +10,8 @@ public class PlayerSkinTextureStore {
 		this.textureMap.put(token, pngBytes);
 	}
 
-	public Optional<byte[]> find(String token) {
-		return Optional.ofNullable(this.textureMap.get(token));
+	public byte[] find(String token) {
+		return this.textureMap.get(token);
 	}
 
 	public void clear() {

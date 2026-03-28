@@ -4,13 +4,15 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.world.entity.Entity;
 
 import java.util.Map;
 import java.util.function.Predicate;
 
 public class EmotePermissionService implements ConfigListener {
+	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.GAMEMASTERS;
 	private Config config = Config.createDefault();
 
 	@Override
@@ -40,7 +42,7 @@ public class EmotePermissionService implements ConfigListener {
 			return false;
 		}
 
-		return hasPermission(player, findDatapackPermission(namespace), 2);
+		return hasPermission(player, findDatapackPermission(namespace), DEFAULT_EMOTE_PERMISSION_LEVEL);
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -87,10 +89,10 @@ public class EmotePermissionService implements ConfigListener {
 	}
 
 	private boolean hasBasePermission(ServerPlayer player) {
-		return hasPermission(player, this.config.emote_permission(), 2);
+		return hasPermission(player, this.config.emote_permission(), DEFAULT_EMOTE_PERMISSION_LEVEL);
 	}
 
-	private boolean hasPermission(ServerPlayer player, String permission, int fallbackLevel) {
+	private boolean hasPermission(ServerPlayer player, String permission, PermissionLevel fallbackLevel) {
 		if (permission == null || permission.isBlank()) {
 			return true;
 		}

@@ -4,7 +4,6 @@ import net.minecraft.network.Connection;
 
 import java.util.Collections;
 import java.util.Map;
-import java.util.Optional;
 import java.util.WeakHashMap;
 
 public class PlayerSkinHostStore {
@@ -26,12 +25,12 @@ public class PlayerSkinHostStore {
 		}
 	}
 
-	public Optional<PlayerSkinHost> find(Connection connection) {
+	public PlayerSkinHost find(Connection connection) {
 		if (connection == null) {
-			return Optional.empty();
+			return null;
 		}
 
-		return Optional.ofNullable(this.hostMap.get(connection));
+		return this.hostMap.get(connection);
 	}
 
 	public void clear() {

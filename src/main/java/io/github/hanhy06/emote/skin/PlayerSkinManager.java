@@ -55,9 +55,12 @@ import java.util.concurrent.ConcurrentMap;
 
 public class PlayerSkinManager implements ConfigListener {
 	private static final String HTTP_PATH_PREFIX = "/emote/skin/";
+	private static final String PNG_PATH_SUFFIX = ".png";
 	private static final String TEXTURE_TOKEN_VERSION = "v25";
 	private static final byte[] HEADER_END = new byte[]{'\r', '\n', '\r', '\n'};
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
+	private static final int SKIN_APPLY_RETRY_COUNT = 10;
+	private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
 	private static final AttributeKey<byte[]> HTTP_REQUEST_BUFFER = AttributeKey.valueOf("emote_http_request_buffer");
 
@@ -141,7 +144,7 @@ public class PlayerSkinManager implements ConfigListener {
 
 		this.pendingSkinApplicationMap.put(
 			player.getUUID(),
-			new PendingPlayerSkinApplication(definition, 10, server.getTickCount() + 1L)
+			new PendingPlayerSkinApplication(definition, SKIN_APPLY_RETRY_COUNT, server.getTickCount() + 1L)
 		);
 	}
 
@@ -256,13 +259,7 @@ public class PlayerSkinManager implements ConfigListener {
 			return true;
 		}
 
-		if (!request.path().startsWith(HTTP_PATH_PREFIX) || !request.path().endsWith(".png")) {
-			writeResponse(context, 404, "Not Found", "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), request.headOnly());
-			return true;
-		}
-
-		String token = request.path().substring(HTTP_PATH_PREFIX.length(), request.path().length() - 4);
-		byte[] pngBytes = this.playerSkinTextureStore.find(token).orElse(null);
+		byte[] pngBytes = findTextureBytes(request.path());
 		if (pngBytes == null) {
 			writeResponse(context, 404, "Not Found", "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), request.headOnly());
 			return true;
@@ -285,14 +282,7 @@ public class PlayerSkinManager implements ConfigListener {
 				return;
 			}
 
-			String path = exchange.getRequestURI().getPath();
-			if (path == null || !path.startsWith(HTTP_PATH_PREFIX) || !path.endsWith(".png")) {
-				writeExchangeResponse(exchange, 404, "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), headOnly);
-				return;
-			}
-
-			String token = path.substring(HTTP_PATH_PREFIX.length(), path.length() - 4);
-			byte[] pngBytes = this.playerSkinTextureStore.find(token).orElse(null);
+			byte[] pngBytes = findTextureBytes(exchange.getRequestURI().getPath());
 			if (pngBytes == null) {
 				writeExchangeResponse(exchange, 404, "text/plain; charset=utf-8", "Not found.".getBytes(StandardCharsets.UTF_8), headOnly);
 				return;
@@ -347,7 +337,7 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		Connection connection = ((ServerCommonPacketListenerImplAccessor) player.connection).emote$getConnection();
-		PlayerSkinHost storedHost = this.playerSkinHostStore.find(connection).orElse(null);
+		PlayerSkinHost storedHost = this.playerSkinHostStore.find(connection);
 		if (storedHost != null) {
 			int resolvedPort = resolvePlayerSkinPort(server, storedHost.port());
 			if (resolvedPort <= 0) {
@@ -449,8 +439,8 @@ public class PlayerSkinManager implements ConfigListener {
 
 	private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
 		HttpURLConnection connection = (HttpURLConnection) URI.create(textureUrl).toURL().openConnection();
-		connection.setConnectTimeout(5000);
-		connection.setReadTimeout(5000);
+		connection.setConnectTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
+		connection.setReadTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
 		connection.setInstanceFollowRedirects(true);
 
 		try {
@@ -606,6 +596,15 @@ public class PlayerSkinManager implements ConfigListener {
 		return TEXTURE_TOKEN_VERSION + "-" + textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "wide") + "-" + skinPart.id() + "-" + skinSegment.id();
 	}
 
+	private byte[] findTextureBytes(String path) {
+		if (path == null || !path.startsWith(HTTP_PATH_PREFIX) || !path.endsWith(PNG_PATH_SUFFIX)) {
+			return null;
+		}
+
+		String token = path.substring(HTTP_PATH_PREFIX.length(), path.length() - PNG_PATH_SUFFIX.length());
+		return this.playerSkinTextureStore.find(token);
+	}
+
 	private byte[] appendHttpRequestBuffer(ChannelHandlerContext context, ByteBuf input) {
 		int readableBytes = input.readableBytes();
 		byte[] currentBytes = new byte[readableBytes];
@@ -666,7 +665,7 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private ParsedHttpRequest parseRequestLine(String requestLine) {
-		String[] requestParts = requestLine.split(" ");
+		String[] requestParts = requestLine.split(" ", 3);
 		if (requestParts.length != 3) {
 			return null;
 		}
