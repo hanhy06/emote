@@ -57,12 +57,31 @@ public class PlayerSkinManager implements ConfigListener {
 	private static final int MAX_HTTP_REQUEST_SIZE = 8192;
 	private static final double SKIN_SEARCH_DISTANCE = 8.0D;
 	private static final AttributeKey<byte[]> HTTP_REQUEST_BUFFER = AttributeKey.valueOf("emote_http_request_buffer");
+	private static final List<PlayerSkinTextureKey> TEXTURE_KEYS = List.of(
+		new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.UPPER),
+		new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.LOWER),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.UPPER),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_ARM, PlayerSkinSegment.LOWER),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.UPPER),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, PlayerSkinSegment.LOWER),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.UPPER),
+		new PlayerSkinTextureKey(PlayerSkinPart.RIGHT_LEG, PlayerSkinSegment.LOWER),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.FULL),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.UPPER),
+		new PlayerSkinTextureKey(PlayerSkinPart.LEFT_LEG, PlayerSkinSegment.LOWER)
+	);
 
 	private final PlayerSkinHostStore playerSkinHostStore = new PlayerSkinHostStore();
 	private final PlayerSkinTextureStore playerSkinTextureStore = new PlayerSkinTextureStore();
 	private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
 	private final ConcurrentMap<String, PlayerSkinTextureSet> playerSkinTextureSetMap = new ConcurrentHashMap<>();
 	private final Set<UUID> clientSkinSupportPlayerSet = ConcurrentHashMap.newKeySet();
+	private final ConcurrentMap<UUID, PendingPlayerSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
 	private final Object httpServerLock = new Object();
 
 	private volatile int configuredPort;
@@ -120,46 +139,118 @@ public class PlayerSkinManager implements ConfigListener {
 
 	public void forgetClientSkinSupport(ServerPlayer player) {
 		this.clientSkinSupportPlayerSet.remove(player.getUUID());
+		this.pendingSkinApplicationMap.remove(player.getUUID());
 	}
 
 	public void applyPlayerSkin(ServerPlayer player, EmoteDefinition definition) {
-		try {
-			applyPlayerSkinInternal(player, definition);
-		} catch (RuntimeException exception) {
-			Emote.LOGGER.warn("skin apply failed for " + player.getGameProfile().name(), exception);
+		PlayerSkinApplyResult result = applyPlayerSkinSafely(player, definition);
+		if (result.complete() || !result.retryable()) {
+			this.pendingSkinApplicationMap.remove(player.getUUID());
+			return;
+		}
+
+		MinecraftServer server = player.level().getServer();
+		if (server == null) {
+			return;
+		}
+
+		this.pendingSkinApplicationMap.put(
+			player.getUUID(),
+			new PendingPlayerSkinApplication(definition, 10, server.getTickCount() + 1L)
+		);
+	}
+
+	public void tick(MinecraftServer server) {
+		if (this.pendingSkinApplicationMap.isEmpty()) {
+			return;
+		}
+
+		long currentTick = server.getTickCount();
+		for (Map.Entry<UUID, PendingPlayerSkinApplication> entry : List.copyOf(this.pendingSkinApplicationMap.entrySet())) {
+			PendingPlayerSkinApplication pendingApplication = entry.getValue();
+			if (pendingApplication == null || currentTick < pendingApplication.nextAttemptTick()) {
+				continue;
+			}
+
+			ServerPlayer player = server.getPlayerList().getPlayer(entry.getKey());
+			if (player == null) {
+				this.pendingSkinApplicationMap.remove(entry.getKey(), pendingApplication);
+				continue;
+			}
+
+			PlayerSkinApplyResult result = applyPlayerSkinSafely(player, pendingApplication.definition());
+			if (result.complete() || !result.retryable()) {
+				this.pendingSkinApplicationMap.remove(entry.getKey(), pendingApplication);
+				continue;
+			}
+
+			if (pendingApplication.remainingAttempts() <= 1) {
+				Emote.LOGGER.warn(
+					"skin apply incomplete for {}: {}/{} parts",
+					player.getGameProfile().name(),
+					result.appliedPartCount(),
+					result.expectedPartCount()
+				);
+				this.pendingSkinApplicationMap.remove(entry.getKey(), pendingApplication);
+				continue;
+			}
+
+			this.pendingSkinApplicationMap.replace(
+				entry.getKey(),
+				pendingApplication,
+				pendingApplication.nextAttempt(currentTick + 1L)
+			);
 		}
 	}
 
-	private void applyPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
+	private PlayerSkinApplyResult applyPlayerSkinSafely(ServerPlayer player, EmoteDefinition definition) {
+		try {
+			return applyPlayerSkinInternal(player, definition);
+		} catch (RuntimeException exception) {
+			Emote.LOGGER.warn("skin apply failed for " + player.getGameProfile().name(), exception);
+			return new PlayerSkinApplyResult(false, false, definition.skinParts().size(), 0);
+		}
+	}
+
+	private PlayerSkinApplyResult applyPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
 		List<EmoteSkinPart> skinParts = definition.skinParts();
-		if (skinParts.isEmpty() || !this.clientSkinSupportPlayerSet.contains(player.getUUID())) {
-			return;
+		if (skinParts.isEmpty()) {
+			return new PlayerSkinApplyResult(true, false, 0, 0);
+		}
+
+		if (!this.clientSkinSupportPlayerSet.contains(player.getUUID())) {
+			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
 		Optional<PlayerSkinHost> playerSkinHost = findPlayerSkinHost(player);
 		if (playerSkinHost.isEmpty()) {
-			return;
+			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
 		Optional<PlayerSkinTextureSet> playerSkinTextureSet = loadPlayerSkinTextureSet(player);
 		if (playerSkinTextureSet.isEmpty()) {
-			return;
+			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
-		Map<PlayerSkinPart, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost.get(), playerSkinTextureSet.get());
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = createProfileMap(player, playerSkinHost.get(), playerSkinTextureSet.get());
 		if (profileMap.isEmpty()) {
-			return;
+			return new PlayerSkinApplyResult(false, true, skinParts.size(), 0);
 		}
 
 		AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
+		int appliedPartCount = 0;
 		for (EmoteSkinPart skinPart : skinParts) {
-			ResolvableProfile profile = profileMap.get(skinPart.skinPart());
+			ResolvableProfile profile = profileMap.get(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
 			if (profile == null) {
 				continue;
 			}
 
-			applyProfile(player, searchBox, definition.namespace(), skinPart.partIndex(), profile);
+			if (applyProfile(player, searchBox, definition.namespace(), skinPart.partIndex(), profile)) {
+				appliedPartCount++;
+			}
 		}
+
+		return new PlayerSkinApplyResult(appliedPartCount >= skinParts.size(), appliedPartCount < skinParts.size(), skinParts.size(), appliedPartCount);
 	}
 
 	public boolean handleHttpRequest(ChannelHandlerContext context, ByteBuf input) {
@@ -243,6 +334,7 @@ public class PlayerSkinManager implements ConfigListener {
 		this.playerSkinTextureStore.clear();
 		this.playerSkinTextureSetMap.clear();
 		this.clientSkinSupportPlayerSet.clear();
+		this.pendingSkinApplicationMap.clear();
 	}
 
 	private int resolvePlayerSkinPort(MinecraftServer server, int fallbackPort) {
@@ -320,11 +412,11 @@ public class PlayerSkinManager implements ConfigListener {
 
 		try {
 			BufferedImage sourceImage = downloadSkinImage(skinSource.textureUrl());
-			Map<PlayerSkinPart, String> tokenMap = new EnumMap<>(PlayerSkinPart.class);
-			for (PlayerSkinPart skinPart : PlayerSkinPart.values()) {
-				String token = buildTextureToken(skinSource.textureHash(), skinSource.slimModel(), skinPart);
-				this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, skinPart, skinSource.slimModel()));
-				tokenMap.put(skinPart, token);
+			Map<PlayerSkinTextureKey, String> tokenMap = new ConcurrentHashMap<>();
+			for (PlayerSkinTextureKey textureKey : TEXTURE_KEYS) {
+				String token = buildTextureToken(skinSource.textureHash(), skinSource.slimModel(), textureKey.skinPart(), textureKey.skinSegment());
+				this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel()));
+				tokenMap.put(textureKey, token);
 			}
 
 			PlayerSkinTextureSet loadedTextureSet = new PlayerSkinTextureSet(Map.copyOf(tokenMap));
@@ -381,13 +473,13 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 	}
 
-	private Map<PlayerSkinPart, ResolvableProfile> createProfileMap(
+	private Map<PlayerSkinTextureKey, ResolvableProfile> createProfileMap(
 		ServerPlayer player,
 		PlayerSkinHost playerSkinHost,
 		PlayerSkinTextureSet playerSkinTextureSet
 	) {
-		Map<PlayerSkinPart, ResolvableProfile> profileMap = new EnumMap<>(PlayerSkinPart.class);
-		for (Map.Entry<PlayerSkinPart, String> entry : playerSkinTextureSet.textureTokenMap().entrySet()) {
+		Map<PlayerSkinTextureKey, ResolvableProfile> profileMap = new ConcurrentHashMap<>();
+		for (Map.Entry<PlayerSkinTextureKey, String> entry : playerSkinTextureSet.textureTokenMap().entrySet()) {
 			String textureUrl = playerSkinHost.createBaseUrl() + HTTP_PATH_PREFIX + entry.getValue() + ".png";
 			profileMap.put(entry.getKey(), createProfile(player, textureUrl));
 		}
@@ -396,23 +488,25 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private ResolvableProfile createProfile(ServerPlayer player, String textureUrl) {
+		UUID profileId = UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8));
+		String profileName = player.getGameProfile().name();
 		PropertyMap properties = new PropertyMap(ImmutableMultimap.of(
 			"textures",
-			new Property("textures", encodeTextureValue(player, textureUrl))
+			new Property("textures", encodeTextureValue(profileId, profileName, textureUrl))
 		));
 		GameProfile profile = new GameProfile(
-			UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8)),
-			player.getGameProfile().name(),
+			profileId,
+			profileName,
 			properties
 		);
 		return ResolvableProfile.createResolved(profile);
 	}
 
-	private String encodeTextureValue(ServerPlayer player, String textureUrl) {
+	private String encodeTextureValue(UUID profileId, String profileName, String textureUrl) {
 		JsonObject rootObject = new JsonObject();
 		rootObject.addProperty("timestamp", System.currentTimeMillis());
-		rootObject.addProperty("profileId", player.getUUID().toString().replace("-", ""));
-		rootObject.addProperty("profileName", player.getGameProfile().name());
+		rootObject.addProperty("profileId", profileId.toString().replace("-", ""));
+		rootObject.addProperty("profileName", profileName);
 
 		JsonObject texturesObject = new JsonObject();
 		JsonObject skinObject = new JsonObject();
@@ -422,9 +516,9 @@ public class PlayerSkinManager implements ConfigListener {
 		return Base64.getEncoder().encodeToString(rootObject.toString().getBytes(StandardCharsets.UTF_8));
 	}
 
-	private void applyProfile(ServerPlayer player, AABB searchBox, String namespace, int partIndex, ResolvableProfile profile) {
+	private boolean applyProfile(ServerPlayer player, AABB searchBox, String namespace, int partIndex, ResolvableProfile profile) {
 		if (!(player.level() instanceof ServerLevel serverLevel)) {
-			return;
+			return false;
 		}
 
 		String partTag = namespace + "_" + partIndex;
@@ -434,25 +528,33 @@ public class PlayerSkinManager implements ConfigListener {
 			itemDisplay -> itemDisplay.entityTags().contains(partTag)
 		);
 		if (itemDisplays.isEmpty()) {
-			return;
+			return false;
 		}
 
-		SlotAccess slot = itemDisplays.get(0).getSlot(0);
-		if (slot == null) {
-			return;
+		boolean applied = false;
+		for (Display.ItemDisplay itemDisplay : itemDisplays) {
+			SlotAccess slot = itemDisplay.getSlot(0);
+			if (slot == null) {
+				continue;
+			}
+
+			ItemStack currentStack = slot.get();
+			if (!currentStack.is(Items.PLAYER_HEAD)) {
+				continue;
+			}
+
+			ItemStack itemStack = currentStack.copy();
+			itemStack.set(DataComponents.PROFILE, profile);
+			if (slot.set(itemStack)) {
+				applied = true;
+			}
 		}
 
-		ItemStack itemStack = slot.get().copy();
-		if (!itemStack.is(Items.PLAYER_HEAD)) {
-			return;
-		}
-
-		itemStack.set(DataComponents.PROFILE, profile);
-		slot.set(itemStack);
+		return applied;
 	}
 
-	private String buildTextureToken(String textureHash, boolean slimModel, PlayerSkinPart skinPart) {
-		return textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "wide") + "-" + skinPart.id();
+	private String buildTextureToken(String textureHash, boolean slimModel, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
+		return textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "wide") + "-" + skinPart.id() + "-" + skinSegment.id();
 	}
 
 	private byte[] appendHttpRequestBuffer(ChannelHandlerContext context, ByteBuf input) {
@@ -594,9 +696,21 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 	}
 
-	private record PlayerSkinTextureSet(Map<PlayerSkinPart, String> textureTokenMap) {
+	private record PlayerSkinTextureSet(Map<PlayerSkinTextureKey, String> textureTokenMap) {
 		private PlayerSkinTextureSet {
 			textureTokenMap = Map.copyOf(textureTokenMap);
 		}
+	}
+
+	private record PlayerSkinTextureKey(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
+	}
+
+	private record PendingPlayerSkinApplication(EmoteDefinition definition, int remainingAttempts, long nextAttemptTick) {
+		private PendingPlayerSkinApplication nextAttempt(long nextAttemptTick) {
+			return new PendingPlayerSkinApplication(this.definition, this.remainingAttempts - 1, nextAttemptTick);
+		}
+	}
+
+	private record PlayerSkinApplyResult(boolean complete, boolean retryable, int expectedPartCount, int appliedPartCount) {
 	}
 }

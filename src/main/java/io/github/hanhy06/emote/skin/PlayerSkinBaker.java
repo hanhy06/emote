@@ -20,15 +20,15 @@ public class PlayerSkinBaker {
 	private static final FaceTarget OVERLAY_LEFT = new FaceTarget(48, 8, 8, 8);
 	private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
-	public byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, boolean slimModel) throws IOException {
+	public byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) throws IOException {
 		BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
 		if (skinPart == PlayerSkinPart.HEAD) {
 			return writePng(normalizedImage);
 		}
 
 		BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-		FaceMap baseFaces = getBaseFaces(skinPart, slimModel);
-		FaceMap overlayFaces = getOverlayFaces(skinPart, slimModel);
+		FaceMap baseFaces = getBaseFaces(skinPart, skinSegment, slimModel);
+		FaceMap overlayFaces = getOverlayFaces(skinPart, skinSegment, slimModel);
 
 		drawFace(outputImage, normalizedImage, baseFaces.top(), BASE_TOP);
 		drawFace(outputImage, normalizedImage, baseFaces.bottom(), BASE_BOTTOM);
@@ -93,8 +93,8 @@ public class PlayerSkinBaker {
 		return outputStream.toByteArray();
 	}
 
-	private FaceMap getBaseFaces(PlayerSkinPart skinPart, boolean slimModel) {
-		return switch (skinPart) {
+	private FaceMap getBaseFaces(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) {
+		FaceMap fullFaces = switch (skinPart) {
 			case BODY -> new FaceMap(
 				new FaceRect(20, 16, 8, 4),
 				new FaceRect(28, 16, 8, 4),
@@ -109,10 +109,12 @@ public class PlayerSkinBaker {
 			case LEFT_LEG -> createLeftLegFaces();
 			case HEAD -> createHeadFaces();
 		};
+
+		return createSegmentFaces(fullFaces, skinSegment);
 	}
 
-	private FaceMap getOverlayFaces(PlayerSkinPart skinPart, boolean slimModel) {
-		return switch (skinPart) {
+	private FaceMap getOverlayFaces(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) {
+		FaceMap fullFaces = switch (skinPart) {
 			case BODY -> new FaceMap(
 				new FaceRect(20, 32, 8, 4),
 				new FaceRect(28, 32, 8, 4),
@@ -127,6 +129,42 @@ public class PlayerSkinBaker {
 			case LEFT_LEG -> createLeftLegOverlayFaces();
 			case HEAD -> createHeadOverlayFaces();
 		};
+
+		return createSegmentFaces(fullFaces, skinSegment);
+	}
+
+	private FaceMap createSegmentFaces(FaceMap fullFaces, PlayerSkinSegment skinSegment) {
+		return switch (skinSegment) {
+			case FULL -> fullFaces;
+			case UPPER -> new FaceMap(
+				fullFaces.top(),
+				fullFaces.bottom(),
+				createUpperSegment(fullFaces.right()),
+				createUpperSegment(fullFaces.front()),
+				createUpperSegment(fullFaces.left()),
+				createUpperSegment(fullFaces.back())
+			);
+			case LOWER -> new FaceMap(
+				fullFaces.top(),
+				fullFaces.bottom(),
+				createLowerSegment(fullFaces.right()),
+				createLowerSegment(fullFaces.front()),
+				createLowerSegment(fullFaces.left()),
+				createLowerSegment(fullFaces.back())
+			);
+		};
+	}
+
+	private FaceRect createUpperSegment(FaceRect faceRect) {
+		return new FaceRect(faceRect.x(), faceRect.y(), faceRect.width(), Math.min(4, faceRect.height()));
+	}
+
+	private FaceRect createLowerSegment(FaceRect faceRect) {
+		if (faceRect.height() <= 4) {
+			return faceRect;
+		}
+
+		return new FaceRect(faceRect.x(), faceRect.y() + 4, faceRect.width(), faceRect.height() - 4);
 	}
 
 	private FaceMap createHeadFaces() {

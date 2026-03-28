@@ -72,6 +72,7 @@ public class Emote implements ModInitializer {
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resourceManager) -> handleDataPackReloadStart(server));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
+		ServerTickEvents.END_SERVER_TICK.register(PLAYER_SKIN_MANAGER::tick);
 		ServerTickEvents.END_SERVER_TICK.register(this.emotePlaybackManager::tick);
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {

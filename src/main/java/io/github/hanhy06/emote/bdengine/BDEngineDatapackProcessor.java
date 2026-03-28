@@ -9,6 +9,7 @@ import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.PlayerSkinSegment;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
@@ -37,6 +38,7 @@ public class BDEngineDatapackProcessor {
 	private static final String DATAPACK_META_FILE_NAME = "emote-datapack.json";
 	private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
 	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
+	private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)\\]");
 	private final EmoteRegistry emoteRegistry;
 
 	public BDEngineDatapackProcessor(EmoteRegistry emoteRegistry) {
@@ -312,18 +314,19 @@ public class BDEngineDatapackProcessor {
 		try {
 			String createFunction = Files.readString(createFunctionPath);
 			Matcher itemDisplayMatcher = createItemDisplayPattern(namespace).matcher(createFunction);
-			List<EmoteSkinPart> skinParts = new ArrayList<>();
+			List<RawSkinPart> rawSkinParts = new ArrayList<>();
 			int partCount = 0;
 
 			while (itemDisplayMatcher.find()) {
 				partCount++;
 
+				String itemDisplayData = itemDisplayMatcher.group();
 				String itemData = itemDisplayMatcher.group(1);
 				int partIndex = Integer.parseInt(itemDisplayMatcher.group(2));
-				readSkinPart(itemData, partIndex).ifPresent(skinParts::add);
+				readSkinPart(itemDisplayData, itemData, partIndex).ifPresent(rawSkinParts::add);
 			}
 
-			return new CreateFunctionData(partCount, List.copyOf(skinParts));
+			return new CreateFunctionData(partCount, assignSkinSegments(rawSkinParts));
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to read parts from {}", createFunctionPath, exception);
 			return new CreateFunctionData(0, List.of());
@@ -335,7 +338,7 @@ public class BDEngineDatapackProcessor {
 		return Pattern.compile(pattern, Pattern.DOTALL);
 	}
 
-	private Optional<EmoteSkinPart> readSkinPart(String itemData, int partIndex) {
+	private Optional<RawSkinPart> readSkinPart(String itemDisplayData, String itemData, int partIndex) {
 		if (!itemData.contains("id:\"minecraft:player_head\"")) {
 			return Optional.empty();
 		}
@@ -346,7 +349,77 @@ public class BDEngineDatapackProcessor {
 		}
 
 		return PlayerSkinPart.fromId(markerMatcher.group(1))
-			.map(playerSkinPart -> new EmoteSkinPart(partIndex, playerSkinPart));
+			.map(playerSkinPart -> new RawSkinPart(
+				partIndex,
+				playerSkinPart,
+				readLocalYScale(itemDisplayData)
+			));
+	}
+
+	private List<EmoteSkinPart> assignSkinSegments(List<RawSkinPart> rawSkinParts) {
+		if (rawSkinParts.isEmpty()) {
+			return List.of();
+		}
+
+		Map<PlayerSkinPart, List<RawSkinPart>> rawSkinPartMap = new java.util.EnumMap<>(PlayerSkinPart.class);
+		for (RawSkinPart rawSkinPart : rawSkinParts) {
+			rawSkinPartMap.computeIfAbsent(rawSkinPart.skinPart(), ignored -> new ArrayList<>()).add(rawSkinPart);
+		}
+
+		List<EmoteSkinPart> skinParts = new ArrayList<>();
+		for (Map.Entry<PlayerSkinPart, List<RawSkinPart>> entry : rawSkinPartMap.entrySet()) {
+			PlayerSkinPart skinPart = entry.getKey();
+			List<RawSkinPart> partsForSkin = new ArrayList<>(entry.getValue());
+			partsForSkin.sort(
+				Comparator.comparingDouble(RawSkinPart::localYScale)
+					.thenComparingInt(RawSkinPart::partIndex)
+			);
+
+			if (skinPart == PlayerSkinPart.HEAD || partsForSkin.size() <= 1) {
+				for (RawSkinPart rawSkinPart : partsForSkin) {
+					skinParts.add(new EmoteSkinPart(rawSkinPart.partIndex(), rawSkinPart.skinPart(), PlayerSkinSegment.FULL));
+				}
+				continue;
+			}
+
+			skinParts.add(new EmoteSkinPart(partsForSkin.get(0).partIndex(), skinPart, PlayerSkinSegment.UPPER));
+			for (int index = 1; index < partsForSkin.size(); index++) {
+				skinParts.add(new EmoteSkinPart(partsForSkin.get(index).partIndex(), skinPart, PlayerSkinSegment.LOWER));
+			}
+		}
+
+		skinParts.sort(Comparator.comparingInt(EmoteSkinPart::partIndex));
+		return List.copyOf(skinParts);
+	}
+
+	private double readLocalYScale(String itemDisplayData) {
+		Matcher transformationMatcher = TRANSFORMATION_PATTERN.matcher(itemDisplayData);
+		if (!transformationMatcher.find()) {
+			return 1.0D;
+		}
+
+		String[] values = transformationMatcher.group(1).split(",");
+		if (values.length < 10) {
+			return 1.0D;
+		}
+
+		try {
+			double x = parseMatrixNumber(values[1]);
+			double y = parseMatrixNumber(values[5]);
+			double z = parseMatrixNumber(values[9]);
+			return Math.sqrt(x * x + y * y + z * z);
+		} catch (NumberFormatException ignored) {
+			return 1.0D;
+		}
+	}
+
+	private double parseMatrixNumber(String value) {
+		String normalizedValue = value.trim();
+		if (normalizedValue.endsWith("f") || normalizedValue.endsWith("d")) {
+			normalizedValue = normalizedValue.substring(0, normalizedValue.length() - 1);
+		}
+
+		return Double.parseDouble(normalizedValue);
 	}
 
 	private Comparator<Path> pathComparator() {
@@ -437,5 +510,8 @@ public class BDEngineDatapackProcessor {
 	}
 
 	private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {
+	}
+
+	private record RawSkinPart(int partIndex, PlayerSkinPart skinPart, double localYScale) {
 	}
 }

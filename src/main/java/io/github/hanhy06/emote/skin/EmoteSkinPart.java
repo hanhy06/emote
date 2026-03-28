@@ -4,7 +4,8 @@ import java.util.Objects;
 
 public record EmoteSkinPart(
 	int partIndex,
-	PlayerSkinPart skinPart
+	PlayerSkinPart skinPart,
+	PlayerSkinSegment skinSegment
 ) {
 	public EmoteSkinPart {
 		if (partIndex < 0) {
@@ -12,5 +13,6 @@ public record EmoteSkinPart(
 		}
 
 		Objects.requireNonNull(skinPart, "skinPart");
+		Objects.requireNonNull(skinSegment, "skinSegment");
 	}
 }
