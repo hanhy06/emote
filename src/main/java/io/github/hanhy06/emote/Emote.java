@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.command.EmoteCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.EmoteDialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.network.EmotePlaybackStateService;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
@@ -46,19 +47,22 @@ public class Emote implements ModInitializer {
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
 	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager(PLAYER_SKIN_MANAGER);
 	private final EmotePermissionService emotePermissionService = new EmotePermissionService();
+	private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
+		this.emoteRegistry,
+		this.emotePermissionService
+	);
 	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.emoteRegistry);
 	private final EmoteDialogManager emoteDialogManager = new EmoteDialogManager(
 		this.emoteRegistry,
-		this.emotePermissionService,
+		this.playableEmoteService,
 		this.emotePlaybackManager
 	);
 	private final EmotePlaybackStateService emotePlaybackStateService = new EmotePlaybackStateService();
 	private final EmoteWheelPlayService emoteWheelPlayService = new EmoteWheelPlayService(
-		this.emoteRegistry,
-		this.emotePermissionService,
+		this.playableEmoteService,
 		this.emotePlaybackManager
 	);
-	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.emoteDialogManager);
+	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.playableEmoteService);
 
 	@Override
 	public void onInitialize() {
@@ -131,6 +135,7 @@ public class Emote implements ModInitializer {
 			this.bdEngineDatapackProcessor,
 			this.configManager,
 			this.emoteDialogManager,
+			this.playableEmoteService,
 			this.emotePermissionService,
 			this.emoteWheelSyncService
 		));

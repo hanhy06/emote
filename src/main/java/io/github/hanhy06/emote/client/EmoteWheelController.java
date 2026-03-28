@@ -13,7 +13,6 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class EmoteWheelController {
-	private static final int PAGE_SIZE = 6;
 	private static final String MENU_FALLBACK_COMMAND = "emote menu";
 	private List<PlayableEmote> syncedEmotes = List.of();
 	private boolean syncedFromServer;
@@ -70,7 +69,7 @@ public class EmoteWheelController {
 
 		for (int index = 0; index < this.syncedEmotes.size(); index++) {
 			if (this.syncedEmotes.get(index).selectionKey().equals(this.lastSelectionKey)) {
-				return index / PAGE_SIZE;
+				return index / EmoteWheelScreen.SLOT_COUNT;
 			}
 		}
 

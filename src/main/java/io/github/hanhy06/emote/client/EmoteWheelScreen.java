@@ -15,7 +15,7 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class EmoteWheelScreen extends Screen {
-	private static final int SLOT_COUNT = 6;
+	static final int SLOT_COUNT = 6;
 	private static final int LEFT_MOUSE_BUTTON = 0;
 	private static final int RIGHT_MOUSE_BUTTON = 1;
 	private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;

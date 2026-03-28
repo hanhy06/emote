@@ -1,15 +1,15 @@
 package io.github.hanhy06.emote.network;
 
-import io.github.hanhy06.emote.dialog.EmoteDialogManager;
+import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 public class EmoteWheelSyncService {
-	private final EmoteDialogManager emoteDialogManager;
+	private final PlayableEmoteService playableEmoteService;
 
-	public EmoteWheelSyncService(EmoteDialogManager emoteDialogManager) {
-		this.emoteDialogManager = emoteDialogManager;
+	public EmoteWheelSyncService(PlayableEmoteService playableEmoteService) {
+		this.playableEmoteService = playableEmoteService;
 	}
 
 	public void syncPlayer(ServerPlayer player) {
@@ -17,7 +17,7 @@ public class EmoteWheelSyncService {
 			return;
 		}
 
-		ServerPlayNetworking.send(player, new EmoteWheelSyncPayload(this.emoteDialogManager.getPlayableEmotes(player)));
+		ServerPlayNetworking.send(player, new EmoteWheelSyncPayload(this.playableEmoteService.getPlayableEmotes(player)));
 	}
 
 	public void syncAll(MinecraftServer server) {

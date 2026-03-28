@@ -1,11 +1,9 @@
 package io.github.hanhy06.emote.dialog;
 
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteAnimation;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
-import io.github.hanhy06.emote.permission.EmotePermissionService;
+import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
 import net.minecraft.core.Holder;
@@ -24,22 +22,21 @@ import net.minecraft.server.dialog.body.PlainMessage;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 public class EmoteDialogManager {
 	private final EmoteRegistry emoteRegistry;
-	private final EmotePermissionService emotePermissionService;
+	private final PlayableEmoteService playableEmoteService;
 	private final EmotePlaybackManager emotePlaybackManager;
 
 	public EmoteDialogManager(
 		EmoteRegistry emoteRegistry,
-		EmotePermissionService emotePermissionService,
+		PlayableEmoteService playableEmoteService,
 		EmotePlaybackManager emotePlaybackManager
 	) {
 		this.emoteRegistry = emoteRegistry;
-		this.emotePermissionService = emotePermissionService;
+		this.playableEmoteService = playableEmoteService;
 		this.emotePlaybackManager = emotePlaybackManager;
 	}
 
@@ -49,7 +46,7 @@ public class EmoteDialogManager {
 	}
 
 	private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber) {
-		List<PlayableEmote> playableEmoteList = getPlayableEmotes(player);
+		List<PlayableEmote> playableEmoteList = this.playableEmoteService.getPlayableEmotes(player);
 		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
 		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteList.size() / playButtonsPerPage));
 		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
@@ -66,7 +63,7 @@ public class EmoteDialogManager {
 			));
 		}
 
-		if (this.emotePermissionService.canStop(player) && this.emotePlaybackManager.findActiveEmote(player.getUUID()).isPresent()) {
+		if (this.emotePlaybackManager.findActiveEmote(player.getUUID()).isPresent()) {
 			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
 
@@ -119,29 +116,6 @@ public class EmoteDialogManager {
 		actionButtons.add(pageNumber < totalPageCount
 			? createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (pageNumber + 1))
 			: createStaticButton("Next", "No next page"));
-	}
-
-	public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
-		List<PlayableEmote> playableEmotes = new ArrayList<>();
-		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
-			for (EmoteAnimation animation : definition.animations()) {
-				String animationName = animation.name();
-				if (!this.emotePermissionService.canPlay(player, definition.namespace(), animationName)) {
-					continue;
-				}
-
-				playableEmotes.add(new PlayableEmote(
-					definition.commandName(),
-					animationName,
-					definition.isDefaultAnimation(animationName),
-					definition.createDisplayName(animationName),
-					definition.createDisplayDescription(animationName)
-				));
-			}
-		}
-
-		playableEmotes.sort(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName));
-		return List.copyOf(playableEmotes);
 	}
 
 	private String createBodyText(

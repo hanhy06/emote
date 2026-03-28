@@ -10,9 +10,11 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.EmoteDialogManager;
-import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
+import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
+import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
 import io.github.hanhy06.emote.permission.EmotePermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
@@ -37,6 +39,7 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
+		PlayableEmoteService playableEmoteService,
 		EmotePermissionService emotePermissionService,
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
@@ -47,6 +50,7 @@ public final class EmoteCommand {
 			bdEngineDatapackProcessor,
 			configManager,
 			emoteDialogManager,
+			playableEmoteService,
 			emotePermissionService,
 			emoteWheelSyncService
 		));
@@ -59,6 +63,7 @@ public final class EmoteCommand {
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
+		PlayableEmoteService playableEmoteService,
 		EmotePermissionService emotePermissionService,
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
@@ -90,13 +95,13 @@ public final class EmoteCommand {
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("emote", StringArgumentType.word())
 					.suggests((context, builder) -> SharedSuggestionProvider.suggest(emoteRegistry.getPlayNames(), builder))
-					.executes(context -> playDefaultEmote(context, emoteRegistry, emotePlaybackManager, emotePermissionService))
+					.executes(context -> playDefaultEmote(context, emotePlaybackManager, playableEmoteService))
 					.then(Commands.argument("animation", StringArgumentType.word())
 						.suggests((context, builder) -> SharedSuggestionProvider.suggest(
 							emoteRegistry.getAnimationNamesForPlay(StringArgumentType.getString(context, "emote")),
 							builder
 						))
-						.executes(context -> playSelectedAnimation(context, emoteRegistry, emotePlaybackManager, emotePermissionService)))))
+						.executes(context -> playSelectedAnimation(context, emotePlaybackManager, playableEmoteService)))))
 			.then(Commands.literal("stop")
 				.requires(emotePermissionService.requireStop())
 				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager)));
@@ -184,37 +189,24 @@ public final class EmoteCommand {
 
 	private static int playEmote(
 		CommandSourceStack source,
-		EmoteRegistry emoteRegistry,
+		ServerPlayer player,
 		EmotePlaybackManager emotePlaybackManager,
-		EmotePermissionService emotePermissionService,
-		String emoteName,
-		String animationName
-	) throws CommandSyntaxException {
-		ServerPlayer player = source.getPlayerOrException();
-		EmoteDefinition definition = emoteRegistry.findDefinitionForPlay(emoteName).orElse(null);
-		if (definition == null) {
-			source.sendFailure(Component.literal("Unknown: " + emoteName));
+		PlayableEmoteSelectionResult selectionResult
+	) {
+		if (!selectionResult.isSuccess()) {
+			source.sendFailure(Component.literal(selectionResult.errorMessage()));
 			return 0;
 		}
 
-		EmoteAnimation animation = definition.findAnimation(animationName).orElse(null);
-		if (animation == null) {
-			source.sendFailure(Component.literal("Unknown: " + definition.commandName() + ":" + animationName));
-			return 0;
-		}
+		PlayableEmoteSelection selection = selectionResult.selection();
 
-		if (!emotePermissionService.canPlay(player, definition.namespace(), animation.name())) {
-			source.sendFailure(Component.literal("No emote permission."));
-			return 0;
-		}
-
-		String playError = emotePlaybackManager.startEmote(player, definition, animation).orElse(null);
+		String playError = emotePlaybackManager.startEmote(player, selection.definition(), selection.animation()).orElse(null);
 		if (playError != null) {
 			source.sendFailure(Component.literal(playError));
 			return 0;
 		}
 
-		String displayName = definition.createDisplayName(animation.name());
+		String displayName = selection.definition().createDisplayName(selection.animation().name());
 		source.sendSuccess(
 			() -> Component.literal("Play: " + displayName),
 			false
@@ -224,47 +216,35 @@ public final class EmoteCommand {
 
 	private static int playDefaultEmote(
 		CommandContext<CommandSourceStack> context,
-		EmoteRegistry emoteRegistry,
 		EmotePlaybackManager emotePlaybackManager,
-		EmotePermissionService emotePermissionService
+		PlayableEmoteService playableEmoteService
 	) throws CommandSyntaxException {
 		CommandSourceStack source = context.getSource();
-		String emoteName = StringArgumentType.getString(context, "emote");
-		EmoteDefinition definition = emoteRegistry.findDefinitionForPlay(emoteName).orElse(null);
-		if (definition == null) {
-			source.sendFailure(Component.literal("Unknown: " + emoteName));
-			return 0;
-		}
-
-		EmoteAnimation defaultAnimation = definition.findDefaultAnimation().orElse(null);
-		if (defaultAnimation == null) {
-			source.sendFailure(Component.literal("No default: " + definition.commandName()));
-			return 0;
-		}
-
+		ServerPlayer player = source.getPlayerOrException();
 		return playEmote(
 			source,
-			emoteRegistry,
+			player,
 			emotePlaybackManager,
-			emotePermissionService,
-			emoteName,
-			defaultAnimation.name()
+			playableEmoteService.findDefaultSelection(player, StringArgumentType.getString(context, "emote"))
 		);
 	}
 
 	private static int playSelectedAnimation(
 		CommandContext<CommandSourceStack> context,
-		EmoteRegistry emoteRegistry,
 		EmotePlaybackManager emotePlaybackManager,
-		EmotePermissionService emotePermissionService
+		PlayableEmoteService playableEmoteService
 	) throws CommandSyntaxException {
+		CommandSourceStack source = context.getSource();
+		ServerPlayer player = source.getPlayerOrException();
 		return playEmote(
-			context.getSource(),
-			emoteRegistry,
+			source,
+			player,
 			emotePlaybackManager,
-			emotePermissionService,
-			StringArgumentType.getString(context, "emote"),
-			StringArgumentType.getString(context, "animation")
+			playableEmoteService.findSelection(
+				player,
+				StringArgumentType.getString(context, "emote"),
+				StringArgumentType.getString(context, "animation")
+			)
 		);
 	}
 
