@@ -24,6 +24,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -94,17 +95,48 @@ public final class EmoteCommand {
 			.then(Commands.literal("play")
 				.requires(emotePermissionService.requirePlay())
 				.then(Commands.argument("emote", StringArgumentType.word())
-					.suggests((context, builder) -> SharedSuggestionProvider.suggest(emoteRegistry.getPlayNames(), builder))
+					.suggests((context, builder) -> SharedSuggestionProvider.suggest(
+						getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
+						builder
+					))
 					.executes(context -> playDefaultEmote(context, emotePlaybackManager, playableEmoteService))
 					.then(Commands.argument("animation", StringArgumentType.word())
 						.suggests((context, builder) -> SharedSuggestionProvider.suggest(
-							emoteRegistry.getAnimationNamesForPlay(StringArgumentType.getString(context, "emote")),
+							getSuggestedAnimationNames(
+								context.getSource(),
+								StringArgumentType.getString(context, "emote"),
+								emoteRegistry,
+								playableEmoteService
+							),
 							builder
 						))
 						.executes(context -> playSelectedAnimation(context, emotePlaybackManager, playableEmoteService)))))
 			.then(Commands.literal("stop")
 				.requires(emotePermissionService.requireStop())
 				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager)));
+	}
+
+	private static List<String> getSuggestedPlayNames(
+		CommandSourceStack source,
+		EmoteRegistry emoteRegistry,
+		PlayableEmoteService playableEmoteService
+	) {
+		ServerPlayer player = findPlayer(source);
+		return player == null
+			? emoteRegistry.getPlayNames()
+			: playableEmoteService.getPlayablePlayNames(player);
+	}
+
+	private static List<String> getSuggestedAnimationNames(
+		CommandSourceStack source,
+		String commandNameOrNamespace,
+		EmoteRegistry emoteRegistry,
+		PlayableEmoteService playableEmoteService
+	) {
+		ServerPlayer player = findPlayer(source);
+		return player == null
+			? emoteRegistry.getAnimationNamesForPlay(commandNameOrNamespace)
+			: playableEmoteService.getPlayableAnimationNamesForPlay(player, commandNameOrNamespace);
 	}
 
 	private static int openMenu(
@@ -261,5 +293,10 @@ public final class EmoteCommand {
 			false
 		);
 		return 1;
+	}
+
+	private static ServerPlayer findPlayer(CommandSourceStack source) {
+		Entity entity = source.getEntity();
+		return entity instanceof ServerPlayer player ? player : null;
 	}
 }

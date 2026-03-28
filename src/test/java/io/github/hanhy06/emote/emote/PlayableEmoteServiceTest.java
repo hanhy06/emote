@@ -30,6 +30,37 @@ class PlayableEmoteServiceTest {
 	}
 
 	@Test
+	void getPlayablePlayNamesKeepsOnlyVisibleDefinitions() {
+		EmoteRegistry registry = new EmoteRegistry();
+		registry.replaceDefinitions(List.of(
+			createDefinition("wave_pack", "wave", "Wave", "Friendly wave", "default", "default"),
+			createDefinition("bow_pack", "bow", "Bow", "Polite bow", "default", "default")
+		));
+		PlayableEmoteService service = new PlayableEmoteService(
+			registry,
+			(player, definition, animation) -> !definition.namespace().equals("bow_pack")
+		);
+
+		List<String> playNames = service.getPlayablePlayNames(null);
+
+		assertEquals(List.of("wave", "wave_pack"), playNames);
+	}
+
+	@Test
+	void getPlayableAnimationNamesForPlayFiltersBlockedAnimations() {
+		EmoteRegistry registry = new EmoteRegistry();
+		registry.replaceDefinitions(List.of(createDefinition("wave_pack", "wave", "Wave", "Friendly wave", "default", "default", "fast")));
+		PlayableEmoteService service = new PlayableEmoteService(
+			registry,
+			(player, definition, animation) -> !animation.name().equals("fast")
+		);
+
+		List<String> animationNames = service.getPlayableAnimationNamesForPlay(null, "wave_pack");
+
+		assertEquals(List.of("default"), animationNames);
+	}
+
+	@Test
 	void findSelectionRejectsBlockedAnimation() {
 		EmoteRegistry registry = new EmoteRegistry();
 		registry.replaceDefinitions(List.of(createDefinition("wave", "wave", "Wave", "Friendly wave", "default", "default", "fast")));

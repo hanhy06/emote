@@ -47,14 +47,10 @@ public class EmoteDialogManager {
 
 	private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber) {
 		List<PlayableEmote> playableEmoteList = this.playableEmoteService.getPlayableEmotes(player);
-		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
-		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteList.size() / playButtonsPerPage));
-		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
-		int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteList.size());
-		int endIndex = Math.min(startIndex + playButtonsPerPage, playableEmoteList.size());
+		DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
 
 		List<ActionButton> actionButtons = new ArrayList<>();
-		for (PlayableEmote playableEmote : playableEmoteList.subList(startIndex, endIndex)) {
+		for (PlayableEmote playableEmote : playableEmoteList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
 			String command = "/" + playableEmote.createPlayCommand();
 			actionButtons.add(createRunCommandButton(
 				playableEmote.displayName(),
@@ -67,14 +63,14 @@ public class EmoteDialogManager {
 			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
 
-		appendPageButtons(actionButtons, pageNumber, totalPageCount);
+		appendPageButtons(actionButtons, dialogPage);
 
 		if (actionButtons.isEmpty()) {
 			actionButtons.add(createStaticButton("Close", "Close"));
 		}
 
 		List<DialogBody> dialogBody = List.of(new PlainMessage(
-			Component.literal(createBodyText(playableEmoteList.size(), pageNumber, totalPageCount, startIndex, endIndex, player)),
+			Component.literal(createBodyText(dialogPage, player)),
 			240
 		));
 		CommonDialogData commonDialogData = new CommonDialogData(
@@ -101,8 +97,8 @@ public class EmoteDialogManager {
 		return new ActionButton(buttonData, Optional.empty());
 	}
 
-	private void appendPageButtons(List<ActionButton> actionButtons, int pageNumber, int totalPageCount) {
-		if (totalPageCount <= 1) {
+	private void appendPageButtons(List<ActionButton> actionButtons, DialogPage dialogPage) {
+		if (dialogPage.totalPageCount() <= 1) {
 			return;
 		}
 
@@ -110,22 +106,15 @@ public class EmoteDialogManager {
 			actionButtons.add(createStaticButton(" ", ""));
 		}
 
-		actionButtons.add(pageNumber > 1
-			? createRunCommandButton("Prev", "Open the previous emote page", "/emote menu " + (pageNumber - 1))
+		actionButtons.add(dialogPage.pageNumber() > 1
+			? createRunCommandButton("Prev", "Open the previous emote page", "/emote menu " + (dialogPage.pageNumber() - 1))
 			: createStaticButton("Prev", "No previous page"));
-		actionButtons.add(pageNumber < totalPageCount
-			? createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (pageNumber + 1))
+		actionButtons.add(dialogPage.pageNumber() < dialogPage.totalPageCount()
+			? createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (dialogPage.pageNumber() + 1))
 			: createStaticButton("Next", "No next page"));
 	}
 
-	private String createBodyText(
-		int playableEmoteCount,
-		int pageNumber,
-		int totalPageCount,
-		int startIndex,
-		int endIndex,
-		ServerPlayer player
-	) {
+	private String createBodyText(DialogPage dialogPage, ServerPlayer player) {
 		if (this.emoteRegistry.size() == 0) {
 			return "No emotes.";
 		}
@@ -137,15 +126,33 @@ public class EmoteDialogManager {
 				.orElse(value.namespace() + ":" + value.animationName()))
 			.orElse("");
 
-		if (playableEmoteCount == 0) {
+		if (dialogPage.playableEmoteCount() == 0) {
 			return "No usable emotes." + activeEmoteText;
 		}
 
-		if (totalPageCount == 1) {
-			return "Emotes: " + playableEmoteCount + "." + activeEmoteText;
+		if (dialogPage.totalPageCount() == 1) {
+			return "Emotes: " + dialogPage.playableEmoteCount() + "." + activeEmoteText;
 		}
 
-		return (startIndex + 1) + "-" + endIndex + "/" + playableEmoteCount
-			+ " | " + pageNumber + "/" + totalPageCount + "." + activeEmoteText;
+		return (dialogPage.startIndex() + 1) + "-" + dialogPage.endIndex() + "/" + dialogPage.playableEmoteCount()
+			+ " | " + dialogPage.pageNumber() + "/" + dialogPage.totalPageCount() + "." + activeEmoteText;
+	}
+
+	private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
+		int playButtonsPerPage = Math.max(1, ConfigManager.getConfig().menu_page_size());
+		int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteCount / playButtonsPerPage));
+		int pageNumber = Math.max(1, Math.min(requestedPageNumber, totalPageCount));
+		int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);
+		int endIndex = Math.min(startIndex + playButtonsPerPage, playableEmoteCount);
+		return new DialogPage(playableEmoteCount, pageNumber, totalPageCount, startIndex, endIndex);
+	}
+
+	private record DialogPage(
+		int playableEmoteCount,
+		int pageNumber,
+		int totalPageCount,
+		int startIndex,
+		int endIndex
+	) {
 	}
 }
