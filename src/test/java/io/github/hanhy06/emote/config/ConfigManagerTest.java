@@ -22,7 +22,7 @@ class ConfigManagerTest {
 	}
 
 	@Test
-	void readPackConfigLoadsConfiguredPacks(@TempDir Path tempDir) throws IOException {
+	void readIdentifierConfigLoadsConfiguredPacks(@TempDir Path tempDir) throws IOException {
 		ConfigManager manager = new ConfigManager(tempDir);
 		Files.writeString(
 			tempDir.resolve("emote").resolve("pack.json"),
@@ -41,16 +41,16 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(PackConfig.createDefault().version())
+				""".formatted(IdentifierConfig.createDefault().version())
 		);
 
-		assertTrue(manager.readPackConfig());
-		assertEquals(List.of("emote.pack.vip"), List.copyOf(manager.getPackConfig().permissions().keySet()));
-		assertEquals("wave_pack", manager.getPackConfig().permissions().get("emote.pack.vip").get(0).datapack_identifier());
+		assertTrue(manager.readIdentifierConfig());
+		assertEquals(List.of("emote.pack.vip"), List.copyOf(manager.getIdentifierConfig().permissions().keySet()));
+		assertEquals("wave_pack", manager.getIdentifierConfig().permissions().get("emote.pack.vip").get(0).datapack_identifier());
 	}
 
 	@Test
-	void readPackConfigRejectsDuplicateNamespace(@TempDir Path tempDir) throws IOException {
+	void readIdentifierConfigRejectsDuplicateNamespace(@TempDir Path tempDir) throws IOException {
 		ConfigManager manager = new ConfigManager(tempDir);
 		Files.writeString(
 			tempDir.resolve("emote").resolve("pack.json"),
@@ -78,15 +78,15 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(PackConfig.createDefault().version())
+				""".formatted(IdentifierConfig.createDefault().version())
 		);
 
-		assertFalse(manager.readPackConfig());
-		assertTrue(manager.getPackConfig().permissions().isEmpty());
+		assertFalse(manager.readIdentifierConfig());
+		assertTrue(manager.getIdentifierConfig().permissions().isEmpty());
 	}
 
 	@Test
-	void readPackConfigRejectsBlankPackField(@TempDir Path tempDir) throws IOException {
+	void readIdentifierConfigRejectsBlankIdentifierField(@TempDir Path tempDir) throws IOException {
 		ConfigManager manager = new ConfigManager(tempDir);
 		Files.writeString(
 			tempDir.resolve("emote").resolve("pack.json"),
@@ -105,10 +105,10 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(PackConfig.createDefault().version())
+				""".formatted(IdentifierConfig.createDefault().version())
 		);
 
-		assertFalse(manager.readPackConfig());
-		assertTrue(manager.getPackConfig().permissions().isEmpty());
+		assertFalse(manager.readIdentifierConfig());
+		assertTrue(manager.getIdentifierConfig().permissions().isEmpty());
 	}
 }

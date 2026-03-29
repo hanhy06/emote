@@ -1,0 +1,30 @@
+package io.github.hanhy06.emote.permission;
+
+import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierConfig;
+import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class PermissionServiceTest {
+	@Test
+	void onIdentifierConfigReloadBuildsNamespacePermissionMap() {
+		PermissionService service = new PermissionService();
+		service.onIdentifierConfigReload(new IdentifierConfig(
+			IdentifierConfig.createDefault().version(),
+			new LinkedHashMap<>(java.util.Map.of(
+				"",
+				List.of(new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "default")),
+				"emote.pack.vip",
+				List.of(new EmoteIdentifier("bow_pack", "Bow", "bow", "Polite bow", "default"))
+			))
+		));
+
+		assertEquals("", service.findNamespacePermission("wave_pack"));
+		assertEquals("emote.pack.vip", service.findNamespacePermission("bow_pack"));
+		assertEquals("", service.findNamespacePermission("missing_pack"));
+	}
+}

@@ -2,9 +2,9 @@ package io.github.hanhy06.emote.permission;
 
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.config.EmotePack;
-import io.github.hanhy06.emote.config.PackConfig;
-import io.github.hanhy06.emote.config.PackConfigListener;
+import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierConfig;
+import io.github.hanhy06.emote.config.IdentifierConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-public class EmotePermissionService implements ConfigListener, PackConfigListener {
+public class PermissionService implements ConfigListener, IdentifierConfigListener {
 	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.GAMEMASTERS;
 	private Config config = Config.createDefault();
 	private Map<String, String> namespacePermissionMap = Map.of();
@@ -26,12 +26,12 @@ public class EmotePermissionService implements ConfigListener, PackConfigListene
 	}
 
 	@Override
-	public void onPackConfigReload(PackConfig newPackConfig) {
+	public void onIdentifierConfigReload(IdentifierConfig newIdentifierConfig) {
 		LinkedHashMap<String, String> nextNamespacePermissionMap = new LinkedHashMap<>();
-		for (Map.Entry<String, java.util.List<EmotePack>> entry : newPackConfig.permissions().entrySet()) {
+		for (Map.Entry<String, java.util.List<EmoteIdentifier>> entry : newIdentifierConfig.permissions().entrySet()) {
 			String permission = normalizePermission(entry.getKey());
-			for (EmotePack emotePack : entry.getValue()) {
-				nextNamespacePermissionMap.put(emotePack.datapack_identifier(), permission);
+			for (EmoteIdentifier emoteIdentifier : entry.getValue()) {
+				nextNamespacePermissionMap.put(emoteIdentifier.datapack_identifier(), permission);
 			}
 		}
 
@@ -60,7 +60,7 @@ public class EmotePermissionService implements ConfigListener, PackConfigListene
 			return false;
 		}
 
-		return hasPermission(player, findDatapackPermission(namespace), DEFAULT_EMOTE_PERMISSION_LEVEL);
+		return hasPermission(player, findNamespacePermission(namespace), DEFAULT_EMOTE_PERMISSION_LEVEL);
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -97,7 +97,7 @@ public class EmotePermissionService implements ConfigListener, PackConfigListene
 		return entity instanceof ServerPlayer player ? player : null;
 	}
 
-	String findDatapackPermission(String namespace) {
+	String findNamespacePermission(String namespace) {
 		if (this.namespacePermissionMap.containsKey(namespace)) {
 			return normalizePermission(this.namespacePermissionMap.get(namespace));
 		}

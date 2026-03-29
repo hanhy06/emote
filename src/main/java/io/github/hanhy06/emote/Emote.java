@@ -13,7 +13,7 @@ import io.github.hanhy06.emote.network.EmoteWheelPlayPayload;
 import io.github.hanhy06.emote.network.EmoteWheelPlayService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
-import io.github.hanhy06.emote.permission.EmotePermissionService;
+import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
 import io.github.hanhy06.emote.playback.EmotePlaybackStateListener;
@@ -46,10 +46,10 @@ public class Emote implements ModInitializer {
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
 	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager(PLAYER_SKIN_MANAGER);
-	private final EmotePermissionService emotePermissionService = new EmotePermissionService();
+	private final PermissionService permissionService = new PermissionService();
 	private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
 		this.emoteRegistry,
-		this.emotePermissionService
+		this.permissionService
 	);
 	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.configManager, this.emoteRegistry);
 	private final EmoteDialogManager emoteDialogManager = new EmoteDialogManager(
@@ -66,11 +66,11 @@ public class Emote implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		this.configManager.addListener(this.emotePermissionService);
-		this.configManager.addPackListener(this.emotePermissionService);
+		this.configManager.addListener(this.permissionService);
+		this.configManager.addIdentifierListener(this.permissionService);
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
-		this.configManager.readPackConfig();
+		this.configManager.readIdentifierConfig();
 		this.emotePlaybackManager.setStateListener(new EmotePlaybackStateListener() {
 			@Override
 			public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
@@ -138,7 +138,7 @@ public class Emote implements ModInitializer {
 			this.configManager,
 			this.emoteDialogManager,
 			this.playableEmoteService,
-			this.emotePermissionService,
+			this.permissionService,
 			this.emoteWheelSyncService
 		));
 	}
@@ -160,7 +160,7 @@ public class Emote implements ModInitializer {
 
 	private void handleDataPackReloadStart(MinecraftServer server) {
 		this.configManager.readConfig();
-		this.configManager.readPackConfig();
+		this.configManager.readIdentifierConfig();
 		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
 	}
 

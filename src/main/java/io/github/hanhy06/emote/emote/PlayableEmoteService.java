@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.permission.EmotePermissionService;
+import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
@@ -14,11 +14,11 @@ public class PlayableEmoteService {
 
 	public PlayableEmoteService(
 		EmoteRegistry emoteRegistry,
-		EmotePermissionService emotePermissionService
+		PermissionService permissionService
 	) {
 		this(
 			emoteRegistry,
-			(player, definition, animation) -> emotePermissionService.canPlay(player, definition.namespace(), animation.name())
+			(player, definition, animation) -> permissionService.canPlay(player, definition.namespace(), animation.name())
 		);
 	}
 

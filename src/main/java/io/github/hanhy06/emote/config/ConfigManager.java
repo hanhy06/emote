@@ -28,7 +28,7 @@ public class ConfigManager {
 
 	private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
 	private static final String CONFIG_FILE_NAME = "config.json";
-	private static final String PACK_FILE_NAME = "pack.json";
+	private static final String IDENTIFIER_FILE_NAME = "pack.json";
 
 	private final Path configDirPath;
 	private final Object writeLock = new Object();
@@ -37,10 +37,10 @@ public class ConfigManager {
 		.disableHtmlEscaping()
 		.create();
 	private final List<ConfigListener> listeners = new ArrayList<>();
-	private final List<PackConfigListener> packListeners = new ArrayList<>();
+	private final List<IdentifierConfigListener> identifierListeners = new ArrayList<>();
 
 	private Config config = Config.createDefault();
-	private PackConfig packConfig = PackConfig.createDefault();
+	private IdentifierConfig identifierConfig = IdentifierConfig.createDefault();
 
 	public ConfigManager(Path configBasePath) {
 		INSTANCE = this;
@@ -52,7 +52,7 @@ public class ConfigManager {
 			}
 
 			writeIfAbsent(CONFIG_FILE_NAME, createConfigJson(this.config));
-			writeIfAbsent(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
+			writeIfAbsent(IDENTIFIER_FILE_NAME, createIdentifierConfigJson(this.identifierConfig));
 		} catch (IOException exception) {
 			Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
 		}
@@ -62,8 +62,8 @@ public class ConfigManager {
 		return this.config;
 	}
 
-	public PackConfig getPackConfig() {
-		return this.packConfig;
+	public IdentifierConfig getIdentifierConfig() {
+		return this.identifierConfig;
 	}
 
 	public boolean readConfig() {
@@ -102,38 +102,38 @@ public class ConfigManager {
 		}
 	}
 
-	public boolean readPackConfig() {
-		try (BufferedReader reader = Files.newBufferedReader(this.configDirPath.resolve(PACK_FILE_NAME), StandardCharsets.UTF_8)) {
+	public boolean readIdentifierConfig() {
+		try (BufferedReader reader = Files.newBufferedReader(this.configDirPath.resolve(IDENTIFIER_FILE_NAME), StandardCharsets.UTF_8)) {
 			JsonElement element = JsonParser.parseReader(reader);
-			PackConfig loadedPackConfig = readPackConfig(element);
-			PackConfig defaultPackConfig = PackConfig.createDefault();
+			IdentifierConfig loadedIdentifierConfig = readIdentifierConfig(element);
+			IdentifierConfig defaultIdentifierConfig = IdentifierConfig.createDefault();
 
-			if (loadedPackConfig == null) {
-				Emote.LOGGER.warn("Pack config is empty or invalid. Keeping current pack config.");
-				broadcastPackConfig();
+			if (loadedIdentifierConfig == null) {
+				Emote.LOGGER.warn("Identifier config is empty or invalid. Keeping current identifier config.");
+				broadcastIdentifierConfig();
 				return false;
 			}
 
-			if (!Objects.equals(loadedPackConfig.version(), defaultPackConfig.version())) {
-				Emote.LOGGER.warn("Pack config version mismatch. Keeping current pack config.");
-				broadcastPackConfig();
+			if (!Objects.equals(loadedIdentifierConfig.version(), defaultIdentifierConfig.version())) {
+				Emote.LOGGER.warn("Identifier config version mismatch. Keeping current identifier config.");
+				broadcastIdentifierConfig();
 				return false;
 			}
 
-			String validationError = validatePackConfig(loadedPackConfig);
+			String validationError = validateIdentifierConfig(loadedIdentifierConfig);
 			if (validationError != null) {
-				Emote.LOGGER.warn("Pack config validation failed: {}. Keeping current pack config.", validationError);
-				broadcastPackConfig();
+				Emote.LOGGER.warn("Identifier config validation failed: {}. Keeping current identifier config.", validationError);
+				broadcastIdentifierConfig();
 				return false;
 			}
 
-			this.packConfig = loadedPackConfig;
-			broadcastPackConfig();
-			Emote.LOGGER.info("Loaded {}", PACK_FILE_NAME);
+			this.identifierConfig = loadedIdentifierConfig;
+			broadcastIdentifierConfig();
+			Emote.LOGGER.info("Loaded {}", IDENTIFIER_FILE_NAME);
 			return true;
 		} catch (IOException | RuntimeException exception) {
-			Emote.LOGGER.warn("Failed to read pack config. Keeping current pack config.", exception);
-			broadcastPackConfig();
+			Emote.LOGGER.warn("Failed to read identifier config. Keeping current identifier config.", exception);
+			broadcastIdentifierConfig();
 			return false;
 		}
 	}
@@ -144,9 +144,9 @@ public class ConfigManager {
 		}
 	}
 
-	public void writePackConfig() {
+	public void writeIdentifierConfig() {
 		synchronized (this.writeLock) {
-			writeJsonFile(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
+			writeJsonFile(IDENTIFIER_FILE_NAME, createIdentifierConfigJson(this.identifierConfig));
 		}
 	}
 
@@ -154,8 +154,8 @@ public class ConfigManager {
 		this.listeners.add(listener);
 	}
 
-	public void addPackListener(PackConfigListener listener) {
-		this.packListeners.add(listener);
+	public void addIdentifierListener(IdentifierConfigListener listener) {
+		this.identifierListeners.add(listener);
 	}
 
 	public void broadcastConfig() {
@@ -164,9 +164,9 @@ public class ConfigManager {
 		}
 	}
 
-	public void broadcastPackConfig() {
-		for (PackConfigListener listener : this.packListeners) {
-			listener.onPackConfigReload(this.packConfig);
+	public void broadcastIdentifierConfig() {
+		for (IdentifierConfigListener listener : this.identifierListeners) {
+			listener.onIdentifierConfigReload(this.identifierConfig);
 		}
 	}
 
@@ -204,24 +204,24 @@ public class ConfigManager {
 		return object;
 	}
 
-	private JsonObject createPackConfigJson(PackConfig packConfig) {
+	private JsonObject createIdentifierConfigJson(IdentifierConfig identifierConfig) {
 		JsonObject object = new JsonObject();
-		object.addProperty("version", packConfig.version());
+		object.addProperty("version", identifierConfig.version());
 
 		JsonObject permissionsJson = new JsonObject();
-		for (Map.Entry<String, List<EmotePack>> entry : packConfig.permissions().entrySet()) {
-			JsonArray packArray = new JsonArray();
-			for (EmotePack emotePack : entry.getValue()) {
-				JsonObject packJson = new JsonObject();
-				packJson.addProperty("datapack_identifier", emotePack.datapack_identifier());
-				packJson.addProperty("name", emotePack.name());
-				packJson.addProperty("command_name", emotePack.command_name());
-				packJson.addProperty("description", emotePack.description());
-				packJson.addProperty("default_animation_name", emotePack.default_animation_name());
-				packArray.add(packJson);
+		for (Map.Entry<String, List<EmoteIdentifier>> entry : identifierConfig.permissions().entrySet()) {
+			JsonArray identifierArray = new JsonArray();
+			for (EmoteIdentifier emoteIdentifier : entry.getValue()) {
+				JsonObject identifierJson = new JsonObject();
+				identifierJson.addProperty("datapack_identifier", emoteIdentifier.datapack_identifier());
+				identifierJson.addProperty("name", emoteIdentifier.name());
+				identifierJson.addProperty("command_name", emoteIdentifier.command_name());
+				identifierJson.addProperty("description", emoteIdentifier.description());
+				identifierJson.addProperty("default_animation_name", emoteIdentifier.default_animation_name());
+				identifierArray.add(identifierJson);
 			}
 
-			permissionsJson.add(entry.getKey(), packArray);
+			permissionsJson.add(entry.getKey(), identifierArray);
 		}
 
 		object.add("permissions", permissionsJson);
@@ -236,29 +236,29 @@ public class ConfigManager {
 		return null;
 	}
 
-	private String validatePackConfig(PackConfig packConfig) {
-		if (packConfig.version() == null) return "version is missing";
-		if (packConfig.permissions() == null) return "permissions is missing";
+	private String validateIdentifierConfig(IdentifierConfig identifierConfig) {
+		if (identifierConfig.version() == null) return "version is missing";
+		if (identifierConfig.permissions() == null) return "permissions is missing";
 
 		Set<String> configuredNamespaces = new HashSet<>();
-		for (Map.Entry<String, List<EmotePack>> entry : packConfig.permissions().entrySet()) {
+		for (Map.Entry<String, List<EmoteIdentifier>> entry : identifierConfig.permissions().entrySet()) {
 			if (entry.getKey() == null) return "permissions contains a null key";
-			if (entry.getValue() == null) return "permissions contains a null pack list";
+			if (entry.getValue() == null) return "permissions contains a null identifier list";
 
-			for (EmotePack emotePack : entry.getValue()) {
-				if (emotePack == null) return "permissions contains a null pack";
+			for (EmoteIdentifier emoteIdentifier : entry.getValue()) {
+				if (emoteIdentifier == null) return "permissions contains a null identifier";
 
-				String datapackIdentifier = normalizeRequiredValue(emotePack.datapack_identifier());
-				if (datapackIdentifier == null) return "permissions contains a pack with blank datapack_identifier";
+				String datapackIdentifier = normalizeRequiredValue(emoteIdentifier.datapack_identifier());
+				if (datapackIdentifier == null) return "permissions contains an identifier with blank datapack_identifier";
 				if (!configuredNamespaces.add(datapackIdentifier)) {
 					return "permissions contains duplicate datapack_identifier: " + datapackIdentifier;
 				}
 
-				if (normalizeRequiredValue(emotePack.name()) == null) return "permissions contains a pack with blank name";
-				if (normalizeRequiredValue(emotePack.command_name()) == null) return "permissions contains a pack with blank command_name";
-				if (normalizeRequiredValue(emotePack.description()) == null) return "permissions contains a pack with blank description";
-				if (normalizeRequiredValue(emotePack.default_animation_name()) == null) {
-					return "permissions contains a pack with blank default_animation_name";
+				if (normalizeRequiredValue(emoteIdentifier.name()) == null) return "permissions contains an identifier with blank name";
+				if (normalizeRequiredValue(emoteIdentifier.command_name()) == null) return "permissions contains an identifier with blank command_name";
+				if (normalizeRequiredValue(emoteIdentifier.description()) == null) return "permissions contains an identifier with blank description";
+				if (normalizeRequiredValue(emoteIdentifier.default_animation_name()) == null) {
+					return "permissions contains an identifier with blank default_animation_name";
 				}
 			}
 		}
@@ -281,25 +281,25 @@ public class ConfigManager {
 		);
 	}
 
-	private PackConfig readPackConfig(JsonElement element) {
+	private IdentifierConfig readIdentifierConfig(JsonElement element) {
 		if (element == null || !element.isJsonObject()) {
 			return null;
 		}
 
 		JsonObject object = element.getAsJsonObject();
-		PackConfig defaultPackConfig = PackConfig.createDefault();
-		LinkedHashMap<String, List<EmotePack>> permissions = readPackPermissions(object);
+		IdentifierConfig defaultIdentifierConfig = IdentifierConfig.createDefault();
+		LinkedHashMap<String, List<EmoteIdentifier>> permissions = readIdentifierPermissions(object);
 		if (permissions == null) {
 			return null;
 		}
 
-		return new PackConfig(
-			readString(object, "version", defaultPackConfig.version()),
+		return new IdentifierConfig(
+			readString(object, "version", defaultIdentifierConfig.version()),
 			permissions
 		);
 	}
 
-	private LinkedHashMap<String, List<EmotePack>> readPackPermissions(JsonObject object) {
+	private LinkedHashMap<String, List<EmoteIdentifier>> readIdentifierPermissions(JsonObject object) {
 		JsonElement permissionsElement = object.get("permissions");
 		if (permissionsElement == null || permissionsElement.isJsonNull()) {
 			return new LinkedHashMap<>();
@@ -309,45 +309,45 @@ public class ConfigManager {
 			return null;
 		}
 
-		LinkedHashMap<String, List<EmotePack>> permissions = new LinkedHashMap<>();
+		LinkedHashMap<String, List<EmoteIdentifier>> permissions = new LinkedHashMap<>();
 		for (Map.Entry<String, JsonElement> entry : permissionsElement.getAsJsonObject().entrySet()) {
 			String permission = normalizePermissionKey(entry.getKey());
 			if (permission == null || permissions.containsKey(permission) || !entry.getValue().isJsonArray()) {
 				return null;
 			}
 
-			List<EmotePack> packList = readPackList(entry.getValue().getAsJsonArray());
-			if (packList == null) {
+			List<EmoteIdentifier> identifierList = readIdentifierList(entry.getValue().getAsJsonArray());
+			if (identifierList == null) {
 				return null;
 			}
 
-			permissions.put(permission, packList);
+			permissions.put(permission, identifierList);
 		}
 
 		return permissions;
 	}
 
-	private List<EmotePack> readPackList(JsonArray packArray) {
-		List<EmotePack> packList = new ArrayList<>();
-		for (JsonElement element : packArray) {
-			EmotePack emotePack = readEmotePack(element);
-			if (emotePack == null) {
+	private List<EmoteIdentifier> readIdentifierList(JsonArray identifierArray) {
+		List<EmoteIdentifier> identifierList = new ArrayList<>();
+		for (JsonElement element : identifierArray) {
+			EmoteIdentifier emoteIdentifier = readIdentifier(element);
+			if (emoteIdentifier == null) {
 				return null;
 			}
 
-			packList.add(emotePack);
+			identifierList.add(emoteIdentifier);
 		}
 
-		return List.copyOf(packList);
+		return List.copyOf(identifierList);
 	}
 
-	private EmotePack readEmotePack(JsonElement element) {
+	private EmoteIdentifier readIdentifier(JsonElement element) {
 		if (element == null || !element.isJsonObject()) {
 			return null;
 		}
 
 		JsonObject object = element.getAsJsonObject();
-		return new EmotePack(
+		return new EmoteIdentifier(
 			readString(object, "datapack_identifier", ""),
 			readString(object, "name", ""),
 			readString(object, "command_name", ""),

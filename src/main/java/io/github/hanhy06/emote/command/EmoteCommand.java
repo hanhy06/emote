@@ -16,7 +16,7 @@ import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncService;
-import io.github.hanhy06.emote.permission.EmotePermissionService;
+import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.EmotePlaybackManager;
 import io.github.hanhy06.emote.playback.EmotePlaybackStartResult;
@@ -42,7 +42,7 @@ public final class EmoteCommand {
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
 		PlayableEmoteService playableEmoteService,
-		EmotePermissionService emotePermissionService,
+		PermissionService permissionService,
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		dispatcher.register(createRootCommand(
@@ -53,7 +53,7 @@ public final class EmoteCommand {
 			configManager,
 			emoteDialogManager,
 			playableEmoteService,
-			emotePermissionService,
+			permissionService,
 			emoteWheelSyncService
 		));
 	}
@@ -66,26 +66,26 @@ public final class EmoteCommand {
 		ConfigManager configManager,
 		EmoteDialogManager emoteDialogManager,
 		PlayableEmoteService playableEmoteService,
-		EmotePermissionService emotePermissionService,
+		PermissionService permissionService,
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		return Commands.literal(rootName)
-			.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
+			.executes(context -> openMenu(context.getSource(), emoteDialogManager, permissionService))
 			.then(Commands.literal("menu")
-				.requires(emotePermissionService.requireDialogOpen())
-				.executes(context -> openMenu(context.getSource(), emoteDialogManager, emotePermissionService))
+				.requires(permissionService.requireDialogOpen())
+				.executes(context -> openMenu(context.getSource(), emoteDialogManager, permissionService))
 				.then(Commands.argument("page", IntegerArgumentType.integer(1))
 					.executes(context -> openMenu(
 						context.getSource(),
 						emoteDialogManager,
-						emotePermissionService,
+						permissionService,
 						IntegerArgumentType.getInteger(context, "page")
 					))))
 			.then(Commands.literal("list")
-				.requires(emotePermissionService.requireList())
+				.requires(permissionService.requireList())
 				.executes(context -> listEmotes(context.getSource(), emoteRegistry)))
 			.then(Commands.literal("reload")
-				.requires(emotePermissionService.requireReload())
+				.requires(permissionService.requireReload())
 				.executes(context -> reloadEmotes(
 					context.getSource(),
 					emoteRegistry,
@@ -94,7 +94,7 @@ public final class EmoteCommand {
 					emoteWheelSyncService
 				)))
 			.then(Commands.literal("play")
-				.requires(emotePermissionService.requirePlay())
+				.requires(permissionService.requirePlay())
 				.then(Commands.argument("emote", StringArgumentType.word())
 					.suggests((context, builder) -> SharedSuggestionProvider.suggest(
 						getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
@@ -113,7 +113,7 @@ public final class EmoteCommand {
 						))
 						.executes(context -> playSelectedAnimation(context, emotePlaybackManager, playableEmoteService)))))
 			.then(Commands.literal("stop")
-				.requires(emotePermissionService.requireStop())
+				.requires(permissionService.requireStop())
 				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager)));
 	}
 
@@ -143,19 +143,19 @@ public final class EmoteCommand {
 	private static int openMenu(
 		CommandSourceStack source,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService
+		PermissionService permissionService
 	) throws CommandSyntaxException {
-		return openMenu(source, emoteDialogManager, emotePermissionService, 1);
+		return openMenu(source, emoteDialogManager, permissionService, 1);
 	}
 
 	private static int openMenu(
 		CommandSourceStack source,
 		EmoteDialogManager emoteDialogManager,
-		EmotePermissionService emotePermissionService,
+		PermissionService permissionService,
 		int pageNumber
 	) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-		if (!emotePermissionService.canOpenDialog(player)) {
+		if (!permissionService.canOpenDialog(player)) {
 			source.sendFailure(Component.literal("No menu permission."));
 			return 0;
 		}
@@ -201,7 +201,7 @@ public final class EmoteCommand {
 		EmoteWheelSyncService emoteWheelSyncService
 	) {
 		boolean configLoaded = configManager.readConfig();
-		boolean packConfigLoaded = configManager.readPackConfig();
+		boolean identifierConfigLoaded = configManager.readIdentifierConfig();
 		Emote.getPlayerSkinManager().reloadHttpServer(source.getServer());
 		boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks(source.getServer());
 		int emoteCount = reloadedResources
@@ -213,7 +213,7 @@ public final class EmoteCommand {
 		source.sendSuccess(
 			() -> Component.literal(
 				"Reloading: cfg=" + configLoaded
-					+ ", pack=" + packConfigLoaded
+					+ ", identifier=" + identifierConfigLoaded
 					+ ", emotes=" + emoteCount
 					+ (reloadedResources ? " (resource reload)" : "")
 			),

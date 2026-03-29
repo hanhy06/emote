@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.bdengine;
 
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.EmotePack;
-import io.github.hanhy06.emote.config.PackConfig;
+import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierConfig;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import org.junit.jupiter.api.Test;
@@ -18,14 +18,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BDEngineDatapackProcessorTest {
 	@Test
-	void readDefinitionsUsesPackConfigMetadata(@TempDir Path tempDir) throws IOException {
+	void readDefinitionsUsesIdentifierConfigMetadata(@TempDir Path tempDir) throws IOException {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createPackConfig(
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
 			"",
-			new EmotePack("wave_pack", "Wave", "wave", "Friendly wave", "idle")
+			new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "idle")
 		));
 
 		assertEquals(1, definitions.size());
@@ -37,24 +37,24 @@ class BDEngineDatapackProcessorTest {
 	}
 
 	@Test
-	void findEmotePackIdsKeepsOnlyConfiguredNamespaces(@TempDir Path tempDir) throws IOException {
+	void findIdentifierPackIdsKeepsOnlyConfiguredNamespaces(@TempDir Path tempDir) throws IOException {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
 		createDatapack(datapackDirPath.resolve("beta_pack"), "bow_pack");
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<String> packIds = processor.findEmotePackIds(datapackDirPath, createPackConfig(
+		List<String> packIds = processor.findIdentifierPackIds(datapackDirPath, createIdentifierConfig(
 			"",
-			new EmotePack("wave_pack", "Wave", "wave", "Friendly wave", "default")
+			new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "default")
 		));
 
 		assertEquals(List.of("file/alpha_pack"), packIds);
 	}
 
-	private PackConfig createPackConfig(String permission, EmotePack... emotePacks) {
-		LinkedHashMap<String, List<EmotePack>> permissions = new LinkedHashMap<>();
-		permissions.put(permission, List.of(emotePacks));
-		return new PackConfig(PackConfig.createDefault().version(), permissions);
+	private IdentifierConfig createIdentifierConfig(String permission, EmoteIdentifier... emoteIdentifiers) {
+		LinkedHashMap<String, List<EmoteIdentifier>> permissions = new LinkedHashMap<>();
+		permissions.put(permission, List.of(emoteIdentifiers));
+		return new IdentifierConfig(IdentifierConfig.createDefault().version(), permissions);
 	}
 
 	private void createDatapack(Path packPath, String namespace) throws IOException {

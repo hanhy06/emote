@@ -6,12 +6,12 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.util.LinkedHashMap;
 import java.util.List;
 
-public record PackConfig(
+public record IdentifierConfig(
 	String version,
-	LinkedHashMap<String, List<EmotePack>> permissions
+	LinkedHashMap<String, List<EmoteIdentifier>> permissions
 ) {
-	public static PackConfig createDefault() {
-		return new PackConfig(
+	public static IdentifierConfig createDefault() {
+		return new IdentifierConfig(
 			FabricLoader.getInstance()
 				.getModContainer(Emote.MOD_ID)
 				.map(container -> container.getMetadata().getVersion().getFriendlyString())
