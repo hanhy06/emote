@@ -3,7 +3,7 @@
 Emote is a Minecraft Fabric emote player compatible with BD Engine humanoid exports.
 It supports server-side emote playback from datapacks, and if the client also has the mod installed, the emote model can use the player's current skin so it looks more like the player.
 
-![Emote demo](docs/Emote.gif)
+![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
 
 ---
 
@@ -63,6 +63,8 @@ Datapacks are usually prepared directly from a BD Engine export zip with `prepar
 The server loads emote name, description, command name, default animation, and per-pack permission grouping from `config/emote/pack.json`.
 
 Namespaces listed in `pack.json` are treated as emotes. A datapack is auto-enabled when its `data/<namespace>` folder matches a configured `datapack_identifier`.
+
+[Example](https://github.com/hanhy06/emote/tree/master/docs/example)
 
 [Usage](https://github.com/hanhy06/emote/blob/master/docs/prepare_emote_datapack.py)
 
