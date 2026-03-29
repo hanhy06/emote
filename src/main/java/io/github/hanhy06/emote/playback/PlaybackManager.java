@@ -2,6 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;

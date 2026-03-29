@@ -1,11 +1,11 @@
-package io.github.hanhy06.emote.network;
+package io.github.hanhy06.emote.network.service;
 
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackStartResult;
+import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;

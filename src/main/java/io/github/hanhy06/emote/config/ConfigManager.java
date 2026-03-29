@@ -7,6 +7,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.config.data.Config;
+import io.github.hanhy06.emote.config.data.IdentifierConfig;
+import io.github.hanhy06.emote.config.data.IdentifierEntry;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

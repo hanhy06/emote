@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.network;
+package io.github.hanhy06.emote.network.payload;
 
 import io.github.hanhy06.emote.Emote;
 import net.minecraft.network.RegistryFriendlyByteBuf;

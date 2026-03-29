@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.IdentifierEntry;
-import io.github.hanhy06.emote.config.IdentifierConfig;
+import io.github.hanhy06.emote.config.data.IdentifierConfig;
+import io.github.hanhy06.emote.config.data.IdentifierEntry;
 import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;

@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.client;
 
 import io.github.hanhy06.emote.emote.PlayableEmote;
-import io.github.hanhy06.emote.network.EmoteWheelPlayPayload;
+import io.github.hanhy06.emote.network.payload.EmoteWheelPlayPayload;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;

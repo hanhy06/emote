@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.data;
 
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;

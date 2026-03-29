@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.bdengine;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.IdentifierEntry;
-import io.github.hanhy06.emote.config.IdentifierConfig;
+import io.github.hanhy06.emote.config.data.IdentifierConfig;
+import io.github.hanhy06.emote.config.data.IdentifierEntry;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
