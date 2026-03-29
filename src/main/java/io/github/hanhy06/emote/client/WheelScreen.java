@@ -14,7 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 
 @Environment(EnvType.CLIENT)
-public class EmoteWheelScreen extends Screen {
+public class WheelScreen extends Screen {
 	static final int SLOT_COUNT = 6;
 	private static final int LEFT_MOUSE_BUTTON = 0;
 	private static final int RIGHT_MOUSE_BUTTON = 1;
@@ -29,7 +29,7 @@ public class EmoteWheelScreen extends Screen {
 	private static final int TITLE_COLOR = 0xFFF7FAFC;
 	private static final int BODY_COLOR = 0xFFD1D9DF;
 	private static final int MUTED_COLOR = 0xFF9DB0BC;
-	private final EmoteWheelController controller;
+	private final WheelController controller;
 	private final List<PlayableEmote> emotes;
 	private final Component bindingLabel;
 	private int pageIndex;
@@ -37,7 +37,7 @@ public class EmoteWheelScreen extends Screen {
 	private double lastMouseY;
 	private int hoveredSlotIndex = -1;
 
-	public EmoteWheelScreen(EmoteWheelController controller, List<PlayableEmote> emotes, int pageIndex, Component bindingLabel) {
+	public WheelScreen(WheelController controller, List<PlayableEmote> emotes, int pageIndex, Component bindingLabel) {
 		super(Component.translatable("screen.emote.wheel.title"));
 		this.controller = controller;
 		this.emotes = List.copyOf(emotes);

@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.permission;
 
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierEntry;
 import io.github.hanhy06.emote.config.IdentifierConfig;
 import io.github.hanhy06.emote.config.IdentifierConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
@@ -28,10 +28,10 @@ public class PermissionService implements ConfigListener, IdentifierConfigListen
 	@Override
 	public void onIdentifierConfigReload(IdentifierConfig newIdentifierConfig) {
 		LinkedHashMap<String, String> nextNamespacePermissionMap = new LinkedHashMap<>();
-		for (Map.Entry<String, java.util.List<EmoteIdentifier>> entry : newIdentifierConfig.permissions().entrySet()) {
+		for (Map.Entry<String, java.util.List<IdentifierEntry>> entry : newIdentifierConfig.permissions().entrySet()) {
 			String permission = normalizePermission(entry.getKey());
-			for (EmoteIdentifier emoteIdentifier : entry.getValue()) {
-				nextNamespacePermissionMap.put(emoteIdentifier.datapack_identifier(), permission);
+			for (IdentifierEntry identifierEntry : entry.getValue()) {
+				nextNamespacePermissionMap.put(identifierEntry.datapack_identifier(), permission);
 			}
 		}
 

@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class EmotePlaybackManager {
+public class PlaybackManager {
 	private static final long TICKS_PER_KEYFRAME = 2L;
 	private static final long PLAYBACK_BUFFER_TICKS = 8L;
 	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
@@ -33,7 +33,7 @@ public class EmotePlaybackManager {
 	private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
 	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
 	private final PlayerSkinManager playerSkinManager;
-	private EmotePlaybackStateListener stateListener = new EmotePlaybackStateListener() {
+	private PlaybackStateListener stateListener = new PlaybackStateListener() {
 		@Override
 		public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
 		}
@@ -43,18 +43,18 @@ public class EmotePlaybackManager {
 		}
 	};
 
-	public EmotePlaybackManager(PlayerSkinManager playerSkinManager) {
+	public PlaybackManager(PlayerSkinManager playerSkinManager) {
 		this.playerSkinManager = playerSkinManager;
 	}
 
-	public void setStateListener(EmotePlaybackStateListener stateListener) {
+	public void setStateListener(PlaybackStateListener stateListener) {
 		this.stateListener = stateListener;
 	}
 
-	public EmotePlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
+	public PlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
 		MinecraftServer server = player.level().getServer();
 		if (server == null) {
-			return EmotePlaybackStartResult.failure("Play failed.");
+			return PlaybackStartResult.failure("Play failed.");
 		}
 
 		String namespace = definition.namespace();
@@ -62,7 +62,7 @@ public class EmotePlaybackManager {
 		String createFunctionId = namespace + ":_/create";
 		String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
 		if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
-			return EmotePlaybackStartResult.failure("Datapack not loaded.");
+			return PlaybackStartResult.failure("Datapack not loaded.");
 		}
 
 		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
@@ -88,7 +88,7 @@ public class EmotePlaybackManager {
 		);
 		this.activeEmoteMap.put(player.getUUID(), activeEmote);
 		this.stateListener.onEmoteStarted(player, activeEmote);
-		return EmotePlaybackStartResult.SUCCESS;
+		return PlaybackStartResult.SUCCESS;
 	}
 
 	public ActiveEmote stopEmote(ServerPlayer player) {

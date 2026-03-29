@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.bdengine;
 
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierEntry;
 import io.github.hanhy06.emote.config.IdentifierConfig;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -25,7 +25,7 @@ class BDEngineDatapackProcessorTest {
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
 		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
 			"",
-			new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "idle")
+			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "idle")
 		));
 
 		assertEquals(1, definitions.size());
@@ -45,16 +45,16 @@ class BDEngineDatapackProcessorTest {
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
 		List<String> packIds = processor.findIdentifierPackIds(datapackDirPath, createIdentifierConfig(
 			"",
-			new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "default")
+			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default")
 		));
 
 		assertEquals(List.of("file/alpha_pack"), packIds);
 	}
 
-	private IdentifierConfig createIdentifierConfig(String permission, EmoteIdentifier... emoteIdentifiers) {
-		LinkedHashMap<String, List<EmoteIdentifier>> permissions = new LinkedHashMap<>();
-		permissions.put(permission, List.of(emoteIdentifiers));
-		return new IdentifierConfig(IdentifierConfig.createDefault().version(), permissions);
+	private IdentifierConfig createIdentifierConfig(String permission, IdentifierEntry... identifierEntries) {
+		LinkedHashMap<String, List<IdentifierEntry>> permissions = new LinkedHashMap<>();
+		permissions.put(permission, List.of(identifierEntries));
+		return new IdentifierConfig(permissions);
 	}
 
 	private void createDatapack(Path packPath, String namespace) throws IOException {

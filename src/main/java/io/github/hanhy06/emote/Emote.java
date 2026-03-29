@@ -1,22 +1,22 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
-import io.github.hanhy06.emote.command.EmoteCommand;
+import io.github.hanhy06.emote.command.RootCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.dialog.EmoteDialogManager;
+import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
+import io.github.hanhy06.emote.network.PlayService;
 import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
-import io.github.hanhy06.emote.network.EmotePlaybackStateService;
+import io.github.hanhy06.emote.network.PlaybackStateService;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.EmoteWheelPlayPayload;
-import io.github.hanhy06.emote.network.EmoteWheelPlayService;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
-import io.github.hanhy06.emote.network.EmoteWheelSyncService;
+import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
-import io.github.hanhy06.emote.playback.EmotePlaybackManager;
-import io.github.hanhy06.emote.playback.EmotePlaybackStateListener;
+import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
@@ -45,24 +45,24 @@ public class Emote implements ModInitializer {
 
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
-	private final EmotePlaybackManager emotePlaybackManager = new EmotePlaybackManager(PLAYER_SKIN_MANAGER);
+	private final PlaybackManager playbackManager = new PlaybackManager(PLAYER_SKIN_MANAGER);
 	private final PermissionService permissionService = new PermissionService();
 	private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
 		this.emoteRegistry,
 		this.permissionService
 	);
 	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.configManager, this.emoteRegistry);
-	private final EmoteDialogManager emoteDialogManager = new EmoteDialogManager(
+	private final DialogManager dialogManager = new DialogManager(
 		this.emoteRegistry,
 		this.playableEmoteService,
-		this.emotePlaybackManager
+		this.playbackManager
 	);
-	private final EmotePlaybackStateService emotePlaybackStateService = new EmotePlaybackStateService();
-	private final EmoteWheelPlayService emoteWheelPlayService = new EmoteWheelPlayService(
+	private final PlayService playService = new PlayService(
 		this.playableEmoteService,
-		this.emotePlaybackManager
+		this.playbackManager
 	);
-	private final EmoteWheelSyncService emoteWheelSyncService = new EmoteWheelSyncService(this.playableEmoteService);
+	private final PlaybackStateService playbackStateService = new PlaybackStateService();
+	private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
 
 	@Override
 	public void onInitialize() {
@@ -71,15 +71,15 @@ public class Emote implements ModInitializer {
 		this.configManager.addListener(PLAYER_SKIN_MANAGER);
 		this.configManager.readConfig();
 		this.configManager.readIdentifierConfig();
-		this.emotePlaybackManager.setStateListener(new EmotePlaybackStateListener() {
+		this.playbackManager.setStateListener(new PlaybackStateListener() {
 			@Override
 			public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-				emotePlaybackStateService.syncActive(player);
+				playbackStateService.syncActive(player);
 			}
 
 			@Override
 			public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
-				emotePlaybackStateService.syncInactive(player);
+				playbackStateService.syncInactive(player);
 			}
 		});
 		registerNetworking();
@@ -100,11 +100,15 @@ public class Emote implements ModInitializer {
 		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
 			context.server().execute(() -> {
 				PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player());
-				this.emoteWheelSyncService.syncPlayer(context.player());
+				this.wheelSyncService.syncPlayer(context.player());
 			})
 		);
 		ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) ->
-			context.server().execute(() -> this.emoteWheelPlayService.playPlayerSelection(context.player(), payload))
+			context.server().execute(() -> this.playService.playSelection(
+				context.player(),
+				payload.commandName(),
+				payload.animationName()
+			))
 		);
 	}
 
@@ -115,31 +119,32 @@ public class Emote implements ModInitializer {
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
 		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
 		ServerTickEvents.END_SERVER_TICK.register(PLAYER_SKIN_MANAGER::tick);
-		ServerTickEvents.END_SERVER_TICK.register(this.emotePlaybackManager::tick);
+		ServerTickEvents.END_SERVER_TICK.register(this.playbackManager::tick);
 		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
 			if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {
 				PLAYER_SKIN_MANAGER.markClientSkinSupport(handler.player);
 			}
 
-			this.emoteWheelSyncService.syncPlayer(handler.player);
+			this.wheelSyncService.syncPlayer(handler.player);
 		});
 		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			this.emotePlaybackManager.stopEmote(handler.player);
+			this.playbackManager.stopEmote(handler.player);
 			PLAYER_SKIN_MANAGER.forgetClientSkinSupport(handler.player);
 		});
 	}
 
 	private void registerCommands() {
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> EmoteCommand.registerCommand(
+		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> RootCommand.registerCommand(
 			dispatcher,
 			this.emoteRegistry,
-			this.emotePlaybackManager,
+			this.playbackManager,
 			this.bdEngineDatapackProcessor,
 			this.configManager,
-			this.emoteDialogManager,
+			this.dialogManager,
 			this.playableEmoteService,
+			this.playService,
 			this.permissionService,
-			this.emoteWheelSyncService
+			this.wheelSyncService
 		));
 	}
 
@@ -170,14 +175,14 @@ public class Emote implements ModInitializer {
 			return;
 		}
 
-		this.emotePlaybackManager.stopAllEmotes(server);
+		this.playbackManager.stopAllEmotes(server);
 		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
-		this.emoteWheelSyncService.syncAll(server);
+		this.wheelSyncService.syncAll(server);
 		LOGGER.info("reload emotes={}", emoteCount);
 	}
 
 	private void handleServerStopping(MinecraftServer server) {
-		this.emotePlaybackManager.stopAllEmotes(server);
+		this.playbackManager.stopAllEmotes(server);
 		PLAYER_SKIN_MANAGER.clear();
 		LOGGER.info("stop emotes");
 	}

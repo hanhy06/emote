@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.EmoteIdentifier;
+import io.github.hanhy06.emote.config.IdentifierEntry;
 import io.github.hanhy06.emote.config.IdentifierConfig;
 import org.junit.jupiter.api.Test;
 
@@ -14,12 +14,11 @@ class PermissionServiceTest {
 	void onIdentifierConfigReloadBuildsNamespacePermissionMap() {
 		PermissionService service = new PermissionService();
 		service.onIdentifierConfigReload(new IdentifierConfig(
-			IdentifierConfig.createDefault().version(),
 			new LinkedHashMap<>(java.util.Map.of(
 				"",
-				List.of(new EmoteIdentifier("wave_pack", "Wave", "wave", "Friendly wave", "default")),
+				List.of(new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default")),
 				"emote.pack.vip",
-				List.of(new EmoteIdentifier("bow_pack", "Bow", "bow", "Polite bow", "default"))
+				List.of(new IdentifierEntry("bow_pack", "Bow", "bow", "Polite bow", "default"))
 			))
 		));
 

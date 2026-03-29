@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote;
 
-import io.github.hanhy06.emote.client.EmotePerspectiveController;
-import io.github.hanhy06.emote.client.EmoteWheelController;
-import io.github.hanhy06.emote.client.EmoteWheelScreen;
+import io.github.hanhy06.emote.client.PerspectiveController;
+import io.github.hanhy06.emote.client.WheelController;
+import io.github.hanhy06.emote.client.WheelScreen;
 import io.github.hanhy06.emote.network.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.network.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.EmoteWheelSyncPayload;
@@ -16,8 +16,8 @@ import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class EmoteClient implements ClientModInitializer {
-	private static final EmotePerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new EmotePerspectiveController();
-	private static final EmoteWheelController EMOTE_WHEEL_CONTROLLER = new EmoteWheelController();
+	private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
+	private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
 	private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
 		new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
 	);
@@ -46,12 +46,12 @@ public class EmoteClient implements ClientModInitializer {
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			boolean wheelHoldDown = isEmoteBindingDown(client);
 
-			if (client.screen instanceof EmoteWheelScreen emoteWheelScreen) {
+			if (client.screen instanceof WheelScreen wheelScreen) {
 				if (wheelHoldDown) {
 					wheelBindingReleaseArmed = true;
 				} else if (wheelBindingReleaseArmed) {
 					wheelBindingReleaseArmed = false;
-					emoteWheelScreen.handleBindingReleased();
+					wheelScreen.handleBindingReleased();
 				}
 				wheelHoldWasDown = wheelHoldDown;
 				return;

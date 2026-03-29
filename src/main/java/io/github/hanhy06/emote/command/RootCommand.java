@@ -9,17 +9,16 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.dialog.EmoteDialogManager;
+import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
-import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.network.EmoteWheelSyncService;
+import io.github.hanhy06.emote.network.PlayResult;
+import io.github.hanhy06.emote.network.PlayService;
+import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
-import io.github.hanhy06.emote.playback.EmotePlaybackManager;
-import io.github.hanhy06.emote.playback.EmotePlaybackStartResult;
+import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -30,54 +29,57 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public final class EmoteCommand {
-	private EmoteCommand() {
+public final class RootCommand {
+	private RootCommand() {
 	}
 
 	public static void registerCommand(
 		CommandDispatcher<CommandSourceStack> dispatcher,
 		EmoteRegistry emoteRegistry,
-		EmotePlaybackManager emotePlaybackManager,
+		PlaybackManager playbackManager,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
-		EmoteDialogManager emoteDialogManager,
+		DialogManager dialogManager,
 		PlayableEmoteService playableEmoteService,
+		PlayService playService,
 		PermissionService permissionService,
-		EmoteWheelSyncService emoteWheelSyncService
+		WheelSyncService wheelSyncService
 	) {
 		dispatcher.register(createRootCommand(
 			"emote",
 			emoteRegistry,
-			emotePlaybackManager,
+			playbackManager,
 			bdEngineDatapackProcessor,
 			configManager,
-			emoteDialogManager,
+			dialogManager,
 			playableEmoteService,
+			playService,
 			permissionService,
-			emoteWheelSyncService
+			wheelSyncService
 		));
 	}
 
 	private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(
 		String rootName,
 		EmoteRegistry emoteRegistry,
-		EmotePlaybackManager emotePlaybackManager,
+		PlaybackManager playbackManager,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
-		EmoteDialogManager emoteDialogManager,
+		DialogManager dialogManager,
 		PlayableEmoteService playableEmoteService,
+		PlayService playService,
 		PermissionService permissionService,
-		EmoteWheelSyncService emoteWheelSyncService
+		WheelSyncService wheelSyncService
 	) {
 		return Commands.literal(rootName)
-			.executes(context -> openMenu(context.getSource(), emoteDialogManager, permissionService))
+			.executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
 			.then(Commands.literal("menu")
 				.requires(permissionService.requireDialogOpen())
-				.executes(context -> openMenu(context.getSource(), emoteDialogManager, permissionService))
+				.executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
 				.then(Commands.argument("page", IntegerArgumentType.integer(1))
 					.executes(context -> openMenu(
 						context.getSource(),
-						emoteDialogManager,
+						dialogManager,
 						permissionService,
 						IntegerArgumentType.getInteger(context, "page")
 					))))
@@ -91,7 +93,7 @@ public final class EmoteCommand {
 					emoteRegistry,
 					bdEngineDatapackProcessor,
 					configManager,
-					emoteWheelSyncService
+					wheelSyncService
 				)))
 			.then(Commands.literal("play")
 				.requires(permissionService.requirePlay())
@@ -100,7 +102,7 @@ public final class EmoteCommand {
 						getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
 						builder
 					))
-					.executes(context -> playDefaultEmote(context, emotePlaybackManager, playableEmoteService))
+					.executes(context -> playDefaultEmote(context, playService))
 					.then(Commands.argument("animation", StringArgumentType.word())
 						.suggests((context, builder) -> SharedSuggestionProvider.suggest(
 							getSuggestedAnimationNames(
@@ -111,10 +113,10 @@ public final class EmoteCommand {
 							),
 							builder
 						))
-						.executes(context -> playSelectedAnimation(context, emotePlaybackManager, playableEmoteService)))))
+						.executes(context -> playSelectedAnimation(context, playService)))))
 			.then(Commands.literal("stop")
 				.requires(permissionService.requireStop())
-				.executes(context -> stopEmote(context.getSource(), emotePlaybackManager)));
+				.executes(context -> stopEmote(context.getSource(), playbackManager)));
 	}
 
 	private static List<String> getSuggestedPlayNames(
@@ -142,15 +144,15 @@ public final class EmoteCommand {
 
 	private static int openMenu(
 		CommandSourceStack source,
-		EmoteDialogManager emoteDialogManager,
+		DialogManager dialogManager,
 		PermissionService permissionService
 	) throws CommandSyntaxException {
-		return openMenu(source, emoteDialogManager, permissionService, 1);
+		return openMenu(source, dialogManager, permissionService, 1);
 	}
 
 	private static int openMenu(
 		CommandSourceStack source,
-		EmoteDialogManager emoteDialogManager,
+		DialogManager dialogManager,
 		PermissionService permissionService,
 		int pageNumber
 	) throws CommandSyntaxException {
@@ -160,7 +162,7 @@ public final class EmoteCommand {
 			return 0;
 		}
 
-		emoteDialogManager.openDialog(player, pageNumber);
+		dialogManager.openDialog(player, pageNumber);
 		return 1;
 	}
 
@@ -198,7 +200,7 @@ public final class EmoteCommand {
 		EmoteRegistry emoteRegistry,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
 		ConfigManager configManager,
-		EmoteWheelSyncService emoteWheelSyncService
+		WheelSyncService wheelSyncService
 	) {
 		boolean configLoaded = configManager.readConfig();
 		boolean identifierConfigLoaded = configManager.readIdentifierConfig();
@@ -208,7 +210,7 @@ public final class EmoteCommand {
 			? emoteRegistry.size()
 			: bdEngineDatapackProcessor.reloadServerEmotes(source.getServer());
 		if (!reloadedResources) {
-			emoteWheelSyncService.syncAll(source.getServer());
+			wheelSyncService.syncAll(source.getServer());
 		}
 		source.sendSuccess(
 			() -> Component.literal(
@@ -222,28 +224,14 @@ public final class EmoteCommand {
 		return emoteCount;
 	}
 
-	private static int playEmote(
-		CommandSourceStack source,
-		ServerPlayer player,
-		EmotePlaybackManager emotePlaybackManager,
-		PlayableEmoteSelectionResult selectionResult
-	) {
-		if (!selectionResult.isSuccess()) {
-			source.sendFailure(Component.literal(selectionResult.errorMessage()));
-			return 0;
-		}
-
-		PlayableEmoteSelection selection = selectionResult.selection();
-
-		EmotePlaybackStartResult playResult = emotePlaybackManager.startEmote(player, selection.definition(), selection.animation());
+	private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {
 		if (!playResult.isSuccess()) {
 			source.sendFailure(Component.literal(playResult.errorMessage()));
 			return 0;
 		}
 
-		String displayName = selection.definition().createDisplayName(selection.animation().name());
 		source.sendSuccess(
-			() -> Component.literal("Play: " + displayName),
+			() -> Component.literal("Play: " + playResult.displayName()),
 			false
 		);
 		return 1;
@@ -251,31 +239,25 @@ public final class EmoteCommand {
 
 	private static int playDefaultEmote(
 		CommandContext<CommandSourceStack> context,
-		EmotePlaybackManager emotePlaybackManager,
-		PlayableEmoteService playableEmoteService
+		PlayService playService
 	) throws CommandSyntaxException {
 		CommandSourceStack source = context.getSource();
 		ServerPlayer player = source.getPlayerOrException();
-		return playEmote(
+		return applyPlayResult(
 			source,
-			player,
-			emotePlaybackManager,
-			playableEmoteService.findDefaultSelection(player, StringArgumentType.getString(context, "emote"))
+			playService.playDefault(player, StringArgumentType.getString(context, "emote"))
 		);
 	}
 
 	private static int playSelectedAnimation(
 		CommandContext<CommandSourceStack> context,
-		EmotePlaybackManager emotePlaybackManager,
-		PlayableEmoteService playableEmoteService
+		PlayService playService
 	) throws CommandSyntaxException {
 		CommandSourceStack source = context.getSource();
 		ServerPlayer player = source.getPlayerOrException();
-		return playEmote(
+		return applyPlayResult(
 			source,
-			player,
-			emotePlaybackManager,
-			playableEmoteService.findSelection(
+			playService.playSelection(
 				player,
 				StringArgumentType.getString(context, "emote"),
 				StringArgumentType.getString(context, "animation")
@@ -283,9 +265,9 @@ public final class EmoteCommand {
 		);
 	}
 
-	private static int stopEmote(CommandSourceStack source, EmotePlaybackManager emotePlaybackManager) throws CommandSyntaxException {
+	private static int stopEmote(CommandSourceStack source, PlaybackManager playbackManager) throws CommandSyntaxException {
 		ServerPlayer player = source.getPlayerOrException();
-		ActiveEmote activeEmote = emotePlaybackManager.stopEmote(player);
+		ActiveEmote activeEmote = playbackManager.stopEmote(player);
 		if (activeEmote == null) {
 			source.sendFailure(Component.literal("No active emote."));
 			return 0;

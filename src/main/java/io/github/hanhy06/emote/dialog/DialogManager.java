@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
-import io.github.hanhy06.emote.playback.EmotePlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -26,19 +26,19 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class EmoteDialogManager {
+public class DialogManager {
 	private final EmoteRegistry emoteRegistry;
 	private final PlayableEmoteService playableEmoteService;
-	private final EmotePlaybackManager emotePlaybackManager;
+	private final PlaybackManager playbackManager;
 
-	public EmoteDialogManager(
+	public DialogManager(
 		EmoteRegistry emoteRegistry,
 		PlayableEmoteService playableEmoteService,
-		EmotePlaybackManager emotePlaybackManager
+		PlaybackManager playbackManager
 	) {
 		this.emoteRegistry = emoteRegistry;
 		this.playableEmoteService = playableEmoteService;
-		this.emotePlaybackManager = emotePlaybackManager;
+		this.playbackManager = playbackManager;
 	}
 
 	public void openDialog(ServerPlayer player, int pageNumber) {
@@ -60,7 +60,7 @@ public class EmoteDialogManager {
 			));
 		}
 
-		if (this.emotePlaybackManager.findActiveEmote(player.getUUID()) != null) {
+		if (this.playbackManager.findActiveEmote(player.getUUID()) != null) {
 			actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
 		}
 
@@ -120,7 +120,7 @@ public class EmoteDialogManager {
 			return "No emotes.";
 		}
 
-		ActiveEmote activeEmote = this.emotePlaybackManager.findActiveEmote(player.getUUID());
+		ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
 		String activeEmoteText = activeEmote == null
 			? ""
 			: createActiveEmoteText(activeEmote);

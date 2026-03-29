@@ -14,11 +14,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConfigManagerTest {
 	@Test
-	void constructorCreatesPackJson(@TempDir Path tempDir) {
+	void constructorCreatesPackJson(@TempDir Path tempDir) throws IOException {
 		new ConfigManager(tempDir);
 
 		assertTrue(Files.exists(tempDir.resolve("emote").resolve("config.json")));
 		assertTrue(Files.exists(tempDir.resolve("emote").resolve("pack.json")));
+		assertFalse(Files.readString(tempDir.resolve("emote").resolve("pack.json")).contains("\"version\""));
 	}
 
 	@Test
@@ -28,7 +29,6 @@ class ConfigManagerTest {
 			tempDir.resolve("emote").resolve("pack.json"),
 			"""
 				{
-				  "version": "%s",
 				  "permissions": {
 				    "emote.pack.vip": [
 				      {
@@ -41,7 +41,7 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(IdentifierConfig.createDefault().version())
+				"""
 		);
 
 		assertTrue(manager.readIdentifierConfig());
@@ -56,7 +56,6 @@ class ConfigManagerTest {
 			tempDir.resolve("emote").resolve("pack.json"),
 			"""
 				{
-				  "version": "%s",
 				  "permissions": {
 				    "": [
 				      {
@@ -78,7 +77,7 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(IdentifierConfig.createDefault().version())
+				"""
 		);
 
 		assertFalse(manager.readIdentifierConfig());
@@ -92,7 +91,6 @@ class ConfigManagerTest {
 			tempDir.resolve("emote").resolve("pack.json"),
 			"""
 				{
-				  "version": "%s",
 				  "permissions": {
 				    "": [
 				      {
@@ -105,7 +103,7 @@ class ConfigManagerTest {
 				    ]
 				  }
 				}
-				""".formatted(IdentifierConfig.createDefault().version())
+				"""
 		);
 
 		assertFalse(manager.readIdentifierConfig());

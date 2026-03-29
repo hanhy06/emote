@@ -12,7 +12,7 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 
 @Environment(EnvType.CLIENT)
-public class EmoteWheelController {
+public class WheelController {
 	private static final String MENU_FALLBACK_COMMAND = "emote menu";
 	private List<PlayableEmote> syncedEmotes = List.of();
 	private boolean syncedFromServer;
@@ -40,7 +40,7 @@ public class EmoteWheelController {
 			return;
 		}
 
-		client.setScreen(new EmoteWheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
+		client.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
 	}
 
 	public void playEmote(PlayableEmote playableEmote) {
@@ -69,7 +69,7 @@ public class EmoteWheelController {
 
 		for (int index = 0; index < this.syncedEmotes.size(); index++) {
 			if (this.syncedEmotes.get(index).selectionKey().equals(this.lastSelectionKey)) {
-				return index / EmoteWheelScreen.SLOT_COUNT;
+				return index / WheelScreen.SLOT_COUNT;
 			}
 		}
 

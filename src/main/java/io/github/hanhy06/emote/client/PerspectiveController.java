@@ -6,7 +6,7 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 
 @Environment(EnvType.CLIENT)
-public class EmotePerspectiveController {
+public class PerspectiveController {
 	private CameraType previousCameraType = CameraType.FIRST_PERSON;
 	private boolean restoreCameraOnStop;
 
