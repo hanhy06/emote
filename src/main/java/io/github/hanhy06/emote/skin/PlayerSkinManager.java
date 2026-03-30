@@ -143,10 +143,6 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		MinecraftServer server = player.level().getServer();
-		if (server == null) {
-			return;
-		}
-
 		this.pendingSkinApplicationMap.put(
 			player.getUUID(),
 			new PendingPlayerSkinApplication(definition, SKIN_APPLY_RETRY_COUNT, server.getTickCount() + 1L)
@@ -200,7 +196,7 @@ public class PlayerSkinManager implements ConfigListener {
 		try {
 			return applyPlayerSkinInternal(player, definition);
 		} catch (RuntimeException exception) {
-			Emote.LOGGER.warn("skin apply failed for " + player.getGameProfile().name(), exception);
+			Emote.LOGGER.warn("skin apply failed for {}", player.getGameProfile().name(), exception);
 			return PlayerSkinApplyResult.failure(definition.skinParts().size());
 		}
 	}
@@ -254,7 +250,7 @@ public class PlayerSkinManager implements ConfigListener {
 			return true;
 		}
 
-		int headerEndIndex = indexOf(bufferedRequest, HEADER_END);
+		int headerEndIndex = indexOfHeaderEnd(bufferedRequest);
 		if (headerEndIndex < 0) {
 			return true;
 		}
@@ -325,10 +321,6 @@ public class PlayerSkinManager implements ConfigListener {
 
 	private PlayerSkinHost findPlayerSkinHost(ServerPlayer player) {
 		MinecraftServer server = player.level().getServer();
-		if (server == null) {
-			return null;
-		}
-
 		Connection connection = ((ServerCommonPacketListenerImplAccessor) player.connection).emote$getConnection();
 		PlayerSkinHost storedHost = this.playerSkinHostStore.find(connection);
 		if (storedHost != null) {
@@ -344,7 +336,7 @@ public class PlayerSkinManager implements ConfigListener {
 		}
 
 		String localIp = server.getLocalIp();
-		if (localIp == null || localIp.isBlank()) {
+		if (localIp.isBlank()) {
 			localIp = "localhost";
 		}
 
@@ -395,7 +387,7 @@ public class PlayerSkinManager implements ConfigListener {
 
 			return Map.copyOf(tokenMap);
 		} catch (IOException | IllegalArgumentException exception) {
-			Emote.LOGGER.warn("skin load failed for " + player.getGameProfile().name(), exception);
+			Emote.LOGGER.warn("skin load failed for {}", player.getGameProfile().name(), exception);
 			return null;
 		}
 	}
@@ -411,10 +403,6 @@ public class PlayerSkinManager implements ConfigListener {
 
 	private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
 		MinecraftServer server = player.level().getServer();
-		if (server == null) {
-			return null;
-		}
-
 		Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
 		if (packedTextures == null) {
 			return null;
@@ -515,14 +503,11 @@ public class PlayerSkinManager implements ConfigListener {
 	}
 
 	private int applyProfiles(ServerPlayer player, AABB searchBox, Map<String, ResolvableProfile> taggedProfileMap) {
-		if (!(player.level() instanceof ServerLevel serverLevel)) {
-			return 0;
-		}
-
 		if (taggedProfileMap.isEmpty()) {
 			return 0;
 		}
 
+		ServerLevel serverLevel = (ServerLevel) player.level();
 		Set<String> requestedTags = taggedProfileMap.keySet();
 		List<Display.ItemDisplay> itemDisplays = serverLevel.getEntitiesOfClass(
 			Display.ItemDisplay.class,
@@ -638,11 +623,11 @@ public class PlayerSkinManager implements ConfigListener {
 		return true;
 	}
 
-	private int indexOf(byte[] valueBytes, byte[] targetBytes) {
-		for (int index = 0; index <= valueBytes.length - targetBytes.length; index++) {
+	private int indexOfHeaderEnd(byte[] valueBytes) {
+		for (int index = 0; index <= valueBytes.length - HEADER_END.length; index++) {
 			boolean matched = true;
-			for (int targetIndex = 0; targetIndex < targetBytes.length; targetIndex++) {
-				if (valueBytes[index + targetIndex] != targetBytes[targetIndex]) {
+			for (int targetIndex = 0; targetIndex < HEADER_END.length; targetIndex++) {
+				if (valueBytes[index + targetIndex] != HEADER_END[targetIndex]) {
 					matched = false;
 					break;
 				}

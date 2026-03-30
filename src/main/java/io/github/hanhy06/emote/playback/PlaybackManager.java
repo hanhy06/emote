@@ -55,10 +55,6 @@ public class PlaybackManager {
 
 	public PlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
 		MinecraftServer server = player.level().getServer();
-		if (server == null) {
-			return PlaybackStartResult.failure("Play failed.");
-		}
-
 		String namespace = definition.namespace();
 		String animationName = animation.name();
 		String createFunctionId = namespace + ":_/create";
@@ -190,13 +186,11 @@ public class PlaybackManager {
 
 	private void cleanupNamespace(ServerPlayer player, String namespace) {
 		MinecraftServer server = player.level().getServer();
-		if (server != null && isLoadedFunction(server, namespace + ":_/delete")) {
+		if (isLoadedFunction(server, namespace + ":_/delete")) {
 			executeFunction(player, namespace + ":_/delete");
 		}
 
-		if (player.level() instanceof ServerLevel serverLevel) {
-			cleanupNamespaceEntities(serverLevel, namespace);
-		}
+		cleanupNamespaceEntities((ServerLevel) player.level(), namespace);
 	}
 
 	private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {

@@ -37,7 +37,7 @@ public class BDEngineDatapackProcessor {
 	private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
 	private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
 	private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
-	private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)\\]");
+	private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
 	private final ConfigManager configManager;
 	private final EmoteRegistry emoteRegistry;
 
@@ -371,7 +371,7 @@ public class BDEngineDatapackProcessor {
 	}
 
 	private Pattern createItemDisplayPattern(String namespace) {
-		String pattern = "\\{id:\"minecraft:item_display\",item:\\{(.*?)\\},.*?Tags:\\[[^\\]]*?\"" + Pattern.quote(namespace) + "_(\\d+)\"[^\\]]*?\\]\\}";
+		String pattern = "\\{id:\"minecraft:item_display\",item:\\{(.*?)},.*?Tags:\\[[^]]*?\"" + Pattern.quote(namespace) + "_(\\d+)\"[^]]*?]}";
 		return Pattern.compile(pattern, Pattern.DOTALL);
 	}
 
@@ -525,13 +525,13 @@ public class BDEngineDatapackProcessor {
 			return 1.0D;
 		}
 
-		return readAxisScale(transformationValues, 1, 5, 9);
+		return readLocalYAxisScale(transformationValues);
 	}
 
-	private double readAxisScale(double[] transformationValues, int firstIndex, int secondIndex, int thirdIndex) {
-		double firstValue = transformationValues[firstIndex];
-		double secondValue = transformationValues[secondIndex];
-		double thirdValue = transformationValues[thirdIndex];
+	private double readLocalYAxisScale(double[] transformationValues) {
+		double firstValue = transformationValues[1];
+		double secondValue = transformationValues[5];
+		double thirdValue = transformationValues[9];
 		return Math.sqrt(firstValue * firstValue + secondValue * secondValue + thirdValue * thirdValue);
 	}
 

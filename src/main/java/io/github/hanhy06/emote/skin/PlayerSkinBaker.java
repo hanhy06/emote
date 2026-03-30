@@ -66,16 +66,16 @@ public class PlayerSkinBaker {
 			}
 		}
 
-		copyMirroredArea(normalizedImage, 0, 16, 16, 16, 16, 48);
-		copyMirroredArea(normalizedImage, 40, 16, 16, 16, 32, 48);
+		copyMirroredArea(normalizedImage, 0, 16);
+		copyMirroredArea(normalizedImage, 40, 32);
 		return normalizedImage;
 	}
 
-	private void copyMirroredArea(BufferedImage image, int sourceX, int sourceY, int width, int height, int targetX, int targetY) {
-		for (int x = 0; x < width; x++) {
-			for (int y = 0; y < height; y++) {
-				int color = image.getRGB(sourceX + (width - 1 - x), sourceY + y);
-				image.setRGB(targetX + x, targetY + y, color);
+	private void copyMirroredArea(BufferedImage image, int sourceX, int targetX) {
+		for (int x = 0; x < 16; x++) {
+			for (int y = 0; y < 16; y++) {
+				int color = image.getRGB(sourceX + (15 - x), 16 + y);
+				image.setRGB(targetX + x, 48 + y, color);
 			}
 		}
 	}
@@ -155,8 +155,8 @@ public class PlayerSkinBaker {
 				new FaceRect(28, 20, 4, 12),
 				new FaceRect(32, 20, 8, 12)
 			);
-			case RIGHT_ARM -> slimModel ? createSlimRightArmFaces() : createWideRightArmFaces();
-			case LEFT_ARM -> slimModel ? createSlimLeftArmFaces() : createWideLeftArmFaces();
+			case RIGHT_ARM -> createWideRightArmFaces();
+			case LEFT_ARM -> createWideLeftArmFaces();
 			case RIGHT_LEG -> createRightLegFaces();
 			case LEFT_LEG -> createLeftLegFaces();
 			case HEAD -> createHeadFaces();
@@ -183,8 +183,8 @@ public class PlayerSkinBaker {
 				new FaceRect(28, 36, 4, 12),
 				new FaceRect(32, 36, 8, 12)
 			);
-			case RIGHT_ARM -> slimModel ? createSlimRightArmOverlayFaces() : createWideRightArmOverlayFaces();
-			case LEFT_ARM -> slimModel ? createSlimLeftArmOverlayFaces() : createWideLeftArmOverlayFaces();
+			case RIGHT_ARM -> createWideRightArmOverlayFaces();
+			case LEFT_ARM -> createWideLeftArmOverlayFaces();
 			case RIGHT_LEG -> createRightLegOverlayFaces();
 			case LEFT_LEG -> createLeftLegOverlayFaces();
 			case HEAD -> createHeadOverlayFaces();
@@ -218,7 +218,7 @@ public class PlayerSkinBaker {
 	private FaceMap orientFaces(PlayerSkinPart skinPart, FaceMap faceMap) {
 		return switch (skinPart) {
 			case HEAD, BODY -> faceMap;
-			case RIGHT_ARM -> new FaceMap(
+			case RIGHT_ARM, RIGHT_LEG -> new FaceMap(
 				flipX(faceMap.top()),
 				flipX(faceMap.bottom()),
 				flipX(faceMap.right()),
@@ -226,23 +226,7 @@ public class PlayerSkinBaker {
 				flipX(faceMap.left()),
 				flipX(faceMap.back())
 			);
-			case LEFT_ARM -> new FaceMap(
-				flipX(faceMap.bottom()),
-				flipX(faceMap.top()),
-				flipX(faceMap.back()),
-				flipX(faceMap.left()),
-				flipX(faceMap.front()),
-				flipX(faceMap.right())
-			);
-			case RIGHT_LEG -> new FaceMap(
-				flipX(faceMap.top()),
-				flipX(faceMap.bottom()),
-				flipX(faceMap.right()),
-				flipX(faceMap.front()),
-				flipX(faceMap.left()),
-				flipX(faceMap.back())
-			);
-			case LEFT_LEG -> new FaceMap(
+			case LEFT_ARM, LEFT_LEG -> new FaceMap(
 				flipX(faceMap.bottom()),
 				flipX(faceMap.top()),
 				flipX(faceMap.back()),
@@ -297,7 +281,7 @@ public class PlayerSkinBaker {
 		);
 	}
 
-	private FaceRect rotateQuarterTurns(FaceRect faceRect, int rotateQuarterTurns) {
+	private FaceRect rotateQuarterTurn(FaceRect faceRect) {
 		return new FaceRect(
 			faceRect.x(),
 			faceRect.y(),
@@ -305,7 +289,7 @@ public class PlayerSkinBaker {
 			faceRect.height(),
 			faceRect.flipX(),
 			faceRect.flipY(),
-			faceRect.rotateQuarterTurns() + rotateQuarterTurns,
+			faceRect.rotateQuarterTurns() + 1,
 			faceRect.virtualWidth(),
 			faceRect.padMode()
 		);
@@ -324,8 +308,8 @@ public class PlayerSkinBaker {
 
 	private FaceMap rotateQuarterTurnCw(FaceMap faceMap) {
 		return new FaceMap(
-			rotateQuarterTurns(faceMap.top(), 1),
-			rotateQuarterTurns(faceMap.bottom(), 1),
+			rotateQuarterTurn(faceMap.top()),
+			rotateQuarterTurn(faceMap.bottom()),
 			faceMap.back(),
 			faceMap.right(),
 			faceMap.front(),
@@ -465,50 +449,50 @@ public class PlayerSkinBaker {
 
 	private FaceMap createSlimRightArmFaces() {
 		return new FaceMap(
-			createSlimRect(44, 16, 3, 4, PadMode.LEFT),
-			createSlimRect(47, 16, 3, 4, PadMode.LEFT),
+			createSlimRect(44, 16, 4, PadMode.LEFT),
+			createSlimRect(47, 16, 4, PadMode.LEFT),
 			new FaceRect(40, 20, 4, 12),
-			createSlimRect(44, 20, 3, 12, PadMode.LEFT),
+			createSlimRect(44, 20, 12, PadMode.LEFT),
 			new FaceRect(47, 20, 4, 12),
-			createSlimRect(51, 20, 3, 12, PadMode.RIGHT)
+			createSlimRect(51, 20, 12, PadMode.RIGHT)
 		);
 	}
 
 	private FaceMap createSlimRightArmOverlayFaces() {
 		return new FaceMap(
-			createSlimRect(44, 32, 3, 4, PadMode.LEFT),
-			createSlimRect(47, 32, 3, 4, PadMode.LEFT),
+			createSlimRect(44, 32, 4, PadMode.LEFT),
+			createSlimRect(47, 32, 4, PadMode.LEFT),
 			new FaceRect(40, 36, 4, 12),
-			createSlimRect(44, 36, 3, 12, PadMode.LEFT),
+			createSlimRect(44, 36, 12, PadMode.LEFT),
 			new FaceRect(47, 36, 4, 12),
-			createSlimRect(51, 36, 3, 12, PadMode.RIGHT)
+			createSlimRect(51, 36, 12, PadMode.RIGHT)
 		);
 	}
 
 	private FaceMap createSlimLeftArmFaces() {
 		return new FaceMap(
-			createSlimRect(36, 48, 3, 4, PadMode.RIGHT),
-			createSlimRect(39, 48, 3, 4, PadMode.RIGHT),
+			createSlimRect(36, 48, 4, PadMode.RIGHT),
+			createSlimRect(39, 48, 4, PadMode.RIGHT),
 			new FaceRect(32, 52, 4, 12),
-			createSlimRect(36, 52, 3, 12, PadMode.RIGHT),
+			createSlimRect(36, 52, 12, PadMode.RIGHT),
 			new FaceRect(39, 52, 4, 12),
-			createSlimRect(43, 52, 3, 12, PadMode.LEFT)
+			createSlimRect(43, 52, 12, PadMode.LEFT)
 		);
 	}
 
 	private FaceMap createSlimLeftArmOverlayFaces() {
 		return new FaceMap(
-			createSlimRect(52, 48, 3, 4, PadMode.RIGHT),
-			createSlimRect(55, 48, 3, 4, PadMode.RIGHT),
+			createSlimRect(52, 48, 4, PadMode.RIGHT),
+			createSlimRect(55, 48, 4, PadMode.RIGHT),
 			new FaceRect(48, 52, 4, 12),
-			createSlimRect(52, 52, 3, 12, PadMode.RIGHT),
+			createSlimRect(52, 52, 12, PadMode.RIGHT),
 			new FaceRect(55, 52, 4, 12),
-			createSlimRect(59, 52, 3, 12, PadMode.LEFT)
+			createSlimRect(59, 52, 12, PadMode.LEFT)
 		);
 	}
 
-	private FaceRect createSlimRect(int x, int y, int width, int height, PadMode padMode) {
-		return new FaceRect(x, y, width, height, false, false, 0, width + 1, padMode);
+	private FaceRect createSlimRect(int x, int y, int height, PadMode padMode) {
+		return new FaceRect(x, y, 3, height, false, false, 0, 4, padMode);
 	}
 
 	private FaceMap createRightLegFaces() {

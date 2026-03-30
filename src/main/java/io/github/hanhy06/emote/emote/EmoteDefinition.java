@@ -77,7 +77,7 @@ public record EmoteDefinition(
 			return fallbackAnimation;
 		}
 
-		return this.animations.isEmpty() ? null : this.animations.get(0);
+		return this.animations.isEmpty() ? null : this.animations.getFirst();
 	}
 
 	public boolean isDefaultAnimation(String animationName) {

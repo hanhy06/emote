@@ -235,7 +235,6 @@ public class WheelScreen extends Screen {
 		graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.close"), metrics.centerX(), footerTop + 14, MUTED_COLOR);
 		if (getPageCount() > 1) {
 			graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.page_click"), metrics.centerX(), footerTop + 28, MUTED_COLOR);
-			return;
 		}
 	}
 

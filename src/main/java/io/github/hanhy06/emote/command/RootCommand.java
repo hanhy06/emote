@@ -46,7 +46,6 @@ public final class RootCommand {
 		WheelSyncService wheelSyncService
 	) {
 		dispatcher.register(createRootCommand(
-			"emote",
 			emoteRegistry,
 			playbackManager,
 			bdEngineDatapackProcessor,
@@ -60,7 +59,6 @@ public final class RootCommand {
 	}
 
 	private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(
-		String rootName,
 		EmoteRegistry emoteRegistry,
 		PlaybackManager playbackManager,
 		BDEngineDatapackProcessor bdEngineDatapackProcessor,
@@ -71,7 +69,7 @@ public final class RootCommand {
 		PermissionService permissionService,
 		WheelSyncService wheelSyncService
 	) {
-		return Commands.literal(rootName)
+		return Commands.literal("emote")
 			.executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
 			.then(Commands.literal("menu")
 				.requires(permissionService.requireDialogOpen())

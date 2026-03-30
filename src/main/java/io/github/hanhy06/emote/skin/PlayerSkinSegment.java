@@ -14,14 +14,6 @@ public record PlayerSkinSegment(int startY, int endY) {
 		}
 	}
 
-	public int height() {
-		return this.endY - this.startY;
-	}
-
-	public boolean isFull() {
-		return this.startY == 0 && this.endY == SIDE_FACE_HEIGHT;
-	}
-
 	public String id() {
 		return this.startY + "-" + this.endY;
 	}

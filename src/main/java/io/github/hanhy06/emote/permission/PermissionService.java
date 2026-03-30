@@ -60,7 +60,7 @@ public class PermissionService implements ConfigListener, IdentifierConfigListen
 			return false;
 		}
 
-		return hasPermission(player, findNamespacePermission(namespace), DEFAULT_EMOTE_PERMISSION_LEVEL);
+		return hasPermission(player, findNamespacePermission(namespace));
 	}
 
 	public Predicate<CommandSourceStack> requireDialogOpen() {
@@ -71,11 +71,11 @@ public class PermissionService implements ConfigListener, IdentifierConfigListen
 	}
 
 	public Predicate<CommandSourceStack> requireList() {
-		return source -> canList(source);
+		return this::canList;
 	}
 
 	public Predicate<CommandSourceStack> requireReload() {
-		return source -> canReload(source);
+		return this::canReload;
 	}
 
 	public Predicate<CommandSourceStack> requirePlay() {
@@ -106,15 +106,15 @@ public class PermissionService implements ConfigListener, IdentifierConfigListen
 	}
 
 	private boolean hasBasePermission(ServerPlayer player) {
-		return hasPermission(player, this.config.emote_permission(), DEFAULT_EMOTE_PERMISSION_LEVEL);
+		return hasPermission(player, this.config.emote_permission());
 	}
 
-	private boolean hasPermission(ServerPlayer player, String permission, PermissionLevel fallbackLevel) {
+	private boolean hasPermission(ServerPlayer player, String permission) {
 		if (permission == null || permission.isBlank()) {
 			return true;
 		}
 
-		return Permissions.check(player, permission, fallbackLevel);
+		return Permissions.check(player, permission, DEFAULT_EMOTE_PERMISSION_LEVEL);
 	}
 
 	private String normalizePermission(String permission) {
