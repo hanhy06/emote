@@ -28,20 +28,13 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.storage.LevelResource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Comparator;
 
 public class Emote implements ModInitializer {
 	public static final String MOD_ID = "emote";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	private static final PlayerSkinManager PLAYER_SKIN_MANAGER = new PlayerSkinManager();
-	private static final String LEGACY_QUICK_ACTION_PACK_DIR = "emote-dialog-shortcut";
 
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
@@ -113,7 +106,6 @@ public class Emote implements ModInitializer {
 	}
 
 	private void registerLifecycleCallbacks() {
-		ServerLifecycleEvents.SERVER_STARTING.register(this::handleServerStarting);
 		ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
 		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resourceManager) -> handleDataPackReloadStart(server));
 		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
@@ -146,10 +138,6 @@ public class Emote implements ModInitializer {
 			this.permissionService,
 			this.wheelSyncService
 		));
-	}
-
-	private void handleServerStarting(MinecraftServer server) {
-		deleteLegacyQuickActionDatapack(server);
 	}
 
 	private void handleServerStarted(MinecraftServer server) {
@@ -185,21 +173,5 @@ public class Emote implements ModInitializer {
 		this.playbackManager.stopAllEmotes(server);
 		PLAYER_SKIN_MANAGER.clear();
 		LOGGER.info("stop emotes");
-	}
-
-	private void deleteLegacyQuickActionDatapack(MinecraftServer server) {
-		Path legacyPackPath = server.getWorldPath(LevelResource.DATAPACK_DIR).resolve(LEGACY_QUICK_ACTION_PACK_DIR);
-		if (!Files.exists(legacyPackPath)) {
-			return;
-		}
-
-		try (var pathStream = Files.walk(legacyPackPath)) {
-			for (Path path : pathStream.sorted(Comparator.reverseOrder()).toList()) {
-				Files.deleteIfExists(path);
-			}
-			LOGGER.info("Removed legacy quick action datapack");
-		} catch (IOException exception) {
-			LOGGER.warn("Failed to remove legacy quick action datapack", exception);
-		}
 	}
 }
