@@ -9,14 +9,18 @@ public class PlaybackStateService {
 	private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false);
 
 	public void syncActive(ServerPlayer player) {
-		if (ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
-			ServerPlayNetworking.send(player, ACTIVE_PAYLOAD);
-		}
+		sync(player, ACTIVE_PAYLOAD);
 	}
 
 	public void syncInactive(ServerPlayer player) {
-		if (ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
-			ServerPlayNetworking.send(player, INACTIVE_PAYLOAD);
+		sync(player, INACTIVE_PAYLOAD);
+	}
+
+	private void sync(ServerPlayer player, EmotePlaybackStatePayload payload) {
+		if (!ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
+			return;
 		}
+
+		ServerPlayNetworking.send(player, payload);
 	}
 }

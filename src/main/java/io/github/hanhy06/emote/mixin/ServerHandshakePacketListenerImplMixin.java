@@ -24,6 +24,6 @@ public class ServerHandshakePacketListenerImplMixin {
 			return;
 		}
 
-		Emote.getPlayerSkinManager().rememberConnectionHost(this.connection, packet.hostName(), packet.port());
+		Emote.SKIN_MANAGER.rememberConnectionHost(this.connection, packet.hostName(), packet.port());
 	}
 }

@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
@@ -28,279 +29,311 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlaybackManager {
-	private static final long TICKS_PER_KEYFRAME = 2L;
-	private static final long PLAYBACK_BUFFER_TICKS = 8L;
-	private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
-	private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
-	private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
-	private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
-	private final PlayerSkinManager playerSkinManager;
-	private PlaybackStateListener stateListener = new PlaybackStateListener() {
-		@Override
-		public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-		}
+    private static final long TICKS_PER_KEYFRAME = 2L;
+    private static final long PLAYBACK_BUFFER_TICKS = 8L;
+    private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
+    private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
+    private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
+    private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
+    private final PlayerSkinManager playerSkinManager;
+    private PlaybackStateListener stateListener = PlaybackStateListener.NONE;
 
-		@Override
-		public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
-		}
-	};
+    public PlaybackManager(PlayerSkinManager playerSkinManager) {
+        this.playerSkinManager = playerSkinManager;
+    }
 
-	public PlaybackManager(PlayerSkinManager playerSkinManager) {
-		this.playerSkinManager = playerSkinManager;
-	}
+    public void setStateListener(PlaybackStateListener stateListener) {
+        this.stateListener = stateListener == null ? PlaybackStateListener.NONE : stateListener;
+    }
 
-	public void setStateListener(PlaybackStateListener stateListener) {
-		this.stateListener = stateListener;
-	}
+    public PlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return PlaybackStartResult.failure("Server unavailable.");
+        }
 
-	public PlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
-		MinecraftServer server = player.level().getServer();
-		String namespace = definition.namespace();
-		String animationName = animation.name();
-		String createFunctionId = namespace + ":_/create";
-		String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
-		if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
-			return PlaybackStartResult.failure("Datapack not loaded.");
-		}
+        String namespace = definition.namespace();
+        String animationName = animation.name();
+        String createFunctionId = namespace + ":_/create";
+        String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
+        if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
+            return PlaybackStartResult.failure("Datapack not loaded.");
+        }
 
-		stopMatchingNamespaceEmotes(server, player.getUUID(), namespace);
-		this.stopEmote(player);
-		cleanupNamespace(player, namespace);
+        stopMatchingNamespaceEmotes(player.getUUID(), namespace);
+        this.stopEmote(player);
+        cleanupNamespace(player, namespace);
 
-		executeFunction(player, createFunctionId);
-		alignRootWithPlayer(player, namespace);
-		this.playerSkinManager.applyPlayerSkin(player, definition);
-		executeFunction(player, playFunctionId);
-		boolean wasInvisible = player.isInvisible();
-		player.setInvisible(true);
+        executeFunction(player, createFunctionId);
+        alignRootWithPlayer(player, namespace);
+        this.playerSkinManager.applyPlayerSkin(player, definition);
+        executeFunction(player, playFunctionId);
+        boolean wasInvisible = player.isInvisible();
+        player.setInvisible(true);
 
-		long stopTick = server.getTickCount() + calculatePlaybackTicks(animation.keyframeCount());
-		ActiveEmote activeEmote = new ActiveEmote(
-			player.getUUID(),
-			player.level().dimension(),
-			namespace,
-			animationName,
-			player.position(),
-			stopTick,
-			wasInvisible
-		);
-		this.activeEmoteMap.put(player.getUUID(), activeEmote);
-		this.stateListener.onEmoteStarted(player, activeEmote);
-		return PlaybackStartResult.SUCCESS;
-	}
+        long stopTick = server.getTickCount() + calculatePlaybackTicks(animation.keyframeCount());
+        ActiveEmote activeEmote = new ActiveEmote(
+                player.getUUID(),
+                player.level().dimension(),
+                namespace,
+                animationName,
+                player.position(),
+                stopTick,
+                wasInvisible
+        );
+        this.activeEmoteMap.put(player.getUUID(), activeEmote);
+        this.stateListener.onEmoteStarted(player, activeEmote);
+        return PlaybackStartResult.SUCCESS;
+    }
 
-	public ActiveEmote stopEmote(ServerPlayer player) {
-		return stopEmote(player.level().getServer(), player.getUUID());
-	}
+    public ActiveEmote stopEmote(ServerPlayer player) {
+        return stopEmote(player.getUUID());
+    }
 
-	public ActiveEmote stopEmote(MinecraftServer server, UUID playerUuid) {
-		ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
-		if (activeEmote == null) {
-			return null;
-		}
+    private ActiveEmote stopEmote(UUID playerUuid) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return null;
+        }
 
-		stopActiveEmote(server, activeEmote);
-		return activeEmote;
-	}
+        ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
+        if (activeEmote == null) {
+            return null;
+        }
 
-	public ActiveEmote findActiveEmote(UUID playerUuid) {
-		return this.activeEmoteMap.get(playerUuid);
-	}
+        stopActiveEmote(server, activeEmote);
+        return activeEmote;
+    }
 
-	public void tick(MinecraftServer server) {
-		if (this.activeEmoteMap.isEmpty()) {
-			return;
-		}
+    public ActiveEmote findActiveEmote(UUID playerUuid) {
+        return this.activeEmoteMap.get(playerUuid);
+    }
 
-		long currentTick = server.getTickCount();
-		List<UUID> playerUuidListToStop = new ArrayList<>();
+    public void tick() {
+        MinecraftServer server = server();
+        if (server == null || this.activeEmoteMap.isEmpty()) {
+            return;
+        }
 
-		for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
-			ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-			if (player == null || !player.isAlive() || !player.level().dimension().equals(activeEmote.levelKey()) || currentTick >= activeEmote.stopTick()) {
-				playerUuidListToStop.add(activeEmote.playerUuid());
-				continue;
-			}
+        long currentTick = server.getTickCount();
+        List<UUID> playerUuidListToStop = new ArrayList<>();
 
-			if (hasMoved(player.position(), activeEmote.startPosition())) {
-				playerUuidListToStop.add(activeEmote.playerUuid());
-				player.sendSystemMessage(Component.literal("Stop: moved"));
-			}
-		}
+        for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
+            ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
+            if (player == null || !player.isAlive() || !player.level().dimension().equals(activeEmote.levelKey()) || currentTick >= activeEmote.stopTick()) {
+                playerUuidListToStop.add(activeEmote.playerUuid());
+                continue;
+            }
 
-		for (UUID playerUuid : playerUuidListToStop) {
-			stopEmote(server, playerUuid);
-		}
-	}
+            if (hasMoved(player.position(), activeEmote.startPosition())) {
+                playerUuidListToStop.add(activeEmote.playerUuid());
+                player.sendSystemMessage(Component.literal("Stop: moved"));
+            }
+        }
 
-	public void stopAllEmotes(MinecraftServer server) {
-		List<UUID> playerUuidList = List.copyOf(this.activeEmoteMap.keySet());
-		for (UUID playerUuid : playerUuidList) {
-			stopEmote(server, playerUuid);
-		}
-	}
+        for (UUID playerUuid : playerUuidListToStop) {
+            stopEmote(playerUuid);
+        }
+    }
 
-	private void stopMatchingNamespaceEmotes(MinecraftServer server, UUID playerUuid, String namespace) {
-		List<UUID> playerUuidListToStop = this.activeEmoteMap.values().stream()
-			.filter(activeEmote -> !activeEmote.playerUuid().equals(playerUuid))
-			.filter(activeEmote -> activeEmote.namespace().equals(namespace))
-			.map(ActiveEmote::playerUuid)
-			.toList();
+    public void stopAllEmotes() {
+        List<UUID> playerUuidList = List.copyOf(this.activeEmoteMap.keySet());
+        for (UUID playerUuid : playerUuidList) {
+            stopEmote(playerUuid);
+        }
+    }
 
-		for (UUID otherPlayerUuid : playerUuidListToStop) {
-			stopEmote(server, otherPlayerUuid);
-		}
-	}
+    private void stopMatchingNamespaceEmotes(UUID playerUuid, String namespace) {
+        List<UUID> playerUuidListToStop = new ArrayList<>();
+        for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
+            if (activeEmote.playerUuid().equals(playerUuid)) {
+                continue;
+            }
 
-	private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
-		executeFunction(server, activeEmote, activeEmote.namespace() + ":_/stop_anim");
-		executeFunction(server, activeEmote, activeEmote.namespace() + ":_/delete");
-		ServerLevel level = server.getLevel(activeEmote.levelKey());
-		if (level != null) {
-			cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
-		}
+            if (!activeEmote.namespace().equals(namespace)) {
+                continue;
+            }
 
-		ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-		if (player != null) {
-			player.setInvisible(activeEmote.wasInvisible());
-			this.stateListener.onEmoteStopped(player, activeEmote);
-		}
-	}
+            playerUuidListToStop.add(activeEmote.playerUuid());
+        }
 
-	private long calculatePlaybackTicks(int keyframeCount) {
-		return Math.max(20L, (long) keyframeCount * TICKS_PER_KEYFRAME + PLAYBACK_BUFFER_TICKS);
-	}
+        for (UUID otherPlayerUuid : playerUuidListToStop) {
+            stopEmote(otherPlayerUuid);
+        }
+    }
 
-	private boolean hasMoved(Vec3 currentPosition, Vec3 startPosition) {
-		double xDistance = currentPosition.x - startPosition.x;
-		double zDistance = currentPosition.z - startPosition.z;
-		double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
-		double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
-		return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
-	}
+    private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
+        executeFunction(activeEmote, activeEmote.namespace() + ":_/stop_anim");
+        executeFunction(activeEmote, activeEmote.namespace() + ":_/delete");
+        ServerLevel level = server.getLevel(activeEmote.levelKey());
+        if (level != null) {
+            cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
+        }
 
-	private boolean isLoadedFunction(MinecraftServer server, String functionId) {
-		Identifier identifier = Identifier.tryParse(functionId);
-		return identifier != null && server.getFunctions().get(identifier).isPresent();
-	}
+        ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
+        if (player != null) {
+            player.setInvisible(activeEmote.wasInvisible());
+            this.stateListener.onEmoteStopped(player, activeEmote);
+        }
+    }
 
-	private void cleanupNamespace(ServerPlayer player, String namespace) {
-		MinecraftServer server = player.level().getServer();
-		if (isLoadedFunction(server, namespace + ":_/delete")) {
-			executeFunction(player, namespace + ":_/delete");
-		}
+    private long calculatePlaybackTicks(int keyframeCount) {
+        return Math.max(20L, (long) keyframeCount * TICKS_PER_KEYFRAME + PLAYBACK_BUFFER_TICKS);
+    }
 
-		cleanupNamespaceEntities((ServerLevel) player.level(), namespace);
-	}
+    private boolean hasMoved(Vec3 currentPosition, Vec3 startPosition) {
+        double xDistance = currentPosition.x - startPosition.x;
+        double zDistance = currentPosition.z - startPosition.z;
+        double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
+        double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
+        return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+    }
 
-	private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
-		AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
-		List<Display> displaysToKill = level.getEntitiesOfClass(
-			Display.class,
-			searchBox,
-			entity -> matchesNamespaceDisplay(entity, namespace)
-		);
-		for (Entity entity : displaysToKill) {
-			if (!entity.isRemoved()) {
-				entity.kill(level);
-			}
-		}
-	}
+    private boolean isLoadedFunction(MinecraftServer server, String functionId) {
+        Identifier identifier = Identifier.tryParse(functionId);
+        return identifier != null && server.getFunctions().get(identifier).isPresent();
+    }
 
-	private void cleanupNamespaceEntities(ServerLevel level, String namespace) {
-		Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
+    private void cleanupNamespace(ServerPlayer player, String namespace) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return;
+        }
 
-		for (Entity entity : level.getAllEntities()) {
-			if (!matchesNamespaceDisplay(entity, namespace)) {
-				continue;
-			}
+        if (isLoadedFunction(server, namespace + ":_/delete")) {
+            executeFunction(player, namespace + ":_/delete");
+        }
 
-			collectEntityTree(entity, entitiesToKill);
-		}
+        cleanupNamespaceEntities(player.level(), namespace);
+    }
 
-		for (Entity entity : entitiesToKill.values()) {
-			if (!entity.isRemoved()) {
-				entity.kill(level);
-			}
-		}
-	}
+    private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
+        AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
+        List<Display> displaysToKill = level.getEntitiesOfClass(
+                Display.class,
+                searchBox,
+                entity -> matchesNamespaceDisplay(entity, namespace)
+        );
+        for (Entity entity : displaysToKill) {
+            if (!entity.isRemoved()) {
+                entity.kill(level);
+            }
+        }
+    }
 
-	private void collectEntityTree(Entity entity, Map<Integer, Entity> entitiesToKill) {
-		if (entitiesToKill.containsKey(entity.getId())) {
-			return;
-		}
+    private void cleanupNamespaceEntities(ServerLevel level, String namespace) {
+        Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
 
-		for (Entity passenger : entity.getPassengers()) {
-			collectEntityTree(passenger, entitiesToKill);
-		}
+        for (Entity entity : level.getAllEntities()) {
+            if (!matchesNamespaceDisplay(entity, namespace)) {
+                continue;
+            }
 
-		entitiesToKill.put(entity.getId(), entity);
-	}
+            collectEntityTree(entity, entitiesToKill);
+        }
 
-	private boolean matchesNamespaceDisplay(Entity entity, String namespace) {
-		if (!(entity instanceof Display)) {
-			return false;
-		}
+        for (Entity entity : entitiesToKill.values()) {
+            if (!entity.isRemoved()) {
+                entity.kill(level);
+            }
+        }
+    }
 
-		for (String tag : entity.entityTags()) {
-			if (isCleanupTag(tag, namespace)) {
-				return true;
-			}
-		}
+    private void collectEntityTree(Entity entity, Map<Integer, Entity> entitiesToKill) {
+        if (entitiesToKill.containsKey(entity.getId())) {
+            return;
+        }
 
-		return false;
-	}
+        for (Entity passenger : entity.getPassengers()) {
+            collectEntityTree(passenger, entitiesToKill);
+        }
 
-	private boolean isCleanupTag(String tag, String namespace) {
-		if (tag.equals(namespace) || tag.equals(namespace + "_root") || tag.equals(namespace + "_camera")) {
-			return true;
-		}
+        entitiesToKill.put(entity.getId(), entity);
+    }
 
-		if (!tag.startsWith(namespace + "_")) {
-			return false;
-		}
+    private boolean matchesNamespaceDisplay(Entity entity, String namespace) {
+        if (!(entity instanceof Display)) {
+            return false;
+        }
 
-		String suffix = tag.substring(namespace.length() + 1);
-		if (suffix.isEmpty()) {
-			return false;
-		}
+        for (String tag : entity.entityTags()) {
+            if (isCleanupTag(tag, namespace)) {
+                return true;
+            }
+        }
 
-		if (suffix.charAt(0) == 'p') {
-			return suffix.length() > 1 && suffix.substring(1).chars().allMatch(Character::isDigit);
-		}
+        return false;
+    }
 
-		return suffix.chars().allMatch(Character::isDigit);
-	}
+    private boolean isCleanupTag(String tag, String namespace) {
+        if (tag.equals(namespace) || tag.equals(namespace + "_root") || tag.equals(namespace + "_camera")) {
+            return true;
+        }
 
-	private void alignRootWithPlayer(ServerPlayer player, String namespace) {
-		float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
-		CommandSourceStack source = player.createCommandSourceStack()
-			.withAnchor(EntityAnchorArgument.Anchor.FEET)
-			.withRotation(new Vec2(0.0F, yaw))
-			.withMaximumPermission(LevelBasedPermissionSet.OWNER)
-			.withSuppressedOutput();
-		String rootSelector = "@e[type=minecraft:block_display,tag=" + namespace + "_root,limit=1,sort=nearest]";
-		String command = "tp " + rootSelector + " ^ ^ ^ " + yaw + " 0";
-		player.level().getServer().getCommands().performPrefixedCommand(source, command);
-	}
+        if (!tag.startsWith(namespace + "_")) {
+            return false;
+        }
 
-	private void executeFunction(ServerPlayer player, String functionId) {
-		CommandSourceStack source = player.createCommandSourceStack()
-			.withMaximumPermission(LevelBasedPermissionSet.OWNER)
-			.withSuppressedOutput();
-		player.level().getServer().getCommands().performPrefixedCommand(source, "function " + functionId);
-	}
+        String suffix = tag.substring(namespace.length() + 1);
+        if (suffix.isEmpty()) {
+            return false;
+        }
 
-	private void executeFunction(MinecraftServer server, ActiveEmote activeEmote, String functionId) {
-		ServerLevel level = server.getLevel(activeEmote.levelKey());
-		if (level == null) {
-			return;
-		}
+        if (suffix.charAt(0) == 'p') {
+            return suffix.length() > 1 && suffix.substring(1).chars().allMatch(Character::isDigit);
+        }
 
-		CommandSourceStack source = server.createCommandSourceStack()
-			.withLevel(level)
-			.withMaximumPermission(LevelBasedPermissionSet.OWNER)
-			.withSuppressedOutput();
-		server.getCommands().performPrefixedCommand(source, "function " + functionId);
-	}
+        return suffix.chars().allMatch(Character::isDigit);
+    }
+
+    private void alignRootWithPlayer(ServerPlayer player, String namespace) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return;
+        }
+
+        float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
+        CommandSourceStack source = player.createCommandSourceStack()
+                .withAnchor(EntityAnchorArgument.Anchor.FEET)
+                .withRotation(new Vec2(0.0F, yaw))
+                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+                .withSuppressedOutput();
+        String rootSelector = "@e[type=minecraft:block_display,tag=" + namespace + "_root,limit=1,sort=nearest]";
+        String command = "tp " + rootSelector + " ^ ^ ^ " + yaw + " 0";
+        server.getCommands().performPrefixedCommand(source, command);
+    }
+
+    private void executeFunction(ServerPlayer player, String functionId) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return;
+        }
+
+        CommandSourceStack source = player.createCommandSourceStack()
+                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+                .withSuppressedOutput();
+        server.getCommands().performPrefixedCommand(source, "function " + functionId);
+    }
+
+    private void executeFunction(ActiveEmote activeEmote, String functionId) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return;
+        }
+
+        ServerLevel level = server.getLevel(activeEmote.levelKey());
+        if (level == null) {
+            return;
+        }
+
+        CommandSourceStack source = server.createCommandSourceStack()
+                .withLevel(level)
+                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+                .withSuppressedOutput();
+        server.getCommands().performPrefixedCommand(source, "function " + functionId);
+    }
+
+    private MinecraftServer server() {
+        return Emote.SERVER;
+    }
 }

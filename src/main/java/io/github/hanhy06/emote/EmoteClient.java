@@ -16,91 +16,107 @@ import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class EmoteClient implements ClientModInitializer {
-	private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
-	private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
-	private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
-		new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
-	);
-	private static boolean wheelBindingReleaseArmed;
-	private static boolean wheelHoldWasDown;
+    private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
+    private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
+    private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
+            new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
+    );
+    private static boolean wheelBindingReleaseArmed;
+    private static boolean wheelHoldWasDown;
 
-	@Override
-	public void onInitializeClient() {
-		ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, context) ->
-			context.client().execute(() -> EMOTE_PERSPECTIVE_CONTROLLER.handlePlaybackState(payload.active()))
-		);
+    @Override
+    public void onInitializeClient() {
+        registerNetworking();
+        registerConnectionCallbacks();
+        registerWheelBinding();
+    }
 
-		ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, context) ->
-			context.client().execute(() -> EMOTE_WHEEL_CONTROLLER.updateEmotes(payload.emotes()))
-		);
+    private void registerNetworking() {
+        ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, context) ->
+                context.client().execute(() -> EMOTE_PERSPECTIVE_CONTROLLER.handlePlaybackState(payload.active()))
+        );
 
-		ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
-			clearClientState();
-			if (ClientPlayNetworking.canSend(EmoteSkinSupportPayload.TYPE)) {
-				ClientPlayNetworking.send(EmoteSkinSupportPayload.INSTANCE);
-			}
-		});
+        ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> EMOTE_WHEEL_CONTROLLER.updateEmotes(payload.emotes()))
+        );
+    }
 
-		ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clearClientState());
+    private void registerConnectionCallbacks() {
+        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+            clearClientState();
+            sendSkinSupportIfAvailable();
+        });
 
-		ClientTickEvents.END_CLIENT_TICK.register(client -> {
-			boolean wheelHoldDown = isEmoteBindingDown(client);
+        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> clearClientState());
+    }
 
-			if (client.screen instanceof WheelScreen wheelScreen) {
-				if (wheelHoldDown) {
-					wheelBindingReleaseArmed = true;
-				} else if (wheelBindingReleaseArmed) {
-					wheelBindingReleaseArmed = false;
-					wheelScreen.handleBindingReleased();
-				}
-				wheelHoldWasDown = wheelHoldDown;
-				return;
-			}
+    private void registerWheelBinding() {
+        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+            boolean wheelHoldDown = isEmoteBindingDown(client);
 
-			wheelBindingReleaseArmed = false;
-			if (client.screen != null || client.player == null) {
-				wheelHoldWasDown = wheelHoldDown;
-				return;
-			}
+            if (client.screen instanceof WheelScreen wheelScreen) {
+                if (wheelHoldDown) {
+                    wheelBindingReleaseArmed = true;
+                } else if (wheelBindingReleaseArmed) {
+                    wheelBindingReleaseArmed = false;
+                    wheelScreen.handleBindingReleased();
+                }
+                wheelHoldWasDown = wheelHoldDown;
+                return;
+            }
 
-			if (wheelHoldDown && !wheelHoldWasDown) {
-				if (EMOTE_WHEEL_KEY.same(client.options.keyPickItem)) {
-					drainPickItemClicks(client.options.keyPickItem);
-				}
-				EMOTE_WHEEL_CONTROLLER.openWheel(EMOTE_WHEEL_KEY.getTranslatedKeyMessage());
-				wheelBindingReleaseArmed = true;
-			}
+            wheelBindingReleaseArmed = false;
+            if (client.screen != null || client.player == null) {
+                wheelHoldWasDown = wheelHoldDown;
+                return;
+            }
 
-			wheelHoldWasDown = wheelHoldDown;
-		});
-	}
+            if (wheelHoldDown && !wheelHoldWasDown) {
+                if (EMOTE_WHEEL_KEY.same(client.options.keyPickItem)) {
+                    drainPickItemClicks(client.options.keyPickItem);
+                }
+                EMOTE_WHEEL_CONTROLLER.openWheel(EMOTE_WHEEL_KEY.getTranslatedKeyMessage());
+                wheelBindingReleaseArmed = true;
+            }
 
-	private static void drainPickItemClicks(KeyMapping keyMapping) {
-		while (keyMapping.consumeClick()) {
-		}
-	}
+            wheelHoldWasDown = wheelHoldDown;
+        });
+    }
 
-	private static void clearClientState() {
-		EMOTE_PERSPECTIVE_CONTROLLER.clear();
-		EMOTE_WHEEL_CONTROLLER.clear();
-		wheelBindingReleaseArmed = false;
-		wheelHoldWasDown = false;
-	}
+    private void sendSkinSupportIfAvailable() {
+        if (!ClientPlayNetworking.canSend(EmoteSkinSupportPayload.TYPE)) {
+            return;
+        }
 
-	private static boolean isEmoteBindingDown(net.minecraft.client.Minecraft client) {
-		InputConstants.Key boundKey = KeyMappingHelper.getBoundKeyOf(EMOTE_WHEEL_KEY);
-		return isBoundKeyDown(client, boundKey);
-	}
+        ClientPlayNetworking.send(EmoteSkinSupportPayload.INSTANCE);
+    }
 
-	private static boolean isMouseButtonDown(net.minecraft.client.Minecraft client, int button) {
-		return GLFW.glfwGetMouseButton(client.getWindow().handle(), button) == GLFW.GLFW_PRESS;
-	}
+    private static void drainPickItemClicks(KeyMapping keyMapping) {
+        while (keyMapping.consumeClick()) {
+        }
+    }
 
-	private static boolean isBoundKeyDown(net.minecraft.client.Minecraft client, InputConstants.Key key) {
-		return switch (key.getType()) {
-			case KEYSYM -> InputConstants.isKeyDown(client.getWindow(), key.getValue());
-			case MOUSE -> isMouseButtonDown(client, key.getValue());
-			case SCANCODE -> EMOTE_WHEEL_KEY.isDown();
-		};
-	}
+    private static void clearClientState() {
+        EMOTE_PERSPECTIVE_CONTROLLER.clear();
+        EMOTE_WHEEL_CONTROLLER.clear();
+        wheelBindingReleaseArmed = false;
+        wheelHoldWasDown = false;
+    }
+
+    private static boolean isEmoteBindingDown(net.minecraft.client.Minecraft client) {
+        InputConstants.Key boundKey = KeyMappingHelper.getBoundKeyOf(EMOTE_WHEEL_KEY);
+        return isBoundKeyDown(client, boundKey);
+    }
+
+    private static boolean isMouseButtonDown(net.minecraft.client.Minecraft client, int button) {
+        return GLFW.glfwGetMouseButton(client.getWindow().handle(), button) == GLFW.GLFW_PRESS;
+    }
+
+    private static boolean isBoundKeyDown(net.minecraft.client.Minecraft client, InputConstants.Key key) {
+        return switch (key.getType()) {
+            case KEYSYM -> InputConstants.isKeyDown(client.getWindow(), key.getValue());
+            case MOUSE -> isMouseButtonDown(client, key.getValue());
+            case SCANCODE -> EMOTE_WHEEL_KEY.isDown();
+        };
+    }
 }

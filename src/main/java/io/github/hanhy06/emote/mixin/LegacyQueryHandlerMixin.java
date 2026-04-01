@@ -17,7 +17,7 @@ public class LegacyQueryHandlerMixin {
 			return;
 		}
 
-		if (!Emote.getPlayerSkinManager().handleHttpRequest(context, input)) {
+		if (!Emote.SKIN_MANAGER.handleHttpRequest(context, input)) {
 			return;
 		}
 

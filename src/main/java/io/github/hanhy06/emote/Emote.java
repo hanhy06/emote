@@ -6,45 +6,44 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
-import io.github.hanhy06.emote.network.payload.EmoteSkinSupportPayload;
-import io.github.hanhy06.emote.network.payload.EmoteWheelPlayPayload;
-import io.github.hanhy06.emote.network.payload.EmoteWheelSyncPayload;
+import io.github.hanhy06.emote.network.EmoteNetworking;
 import io.github.hanhy06.emote.network.service.PlayService;
 import io.github.hanhy06.emote.network.service.PlaybackStateService;
+import io.github.hanhy06.emote.network.service.PlaybackStateSyncListener;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.playback.PlaybackStateListener;
-import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.server.EmoteLifecycle;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Emote implements ModInitializer {
 	public static final String MOD_ID = "emote";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	private static final PlayerSkinManager PLAYER_SKIN_MANAGER = new PlayerSkinManager();
+	public static final PlayerSkinManager SKIN_MANAGER = new PlayerSkinManager();
+	public static MinecraftServer SERVER;
 
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
+
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
-	private final PlaybackManager playbackManager = new PlaybackManager(PLAYER_SKIN_MANAGER);
 	private final PermissionService permissionService = new PermissionService();
 	private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
 		this.emoteRegistry,
 		this.permissionService
 	);
-	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(this.configManager, this.emoteRegistry);
+
+	private final PlaybackManager playbackManager = new PlaybackManager(SKIN_MANAGER);
+	private final PlaybackStateService playbackStateService = new PlaybackStateService();
+	private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
+
+	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(
+		this.configManager,
+		this.emoteRegistry
+	);
 	private final DialogManager dialogManager = new DialogManager(
 		this.emoteRegistry,
 		this.playableEmoteService,
@@ -54,80 +53,28 @@ public class Emote implements ModInitializer {
 		this.playableEmoteService,
 		this.playbackManager
 	);
-	private final PlaybackStateService playbackStateService = new PlaybackStateService();
 	private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
+
+	private final EmoteNetworking networking = new EmoteNetworking(this.playService, this.wheelSyncService);
+	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
+		this.configManager,
+		SKIN_MANAGER,
+		this.playbackManager,
+		this.bdEngineDatapackProcessor,
+		this.wheelSyncService
+	);
 
 	@Override
 	public void onInitialize() {
-		this.configManager.addListener(this.permissionService);
-		this.configManager.addIdentifierListener(this.permissionService);
-		this.configManager.addListener(PLAYER_SKIN_MANAGER);
+		registerConfigListeners();
 		this.configManager.readConfig();
 		this.configManager.readIdentifierConfig();
-		this.playbackManager.setStateListener(new PlaybackStateListener() {
-			@Override
-			public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-				playbackStateService.syncActive(player);
-			}
 
-			@Override
-			public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
-				playbackStateService.syncInactive(player);
-			}
-		});
-		registerNetworking();
-		registerLifecycleCallbacks();
-		registerCommands();
-		LOGGER.info("{} ready", MOD_ID);
-	}
+		this.playbackManager.setStateListener(this.playbackStateSyncListener);
 
-	public static PlayerSkinManager getPlayerSkinManager() {
-		return PLAYER_SKIN_MANAGER;
-	}
-
-	private void registerNetworking() {
-		PayloadTypeRegistry.serverboundPlay().register(EmoteSkinSupportPayload.TYPE, EmoteSkinSupportPayload.STREAM_CODEC);
-		PayloadTypeRegistry.serverboundPlay().register(EmoteWheelPlayPayload.TYPE, EmoteWheelPlayPayload.STREAM_CODEC);
-		PayloadTypeRegistry.clientboundPlay().register(EmotePlaybackStatePayload.TYPE, EmotePlaybackStatePayload.STREAM_CODEC);
-		PayloadTypeRegistry.clientboundPlay().register(EmoteWheelSyncPayload.TYPE, EmoteWheelSyncPayload.STREAM_CODEC);
-		ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
-			context.server().execute(() -> {
-				PLAYER_SKIN_MANAGER.markClientSkinSupport(context.player());
-				this.wheelSyncService.syncPlayer(context.player());
-			})
-		);
-		ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) ->
-			context.server().execute(() -> this.playService.playSelection(
-				context.player(),
-				payload.commandName(),
-				payload.animationName()
-			))
-		);
-	}
-
-	private void registerLifecycleCallbacks() {
-		ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
-		ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resourceManager) -> handleDataPackReloadStart(server));
-		ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
-		ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
-		ServerTickEvents.END_SERVER_TICK.register(PLAYER_SKIN_MANAGER::tick);
-		ServerTickEvents.END_SERVER_TICK.register(this.playbackManager::tick);
-		ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-			if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {
-				PLAYER_SKIN_MANAGER.markClientSkinSupport(handler.player);
-			}
-
-			this.wheelSyncService.syncPlayer(handler.player);
-		});
-		ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-			this.playbackManager.stopEmote(handler.player);
-			PLAYER_SKIN_MANAGER.forgetClientSkinSupport(handler.player);
-		});
-	}
-
-	private void registerCommands() {
-		CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> RootCommand.registerCommand(
-			dispatcher,
+		this.networking.register();
+		this.lifecycle.register();
+		RootCommand.register(
 			this.emoteRegistry,
 			this.playbackManager,
 			this.bdEngineDatapackProcessor,
@@ -137,41 +84,14 @@ public class Emote implements ModInitializer {
 			this.playService,
 			this.permissionService,
 			this.wheelSyncService
-		));
+		);
+
+		LOGGER.info("{} ready", MOD_ID);
 	}
 
-	private void handleServerStarted(MinecraftServer server) {
-		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
-		boolean reloadedResources = this.bdEngineDatapackProcessor.enableEmoteDatapacks(server);
-		if (reloadedResources) {
-			return;
-		}
-
-		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
-		LOGGER.info("emotes={}", emoteCount);
-	}
-
-	private void handleDataPackReloadStart(MinecraftServer server) {
-		this.configManager.readConfig();
-		this.configManager.readIdentifierConfig();
-		PLAYER_SKIN_MANAGER.reloadHttpServer(server);
-	}
-
-	private void handleDataPackReload(MinecraftServer server, boolean success) {
-		if (!success) {
-			LOGGER.warn("Datapack reload failed");
-			return;
-		}
-
-		this.playbackManager.stopAllEmotes(server);
-		int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes(server);
-		this.wheelSyncService.syncAll(server);
-		LOGGER.info("reload emotes={}", emoteCount);
-	}
-
-	private void handleServerStopping(MinecraftServer server) {
-		this.playbackManager.stopAllEmotes(server);
-		PLAYER_SKIN_MANAGER.clear();
-		LOGGER.info("stop emotes");
+	private void registerConfigListeners() {
+		this.configManager.addListener(this.permissionService);
+		this.configManager.addIdentifierListener(this.permissionService);
+		this.configManager.addListener(SKIN_MANAGER);
 	}
 }
