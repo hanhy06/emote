@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.network.service;
 
-import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.network.payload.EmoteSkinSyncPayload;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
@@ -21,18 +20,10 @@ public class EmoteSkinSyncService {
 
 	public void syncPlayer(ServerPlayer player) {
 		if (!ServerPlayNetworking.canSend(player, EmoteSkinSyncPayload.TYPE)) {
-			Emote.LOGGER.info("[skin-debug/server] skip skin_sync player={} reason=cannot_send", player.getGameProfile().name());
 			return;
 		}
 
-		EmoteSkinSyncPayload payload = createPayload();
-		Emote.LOGGER.info(
-				"[skin-debug/server] send skin_sync player={} entries={} {}",
-				player.getGameProfile().name(),
-				payload.entries().size(),
-				describeEntries(payload.entries())
-		);
-		ServerPlayNetworking.send(player, payload);
+		ServerPlayNetworking.send(player, createPayload());
 	}
 
 	public void syncAll(MinecraftServer server) {
@@ -46,10 +37,6 @@ public class EmoteSkinSyncService {
 		for (ActiveEmote activeEmote : this.playbackManager.getActiveEmotes()) {
 			PreparedPlayerSkin preparedPlayerSkin = activeEmote.preparedPlayerSkin();
 			if (preparedPlayerSkin == null) {
-				Emote.LOGGER.info(
-						"[skin-debug/server] omit skin_sync entry namespace={} reason=prepared_skin_null",
-						activeEmote.namespace()
-				);
 				continue;
 			}
 
@@ -62,26 +49,5 @@ public class EmoteSkinSyncService {
 		}
 
 		return new EmoteSkinSyncPayload(entries);
-	}
-
-	private String describeEntries(List<EmoteSkinSyncPayload.Entry> entries) {
-		if (entries.isEmpty()) {
-			return "details=empty";
-		}
-
-		StringBuilder builder = new StringBuilder("details=");
-		for (int index = 0; index < entries.size(); index++) {
-			EmoteSkinSyncPayload.Entry entry = entries.get(index);
-			if (index > 0) {
-				builder.append(", ");
-			}
-			builder.append(entry.namespace())
-					.append('(')
-					.append(entry.skinParts().size())
-					.append(',')
-					.append(entry.slimModel() ? "slim" : "wide")
-					.append(')');
-		}
-		return builder.toString();
 	}
 }

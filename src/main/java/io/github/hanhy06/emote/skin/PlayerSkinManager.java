@@ -77,7 +77,6 @@ public class PlayerSkinManager implements ConfigListener {
     private final ConcurrentMap<String, ConcurrentMap<PlayerSkinTextureKey, String>> playerSkinTextureSetMap = new ConcurrentHashMap<>();
     private final Set<UUID> clientSkinSupportPlayerSet = ConcurrentHashMap.newKeySet();
     private final ConcurrentMap<UUID, PendingPlayerSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
-    private final Set<String> hostedTextureLogKeySet = ConcurrentHashMap.newKeySet();
     private final Object httpServerLock = new Object();
 
     private volatile int configuredPort;
@@ -136,51 +135,20 @@ public class PlayerSkinManager implements ConfigListener {
 
     public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
-        Emote.LOGGER.info(
-                "[skin-debug/server] preparePlayerSkin player={} namespace={} skinParts={}",
-                player.getGameProfile().name(),
-                definition.namespace(),
-                skinParts.size()
-        );
         if (skinParts.isEmpty()) {
-            Emote.LOGGER.info(
-                    "[skin-debug/server] preparePlayerSkin player={} namespace={} result=no_skin_parts",
-                    player.getGameProfile().name(),
-                    definition.namespace()
-            );
             return null;
         }
 
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {
-            Emote.LOGGER.warn(
-                    "[skin-debug/server] preparePlayerSkin player={} namespace={} result=no_skin_source",
-                    player.getGameProfile().name(),
-                    definition.namespace()
-            );
             return null;
         }
 
         Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(skinSource, player, skinParts);
         if (playerSkinTextureSet == null || playerSkinTextureSet.isEmpty()) {
-            Emote.LOGGER.warn(
-                    "[skin-debug/server] preparePlayerSkin player={} namespace={} result=no_texture_set hash={} slim={}",
-                    player.getGameProfile().name(),
-                    definition.namespace(),
-                    skinSource.textureHash(),
-                    skinSource.slimModel()
-            );
             return null;
         }
 
-        Emote.LOGGER.info(
-                "[skin-debug/server] preparePlayerSkin player={} namespace={} result=ok hash={} slim={} tokens={}",
-                player.getGameProfile().name(),
-                definition.namespace(),
-                skinSource.textureHash(),
-                skinSource.slimModel(),
-                playerSkinTextureSet.size()
-        );
         return new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel());
     }
 
@@ -259,13 +227,6 @@ public class PlayerSkinManager implements ConfigListener {
             boundSkinParts.add(new BoundEmoteSkinPart(itemDisplay.getId(), skinPart));
         }
 
-        Emote.LOGGER.info(
-                "[skin-debug/server] bound skin parts player={} namespace={} expected={} captured={}",
-                player.getGameProfile().name(),
-                definition.namespace(),
-                skinParts.size(),
-                boundSkinParts.size()
-        );
         return List.copyOf(boundSkinParts);
     }
 
@@ -411,7 +372,6 @@ public class PlayerSkinManager implements ConfigListener {
         this.playerSkinTextureSetMap.clear();
         this.clientSkinSupportPlayerSet.clear();
         this.pendingSkinApplicationMap.clear();
-        this.hostedTextureLogKeySet.clear();
     }
 
     private int resolvePlayerSkinPort(int fallbackPort) {
@@ -465,13 +425,6 @@ public class PlayerSkinManager implements ConfigListener {
                 return null;
             }
 
-            Emote.LOGGER.info(
-                    "[skin-debug/server] playerSkinHost player={} source=handshake host={} storedPort={} resolvedPort={}",
-                    player.getGameProfile().name(),
-                    storedHost.host(),
-                    storedHost.port(),
-                    resolvedPort
-            );
             return new PlayerSkinHost(
                     storedHost.host(),
                     resolvedPort
@@ -488,12 +441,6 @@ public class PlayerSkinManager implements ConfigListener {
             return null;
         }
 
-        Emote.LOGGER.info(
-                "[skin-debug/server] playerSkinHost player={} source=server host={} resolvedPort={}",
-                player.getGameProfile().name(),
-                localIp,
-                resolvedPort
-        );
         return new PlayerSkinHost(localIp, resolvedPort);
     }
 
@@ -600,16 +547,13 @@ public class PlayerSkinManager implements ConfigListener {
     private PlayerSkinHttpResponse createTextureResponse(String path, boolean headOnly) {
         byte[] pngBytes = findTextureBytes(path);
         if (pngBytes == null) {
-            logHostedTexture(path, headOnly, false, 0);
             return PlayerSkinHttpResponse.text(404, "Not Found", NOT_FOUND_RESPONSE_BODY, headOnly);
         }
 
-        logHostedTexture(path, headOnly, true, pngBytes.length);
         return new PlayerSkinHttpResponse(200, "OK", PNG_CONTENT_TYPE, pngBytes, headOnly);
     }
 
     private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
-        Emote.LOGGER.info("[skin-debug/server] download source skin url={}", textureUrl);
         HttpURLConnection connection = (HttpURLConnection) URI.create(textureUrl).toURL().openConnection();
         connection.setConnectTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
         connection.setReadTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
@@ -627,31 +571,10 @@ public class PlayerSkinManager implements ConfigListener {
                 throw new IOException("skin image decode failed");
             }
 
-            Emote.LOGGER.info(
-                    "[skin-debug/server] source skin ready url={} size={}x{}",
-                    textureUrl,
-                    bufferedImage.getWidth(),
-                    bufferedImage.getHeight()
-            );
             return bufferedImage;
         } finally {
             connection.disconnect();
         }
-    }
-
-    private void logHostedTexture(String path, boolean headOnly, boolean found, int sizeBytes) {
-        String logKey = (found ? "hit:" : "miss:") + path;
-        if (!this.hostedTextureLogKeySet.add(logKey)) {
-            return;
-        }
-
-        Emote.LOGGER.info(
-                "[skin-debug/server] hosted texture {} path={} bytes={} headOnly={}",
-                found ? "hit" : "miss",
-                path,
-                sizeBytes,
-                headOnly
-        );
     }
 
     private Map<String, ResolvableProfile> createTaggedProfileMap(
