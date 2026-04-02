@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.command;
 
-import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
@@ -10,6 +9,7 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
+import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
@@ -19,6 +19,7 @@ import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -43,7 +44,7 @@ public final class RootCommand {
             PermissionService permissionService,
             WheelSyncService wheelSyncService
     ) {
-        net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
+        CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) ->
                 dispatcher.register(createRootCommand(
                         emoteRegistry,
                         playbackManager,
@@ -71,50 +72,96 @@ public final class RootCommand {
     ) {
         return Commands.literal("emote")
                 .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
-                .then(Commands.literal("menu")
-                        .requires(permissionService.requireDialogOpen())
-                        .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
-                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
-                                .executes(context -> openMenu(
-                                        context.getSource(),
-                                        dialogManager,
-                                        permissionService,
-                                        IntegerArgumentType.getInteger(context, "page")
-                                ))))
-                .then(Commands.literal("list")
-                        .requires(permissionService.requireList())
-                        .executes(context -> listEmotes(context.getSource(), emoteRegistry)))
-                .then(Commands.literal("reload")
-                        .requires(permissionService.requireReload())
-                        .executes(context -> reloadEmotes(
+                .then(createMenuCommand(dialogManager, permissionService))
+                .then(createListCommand(emoteRegistry, permissionService))
+                .then(createReloadCommand(
+                        emoteRegistry,
+                        bdEngineDatapackProcessor,
+                        configManager,
+                        permissionService,
+                        wheelSyncService
+                ))
+                .then(createPlayCommand(emoteRegistry, playableEmoteService, playService, permissionService))
+                .then(createStopCommand(playbackManager, permissionService));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createMenuCommand(
+            DialogManager dialogManager,
+            PermissionService permissionService
+    ) {
+        return Commands.literal("menu")
+                .requires(permissionService.requireDialogOpen())
+                .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
+                .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                        .executes(context -> openMenu(
                                 context.getSource(),
-                                emoteRegistry,
-                                bdEngineDatapackProcessor,
-                                configManager,
-                                wheelSyncService
-                        )))
-                .then(Commands.literal("play")
-                        .requires(permissionService.requirePlay())
-                        .then(Commands.argument("emote", StringArgumentType.word())
+                                dialogManager,
+                                permissionService,
+                                IntegerArgumentType.getInteger(context, "page")
+                        )));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createListCommand(
+            EmoteRegistry emoteRegistry,
+            PermissionService permissionService
+    ) {
+        return Commands.literal("list")
+                .requires(permissionService.requireList())
+                .executes(context -> listEmotes(context.getSource(), emoteRegistry));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createReloadCommand(
+            EmoteRegistry emoteRegistry,
+            BDEngineDatapackProcessor bdEngineDatapackProcessor,
+            ConfigManager configManager,
+            PermissionService permissionService,
+            WheelSyncService wheelSyncService
+    ) {
+        return Commands.literal("reload")
+                .requires(permissionService.requireReload())
+                .executes(context -> reloadEmotes(
+                        context.getSource(),
+                        emoteRegistry,
+                        bdEngineDatapackProcessor,
+                        configManager,
+                        wheelSyncService
+                ));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createPlayCommand(
+            EmoteRegistry emoteRegistry,
+            PlayableEmoteService playableEmoteService,
+            PlayService playService,
+            PermissionService permissionService
+    ) {
+        return Commands.literal("play")
+                .requires(permissionService.requirePlay())
+                .then(Commands.argument("emote", StringArgumentType.word())
+                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                                getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
+                                builder
+                        ))
+                        .executes(context -> playDefaultEmote(context, playService))
+                        .then(Commands.argument("animation", StringArgumentType.word())
                                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
-                                        getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
+                                        getSuggestedAnimationNames(
+                                                context.getSource(),
+                                                StringArgumentType.getString(context, "emote"),
+                                                emoteRegistry,
+                                                playableEmoteService
+                                        ),
                                         builder
                                 ))
-                                .executes(context -> playDefaultEmote(context, playService))
-                                .then(Commands.argument("animation", StringArgumentType.word())
-                                        .suggests((context, builder) -> SharedSuggestionProvider.suggest(
-                                                getSuggestedAnimationNames(
-                                                        context.getSource(),
-                                                        StringArgumentType.getString(context, "emote"),
-                                                        emoteRegistry,
-                                                        playableEmoteService
-                                                ),
-                                                builder
-                                        ))
-                                        .executes(context -> playSelectedAnimation(context, playService)))))
-                .then(Commands.literal("stop")
-                        .requires(permissionService.requireStop())
-                        .executes(context -> stopEmote(context.getSource(), playbackManager)));
+                                .executes(context -> playSelectedAnimation(context, playService))));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createStopCommand(
+            PlaybackManager playbackManager,
+            PermissionService permissionService
+    ) {
+        return Commands.literal("stop")
+                .requires(permissionService.requireStop())
+                .executes(context -> stopEmote(context.getSource(), playbackManager));
     }
 
     private static List<String> getSuggestedPlayNames(
@@ -190,13 +237,13 @@ public final class RootCommand {
     }
 
     private static String createAnimationSummary(EmoteDefinition definition) {
-        List<io.github.hanhy06.emote.emote.EmoteAnimation> animations = definition.animations();
+        List<EmoteAnimation> animations = definition.animations();
         if (animations.isEmpty()) {
             return "-";
         }
 
         StringBuilder summary = new StringBuilder();
-        for (io.github.hanhy06.emote.emote.EmoteAnimation animation : animations) {
+        for (EmoteAnimation animation : animations) {
             if (!summary.isEmpty()) {
                 summary.append(", ");
             }

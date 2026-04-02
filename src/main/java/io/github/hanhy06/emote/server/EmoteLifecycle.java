@@ -33,19 +33,33 @@ public class EmoteLifecycle {
     }
 
     public void register() {
+        registerLifecycleCallbacks();
+        registerPlaybackCallbacks();
+        registerConnectionCallbacks();
+    }
+
+    private void registerLifecycleCallbacks() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
-        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resourceManager) -> handleDataPackReloadStart(server));
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
+        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, ignoredResourceManager) -> handleDataPackReloadStart(server));
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, ignoredResourceManager, success) -> handleDataPackReload(server, success));
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
+    }
 
-        ServerTickEvents.END_SERVER_TICK.register(server -> this.playbackManager.tick());
+    private void registerPlaybackCallbacks() {
+        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackManager.tick());
+    }
 
-        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            this.wheelSyncService.syncPlayer(handler.player);
-        });
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
-            this.playbackManager.stopEmote(handler.player);
-        });
+    private void registerConnectionCallbacks() {
+        ServerPlayConnectionEvents.JOIN.register((handler, ignoredSender, ignoredServer) -> syncJoinedPlayer(handler.player));
+        ServerPlayConnectionEvents.DISCONNECT.register((handler, ignoredServer) -> stopDisconnectedPlayer(handler.player));
+    }
+
+    private void syncJoinedPlayer(net.minecraft.server.level.ServerPlayer player) {
+        this.wheelSyncService.syncPlayer(player);
+    }
+
+    private void stopDisconnectedPlayer(net.minecraft.server.level.ServerPlayer player) {
+        this.playbackManager.stopEmote(player);
     }
 
     private void handleServerStarted(MinecraftServer server) {

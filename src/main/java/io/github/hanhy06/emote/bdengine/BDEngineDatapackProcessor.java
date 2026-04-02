@@ -99,13 +99,13 @@ public class BDEngineDatapackProcessor {
         List<EmoteDefinition> filteredDefinitions = new ArrayList<>();
 
         for (EmoteDefinition definition : definitions) {
-            if (!isLoadedFunction(definition.namespace() + ":_/create")) {
+            if (isMissingFunction(definition.namespace() + ":_/create")) {
                 continue;
             }
 
             List<EmoteAnimation> loadedAnimations = new ArrayList<>();
             for (EmoteAnimation animation : definition.animations()) {
-                if (!isLoadedFunction(definition.namespace() + ":a/" + animation.name() + "/play_anim")) {
+                if (isMissingFunction(definition.namespace() + ":a/" + animation.name() + "/play_anim")) {
                     continue;
                 }
 
@@ -132,14 +132,14 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(filteredDefinitions);
     }
 
-    private boolean isLoadedFunction(String functionId) {
+    private boolean isMissingFunction(String functionId) {
         MinecraftServer server = server();
         if (server == null) {
-            return false;
+            return true;
         }
 
         Identifier identifier = Identifier.tryParse(functionId);
-        return identifier != null && server.getFunctions().get(identifier).isPresent();
+        return identifier == null || server.getFunctions().get(identifier).isEmpty();
     }
 
     private MinecraftServer server() {
