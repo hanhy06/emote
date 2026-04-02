@@ -56,35 +56,21 @@ public class PlaybackManager {
 
         String namespace = definition.namespace();
         String animationName = animation.name();
-        String createFunctionId = namespace + ":_/create";
-        String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
-        if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
+        PlaybackFunctionIds functionIds = resolveFunctionIds(server, namespace, animationName);
+        if (functionIds == null) {
             return PlaybackStartResult.failure("Datapack not loaded.");
         }
 
-        stopMatchingNamespaceEmotes(player.getUUID(), namespace);
-        this.stopEmote(player);
-        cleanupNamespace(player, namespace);
+        resetPlayerPlayback(player, namespace);
 
-        executeFunction(player, createFunctionId);
-        alignRootWithPlayer(player, namespace);
-        PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
-        executeFunction(player, playFunctionId);
-        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(player, definition);
-        boolean wasInvisible = player.isInvisible();
-        player.setInvisible(true);
-
-        long stopTick = server.getTickCount() + calculatePlaybackTicks(animation.keyframeCount());
-        ActiveEmote activeEmote = new ActiveEmote(
-                player.getUUID(),
-                player.level().dimension(),
+        PlaybackStartSnapshot startSnapshot = startPlayback(player, definition, functionIds);
+        ActiveEmote activeEmote = createActiveEmote(
+                server,
+                player,
                 namespace,
                 animationName,
-                player.position(),
-                stopTick,
-                wasInvisible,
-                boundSkinParts,
-                preparedPlayerSkin
+                animation.keyframeCount(),
+                startSnapshot
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
         this.stateListener.onEmoteStarted(player, activeEmote);
@@ -129,12 +115,12 @@ public class PlaybackManager {
 
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
             ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-            if (player == null || !player.isAlive() || !player.level().dimension().equals(activeEmote.levelKey()) || currentTick >= activeEmote.stopTick()) {
+            if (!canKeepPlaying(player, activeEmote, currentTick)) {
                 playerUuidListToStop.add(activeEmote.playerUuid());
                 continue;
             }
 
-            if (hasMoved(player.position(), activeEmote.startPosition())) {
+            if (hasMovedDuringPlayback(player, activeEmote)) {
                 playerUuidListToStop.add(activeEmote.playerUuid());
                 player.sendSystemMessage(Component.literal("Stop: moved"));
             }
@@ -150,6 +136,77 @@ public class PlaybackManager {
         for (UUID playerUuid : playerUuidList) {
             stopEmote(playerUuid);
         }
+    }
+
+    private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, String namespace, String animationName) {
+        String createFunctionId = namespace + ":_/create";
+        String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
+        if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
+            return null;
+        }
+
+        return new PlaybackFunctionIds(createFunctionId, playFunctionId);
+    }
+
+    private void resetPlayerPlayback(ServerPlayer player, String namespace) {
+        stopMatchingNamespaceEmotes(player.getUUID(), namespace);
+        this.stopEmote(player);
+        cleanupNamespace(player, namespace);
+    }
+
+    private PlaybackStartSnapshot startPlayback(
+            ServerPlayer player,
+            EmoteDefinition definition,
+            PlaybackFunctionIds functionIds
+    ) {
+        executeFunction(player, functionIds.createFunctionId());
+        alignRootWithPlayer(player, definition.namespace());
+
+        PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
+        executeFunction(player, functionIds.playFunctionId());
+
+        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(player, definition);
+        boolean wasInvisible = player.isInvisible();
+        player.setInvisible(true);
+        return new PlaybackStartSnapshot(preparedPlayerSkin, boundSkinParts, wasInvisible);
+    }
+
+    private ActiveEmote createActiveEmote(
+            MinecraftServer server,
+            ServerPlayer player,
+            String namespace,
+            String animationName,
+            int keyframeCount,
+            PlaybackStartSnapshot startSnapshot
+    ) {
+        long stopTick = server.getTickCount() + calculatePlaybackTicks(keyframeCount);
+        return new ActiveEmote(
+                player.getUUID(),
+                player.level().dimension(),
+                namespace,
+                animationName,
+                player.position(),
+                stopTick,
+                startSnapshot.wasInvisible(),
+                startSnapshot.boundSkinParts(),
+                startSnapshot.preparedPlayerSkin()
+        );
+    }
+
+    private boolean canKeepPlaying(ServerPlayer player, ActiveEmote activeEmote, long currentTick) {
+        if (player == null || !player.isAlive()) {
+            return false;
+        }
+
+        if (!player.level().dimension().equals(activeEmote.levelKey())) {
+            return false;
+        }
+
+        return currentTick < activeEmote.stopTick();
+    }
+
+    private boolean hasMovedDuringPlayback(ServerPlayer player, ActiveEmote activeEmote) {
+        return hasMoved(player.position(), activeEmote.startPosition());
     }
 
     private void stopMatchingNamespaceEmotes(UUID playerUuid, String namespace) {
@@ -344,5 +401,15 @@ public class PlaybackManager {
 
     private MinecraftServer server() {
         return Emote.SERVER;
+    }
+
+    private record PlaybackFunctionIds(String createFunctionId, String playFunctionId) {
+    }
+
+    private record PlaybackStartSnapshot(
+            PreparedPlayerSkin preparedPlayerSkin,
+            List<BoundEmoteSkinPart> boundSkinParts,
+            boolean wasInvisible
+    ) {
     }
 }
