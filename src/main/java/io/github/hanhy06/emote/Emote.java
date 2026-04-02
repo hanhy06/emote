@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.EmoteNetworking;
+import io.github.hanhy06.emote.network.service.EmoteSkinSyncService;
 import io.github.hanhy06.emote.network.service.PlayService;
 import io.github.hanhy06.emote.network.service.PlaybackStateService;
 import io.github.hanhy06.emote.network.service.PlaybackStateSyncListener;
@@ -37,8 +38,12 @@ public class Emote implements ModInitializer {
 	);
 
 	private final PlaybackManager playbackManager = new PlaybackManager(SKIN_MANAGER);
+	private final EmoteSkinSyncService emoteSkinSyncService = new EmoteSkinSyncService(this.playbackManager);
 	private final PlaybackStateService playbackStateService = new PlaybackStateService();
-	private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
+	private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(
+		this.playbackStateService,
+		this.emoteSkinSyncService
+	);
 
 	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(
 		this.configManager,
@@ -55,7 +60,11 @@ public class Emote implements ModInitializer {
 	);
 	private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
 
-	private final EmoteNetworking networking = new EmoteNetworking(this.playService, this.wheelSyncService);
+	private final EmoteNetworking networking = new EmoteNetworking(
+		this.playService,
+		this.wheelSyncService,
+		this.emoteSkinSyncService
+	);
 	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
 		this.configManager,
 		SKIN_MANAGER,

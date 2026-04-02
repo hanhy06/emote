@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
+import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
@@ -66,7 +67,7 @@ public class PlaybackManager {
 
         executeFunction(player, createFunctionId);
         alignRootWithPlayer(player, namespace);
-        this.playerSkinManager.applyPlayerSkin(player, definition);
+        PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
         executeFunction(player, playFunctionId);
         boolean wasInvisible = player.isInvisible();
         player.setInvisible(true);
@@ -79,7 +80,9 @@ public class PlaybackManager {
                 animationName,
                 player.position(),
                 stopTick,
-                wasInvisible
+                wasInvisible,
+                definition.skinParts(),
+                preparedPlayerSkin
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
         this.stateListener.onEmoteStarted(player, activeEmote);
@@ -107,6 +110,10 @@ public class PlaybackManager {
 
     public ActiveEmote findActiveEmote(UUID playerUuid) {
         return this.activeEmoteMap.get(playerUuid);
+    }
+
+    public List<ActiveEmote> getActiveEmotes() {
+        return List.copyOf(this.activeEmoteMap.values());
     }
 
     public void tick() {

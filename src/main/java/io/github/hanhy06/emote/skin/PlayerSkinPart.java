@@ -27,6 +27,12 @@ public enum PlayerSkinPart {
 
 		String normalizedId = id.toLowerCase(Locale.ROOT);
 		return switch (normalizedId) {
+			case "head" -> HEAD;
+			case "body" -> BODY;
+			case "right_arm" -> RIGHT_ARM;
+			case "left_arm" -> LEFT_ARM;
+			case "right_leg" -> RIGHT_LEG;
+			case "left_leg" -> LEFT_LEG;
 			case "emote:head" -> HEAD;
 			case "emote:body" -> BODY;
 			case "emote:right_arm" -> RIGHT_ARM;

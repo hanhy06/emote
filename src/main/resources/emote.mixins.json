@@ -8,6 +8,9 @@
 		"ServerHandshakePacketListenerImplMixin",
 		"TextureUrlCheckerMixin"
 	],
+	"client": [
+		"ItemDisplayRendererMixin"
+	],
 	"injectors": {
 		"defaultRequire": 1
 	},

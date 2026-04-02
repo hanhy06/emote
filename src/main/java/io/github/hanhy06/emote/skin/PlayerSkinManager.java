@@ -122,6 +122,34 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
+    public int getResolvedPort() {
+        MinecraftServer server = server();
+        if (server == null) {
+            return 0;
+        }
+
+        return resolvePlayerSkinPort(server.getPort());
+    }
+
+    public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
+        List<EmoteSkinPart> skinParts = definition.skinParts();
+        if (skinParts.isEmpty()) {
+            return null;
+        }
+
+        PlayerSkinSource skinSource = readPlayerSkinSource(player);
+        if (skinSource == null) {
+            return null;
+        }
+
+        Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(skinSource, player, skinParts);
+        if (playerSkinTextureSet == null || playerSkinTextureSet.isEmpty()) {
+            return null;
+        }
+
+        return new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel());
+    }
+
     public void rememberConnectionHost(Connection connection, String host, int port) {
         this.playerSkinHostStore.remember(connection, host, port);
     }
@@ -136,8 +164,6 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public void applyPlayerSkin(ServerPlayer player, EmoteDefinition definition) {
-        applyOriginalPlayerSkin(player, definition);
-
         if (!this.clientSkinSupportPlayerSet.contains(player.getUUID())) {
             this.pendingSkinApplicationMap.remove(player.getUUID());
             return;
@@ -205,20 +231,6 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
-    private void applyOriginalPlayerSkin(ServerPlayer player, EmoteDefinition definition) {
-        List<EmoteSkinPart> skinParts = definition.skinParts();
-        if (skinParts.isEmpty()) {
-            return;
-        }
-
-        ResolvableProfile profile = createOriginalProfile(player);
-        applyProfiles(
-                player,
-                player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE),
-                createOriginalProfileMap(definition.namespace(), skinParts, profile)
-        );
-    }
-
     private PlayerSkinApplyResult applyHostedPlayerSkinSafely(ServerPlayer player, EmoteDefinition definition) {
         try {
             return applyHostedPlayerSkinInternal(player, definition);
@@ -231,6 +243,10 @@ public class PlayerSkinManager implements ConfigListener {
     private PlayerSkinApplyResult applyHostedPlayerSkinInternal(ServerPlayer player, EmoteDefinition definition) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
         if (skinParts.isEmpty()) {
+            return PlayerSkinApplyResult.empty();
+        }
+
+        if (readPlayerSkinSource(player) == null) {
             return PlayerSkinApplyResult.empty();
         }
 
@@ -391,6 +407,14 @@ public class PlayerSkinManager implements ConfigListener {
             return null;
         }
 
+        return loadPlayerSkinTextureSet(skinSource, player, skinParts);
+    }
+
+    private Map<PlayerSkinTextureKey, String> loadPlayerSkinTextureSet(
+            PlayerSkinSource skinSource,
+            ServerPlayer player,
+            List<EmoteSkinPart> skinParts
+    ) {
         String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
         ConcurrentMap<PlayerSkinTextureKey, String> cachedTextureTokens = this.playerSkinTextureSetMap.computeIfAbsent(
                 cacheKey,
@@ -409,7 +433,12 @@ public class PlayerSkinManager implements ConfigListener {
                     sourceImage = downloadSkinImage(skinSource.textureUrl());
                 }
 
-                String token = buildTextureToken(skinSource.textureHash(), skinSource.slimModel(), textureKey.skinPart(), textureKey.skinSegment());
+                String token = PlayerSkinTextureHelper.buildTextureToken(
+                        skinSource.textureHash(),
+                        skinSource.slimModel(),
+                        textureKey.skinPart(),
+                        textureKey.skinSegment()
+                );
                 this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel()));
                 cachedTextureTokens.putIfAbsent(textureKey, token);
             }
@@ -436,33 +465,6 @@ public class PlayerSkinManager implements ConfigListener {
         }
 
         return textureKeys;
-    }
-
-    private Map<String, ResolvableProfile> createOriginalProfileMap(String namespace, List<EmoteSkinPart> skinParts, ResolvableProfile profile) {
-        Map<String, ResolvableProfile> taggedProfileMap = new HashMap<>(skinParts.size());
-        for (EmoteSkinPart skinPart : skinParts) {
-            taggedProfileMap.put(namespace + "_" + skinPart.partIndex(), profile);
-        }
-
-        return taggedProfileMap;
-    }
-
-    private ResolvableProfile createOriginalProfile(ServerPlayer player) {
-        Property packedTextures = readPackedTextures(player);
-        if (packedTextures == null) {
-            return ResolvableProfile.createResolved(player.getGameProfile());
-        }
-
-        PropertyMap properties = new PropertyMap(ImmutableMultimap.of(
-                "textures",
-                packedTextures
-        ));
-        GameProfile profile = new GameProfile(
-                player.getUUID(),
-                player.getGameProfile().name(),
-                properties
-        );
-        return ResolvableProfile.createResolved(profile);
     }
 
     private Property readPackedTextures(ServerPlayer player) {

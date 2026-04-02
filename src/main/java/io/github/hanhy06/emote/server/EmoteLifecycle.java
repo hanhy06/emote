@@ -3,14 +3,12 @@ package io.github.hanhy06.emote.server;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.network.payload.EmoteSkinSupportPayload;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.MinecraftServer;
 
 public class EmoteLifecycle {
@@ -40,19 +38,13 @@ public class EmoteLifecycle {
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resourceManager, success) -> handleDataPackReload(server, success));
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
 
-        ServerTickEvents.END_SERVER_TICK.register(server -> this.skinManager.tick());
         ServerTickEvents.END_SERVER_TICK.register(server -> this.playbackManager.tick());
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            if (ServerPlayNetworking.getReceived(handler).contains(EmoteSkinSupportPayload.TYPE.id())) {
-                this.skinManager.markClientSkinSupport(handler.player);
-            }
-
             this.wheelSyncService.syncPlayer(handler.player);
         });
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
             this.playbackManager.stopEmote(handler.player);
-            this.skinManager.forgetClientSkinSupport(handler.player);
         });
     }
 

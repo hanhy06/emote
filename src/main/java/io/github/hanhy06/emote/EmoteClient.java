@@ -1,10 +1,13 @@
 package io.github.hanhy06.emote;
 
+import io.github.hanhy06.emote.client.ClientSkinOverrideController;
 import io.github.hanhy06.emote.client.PerspectiveController;
 import io.github.hanhy06.emote.client.WheelController;
 import io.github.hanhy06.emote.client.WheelScreen;
 import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
+import io.github.hanhy06.emote.network.payload.EmoteSkinPortPayload;
 import io.github.hanhy06.emote.network.payload.EmoteSkinSupportPayload;
+import io.github.hanhy06.emote.network.payload.EmoteSkinSyncPayload;
 import io.github.hanhy06.emote.network.payload.EmoteWheelSyncPayload;
 import com.mojang.blaze3d.platform.InputConstants;
 import net.fabricmc.api.ClientModInitializer;
@@ -16,6 +19,7 @@ import net.minecraft.client.KeyMapping;
 import org.lwjgl.glfw.GLFW;
 
 public class EmoteClient implements ClientModInitializer {
+    public static final ClientSkinOverrideController SKIN_OVERRIDE_CONTROLLER = new ClientSkinOverrideController();
     private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
     private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
     private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
@@ -35,6 +39,12 @@ public class EmoteClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, context) ->
                 context.client().execute(() -> EMOTE_PERSPECTIVE_CONTROLLER.handlePlaybackState(payload.active()))
         );
+        ClientPlayNetworking.registerGlobalReceiver(EmoteSkinPortPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> SKIN_OVERRIDE_CONTROLLER.updateServerPort(payload.port()))
+        );
+        ClientPlayNetworking.registerGlobalReceiver(EmoteSkinSyncPayload.TYPE, (payload, context) ->
+                context.client().execute(() -> SKIN_OVERRIDE_CONTROLLER.updateEntries(payload.entries()))
+        );
 
         ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, context) ->
                 context.client().execute(() -> EMOTE_WHEEL_CONTROLLER.updateEmotes(payload.emotes()))
@@ -44,6 +54,7 @@ public class EmoteClient implements ClientModInitializer {
     private void registerConnectionCallbacks() {
         ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
             clearClientState();
+            SKIN_OVERRIDE_CONTROLLER.rememberServerHost(client);
             sendSkinSupportIfAvailable();
         });
 
@@ -97,6 +108,7 @@ public class EmoteClient implements ClientModInitializer {
     }
 
     private static void clearClientState() {
+        SKIN_OVERRIDE_CONTROLLER.clear();
         EMOTE_PERSPECTIVE_CONTROLLER.clear();
         EMOTE_WHEEL_CONTROLLER.clear();
         wheelBindingReleaseArmed = false;
