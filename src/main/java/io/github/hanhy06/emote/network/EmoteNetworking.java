@@ -12,6 +12,7 @@ import io.github.hanhy06.emote.network.service.PlayService;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.server.level.ServerPlayer;
 
 public class EmoteNetworking {
     private final PlayService playService;
@@ -43,20 +44,32 @@ public class EmoteNetworking {
     }
 
     private void registerReceivers() {
-        ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
-                context.server().execute(() -> {
-                    int resolvedPort = Emote.SKIN_MANAGER.getResolvedPort();
-                    ServerPlayNetworking.send(context.player(), new EmoteSkinPortPayload(resolvedPort));
-                    this.emoteSkinSyncService.syncPlayer(context.player());
-                    this.wheelSyncService.syncPlayer(context.player());
-                })
-        );
-        ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) ->
-                context.server().execute(() -> this.playService.playSelection(
-                        context.player(),
-                        payload.commandName(),
-                        payload.animationName()
-                ))
-        );
+        registerSkinSupportReceiver();
+        registerWheelPlayReceiver();
+    }
+
+    private void registerSkinSupportReceiver() {
+        ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (ignoredPayload, context) -> {
+            ServerPlayer player = context.player();
+            context.server().execute(() -> syncPlayerData(player));
+        });
+    }
+
+    private void registerWheelPlayReceiver() {
+        ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) -> {
+            ServerPlayer player = context.player();
+            context.server().execute(() -> playSelection(player, payload));
+        });
+    }
+
+    private void syncPlayerData(ServerPlayer player) {
+        int resolvedPort = Emote.SKIN_MANAGER.getResolvedPort();
+        ServerPlayNetworking.send(player, new EmoteSkinPortPayload(resolvedPort));
+        this.emoteSkinSyncService.syncPlayer(player);
+        this.wheelSyncService.syncPlayer(player);
+    }
+
+    private void playSelection(ServerPlayer player, EmoteWheelPlayPayload payload) {
+        this.playService.playSelection(player, payload.commandName(), payload.animationName());
     }
 }
