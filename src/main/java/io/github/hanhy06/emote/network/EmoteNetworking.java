@@ -45,7 +45,13 @@ public class EmoteNetworking {
     private void registerReceivers() {
         ServerPlayNetworking.registerGlobalReceiver(EmoteSkinSupportPayload.TYPE, (payload, context) ->
                 context.server().execute(() -> {
-                    ServerPlayNetworking.send(context.player(), new EmoteSkinPortPayload(Emote.SKIN_MANAGER.getResolvedPort()));
+                    int resolvedPort = Emote.SKIN_MANAGER.getResolvedPort();
+                    Emote.LOGGER.info(
+                            "[skin-debug/server] received skin_support player={} resolvedPort={}",
+                            context.player().getGameProfile().name(),
+                            resolvedPort
+                    );
+                    ServerPlayNetworking.send(context.player(), new EmoteSkinPortPayload(resolvedPort));
                     this.emoteSkinSyncService.syncPlayer(context.player());
                     this.wheelSyncService.syncPlayer(context.player());
                 })

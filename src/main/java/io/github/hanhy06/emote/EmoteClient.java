@@ -40,10 +40,16 @@ public class EmoteClient implements ClientModInitializer {
                 context.client().execute(() -> EMOTE_PERSPECTIVE_CONTROLLER.handlePlaybackState(payload.active()))
         );
         ClientPlayNetworking.registerGlobalReceiver(EmoteSkinPortPayload.TYPE, (payload, context) ->
-                context.client().execute(() -> SKIN_OVERRIDE_CONTROLLER.updateServerPort(payload.port()))
+                context.client().execute(() -> {
+                    Emote.LOGGER.info("[skin-debug/client] received skin_port port={}", payload.port());
+                    SKIN_OVERRIDE_CONTROLLER.updateServerPort(payload.port());
+                })
         );
         ClientPlayNetworking.registerGlobalReceiver(EmoteSkinSyncPayload.TYPE, (payload, context) ->
-                context.client().execute(() -> SKIN_OVERRIDE_CONTROLLER.updateEntries(payload.entries()))
+                context.client().execute(() -> {
+                    Emote.LOGGER.info("[skin-debug/client] received skin_sync entries={}", payload.entries().size());
+                    SKIN_OVERRIDE_CONTROLLER.updateEntries(payload.entries());
+                })
         );
 
         ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, context) ->
@@ -96,9 +102,11 @@ public class EmoteClient implements ClientModInitializer {
 
     private void sendSkinSupportIfAvailable() {
         if (!ClientPlayNetworking.canSend(EmoteSkinSupportPayload.TYPE)) {
+            Emote.LOGGER.info("[skin-debug/client] skin_support unavailable");
             return;
         }
 
+        Emote.LOGGER.info("[skin-debug/client] sending skin_support");
         ClientPlayNetworking.send(EmoteSkinSupportPayload.INSTANCE);
     }
 

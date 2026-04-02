@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.network.payload;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinSegment;
@@ -14,15 +15,17 @@ import java.util.List;
 import java.util.Objects;
 
 public record EmoteSkinSyncPayload(List<Entry> entries) implements CustomPacketPayload {
-	private static final StreamCodec<RegistryFriendlyByteBuf, EmoteSkinPart> EMOTE_SKIN_PART_STREAM_CODEC = StreamCodec.composite(
+	private static final StreamCodec<RegistryFriendlyByteBuf, BoundEmoteSkinPart> EMOTE_SKIN_PART_STREAM_CODEC = StreamCodec.composite(
 			ByteBufCodecs.VAR_INT,
-			EmoteSkinPart::partIndex,
+			BoundEmoteSkinPart::entityId,
+			ByteBufCodecs.VAR_INT,
+			part -> part.skinPart().partIndex(),
 			ByteBufCodecs.STRING_UTF8,
-			part -> part.skinPart().id(),
+			part -> part.skinPart().skinPart().id(),
 			ByteBufCodecs.VAR_INT,
-			part -> part.skinSegment().startY(),
+			part -> part.skinPart().skinSegment().startY(),
 			ByteBufCodecs.VAR_INT,
-			part -> part.skinSegment().endY(),
+			part -> part.skinPart().skinSegment().endY(),
 			EmoteSkinSyncPayload::createSkinPart
 	);
 	private static final StreamCodec<RegistryFriendlyByteBuf, Entry> ENTRY_STREAM_CODEC = StreamCodec.composite(
@@ -57,7 +60,7 @@ public record EmoteSkinSyncPayload(List<Entry> entries) implements CustomPacketP
 			String namespace,
 			String textureHash,
 			boolean slimModel,
-			List<EmoteSkinPart> skinParts
+			List<BoundEmoteSkinPart> skinParts
 	) {
 		public Entry {
 			Objects.requireNonNull(namespace, "namespace");
@@ -66,12 +69,12 @@ public record EmoteSkinSyncPayload(List<Entry> entries) implements CustomPacketP
 		}
 	}
 
-	private static EmoteSkinPart createSkinPart(int partIndex, String skinPartId, int startY, int endY) {
+	private static BoundEmoteSkinPart createSkinPart(int entityId, int partIndex, String skinPartId, int startY, int endY) {
 		PlayerSkinPart skinPart = PlayerSkinPart.fromId(skinPartId);
 		if (skinPart == null) {
 			throw new IllegalArgumentException("unknown skinPartId: " + skinPartId);
 		}
 
-		return new EmoteSkinPart(partIndex, skinPart, new PlayerSkinSegment(startY, endY));
+		return new BoundEmoteSkinPart(entityId, new EmoteSkinPart(partIndex, skinPart, new PlayerSkinSegment(startY, endY)));
 	}
 }

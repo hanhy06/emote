@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.playback.data;
 
-import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -18,7 +17,7 @@ public record ActiveEmote(
 	Vec3 startPosition,
 	long stopTick,
 	boolean wasInvisible,
-	List<EmoteSkinPart> skinParts,
+	List<BoundEmoteSkinPart> skinParts,
 	PreparedPlayerSkin preparedPlayerSkin
 ) {
 	public ActiveEmote {

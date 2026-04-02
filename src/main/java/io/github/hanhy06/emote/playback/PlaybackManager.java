@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -65,10 +66,25 @@ public class PlaybackManager {
         this.stopEmote(player);
         cleanupNamespace(player, namespace);
 
+        Emote.LOGGER.info(
+                "[skin-debug/server] start emote player={} namespace={} animation={} skinParts={}",
+                player.getGameProfile().name(),
+                namespace,
+                animationName,
+                definition.skinParts().size()
+        );
         executeFunction(player, createFunctionId);
         alignRootWithPlayer(player, namespace);
         PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
         executeFunction(player, playFunctionId);
+        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(player, definition);
+        Emote.LOGGER.info(
+                "[skin-debug/server] emote prepared player={} namespace={} preparedSkin={} boundSkinParts={}",
+                player.getGameProfile().name(),
+                namespace,
+                preparedPlayerSkin == null ? "null" : preparedPlayerSkin.textureHash() + "/" + (preparedPlayerSkin.slimModel() ? "slim" : "wide"),
+                boundSkinParts.size()
+        );
         boolean wasInvisible = player.isInvisible();
         player.setInvisible(true);
 
@@ -81,7 +97,7 @@ public class PlaybackManager {
                 player.position(),
                 stopTick,
                 wasInvisible,
-                definition.skinParts(),
+                boundSkinParts,
                 preparedPlayerSkin
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
