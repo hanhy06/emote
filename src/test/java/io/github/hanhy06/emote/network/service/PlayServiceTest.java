@@ -42,6 +42,19 @@ class PlayServiceTest {
 		assertEquals("Datapack not loaded.", result.errorMessage());
 	}
 
+	@Test
+	void playSelectionUsesLoopDisplayName() {
+		PlayService service = new PlayService(
+			createLoopPlayableEmoteService(),
+			(player, definition, animation) -> PlaybackStartResult.SUCCESS
+		);
+
+		PlayResult result = service.playSelection(null, "wave", "default_loop");
+
+		assertTrue(result.isSuccess());
+		assertEquals("Wave - default loop", result.displayName());
+	}
+
 	private PlayableEmoteService createPlayableEmoteService() {
 		EmoteRegistry registry = new EmoteRegistry();
 		registry.replaceDefinitions(List.of(new EmoteDefinition(
@@ -53,6 +66,31 @@ class PlayServiceTest {
 			Path.of("wave-pack"),
 			1,
 			List.of(new EmoteAnimation("default", 20)),
+			List.of()
+		)));
+		return new PlayableEmoteService(registry, new PermissionService() {
+			@Override
+			public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace, String animationName) {
+				return true;
+			}
+		});
+	}
+
+	private PlayableEmoteService createLoopPlayableEmoteService() {
+		EmoteRegistry registry = new EmoteRegistry();
+		registry.replaceDefinitions(List.of(new EmoteDefinition(
+			"wave",
+			"Wave",
+			"Friendly wave",
+			"wave",
+			"default",
+			"sync loop",
+			Path.of("wave-pack"),
+			1,
+			List.of(
+				new EmoteAnimation("default", 20),
+				EmoteAnimation.createLoop("default", 20)
+			),
 			List.of()
 		)));
 		return new PlayableEmoteService(registry, new PermissionService() {

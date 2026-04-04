@@ -55,8 +55,7 @@ public class PlaybackManager {
         }
 
         String namespace = definition.namespace();
-        String animationName = animation.name();
-        PlaybackFunctionIds functionIds = resolveFunctionIds(server, namespace, animationName);
+        PlaybackFunctionIds functionIds = resolveFunctionIds(server, namespace, animation);
         if (functionIds == null) {
             return PlaybackStartResult.failure("Datapack not loaded.");
         }
@@ -68,8 +67,7 @@ public class PlaybackManager {
                 server,
                 player,
                 namespace,
-                animationName,
-                animation.keyframeCount(),
+                animation,
                 startSnapshot
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
@@ -138,9 +136,9 @@ public class PlaybackManager {
         }
     }
 
-    private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, String namespace, String animationName) {
+    private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, String namespace, EmoteAnimation animation) {
         String createFunctionId = namespace + ":_/create";
-        String playFunctionId = namespace + ":a/" + animationName + "/play_anim";
+        String playFunctionId = namespace + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName();
         if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
             return null;
         }
@@ -175,16 +173,15 @@ public class PlaybackManager {
             MinecraftServer server,
             ServerPlayer player,
             String namespace,
-            String animationName,
-            int keyframeCount,
+            EmoteAnimation animation,
             PlaybackStartSnapshot startSnapshot
     ) {
-        long stopTick = server.getTickCount() + calculatePlaybackTicks(keyframeCount);
+        long stopTick = calculateStopTick(server.getTickCount(), animation);
         return new ActiveEmote(
                 player.getUUID(),
                 player.level().dimension(),
                 namespace,
-                animationName,
+                animation.name(),
                 player.position(),
                 stopTick,
                 startSnapshot.wasInvisible(),
@@ -243,8 +240,16 @@ public class PlaybackManager {
         }
     }
 
-    private long calculatePlaybackTicks(int keyframeCount) {
+    private static long calculatePlaybackTicks(int keyframeCount) {
         return Math.max(20L, (long) keyframeCount * TICKS_PER_KEYFRAME + PLAYBACK_BUFFER_TICKS);
+    }
+
+    static long calculateStopTick(long currentTick, EmoteAnimation animation) {
+        if (animation.loop()) {
+            return Long.MAX_VALUE;
+        }
+
+        return currentTick + calculatePlaybackTicks(animation.keyframeCount());
     }
 
     private boolean hasMoved(Vec3 currentPosition, Vec3 startPosition) {

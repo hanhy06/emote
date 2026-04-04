@@ -22,13 +22,14 @@ public class PlayerSkinBaker {
 	private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
 	public byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) throws IOException {
+		boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
 		BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
 
-		boolean useWideSlimArmAtlas = usesWideSlimArmAtlas(skinPart, slimModel);
+		boolean useWideSlimArmAtlas = usesWideSlimArmAtlas(skinPart, effectiveSlimModel);
 		BufferedImage bakingImage = useWideSlimArmAtlas ? expandSlimArmToWideAtlas(normalizedImage, skinPart) : normalizedImage;
 		BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-		FaceMap baseFaces = getBaseFaces(skinPart, slimModel);
-		FaceMap overlayFaces = getOverlayFaces(skinPart, slimModel);
+		FaceMap baseFaces = getBaseFaces(skinPart);
+		FaceMap overlayFaces = getOverlayFaces(skinPart);
 
 		drawTopFace(outputImage, bakingImage, baseFaces, BASE_TOP);
 		drawBottomFace(outputImage, bakingImage, baseFaces, BASE_BOTTOM);
@@ -45,6 +46,10 @@ public class PlayerSkinBaker {
 		drawFace(outputImage, bakingImage, createSegment(overlayFaces.back(), skinSegment), OVERLAY_BACK);
 
 		return writePng(outputImage);
+	}
+
+	boolean resolveSlimModel(BufferedImage sourceImage, boolean slimModel) {
+		return slimModel && sourceImage.getWidth() == 64 && sourceImage.getHeight() == 64;
 	}
 
 	private BufferedImage normalizeSkinImage(BufferedImage sourceImage) {
@@ -141,14 +146,7 @@ public class PlayerSkinBaker {
 		return outputStream.toByteArray();
 	}
 
-	private FaceMap getBaseFaces(PlayerSkinPart skinPart, boolean slimModel) {
-		if (slimModel && skinPart == PlayerSkinPart.RIGHT_ARM) {
-			return createWideRightArmFaces();
-		}
-		if (slimModel && skinPart == PlayerSkinPart.LEFT_ARM) {
-			return createWideLeftArmFaces();
-		}
-
+	private FaceMap getBaseFaces(PlayerSkinPart skinPart) {
 		return orientFaces(skinPart, switch (skinPart) {
 			case BODY -> new FaceMap(
 					new FaceRect(20, 16, 8, 4),
@@ -158,22 +156,15 @@ public class PlayerSkinBaker {
 					new FaceRect(28, 20, 4, 12),
 					new FaceRect(32, 20, 8, 12)
 			);
-			case RIGHT_ARM -> slimModel ? createSlimRightArmFaces() : createWideRightArmFaces();
-			case LEFT_ARM -> slimModel ? createSlimLeftArmFaces() : createWideLeftArmFaces();
+			case RIGHT_ARM -> createWideRightArmFaces();
+			case LEFT_ARM -> createWideLeftArmFaces();
 			case RIGHT_LEG -> createRightLegFaces();
 			case LEFT_LEG -> createLeftLegFaces();
 			case HEAD -> createHeadFaces();
 		});
 	}
 
-	private FaceMap getOverlayFaces(PlayerSkinPart skinPart, boolean slimModel) {
-		if (slimModel && skinPart == PlayerSkinPart.RIGHT_ARM) {
-			return createWideRightArmOverlayFaces();
-		}
-		if (slimModel && skinPart == PlayerSkinPart.LEFT_ARM) {
-			return createWideLeftArmOverlayFaces();
-		}
-
+	private FaceMap getOverlayFaces(PlayerSkinPart skinPart) {
 		return orientFaces(skinPart, switch (skinPart) {
 			case BODY -> new FaceMap(
 					new FaceRect(20, 32, 8, 4),
@@ -183,8 +174,8 @@ public class PlayerSkinBaker {
 					new FaceRect(28, 36, 4, 12),
 					new FaceRect(32, 36, 8, 12)
 			);
-			case RIGHT_ARM -> slimModel ? createSlimRightArmOverlayFaces() : createWideRightArmOverlayFaces();
-			case LEFT_ARM -> slimModel ? createSlimLeftArmOverlayFaces() : createWideLeftArmOverlayFaces();
+			case RIGHT_ARM -> createWideRightArmOverlayFaces();
+			case LEFT_ARM -> createWideLeftArmOverlayFaces();
 			case RIGHT_LEG -> createRightLegOverlayFaces();
 			case LEFT_LEG -> createLeftLegOverlayFaces();
 			case HEAD -> createHeadOverlayFaces();
@@ -335,12 +326,12 @@ public class PlayerSkinBaker {
 		BufferedImage expandedImage = copyImage(sourceImage);
 		switch (skinPart) {
 			case RIGHT_ARM -> {
-				copyFaceMap(expandedImage, sourceImage, createSlimLeftArmFaces(), createWideRightArmFaces());
-				copyFaceMap(expandedImage, sourceImage, createSlimLeftArmOverlayFaces(), createWideRightArmOverlayFaces());
+				copyFaceMap(expandedImage, sourceImage, createSlimRightArmFaces(), createWideRightArmFaces());
+				copyFaceMap(expandedImage, sourceImage, createSlimRightArmOverlayFaces(), createWideRightArmOverlayFaces());
 			}
 			case LEFT_ARM -> {
-				copyFaceMap(expandedImage, sourceImage, createSlimRightArmFaces(), createWideLeftArmFaces());
-				copyFaceMap(expandedImage, sourceImage, createSlimRightArmOverlayFaces(), createWideLeftArmOverlayFaces());
+				copyFaceMap(expandedImage, sourceImage, createSlimLeftArmFaces(), createWideLeftArmFaces());
+				copyFaceMap(expandedImage, sourceImage, createSlimLeftArmOverlayFaces(), createWideLeftArmOverlayFaces());
 			}
 			default -> {
 			}

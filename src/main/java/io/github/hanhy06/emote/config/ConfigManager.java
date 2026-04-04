@@ -194,6 +194,7 @@ public class ConfigManager {
         object.addProperty("version", config.version());
         object.addProperty("menu_page_size", config.menu_page_size());
         object.addProperty("player_skin_port", config.player_skin_port());
+        object.addProperty("mineskin_api_key", config.mineskin_api_key());
         object.addProperty("emote_permission", config.emote_permission());
         return object;
     }
@@ -210,6 +211,7 @@ public class ConfigManager {
                 identifierJson.addProperty("command_name", identifierEntry.command_name());
                 identifierJson.addProperty("description", identifierEntry.description());
                 identifierJson.addProperty("default_animation_name", identifierEntry.default_animation_name());
+                identifierJson.addProperty("options", identifierEntry.options());
                 identifierArray.add(identifierJson);
             }
 
@@ -225,6 +227,7 @@ public class ConfigManager {
         if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
         if (config.player_skin_port() < 0 || config.player_skin_port() > 65535)
             return "player_skin_port must be between 0 and 65535";
+        if (config.mineskin_api_key() == null) return "mineskin_api_key is missing";
         if (config.emote_permission() == null) return "emote_permission is missing";
         return null;
     }
@@ -272,6 +275,7 @@ public class ConfigManager {
                 readString(object, "version", defaultConfig.version()),
                 readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
                 readInt(object, "player_skin_port", defaultConfig.player_skin_port()),
+                readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
                 readString(object, "emote_permission", defaultConfig.emote_permission())
         );
     }
@@ -342,7 +346,8 @@ public class ConfigManager {
                 readString(object, "name", ""),
                 readString(object, "command_name", ""),
                 readString(object, "description", ""),
-                readString(object, "default_animation_name", "")
+                readString(object, "default_animation_name", ""),
+                readString(object, "options", "")
         );
     }
 

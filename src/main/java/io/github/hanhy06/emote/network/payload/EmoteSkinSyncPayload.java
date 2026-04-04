@@ -37,6 +37,8 @@ public record EmoteSkinSyncPayload(List<Entry> entries) implements CustomPacketP
 			Entry::slimModel,
 			EMOTE_SKIN_PART_STREAM_CODEC.apply(ByteBufCodecs.list(512)),
 			Entry::skinParts,
+			ByteBufCodecs.STRING_UTF8.apply(ByteBufCodecs.list(512)),
+			Entry::textureUrls,
 			Entry::new
 	);
 
@@ -60,12 +62,17 @@ public record EmoteSkinSyncPayload(List<Entry> entries) implements CustomPacketP
 			String namespace,
 			String textureHash,
 			boolean slimModel,
-			List<BoundEmoteSkinPart> skinParts
+			List<BoundEmoteSkinPart> skinParts,
+			List<String> textureUrls
 	) {
 		public Entry {
 			Objects.requireNonNull(namespace, "namespace");
 			Objects.requireNonNull(textureHash, "textureHash");
 			skinParts = List.copyOf(skinParts);
+			textureUrls = List.copyOf(textureUrls);
+			if (textureUrls.size() != skinParts.size()) {
+				throw new IllegalArgumentException("textureUrls must match skinParts");
+			}
 		}
 	}
 

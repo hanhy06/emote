@@ -12,20 +12,38 @@ public record EmoteDefinition(
 	String description,
 	String commandName,
 	String defaultAnimationName,
+	String options,
 	Path datapackPath,
 	int partCount,
 	List<EmoteAnimation> animations,
 	List<EmoteSkinPart> skinParts
 ) {
+	public EmoteDefinition(
+		String namespace,
+		String name,
+		String description,
+		String commandName,
+		String defaultAnimationName,
+		Path datapackPath,
+		int partCount,
+		List<EmoteAnimation> animations,
+		List<EmoteSkinPart> skinParts
+	) {
+		this(namespace, name, description, commandName, defaultAnimationName, "", datapackPath, partCount, animations, skinParts);
+	}
+
 	public EmoteDefinition {
 		Objects.requireNonNull(namespace, "namespace");
 		Objects.requireNonNull(name, "name");
 		Objects.requireNonNull(description, "description");
 		Objects.requireNonNull(commandName, "commandName");
 		Objects.requireNonNull(defaultAnimationName, "defaultAnimationName");
+		Objects.requireNonNull(options, "options");
 		Objects.requireNonNull(datapackPath, "datapackPath");
 		Objects.requireNonNull(animations, "animations");
 		Objects.requireNonNull(skinParts, "skinParts");
+
+		options = normalizeOptions(options);
 
 		if (name.isBlank()) {
 			throw new IllegalArgumentException("name must not be blank");
@@ -86,6 +104,23 @@ public record EmoteDefinition(
 		return defaultAnimation != null && defaultAnimation.name().equals(animationName);
 	}
 
+	public boolean hasOption(String optionName) {
+		Objects.requireNonNull(optionName, "optionName");
+
+		String normalizedOptionName = optionName.trim();
+		if (normalizedOptionName.isEmpty() || this.options.isEmpty()) {
+			return false;
+		}
+
+		for (String option : this.options.split(" ")) {
+			if (option.equalsIgnoreCase(normalizedOptionName)) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	public String createDisplayName(String animationName) {
 		Objects.requireNonNull(animationName, "animationName");
 
@@ -104,5 +139,14 @@ public record EmoteDefinition(
 		}
 
 		return this.description + " (" + animationName + ")";
+	}
+
+	private static String normalizeOptions(String options) {
+		String trimmedOptions = options.trim();
+		if (trimmedOptions.isEmpty()) {
+			return "";
+		}
+
+		return String.join(" ", trimmedOptions.split("\\s+"));
 	}
 }

@@ -47,7 +47,7 @@ public class PlayService {
 			return PlayResult.failure(playResult.errorMessage());
 		}
 
-		return PlayResult.success(selection.definition().createDisplayName(selection.animation().name()));
+		return PlayResult.success(selection.definition().createDisplayName(selection.animation().displayName()));
 	}
 
 	@FunctionalInterface

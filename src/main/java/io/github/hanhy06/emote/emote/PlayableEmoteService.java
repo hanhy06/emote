@@ -18,7 +18,7 @@ public class PlayableEmoteService {
 	) {
 		this(
 			emoteRegistry,
-			(player, definition, animation) -> permissionService.canPlay(player, definition.namespace(), animation.name())
+			(player, definition, animation) -> permissionService.canPlay(player, definition.namespace(), animation.datapackAnimationName())
 		);
 	}
 
@@ -31,19 +31,34 @@ public class PlayableEmoteService {
 	}
 
 	public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
-		List<PlayableEmote> playableEmotes = new ArrayList<>();
+		List<PlayableEmoteEntry> playableEmoteEntries = new ArrayList<>();
 		for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
 			for (EmoteAnimation animation : definition.animations()) {
 				if (!canPlay(player, definition, animation)) {
 					continue;
 				}
 
-				playableEmotes.add(createPlayableEmote(definition, animation));
+				playableEmoteEntries.add(new PlayableEmoteEntry(
+					createPlayableEmote(definition, animation),
+					definition.name(),
+					definition.commandName(),
+					definition.isDefaultAnimation(animation.datapackAnimationName()),
+					animation.displayName(),
+					animation.loop()
+				));
 			}
 		}
 
-		playableEmotes.sort(Comparator.comparing(PlayableEmote::displayName).thenComparing(PlayableEmote::animationName));
-		return List.copyOf(playableEmotes);
+		playableEmoteEntries.sort(Comparator
+			.comparing(PlayableEmoteEntry::definitionName)
+			.thenComparing(PlayableEmoteEntry::commandName)
+			.thenComparing(PlayableEmoteEntry::loop)
+			.thenComparing(entry -> !entry.defaultAnimation())
+			.thenComparing(PlayableEmoteEntry::animationDisplayName)
+		);
+		return playableEmoteEntries.stream()
+			.map(PlayableEmoteEntry::playableEmote)
+			.toList();
 	}
 
 	public List<String> getPlayablePlayNames(ServerPlayer player) {
@@ -137,13 +152,24 @@ public class PlayableEmoteService {
 
 	private PlayableEmote createPlayableEmote(EmoteDefinition definition, EmoteAnimation animation) {
 		String animationName = animation.name();
+		String animationDisplayName = animation.displayName();
 		return new PlayableEmote(
 			definition.commandName(),
 			animationName,
 			definition.isDefaultAnimation(animationName),
-			definition.createDisplayName(animationName),
-			definition.createDisplayDescription(animationName)
+			definition.createDisplayName(animationDisplayName),
+			definition.createDisplayDescription(animationDisplayName)
 		);
+	}
+
+	private record PlayableEmoteEntry(
+		PlayableEmote playableEmote,
+		String definitionName,
+		String commandName,
+		boolean defaultAnimation,
+		String animationDisplayName,
+		boolean loop
+	) {
 	}
 
 	@FunctionalInterface

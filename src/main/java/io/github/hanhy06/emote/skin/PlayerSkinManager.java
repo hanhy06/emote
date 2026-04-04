@@ -40,6 +40,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class PlayerSkinManager implements ConfigListener {
     private static final String HTTP_PATH_PREFIX = "/emote/skin/";
@@ -59,16 +61,26 @@ public class PlayerSkinManager implements ConfigListener {
     private final PlayerSkinHostStore playerSkinHostStore = new PlayerSkinHostStore();
     private final PlayerSkinTextureStore playerSkinTextureStore = new PlayerSkinTextureStore();
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
+    private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
+    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
     private final ConcurrentMap<String, ConcurrentMap<PlayerSkinTextureKey, String>> playerSkinTextureSetMap = new ConcurrentHashMap<>();
+    private final Set<String> pendingMineSkinBakeKeys = ConcurrentHashMap.newKeySet();
+    private final ExecutorService mineSkinBakeExecutor = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "emote-mineskin");
+        thread.setDaemon(true);
+        return thread;
+    });
     private final Object httpServerLock = new Object();
 
     private volatile int configuredPort;
     private volatile HttpServer httpServer;
     private volatile int httpServerPort;
+    private volatile String mineSkinApiKey = "";
 
     @Override
     public void onConfigReload(Config newConfig) {
         this.configuredPort = newConfig.player_skin_port();
+        this.mineSkinApiKey = normalizeApiKey(newConfig.mineskin_api_key());
     }
 
     public void reloadHttpServer() {
@@ -116,6 +128,29 @@ public class PlayerSkinManager implements ConfigListener {
         return resolvePlayerSkinPort(server.getPort());
     }
 
+    public void prepareJoinedPlayerSkin(ServerPlayer player, List<EmoteDefinition> definitions) {
+        if (!hasMineSkinApiKey() || definitions.isEmpty()) {
+            return;
+        }
+
+        PlayerSkinSource skinSource = readPlayerSkinSource(player);
+        if (skinSource == null) {
+            return;
+        }
+
+        Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeysFromDefinitions(definitions);
+        if (requiredTextureKeys.isEmpty()) {
+            return;
+        }
+
+        Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
+        if (savedTextureUrls.size() >= requiredTextureKeys.size()) {
+            return;
+        }
+
+        scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
+    }
+
     public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
         if (skinParts.isEmpty()) {
@@ -127,12 +162,18 @@ public class PlayerSkinManager implements ConfigListener {
             return null;
         }
 
-        Map<PlayerSkinTextureKey, String> playerSkinTextureSet = loadPlayerSkinTextureSet(skinSource, player, skinParts);
-        if (playerSkinTextureSet == null || playerSkinTextureSet.isEmpty()) {
-            return null;
+        Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
+        Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
+        if (savedTextureUrls.size() < requiredTextureKeys.size()) {
+            scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
+
+            boolean loadedLocalTextureSet = ensureLocalTextureSet(skinSource, player, requiredTextureKeys);
+            if (!loadedLocalTextureSet && savedTextureUrls.isEmpty()) {
+                return null;
+            }
         }
 
-        return new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel());
+        return new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);
     }
 
     public void rememberConnectionHost(Connection connection, String host, int port) {
@@ -228,6 +269,7 @@ public class PlayerSkinManager implements ConfigListener {
         this.playerSkinHostStore.clear();
         this.playerSkinTextureStore.clear();
         this.playerSkinTextureSetMap.clear();
+        this.pendingMineSkinBakeKeys.clear();
     }
 
     private int resolvePlayerSkinPort(int fallbackPort) {
@@ -267,17 +309,16 @@ public class PlayerSkinManager implements ConfigListener {
         this.httpServerPort = 0;
     }
 
-    private Map<PlayerSkinTextureKey, String> loadPlayerSkinTextureSet(
+    private boolean ensureLocalTextureSet(
             PlayerSkinSource skinSource,
             ServerPlayer player,
-            List<EmoteSkinPart> skinParts
+            Set<PlayerSkinTextureKey> requiredTextureKeys
     ) {
         String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
         ConcurrentMap<PlayerSkinTextureKey, String> cachedTextureTokens = this.playerSkinTextureSetMap.computeIfAbsent(
                 cacheKey,
                 ignored -> new ConcurrentHashMap<>()
         );
-        Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
 
         try {
             BufferedImage sourceImage = null;
@@ -300,18 +341,10 @@ public class PlayerSkinManager implements ConfigListener {
                 cachedTextureTokens.putIfAbsent(textureKey, token);
             }
 
-            Map<PlayerSkinTextureKey, String> tokenMap = new HashMap<>(requiredTextureKeys.size());
-            for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
-                String token = cachedTextureTokens.get(textureKey);
-                if (token != null) {
-                    tokenMap.put(textureKey, token);
-                }
-            }
-
-            return Map.copyOf(tokenMap);
+            return true;
         } catch (IOException | IllegalArgumentException exception) {
             Emote.LOGGER.warn("skin load failed for {}", player.getGameProfile().name(), exception);
-            return null;
+            return false;
         }
     }
 
@@ -322,6 +355,104 @@ public class PlayerSkinManager implements ConfigListener {
         }
 
         return textureKeys;
+    }
+
+    private Set<PlayerSkinTextureKey> createTextureKeysFromDefinitions(List<EmoteDefinition> definitions) {
+        Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>();
+        for (EmoteDefinition definition : definitions) {
+            for (EmoteSkinPart skinPart : definition.skinParts()) {
+                textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+            }
+        }
+
+        return textureKeys;
+    }
+
+    private Map<PlayerSkinTextureKey, String> loadMineSkinTextureSet(PlayerSkinSource skinSource, Set<PlayerSkinTextureKey> requiredTextureKeys) {
+        Map<PlayerSkinTextureKey, String> storedTextureUrls = this.mineSkinTextureStore.load(skinSource.textureHash(), skinSource.slimModel());
+        if (storedTextureUrls.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<PlayerSkinTextureKey, String> textureUrls = new HashMap<>(requiredTextureKeys.size());
+        for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
+            String textureUrl = storedTextureUrls.get(textureKey);
+            if (textureUrl != null) {
+                textureUrls.put(textureKey, textureUrl);
+            }
+        }
+
+        return Map.copyOf(textureUrls);
+    }
+
+    private void scheduleMineSkinBake(String playerName, PlayerSkinSource skinSource, Set<PlayerSkinTextureKey> requiredTextureKeys) {
+        String apiKey = this.mineSkinApiKey;
+        if (apiKey.isBlank()) {
+            return;
+        }
+
+        String pendingKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
+        if (!this.pendingMineSkinBakeKeys.add(pendingKey)) {
+            return;
+        }
+
+        Set<PlayerSkinTextureKey> requestedTextureKeys = Set.copyOf(requiredTextureKeys);
+        this.mineSkinBakeExecutor.execute(() -> {
+            try {
+                bakeAndSaveMineSkinTextureSet(apiKey, playerName, skinSource, requestedTextureKeys);
+            } finally {
+                this.pendingMineSkinBakeKeys.remove(pendingKey);
+            }
+        });
+    }
+
+    private void bakeAndSaveMineSkinTextureSet(
+            String apiKey,
+            String playerName,
+            PlayerSkinSource skinSource,
+            Set<PlayerSkinTextureKey> requiredTextureKeys
+    ) {
+        try {
+            Map<PlayerSkinTextureKey, String> storedTextureUrls = this.mineSkinTextureStore.load(skinSource.textureHash(), skinSource.slimModel());
+            Set<PlayerSkinTextureKey> missingTextureKeys = new LinkedHashSet<>(requiredTextureKeys);
+            missingTextureKeys.removeAll(storedTextureUrls.keySet());
+            if (missingTextureKeys.isEmpty()) {
+                return;
+            }
+
+            BufferedImage sourceImage = downloadSkinImage(skinSource.textureUrl());
+            Map<PlayerSkinTextureKey, String> savedTextureUrls = new HashMap<>(storedTextureUrls);
+            for (PlayerSkinTextureKey textureKey : missingTextureKeys) {
+                byte[] bakedImage = this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel());
+                String textureUrl = this.mineSkinApiClient.generateSkinUrl(apiKey, bakedImage, skinSource.slimModel());
+                savedTextureUrls.put(textureKey, textureUrl);
+                this.mineSkinTextureStore.save(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);
+            }
+
+            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", playerName, skinSource.textureHash());
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            Emote.LOGGER.warn("MineSkin bake interrupted for {}", playerName, exception);
+        } catch (IOException | IllegalArgumentException exception) {
+            Emote.LOGGER.warn("MineSkin bake failed for {}", playerName, exception);
+        }
+    }
+
+    private boolean hasMineSkinApiKey() {
+        return !this.mineSkinApiKey.isBlank();
+    }
+
+    private String normalizeApiKey(String apiKey) {
+        if (apiKey == null) {
+            return "";
+        }
+
+        String normalizedApiKey = apiKey.trim();
+        if (normalizedApiKey.regionMatches(true, 0, "Bearer ", 0, 7)) {
+            normalizedApiKey = normalizedApiKey.substring(7).trim();
+        }
+
+        return normalizedApiKey;
     }
 
     private Property readPackedTextures(ServerPlayer player) {
@@ -574,8 +705,5 @@ public class PlayerSkinManager implements ConfigListener {
             Objects.requireNonNull(textureHash, "textureHash");
             Objects.requireNonNull(textureUrl, "textureUrl");
         }
-    }
-
-    private record PlayerSkinTextureKey(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
     }
 }

@@ -66,6 +66,7 @@ public class Emote implements ModInitializer {
 		this.emoteSkinSyncService
 	);
 	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
+		this.emoteRegistry,
 		this.configManager,
 		SKIN_MANAGER,
 		this.playbackManager,

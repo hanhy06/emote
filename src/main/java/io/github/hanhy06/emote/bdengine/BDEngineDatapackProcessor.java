@@ -35,6 +35,7 @@ import java.util.stream.Stream;
 public class BDEngineDatapackProcessor {
     private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
     private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
+    private static final String LOOP_PLAY_FUNCTION_NAME = "play_anim_loop.mcfunction";
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
@@ -105,7 +106,7 @@ public class BDEngineDatapackProcessor {
 
             List<EmoteAnimation> loadedAnimations = new ArrayList<>();
             for (EmoteAnimation animation : definition.animations()) {
-                if (isMissingFunction(definition.namespace() + ":a/" + animation.name() + "/play_anim")) {
+                if (isMissingFunction(definition.namespace() + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName())) {
                     continue;
                 }
 
@@ -122,6 +123,7 @@ public class BDEngineDatapackProcessor {
                     definition.description(),
                     definition.commandName(),
                     definition.defaultAnimationName(),
+                    definition.options(),
                     definition.datapackPath(),
                     definition.partCount(),
                     loadedAnimations,
@@ -296,7 +298,7 @@ public class BDEngineDatapackProcessor {
         }
 
         String namespace = namespacePath.getFileName().toString();
-        List<EmoteAnimation> animations = readAnimations(functionPath);
+        List<EmoteAnimation> animations = readAnimations(functionPath, hasOption(identifierEntry.options(), "loop"));
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
                 namespace,
@@ -304,6 +306,7 @@ public class BDEngineDatapackProcessor {
                 identifierEntry.description().trim(),
                 createCommandName(packPath, namespace, identifierEntry.command_name()),
                 createDefaultAnimationName(identifierEntry.default_animation_name()),
+                identifierEntry.options(),
                 packPath,
                 createFunctionData.partCount(),
                 animations,
@@ -325,13 +328,14 @@ public class BDEngineDatapackProcessor {
         return null;
     }
 
-    private List<EmoteAnimation> readAnimations(Path functionPath) {
+    private List<EmoteAnimation> readAnimations(Path functionPath, boolean includeLoopAnimations) {
         Path animationPath = functionPath.resolve("a");
         if (!Files.isDirectory(animationPath)) {
             return List.of();
         }
 
         List<EmoteAnimation> animations = new ArrayList<>();
+        List<EmoteAnimation> loopAnimations = new ArrayList<>();
         Path keyframePath = functionPath.resolve("k");
 
         try (Stream<Path> animationPathStream = Files.list(animationPath)) {
@@ -344,12 +348,41 @@ public class BDEngineDatapackProcessor {
                 String animationName = singleAnimationPath.getFileName().toString();
                 int keyframeCount = countKeyframes(keyframePath.resolve(animationName));
                 animations.add(new EmoteAnimation(animationName, keyframeCount));
+
+                if (!includeLoopAnimations) {
+                    continue;
+                }
+
+                Path loopPlayFunctionPath = singleAnimationPath.resolve(LOOP_PLAY_FUNCTION_NAME);
+                if (Files.exists(loopPlayFunctionPath)) {
+                    loopAnimations.add(EmoteAnimation.createLoop(animationName, keyframeCount));
+                }
             }
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to read BD Engine animation paths from {}", functionPath, exception);
         }
 
+        animations.addAll(loopAnimations);
         return List.copyOf(animations);
+    }
+
+    private boolean hasOption(String options, String optionName) {
+        if (options == null || optionName == null) {
+            return false;
+        }
+
+        String trimmedOptionName = optionName.trim();
+        if (trimmedOptionName.isEmpty()) {
+            return false;
+        }
+
+        for (String option : options.trim().split("\\s+")) {
+            if (option.equalsIgnoreCase(trimmedOptionName)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private int countKeyframes(Path keyframeAnimationPath) {

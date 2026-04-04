@@ -204,11 +204,21 @@
 
 # Third Party Licenses
 
-This project uses the following library:
+This project uses or references the following libraries and projects:
 
 Name: fabric-permissions-api
 License: MIT
 Source: https://github.com/lucko/fabric-permissions-api/blob/master/LICENSE.txt
+
+Name: MineRender
+License: MIT
+Source: https://github.com/InventivetalentDev/MineRender/blob/master/LICENSE
+Notes: Portions of the skin baking and texture layout implementation were referenced from this project.
+
+Name: api.mineskin.org
+License: MIT
+Source: https://github.com/MineSkin/api.mineskin.org/blob/main/LICENSE
+Notes: Portions of the MineSkin API request and variant handling implementation were referenced from this project.
 
 ---
 

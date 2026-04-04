@@ -114,6 +114,36 @@ class PlayableEmoteServiceTest {
 		assertEquals("No default: wave", result.errorMessage());
 	}
 
+	@Test
+	void getPlayableEmotesPlacesLoopEntriesLastForEachEmote() {
+		EmoteRegistry registry = new EmoteRegistry();
+		registry.replaceDefinitions(List.of(new EmoteDefinition(
+			"wave",
+			"Wave",
+			"Friendly wave",
+			"wave",
+			"default",
+			"sync loop",
+			Path.of("wave-pack"),
+			1,
+			List.of(
+				new EmoteAnimation("default", 20),
+				new EmoteAnimation("fast", 20),
+				EmoteAnimation.createLoop("default", 20),
+				EmoteAnimation.createLoop("fast", 20)
+			),
+			List.of()
+		)));
+		PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition, animation) -> true);
+
+		List<PlayableEmote> playableEmotes = service.getPlayableEmotes(null);
+
+		assertEquals(
+			List.of("default", "fast", "default_loop", "fast_loop"),
+			playableEmotes.stream().map(PlayableEmote::animationName).toList()
+		);
+	}
+
 	private EmoteDefinition createDefinition(
 		String namespace,
 		String commandName,

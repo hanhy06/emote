@@ -39,8 +39,9 @@ public class ClientSkinOverrideController {
 	public void updateEntries(List<EmoteSkinSyncPayload.Entry> entries) {
 		this.skinPartMap.clear();
 		for (EmoteSkinSyncPayload.Entry entry : entries) {
-			for (BoundEmoteSkinPart skinPart : entry.skinParts()) {
-				this.skinPartMap.put(skinPart.entityId(), new TaggedSkinPart(entry, skinPart));
+			for (int index = 0; index < entry.skinParts().size(); index++) {
+				BoundEmoteSkinPart skinPart = entry.skinParts().get(index);
+				this.skinPartMap.put(skinPart.entityId(), new TaggedSkinPart(entry, skinPart, entry.textureUrls().get(index)));
 			}
 		}
 	}
@@ -53,10 +54,6 @@ public class ClientSkinOverrideController {
 	}
 
 	public ItemStack createOverrideItemStack(Display.ItemDisplay itemDisplay) {
-		if (this.serverHost == null || this.serverPort <= 0) {
-			return null;
-		}
-
 		Display.ItemDisplay.ItemRenderState itemRenderState = itemDisplay.itemRenderState();
 		if (itemRenderState == null) {
 			return null;
@@ -72,14 +69,11 @@ public class ClientSkinOverrideController {
 			return null;
 		}
 
-		PlayerSkinHost playerSkinHost = new PlayerSkinHost(this.serverHost, this.serverPort);
-		String textureToken = PlayerSkinTextureHelper.buildTextureToken(
-				taggedSkinPart.entry().textureHash(),
-				taggedSkinPart.entry().slimModel(),
-				taggedSkinPart.boundSkinPart().skinPart().skinPart(),
-				taggedSkinPart.boundSkinPart().skinPart().skinSegment()
-		);
-		String textureUrl = PlayerSkinTextureHelper.buildTextureUrl(playerSkinHost.createBaseUrl(), textureToken);
+		String textureUrl = resolveTextureUrl(taggedSkinPart);
+		if (textureUrl == null) {
+			return null;
+		}
+
 		ResolvableProfile currentProfile = itemStack.get(DataComponents.PROFILE);
 		String profileName = currentProfile != null
 				? currentProfile.name().orElse(taggedSkinPart.entry().namespace())
@@ -92,6 +86,26 @@ public class ClientSkinOverrideController {
 		ItemStack overrideItemStack = itemStack.copy();
 		overrideItemStack.set(DataComponents.PROFILE, overrideProfile);
 		return overrideItemStack;
+	}
+
+	private String resolveTextureUrl(TaggedSkinPart taggedSkinPart) {
+		String savedTextureUrl = normalizeTextureUrl(taggedSkinPart.textureUrl());
+		if (savedTextureUrl != null) {
+			return savedTextureUrl;
+		}
+
+		if (this.serverHost == null || this.serverPort <= 0) {
+			return null;
+		}
+
+		PlayerSkinHost playerSkinHost = new PlayerSkinHost(this.serverHost, this.serverPort);
+		String textureToken = PlayerSkinTextureHelper.buildTextureToken(
+				taggedSkinPart.entry().textureHash(),
+				taggedSkinPart.entry().slimModel(),
+				taggedSkinPart.boundSkinPart().skinPart().skinPart(),
+				taggedSkinPart.boundSkinPart().skinPart().skinSegment()
+		);
+		return PlayerSkinTextureHelper.buildTextureUrl(playerSkinHost.createBaseUrl(), textureToken);
 	}
 
 	private String readServerHost(Minecraft client) {
@@ -114,9 +128,19 @@ public class ClientSkinOverrideController {
 		return "localhost";
 	}
 
+	private String normalizeTextureUrl(String textureUrl) {
+		if (textureUrl == null) {
+			return null;
+		}
+
+		String normalizedTextureUrl = textureUrl.trim();
+		return normalizedTextureUrl.isEmpty() ? null : normalizedTextureUrl;
+	}
+
 	private record TaggedSkinPart(
 			EmoteSkinSyncPayload.Entry entry,
-			BoundEmoteSkinPart boundSkinPart
+			BoundEmoteSkinPart boundSkinPart,
+			String textureUrl
 	) {
 	}
 }

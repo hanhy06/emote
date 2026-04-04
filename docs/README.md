@@ -101,7 +101,8 @@ The mod uses two config files:
         "name": "Wave",
         "command_name": "wave",
         "description": "Friendly wave emote",
-        "default_animation_name": "default"
+        "default_animation_name": "default",
+        "options": "sync loop"
       }
     ],
     "emote.pack.vip": [
@@ -110,7 +111,8 @@ The mod uses two config files:
         "name": "Bow",
         "command_name": "bow",
         "description": "Polite bow emote",
-        "default_animation_name": "default"
+        "default_animation_name": "default",
+        "options": ""
       }
     ]
   }
@@ -121,7 +123,9 @@ The mod uses two config files:
 - `datapack_identifier` is the datapack namespace, which means the folder name under `data/<namespace>`.
 - An empty permission key `""` means the pack has no extra pack-specific permission.
 - The same `datapack_identifier` cannot appear in more than one permission group.
-- `command_name`, `name`, `description`, and `default_animation_name` are defined in `pack.json`.
+- `command_name`, `name`, `description`, `default_animation_name`, and `options` are defined in `pack.json`.
+- `options` is a space-separated string. `loop` adds extra `*_loop` animation entries when the datapack contains `play_anim_loop.mcfunction`.
+- `sync` is accepted as pack metadata. Emote playback and wheel sync already happen server-wide, so no extra setup is needed for normal synced playback.
 
 ---
 

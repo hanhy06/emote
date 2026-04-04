@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.server;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
+import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -10,8 +11,10 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 
 public class EmoteLifecycle {
+    private final EmoteRegistry emoteRegistry;
     private final ConfigManager configManager;
     private final PlayerSkinManager skinManager;
     private final PlaybackManager playbackManager;
@@ -19,12 +22,14 @@ public class EmoteLifecycle {
     private final WheelSyncService wheelSyncService;
 
     public EmoteLifecycle(
+            EmoteRegistry emoteRegistry,
             ConfigManager configManager,
             PlayerSkinManager skinManager,
             PlaybackManager playbackManager,
             BDEngineDatapackProcessor bdEngineDatapackProcessor,
             WheelSyncService wheelSyncService
     ) {
+        this.emoteRegistry = emoteRegistry;
         this.configManager = configManager;
         this.skinManager = skinManager;
         this.playbackManager = playbackManager;
@@ -55,6 +60,7 @@ public class EmoteLifecycle {
     }
 
     private void syncJoinedPlayer(net.minecraft.server.level.ServerPlayer player) {
+        this.skinManager.prepareJoinedPlayerSkin(player, this.emoteRegistry.getDefinitions());
         this.wheelSyncService.syncPlayer(player);
     }
 
@@ -91,6 +97,7 @@ public class EmoteLifecycle {
 
         this.playbackManager.stopAllEmotes();
         int emoteCount = this.bdEngineDatapackProcessor.reloadServerEmotes();
+        preBakeOnlinePlayerSkins(server);
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);
     }
@@ -101,5 +108,11 @@ public class EmoteLifecycle {
         this.skinManager.clear();
         Emote.SERVER = null;
         Emote.LOGGER.info("stop emotes");
+    }
+
+    private void preBakeOnlinePlayerSkins(MinecraftServer server) {
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            this.skinManager.prepareJoinedPlayerSkin(player, this.emoteRegistry.getDefinitions());
+        }
     }
 }

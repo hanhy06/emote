@@ -40,11 +40,21 @@ public class EmoteSkinSyncService {
 				continue;
 			}
 
+			List<String> textureUrls = new ArrayList<>(activeEmote.skinParts().size());
+			for (io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart skinPart : activeEmote.skinParts()) {
+				String textureUrl = preparedPlayerSkin.findTextureUrl(
+						skinPart.skinPart().skinPart(),
+						skinPart.skinPart().skinSegment()
+				);
+				textureUrls.add(textureUrl == null ? "" : textureUrl);
+			}
+
 			entries.add(new EmoteSkinSyncPayload.Entry(
 					activeEmote.namespace(),
 					preparedPlayerSkin.textureHash(),
 					preparedPlayerSkin.slimModel(),
-					activeEmote.skinParts()
+					activeEmote.skinParts(),
+					textureUrls
 			));
 		}
 
