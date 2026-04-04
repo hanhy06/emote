@@ -297,10 +297,6 @@ public final class RootCommand {
             return 0;
         }
 
-        source.sendSuccess(
-                () -> Component.literal("Play: " + playResult.displayName()),
-                false
-        );
         return 1;
     }
 

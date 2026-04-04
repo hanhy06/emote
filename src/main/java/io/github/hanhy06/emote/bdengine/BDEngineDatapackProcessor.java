@@ -298,7 +298,7 @@ public class BDEngineDatapackProcessor {
         }
 
         String namespace = namespacePath.getFileName().toString();
-        List<EmoteAnimation> animations = readAnimations(functionPath, hasOption(identifierEntry.options(), "loop"));
+        List<EmoteAnimation> animations = readAnimations(functionPath, isLoopEnabled(identifierEntry.options()));
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
                 namespace,
@@ -366,18 +366,13 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(animations);
     }
 
-    private boolean hasOption(String options, String optionName) {
-        if (options == null || optionName == null) {
-            return false;
-        }
-
-        String trimmedOptionName = optionName.trim();
-        if (trimmedOptionName.isEmpty()) {
+    private boolean isLoopEnabled(String options) {
+        if (options == null) {
             return false;
         }
 
         for (String option : options.trim().split("\\s+")) {
-            if (option.equalsIgnoreCase(trimmedOptionName)) {
+            if (option.equalsIgnoreCase("loop")) {
                 return true;
             }
         }
