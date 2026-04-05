@@ -98,16 +98,6 @@ public class PlayerSkinBaker {
 			for (int y = 0; y < targetRect.height(); y++) {
 				int sourceX = x * localWidth / targetRect.width();
 				int sourceY = y * localHeight / targetRect.height();
-				int[] rotated = rotateSample(sourceX, sourceY, localWidth, localHeight, sourceRect.rotateQuarterTurns());
-				sourceX = rotated[0];
-				sourceY = rotated[1];
-
-				if (sourceRect.flipX()) {
-					sourceX = localWidth - 1 - sourceX;
-				}
-				if (sourceRect.flipY()) {
-					sourceY = localHeight - 1 - sourceY;
-				}
 
 				sourceX = mapVirtualX(sourceX, sourceRect.width(), localWidth, sourceRect.padMode());
 				sourceX += sourceRect.x();
@@ -117,18 +107,9 @@ public class PlayerSkinBaker {
 		}
 	}
 
-	private int[] rotateSample(int sourceX, int sourceY, int width, int height, int rotateQuarterTurns) {
-		return switch (Math.floorMod(rotateQuarterTurns, 4)) {
-			case 1 -> new int[]{sourceY, width - 1 - sourceX};
-			case 2 -> new int[]{width - 1 - sourceX, height - 1 - sourceY};
-			case 3 -> new int[]{height - 1 - sourceY, sourceX};
-			default -> new int[]{sourceX, sourceY};
-		};
-	}
-
 	private int mapVirtualX(int virtualX, int sourceWidth, int virtualWidth, PadMode padMode) {
 		if (sourceWidth <= 1 || virtualWidth <= 1 || sourceWidth == virtualWidth) {
-			return Math.max(0, Math.min(sourceWidth - 1, virtualX));
+			return Math.clamp(virtualX, 0, sourceWidth - 1);
 		}
 
 		int paddingWidth = virtualWidth - sourceWidth;
@@ -137,7 +118,7 @@ public class PlayerSkinBaker {
 			case RIGHT -> Math.min(sourceWidth - 1, virtualX);
 			case NONE -> (int) Math.round(virtualX * (sourceWidth - 1) / (double) (virtualWidth - 1));
 		};
-		return Math.max(0, Math.min(sourceWidth - 1, sourceX));
+		return Math.clamp(sourceX, 0, sourceWidth - 1);
 	}
 
 	private byte[] writePng(BufferedImage image) throws IOException {
@@ -194,9 +175,6 @@ public class PlayerSkinBaker {
 				faceRect.y() + startOffset,
 				faceRect.width(),
 				endOffset - startOffset,
-				faceRect.flipX(),
-				faceRect.flipY(),
-				faceRect.rotateQuarterTurns(),
 				faceRect.virtualWidth(),
 				faceRect.padMode()
 		);
@@ -214,90 +192,6 @@ public class PlayerSkinBaker {
 					faceMap.back()
 			);
 		};
-	}
-
-	private FaceRect flipX(FaceRect faceRect) {
-		if (faceRect.flipX()) {
-			return withFlipX(faceRect, false);
-		}
-
-		return withFlipX(faceRect, true);
-	}
-
-	private FaceRect flipY(FaceRect faceRect) {
-		if (faceRect.flipY()) {
-			return withFlipY(faceRect, false);
-		}
-
-		return withFlipY(faceRect, true);
-	}
-
-	private FaceRect withFlipX(FaceRect faceRect, boolean flipX) {
-		return new FaceRect(
-				faceRect.x(),
-				faceRect.y(),
-				faceRect.width(),
-				faceRect.height(),
-				flipX,
-				faceRect.flipY(),
-				faceRect.rotateQuarterTurns(),
-				faceRect.virtualWidth(),
-				faceRect.padMode()
-		);
-	}
-
-	private FaceRect withFlipY(FaceRect faceRect, boolean flipY) {
-		return new FaceRect(
-				faceRect.x(),
-				faceRect.y(),
-				faceRect.width(),
-				faceRect.height(),
-				faceRect.flipX(),
-				flipY,
-				faceRect.rotateQuarterTurns(),
-				faceRect.virtualWidth(),
-				faceRect.padMode()
-		);
-	}
-
-	private FaceRect rotateQuarterTurns(FaceRect faceRect, int rotateQuarterTurns) {
-		return new FaceRect(
-				faceRect.x(),
-				faceRect.y(),
-				faceRect.width(),
-				faceRect.height(),
-				faceRect.flipX(),
-				faceRect.flipY(),
-				faceRect.rotateQuarterTurns() + rotateQuarterTurns,
-				faceRect.virtualWidth(),
-				faceRect.padMode()
-		);
-	}
-
-	private FaceMap rotateHalfTurn(FaceMap faceMap) {
-		return new FaceMap(
-				flipY(flipX(faceMap.top())),
-				flipY(flipX(faceMap.bottom())),
-				flipX(faceMap.left()),
-				flipX(faceMap.back()),
-				flipX(faceMap.right()),
-				flipX(faceMap.front())
-		);
-	}
-
-	private FaceMap rotateQuarterTurnCw(FaceMap faceMap) {
-		return new FaceMap(
-				rotateQuarterTurns(faceMap.top(), 1),
-				rotateQuarterTurns(faceMap.bottom(), 1),
-				faceMap.back(),
-				faceMap.right(),
-				faceMap.front(),
-				faceMap.left()
-		);
-	}
-
-	private FaceMap rotateQuarterTurnCcw(FaceMap faceMap) {
-		return rotateHalfTurn(rotateQuarterTurnCw(faceMap));
 	}
 
 	private void drawTopFace(
@@ -471,7 +365,7 @@ public class PlayerSkinBaker {
 	}
 
 	private FaceRect createSlimRect(int x, int y, int width, int height, PadMode padMode) {
-		return new FaceRect(x, y, width, height, false, false, 0, width + 1, padMode);
+		return new FaceRect(x, y, width, height, width + 1, padMode);
 	}
 
 	private FaceMap createRightLegFaces() {
@@ -523,14 +417,11 @@ public class PlayerSkinBaker {
 			int y,
 			int width,
 			int height,
-			boolean flipX,
-			boolean flipY,
-			int rotateQuarterTurns,
 			int virtualWidth,
 			PadMode padMode
 	) {
 		private FaceRect(int x, int y, int width, int height) {
-			this(x, y, width, height, false, false, 0, width, PadMode.NONE);
+			this(x, y, width, height, width, PadMode.NONE);
 		}
 	}
 

@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.config.data;
 
+import io.github.hanhy06.emote.emote.EmoteOptions;
+
 import java.util.Objects;
 
 public record IdentifierEntry(
@@ -27,5 +29,7 @@ public record IdentifierEntry(
 		Objects.requireNonNull(description, "description");
 		Objects.requireNonNull(default_animation_name, "default_animation_name");
 		Objects.requireNonNull(options, "options");
+
+		options = EmoteOptions.normalize(options);
 	}
 }

@@ -98,7 +98,7 @@ public class ConfigManager {
 
         this.config = loadedConfig;
         broadcastConfig();
-        Emote.LOGGER.info("Loaded {}", CONFIG_FILE_NAME);
+        logLoaded(CONFIG_FILE_NAME);
         return true;
     }
 
@@ -121,7 +121,7 @@ public class ConfigManager {
 
         this.identifierConfig = loadedIdentifierConfig;
         broadcastIdentifierConfig();
-        Emote.LOGGER.info("Loaded {}", IDENTIFIER_FILE_NAME);
+        logLoaded(IDENTIFIER_FILE_NAME);
         return true;
     }
 
@@ -205,14 +205,7 @@ public class ConfigManager {
         for (Map.Entry<String, List<IdentifierEntry>> entry : identifierConfig.permissions().entrySet()) {
             JsonArray identifierArray = new JsonArray();
             for (IdentifierEntry identifierEntry : entry.getValue()) {
-                JsonObject identifierJson = new JsonObject();
-                identifierJson.addProperty("datapack_identifier", identifierEntry.datapack_identifier());
-                identifierJson.addProperty("name", identifierEntry.name());
-                identifierJson.addProperty("command_name", identifierEntry.command_name());
-                identifierJson.addProperty("description", identifierEntry.description());
-                identifierJson.addProperty("default_animation_name", identifierEntry.default_animation_name());
-                identifierJson.addProperty("options", identifierEntry.options());
-                identifierArray.add(identifierJson);
+                identifierArray.add(createIdentifierJson(identifierEntry));
             }
 
             permissionsJson.add(entry.getKey(), identifierArray);
@@ -220,6 +213,17 @@ public class ConfigManager {
 
         object.add("permissions", permissionsJson);
         return object;
+    }
+
+    private JsonObject createIdentifierJson(IdentifierEntry identifierEntry) {
+        JsonObject identifierJson = new JsonObject();
+        identifierJson.addProperty("datapack_identifier", identifierEntry.datapack_identifier());
+        identifierJson.addProperty("name", identifierEntry.name());
+        identifierJson.addProperty("command_name", identifierEntry.command_name());
+        identifierJson.addProperty("description", identifierEntry.description());
+        identifierJson.addProperty("default_animation_name", identifierEntry.default_animation_name());
+        identifierJson.addProperty("options", identifierEntry.options());
+        return identifierJson;
     }
 
     private String validateConfig(Config config) {
@@ -367,6 +371,10 @@ public class ConfigManager {
         }
 
         return element.getAsInt();
+    }
+
+    private void logLoaded(String fileName) {
+        Emote.LOGGER.info("Loaded {}", fileName);
     }
 
     private String normalizeRequiredValue(String value) {

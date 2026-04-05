@@ -1,7 +1,5 @@
 package io.github.hanhy06.emote.network.service;
 
-import io.github.hanhy06.emote.emote.EmoteAnimation;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
@@ -42,7 +40,7 @@ public class PlayService {
 		}
 
 		PlayableEmoteSelection selection = selectionResult.selection();
-		PlaybackStartResult playResult = this.emoteStarter.start(player, selection.definition(), selection.animation());
+		PlaybackStartResult playResult = this.emoteStarter.start(player, selection);
 		if (!playResult.isSuccess()) {
 			return PlayResult.failure(playResult.errorMessage());
 		}
@@ -52,6 +50,6 @@ public class PlayService {
 
 	@FunctionalInterface
 	interface EmoteStarter {
-		PlaybackStartResult start(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation);
+		PlaybackStartResult start(ServerPlayer player, PlayableEmoteSelection selection);
 	}
 }

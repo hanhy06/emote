@@ -147,7 +147,11 @@ public class PlayableEmoteService {
 			return PlayableEmoteSelectionResult.failure("No emote permission.");
 		}
 
-		return PlayableEmoteSelectionResult.success(new PlayableEmoteSelection(definition, animation));
+		return PlayableEmoteSelectionResult.success(new PlayableEmoteSelection(
+			definition,
+			animation,
+			definition.parsedOptions()
+		));
 	}
 
 	private PlayableEmote createPlayableEmote(EmoteDefinition definition, EmoteAnimation animation) {

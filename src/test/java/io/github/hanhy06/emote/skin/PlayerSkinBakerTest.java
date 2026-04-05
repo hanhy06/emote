@@ -51,6 +51,26 @@ class PlayerSkinBakerTest {
 	}
 
 	@Test
+	void bakeBodyKeepsFacePixelsUnrotated() throws IOException {
+		BufferedImage sourceImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
+		fillDirectionalFace(sourceImage, 20, 16, 8, 4);
+		fillDirectionalFace(sourceImage, 28, 16, 8, 4);
+		fillDirectionalFace(sourceImage, 16, 20, 4, 12);
+		fillDirectionalFace(sourceImage, 20, 20, 8, 12);
+		fillDirectionalFace(sourceImage, 28, 20, 4, 12);
+		fillDirectionalFace(sourceImage, 32, 20, 8, 12);
+
+		BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.BODY, false);
+
+		assertDirectionalFace(bakedImage, 8, 0, 8, 8);
+		assertDirectionalFace(bakedImage, 16, 0, 8, 8);
+		assertDirectionalFace(bakedImage, 0, 8, 8, 8);
+		assertDirectionalFace(bakedImage, 8, 8, 8, 8);
+		assertDirectionalFace(bakedImage, 16, 8, 8, 8);
+		assertDirectionalFace(bakedImage, 24, 8, 8, 8);
+	}
+
+	@Test
 	void bakeWideRightArmKeepsRightArmTextureDirection() throws IOException {
 		BufferedImage sourceImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
 		fillRect(sourceImage, 44, 16, 4, 4, Color.RED);
@@ -165,6 +185,32 @@ class PlayerSkinBakerTest {
 				image.setRGB(x + dx, y + dy, color.getRGB());
 			}
 		}
+	}
+
+	private void fillDirectionalFace(BufferedImage image, int x, int y, int width, int height) {
+		for (int dx = 0; dx < width; dx++) {
+			for (int dy = 0; dy < height; dy++) {
+				Color color;
+				if (dx < width / 2 && dy < height / 2) {
+					color = Color.RED;
+				} else if (dy < height / 2) {
+					color = Color.GREEN;
+				} else if (dx < width / 2) {
+					color = Color.BLUE;
+				} else {
+					color = Color.YELLOW;
+				}
+
+				image.setRGB(x + dx, y + dy, color.getRGB());
+			}
+		}
+	}
+
+	private void assertDirectionalFace(BufferedImage image, int x, int y, int width, int height) {
+		assertEquals(Color.RED.getRGB(), image.getRGB(x, y));
+		assertEquals(Color.GREEN.getRGB(), image.getRGB(x + width - 1, y));
+		assertEquals(Color.BLUE.getRGB(), image.getRGB(x, y + height - 1));
+		assertEquals(Color.YELLOW.getRGB(), image.getRGB(x + width - 1, y + height - 1));
 	}
 
 	private record FaceSample(int x, int y) {

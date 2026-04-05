@@ -8,6 +8,7 @@ import shutil
 import re
 import tempfile
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +21,7 @@ CREATE_FUNCTION_PATTERNS = (
 ITEM_DISPLAY_PATTERN_TEMPLATE = r'\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"{namespace}_(\d+)"[^\]]*?\]\}'
 TRANSFORMATION_PATTERN = re.compile(r"transformation:\[(.*?)\]")
 CLUSTER_TOLERANCE = 0.05
+ANCHOR_OFFSET = 0.5
 
 
 @dataclass(frozen=True)
@@ -34,10 +36,40 @@ class PlayerHeadPart:
 	scale_x: float
 	scale_y: float
 	scale_z: float
+	anchor_x: float
+	anchor_y: float
+	anchor_z: float
+	local_x_axis_x: float
+	local_x_axis_y: float
+	local_x_axis_z: float
+	local_y_axis_x: float
+	local_y_axis_y: float
+	local_y_axis_z: float
 
-	@property
-	def abs_x(self) -> float:
-		return abs(self.x)
+
+@dataclass(frozen=True)
+class BodyFrame:
+	anchor_x: float
+	anchor_y: float
+	anchor_z: float
+	local_x_axis_x: float
+	local_x_axis_y: float
+	local_x_axis_z: float
+	local_y_axis_x: float
+	local_y_axis_y: float
+	local_y_axis_z: float
+
+	def lateral_offset(self, player_head_part: PlayerHeadPart) -> float:
+		offset_x = player_head_part.anchor_x - self.anchor_x
+		offset_y = player_head_part.anchor_y - self.anchor_y
+		offset_z = player_head_part.anchor_z - self.anchor_z
+		return dot_vector(offset_x, offset_y, offset_z, self.local_x_axis_x, self.local_x_axis_y, self.local_x_axis_z)
+
+	def vertical_offset(self, player_head_part: PlayerHeadPart) -> float:
+		offset_x = player_head_part.anchor_x - self.anchor_x
+		offset_y = player_head_part.anchor_y - self.anchor_y
+		offset_z = player_head_part.anchor_z - self.anchor_z
+		return dot_vector(offset_x, offset_y, offset_z, self.local_y_axis_x, self.local_y_axis_y, self.local_y_axis_z)
 
 
 @dataclass(frozen=True)
@@ -51,9 +83,10 @@ class EmoteMetadata:
 def main() -> int:
 	parser = build_argument_parser()
 	args = parser.parse_args()
+	input_paths = read_input_paths(args.input_paths)
 
 	exit_code = 0
-	for input_path in args.input_paths:
+	for input_path in input_paths:
 		try:
 			output_path = process_input_path(input_path.resolve())
 		except SystemExit as exception:
@@ -75,8 +108,23 @@ def build_argument_parser() -> argparse.ArgumentParser:
 			"a sibling emote.<name>.zip with emote:* skin markers and emote-datapack.json."
 		)
 	)
-	parser.add_argument("input_paths", nargs="+", type=Path, help="One or more datapack .zip files or folders")
+	parser.add_argument("input_paths", nargs="*", type=Path, help="One or more datapack .zip files or folders")
 	return parser
+
+
+def read_input_paths(input_paths: list[Path]) -> list[Path]:
+	if input_paths:
+		return input_paths
+
+	print("[input] No datapack path was provided.")
+	try:
+		value = input("  datapack path: ").strip().strip('"')
+	except EOFError:
+		raise SystemExit("No datapack path was provided.") from None
+	if not value:
+		raise SystemExit("No datapack path was provided.")
+
+	return [Path(value)]
 
 
 def process_input_path(input_path: Path) -> Path:
@@ -202,6 +250,15 @@ def parse_player_head_part(match: re.Match[str]) -> PlayerHeadPart:
 		scale_x=read_axis_scale(values, 0, 4, 8),
 		scale_y=read_axis_scale(values, 1, 5, 9),
 		scale_z=read_axis_scale(values, 2, 6, 10),
+		anchor_x=values[3] + values[1] * ANCHOR_OFFSET,
+		anchor_y=values[7] + values[5] * ANCHOR_OFFSET,
+		anchor_z=values[11] + values[9] * ANCHOR_OFFSET,
+		local_x_axis_x=values[0],
+		local_x_axis_y=values[4],
+		local_x_axis_z=values[8],
+		local_y_axis_x=values[1],
+		local_y_axis_y=values[5],
+		local_y_axis_z=values[9],
 	)
 
 
@@ -247,17 +304,29 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
 	if not remaining_parts:
 		return assignments
 
-	abs_x_clusters = cluster_by_abs_x(remaining_parts)
-	if not abs_x_clusters:
+	body_parts = select_body_parts(remaining_parts)
+	if not body_parts:
 		return assignments
 
-	center_cluster = abs_x_clusters[0]
-	for part in center_cluster:
+	for part in body_parts:
 		assignments[part.part_index] = "emote:body"
 
-	side_parts = [part for cluster in abs_x_clusters[1:] for part in cluster]
-	assign_side_parts([part for part in side_parts if part.x >= 0.0], "emote:left_arm", "emote:left_leg", assignments)
-	assign_side_parts([part for part in side_parts if part.x < 0.0], "emote:right_arm", "emote:right_leg", assignments)
+	body_frame = create_body_frame(body_parts)
+	side_parts = [part for part in remaining_parts if part.part_index not in assignments]
+	assign_side_parts(
+		[part for part in side_parts if body_frame.lateral_offset(part) >= 0.0],
+		body_frame,
+		"emote:left_arm",
+		"emote:left_leg",
+		assignments,
+	)
+	assign_side_parts(
+		[part for part in side_parts if body_frame.lateral_offset(part) < 0.0],
+		body_frame,
+		"emote:right_arm",
+		"emote:right_leg",
+		assignments,
+	)
 
 	for part in player_head_parts:
 		assignments.setdefault(part.part_index, "emote:body")
@@ -269,6 +338,7 @@ def select_head_part(player_head_parts: list[PlayerHeadPart]) -> PlayerHeadPart:
 	return max(
 		player_head_parts,
 		key=lambda part: (
+			part.anchor_y,
 			part.y,
 			-cube_deviation(part),
 			part.scale_x * part.scale_y * part.scale_z,
@@ -284,15 +354,105 @@ def cube_deviation(player_head_part: PlayerHeadPart) -> float:
 	)
 
 
-def cluster_by_abs_x(player_head_parts: list[PlayerHeadPart]) -> list[list[PlayerHeadPart]]:
+def select_body_parts(player_head_parts: list[PlayerHeadPart]) -> list[PlayerHeadPart]:
+	body_scale_x = max(part.scale_x for part in player_head_parts)
+	return [part for part in player_head_parts if body_scale_x - part.scale_x <= CLUSTER_TOLERANCE]
+
+
+def create_body_frame(player_head_parts: list[PlayerHeadPart]) -> BodyFrame:
+	local_x_axis = normalize_vector(
+		average_value(player_head_parts, lambda part: part.local_x_axis_x),
+		average_value(player_head_parts, lambda part: part.local_x_axis_y),
+		average_value(player_head_parts, lambda part: part.local_x_axis_z),
+		1.0,
+		0.0,
+		0.0,
+	)
+	local_y_axis = normalize_vector(
+		average_value(player_head_parts, lambda part: part.local_y_axis_x),
+		average_value(player_head_parts, lambda part: part.local_y_axis_y),
+		average_value(player_head_parts, lambda part: part.local_y_axis_z),
+		0.0,
+		1.0,
+		0.0,
+	)
+
+	return BodyFrame(
+		anchor_x=average_value(player_head_parts, lambda part: part.anchor_x),
+		anchor_y=average_value(player_head_parts, lambda part: part.anchor_y),
+		anchor_z=average_value(player_head_parts, lambda part: part.anchor_z),
+		local_x_axis_x=local_x_axis[0],
+		local_x_axis_y=local_x_axis[1],
+		local_x_axis_z=local_x_axis[2],
+		local_y_axis_x=local_y_axis[0],
+		local_y_axis_y=local_y_axis[1],
+		local_y_axis_z=local_y_axis[2],
+	)
+
+
+def average_value(player_head_parts: list[PlayerHeadPart], value_getter: Callable[[PlayerHeadPart], float]) -> float:
+	return sum(value_getter(part) for part in player_head_parts) / len(player_head_parts)
+
+
+def normalize_vector(
+	x: float,
+	y: float,
+	z: float,
+	fallback_x: float,
+	fallback_y: float,
+	fallback_z: float,
+) -> tuple[float, float, float]:
+	length = math.sqrt(x * x + y * y + z * z)
+	if length <= 0.0:
+		return fallback_x, fallback_y, fallback_z
+
+	return x / length, y / length, z / length
+
+
+def dot_vector(
+	first_x: float,
+	first_y: float,
+	first_z: float,
+	second_x: float,
+	second_y: float,
+	second_z: float,
+) -> float:
+	return first_x * second_x + first_y * second_y + first_z * second_z
+
+
+def assign_side_parts(
+	side_parts: list[PlayerHeadPart],
+	body_frame: BodyFrame,
+	arm_marker_name: str,
+	leg_marker_name: str,
+	assignments: dict[int, str],
+) -> None:
+	if not side_parts:
+		return
+
+	vertical_clusters = cluster_by_vertical_offset(side_parts, body_frame)
+	if len(vertical_clusters) >= 2:
+		split_index = find_limb_split_index(vertical_clusters, body_frame)
+		for cluster in vertical_clusters[:split_index]:
+			for part in cluster:
+				assignments[part.part_index] = arm_marker_name
+		for cluster in vertical_clusters[split_index:]:
+			for part in cluster:
+				assignments[part.part_index] = leg_marker_name
+		return
+
+	assign_cluster_by_height(side_parts, body_frame, arm_marker_name, leg_marker_name, assignments)
+
+
+def cluster_by_vertical_offset(player_head_parts: list[PlayerHeadPart], body_frame: BodyFrame) -> list[list[PlayerHeadPart]]:
 	clusters: list[list[PlayerHeadPart]] = []
-	for player_head_part in sorted(player_head_parts, key=lambda part: (part.abs_x, -part.y, part.part_index)):
+	for player_head_part in sorted(player_head_parts, key=lambda part: (-body_frame.vertical_offset(part), part.part_index)):
 		if not clusters:
 			clusters.append([player_head_part])
 			continue
 
-		cluster_anchor = average_abs_x(clusters[-1])
-		if abs(player_head_part.abs_x - cluster_anchor) <= CLUSTER_TOLERANCE:
+		cluster_anchor = average_vertical_offset(clusters[-1], body_frame)
+		if abs(body_frame.vertical_offset(player_head_part) - cluster_anchor) <= CLUSTER_TOLERANCE:
 			clusters[-1].append(player_head_part)
 			continue
 
@@ -301,40 +461,32 @@ def cluster_by_abs_x(player_head_parts: list[PlayerHeadPart]) -> list[list[Playe
 	return clusters
 
 
-def average_abs_x(player_head_parts: list[PlayerHeadPart]) -> float:
-	return sum(part.abs_x for part in player_head_parts) / len(player_head_parts)
+def find_limb_split_index(vertical_clusters: list[list[PlayerHeadPart]], body_frame: BodyFrame) -> int:
+	largest_gap = -1.0
+	split_index = 1
+	for index in range(1, len(vertical_clusters)):
+		previous_offset = average_vertical_offset(vertical_clusters[index - 1], body_frame)
+		current_offset = average_vertical_offset(vertical_clusters[index], body_frame)
+		gap = previous_offset - current_offset
+		if gap > largest_gap:
+			largest_gap = gap
+			split_index = index
+
+	return split_index
 
 
-def assign_side_parts(
-	side_parts: list[PlayerHeadPart],
-	arm_marker_name: str,
-	leg_marker_name: str,
-	assignments: dict[int, str],
-) -> None:
-	if not side_parts:
-		return
-
-	abs_x_clusters = cluster_by_abs_x(side_parts)
-	if len(abs_x_clusters) >= 2:
-		for part in abs_x_clusters[0]:
-			assignments[part.part_index] = leg_marker_name
-		for part in abs_x_clusters[-1]:
-			assignments[part.part_index] = arm_marker_name
-
-		for cluster in abs_x_clusters[1:-1]:
-			assign_cluster_by_height(cluster, arm_marker_name, leg_marker_name, assignments)
-		return
-
-	assign_cluster_by_height(side_parts, arm_marker_name, leg_marker_name, assignments)
+def average_vertical_offset(player_head_parts: list[PlayerHeadPart], body_frame: BodyFrame) -> float:
+	return sum(body_frame.vertical_offset(part) for part in player_head_parts) / len(player_head_parts)
 
 
 def assign_cluster_by_height(
 	player_head_parts: list[PlayerHeadPart],
+	body_frame: BodyFrame,
 	arm_marker_name: str,
 	leg_marker_name: str,
 	assignments: dict[int, str],
 ) -> None:
-	sorted_parts = sorted(player_head_parts, key=lambda part: (-part.y, part.part_index))
+	sorted_parts = sorted(player_head_parts, key=lambda part: (-body_frame.vertical_offset(part), part.part_index))
 	if len(sorted_parts) == 1:
 		assignments[sorted_parts[0].part_index] = arm_marker_name
 		return
