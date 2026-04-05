@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.config.data.IdentifierConfig;
 import io.github.hanhy06.emote.config.data.IdentifierEntry;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.emote.EmoteOptions;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
@@ -100,13 +101,13 @@ public class BDEngineDatapackProcessor {
         List<EmoteDefinition> filteredDefinitions = new ArrayList<>();
 
         for (EmoteDefinition definition : definitions) {
-            if (isMissingFunction(definition.namespace() + ":_/create")) {
+            if (isMissingCreateFunction(definition)) {
                 continue;
             }
 
             List<EmoteAnimation> loadedAnimations = new ArrayList<>();
             for (EmoteAnimation animation : definition.animations()) {
-                if (isMissingFunction(definition.namespace() + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName())) {
+                if (isMissingAnimationFunction(definition, animation)) {
                     continue;
                 }
 
@@ -117,21 +118,33 @@ public class BDEngineDatapackProcessor {
                 continue;
             }
 
-            filteredDefinitions.add(new EmoteDefinition(
-                    definition.namespace(),
-                    definition.name(),
-                    definition.description(),
-                    definition.commandName(),
-                    definition.defaultAnimationName(),
-                    definition.options(),
-                    definition.datapackPath(),
-                    definition.partCount(),
-                    loadedAnimations,
-                    definition.skinParts()
-            ));
+            filteredDefinitions.add(createLoadedDefinition(definition, loadedAnimations));
         }
 
         return List.copyOf(filteredDefinitions);
+    }
+
+    private EmoteDefinition createLoadedDefinition(EmoteDefinition definition, List<EmoteAnimation> loadedAnimations) {
+        return new EmoteDefinition(
+                definition.namespace(),
+                definition.name(),
+                definition.description(),
+                definition.commandName(),
+                definition.defaultAnimationName(),
+                definition.options(),
+                definition.datapackPath(),
+                definition.partCount(),
+                loadedAnimations,
+                definition.skinParts()
+        );
+    }
+
+    private boolean isMissingCreateFunction(EmoteDefinition definition) {
+        return isMissingFunction(definition.namespace() + ":_/create");
+    }
+
+    private boolean isMissingAnimationFunction(EmoteDefinition definition, EmoteAnimation animation) {
+        return isMissingFunction(definition.namespace() + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName());
     }
 
     private boolean isMissingFunction(String functionId) {
@@ -367,17 +380,7 @@ public class BDEngineDatapackProcessor {
     }
 
     private boolean isLoopEnabled(String options) {
-        if (options == null) {
-            return false;
-        }
-
-        for (String option : options.trim().split("\\s+")) {
-            if (option.equalsIgnoreCase("loop")) {
-                return true;
-            }
-        }
-
-        return false;
+        return options != null && EmoteOptions.parse(options).loop();
     }
 
     private int countKeyframes(Path keyframeAnimationPath) {

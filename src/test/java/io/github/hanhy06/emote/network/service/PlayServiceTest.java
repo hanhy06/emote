@@ -20,7 +20,7 @@ class PlayServiceTest {
 	void playDefaultReturnsSuccess() {
 		PlayService service = new PlayService(
 			createPlayableEmoteService(),
-			(player, definition, animation) -> PlaybackStartResult.SUCCESS
+			(player, selection) -> PlaybackStartResult.SUCCESS
 		);
 
 		PlayResult result = service.playDefault(null, "wave");
@@ -32,7 +32,7 @@ class PlayServiceTest {
 	void playSelectionReturnsPlaybackFailure() {
 		PlayService service = new PlayService(
 			createPlayableEmoteService(),
-			(player, definition, animation) -> PlaybackStartResult.failure(" Datapack not loaded. ")
+			(player, selection) -> PlaybackStartResult.failure(" Datapack not loaded. ")
 		);
 
 		PlayResult result = service.playSelection(null, "wave", "default");

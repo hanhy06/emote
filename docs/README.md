@@ -188,13 +188,13 @@ The mod uses two config files:
 `options` is a space-separated string.
 
 - `loop`: adds extra `*_loop` animation entries when the datapack has `play_anim_loop.mcfunction`
-- `sync`: accepted as pack metadata, but ordinary emote playback is already synchronized server-wide, so no extra setup is needed for normal sync behavior
+- `visible_player`: keeps the real player visible instead of forcing invisibility during playback
 
 Example:
 
 - `""`
 - `"loop"`
-- `"sync loop"`
+- `"visible_player loop"`
 
 ## License
 

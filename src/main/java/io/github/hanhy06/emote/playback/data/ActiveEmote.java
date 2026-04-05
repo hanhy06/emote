@@ -16,6 +16,7 @@ public record ActiveEmote(
 	String animationName,
 	Vec3 startPosition,
 	long stopTick,
+	boolean playerVisibilityManaged,
 	boolean wasInvisible,
 	List<BoundEmoteSkinPart> skinParts,
 	PreparedPlayerSkin preparedPlayerSkin

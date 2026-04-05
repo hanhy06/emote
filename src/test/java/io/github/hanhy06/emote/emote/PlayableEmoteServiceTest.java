@@ -103,6 +103,30 @@ class PlayableEmoteServiceTest {
 	}
 
 	@Test
+	void findSelectionIncludesParsedOptions() {
+		EmoteRegistry registry = new EmoteRegistry();
+		registry.replaceDefinitions(List.of(new EmoteDefinition(
+			"wave",
+			"Wave",
+			"Friendly wave",
+			"wave",
+			"default",
+			"visible_player",
+			Path.of("wave-pack"),
+			1,
+			List.of(new EmoteAnimation("default", 20)),
+			List.of()
+		)));
+		PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition, animation) -> true);
+
+		PlayableEmoteSelectionResult result = service.findSelection(null, "wave", "default");
+
+		assertTrue(result.isSuccess());
+		assertTrue(result.selection().options().visiblePlayer());
+		assertFalse(result.selection().options().loop());
+	}
+
+	@Test
 	void findDefaultSelectionReturnsNoDefaultWhenAnimationListIsEmpty() {
 		EmoteRegistry registry = new EmoteRegistry();
 		registry.replaceDefinitions(List.of(createDefinition("wave", "wave", "Wave", "Friendly wave", "default")));
@@ -123,7 +147,7 @@ class PlayableEmoteServiceTest {
 			"Friendly wave",
 			"wave",
 			"default",
-			"sync loop",
+			"visible_player loop",
 			Path.of("wave-pack"),
 			1,
 			List.of(

@@ -3,6 +3,8 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.emote.EmoteOptions;
+import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
@@ -48,7 +50,11 @@ public class PlaybackManager {
         this.stateListener = stateListener == null ? PlaybackStateListener.NONE : stateListener;
     }
 
-    public PlaybackStartResult startEmote(ServerPlayer player, EmoteDefinition definition, EmoteAnimation animation) {
+    public PlaybackStartResult startEmote(ServerPlayer player, PlayableEmoteSelection selection) {
+        EmoteDefinition definition = selection.definition();
+        EmoteAnimation animation = selection.animation();
+        EmoteOptions options = selection.options();
+
         MinecraftServer server = server();
         if (server == null) {
             return PlaybackStartResult.failure("Server unavailable.");
@@ -62,7 +68,7 @@ public class PlaybackManager {
 
         resetPlayerPlayback(player, namespace);
 
-        PlaybackStartSnapshot startSnapshot = startPlayback(player, definition, functionIds);
+        PlaybackStartSnapshot startSnapshot = startPlayback(player, definition, functionIds, options);
         ActiveEmote activeEmote = createActiveEmote(
                 server,
                 player,
@@ -155,7 +161,8 @@ public class PlaybackManager {
     private PlaybackStartSnapshot startPlayback(
             ServerPlayer player,
             EmoteDefinition definition,
-            PlaybackFunctionIds functionIds
+            PlaybackFunctionIds functionIds,
+            EmoteOptions options
     ) {
         executeFunction(player, functionIds.createFunctionId());
         alignRootWithPlayer(player, definition.namespace());
@@ -164,9 +171,12 @@ public class PlaybackManager {
         executeFunction(player, functionIds.playFunctionId());
 
         List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(player, definition);
+        boolean playerVisibilityManaged = !options.visiblePlayer();
         boolean wasInvisible = player.isInvisible();
-        player.setInvisible(true);
-        return new PlaybackStartSnapshot(preparedPlayerSkin, boundSkinParts, wasInvisible);
+        if (playerVisibilityManaged) {
+            player.setInvisible(true);
+        }
+        return new PlaybackStartSnapshot(preparedPlayerSkin, boundSkinParts, playerVisibilityManaged, wasInvisible);
     }
 
     private ActiveEmote createActiveEmote(
@@ -184,6 +194,7 @@ public class PlaybackManager {
                 animation.name(),
                 player.position(),
                 stopTick,
+                startSnapshot.playerVisibilityManaged(),
                 startSnapshot.wasInvisible(),
                 startSnapshot.boundSkinParts(),
                 startSnapshot.preparedPlayerSkin()
@@ -235,7 +246,9 @@ public class PlaybackManager {
 
         ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
         if (player != null) {
-            player.setInvisible(activeEmote.wasInvisible());
+            if (activeEmote.playerVisibilityManaged()) {
+                player.setInvisible(activeEmote.wasInvisible());
+            }
             this.stateListener.onEmoteStopped(player, activeEmote);
         }
     }
@@ -414,6 +427,7 @@ public class PlaybackManager {
     private record PlaybackStartSnapshot(
             PreparedPlayerSkin preparedPlayerSkin,
             List<BoundEmoteSkinPart> boundSkinParts,
+            boolean playerVisibilityManaged,
             boolean wasInvisible
     ) {
     }

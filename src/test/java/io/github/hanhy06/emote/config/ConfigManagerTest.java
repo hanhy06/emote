@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.config;
 
-import io.github.hanhy06.emote.config.data.IdentifierConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -47,8 +46,8 @@ class ConfigManagerTest {
 
 		assertTrue(manager.readIdentifierConfig());
 		assertEquals(List.of("emote.pack.vip"), List.copyOf(manager.getIdentifierConfig().permissions().keySet()));
-		assertEquals("wave_pack", manager.getIdentifierConfig().permissions().get("emote.pack.vip").get(0).datapack_identifier());
-		assertEquals("", manager.getIdentifierConfig().permissions().get("emote.pack.vip").get(0).options());
+		assertEquals("wave_pack", manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().datapack_identifier());
+		assertEquals("", manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().options());
 	}
 
 	@Test
@@ -61,21 +60,21 @@ class ConfigManagerTest {
 				  "permissions": {
 				    "": [
 				      {
-				        "datapack_identifier": "wave_pack",
-				        "name": "Wave",
-				        "command_name": "wave",
-				        "description": "Friendly wave",
-				        "default_animation_name": "default",
-				        "options": "sync   loop"
-				      }
-				    ]
-				  }
-				}
+		        "datapack_identifier": "wave_pack",
+		        "name": "Wave",
+		        "command_name": "wave",
+		        "description": "Friendly wave",
+		        "default_animation_name": "default",
+		        "options": "visible   sync   loop   visible_player"
+		      }
+		    ]
+		  }
+		}
 				"""
 		);
 
 		assertTrue(manager.readIdentifierConfig());
-		assertEquals("sync   loop", manager.getIdentifierConfig().permissions().get("").get(0).options());
+		assertEquals("visible_player loop", manager.getIdentifierConfig().permissions().get("").getFirst().options());
 	}
 
 	@Test

@@ -43,7 +43,7 @@ public record EmoteDefinition(
 		Objects.requireNonNull(animations, "animations");
 		Objects.requireNonNull(skinParts, "skinParts");
 
-		options = normalizeOptions(options);
+		options = EmoteOptions.normalize(options);
 
 		if (name.isBlank()) {
 			throw new IllegalArgumentException("name must not be blank");
@@ -104,21 +104,8 @@ public record EmoteDefinition(
 		return defaultAnimation != null && defaultAnimation.name().equals(animationName);
 	}
 
-	public boolean hasOption(String optionName) {
-		Objects.requireNonNull(optionName, "optionName");
-
-		String normalizedOptionName = optionName.trim();
-		if (normalizedOptionName.isEmpty() || this.options.isEmpty()) {
-			return false;
-		}
-
-		for (String option : this.options.split(" ")) {
-			if (option.equalsIgnoreCase(normalizedOptionName)) {
-				return true;
-			}
-		}
-
-		return false;
+	public EmoteOptions parsedOptions() {
+		return EmoteOptions.parse(this.options);
 	}
 
 	public String createDisplayName(String animationName) {
@@ -139,14 +126,5 @@ public record EmoteDefinition(
 		}
 
 		return this.description + " (" + animationName + ")";
-	}
-
-	private static String normalizeOptions(String options) {
-		String trimmedOptions = options.trim();
-		if (trimmedOptions.isEmpty()) {
-			return "";
-		}
-
-		return String.join(" ", trimmedOptions.split("\\s+"));
 	}
 }
