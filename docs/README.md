@@ -126,6 +126,19 @@ The script adds the `emote:*` markers used for player skin support and writes an
 python docs\prepare_emote_datapack.py path\to\project.zip
 ```
 
+If no datapack path is provided, the script asks for one before stopping.
+
+Useful options:
+
+```powershell
+python docs\prepare_emote_datapack.py --defaults path\to\project.zip
+python docs\prepare_emote_datapack.py --swap-left-right path\to\project.zip
+python docs\prepare_emote_datapack.py --defaults --swap-left-right path\to\project.zip
+```
+
+- `--defaults`: use the default metadata values without asking for each field
+- `--swap-left-right`: swap only the inferred left/right arm and leg skin markers
+
 ### Animation Requirements
 
 - A normal animation entry requires `data/<namespace>/function/a/<animation>/play_anim.mcfunction`.

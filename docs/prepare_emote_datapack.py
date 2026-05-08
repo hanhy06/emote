@@ -88,7 +88,7 @@ def main() -> int:
 	exit_code = 0
 	for input_path in input_paths:
 		try:
-			output_path = process_input_path(input_path.resolve())
+			output_path = process_input_path(input_path.resolve(), args.defaults, args.swap_left_right)
 		except SystemExit as exception:
 			message = str(exception)
 			if message:
@@ -108,6 +108,8 @@ def build_argument_parser() -> argparse.ArgumentParser:
 			"a sibling emote.<name>.zip with emote:* skin markers and emote-datapack.json."
 		)
 	)
+	parser.add_argument("--defaults", action="store_true", help="Use all metadata defaults without prompting")
+	parser.add_argument("--swap-left-right", action="store_true", help="Swap inferred left/right skin markers")
 	parser.add_argument("input_paths", nargs="*", type=Path, help="One or more datapack .zip files or folders")
 	return parser
 
@@ -127,7 +129,7 @@ def read_input_paths(input_paths: list[Path]) -> list[Path]:
 	return [Path(value)]
 
 
-def process_input_path(input_path: Path) -> Path:
+def process_input_path(input_path: Path, use_defaults: bool, swap_left_right: bool) -> Path:
 	validate_input_path(input_path)
 	output_path = create_output_path(input_path)
 
@@ -147,7 +149,7 @@ def process_input_path(input_path: Path) -> Path:
 			namespaces.append(namespace)
 
 			original_text = create_function_path.read_text(encoding="utf-8")
-			updated_text, replaced_count = update_create_function(original_text, namespace)
+			updated_text, replaced_count = update_create_function(original_text, namespace, swap_left_right)
 			if replaced_count == 0:
 				continue
 
@@ -157,7 +159,7 @@ def process_input_path(input_path: Path) -> Path:
 		if updated_files == 0:
 			raise SystemExit("No player_head parts were found in create.mcfunction.")
 
-		meta = prompt_emote_metadata(pack_root, input_path, namespaces)
+		meta = prompt_emote_metadata(pack_root, input_path, namespaces, use_defaults)
 		write_emote_datapack_meta(pack_root, meta)
 		write_zip(pack_root, output_path)
 
@@ -213,7 +215,7 @@ def find_create_function_paths(pack_root: Path) -> list[Path]:
 	return create_function_paths
 
 
-def update_create_function(create_function_text: str, namespace: str) -> tuple[str, int]:
+def update_create_function(create_function_text: str, namespace: str, swap_left_right: bool) -> tuple[str, int]:
 	pattern_text = ITEM_DISPLAY_PATTERN_TEMPLATE.replace("{namespace}", re.escape(namespace))
 	pattern = re.compile(pattern_text, re.DOTALL)
 	matches = [match for match in pattern.finditer(create_function_text) if 'id:"minecraft:player_head"' in match.group(1)]
@@ -222,6 +224,8 @@ def update_create_function(create_function_text: str, namespace: str) -> tuple[s
 
 	player_head_parts = [parse_player_head_part(match) for match in matches]
 	part_names = infer_part_names(player_head_parts)
+	if swap_left_right:
+		part_names = swap_left_right_part_names(part_names)
 
 	updated_chunks: list[str] = []
 	last_index = 0
@@ -233,6 +237,19 @@ def update_create_function(create_function_text: str, namespace: str) -> tuple[s
 
 	updated_chunks.append(create_function_text[last_index:])
 	return "".join(updated_chunks), len(player_head_parts)
+
+
+def swap_left_right_part_names(part_names: dict[int, str]) -> dict[int, str]:
+	swapped_names = {
+		"emote:left_arm": "emote:right_arm",
+		"emote:right_arm": "emote:left_arm",
+		"emote:left_leg": "emote:right_leg",
+		"emote:right_leg": "emote:left_leg",
+	}
+	return {
+		part_index: swapped_names.get(part_name, part_name)
+		for part_index, part_name in part_names.items()
+	}
 
 
 def parse_player_head_part(match: re.Match[str]) -> PlayerHeadPart:
@@ -626,7 +643,7 @@ def find_matching_brace(value: str, open_index: int) -> int:
 	raise SystemExit("A closing brace could not be found.")
 
 
-def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[str]) -> EmoteMetadata:
+def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[str], use_defaults: bool) -> EmoteMetadata:
 	existing_meta = load_existing_meta(pack_root)
 	default_name = str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
 	default_description = str(existing_meta.get("description") or f"{default_name} emote.")
@@ -638,6 +655,16 @@ def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[st
 
 	print()
 	print(f"[meta] {input_path.name}")
+	if use_defaults:
+		print("  using defaults")
+		print()
+		return EmoteMetadata(
+			name=default_name,
+			description=default_description,
+			command_name=default_command_name,
+			default_animation=default_animation,
+		)
+
 	name = prompt_value("name", default_name)
 	description = prompt_value("description", default_description)
 	command_name = sanitize_command_name(prompt_value("command_name", default_command_name))
