@@ -79,7 +79,7 @@ The example datapacks already contain `play_anim_loop.mcfunction`, so `options: 
 
 - Server-side emote playback from datapacks
 - Automatic datapack discovery and reload support
-- `/emote` command with menu, list, play, stop, and reload actions
+- `/emote` command
 - Optional player skin replacement on modded clients
 - Optional MineSkin upload/cache support for baked player skin textures
 - `pack.json` metadata-based loop entry generation for datapacks with `play_anim_loop.mcfunction`
@@ -93,7 +93,7 @@ The example datapacks already contain `play_anim_loop.mcfunction`, so `options: 
 2. Put the emote datapack zip or folder into the world `datapacks` folder.
 3. Register the datapack namespace and metadata in `config/emote/pack.json`.
 4. Start the server or run `/emote reload`.
-5. Use `/emote`, `/emote menu`, or `/emote play <emote>`.
+5. Use `/emote`.
 
 ### Client
 
@@ -102,15 +102,6 @@ Client installation is optional.
 - With the client mod installed, the emote model can use the player's current skin.
 - Without the client mod, the skin defined in the datapack is used instead.
 - The example datapacks include the developer skin, so their default appearance may look unusual without client skin replacement.
-
-## Commands
-
-- `/emote`
-- `/emote menu [page]`
-- `/emote list`
-- `/emote play <emote> [animation]`
-- `/emote stop`
-- `/emote reload`
 
 ## Datapacks
 
@@ -123,21 +114,8 @@ BD Engine export zips can be prepared with [`prepare_emote_datapack.py`](https:/
 The script adds the `emote:*` markers used for player skin support and writes an `emote.name.zip` file.
 
 ```powershell
-python docs\prepare_emote_datapack.py path\to\project.zip
+python docs\prepare_emote_datapack.py [--defaults] [--swap-left-right] path\to\project.zip
 ```
-
-If no datapack path is provided, the script asks for one before stopping.
-
-Useful options:
-
-```powershell
-python docs\prepare_emote_datapack.py --defaults path\to\project.zip
-python docs\prepare_emote_datapack.py --swap-left-right path\to\project.zip
-python docs\prepare_emote_datapack.py --defaults --swap-left-right path\to\project.zip
-```
-
-- `--defaults`: use the default metadata values without asking for each field
-- `--swap-left-right`: swap only the inferred left/right arm and leg skin markers
 
 ### Animation Requirements
 
