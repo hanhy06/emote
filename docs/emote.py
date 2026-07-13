@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 EMOTE_META_FILE_NAME = "emote.json"
+LEGACY_PACK_META_FILE_NAME = "emote-datapack.json"
 CREATE_FUNCTION_PATTERNS = (
 	"data/*/function/_/create.mcfunction",
 	"data/*/functions/_/create.mcfunction",
@@ -227,6 +228,7 @@ def prepare_emote_pack(
 	meta = create_emote_metadata(pack_root, input_path, namespaces, args)
 	validate_entrypoint(pack_root, namespaces, meta.entrypoint)
 	write_emote_metadata(pack_root, namespaces, meta)
+	(pack_root / LEGACY_PACK_META_FILE_NAME).unlink(missing_ok=True)
 	return pack_root, namespaces, meta
 
 
