@@ -60,33 +60,8 @@ public class PermissionService implements ConfigListener, PackConfigListener {
 		return hasPermission(player, findNamespacePermission(namespace));
 	}
 
-	public Predicate<CommandSourceStack> requireDialogOpen() {
-		return source -> {
-			ServerPlayer player = findPlayer(source);
-			return player != null && canOpenDialog(player);
-		};
-	}
-
-	public Predicate<CommandSourceStack> requireList() {
-		return this::canList;
-	}
-
 	public Predicate<CommandSourceStack> requireReload() {
 		return this::canReload;
-	}
-
-	public Predicate<CommandSourceStack> requirePlay() {
-		return source -> {
-			ServerPlayer player = findPlayer(source);
-			return player != null && hasBasePermission(player);
-		};
-	}
-
-	public Predicate<CommandSourceStack> requireStop() {
-		return source -> {
-			ServerPlayer player = findPlayer(source);
-			return player != null && canStop(player);
-		};
 	}
 
 	private ServerPlayer findPlayer(CommandSourceStack source) {

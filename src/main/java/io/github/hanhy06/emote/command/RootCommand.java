@@ -90,7 +90,6 @@ public final class RootCommand {
             PermissionService permissionService
     ) {
         return Commands.literal("menu")
-                .requires(permissionService.requireDialogOpen())
                 .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
                         .executes(context -> openMenu(
@@ -123,8 +122,7 @@ public final class RootCommand {
             PermissionService permissionService
     ) {
         return Commands.literal("list")
-                .requires(permissionService.requireList())
-                .executes(context -> listEmotes(context.getSource(), emoteRegistry));
+                .executes(context -> listEmotes(context.getSource(), emoteRegistry, permissionService));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createReloadCommand(
@@ -152,7 +150,6 @@ public final class RootCommand {
             PermissionService permissionService
     ) {
         return Commands.literal("play")
-                .requires(permissionService.requirePlay())
                 .then(Commands.argument("emote", StringArgumentType.word())
                         .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                                 getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
@@ -177,8 +174,7 @@ public final class RootCommand {
             PermissionService permissionService
     ) {
         return Commands.literal("stop")
-                .requires(permissionService.requireStop())
-                .executes(context -> stopEmote(context.getSource(), playbackManager));
+                .executes(context -> stopEmote(context.getSource(), playbackManager, permissionService));
     }
 
     private static List<String> getSuggestedPlayNames(
@@ -245,7 +241,16 @@ public final class RootCommand {
         return 1;
     }
 
-    private static int listEmotes(CommandSourceStack source, EmoteRegistry emoteRegistry) {
+    private static int listEmotes(
+            CommandSourceStack source,
+            EmoteRegistry emoteRegistry,
+            PermissionService permissionService
+    ) {
+        if (!permissionService.canList(source)) {
+            source.sendFailure(Component.literal("No list permission."));
+            return 0;
+        }
+
         List<EmoteDefinition> definitions = emoteRegistry.getDefinitions();
         if (definitions.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
@@ -361,8 +366,17 @@ public final class RootCommand {
         );
     }
 
-    private static int stopEmote(CommandSourceStack source, PlaybackManager playbackManager) throws CommandSyntaxException {
+    private static int stopEmote(
+            CommandSourceStack source,
+            PlaybackManager playbackManager,
+            PermissionService permissionService
+    ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
+        if (!permissionService.canStop(player)) {
+            source.sendFailure(Component.literal("No stop permission."));
+            return 0;
+        }
+
         ActiveEmote activeEmote = playbackManager.stopEmote(player);
         if (activeEmote == null) {
             source.sendFailure(Component.literal("No active emote."));
