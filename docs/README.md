@@ -11,8 +11,8 @@ The mod is designed with server-side use in mind. Its main feature, emote playba
 | Action | Description |
 |---|---|
 | `/emote` | Opens the emote menu. |
-| `/emote search` | Searches emotes by name, command, or description. |
-| `/emote play <emote>` | Plays the specified emote. |
+| `/emote search` | Opens the emote search dialog. |
+| `/emote play <emote>` | Plays an emote by command name or namespace. |
 | `/emote stop` | Stops the currently playing emote. |
 | `/emote reload` | Reloads the configuration and emote datapacks. |
 | V key | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
@@ -69,12 +69,12 @@ Configuration files are created automatically in `config/emote` when the server 
 |---|---|
 | `menu_page_size` | Number of emotes displayed on each menu page. |
 | `mineskin_api_key` | MineSkin API key used to apply player skins. |
-| `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. |
+| `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. Must be between 1 and 60. |
 | `emote_permission` | Base permission required to use emote features. |
 
-When a [MineSkin API](account.mineskin.org) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
+When a [MineSkin API](https://account.mineskin.org/) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
 
-Without an API key, MineSkin is not called and the default skin included in the datapack is used instead.
+Without an API key, or if the player's skin cannot be prepared, the default skin included in the datapack is used instead.
 
 ### `packs.json`
 
