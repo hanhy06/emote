@@ -122,13 +122,14 @@ public class DialogManager {
                 List.of()
         );
 
-        ActionButton searchButton = createRunCommandButton(
-                "Search",
-                "Open emote search",
-                "/emote search",
-                310
-        );
-        actionButtons.add(searchButton);
+        if (query.isEmpty()) {
+            actionButtons.add(createRunCommandButton(
+                    "Search",
+                    "Open emote search",
+                    "/emote search",
+                    310
+            ));
+        }
         return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
     }
 
