@@ -12,27 +12,7 @@ import java.util.Base64;
 import java.util.UUID;
 
 public final class PlayerSkinTextureHelper {
-	public static final String HTTP_PATH_PREFIX = "/emote/skin/";
-	public static final String PNG_PATH_SUFFIX = ".png";
-	private static final String TEXTURE_TOKEN_VERSION = "v25";
-
 	private PlayerSkinTextureHelper() {
-	}
-
-	public static String buildTextureToken(String textureHash, boolean slimModel, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
-		return TEXTURE_TOKEN_VERSION
-				+ "-"
-				+ textureHash.toLowerCase(java.util.Locale.ROOT)
-				+ "-"
-				+ (slimModel ? "slim" : "wide")
-				+ "-"
-				+ skinPart.id()
-				+ "-"
-				+ skinSegment.id();
-	}
-
-	public static String buildTextureUrl(String baseUrl, String textureToken) {
-		return baseUrl + HTTP_PATH_PREFIX + textureToken + PNG_PATH_SUFFIX;
 	}
 
 	public static ResolvableProfile createProfile(String profileName, String textureUrl) {

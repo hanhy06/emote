@@ -70,8 +70,6 @@ public class EmoteLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         Emote.SERVER = server;
-        this.skinManager.reloadHttpServer();
-
         boolean reloadedResources = this.bdEngineDatapackProcessor.enableEmoteDatapacks();
         if (reloadedResources) {
             return;
@@ -85,7 +83,6 @@ public class EmoteLifecycle {
         Emote.SERVER = server;
         this.configManager.readConfig();
         this.configManager.readIdentifierConfig();
-        this.skinManager.reloadHttpServer();
     }
 
     private void handleDataPackReload(MinecraftServer server, boolean success) {

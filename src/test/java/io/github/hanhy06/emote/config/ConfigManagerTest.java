@@ -147,7 +147,6 @@ class ConfigManagerTest {
 				{
 				  "version": "%s",
 				  "menu_page_size": 6,
-				  "player_skin_port": 0,
 				  "mineskin_api_key": "test-key",
 				  "emote_permission": "emote.use"
 				}
@@ -156,5 +155,23 @@ class ConfigManagerTest {
 
 		assertTrue(manager.readConfig());
 		assertEquals("test-key", manager.getConfig().mineskin_api_key());
+	}
+
+	@Test
+	void readConfigRejectsBlankMineSkinApiKey(@TempDir Path tempDir) throws IOException {
+		ConfigManager manager = new ConfigManager(tempDir);
+		Files.writeString(
+			tempDir.resolve("emote").resolve("config.json"),
+			"""
+				{
+				  "version": "%s",
+				  "menu_page_size": 6,
+				  "mineskin_api_key": " ",
+				  "emote_permission": "emote.use"
+				}
+				""".formatted(manager.getConfig().version())
+		);
+
+		assertFalse(manager.readConfig());
 	}
 }

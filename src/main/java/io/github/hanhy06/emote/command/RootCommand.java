@@ -271,7 +271,6 @@ public final class RootCommand {
 
         boolean configLoaded = configManager.readConfig();
         boolean identifierConfigLoaded = configManager.readIdentifierConfig();
-        Emote.SKIN_MANAGER.reloadHttpServer();
         boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks();
         int emoteCount = reloadedResources
                 ? emoteRegistry.size()

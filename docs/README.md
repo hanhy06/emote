@@ -133,8 +133,7 @@ The mod uses two config files:
 ### `config.json`
 
 - `menu_page_size`: number of emotes shown per menu page
-- `player_skin_port`: port used by the built-in skin texture endpoint, `0` for automatic selection
-- `mineskin_api_key`: optional MineSkin API key for uploading baked player skin textures and using MineSkin-hosted URLs
+- `mineskin_api_key`: required MineSkin API key used to generate and permanently cache server-side player-head textures
 - `emote_permission`: default permission required to use emotes
 
 ### `pack.json`

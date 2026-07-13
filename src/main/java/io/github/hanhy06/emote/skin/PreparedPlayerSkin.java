@@ -4,17 +4,11 @@ import java.util.Map;
 import java.util.Objects;
 
 public record PreparedPlayerSkin(
-		String textureHash,
-		boolean slimModel,
 		Map<PlayerSkinTextureKey, String> textureUrlMap
 ) {
 	public PreparedPlayerSkin {
-		Objects.requireNonNull(textureHash, "textureHash");
+		Objects.requireNonNull(textureUrlMap, "textureUrlMap");
 		textureUrlMap = Map.copyOf(textureUrlMap);
-	}
-
-	public PreparedPlayerSkin(String textureHash, boolean slimModel) {
-		this(textureHash, slimModel, Map.of());
 	}
 
 	public String findTextureUrl(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {

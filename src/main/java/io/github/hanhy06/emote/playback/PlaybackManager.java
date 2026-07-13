@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteOptions;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
-import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -182,7 +181,7 @@ public class PlaybackManager {
 
         executeFunction(player, functionIds.playFunctionId());
 
-        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(
+        this.playerSkinManager.applySkinParts(
                 player,
                 definition,
                 preparedPlayerSkin
@@ -192,7 +191,7 @@ public class PlaybackManager {
         if (playerVisibilityManaged) {
             player.setInvisible(true);
         }
-        return new PlaybackStartSnapshot(preparedPlayerSkin, boundSkinParts, playerVisibilityManaged, wasInvisible);
+        return new PlaybackStartSnapshot(playerVisibilityManaged, wasInvisible);
     }
 
     private ActiveEmote createActiveEmote(
@@ -211,9 +210,7 @@ public class PlaybackManager {
                 player.position(),
                 stopTick,
                 startSnapshot.playerVisibilityManaged(),
-                startSnapshot.wasInvisible(),
-                startSnapshot.boundSkinParts(),
-                startSnapshot.preparedPlayerSkin()
+                startSnapshot.wasInvisible()
         );
     }
 
@@ -441,8 +438,6 @@ public class PlaybackManager {
     }
 
     private record PlaybackStartSnapshot(
-            PreparedPlayerSkin preparedPlayerSkin,
-            List<BoundEmoteSkinPart> boundSkinParts,
             boolean playerVisibilityManaged,
             boolean wasInvisible
     ) {

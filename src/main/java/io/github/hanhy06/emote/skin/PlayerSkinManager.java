@@ -3,25 +3,16 @@ package io.github.hanhy06.emote.skin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
-import io.netty.buffer.ByteBuf;
-import io.netty.buffer.Unpooled;
-import io.netty.channel.ChannelFutureListener;
-import io.netty.channel.ChannelHandlerContext;
-import io.netty.util.AttributeKey;
-import net.minecraft.network.Connection;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.SlotAccess;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
@@ -30,11 +21,9 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.InetSocketAddress;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -43,116 +32,47 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class PlayerSkinManager implements ConfigListener {
-    private static final String HTTP_PATH_PREFIX = "/emote/skin/";
-    private static final String PNG_PATH_SUFFIX = ".png";
-    private static final String TEXT_PLAIN_CONTENT_TYPE = "text/plain; charset=utf-8";
-    private static final String PNG_CONTENT_TYPE = "image/png";
-    private static final byte[] BAD_REQUEST_RESPONSE_BODY = "Bad request.".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] HEADER_END = new byte[]{'\r', '\n', '\r', '\n'};
-    private static final byte[] METHOD_NOT_ALLOWED_RESPONSE_BODY = "Method not allowed.".getBytes(StandardCharsets.UTF_8);
-    private static final int MAX_HTTP_REQUEST_SIZE = 8192;
-    private static final byte[] NOT_FOUND_RESPONSE_BODY = "Not found.".getBytes(StandardCharsets.UTF_8);
-    private static final byte[] REQUEST_TOO_LARGE_RESPONSE_BODY = "Request too large.".getBytes(StandardCharsets.UTF_8);
+    private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
     private static final double SKIN_SEARCH_DISTANCE = 8.0D;
-    private static final AttributeKey<byte[]> HTTP_REQUEST_BUFFER = AttributeKey.valueOf("emote_http_request_buffer");
 
-    private final PlayerSkinHostStore playerSkinHostStore = new PlayerSkinHostStore();
-    private final PlayerSkinTextureStore playerSkinTextureStore = new PlayerSkinTextureStore();
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
     private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
     private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
-    private final ConcurrentMap<String, ConcurrentMap<PlayerSkinTextureKey, String>> playerSkinTextureSetMap = new ConcurrentHashMap<>();
     private final Set<String> pendingMineSkinBakeKeys = ConcurrentHashMap.newKeySet();
     private final ExecutorService mineSkinBakeExecutor = Executors.newSingleThreadExecutor(task -> {
         Thread thread = new Thread(task, "emote-mineskin");
         thread.setDaemon(true);
         return thread;
     });
-    private final Object httpServerLock = new Object();
 
-    private volatile int configuredPort;
-    private volatile HttpServer httpServer;
-    private volatile int httpServerPort;
     private volatile String mineSkinApiKey = "";
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.configuredPort = newConfig.player_skin_port();
         this.mineSkinApiKey = normalizeApiKey(newConfig.mineskin_api_key());
-    }
-
-    public void reloadHttpServer() {
-        int nextPort = resolveHttpServerPort();
-        if (nextPort < 0) {
-            stopHttpServer();
-            return;
-        }
-
-        synchronized (this.httpServerLock) {
-            if (this.httpServer != null && (nextPort == 0 || this.httpServerPort == nextPort)) {
-                return;
-            }
-
-            stopHttpServerLocked();
-
-            try {
-                HttpServer nextServer = HttpServer.create(new InetSocketAddress(nextPort), 0);
-                nextServer.createContext(HTTP_PATH_PREFIX, this::handleHttpExchange);
-                nextServer.setExecutor(null);
-                nextServer.start();
-                this.httpServer = nextServer;
-                this.httpServerPort = nextServer.getAddress().getPort();
-                Emote.LOGGER.info("skin port={}", this.httpServerPort);
-            } catch (IOException exception) {
-                this.httpServer = null;
-                this.httpServerPort = 0;
-                Emote.LOGGER.warn("skin port failed: {}", nextPort);
-            }
-        }
-    }
-
-    public void stopHttpServer() {
-        synchronized (this.httpServerLock) {
-            stopHttpServerLocked();
-        }
-    }
-
-    public int getResolvedPort() {
-        MinecraftServer server = server();
-        if (server == null) {
-            return 0;
-        }
-
-        return resolvePlayerSkinPort(server.getPort());
     }
 
     public void prepareJoinedPlayerSkin(ServerPlayer player, List<EmoteDefinition> definitions) {
         if (!hasMineSkinApiKey() || definitions.isEmpty()) {
             return;
         }
-
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {
             return;
         }
-
         Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeysFromDefinitions(definitions);
         if (requiredTextureKeys.isEmpty()) {
             return;
         }
-
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
-        if (savedTextureUrls.size() >= requiredTextureKeys.size()) {
-            return;
+        if (savedTextureUrls.size() < requiredTextureKeys.size()) {
+            scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
         }
-
-        scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
     }
 
     public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
@@ -163,12 +83,10 @@ public class PlayerSkinManager implements ConfigListener {
         if (!hasMineSkinApiKey()) {
             return PlayerSkinPreparationResult.failure("MineSkin API key is required.");
         }
-
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {
             return PlayerSkinPreparationResult.failure("Player skin is unavailable.");
         }
-
         Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
@@ -177,76 +95,53 @@ public class PlayerSkinManager implements ConfigListener {
                     "Player skin is being prepared (" + savedTextureUrls.size() + "/" + requiredTextureKeys.size() + ")."
             );
         }
-
         return PlayerSkinPreparationResult.ready(
-                new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls)
+                new PreparedPlayerSkin(savedTextureUrls)
         );
     }
 
-    public void rememberConnectionHost(Connection connection, String host, int port) {
-        this.playerSkinHostStore.remember(connection, host, port);
-    }
-
-    public List<BoundEmoteSkinPart> captureBoundSkinParts(
-            ServerPlayer player,
-            EmoteDefinition definition,
-            PreparedPlayerSkin preparedPlayerSkin
-    ) {
-        List<EmoteSkinPart> skinParts = definition.skinParts();
-        if (skinParts.isEmpty()) {
-            return List.of();
+    public void applySkinParts(ServerPlayer player, EmoteDefinition definition, PreparedPlayerSkin preparedPlayerSkin) {
+        if (preparedPlayerSkin == null || definition.skinParts().isEmpty()) {
+            return;
         }
-
         AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
-        Set<String> requestedTags = new LinkedHashSet<>(skinParts.size());
-        Map<String, EmoteSkinPart> skinPartByTag = new HashMap<>(skinParts.size());
-        for (EmoteSkinPart skinPart : skinParts) {
+        Set<String> requestedTags = new LinkedHashSet<>();
+        Map<String, EmoteSkinPart> skinPartByTag = new HashMap<>();
+        for (EmoteSkinPart skinPart : definition.skinParts()) {
             String requestedTag = definition.namespace() + "_" + skinPart.partIndex();
             requestedTags.add(requestedTag);
             skinPartByTag.put(requestedTag, skinPart);
         }
 
-        ServerLevel serverLevel = player.level();
-        List<Display.ItemDisplay> itemDisplays = serverLevel.getEntitiesOfClass(
+        ServerLevel level = player.level();
+        List<Display.ItemDisplay> displays = level.getEntitiesOfClass(
                 Display.ItemDisplay.class,
                 searchBox,
-                itemDisplay -> containsRequestedTag(itemDisplay.entityTags(), requestedTags)
+                display -> containsRequestedTag(display.entityTags(), requestedTags)
         );
-
-        List<BoundEmoteSkinPart> boundSkinParts = new ArrayList<>(skinParts.size());
-        Set<String> capturedTags = new HashSet<>(skinParts.size());
-        for (Display.ItemDisplay itemDisplay : itemDisplays) {
-            String requestedTag = findRequestedTag(itemDisplay.entityTags(), requestedTags);
-            if (requestedTag == null || !capturedTags.add(requestedTag)) {
+        Set<String> appliedTags = new HashSet<>();
+        for (Display.ItemDisplay display : displays) {
+            String tag = findRequestedTag(display.entityTags(), requestedTags);
+            if (tag == null || !appliedTags.add(tag)) {
                 continue;
             }
-
-            EmoteSkinPart skinPart = skinPartByTag.get(requestedTag);
-            if (skinPart == null) {
-                continue;
+            EmoteSkinPart skinPart = skinPartByTag.get(tag);
+            if (skinPart != null) {
+                applyMineSkinProfile(display, skinPart, preparedPlayerSkin);
             }
-
-            applyMineSkinProfile(itemDisplay, skinPart, preparedPlayerSkin);
-            boundSkinParts.add(new BoundEmoteSkinPart(itemDisplay.getId(), skinPart));
         }
-
-        return List.copyOf(boundSkinParts);
     }
 
-    private void applyMineSkinProfile(
-            Display.ItemDisplay itemDisplay,
-            EmoteSkinPart skinPart,
-            PreparedPlayerSkin preparedPlayerSkin
-    ) {
-        if (preparedPlayerSkin == null) {
-            return;
-        }
-        String textureUrl = preparedPlayerSkin.findTextureUrl(skinPart.skinPart(), skinPart.skinSegment());
+    public void clear() {
+        this.pendingMineSkinBakeKeys.clear();
+    }
+
+    private void applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
+        String textureUrl = preparedSkin.findTextureUrl(skinPart.skinPart(), skinPart.skinSegment());
         if (textureUrl == null) {
             return;
         }
-
-        SlotAccess itemSlot = itemDisplay.getSlot(0);
+        SlotAccess itemSlot = display.getSlot(0);
         if (itemSlot == null) {
             return;
         }
@@ -254,137 +149,9 @@ public class PlayerSkinManager implements ConfigListener {
         if (!itemStack.is(Items.PLAYER_HEAD)) {
             return;
         }
-
         ItemStack profileStack = itemStack.copy();
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile("emote", textureUrl));
         itemSlot.set(profileStack);
-    }
-
-    public boolean handleHttpRequest(ChannelHandlerContext context, ByteBuf input) {
-        byte[] bufferedRequest = appendHttpRequestBuffer(context, input);
-        if (bufferedRequest == null) {
-            return false;
-        }
-
-        if (bufferedRequest.length > MAX_HTTP_REQUEST_SIZE) {
-            clearHttpRequestBuffer(context);
-            writeResponse(context, PlayerSkinHttpResponse.text(413, "Request Too Large", REQUEST_TOO_LARGE_RESPONSE_BODY, false));
-            return true;
-        }
-
-        int headerEndIndex = indexOfHeaderEnd(bufferedRequest);
-        if (headerEndIndex < 0) {
-            return true;
-        }
-
-        clearHttpRequestBuffer(context);
-        String headerText = new String(bufferedRequest, 0, headerEndIndex, StandardCharsets.US_ASCII);
-        int requestLineEndIndex = headerText.indexOf("\r\n");
-        String requestLine = requestLineEndIndex >= 0 ? headerText.substring(0, requestLineEndIndex) : headerText;
-        ParsedHttpRequest request = parseRequestLine(requestLine);
-        if (request == null) {
-            writeResponse(context, PlayerSkinHttpResponse.text(400, "Bad Request", BAD_REQUEST_RESPONSE_BODY, false));
-            return true;
-        }
-
-        writeResponse(context, createTextureResponse(request.path(), request.headOnly()));
-        return true;
-    }
-
-    private void handleHttpExchange(HttpExchange exchange) throws IOException {
-        try (exchange) {
-            Boolean headOnly = parseHeadOnly(exchange.getRequestMethod());
-            if (headOnly == null) {
-                writeExchangeResponse(exchange, PlayerSkinHttpResponse.text(405, "Method Not Allowed", METHOD_NOT_ALLOWED_RESPONSE_BODY, false));
-                return;
-            }
-
-            writeExchangeResponse(exchange, createTextureResponse(exchange.getRequestURI().getPath(), headOnly));
-        }
-    }
-
-    public void clear() {
-        stopHttpServer();
-        this.playerSkinHostStore.clear();
-        this.playerSkinTextureStore.clear();
-        this.playerSkinTextureSetMap.clear();
-        this.pendingMineSkinBakeKeys.clear();
-    }
-
-    private int resolvePlayerSkinPort(int fallbackPort) {
-        MinecraftServer server = server();
-        if (server == null) {
-            return fallbackPort;
-        }
-
-        if (this.httpServerPort > 0) {
-            return this.httpServerPort;
-        }
-
-        return fallbackPort > 0 ? fallbackPort : server.getPort();
-    }
-
-    private int resolveHttpServerPort() {
-        MinecraftServer server = server();
-        if (server == null) {
-            return -1;
-        }
-
-        if (this.configuredPort > 0) {
-            return this.configuredPort == server.getPort() ? -1 : this.configuredPort;
-        }
-
-        return server.getPort() > 0 ? -1 : 0;
-    }
-
-    private void stopHttpServerLocked() {
-        if (this.httpServer == null) {
-            this.httpServerPort = 0;
-            return;
-        }
-
-        this.httpServer.stop(0);
-        this.httpServer = null;
-        this.httpServerPort = 0;
-    }
-
-    private boolean ensureLocalTextureSet(
-            PlayerSkinSource skinSource,
-            ServerPlayer player,
-            Set<PlayerSkinTextureKey> requiredTextureKeys
-    ) {
-        String cacheKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
-        ConcurrentMap<PlayerSkinTextureKey, String> cachedTextureTokens = this.playerSkinTextureSetMap.computeIfAbsent(
-                cacheKey,
-                ignored -> new ConcurrentHashMap<>()
-        );
-
-        try {
-            BufferedImage sourceImage = null;
-            for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
-                if (cachedTextureTokens.containsKey(textureKey)) {
-                    continue;
-                }
-
-                if (sourceImage == null) {
-                    sourceImage = downloadSkinImage(skinSource.textureUrl());
-                }
-
-                String token = PlayerSkinTextureHelper.buildTextureToken(
-                        skinSource.textureHash(),
-                        skinSource.slimModel(),
-                        textureKey.skinPart(),
-                        textureKey.skinSegment()
-                );
-                this.playerSkinTextureStore.put(token, this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel()));
-                cachedTextureTokens.putIfAbsent(textureKey, token);
-            }
-
-            return true;
-        } catch (IOException | IllegalArgumentException exception) {
-            Emote.LOGGER.warn("skin load failed for {}", player.getGameProfile().name(), exception);
-            return false;
-        }
     }
 
     private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
@@ -392,53 +159,48 @@ public class PlayerSkinManager implements ConfigListener {
         for (EmoteSkinPart skinPart : skinParts) {
             textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
         }
-
         return textureKeys;
     }
 
     private Set<PlayerSkinTextureKey> createTextureKeysFromDefinitions(List<EmoteDefinition> definitions) {
         Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>();
         for (EmoteDefinition definition : definitions) {
-            for (EmoteSkinPart skinPart : definition.skinParts()) {
-                textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
-            }
+            textureKeys.addAll(createTextureKeys(definition.skinParts()));
         }
-
         return textureKeys;
     }
 
-    private Map<PlayerSkinTextureKey, String> loadMineSkinTextureSet(PlayerSkinSource skinSource, Set<PlayerSkinTextureKey> requiredTextureKeys) {
-        Map<PlayerSkinTextureKey, String> storedTextureUrls = this.mineSkinTextureStore.load(skinSource.textureHash(), skinSource.slimModel());
-        if (storedTextureUrls.isEmpty()) {
-            return Map.of();
-        }
-
-        Map<PlayerSkinTextureKey, String> textureUrls = new HashMap<>(requiredTextureKeys.size());
+    private Map<PlayerSkinTextureKey, String> loadMineSkinTextureSet(
+            PlayerSkinSource skinSource,
+            Set<PlayerSkinTextureKey> requiredTextureKeys
+    ) {
+        Map<PlayerSkinTextureKey, String> stored = this.mineSkinTextureStore.load(
+                skinSource.textureHash(),
+                skinSource.slimModel()
+        );
+        Map<PlayerSkinTextureKey, String> result = new HashMap<>();
         for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
-            String textureUrl = storedTextureUrls.get(textureKey);
+            String textureUrl = stored.get(textureKey);
             if (textureUrl != null) {
-                textureUrls.put(textureKey, textureUrl);
+                result.put(textureKey, textureUrl);
             }
         }
-
-        return Map.copyOf(textureUrls);
+        return Map.copyOf(result);
     }
 
-    private void scheduleMineSkinBake(String playerName, PlayerSkinSource skinSource, Set<PlayerSkinTextureKey> requiredTextureKeys) {
+    private void scheduleMineSkinBake(String playerName, PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
         String apiKey = this.mineSkinApiKey;
         if (apiKey.isBlank()) {
             return;
         }
-
-        String pendingKey = skinSource.textureHash() + ":" + (skinSource.slimModel() ? "slim" : "wide");
+        String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
         if (!this.pendingMineSkinBakeKeys.add(pendingKey)) {
             return;
         }
-
-        Set<PlayerSkinTextureKey> requestedTextureKeys = Set.copyOf(requiredTextureKeys);
+        Set<PlayerSkinTextureKey> requestedKeys = Set.copyOf(requiredKeys);
         this.mineSkinBakeExecutor.execute(() -> {
             try {
-                bakeAndSaveMineSkinTextureSet(apiKey, playerName, skinSource, requestedTextureKeys);
+                bakeAndSaveMineSkinTextureSet(apiKey, playerName, source, requestedKeys);
             } finally {
                 this.pendingMineSkinBakeKeys.remove(pendingKey);
             }
@@ -448,22 +210,26 @@ public class PlayerSkinManager implements ConfigListener {
     private void bakeAndSaveMineSkinTextureSet(
             String apiKey,
             String playerName,
-            PlayerSkinSource skinSource,
-            Set<PlayerSkinTextureKey> requiredTextureKeys
+            PlayerSkinSource source,
+            Set<PlayerSkinTextureKey> requiredKeys
     ) {
         try {
-            Map<PlayerSkinTextureKey, String> storedTextureUrls = this.mineSkinTextureStore.load(skinSource.textureHash(), skinSource.slimModel());
-            Set<PlayerSkinTextureKey> missingTextureKeys = new LinkedHashSet<>(requiredTextureKeys);
-            missingTextureKeys.removeAll(storedTextureUrls.keySet());
-            if (missingTextureKeys.isEmpty()) {
+            Map<PlayerSkinTextureKey, String> stored = this.mineSkinTextureStore.load(source.textureHash(), source.slimModel());
+            Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(requiredKeys);
+            missingKeys.removeAll(stored.keySet());
+            if (missingKeys.isEmpty()) {
                 return;
             }
-
-            BufferedImage sourceImage = downloadSkinImage(skinSource.textureUrl());
-            Map<PlayerSkinTextureKey, String> savedTextureUrls = new HashMap<>(storedTextureUrls);
-            for (PlayerSkinTextureKey textureKey : missingTextureKeys) {
-                byte[] bakedImage = this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel());
-                String contentHash = MineSkinContentKey.create(bakedImage, skinSource.slimModel());
+            BufferedImage sourceImage = downloadSkinImage(source.textureUrl());
+            Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
+            for (PlayerSkinTextureKey textureKey : missingKeys) {
+                byte[] bakedImage = this.playerSkinBaker.bake(
+                        sourceImage,
+                        textureKey.skinPart(),
+                        textureKey.skinSegment(),
+                        source.slimModel()
+                );
+                String contentHash = MineSkinContentKey.create(bakedImage, source.slimModel());
                 MineSkinTextureResult cachedResult = this.mineSkinTextureStore.loadContent(contentHash);
                 String textureUrl;
                 if (cachedResult != null) {
@@ -476,24 +242,76 @@ public class PlayerSkinManager implements ConfigListener {
                         textureUrl = this.mineSkinApiClient.generateSkinUrl(
                                 apiKey,
                                 bakedImage,
-                                skinSource.slimModel(),
+                                source.slimModel(),
                                 jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
                         );
                     }
                     this.mineSkinTextureStore.saveContent(contentHash, new MineSkinTextureResult(textureUrl));
                     this.mineSkinTextureStore.clearPendingJob(contentHash);
                 }
-                savedTextureUrls.put(textureKey, textureUrl);
-                this.mineSkinTextureStore.save(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);
+                saved.put(textureKey, textureUrl);
+                this.mineSkinTextureStore.save(source.textureHash(), source.slimModel(), saved);
             }
-
-            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", playerName, skinSource.textureHash());
+            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", playerName, source.textureHash());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             Emote.LOGGER.warn("MineSkin bake interrupted for {}", playerName, exception);
         } catch (IOException | IllegalArgumentException exception) {
             Emote.LOGGER.warn("MineSkin bake failed for {}", playerName, exception);
         }
+    }
+
+    private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
+        MinecraftServer server = server();
+        if (server == null) {
+            return null;
+        }
+        Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
+        if (packedTextures == null) {
+            return null;
+        }
+        MinecraftProfileTextures textures = server.services().sessionService().unpackTextures(packedTextures);
+        MinecraftProfileTexture skinTexture = textures.skin();
+        if (skinTexture == null) {
+            return null;
+        }
+        boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
+        return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
+    }
+
+    private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
+        HttpURLConnection connection = (HttpURLConnection) URI.create(textureUrl).toURL().openConnection();
+        connection.setConnectTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
+        connection.setReadTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
+        connection.setInstanceFollowRedirects(true);
+        try {
+            int responseCode = connection.getResponseCode();
+            if (responseCode / 100 != 2) {
+                throw new IOException("unexpected skin response: " + responseCode);
+            }
+            byte[] imageBytes;
+            try (InputStream input = connection.getInputStream()) {
+                imageBytes = input.readNBytes(MAX_SKIN_DOWNLOAD_BYTES + 1);
+            }
+            if (imageBytes.length > MAX_SKIN_DOWNLOAD_BYTES) {
+                throw new IOException("skin image exceeds maximum size");
+            }
+            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+            if (image == null) {
+                throw new IOException("skin image decode failed");
+            }
+            return image;
+        } finally {
+            connection.disconnect();
+        }
+    }
+
+    private boolean containsRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
+        return entityTags.stream().anyMatch(requestedTags::contains);
+    }
+
+    private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
+        return entityTags.stream().filter(requestedTags::contains).findFirst().orElse(null);
     }
 
     private boolean hasMineSkinApiKey() {
@@ -504,261 +322,15 @@ public class PlayerSkinManager implements ConfigListener {
         if (apiKey == null) {
             return "";
         }
-
-        String normalizedApiKey = apiKey.trim();
-        if (normalizedApiKey.regionMatches(true, 0, "Bearer ", 0, 7)) {
-            normalizedApiKey = normalizedApiKey.substring(7).trim();
-        }
-
-        return normalizedApiKey;
-    }
-
-    private Property readPackedTextures(ServerPlayer player) {
-        MinecraftServer server = server();
-        if (server == null) {
-            return null;
-        }
-
-        return server.services().sessionService().getPackedTextures(player.getGameProfile());
-    }
-
-    private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
-        MinecraftServer server = server();
-        if (server == null) {
-            return null;
-        }
-
-        Property packedTextures = readPackedTextures(player);
-        if (packedTextures == null) {
-            return null;
-        }
-
-        MinecraftProfileTextures unpackedTextures = server.services().sessionService().unpackTextures(packedTextures);
-        MinecraftProfileTexture skinTexture = unpackedTextures.skin();
-        if (skinTexture == null) {
-            return null;
-        }
-
-        boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
-        return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
+        String normalized = apiKey.trim();
+        return normalized.regionMatches(true, 0, "Bearer ", 0, 7) ? normalized.substring(7).trim() : normalized;
     }
 
     private MinecraftServer server() {
         return Emote.SERVER;
     }
 
-    private PlayerSkinHttpResponse createTextureResponse(String path, boolean headOnly) {
-        byte[] pngBytes = findTextureBytes(path);
-        if (pngBytes == null) {
-            return PlayerSkinHttpResponse.text(404, "Not Found", NOT_FOUND_RESPONSE_BODY, headOnly);
-        }
-
-        return new PlayerSkinHttpResponse(200, "OK", PNG_CONTENT_TYPE, pngBytes, headOnly);
-    }
-
-    private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) URI.create(textureUrl).toURL().openConnection();
-        connection.setConnectTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
-        connection.setReadTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
-        connection.setInstanceFollowRedirects(true);
-
-        try {
-            int responseCode = connection.getResponseCode();
-            if (responseCode / 100 != 2) {
-                throw new IOException("unexpected skin response: " + responseCode);
-            }
-
-            byte[] imageBytes = connection.getInputStream().readAllBytes();
-            BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-            if (bufferedImage == null) {
-                throw new IOException("skin image decode failed");
-            }
-
-            return bufferedImage;
-        } finally {
-            connection.disconnect();
-        }
-    }
-
-    private boolean containsRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
-        for (String entityTag : entityTags) {
-            if (requestedTags.contains(entityTag)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
-        for (String entityTag : entityTags) {
-            if (requestedTags.contains(entityTag)) {
-                return entityTag;
-            }
-        }
-
-        return null;
-    }
-
-    private byte[] findTextureBytes(String path) {
-        if (path == null || !path.startsWith(HTTP_PATH_PREFIX) || !path.endsWith(PNG_PATH_SUFFIX)) {
-            return null;
-        }
-
-        String token = path.substring(HTTP_PATH_PREFIX.length(), path.length() - PNG_PATH_SUFFIX.length());
-        return this.playerSkinTextureStore.find(token);
-    }
-
-    private byte[] appendHttpRequestBuffer(ChannelHandlerContext context, ByteBuf input) {
-        int readableBytes = input.readableBytes();
-        byte[] currentBytes = new byte[readableBytes];
-        input.getBytes(input.readerIndex(), currentBytes);
-
-        byte[] existingBytes = context.channel().attr(HTTP_REQUEST_BUFFER).get();
-        if (existingBytes == null) {
-            if (!startsWithHttpMethod(currentBytes)) {
-                return null;
-            }
-
-            context.channel().attr(HTTP_REQUEST_BUFFER).set(currentBytes);
-            return currentBytes;
-        }
-
-        byte[] mergedBytes = new byte[existingBytes.length + currentBytes.length];
-        System.arraycopy(existingBytes, 0, mergedBytes, 0, existingBytes.length);
-        System.arraycopy(currentBytes, 0, mergedBytes, existingBytes.length, currentBytes.length);
-        context.channel().attr(HTTP_REQUEST_BUFFER).set(mergedBytes);
-        return mergedBytes;
-    }
-
-    private boolean startsWithHttpMethod(byte[] requestBytes) {
-        return startsWith(requestBytes, "GET ") || startsWith(requestBytes, "HEAD ");
-    }
-
-    private boolean startsWith(byte[] requestBytes, String prefix) {
-        byte[] prefixBytes = prefix.getBytes(StandardCharsets.US_ASCII);
-        if (requestBytes.length < prefixBytes.length) {
-            return false;
-        }
-
-        for (int index = 0; index < prefixBytes.length; index++) {
-            if (requestBytes[index] != prefixBytes[index]) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private int indexOfHeaderEnd(byte[] valueBytes) {
-        for (int index = 0; index <= valueBytes.length - HEADER_END.length; index++) {
-            boolean matched = true;
-            for (int targetIndex = 0; targetIndex < HEADER_END.length; targetIndex++) {
-                if (valueBytes[index + targetIndex] != HEADER_END[targetIndex]) {
-                    matched = false;
-                    break;
-                }
-            }
-
-            if (matched) {
-                return index;
-            }
-        }
-
-        return -1;
-    }
-
-    private ParsedHttpRequest parseRequestLine(String requestLine) {
-        String[] requestParts = requestLine.split(" ", 3);
-        if (requestParts.length != 3) {
-            return null;
-        }
-
-        Boolean headOnly = parseHeadOnly(requestParts[0]);
-        if (headOnly == null) {
-            return null;
-        }
-
-        if (!requestParts[2].startsWith("HTTP/1.")) {
-            return null;
-        }
-
-        return new ParsedHttpRequest(requestParts[1], headOnly);
-    }
-
-    private Boolean parseHeadOnly(String method) {
-        if ("GET".equalsIgnoreCase(method)) {
-            return false;
-        }
-
-        if ("HEAD".equalsIgnoreCase(method)) {
-            return true;
-        }
-
-        return null;
-    }
-
-    private void clearHttpRequestBuffer(ChannelHandlerContext context) {
-        context.channel().attr(HTTP_REQUEST_BUFFER).set(null);
-    }
-
-    private void writeExchangeResponse(HttpExchange exchange, PlayerSkinHttpResponse response) throws IOException {
-        exchange.getResponseHeaders().set("Content-Type", response.contentType());
-        exchange.getResponseHeaders().set("Content-Length", Integer.toString(response.bodyBytes().length));
-        exchange.getResponseHeaders().set("Cache-Control", "no-store, no-cache, must-revalidate");
-        exchange.getResponseHeaders().set("Pragma", "no-cache");
-        exchange.getResponseHeaders().set("Expires", "0");
-        if (response.headOnly()) {
-            exchange.sendResponseHeaders(response.statusCode(), -1);
-            return;
-        }
-
-        exchange.sendResponseHeaders(response.statusCode(), response.bodyBytes().length);
-        exchange.getResponseBody().write(response.bodyBytes());
-    }
-
-    private void writeResponse(ChannelHandlerContext context, PlayerSkinHttpResponse response) {
-        String headerText = "HTTP/1.1 " + response.statusCode() + " " + response.statusText() + "\r\n"
-                + "Content-Type: " + response.contentType() + "\r\n"
-                + "Content-Length: " + response.bodyBytes().length + "\r\n"
-                + "Cache-Control: no-store, no-cache, must-revalidate\r\n"
-                + "Pragma: no-cache\r\n"
-                + "Expires: 0\r\n"
-                + "Connection: close\r\n\r\n";
-
-        ByteBuf headerBuffer = Unpooled.copiedBuffer(headerText, StandardCharsets.US_ASCII);
-        ByteBuf responseBuffer = response.headOnly()
-                ? headerBuffer
-                : Unpooled.wrappedBuffer(headerBuffer, Unpooled.wrappedBuffer(response.bodyBytes()));
-        context.pipeline().firstContext().writeAndFlush(responseBuffer).addListener(ChannelFutureListener.CLOSE);
-    }
-
-    private record ParsedHttpRequest(String path, boolean headOnly) {
-    }
-
-    private record PlayerSkinHttpResponse(
-            int statusCode,
-            String statusText,
-            String contentType,
-            byte[] bodyBytes,
-            boolean headOnly
-    ) {
-        private PlayerSkinHttpResponse {
-            Objects.requireNonNull(statusText, "statusText");
-            Objects.requireNonNull(contentType, "contentType");
-            Objects.requireNonNull(bodyBytes, "bodyBytes");
-        }
-
-        private static PlayerSkinHttpResponse text(int statusCode, String statusText, byte[] bodyBytes, boolean headOnly) {
-            return new PlayerSkinHttpResponse(statusCode, statusText, TEXT_PLAIN_CONTENT_TYPE, bodyBytes, headOnly);
-        }
-    }
-
-    private record PlayerSkinSource(
-            String textureHash,
-            String textureUrl,
-            boolean slimModel
-    ) {
+    private record PlayerSkinSource(String textureHash, String textureUrl, boolean slimModel) {
         private PlayerSkinSource {
             Objects.requireNonNull(textureHash, "textureHash");
             Objects.requireNonNull(textureUrl, "textureUrl");

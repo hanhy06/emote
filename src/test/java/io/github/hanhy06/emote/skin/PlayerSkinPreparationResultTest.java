@@ -12,7 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PlayerSkinPreparationResultTest {
     @Test
     void readyResultCarriesPreparedSkin() {
-        PreparedPlayerSkin skin = new PreparedPlayerSkin("hash", false, Map.of());
+        PreparedPlayerSkin skin = new PreparedPlayerSkin(Map.of());
         PlayerSkinPreparationResult result = PlayerSkinPreparationResult.ready(skin);
 
         assertTrue(result.isReady());

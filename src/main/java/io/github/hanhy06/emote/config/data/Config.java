@@ -7,7 +7,6 @@ import net.fabricmc.loader.api.FabricLoader;
 public record Config(
 	String version,
 	int menu_page_size,
-	int player_skin_port,
 	String mineskin_api_key,
 	String emote_permission
 ) {
@@ -18,7 +17,6 @@ public record Config(
 				.map(container -> container.getMetadata().getVersion().getFriendlyString())
 				.orElse("dev"),
 			6,
-			0,
 			"",
 			PermissionNode.DEFAULT_EMOTE_PERMISSION
 		);

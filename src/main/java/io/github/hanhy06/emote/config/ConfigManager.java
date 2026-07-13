@@ -193,7 +193,6 @@ public class ConfigManager {
         JsonObject object = new JsonObject();
         object.addProperty("version", config.version());
         object.addProperty("menu_page_size", config.menu_page_size());
-        object.addProperty("player_skin_port", config.player_skin_port());
         object.addProperty("mineskin_api_key", config.mineskin_api_key());
         object.addProperty("emote_permission", config.emote_permission());
         return object;
@@ -229,9 +228,8 @@ public class ConfigManager {
     private String validateConfig(Config config) {
         if (config.version() == null) return "version is missing";
         if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
-        if (config.player_skin_port() < 0 || config.player_skin_port() > 65535)
-            return "player_skin_port must be between 0 and 65535";
-        if (config.mineskin_api_key() == null) return "mineskin_api_key is missing";
+        if (config.mineskin_api_key() == null || config.mineskin_api_key().isBlank())
+            return "mineskin_api_key is required";
         if (config.emote_permission() == null) return "emote_permission is missing";
         return null;
     }
@@ -278,7 +276,6 @@ public class ConfigManager {
         return new Config(
                 readString(object, "version", defaultConfig.version()),
                 readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
-                readInt(object, "player_skin_port", defaultConfig.player_skin_port()),
                 readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
                 readString(object, "emote_permission", defaultConfig.emote_permission())
         );
