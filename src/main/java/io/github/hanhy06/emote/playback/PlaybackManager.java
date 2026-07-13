@@ -34,6 +34,7 @@ public class PlaybackManager {
     private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
     private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
+    private final Map<UUID, PendingSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
     private final PlayerSkinManager playerSkinManager;
     private PlaybackStateListener stateListener = PlaybackStateListener.NONE;
 
@@ -69,8 +70,7 @@ public class PlaybackManager {
         PlaybackStartSnapshot startSnapshot = startPlayback(
                 player,
                 definition,
-                functionIds,
-                skinPreparation.preparedSkin()
+                functionIds
         );
         ActiveEmote activeEmote = createActiveEmote(
                 player,
@@ -78,6 +78,12 @@ public class PlaybackManager {
                 startSnapshot
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
+        if (skinPreparation.preparedSkin() != null) {
+            this.pendingSkinApplicationMap.put(
+                    player.getUUID(),
+                    new PendingSkinApplication(definition, skinPreparation.preparedSkin())
+            );
+        }
         this.stateListener.onEmoteStarted(player, activeEmote);
         return PlaybackStartResult.SUCCESS;
     }
@@ -87,6 +93,7 @@ public class PlaybackManager {
     }
 
     private ActiveEmote stopEmote(UUID playerUuid) {
+        this.pendingSkinApplicationMap.remove(playerUuid);
         MinecraftServer server = server();
         if (server == null) {
             return null;
@@ -128,6 +135,8 @@ public class PlaybackManager {
         for (UUID playerUuid : playerUuidListToStop) {
             stopEmote(playerUuid);
         }
+
+        applyPendingPlayerSkins(server);
     }
 
     public void stopAllEmotes() {
@@ -135,6 +144,7 @@ public class PlaybackManager {
         for (UUID playerUuid : playerUuidList) {
             stopEmote(playerUuid);
         }
+        this.pendingSkinApplicationMap.clear();
     }
 
     private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, EmoteDefinition definition) {
@@ -157,25 +167,40 @@ public class PlaybackManager {
     private PlaybackStartSnapshot startPlayback(
             ServerPlayer player,
             EmoteDefinition definition,
-            PlaybackFunctionIds functionIds,
-            PreparedPlayerSkin preparedPlayerSkin
+            PlaybackFunctionIds functionIds
     ) {
         executeFunction(player, functionIds.createFunctionId());
         alignRootWithPlayer(player, definition.namespace());
 
         executeFunction(player, functionIds.playFunctionId());
-
-        this.playerSkinManager.applySkinParts(
-                player,
-                definition,
-                preparedPlayerSkin
-        );
         boolean playerVisibilityManaged = definition.hidePlayer();
         boolean wasInvisible = player.isInvisible();
         if (playerVisibilityManaged) {
             player.setInvisible(true);
         }
         return new PlaybackStartSnapshot(playerVisibilityManaged, wasInvisible);
+    }
+
+    private void applyPendingPlayerSkins(MinecraftServer server) {
+        for (Map.Entry<UUID, PendingSkinApplication> entry : this.pendingSkinApplicationMap.entrySet()) {
+            UUID playerUuid = entry.getKey();
+            PendingSkinApplication pendingApplication = entry.getValue();
+            ActiveEmote activeEmote = this.activeEmoteMap.get(playerUuid);
+            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+            if (activeEmote == null
+                    || player == null
+                    || !activeEmote.namespace().equals(pendingApplication.definition().namespace())) {
+                this.pendingSkinApplicationMap.remove(playerUuid, pendingApplication);
+                continue;
+            }
+
+            this.playerSkinManager.applySkinParts(
+                    player,
+                    pendingApplication.definition(),
+                    pendingApplication.preparedPlayerSkin()
+            );
+            this.pendingSkinApplicationMap.remove(playerUuid, pendingApplication);
+        }
     }
 
     private ActiveEmote createActiveEmote(
@@ -407,6 +432,12 @@ public class PlaybackManager {
     private record PlaybackStartSnapshot(
             boolean playerVisibilityManaged,
             boolean wasInvisible
+    ) {
+    }
+
+    private record PendingSkinApplication(
+            EmoteDefinition definition,
+            PreparedPlayerSkin preparedPlayerSkin
     ) {
     }
 }
