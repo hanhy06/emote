@@ -70,7 +70,7 @@ Configuration files are created automatically in `config/emote` when the server 
 | `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. |
 | `emote_permission` | Base permission required to use emote features. |
 
-When a MineSkin API key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
+When a [MineSkin API](account.mineskin.org) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
 
 Without an API key, MineSkin is not called and the default skin included in the datapack is used instead.
 
