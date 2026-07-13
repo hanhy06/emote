@@ -1,6 +1,67 @@
+import argparse
+import tempfile
 import unittest
+from pathlib import Path
 
-from docs.emote import PlayerHeadPart, infer_part_names
+from docs.emote import EmoteTarget, PlayerHeadPart, create_emote_metadata, infer_part_names, split_animation_namespaces
+
+
+class MultiAnimationDatapackTest(unittest.TestCase):
+    def test_splits_animation_directories_into_independent_namespaces(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            pack_root = Path(temp_dir)
+            namespace_path = pack_root / "data" / "inv"
+            function_path = namespace_path / "function"
+            for animation_name in ("default", "inventory_closing", "inventory_opening"):
+                animation_path = function_path / "a" / animation_name
+                animation_path.mkdir(parents=True)
+                (animation_path / "play_anim_loop.mcfunction").write_text(
+                    f"function inv:k/{animation_name}/start\n",
+                    encoding="utf-8",
+                )
+            create_path = function_path / "_" / "create.mcfunction"
+            create_path.parent.mkdir(parents=True)
+            create_path.write_text('tag @s add inv_root\n', encoding="utf-8")
+
+            targets = split_animation_namespaces(
+                pack_root,
+                ["inv"],
+                "a/default/play_anim_loop",
+            )
+
+            self.assertEqual(
+                [
+                    EmoteTarget("inv_1", "a/default/play_anim_loop"),
+                    EmoteTarget("inv_2", "a/inventory_closing/play_anim_loop"),
+                    EmoteTarget("inv_3", "a/inventory_opening/play_anim_loop"),
+                ],
+                targets,
+            )
+            self.assertFalse(namespace_path.exists())
+            for target in targets:
+                target_create_path = pack_root / "data" / target.namespace / "function" / "_" / "create.mcfunction"
+                self.assertIn(f"{target.namespace}_root", target_create_path.read_text(encoding="utf-8"))
+                animation_names = [path.name for path in (target_create_path.parents[1] / "a").iterdir()]
+                self.assertEqual([target.entrypoint.split("/")[1]], animation_names)
+
+    def test_multiple_targets_receive_numeric_metadata_by_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            metadata = create_emote_metadata(
+                Path(temp_dir),
+                Path("inv.zip"),
+                [
+                    EmoteTarget("inv_1", "a/default/play_anim_loop"),
+                    EmoteTarget("inv_2", "a/inventory_closing/play_anim_loop"),
+                ],
+                create_args(),
+            )
+
+        self.assertEqual(["1", "2"], [meta.name for meta in metadata.values()])
+        self.assertEqual(["1", "2"], [meta.command_name for meta in metadata.values()])
+        self.assertEqual(
+            ["a/default/play_anim_loop", "a/inventory_closing/play_anim_loop"],
+            [meta.entrypoint for meta in metadata.values()],
+        )
 
 
 class InferPartNamesTest(unittest.TestCase):
@@ -83,6 +144,16 @@ def create_part(
         local_y_axis_x=0.0,
         local_y_axis_y=1.0,
         local_y_axis_z=0.0,
+    )
+
+
+def create_args() -> argparse.Namespace:
+    return argparse.Namespace(
+        name=None,
+        description=None,
+        command_name=None,
+        entrypoint="a/default/play_anim_loop",
+        hide_player=True,
     )
 
 
