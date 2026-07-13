@@ -134,7 +134,7 @@ class PlayerSkinBakerTest {
 
 		BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.LEFT_LEG, false);
 
-		assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.MAGENTA, Color.YELLOW, Color.BLUE, Color.CYAN);
+		assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
 	}
 
 	@Test

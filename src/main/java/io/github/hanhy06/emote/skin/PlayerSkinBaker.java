@@ -182,8 +182,8 @@ public class PlayerSkinBaker {
 
 	private FaceMap orientFaces(PlayerSkinPart skinPart, FaceMap faceMap) {
 		return switch (skinPart) {
-			case HEAD, BODY, RIGHT_ARM, RIGHT_LEG -> faceMap;
-			case LEFT_ARM, LEFT_LEG -> new FaceMap(
+			case HEAD, BODY, RIGHT_ARM, RIGHT_LEG, LEFT_LEG -> faceMap;
+			case LEFT_ARM -> new FaceMap(
 					faceMap.top(),
 					faceMap.bottom(),
 					faceMap.left(),
