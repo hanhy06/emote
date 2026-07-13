@@ -58,6 +58,34 @@ public class DialogManager {
         player.openDialog(Holder.direct(dialog));
     }
 
+    public void openSearchDialog(ServerPlayer player) {
+        List<ActionButton> actions = List.of(createRunCommandButton("Back", "Back to emotes", "/emote"));
+        List<Input> inputs = List.of(new Input("query", new TextInput(
+                310,
+                Component.literal("Search"),
+                true,
+                "",
+                64,
+                Optional.empty()
+        )));
+        CommonDialogData commonDialogData = new CommonDialogData(
+                Component.literal("Search Emotes"),
+                Optional.empty(),
+                true,
+                false,
+                DialogAction.CLOSE,
+                List.of(new PlainMessage(Component.literal("Search by name, command, animation, or description."), 310)),
+                inputs
+        );
+        ActionButton submitButton = createTemplateButton(
+                "Search",
+                "Show matching emotes",
+                "/emote search $(query)",
+                310
+        );
+        player.openDialog(Holder.direct(new MultiActionDialog(commonDialogData, actions, Optional.of(submitButton), 1)));
+    }
+
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
         List<PlayableEmote> playableEmoteList = filterPlayableEmotes(this.playableEmoteService.getPlayableEmotes(player), query);
         DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
@@ -89,27 +117,24 @@ public class DialogManager {
                 false,
                 DialogAction.CLOSE,
                 dialogBody,
-                List.of(new Input("query", new TextInput(
-                        240,
-                        Component.literal("Search"),
-                        true,
-                        query,
-                        64,
-                        Optional.empty()
-                )))
+                List.of()
         );
 
-        ActionButton searchButton = createTemplateButton(
+        ActionButton searchButton = createRunCommandButton(
                 "Search",
-                "Search emotes; submit an empty query to clear",
-                "/emote menu search 1 $(query)",
+                "Open emote search",
+                "/emote search",
                 310
         );
         return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.of(searchButton), 2);
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command) {
-        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
+        return createRunCommandButton(label, tooltip, command, 150);
+    }
+
+    private ActionButton createRunCommandButton(String label, String tooltip, String command, int width) {
+        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), width);
         Action action = new StaticAction(new ClickEvent.RunCommand(command));
         return new ActionButton(buttonData, Optional.of(action));
     }
@@ -147,7 +172,7 @@ public class DialogManager {
     private String createPageCommand(int pageNumber, String query) {
         return query.isEmpty()
                 ? "/emote menu " + pageNumber
-                : "/emote menu search " + pageNumber + " " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query);
+                : "/emote search " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query) + " " + pageNumber;
     }
 
     static List<PlayableEmote> filterPlayableEmotes(List<PlayableEmote> emotes, String query) {

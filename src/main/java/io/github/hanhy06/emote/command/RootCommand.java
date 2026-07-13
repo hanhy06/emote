@@ -73,6 +73,7 @@ public final class RootCommand {
         return Commands.literal("emote")
                 .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
                 .then(createMenuCommand(dialogManager, permissionService))
+                .then(createSearchCommand(dialogManager, permissionService))
                 .then(createListCommand(emoteRegistry, permissionService))
                 .then(createReloadCommand(
                         emoteRegistry,
@@ -97,24 +98,31 @@ public final class RootCommand {
                                 dialogManager,
                                 permissionService,
                                 IntegerArgumentType.getInteger(context, "page")
-                        )))
-                .then(Commands.literal("search")
+                        )));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> createSearchCommand(
+            DialogManager dialogManager,
+            PermissionService permissionService
+    ) {
+        return Commands.literal("search")
+                .executes(context -> openSearch(context.getSource(), dialogManager, permissionService))
+                .then(Commands.argument("query", StringArgumentType.string())
+                        .executes(context -> openMenu(
+                                context.getSource(),
+                                dialogManager,
+                                permissionService,
+                                1,
+                                StringArgumentType.getString(context, "query")
+                        ))
                         .then(Commands.argument("page", IntegerArgumentType.integer(1))
                                 .executes(context -> openMenu(
                                         context.getSource(),
                                         dialogManager,
                                         permissionService,
                                         IntegerArgumentType.getInteger(context, "page"),
-                                        ""
-                                ))
-                                .then(Commands.argument("query", StringArgumentType.greedyString())
-                                        .executes(context -> openMenu(
-                                                context.getSource(),
-                                                dialogManager,
-                                                permissionService,
-                                                IntegerArgumentType.getInteger(context, "page"),
-                                                StringArgumentType.getString(context, "query")
-                                        )))));
+                                        StringArgumentType.getString(context, "query")
+                                ))));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createListCommand(
@@ -221,6 +229,21 @@ public final class RootCommand {
         }
 
         dialogManager.openDialog(player, pageNumber);
+        return 1;
+    }
+
+    private static int openSearch(
+            CommandSourceStack source,
+            DialogManager dialogManager,
+            PermissionService permissionService
+    ) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!permissionService.canOpenDialog(player)) {
+            source.sendFailure(Component.literal("No menu permission."));
+            return 0;
+        }
+
+        dialogManager.openSearchDialog(player);
         return 1;
     }
 
