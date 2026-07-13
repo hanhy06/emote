@@ -16,6 +16,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -24,6 +25,7 @@ import java.util.Locale;
 import java.util.Map;
 
 public class MineSkinTextureStore {
+    private static final int CONTENT_CACHE_VERSION = 1;
     private final Path skinDirPath;
     private final Gson gson = new GsonBuilder()
             .setPrettyPrinting()
@@ -96,15 +98,54 @@ public class MineSkinTextureStore {
         }
 
         JsonObject skinJson = createSkinJson(textureHash, slimModel, textureUrlMap);
-        try (BufferedWriter writer = Files.newBufferedWriter(
-                filePath,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
-        )) {
-            this.gson.toJson(skinJson, writer);
+        try {
+            writeJsonAtomically(filePath, skinJson);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
+        }
+    }
+
+    public MineSkinTextureResult loadContent(String contentHash) {
+        Path filePath = resolveContentFilePath(contentHash);
+        if (filePath == null || !Files.isRegularFile(filePath)) {
+            return null;
+        }
+
+        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
+            JsonElement element = JsonParser.parseReader(reader);
+            if (!element.isJsonObject()) {
+                return null;
+            }
+
+            JsonObject object = element.getAsJsonObject();
+            Integer version = readInt(object, "version");
+            String storedHash = readString(object, "content_hash");
+            String textureUrl = readString(object, "texture_url");
+            if (version == null || version != CONTENT_CACHE_VERSION || !contentHash.equals(storedHash) || textureUrl == null) {
+                return null;
+            }
+            return new MineSkinTextureResult(textureUrl);
+        } catch (IOException | RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
+            return null;
+        }
+    }
+
+    public void saveContent(String contentHash, MineSkinTextureResult result) {
+        Path filePath = resolveContentFilePath(contentHash);
+        if (filePath == null) {
+            return;
+        }
+
+        JsonObject object = new JsonObject();
+        object.addProperty("version", CONTENT_CACHE_VERSION);
+        object.addProperty("content_hash", contentHash);
+        object.addProperty("texture_url", result.textureUrl());
+        try {
+            Files.createDirectories(filePath.getParent());
+            writeJsonAtomically(filePath, object);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
         }
     }
 
@@ -192,6 +233,32 @@ public class MineSkinTextureStore {
         }
 
         return skinDirPath.resolve(textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "classic") + ".json");
+    }
+
+    private Path resolveContentFilePath(String contentHash) {
+        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+            return null;
+        }
+        Path skinDirPath = resolveSkinDirPath();
+        return skinDirPath == null ? null : skinDirPath.resolve("content").resolve(contentHash + ".json");
+    }
+
+    private void writeJsonAtomically(Path filePath, JsonObject object) throws IOException {
+        Path temporaryPath = filePath.resolveSibling(filePath.getFileName() + ".tmp");
+        try (BufferedWriter writer = Files.newBufferedWriter(
+                temporaryPath,
+                StandardCharsets.UTF_8,
+                StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING
+        )) {
+            this.gson.toJson(object, writer);
+        }
+
+        try {
+            Files.move(temporaryPath, filePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
+            Files.move(temporaryPath, filePath, StandardCopyOption.REPLACE_EXISTING);
+        }
     }
 
     private Path resolveSkinDirPath() {

@@ -424,7 +424,15 @@ public class PlayerSkinManager implements ConfigListener {
             Map<PlayerSkinTextureKey, String> savedTextureUrls = new HashMap<>(storedTextureUrls);
             for (PlayerSkinTextureKey textureKey : missingTextureKeys) {
                 byte[] bakedImage = this.playerSkinBaker.bake(sourceImage, textureKey.skinPart(), textureKey.skinSegment(), skinSource.slimModel());
-                String textureUrl = this.mineSkinApiClient.generateSkinUrl(apiKey, bakedImage, skinSource.slimModel());
+                String contentHash = MineSkinContentKey.create(bakedImage, skinSource.slimModel());
+                MineSkinTextureResult cachedResult = this.mineSkinTextureStore.loadContent(contentHash);
+                String textureUrl;
+                if (cachedResult != null) {
+                    textureUrl = cachedResult.textureUrl();
+                } else {
+                    textureUrl = this.mineSkinApiClient.generateSkinUrl(apiKey, bakedImage, skinSource.slimModel());
+                    this.mineSkinTextureStore.saveContent(contentHash, new MineSkinTextureResult(textureUrl));
+                }
                 savedTextureUrls.put(textureKey, textureUrl);
                 this.mineSkinTextureStore.save(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);
             }
