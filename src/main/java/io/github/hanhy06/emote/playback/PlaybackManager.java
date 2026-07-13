@@ -105,10 +105,6 @@ public class PlaybackManager {
         return this.activeEmoteMap.get(playerUuid);
     }
 
-    public List<ActiveEmote> getActiveEmotes() {
-        return List.copyOf(this.activeEmoteMap.values());
-    }
-
     public void tick() {
         MinecraftServer server = server();
         if (server == null || this.activeEmoteMap.isEmpty()) {

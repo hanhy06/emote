@@ -34,13 +34,8 @@ public class EmoteRegistry {
                 Map.copyOf(definitionMap),
                 Map.copyOf(commandDefinitionMap),
                 definitionList,
-                List.copyOf(definitionMap.keySet()),
                 List.copyOf(playNameMap.values())
         );
-    }
-
-    public void clearDefinitions() {
-        this.state = RegistryState.empty();
     }
 
     public List<EmoteDefinition> getDefinitions() {
@@ -60,10 +55,6 @@ public class EmoteRegistry {
         return definition != null ? definition : findDefinition(commandNameOrNamespace);
     }
 
-    public List<String> getNamespaces() {
-        return this.state.namespaces();
-    }
-
     public List<String> getPlayNames() {
         return this.state.playNames();
     }
@@ -80,11 +71,10 @@ public class EmoteRegistry {
             Map<String, EmoteDefinition> definitionMap,
             Map<String, EmoteDefinition> commandDefinitionMap,
             List<EmoteDefinition> definitions,
-            List<String> namespaces,
             List<String> playNames
     ) {
         private static RegistryState empty() {
-            return new RegistryState(Map.of(), Map.of(), List.of(), List.of(), List.of());
+            return new RegistryState(Map.of(), Map.of(), List.of(), List.of());
         }
     }
 }

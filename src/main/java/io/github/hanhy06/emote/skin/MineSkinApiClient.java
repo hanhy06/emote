@@ -39,11 +39,6 @@ public class MineSkinApiClient {
         this.jobPollIntervalMillis = seconds * 1000L;
     }
 
-    public String generateSkinUrl(String apiKey, byte[] pngBytes, boolean slimModel) throws IOException, InterruptedException {
-        return generateSkinUrl(apiKey, pngBytes, slimModel, ignored -> {
-        });
-    }
-
     public String generateSkinUrl(
             String apiKey,
             byte[] pngBytes,
