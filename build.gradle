@@ -36,14 +36,9 @@ dependencies {
 
 processResources {
 	inputs.property "version", project.version
-	inputs.file("docs/emote.py")
 
 	filesMatching("fabric.mod.json") {
 		expand "version": inputs.properties.version
-	}
-
-	from("docs/emote.py") {
-		into "tools"
 	}
 }
 
