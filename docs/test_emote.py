@@ -44,7 +44,7 @@ class MultiAnimationDatapackTest(unittest.TestCase):
                 animation_names = [path.name for path in (target_create_path.parents[1] / "a").iterdir()]
                 self.assertEqual([target.entrypoint.split("/")[1]], animation_names)
 
-    def test_multiple_targets_receive_numeric_metadata_by_default(self) -> None:
+    def test_multiple_targets_use_generated_namespaces_as_default_names(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             metadata = create_emote_metadata(
                 Path(temp_dir),
@@ -56,8 +56,8 @@ class MultiAnimationDatapackTest(unittest.TestCase):
                 create_args(),
             )
 
-        self.assertEqual(["1", "2"], [meta.name for meta in metadata.values()])
-        self.assertEqual(["1", "2"], [meta.command_name for meta in metadata.values()])
+        self.assertEqual(["inv_1", "inv_2"], [meta.name for meta in metadata.values()])
+        self.assertEqual(["inv_1", "inv_2"], [meta.command_name for meta in metadata.values()])
         self.assertEqual(
             ["a/default/play_anim_loop", "a/inventory_closing/play_anim_loop"],
             [meta.entrypoint for meta in metadata.values()],

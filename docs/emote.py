@@ -956,8 +956,8 @@ def create_emote_metadata(
 	for index, target in enumerate(targets, start=1):
 		existing_meta = load_existing_meta(pack_root, target.namespace)
 		if multiple_emotes:
-			name = f"{args.name} {index}" if args.name else str(index)
-			command_name = f"{sanitize_command_name(args.command_name)}_{index}" if args.command_name else str(index)
+			name = f"{args.name} {index}" if args.name else target.namespace
+			command_name = f"{sanitize_command_name(args.command_name)}_{index}" if args.command_name else target.namespace
 		else:
 			name = args.name or str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
 			command_name = sanitize_command_name(args.command_name or str(
