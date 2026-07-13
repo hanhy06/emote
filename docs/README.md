@@ -1,5 +1,7 @@
 # Emote
 
+![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
+
 Emote is a Fabric mod that plays humanoid animations created with BD Engine as Minecraft emotes.
 
 The mod is designed with server-side use in mind. Its main feature, emote playback, works when installed only on the server. Installing the mod on the client is optional.
