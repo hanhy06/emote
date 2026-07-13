@@ -155,29 +155,32 @@ public class PlayerSkinManager implements ConfigListener {
         scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
     }
 
-    public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
+    public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
         if (skinParts.isEmpty()) {
-            return null;
+            return PlayerSkinPreparationResult.ready(null);
+        }
+        if (!hasMineSkinApiKey()) {
+            return PlayerSkinPreparationResult.failure("MineSkin API key is required.");
         }
 
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {
-            return null;
+            return PlayerSkinPreparationResult.failure("Player skin is unavailable.");
         }
 
         Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
             scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
-
-            boolean loadedLocalTextureSet = ensureLocalTextureSet(skinSource, player, requiredTextureKeys);
-            if (!loadedLocalTextureSet && savedTextureUrls.isEmpty()) {
-                return null;
-            }
+            return PlayerSkinPreparationResult.failure(
+                    "Player skin is being prepared (" + savedTextureUrls.size() + "/" + requiredTextureKeys.size() + ")."
+            );
         }
 
-        return new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);
+        return PlayerSkinPreparationResult.ready(
+                new PreparedPlayerSkin(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls)
+        );
     }
 
     public void rememberConnectionHost(Connection connection, String host, int port) {

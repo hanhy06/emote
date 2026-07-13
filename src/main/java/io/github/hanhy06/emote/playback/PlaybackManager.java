@@ -10,6 +10,7 @@ import io.github.hanhy06.emote.playback.data.BoundEmoteSkinPart;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.chat.Component;
@@ -66,9 +67,20 @@ public class PlaybackManager {
             return PlaybackStartResult.failure("Datapack not loaded.");
         }
 
+        PlayerSkinPreparationResult skinPreparation = this.playerSkinManager.preparePlayerSkin(player, definition);
+        if (!skinPreparation.isReady()) {
+            return PlaybackStartResult.failure(skinPreparation.errorMessage());
+        }
+
         resetPlayerPlayback(player, namespace);
 
-        PlaybackStartSnapshot startSnapshot = startPlayback(player, definition, functionIds, options);
+        PlaybackStartSnapshot startSnapshot = startPlayback(
+                player,
+                definition,
+                functionIds,
+                options,
+                skinPreparation.preparedSkin()
+        );
         ActiveEmote activeEmote = createActiveEmote(
                 server,
                 player,
@@ -162,12 +174,12 @@ public class PlaybackManager {
             ServerPlayer player,
             EmoteDefinition definition,
             PlaybackFunctionIds functionIds,
-            EmoteOptions options
+            EmoteOptions options,
+            PreparedPlayerSkin preparedPlayerSkin
     ) {
         executeFunction(player, functionIds.createFunctionId());
         alignRootWithPlayer(player, definition.namespace());
 
-        PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
         executeFunction(player, functionIds.playFunctionId());
 
         List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(
