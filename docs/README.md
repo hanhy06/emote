@@ -27,7 +27,7 @@ BD Engine datapack ZIP files or folders can be converted with `docs/emote.py` in
 python docs\emote.py path\to\project.zip
 ```
 
-The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
+The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. It also normalizes BDEngine's internal function and entity-tag prefix to the datapack namespace. Player heads that are not part of the detected humanoid are left unchanged. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
 
 Multiple emotes can be combined into one datapack. Each input must use a different namespace and command name.
 
