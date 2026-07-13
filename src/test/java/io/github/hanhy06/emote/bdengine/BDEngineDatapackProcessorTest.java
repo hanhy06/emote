@@ -124,7 +124,7 @@ class BDEngineDatapackProcessorTest {
 		Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
 		Files.writeString(createFunctionPath, String.join("\n",
 			createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
-			createPlayerHead("dance", 11, "left_arm", 0.5D, 1.0D, 0.0D, 0.25D),
+			createPlayerHead("dance", 11, "left_arm", 0.5000000001D, 1.0D, 0.0D, 0.25D),
 			createPlayerHead("dance", 12, "left_arm", 0.5D, 1.0D, 0.0D, 0.5D),
 			createPlayerHead("dance", 13, "left_arm", 0.2D, 1.6D, 0.0D, 0.5D),
 			createPlayerHead("dance", 14, "left_arm", 0.4D, 1.3D, 0.0D, 0.25D)
@@ -135,10 +135,35 @@ class BDEngineDatapackProcessorTest {
 			.getFirst()
 			.skinParts();
 
-		assertEquals(new PlayerSkinSegment(0, 4), findSegment(skinParts, 13));
-		assertEquals(new PlayerSkinSegment(4, 6), findSegment(skinParts, 14));
-		assertEquals(new PlayerSkinSegment(6, 8), findSegment(skinParts, 11));
-		assertEquals(new PlayerSkinSegment(8, 12), findSegment(skinParts, 12));
+		assertEquals(new PlayerSkinSegment(0, 4), findSegment(skinParts, 13, PlayerSkinPart.LEFT_ARM));
+		assertEquals(new PlayerSkinSegment(4, 6), findSegment(skinParts, 14, PlayerSkinPart.LEFT_ARM));
+		assertEquals(new PlayerSkinSegment(6, 8), findSegment(skinParts, 11, PlayerSkinPart.LEFT_ARM));
+		assertEquals(new PlayerSkinSegment(8, 12), findSegment(skinParts, 12, PlayerSkinPart.LEFT_ARM));
+	}
+
+	@Test
+	void readDefinitionsKeepsEquivalentLeftLegAnchorsInPartOrder(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		Path packPath = datapackDirPath.resolve("dance_pack");
+		createDatapack(packPath, "dance");
+		Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
+		Files.writeString(createFunctionPath, String.join("\n",
+			createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
+			createPlayerHead("dance", 7, "left_leg", 0.5000000001D, 0.5D, 0.0D, 0.25D),
+			createPlayerHead("dance", 8, "left_leg", 0.5D, 0.5D, 0.0D, 0.5D),
+			createPlayerHead("dance", 9, "left_leg", 0.2D, 1.2D, 0.0D, 0.5D),
+			createPlayerHead("dance", 10, "left_leg", 0.4D, 0.8D, 0.0D, 0.25D)
+		));
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteSkinPart> skinParts = processor.readDefinitions(datapackDirPath, PackConfig.createDefault())
+			.getFirst()
+			.skinParts();
+
+		assertEquals(new PlayerSkinSegment(0, 4), findSegment(skinParts, 9, PlayerSkinPart.LEFT_LEG));
+		assertEquals(new PlayerSkinSegment(4, 6), findSegment(skinParts, 10, PlayerSkinPart.LEFT_LEG));
+		assertEquals(new PlayerSkinSegment(6, 8), findSegment(skinParts, 7, PlayerSkinPart.LEFT_LEG));
+		assertEquals(new PlayerSkinSegment(8, 12), findSegment(skinParts, 8, PlayerSkinPart.LEFT_LEG));
 	}
 
 	private void createDatapack(Path packPath, String namespace) throws IOException {
@@ -178,10 +203,10 @@ class BDEngineDatapackProcessorTest {
 			.formatted(skinPart, anchorX, scaleY, anchorY - scaleY * 0.5D, anchorZ, namespace, partIndex);
 	}
 
-	private PlayerSkinSegment findSegment(List<EmoteSkinPart> skinParts, int partIndex) {
+	private PlayerSkinSegment findSegment(List<EmoteSkinPart> skinParts, int partIndex, PlayerSkinPart skinPart) {
 		return skinParts.stream()
 			.filter(part -> part.partIndex() == partIndex)
-			.filter(part -> part.skinPart() == PlayerSkinPart.LEFT_ARM)
+			.filter(part -> part.skinPart() == skinPart)
 			.findFirst()
 			.orElseThrow()
 			.skinSegment();

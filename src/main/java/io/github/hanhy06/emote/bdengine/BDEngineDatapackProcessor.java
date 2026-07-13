@@ -40,6 +40,7 @@ public class BDEngineDatapackProcessor {
     private static final Pattern ENTRYPOINT_PATTERN = Pattern.compile("[a-z0-9_./-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
+    private static final double ANCHOR_DISTANCE_EPSILON = 1.0E-9D;
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
 
@@ -487,11 +488,17 @@ public class BDEngineDatapackProcessor {
         List<RawSkinPart> orderedParts = new ArrayList<>(parts.size());
         double[] previousAnchor = limbRoot;
         while (!remainingParts.isEmpty()) {
-            double[] currentAnchor = previousAnchor;
-            RawSkinPart nextPart = remainingParts.stream()
-                    .min(Comparator.comparingDouble((RawSkinPart part) -> anchorDistanceSquared(part, currentAnchor))
-                            .thenComparingInt(RawSkinPart::partIndex))
-                    .orElseThrow();
+            RawSkinPart nextPart = remainingParts.getFirst();
+            double nextDistance = anchorDistanceSquared(nextPart, previousAnchor);
+            for (RawSkinPart candidate : remainingParts.subList(1, remainingParts.size())) {
+                double candidateDistance = anchorDistanceSquared(candidate, previousAnchor);
+                if (candidateDistance < nextDistance - ANCHOR_DISTANCE_EPSILON
+                        || (Math.abs(candidateDistance - nextDistance) <= ANCHOR_DISTANCE_EPSILON
+                            && candidate.partIndex() < nextPart.partIndex())) {
+                    nextPart = candidate;
+                    nextDistance = candidateDistance;
+                }
+            }
             orderedParts.add(nextPart);
             remainingParts.remove(nextPart);
             previousAnchor = new double[]{nextPart.anchorX(), nextPart.anchorY(), nextPart.anchorZ()};
