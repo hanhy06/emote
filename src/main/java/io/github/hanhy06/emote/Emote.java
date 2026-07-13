@@ -56,7 +56,7 @@ public class Emote implements ModInitializer {
 	);
 	private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
 
-	private final EmoteNetworking networking = new EmoteNetworking(this.playService);
+	private final EmoteNetworking networking = new EmoteNetworking();
 	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
 		this.emoteRegistry,
 		this.configManager,
