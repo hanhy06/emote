@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 import math
 import shutil
@@ -77,19 +76,19 @@ class EmoteMetadata:
 	name: str
 	description: str
 	command_name: str
-	default_animation: str
+	entrypoint: str
 	hide_player: bool
 
 
 def main() -> int:
 	parser = build_argument_parser()
 	args = parser.parse_args()
-	input_paths = read_input_paths(args.input_paths)
+	validate_metadata_arguments(parser, args)
 
 	exit_code = 0
-	for input_path in input_paths:
+	for input_path in args.input_paths:
 		try:
-			output_path = process_input_path(input_path.resolve(), args.defaults, args.swap_left_right)
+			output_path = process_input_path(input_path.resolve(), args)
 		except SystemExit as exception:
 			message = str(exception)
 			if message:
@@ -105,34 +104,33 @@ def main() -> int:
 def build_argument_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(
 		description=(
-			"Drop a BD Engine datapack zip or folder onto this script, and it will create "
-			"a sibling emote.<name>.zip with emote:* skin markers and emote-datapack.json."
+			"Convert one or more BD Engine datapacks without interactive questions. "
+			"Each output receives emote:* skin markers and schema 2 emote metadata."
 		)
 	)
-	parser.add_argument("--defaults", action="store_true", help="Use all metadata defaults without prompting")
+	parser.add_argument("--name", help="Display name (single input only; otherwise inferred)")
+	parser.add_argument("--description", help="Description (single input only; otherwise inferred)")
+	parser.add_argument("--command-name", help="Play command name (single input only; otherwise inferred)")
+	parser.add_argument("--entrypoint", default="a/default/play_anim_loop", help="Datapack function path without namespace or .mcfunction")
+	visibility_group = parser.add_mutually_exclusive_group()
+	visibility_group.add_argument("--hide-player", dest="hide_player", action="store_true", default=True)
+	visibility_group.add_argument("--show-player", dest="hide_player", action="store_false")
 	parser.add_argument("--swap-left-right", action="store_true", help="Swap inferred left/right skin markers")
-	parser.add_argument("input_paths", nargs="*", type=Path, help="One or more datapack .zip files or folders")
+	parser.add_argument("--output-dir", type=Path, help="Directory for generated emote.<name>.zip files")
+	parser.add_argument("input_paths", nargs="+", type=Path, help="One or more datapack .zip files or folders")
 	return parser
 
 
-def read_input_paths(input_paths: list[Path]) -> list[Path]:
-	if input_paths:
-		return input_paths
-
-	print("[input] No datapack path was provided.")
-	try:
-		value = input("  datapack path: ").strip().strip('"')
-	except EOFError:
-		raise SystemExit("No datapack path was provided.") from None
-	if not value:
-		raise SystemExit("No datapack path was provided.")
-
-	return [Path(value)]
+def validate_metadata_arguments(parser: argparse.ArgumentParser, args: argparse.Namespace) -> None:
+	if len(args.input_paths) > 1 and any((args.name, args.description, args.command_name)):
+		parser.error("--name, --description, and --command-name can only be used with one input")
+	if not args.entrypoint.strip() or args.entrypoint.startswith("/") or ".." in args.entrypoint:
+		parser.error("--entrypoint must be a relative function path")
 
 
-def process_input_path(input_path: Path, use_defaults: bool, swap_left_right: bool) -> Path:
+def process_input_path(input_path: Path, args: argparse.Namespace) -> Path:
 	validate_input_path(input_path)
-	output_path = create_output_path(input_path)
+	output_path = create_output_path(input_path, args.output_dir)
 
 	with tempfile.TemporaryDirectory(prefix="emote-datapack-") as temp_dir_name:
 		temp_dir = Path(temp_dir_name)
@@ -150,7 +148,7 @@ def process_input_path(input_path: Path, use_defaults: bool, swap_left_right: bo
 			namespaces.append(namespace)
 
 			original_text = create_function_path.read_text(encoding="utf-8")
-			updated_text, replaced_count = update_create_function(original_text, namespace, swap_left_right)
+			updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
 			if replaced_count == 0:
 				continue
 
@@ -160,7 +158,8 @@ def process_input_path(input_path: Path, use_defaults: bool, swap_left_right: bo
 		if updated_files == 0:
 			raise SystemExit("No player_head parts were found in create.mcfunction.")
 
-		meta = prompt_emote_metadata(pack_root, input_path, namespaces, use_defaults)
+		meta = create_emote_metadata(pack_root, input_path, namespaces, args)
+		validate_entrypoint(pack_root, namespaces, meta.entrypoint)
 		write_emote_datapack_meta(pack_root, meta)
 		write_zip(pack_root, output_path)
 
@@ -176,11 +175,11 @@ def validate_input_path(input_path: Path) -> None:
 		raise SystemExit("The input path must be a .zip file or folder.")
 
 
-def create_output_path(input_path: Path) -> Path:
-	stem = input_path.stem if input_path.is_file() else input_path.name
-	if stem.endswith(".emote"):
-		stem = stem[:-6]
-	return input_path.with_name(f"emote.{stem}.zip")
+def create_output_path(input_path: Path, output_dir: Path | None) -> Path:
+	stem = get_input_stem(input_path)
+	parent = output_dir.resolve() if output_dir is not None else input_path.parent
+	parent.mkdir(parents=True, exist_ok=True)
+	return parent / f"emote.{stem}.zip"
 
 
 def prepare_work_dir(input_path: Path, temp_dir: Path) -> Path:
@@ -644,43 +643,26 @@ def find_matching_brace(value: str, open_index: int) -> int:
 	raise SystemExit("A closing brace could not be found.")
 
 
-def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[str], use_defaults: bool) -> EmoteMetadata:
+def create_emote_metadata(
+	pack_root: Path,
+	input_path: Path,
+	namespaces: list[str],
+	args: argparse.Namespace,
+) -> EmoteMetadata:
 	existing_meta = load_existing_meta(pack_root)
-	default_name = str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
-	default_description = str(existing_meta.get("description") or f"{default_name} emote.")
-	default_command_name = str(
+	name = args.name or str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
+	description = args.description or str(existing_meta.get("description") or f"{name} emote.")
+	command_name = sanitize_command_name(args.command_name or str(
 		existing_meta.get("command_name")
 		or sanitize_command_name(namespaces[0] if len(namespaces) == 1 else get_input_stem(input_path))
-	)
-	default_animation = str(existing_meta.get("default_animation") or "default")
-	default_hide_player = bool(existing_meta.get("hide_player", True))
-
-	print()
-	print(f"[meta] {input_path.name}")
-	if use_defaults:
-		print("  using defaults")
-		print()
-		return EmoteMetadata(
-			name=default_name,
-			description=default_description,
-			command_name=default_command_name,
-			default_animation=default_animation,
-			hide_player=default_hide_player,
-		)
-
-	name = prompt_value("name", default_name)
-	description = prompt_value("description", default_description)
-	command_name = sanitize_command_name(prompt_value("command_name", default_command_name))
-	default_animation = prompt_value("default_animation", default_animation)
-	hide_player = prompt_bool("hide_player", default_hide_player)
-	print()
+	))
 
 	return EmoteMetadata(
 		name=name,
 		description=description,
 		command_name=command_name,
-		default_animation=default_animation,
-		hide_player=hide_player,
+		entrypoint=args.entrypoint.strip().removesuffix(".mcfunction"),
+		hide_player=args.hide_player,
 	)
 
 
@@ -694,38 +676,32 @@ def load_existing_meta(pack_root: Path) -> dict[str, object]:
 		return {}
 	if not isinstance(loaded_meta, dict):
 		return {}
-	return copy.deepcopy(loaded_meta)
-
-
-def prompt_value(label: str, default_value: str) -> str:
-	prompt = f"  {label} [{default_value}]: "
-	value = input(prompt).strip()
-	return value or default_value
-
-
-def prompt_bool(label: str, default_value: bool) -> bool:
-	default_label = "Y" if default_value else "N"
-	value = input(f"  {label} [y/n, {default_label}]: ").strip().lower()
-	if not value:
-		return default_value
-	return value in {"y", "yes", "true", "1"}
+	return loaded_meta
 
 
 def get_input_stem(input_path: Path) -> str:
 	stem = input_path.stem if input_path.is_file() else input_path.name
-	if stem.endswith(".emote"):
-		stem = stem[:-6]
+	if stem.startswith("emote."):
+		stem = stem[6:]
 	return stem
+
+
+def validate_entrypoint(pack_root: Path, namespaces: list[str], entrypoint: str) -> None:
+	function_folders = ("function", "functions")
+	for namespace in namespaces:
+		if any((pack_root / "data" / namespace / folder / f"{entrypoint}.mcfunction").is_file() for folder in function_folders):
+			continue
+		raise SystemExit(f"Entrypoint was not found for namespace '{namespace}': {entrypoint}")
 
 
 def write_emote_datapack_meta(pack_root: Path, meta: EmoteMetadata) -> None:
 	meta_path = pack_root / PACK_META_FILE_NAME
 	meta = {
-		"schema_version": 1,
+		"schema_version": 2,
 		"name": meta.name,
 		"description": meta.description,
 		"command_name": meta.command_name,
-		"default_animation": meta.default_animation,
+		"entrypoint": meta.entrypoint,
 		"hide_player": meta.hide_player,
 	}
 	meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
