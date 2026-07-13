@@ -98,7 +98,24 @@ public final class RootCommand {
                                 dialogManager,
                                 permissionService,
                                 IntegerArgumentType.getInteger(context, "page")
-                        )));
+                        )))
+                .then(Commands.literal("search")
+                        .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                                .executes(context -> openMenu(
+                                        context.getSource(),
+                                        dialogManager,
+                                        permissionService,
+                                        IntegerArgumentType.getInteger(context, "page"),
+                                        ""
+                                ))
+                                .then(Commands.argument("query", StringArgumentType.greedyString())
+                                        .executes(context -> openMenu(
+                                                context.getSource(),
+                                                dialogManager,
+                                                permissionService,
+                                                IntegerArgumentType.getInteger(context, "page"),
+                                                StringArgumentType.getString(context, "query")
+                                        )))));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createListCommand(
@@ -208,6 +225,23 @@ public final class RootCommand {
         }
 
         dialogManager.openDialog(player, pageNumber);
+        return 1;
+    }
+
+    private static int openMenu(
+            CommandSourceStack source,
+            DialogManager dialogManager,
+            PermissionService permissionService,
+            int pageNumber,
+            String query
+    ) throws CommandSyntaxException {
+        ServerPlayer player = source.getPlayerOrException();
+        if (!permissionService.canOpenDialog(player)) {
+            source.sendFailure(Component.literal("No menu permission."));
+            return 0;
+        }
+
+        dialogManager.openDialog(player, pageNumber, query);
         return 1;
     }
 

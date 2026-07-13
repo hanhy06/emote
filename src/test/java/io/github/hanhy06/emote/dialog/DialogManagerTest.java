@@ -1,0 +1,28 @@
+package io.github.hanhy06.emote.dialog;
+
+import io.github.hanhy06.emote.emote.PlayableEmote;
+import org.junit.jupiter.api.Test;
+
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+class DialogManagerTest {
+    @Test
+    void searchFiltersAndRanksPlayableEmotes() {
+        List<PlayableEmote> emotes = List.of(
+                new PlayableEmote("dance", "fast", false, "Fast Dance", "Quick movement"),
+                new PlayableEmote("wave", "default", true, "Wave", "Friendly greeting"),
+                new PlayableEmote("wave_fast", "default", true, "Other", "Wave variation")
+        );
+
+        assertEquals(
+                List.of("wave", "wave_fast"),
+                DialogManager.filterPlayableEmotes(emotes, "WAVE").stream().map(PlayableEmote::commandName).toList()
+        );
+        assertEquals(
+                List.of("dance"),
+                DialogManager.filterPlayableEmotes(emotes, "quick").stream().map(PlayableEmote::commandName).toList()
+        );
+    }
+}

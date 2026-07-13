@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.dialog;
 
+import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -15,15 +17,21 @@ import net.minecraft.server.dialog.CommonButtonData;
 import net.minecraft.server.dialog.CommonDialogData;
 import net.minecraft.server.dialog.Dialog;
 import net.minecraft.server.dialog.DialogAction;
+import net.minecraft.server.dialog.Input;
 import net.minecraft.server.dialog.MultiActionDialog;
 import net.minecraft.server.dialog.action.Action;
+import net.minecraft.server.dialog.action.CommandTemplate;
+import net.minecraft.server.dialog.action.ParsedTemplate;
 import net.minecraft.server.dialog.action.StaticAction;
 import net.minecraft.server.dialog.body.DialogBody;
 import net.minecraft.server.dialog.body.PlainMessage;
+import net.minecraft.server.dialog.input.TextInput;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 
 public class DialogManager {
@@ -42,12 +50,16 @@ public class DialogManager {
     }
 
     public void openDialog(ServerPlayer player, int pageNumber) {
-        Dialog dialog = createRootDialog(player, pageNumber);
+        openDialog(player, pageNumber, "");
+    }
+
+    public void openDialog(ServerPlayer player, int pageNumber, String query) {
+        Dialog dialog = createRootDialog(player, pageNumber, normalizeQuery(query));
         player.openDialog(Holder.direct(dialog));
     }
 
-    private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber) {
-        List<PlayableEmote> playableEmoteList = this.playableEmoteService.getPlayableEmotes(player);
+    private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
+        List<PlayableEmote> playableEmoteList = filterPlayableEmotes(this.playableEmoteService.getPlayableEmotes(player), query);
         DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
@@ -60,14 +72,23 @@ public class DialogManager {
             ));
         }
 
-        appendPageButtons(actionButtons, dialogPage);
+        actionButtons.add(createTemplateButton(
+                "Search",
+                "Search emotes",
+                "/emote menu search 1 $(query)"
+        ));
+        if (!query.isEmpty()) {
+            actionButtons.add(createRunCommandButton("Clear", "Clear search", "/emote menu"));
+        }
+
+        appendPageButtons(actionButtons, dialogPage, query);
 
         if (actionButtons.isEmpty()) {
             actionButtons.add(createStaticButton("Close", "Close"));
         }
 
         List<DialogBody> dialogBody = List.of(new PlainMessage(
-                Component.literal(createBodyText(dialogPage, player)),
+                Component.literal(createBodyText(dialogPage, player, query)),
                 240
         ));
         CommonDialogData commonDialogData = new CommonDialogData(
@@ -77,7 +98,14 @@ public class DialogManager {
                 false,
                 DialogAction.CLOSE,
                 dialogBody,
-                List.of()
+                List.of(new Input("query", new TextInput(
+                        240,
+                        Component.literal("Search"),
+                        true,
+                        query,
+                        64,
+                        Optional.empty()
+                )))
         );
 
         return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
@@ -89,12 +117,20 @@ public class DialogManager {
         return new ActionButton(buttonData, Optional.of(action));
     }
 
+    private ActionButton createTemplateButton(String label, String tooltip, String commandTemplate) {
+        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
+        ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
+                .parse(JsonOps.INSTANCE, new JsonPrimitive(commandTemplate))
+                .getOrThrow();
+        return new ActionButton(buttonData, Optional.of(new CommandTemplate(parsedTemplate)));
+    }
+
     private ActionButton createStaticButton(String label, String tooltip) {
         CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
         return new ActionButton(buttonData, Optional.empty());
     }
 
-    private void appendPageButtons(List<ActionButton> actionButtons, DialogPage dialogPage) {
+    private void appendPageButtons(List<ActionButton> actionButtons, DialogPage dialogPage, String query) {
         if (dialogPage.totalPageCount() <= 1) {
             return;
         }
@@ -104,14 +140,48 @@ public class DialogManager {
         }
 
         actionButtons.add(dialogPage.pageNumber() > 1
-                ? createRunCommandButton("Prev", "Open the previous emote page", "/emote menu " + (dialogPage.pageNumber() - 1))
+                ? createRunCommandButton("Prev", "Open the previous emote page", createPageCommand(dialogPage.pageNumber() - 1, query))
                 : createStaticButton("Prev", "No previous page"));
         actionButtons.add(dialogPage.pageNumber() < dialogPage.totalPageCount()
-                ? createRunCommandButton("Next", "Open the next emote page", "/emote menu " + (dialogPage.pageNumber() + 1))
+                ? createRunCommandButton("Next", "Open the next emote page", createPageCommand(dialogPage.pageNumber() + 1, query))
                 : createStaticButton("Next", "No next page"));
     }
 
-    private String createBodyText(DialogPage dialogPage, ServerPlayer player) {
+    private String createPageCommand(int pageNumber, String query) {
+        return query.isEmpty()
+                ? "/emote menu " + pageNumber
+                : "/emote menu search " + pageNumber + " " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query);
+    }
+
+    static List<PlayableEmote> filterPlayableEmotes(List<PlayableEmote> emotes, String query) {
+        String normalizedQuery = normalizeQuery(query);
+        if (normalizedQuery.isEmpty()) {
+            return List.copyOf(emotes);
+        }
+
+        return emotes.stream()
+                .filter(emote -> searchRank(emote, normalizedQuery) < Integer.MAX_VALUE)
+                .sorted(Comparator.comparingInt(emote -> searchRank(emote, normalizedQuery)))
+                .toList();
+    }
+
+    private static int searchRank(PlayableEmote emote, String query) {
+        String displayName = emote.displayName().toLowerCase(Locale.ROOT);
+        String commandName = emote.commandName().toLowerCase(Locale.ROOT);
+        String animationName = emote.animationName().toLowerCase(Locale.ROOT);
+        String description = emote.description().toLowerCase(Locale.ROOT);
+        if (displayName.equals(query)) return 0;
+        if (displayName.startsWith(query)) return 1;
+        if (commandName.startsWith(query)) return 2;
+        if (displayName.contains(query) || commandName.contains(query) || animationName.contains(query) || description.contains(query)) return 3;
+        return Integer.MAX_VALUE;
+    }
+
+    private static String normalizeQuery(String query) {
+        return query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private String createBodyText(DialogPage dialogPage, ServerPlayer player, String query) {
         if (this.emoteRegistry.size() == 0) {
             return "No emotes.";
         }
@@ -122,7 +192,7 @@ public class DialogManager {
                 : createActiveEmoteText(activeEmote);
 
         if (dialogPage.playableEmoteCount() == 0) {
-            return "No usable emotes." + activeEmoteText;
+            return (query.isEmpty() ? "No usable emotes." : "No matching emotes.") + activeEmoteText;
         }
 
         if (dialogPage.totalPageCount() == 1) {
