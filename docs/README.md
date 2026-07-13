@@ -42,6 +42,37 @@ python docs\emote.py `
 
 This creates `emote.basic.zip`. Each emote keeps its own namespace and stores its metadata at `data/<namespace>/emote.json`.
 
+### How datapacks are read
+
+The mod scans every ZIP or folder in the world's `datapacks` directory. A namespace is registered as one emote when it contains all of the following:
+
+```text
+pack.mcmeta
+data/<namespace>/emote.json
+data/<namespace>/function/_/create.mcfunction
+data/<namespace>/function/<entrypoint>.mcfunction
+```
+
+`emote.json` supplies the display name, description, command name, entrypoint, and player visibility setting. Invalid or disabled namespaces are skipped. When a BDEngine project contains multiple animations under `function/a`, the conversion script creates an isolated namespace and `emote.json` for each animation.
+
+### Marking player skin parts manually
+
+To apply the playing player's skin manually, use a `minecraft:player_head` item display in `create.mcfunction` and put a skin-part marker in the profile's top-level `name` field. Keep this field before `properties`.
+
+```snbt
+item:{
+  id:"minecraft:player_head",
+  components:{
+    "minecraft:profile":{
+      name:"emote:head",
+      properties:[...]
+    }
+  }
+}
+```
+
+Valid markers are `emote:head`, `emote:body`, `emote:left_arm`, `emote:right_arm`, `emote:left_leg`, and `emote:right_leg`. If one limb uses multiple player heads, give every piece the same limb marker. Player heads without a valid marker keep the texture stored in the datapack.
+
 The display name, description, and command name can also be specified manually.
 
 ```powershell
