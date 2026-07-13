@@ -44,7 +44,7 @@ public class WheelController {
 
     public void openWheel(Component bindingLabel) {
         Minecraft client = Minecraft.getInstance();
-        if (client.player == null || client.screen != null) {
+        if (client.player == null || client.gui.screen() != null) {
             return;
         }
 
@@ -53,7 +53,7 @@ public class WheelController {
             return;
         }
 
-        client.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
+        client.gui.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
     }
 
     public void playEmote(PlayableEmote playableEmote) {
@@ -78,7 +78,7 @@ public class WheelController {
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
         boolean holdDown = isBindingDown(client, keyMapping);
 
-        if (client.screen instanceof WheelScreen wheelScreen) {
+        if (client.gui.screen() instanceof WheelScreen wheelScreen) {
             if (holdDown) {
                 this.bindingReleaseArmed = true;
             } else if (this.bindingReleaseArmed) {
@@ -90,7 +90,7 @@ public class WheelController {
         }
 
         this.bindingReleaseArmed = false;
-        if (client.screen != null || client.player == null) {
+        if (client.gui.screen() != null || client.player == null) {
             this.holdWasDown = holdDown;
             return;
         }
