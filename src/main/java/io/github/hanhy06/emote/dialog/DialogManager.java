@@ -35,15 +35,18 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class DialogManager {
+    private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
     private final PlayableEmoteService playableEmoteService;
     private final PlaybackManager playbackManager;
 
     public DialogManager(
+            ConfigManager configManager,
             EmoteRegistry emoteRegistry,
             PlayableEmoteService playableEmoteService,
             PlaybackManager playbackManager
     ) {
+        this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.playableEmoteService = playableEmoteService;
         this.playbackManager = playbackManager;
@@ -74,7 +77,7 @@ public class DialogManager {
                 true,
                 false,
                 DialogAction.CLOSE,
-                List.of(new PlainMessage(Component.literal("Search by name, command, animation, or description."), 310)),
+                List.of(new PlainMessage(Component.literal("Search by name, command, or description."), 310)),
                 inputs
         );
         ActionButton submitButton = createTemplateButton(
@@ -225,7 +228,7 @@ public class DialogManager {
     }
 
     private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
-        int playButtonsPerPage = Math.max(1, ConfigManager.INSTANCE.getConfig().menu_page_size());
+        int playButtonsPerPage = Math.max(1, this.configManager.getConfig().menu_page_size());
         int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteCount / playButtonsPerPage));
         int pageNumber = Math.clamp(requestedPageNumber, 1, totalPageCount);
         int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);

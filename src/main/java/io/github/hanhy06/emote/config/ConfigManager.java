@@ -25,8 +25,6 @@ import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class ConfigManager {
-    public static ConfigManager INSTANCE;
-
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String PACK_FILE_NAME = "packs.json";
@@ -43,7 +41,6 @@ public class ConfigManager {
     private PackConfig packConfig = PackConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
-        INSTANCE = this;
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
 
         try {

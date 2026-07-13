@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.config.data;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.permission.PermissionNode;
 import net.fabricmc.loader.api.FabricLoader;
 
 public record Config(
@@ -20,7 +19,7 @@ public record Config(
 			6,
 			"",
 			3,
-			PermissionNode.DEFAULT_EMOTE_PERMISSION
+			"emote.use"
 		);
 	}
 }

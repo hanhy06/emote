@@ -24,10 +24,10 @@ import org.slf4j.LoggerFactory;
 public class Emote implements ModInitializer {
 	public static final String MOD_ID = "emote";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	public static final PlayerSkinManager SKIN_MANAGER = new PlayerSkinManager();
 	public static MinecraftServer SERVER;
 
 	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
+	private final PlayerSkinManager skinManager = new PlayerSkinManager();
 
 	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
 	private final PermissionService permissionService = new PermissionService();
@@ -36,7 +36,7 @@ public class Emote implements ModInitializer {
 		this.permissionService
 	);
 
-	private final PlaybackManager playbackManager = new PlaybackManager(SKIN_MANAGER);
+	private final PlaybackManager playbackManager = new PlaybackManager(this.skinManager);
 	private final PlaybackStateService playbackStateService = new PlaybackStateService();
 	private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
 
@@ -45,6 +45,7 @@ public class Emote implements ModInitializer {
 		this.emoteRegistry
 	);
 	private final DialogManager dialogManager = new DialogManager(
+		this.configManager,
 		this.emoteRegistry,
 		this.playableEmoteService,
 		this.playbackManager
@@ -59,7 +60,7 @@ public class Emote implements ModInitializer {
 	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
 		this.emoteRegistry,
 		this.configManager,
-		SKIN_MANAGER,
+		this.skinManager,
 		this.playbackManager,
 		this.bdEngineDatapackProcessor,
 		this.wheelSyncService
@@ -93,6 +94,6 @@ public class Emote implements ModInitializer {
 	private void registerConfigListeners() {
 		this.configManager.addListener(this.permissionService);
 		this.configManager.addPackListener(this.permissionService);
-		this.configManager.addListener(SKIN_MANAGER);
+		this.configManager.addListener(this.skinManager);
 	}
 }
