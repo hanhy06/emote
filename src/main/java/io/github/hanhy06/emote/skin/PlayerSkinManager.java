@@ -20,6 +20,10 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.SlotAccess;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.phys.AABB;
 
 import javax.imageio.ImageIO;
@@ -180,7 +184,11 @@ public class PlayerSkinManager implements ConfigListener {
         this.playerSkinHostStore.remember(connection, host, port);
     }
 
-    public List<BoundEmoteSkinPart> captureBoundSkinParts(ServerPlayer player, EmoteDefinition definition) {
+    public List<BoundEmoteSkinPart> captureBoundSkinParts(
+            ServerPlayer player,
+            EmoteDefinition definition,
+            PreparedPlayerSkin preparedPlayerSkin
+    ) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
         if (skinParts.isEmpty()) {
             return List.of();
@@ -215,10 +223,38 @@ public class PlayerSkinManager implements ConfigListener {
                 continue;
             }
 
+            applyMineSkinProfile(itemDisplay, skinPart, preparedPlayerSkin);
             boundSkinParts.add(new BoundEmoteSkinPart(itemDisplay.getId(), skinPart));
         }
 
         return List.copyOf(boundSkinParts);
+    }
+
+    private void applyMineSkinProfile(
+            Display.ItemDisplay itemDisplay,
+            EmoteSkinPart skinPart,
+            PreparedPlayerSkin preparedPlayerSkin
+    ) {
+        if (preparedPlayerSkin == null) {
+            return;
+        }
+        String textureUrl = preparedPlayerSkin.findTextureUrl(skinPart.skinPart(), skinPart.skinSegment());
+        if (textureUrl == null) {
+            return;
+        }
+
+        SlotAccess itemSlot = itemDisplay.getSlot(0);
+        if (itemSlot == null) {
+            return;
+        }
+        ItemStack itemStack = itemSlot.get();
+        if (!itemStack.is(Items.PLAYER_HEAD)) {
+            return;
+        }
+
+        ItemStack profileStack = itemStack.copy();
+        profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile("emote", textureUrl));
+        itemSlot.set(profileStack);
     }
 
     public boolean handleHttpRequest(ChannelHandlerContext context, ByteBuf input) {

@@ -170,7 +170,11 @@ public class PlaybackManager {
         PreparedPlayerSkin preparedPlayerSkin = this.playerSkinManager.preparePlayerSkin(player, definition);
         executeFunction(player, functionIds.playFunctionId());
 
-        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(player, definition);
+        List<BoundEmoteSkinPart> boundSkinParts = this.playerSkinManager.captureBoundSkinParts(
+                player,
+                definition,
+                preparedPlayerSkin
+        );
         boolean playerVisibilityManaged = !options.visiblePlayer();
         boolean wasInvisible = player.isInvisible();
         if (playerVisibilityManaged) {
