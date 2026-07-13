@@ -11,6 +11,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -111,17 +112,18 @@ public class PlayerSkinManager implements ConfigListener {
         }
 
         Set<String> appliedTags = new HashSet<>();
-        for (var entity : player.level().getAllEntities()) {
-            if (!(entity instanceof Display.ItemDisplay display)) {
-                continue;
-            }
-            String tag = findRequestedTag(display.entityTags(), requestedTags);
-            if (tag == null || appliedTags.contains(tag)) {
-                continue;
-            }
-            EmoteSkinPart skinPart = skinPartByTag.get(tag);
-            if (skinPart != null && applyMineSkinProfile(display, skinPart, preparedPlayerSkin)) {
-                appliedTags.add(tag);
+        Set<Integer> visitedEntityIds = new HashSet<>();
+        for (Entity entity : player.level().getAllEntities()) {
+            applySkinPartsInTree(
+                    entity,
+                    requestedTags,
+                    skinPartByTag,
+                    preparedPlayerSkin,
+                    appliedTags,
+                    visitedEntityIds
+            );
+            if (appliedTags.size() == requestedTags.size()) {
+                break;
             }
         }
         if (appliedTags.size() != requestedTags.size()) {
@@ -130,6 +132,41 @@ public class PlayerSkinManager implements ConfigListener {
                     appliedTags.size(),
                     requestedTags.size(),
                     definition.namespace()
+            );
+        }
+    }
+
+    private void applySkinPartsInTree(
+            Entity entity,
+            Set<String> requestedTags,
+            Map<String, EmoteSkinPart> skinPartByTag,
+            PreparedPlayerSkin preparedPlayerSkin,
+            Set<String> appliedTags,
+            Set<Integer> visitedEntityIds
+    ) {
+        if (!visitedEntityIds.add(entity.getId())) {
+            return;
+        }
+        if (entity instanceof Display.ItemDisplay display) {
+            String tag = findRequestedTag(display.entityTags(), requestedTags);
+            if (tag != null && !appliedTags.contains(tag)) {
+                EmoteSkinPart skinPart = skinPartByTag.get(tag);
+                if (skinPart != null && applyMineSkinProfile(display, skinPart, preparedPlayerSkin)) {
+                    appliedTags.add(tag);
+                }
+            }
+        }
+        if (appliedTags.size() == requestedTags.size()) {
+            return;
+        }
+        for (Entity passenger : entity.getPassengers()) {
+            applySkinPartsInTree(
+                    passenger,
+                    requestedTags,
+                    skinPartByTag,
+                    preparedPlayerSkin,
+                    appliedTags,
+                    visitedEntityIds
             );
         }
     }
