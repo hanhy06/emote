@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -45,6 +46,29 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
                 {"packs":{"   ":{"enabled":true,"permission":""}}}
+                """);
+
+        assertFalse(manager.readPackConfig());
+        assertTrue(manager.getPackConfig().packs().isEmpty());
+    }
+
+    @Test
+    void keepsCurrentConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        int currentPageSize = manager.getConfig().menu_page_size();
+        Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
+                {"menu_page_size":{"invalid":true}}
+                """);
+
+        assertFalse(manager.readConfig());
+        assertEquals(currentPageSize, manager.getConfig().menu_page_size());
+    }
+
+    @Test
+    void keepsCurrentPackConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+                {"packs":{"wave_pack":{"enabled":{"invalid":true},"permission":""}}}
                 """);
 
         assertFalse(manager.readPackConfig());

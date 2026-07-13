@@ -68,7 +68,14 @@ public class ConfigManager {
 
     public boolean readConfig() {
         JsonObject configJson = readJsonFile(CONFIG_FILE_NAME);
-        Config loadedConfig = readConfig(configJson);
+        Config loadedConfig;
+        try {
+            loadedConfig = readConfig(configJson);
+        } catch (RuntimeException exception) {
+            Emote.LOGGER.warn("Config contains invalid field values. Keeping current config.", exception);
+            broadcastConfig();
+            return false;
+        }
         Config defaultConfig = Config.createDefault();
 
         if (loadedConfig == null) {
@@ -98,7 +105,14 @@ public class ConfigManager {
 
     public boolean readPackConfig() {
         JsonObject configJson = readJsonFile(PACK_FILE_NAME);
-        PackConfig loadedPackConfig = readPackConfig(configJson);
+        PackConfig loadedPackConfig;
+        try {
+            loadedPackConfig = readPackConfig(configJson);
+        } catch (RuntimeException exception) {
+            Emote.LOGGER.warn("Pack config contains invalid field values. Keeping current pack config.", exception);
+            broadcastPackConfig();
+            return false;
+        }
 
         if (loadedPackConfig == null) {
             Emote.LOGGER.warn("Pack config is empty or invalid. Keeping current pack config.");
