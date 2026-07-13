@@ -103,7 +103,7 @@ class PlayableEmoteServiceTest {
 	}
 
 	@Test
-	void findSelectionIncludesParsedOptions() {
+	void findSelectionIncludesDefinitionVisibilityPolicy() {
 		EmoteRegistry registry = new EmoteRegistry();
 		registry.replaceDefinitions(List.of(new EmoteDefinition(
 			"wave",
@@ -111,7 +111,7 @@ class PlayableEmoteServiceTest {
 			"Friendly wave",
 			"wave",
 			"default",
-			"visible_player",
+			false,
 			Path.of("wave-pack"),
 			1,
 			List.of(new EmoteAnimation("default", 20)),
@@ -122,8 +122,7 @@ class PlayableEmoteServiceTest {
 		PlayableEmoteSelectionResult result = service.findSelection(null, "wave", "default");
 
 		assertTrue(result.isSuccess());
-		assertTrue(result.selection().options().visiblePlayer());
-		assertFalse(result.selection().options().loop());
+		assertFalse(result.selection().definition().hidePlayer());
 	}
 
 	@Test
@@ -147,7 +146,7 @@ class PlayableEmoteServiceTest {
 			"Friendly wave",
 			"wave",
 			"default",
-			"visible_player loop",
+			true,
 			Path.of("wave-pack"),
 			1,
 			List.of(

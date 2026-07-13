@@ -44,7 +44,7 @@ class BDEngineDatapackProcessorTest {
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
 		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
 			"",
-			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default", "loop")
+			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default")
 		));
 
 		assertEquals(List.of("default", "default_loop"), definitions.get(0).animations().stream().map(animation -> animation.name()).toList());

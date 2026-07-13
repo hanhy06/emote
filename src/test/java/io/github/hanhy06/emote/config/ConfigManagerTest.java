@@ -47,7 +47,7 @@ class ConfigManagerTest {
 		assertTrue(manager.readIdentifierConfig());
 		assertEquals(List.of("emote.pack.vip"), List.copyOf(manager.getIdentifierConfig().permissions().keySet()));
 		assertEquals("wave_pack", manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().datapack_identifier());
-		assertEquals("", manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().options());
+		assertTrue(manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().hide_player());
 	}
 
 	@Test
@@ -65,7 +65,7 @@ class ConfigManagerTest {
 		        "command_name": "wave",
 		        "description": "Friendly wave",
 		        "default_animation_name": "default",
-		        "options": "visible   sync   loop   visible_player"
+		        "hide_player": false
 		      }
 		    ]
 		  }
@@ -74,7 +74,7 @@ class ConfigManagerTest {
 		);
 
 		assertTrue(manager.readIdentifierConfig());
-		assertEquals("visible_player loop", manager.getIdentifierConfig().permissions().get("").getFirst().options());
+		assertFalse(manager.getIdentifierConfig().permissions().get("").getFirst().hide_player());
 	}
 
 	@Test

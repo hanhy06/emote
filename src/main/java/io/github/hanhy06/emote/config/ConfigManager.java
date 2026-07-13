@@ -222,7 +222,7 @@ public class ConfigManager {
         identifierJson.addProperty("command_name", identifierEntry.command_name());
         identifierJson.addProperty("description", identifierEntry.description());
         identifierJson.addProperty("default_animation_name", identifierEntry.default_animation_name());
-        identifierJson.addProperty("options", identifierEntry.options());
+        identifierJson.addProperty("hide_player", identifierEntry.hide_player());
         return identifierJson;
     }
 
@@ -351,7 +351,7 @@ public class ConfigManager {
                 readString(object, "command_name", ""),
                 readString(object, "description", ""),
                 readString(object, "default_animation_name", ""),
-                readString(object, "options", "")
+                readBoolean(object, "hide_player", true)
         );
     }
 
@@ -371,6 +371,15 @@ public class ConfigManager {
         }
 
         return element.getAsInt();
+    }
+
+    private boolean readBoolean(JsonObject object, String key, boolean defaultValue) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return defaultValue;
+        }
+
+        return element.getAsBoolean();
     }
 
     private void logLoaded(String fileName) {

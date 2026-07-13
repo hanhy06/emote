@@ -12,7 +12,7 @@ public record EmoteDefinition(
 	String description,
 	String commandName,
 	String defaultAnimationName,
-	String options,
+	boolean hidePlayer,
 	Path datapackPath,
 	int partCount,
 	List<EmoteAnimation> animations,
@@ -29,7 +29,7 @@ public record EmoteDefinition(
 		List<EmoteAnimation> animations,
 		List<EmoteSkinPart> skinParts
 	) {
-		this(namespace, name, description, commandName, defaultAnimationName, "", datapackPath, partCount, animations, skinParts);
+		this(namespace, name, description, commandName, defaultAnimationName, true, datapackPath, partCount, animations, skinParts);
 	}
 
 	public EmoteDefinition {
@@ -38,12 +38,9 @@ public record EmoteDefinition(
 		Objects.requireNonNull(description, "description");
 		Objects.requireNonNull(commandName, "commandName");
 		Objects.requireNonNull(defaultAnimationName, "defaultAnimationName");
-		Objects.requireNonNull(options, "options");
 		Objects.requireNonNull(datapackPath, "datapackPath");
 		Objects.requireNonNull(animations, "animations");
 		Objects.requireNonNull(skinParts, "skinParts");
-
-		options = EmoteOptions.normalize(options);
 
 		if (name.isBlank()) {
 			throw new IllegalArgumentException("name must not be blank");
@@ -102,10 +99,6 @@ public record EmoteDefinition(
 		Objects.requireNonNull(animationName, "animationName");
 		EmoteAnimation defaultAnimation = findDefaultAnimation();
 		return defaultAnimation != null && defaultAnimation.name().equals(animationName);
-	}
-
-	public EmoteOptions parsedOptions() {
-		return EmoteOptions.parse(this.options);
 	}
 
 	public String createDisplayName(String animationName) {

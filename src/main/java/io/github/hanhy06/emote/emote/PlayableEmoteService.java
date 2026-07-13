@@ -149,8 +149,7 @@ public class PlayableEmoteService {
 
 		return PlayableEmoteSelectionResult.success(new PlayableEmoteSelection(
 			definition,
-			animation,
-			definition.parsedOptions()
+			animation
 		));
 	}
 

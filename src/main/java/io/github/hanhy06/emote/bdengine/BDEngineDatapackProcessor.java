@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.config.data.IdentifierConfig;
 import io.github.hanhy06.emote.config.data.IdentifierEntry;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.EmoteOptions;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
@@ -131,7 +130,7 @@ public class BDEngineDatapackProcessor {
                 definition.description(),
                 definition.commandName(),
                 definition.defaultAnimationName(),
-                definition.options(),
+                definition.hidePlayer(),
                 definition.datapackPath(),
                 definition.partCount(),
                 loadedAnimations,
@@ -311,7 +310,7 @@ public class BDEngineDatapackProcessor {
         }
 
         String namespace = namespacePath.getFileName().toString();
-        List<EmoteAnimation> animations = readAnimations(functionPath, isLoopEnabled(identifierEntry.options()));
+        List<EmoteAnimation> animations = readAnimations(functionPath);
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
                 namespace,
@@ -319,7 +318,7 @@ public class BDEngineDatapackProcessor {
                 identifierEntry.description().trim(),
                 createCommandName(packPath, namespace, identifierEntry.command_name()),
                 createDefaultAnimationName(identifierEntry.default_animation_name()),
-                identifierEntry.options(),
+                identifierEntry.hide_player(),
                 packPath,
                 createFunctionData.partCount(),
                 animations,
@@ -341,7 +340,7 @@ public class BDEngineDatapackProcessor {
         return null;
     }
 
-    private List<EmoteAnimation> readAnimations(Path functionPath, boolean includeLoopAnimations) {
+    private List<EmoteAnimation> readAnimations(Path functionPath) {
         Path animationPath = functionPath.resolve("a");
         if (!Files.isDirectory(animationPath)) {
             return List.of();
@@ -362,10 +361,6 @@ public class BDEngineDatapackProcessor {
                 int keyframeCount = countKeyframes(keyframePath.resolve(animationName));
                 animations.add(new EmoteAnimation(animationName, keyframeCount));
 
-                if (!includeLoopAnimations) {
-                    continue;
-                }
-
                 Path loopPlayFunctionPath = singleAnimationPath.resolve(LOOP_PLAY_FUNCTION_NAME);
                 if (Files.exists(loopPlayFunctionPath)) {
                     loopAnimations.add(EmoteAnimation.createLoop(animationName, keyframeCount));
@@ -377,10 +372,6 @@ public class BDEngineDatapackProcessor {
 
         animations.addAll(loopAnimations);
         return List.copyOf(animations);
-    }
-
-    private boolean isLoopEnabled(String options) {
-        return options != null && EmoteOptions.parse(options).loop();
     }
 
     private int countKeyframes(Path keyframeAnimationPath) {

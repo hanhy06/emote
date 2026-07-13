@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.EmoteOptions;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
@@ -53,7 +52,6 @@ public class PlaybackManager {
     public PlaybackStartResult startEmote(ServerPlayer player, PlayableEmoteSelection selection) {
         EmoteDefinition definition = selection.definition();
         EmoteAnimation animation = selection.animation();
-        EmoteOptions options = selection.options();
 
         MinecraftServer server = server();
         if (server == null) {
@@ -77,7 +75,6 @@ public class PlaybackManager {
                 player,
                 definition,
                 functionIds,
-                options,
                 skinPreparation.preparedSkin()
         );
         ActiveEmote activeEmote = createActiveEmote(
@@ -173,7 +170,6 @@ public class PlaybackManager {
             ServerPlayer player,
             EmoteDefinition definition,
             PlaybackFunctionIds functionIds,
-            EmoteOptions options,
             PreparedPlayerSkin preparedPlayerSkin
     ) {
         executeFunction(player, functionIds.createFunctionId());
@@ -186,7 +182,7 @@ public class PlaybackManager {
                 definition,
                 preparedPlayerSkin
         );
-        boolean playerVisibilityManaged = !options.visiblePlayer();
+        boolean playerVisibilityManaged = definition.hidePlayer();
         boolean wasInvisible = player.isInvisible();
         if (playerVisibilityManaged) {
             player.setInvisible(true);
