@@ -21,10 +21,13 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -198,7 +201,50 @@ public class BDEngineDatapackProcessor {
             Emote.LOGGER.warn("Failed to scan datapack directory {}", datapackDirPath, exception);
         }
 
-        return List.copyOf(definitions);
+        return filterDefinitionConflicts(definitions);
+    }
+
+    private List<EmoteDefinition> filterDefinitionConflicts(List<EmoteDefinition> definitions) {
+        Map<String, EmoteDefinition> namespaceDefinitions = new LinkedHashMap<>();
+        Set<String> conflictingNamespaces = new HashSet<>();
+        for (EmoteDefinition definition : definitions) {
+            String namespace = definition.namespace();
+            if (namespaceDefinitions.putIfAbsent(namespace, definition) != null) {
+                conflictingNamespaces.add(namespace);
+            }
+        }
+
+        List<EmoteDefinition> namespaceCandidates = definitions.stream()
+                .filter(definition -> !conflictingNamespaces.contains(definition.namespace()))
+                .toList();
+        Map<String, EmoteDefinition> commandDefinitions = new LinkedHashMap<>();
+        Set<String> conflictingCommands = new HashSet<>();
+        for (EmoteDefinition definition : namespaceCandidates) {
+            String commandName = normalizeSelectionKey(definition.commandName());
+            if (commandDefinitions.putIfAbsent(commandName, definition) != null) {
+                conflictingCommands.add(commandName);
+            }
+
+            EmoteDefinition namespaceDefinition = namespaceDefinitions.get(commandName);
+            if (namespaceDefinition != null && namespaceDefinition != definition) {
+                conflictingCommands.add(commandName);
+            }
+        }
+
+        for (String namespace : conflictingNamespaces) {
+            Emote.LOGGER.warn("Ignoring emote definitions with duplicate namespace: {}", namespace);
+        }
+        for (String commandName : conflictingCommands) {
+            Emote.LOGGER.warn("Ignoring emote definitions with conflicting command_name: {}", commandName);
+        }
+
+        return namespaceCandidates.stream()
+                .filter(definition -> !conflictingCommands.contains(normalizeSelectionKey(definition.commandName())))
+                .toList();
+    }
+
+    private String normalizeSelectionKey(String value) {
+        return value.trim().toLowerCase(Locale.ROOT);
     }
 
     private List<EmoteDefinition> readPackDefinitions(Path packPath, PackConfig packConfig) {

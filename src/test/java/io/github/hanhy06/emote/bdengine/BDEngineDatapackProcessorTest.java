@@ -88,6 +88,31 @@ class BDEngineDatapackProcessorTest {
 		assertEquals(List.of("file/alpha_pack"), packIds);
 	}
 
+	@Test
+	void readDefinitionsRejectsDuplicateNamespacesAcrossDatapacks(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
+		createDatapack(datapackDirPath.resolve("beta_pack"), "wave_pack");
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
+
+		assertEquals(List.of(), definitions);
+	}
+
+	@Test
+	void readDefinitionsRejectsDuplicateCommandNames(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		Path packPath = datapackDirPath.resolve("bundle");
+		createDatapack(packPath, "wave_pack");
+		createEmote(packPath, "bow_pack", "Bow", "wave");
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
+
+		assertEquals(List.of(), definitions);
+	}
+
 	private void createDatapack(Path packPath, String namespace) throws IOException {
 		Files.createDirectories(packPath);
 		Files.writeString(packPath.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":61,\"description\":\"test\"}}");
