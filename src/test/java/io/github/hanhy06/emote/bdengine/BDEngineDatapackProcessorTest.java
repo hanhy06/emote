@@ -18,7 +18,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BDEngineDatapackProcessorTest {
 	@Test
-	void readDefinitionsUsesIdentifierConfigMetadata(@TempDir Path tempDir) throws IOException {
+	void readDefinitionsIgnoresPackWithoutEmoteMetadata(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		Path packPath = datapackDirPath.resolve("alpha_pack");
+		createDatapack(packPath, "wave_pack");
+		Files.delete(packPath.resolve("emote-datapack.json"));
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
+			"",
+			new IdentifierEntry("wave_pack", "Ignored", "ignored", "Ignored", "default")
+		));
+
+		assertEquals(List.of(), definitions);
+	}
+
+	@Test
+	void readDefinitionsUsesDatapackMetadata(@TempDir Path tempDir) throws IOException {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
 
@@ -34,6 +50,7 @@ class BDEngineDatapackProcessorTest {
 		assertEquals("Friendly wave", definitions.get(0).description());
 		assertEquals("wave", definitions.get(0).commandName());
 		assertEquals("idle", definitions.get(0).defaultAnimationName());
+		assertEquals(false, definitions.get(0).hidePlayer());
 	}
 
 	@Test
@@ -78,6 +95,16 @@ class BDEngineDatapackProcessorTest {
 	private void createDatapack(Path packPath, String namespace, boolean createLoopFunction) throws IOException {
 		Files.createDirectories(packPath);
 		Files.writeString(packPath.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":61,\"description\":\"test\"}}");
+		Files.writeString(packPath.resolve("emote-datapack.json"), """
+			{
+			  "schema_version": 1,
+			  "name": "Wave",
+			  "description": "Friendly wave",
+			  "command_name": "wave",
+			  "default_animation": "idle",
+			  "hide_player": false
+			}
+			""");
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_"));
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default"));
 		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_").resolve("create.mcfunction"), "");

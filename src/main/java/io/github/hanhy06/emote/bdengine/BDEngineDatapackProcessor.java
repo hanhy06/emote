@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.bdengine;
 
+import com.google.gson.Gson;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.IdentifierConfig;
@@ -36,6 +37,8 @@ public class BDEngineDatapackProcessor {
     private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
     private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
     private static final String LOOP_PLAY_FUNCTION_NAME = "play_anim_loop.mcfunction";
+    private static final String EMOTE_METADATA_FILE_NAME = "emote-datapack.json";
+    private static final Gson GSON = new Gson();
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
@@ -204,7 +207,8 @@ public class BDEngineDatapackProcessor {
     }
 
     private boolean hasConfiguredNamespaces(Path packRootPath, Set<String> configuredNamespaces) {
-        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
+        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))
+                || !Files.isRegularFile(packRootPath.resolve(EMOTE_METADATA_FILE_NAME))) {
             return false;
         }
 
@@ -272,6 +276,11 @@ public class BDEngineDatapackProcessor {
             return List.of();
         }
 
+        EmoteDatapackMetadata metadata = readMetadata(packRootPath.resolve(EMOTE_METADATA_FILE_NAME));
+        if (metadata == null) {
+            return List.of();
+        }
+
         Path dataPath = packRootPath.resolve("data");
         if (!Files.isDirectory(dataPath)) {
             return List.of();
@@ -286,7 +295,7 @@ public class BDEngineDatapackProcessor {
                     continue;
                 }
 
-                EmoteDefinition definition = readDefinition(packPath, namespacePath, identifierEntry);
+                EmoteDefinition definition = readDefinition(packPath, namespacePath, metadata);
                 if (definition != null) {
                     definitions.add(definition);
                 }
@@ -298,7 +307,20 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(definitions);
     }
 
-    private EmoteDefinition readDefinition(Path packPath, Path namespacePath, IdentifierEntry identifierEntry) {
+    private EmoteDatapackMetadata readMetadata(Path metadataPath) {
+        if (!Files.isRegularFile(metadataPath)) {
+            return null;
+        }
+
+        try {
+            return GSON.fromJson(Files.readString(metadataPath), EmoteDatapackMetadata.class);
+        } catch (IOException | RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to read emote metadata from {}", metadataPath, exception);
+            return null;
+        }
+    }
+
+    private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteDatapackMetadata metadata) {
         Path functionPath = findFunctionPath(namespacePath);
         if (functionPath == null) {
             return null;
@@ -314,11 +336,11 @@ public class BDEngineDatapackProcessor {
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
                 namespace,
-                identifierEntry.name().trim(),
-                identifierEntry.description().trim(),
-                createCommandName(packPath, namespace, identifierEntry.command_name()),
-                createDefaultAnimationName(identifierEntry.default_animation_name()),
-                identifierEntry.hide_player(),
+                metadata.name().trim(),
+                metadata.description().trim(),
+                createCommandName(packPath, namespace, metadata.command_name()),
+                createDefaultAnimationName(metadata.default_animation()),
+                metadata.hide_player(),
                 packPath,
                 createFunctionData.partCount(),
                 animations,
