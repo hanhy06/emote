@@ -7,8 +7,4 @@ public record PackOverride(boolean enabled, String permission) {
         Objects.requireNonNull(permission, "permission");
         permission = permission.trim();
     }
-
-    public static PackOverride createDefault() {
-        return new PackOverride(true, "");
-    }
 }

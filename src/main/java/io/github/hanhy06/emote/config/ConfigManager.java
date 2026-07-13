@@ -127,13 +127,13 @@ public class ConfigManager {
         this.packListeners.add(listener);
     }
 
-    public void broadcastConfig() {
+    private void broadcastConfig() {
         for (ConfigListener listener : this.listeners) {
             listener.onConfigReload(this.config);
         }
     }
 
-    public void broadcastPackConfig() {
+    private void broadcastPackConfig() {
         for (PackConfigListener listener : this.packListeners) {
             listener.onPackConfigReload(this.packConfig);
         }
