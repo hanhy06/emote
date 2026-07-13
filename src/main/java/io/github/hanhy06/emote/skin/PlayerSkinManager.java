@@ -90,9 +90,7 @@ public class PlayerSkinManager implements ConfigListener {
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
             scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
-            return PlayerSkinPreparationResult.failure(
-                    "Player skin is being prepared (" + savedTextureUrls.size() + "/" + requiredTextureKeys.size() + ")."
-            );
+            return PlayerSkinPreparationResult.failure("Player skin is being prepared. Try again shortly.");
         }
         return PlayerSkinPreparationResult.ready(
                 new PreparedPlayerSkin(savedTextureUrls)
