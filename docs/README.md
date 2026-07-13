@@ -6,16 +6,18 @@ Emote is a Fabric mod that plays humanoid animations created with BD Engine as M
 
 The mod is designed with server-side use in mind. Its main feature, emote playback, works when installed only on the server. Installing the mod on the client is optional.
 
+> Don’t judge the mod by the demo—the developer is a programmer, not an animator. I’m looking forward to seeing the much better emotes you create!
+
 ## Usage
 
-| Action | Description |
-|---|---|
-| `/emote` | Opens the emote menu. |
-| `/emote search` | Opens the emote search dialog. |
-| `/emote play <emote>` | Plays an emote by command name or namespace. |
-| `/emote stop` | Stops the currently playing emote. |
-| `/emote reload` | Reloads the configuration and emote datapacks. |
-| V key | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
+| Action                | Description                                                                                              |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/emote`              | Opens the emote menu.                                                                                    |
+| `/emote search`       | Opens the emote search dialog.                                                                           |
+| `/emote play <emote>` | Plays an emote by command name or namespace.                                                             |
+| `/emote stop`         | Stops the currently playing emote.                                                                       |
+| `/emote reload`       | Reloads the configuration and emote datapacks.                                                           |
+| V key                 | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
 
 ## Adding Emotes
 
@@ -37,15 +39,15 @@ python docs\emote.py `
   path\to\project.zip
 ```
 
-| Option | Description |
-|---|---|
-| `--name` | Sets the name shown in the menu and emote wheel. |
-| `--description` | Sets the emote description. |
-| `--command-name` | Sets the name used by `/emote play`. |
-| `--entrypoint` | Sets the function path to play. The default is `a/default/play_anim_loop`. |
-| `--show-player` | Keeps the actual player visible during playback. |
-| `--swap-left-right` | Swaps the automatically detected left and right body parts. |
-| `--output-dir` | Sets the directory for generated ZIP files. |
+| Option              | Description                                                                |
+| ------------------- | -------------------------------------------------------------------------- |
+| `--name`            | Sets the name shown in the menu and emote wheel.                           |
+| `--description`     | Sets the emote description.                                                |
+| `--command-name`    | Sets the name used by `/emote play`.                                       |
+| `--entrypoint`      | Sets the function path to play. The default is `a/default/play_anim_loop`. |
+| `--show-player`     | Keeps the actual player visible during playback.                           |
+| `--swap-left-right` | Swaps the automatically detected left and right body parts.                |
+| `--output-dir`      | Sets the directory for generated ZIP files.                                |
 
 Example emote datapacks are available in `docs/example`.
 
@@ -65,14 +67,16 @@ Configuration files are created automatically in `config/emote` when the server 
 }
 ```
 
-| Setting | Description |
-|---|---|
-| `menu_page_size` | Number of emotes displayed on each menu page. |
-| `mineskin_api_key` | MineSkin API key used to apply player skins. |
+| Setting                          | Description                                                                                                    |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `menu_page_size`                 | Number of emotes displayed on each menu page.                                                                  |
+| `mineskin_api_key`               | MineSkin API key used to apply player skins.                                                                   |
 | `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. Must be between 1 and 60. |
-| `emote_permission` | Base permission required to use emote features. |
+| `emote_permission`               | Base permission required to use emote features.                                                                |
 
 When a [MineSkin API](https://account.mineskin.org/) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
+
+MineSkin's current free-tier rate limit is sufficient for typical small servers and private sessions with friends. Since processed skins are cached, the API normally only needs to process a skin when it has not been seen before or has changed.
 
 Without an API key, or if the player's skin cannot be prepared, the default skin included in the datapack is used instead.
 
