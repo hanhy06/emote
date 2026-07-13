@@ -9,13 +9,11 @@ import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.phys.AABB;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -38,7 +36,6 @@ import java.util.concurrent.Executors;
 public class PlayerSkinManager implements ConfigListener {
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
-    private static final double SKIN_SEARCH_DISTANCE = 8.0D;
 
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
     private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
@@ -105,7 +102,6 @@ public class PlayerSkinManager implements ConfigListener {
         if (preparedPlayerSkin == null || definition.skinParts().isEmpty()) {
             return;
         }
-        AABB searchBox = player.getBoundingBox().inflate(SKIN_SEARCH_DISTANCE);
         Set<String> requestedTags = new LinkedHashSet<>();
         Map<String, EmoteSkinPart> skinPartByTag = new HashMap<>();
         for (EmoteSkinPart skinPart : definition.skinParts()) {
@@ -114,22 +110,27 @@ public class PlayerSkinManager implements ConfigListener {
             skinPartByTag.put(requestedTag, skinPart);
         }
 
-        ServerLevel level = player.level();
-        List<Display.ItemDisplay> displays = level.getEntitiesOfClass(
-                Display.ItemDisplay.class,
-                searchBox,
-                display -> containsRequestedTag(display.entityTags(), requestedTags)
-        );
         Set<String> appliedTags = new HashSet<>();
-        for (Display.ItemDisplay display : displays) {
+        for (var entity : player.level().getAllEntities()) {
+            if (!(entity instanceof Display.ItemDisplay display)) {
+                continue;
+            }
             String tag = findRequestedTag(display.entityTags(), requestedTags);
-            if (tag == null || !appliedTags.add(tag)) {
+            if (tag == null || appliedTags.contains(tag)) {
                 continue;
             }
             EmoteSkinPart skinPart = skinPartByTag.get(tag);
-            if (skinPart != null) {
-                applyMineSkinProfile(display, skinPart, preparedPlayerSkin);
+            if (skinPart != null && applyMineSkinProfile(display, skinPart, preparedPlayerSkin)) {
+                appliedTags.add(tag);
             }
+        }
+        if (appliedTags.size() != requestedTags.size()) {
+            Emote.LOGGER.warn(
+                    "Applied player skin to {}/{} parts for {}",
+                    appliedTags.size(),
+                    requestedTags.size(),
+                    definition.namespace()
+            );
         }
     }
 
@@ -137,22 +138,22 @@ public class PlayerSkinManager implements ConfigListener {
         this.pendingMineSkinBakeKeys.clear();
     }
 
-    private void applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
+    private boolean applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
         String textureUrl = preparedSkin.findTextureUrl(skinPart.skinPart(), skinPart.skinSegment());
         if (textureUrl == null) {
-            return;
+            return false;
         }
         SlotAccess itemSlot = display.getSlot(0);
         if (itemSlot == null) {
-            return;
+            return false;
         }
         ItemStack itemStack = itemSlot.get();
         if (!itemStack.is(Items.PLAYER_HEAD)) {
-            return;
+            return false;
         }
         ItemStack profileStack = itemStack.copy();
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile("emote", textureUrl));
-        itemSlot.set(profileStack);
+        return itemSlot.set(profileStack);
     }
 
     private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
@@ -305,10 +306,6 @@ public class PlayerSkinManager implements ConfigListener {
         } finally {
             connection.disconnect();
         }
-    }
-
-    private boolean containsRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
-        return entityTags.stream().anyMatch(requestedTags::contains);
     }
 
     private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
