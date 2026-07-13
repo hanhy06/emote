@@ -5,6 +5,9 @@ import io.github.hanhy06.emote.config.data.PackConfig;
 import io.github.hanhy06.emote.config.data.PackOverride;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.skin.EmoteSkinPart;
+import io.github.hanhy06.emote.skin.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.PlayerSkinSegment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -113,6 +116,31 @@ class BDEngineDatapackProcessorTest {
 		assertEquals(List.of(), definitions);
 	}
 
+	@Test
+	void readDefinitionsAssignsRaisedArmSkinFromShoulderToHand(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		Path packPath = datapackDirPath.resolve("dance_pack");
+		createDatapack(packPath, "dance");
+		Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
+		Files.writeString(createFunctionPath, String.join("\n",
+			createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
+			createPlayerHead("dance", 11, "left_arm", 0.5D, 1.0D, 0.0D, 0.25D),
+			createPlayerHead("dance", 12, "left_arm", 0.5D, 1.0D, 0.0D, 0.5D),
+			createPlayerHead("dance", 13, "left_arm", 0.2D, 1.6D, 0.0D, 0.5D),
+			createPlayerHead("dance", 14, "left_arm", 0.4D, 1.3D, 0.0D, 0.25D)
+		));
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteSkinPart> skinParts = processor.readDefinitions(datapackDirPath, PackConfig.createDefault())
+			.getFirst()
+			.skinParts();
+
+		assertEquals(new PlayerSkinSegment(0, 4), findSegment(skinParts, 13));
+		assertEquals(new PlayerSkinSegment(4, 6), findSegment(skinParts, 14));
+		assertEquals(new PlayerSkinSegment(6, 8), findSegment(skinParts, 11));
+		assertEquals(new PlayerSkinSegment(8, 12), findSegment(skinParts, 12));
+	}
+
 	private void createDatapack(Path packPath, String namespace) throws IOException {
 		Files.createDirectories(packPath);
 		Files.writeString(packPath.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":61,\"description\":\"test\"}}");
@@ -135,5 +163,27 @@ class BDEngineDatapackProcessorTest {
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default"));
 		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_").resolve("create.mcfunction"), "");
 		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default").resolve("play_anim_loop.mcfunction"), "");
+	}
+
+	private String createPlayerHead(
+		String namespace,
+		int partIndex,
+		String skinPart,
+		double anchorX,
+		double anchorY,
+		double anchorZ,
+		double scaleY
+	) {
+		return "summon item_display ~ ~ ~ {id:\"minecraft:item_display\",item:{id:\"minecraft:player_head\",components:{\"minecraft:profile\":{name:\"emote:%s\"}}},transformation:[1f,0f,0f,%sf,0f,%sf,0f,%sf,0f,0f,1f,%sf,0f,0f,0f,1f],Tags:[\"%s_%s\"]}"
+			.formatted(skinPart, anchorX, scaleY, anchorY - scaleY * 0.5D, anchorZ, namespace, partIndex);
+	}
+
+	private PlayerSkinSegment findSegment(List<EmoteSkinPart> skinParts, int partIndex) {
+		return skinParts.stream()
+			.filter(part -> part.partIndex() == partIndex)
+			.filter(part -> part.skinPart() == PlayerSkinPart.LEFT_ARM)
+			.findFirst()
+			.orElseThrow()
+			.skinSegment();
 	}
 }

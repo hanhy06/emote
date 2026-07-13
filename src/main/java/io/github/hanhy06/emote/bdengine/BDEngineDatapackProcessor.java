@@ -416,6 +416,9 @@ public class BDEngineDatapackProcessor {
         return new RawSkinPart(
                 partIndex,
                 playerSkinPart,
+                readAnchorX(transformationValues),
+                readAnchorY(transformationValues),
+                readAnchorZ(transformationValues),
                 readLocalY(transformationValues),
                 readLocalYScale(transformationValues)
         );
@@ -431,21 +434,76 @@ public class BDEngineDatapackProcessor {
             rawSkinPartMap.computeIfAbsent(rawSkinPart.skinPart(), ignored -> new ArrayList<>()).add(rawSkinPart);
         }
 
+        double[] limbRoot = averageAnchor(rawSkinPartMap.get(PlayerSkinPart.BODY));
+        if (limbRoot == null) {
+            limbRoot = averageAnchor(rawSkinPartMap.get(PlayerSkinPart.HEAD));
+        }
+
         List<EmoteSkinPart> skinParts = new ArrayList<>();
         for (Map.Entry<PlayerSkinPart, List<RawSkinPart>> entry : rawSkinPartMap.entrySet()) {
             PlayerSkinPart skinPart = entry.getKey();
             List<RawSkinPart> partsForSkin = new ArrayList<>(entry.getValue());
-            partsForSkin.sort(
-                    // BDEngine export order stays stable even if a limb is posed upward in create.mcfunction.
-                    Comparator.comparingInt(RawSkinPart::partIndex)
-                            .thenComparing(Comparator.comparingDouble(RawSkinPart::localY).reversed())
-            );
+            if (isLimb(skinPart) && limbRoot != null) {
+                partsForSkin = orderConnectedParts(partsForSkin, limbRoot);
+            } else {
+                partsForSkin.sort(
+                        Comparator.comparingInt(RawSkinPart::partIndex)
+                                .thenComparing(Comparator.comparingDouble(RawSkinPart::localY).reversed())
+                );
+            }
 
             skinParts.addAll(createSkinParts(skinPart, partsForSkin));
         }
 
         skinParts.sort(Comparator.comparingInt(EmoteSkinPart::partIndex));
         return List.copyOf(skinParts);
+    }
+
+    private boolean isLimb(PlayerSkinPart skinPart) {
+        return skinPart == PlayerSkinPart.LEFT_ARM
+                || skinPart == PlayerSkinPart.RIGHT_ARM
+                || skinPart == PlayerSkinPart.LEFT_LEG
+                || skinPart == PlayerSkinPart.RIGHT_LEG;
+    }
+
+    private double[] averageAnchor(List<RawSkinPart> parts) {
+        if (parts == null || parts.isEmpty()) {
+            return null;
+        }
+
+        double x = 0.0D;
+        double y = 0.0D;
+        double z = 0.0D;
+        for (RawSkinPart part : parts) {
+            x += part.anchorX();
+            y += part.anchorY();
+            z += part.anchorZ();
+        }
+        return new double[]{x / parts.size(), y / parts.size(), z / parts.size()};
+    }
+
+    private List<RawSkinPart> orderConnectedParts(List<RawSkinPart> parts, double[] limbRoot) {
+        List<RawSkinPart> remainingParts = new ArrayList<>(parts);
+        List<RawSkinPart> orderedParts = new ArrayList<>(parts.size());
+        double[] previousAnchor = limbRoot;
+        while (!remainingParts.isEmpty()) {
+            double[] currentAnchor = previousAnchor;
+            RawSkinPart nextPart = remainingParts.stream()
+                    .min(Comparator.comparingDouble((RawSkinPart part) -> anchorDistanceSquared(part, currentAnchor))
+                            .thenComparingInt(RawSkinPart::partIndex))
+                    .orElseThrow();
+            orderedParts.add(nextPart);
+            remainingParts.remove(nextPart);
+            previousAnchor = new double[]{nextPart.anchorX(), nextPart.anchorY(), nextPart.anchorZ()};
+        }
+        return orderedParts;
+    }
+
+    private double anchorDistanceSquared(RawSkinPart part, double[] anchor) {
+        double offsetX = part.anchorX() - anchor[0];
+        double offsetY = part.anchorY() - anchor[1];
+        double offsetZ = part.anchorZ() - anchor[2];
+        return offsetX * offsetX + offsetY * offsetY + offsetZ * offsetZ;
     }
 
     private List<EmoteSkinPart> createSkinParts(PlayerSkinPart skinPart, List<RawSkinPart> partsForSkin) {
@@ -542,6 +600,27 @@ public class BDEngineDatapackProcessor {
         return transformationValues[7];
     }
 
+    private double readAnchorX(double[] transformationValues) {
+        if (transformationValues == null) {
+            return 0.0D;
+        }
+        return transformationValues[3] + transformationValues[1] * 0.5D;
+    }
+
+    private double readAnchorY(double[] transformationValues) {
+        if (transformationValues == null) {
+            return 0.0D;
+        }
+        return transformationValues[7] + transformationValues[5] * 0.5D;
+    }
+
+    private double readAnchorZ(double[] transformationValues) {
+        if (transformationValues == null) {
+            return 0.0D;
+        }
+        return transformationValues[11] + transformationValues[9] * 0.5D;
+    }
+
     private double readLocalYScale(double[] transformationValues) {
         if (transformationValues == null) {
             return 1.0D;
@@ -602,6 +681,14 @@ public class BDEngineDatapackProcessor {
     private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {
     }
 
-    private record RawSkinPart(int partIndex, PlayerSkinPart skinPart, double localY, double localYScale) {
+    private record RawSkinPart(
+            int partIndex,
+            PlayerSkinPart skinPart,
+            double anchorX,
+            double anchorY,
+            double anchorZ,
+            double localY,
+            double localYScale
+    ) {
     }
 }
