@@ -60,10 +60,6 @@ public class DialogManager {
             ));
         }
 
-        if (this.playbackManager.findActiveEmote(player.getUUID()) != null) {
-            actionButtons.add(createRunCommandButton("Stop", "Stop", "/emote stop"));
-        }
-
         appendPageButtons(actionButtons, dialogPage);
 
         if (actionButtons.isEmpty()) {
