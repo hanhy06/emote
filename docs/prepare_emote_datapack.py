@@ -78,6 +78,7 @@ class EmoteMetadata:
 	description: str
 	command_name: str
 	default_animation: str
+	hide_player: bool
 
 
 def main() -> int:
@@ -652,6 +653,7 @@ def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[st
 		or sanitize_command_name(namespaces[0] if len(namespaces) == 1 else get_input_stem(input_path))
 	)
 	default_animation = str(existing_meta.get("default_animation") or "default")
+	default_hide_player = bool(existing_meta.get("hide_player", True))
 
 	print()
 	print(f"[meta] {input_path.name}")
@@ -663,12 +665,14 @@ def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[st
 			description=default_description,
 			command_name=default_command_name,
 			default_animation=default_animation,
+			hide_player=default_hide_player,
 		)
 
 	name = prompt_value("name", default_name)
 	description = prompt_value("description", default_description)
 	command_name = sanitize_command_name(prompt_value("command_name", default_command_name))
 	default_animation = prompt_value("default_animation", default_animation)
+	hide_player = prompt_bool("hide_player", default_hide_player)
 	print()
 
 	return EmoteMetadata(
@@ -676,6 +680,7 @@ def prompt_emote_metadata(pack_root: Path, input_path: Path, namespaces: list[st
 		description=description,
 		command_name=command_name,
 		default_animation=default_animation,
+		hide_player=hide_player,
 	)
 
 
@@ -698,6 +703,14 @@ def prompt_value(label: str, default_value: str) -> str:
 	return value or default_value
 
 
+def prompt_bool(label: str, default_value: bool) -> bool:
+	default_label = "Y" if default_value else "N"
+	value = input(f"  {label} [y/n, {default_label}]: ").strip().lower()
+	if not value:
+		return default_value
+	return value in {"y", "yes", "true", "1"}
+
+
 def get_input_stem(input_path: Path) -> str:
 	stem = input_path.stem if input_path.is_file() else input_path.name
 	if stem.endswith(".emote"):
@@ -708,10 +721,12 @@ def get_input_stem(input_path: Path) -> str:
 def write_emote_datapack_meta(pack_root: Path, meta: EmoteMetadata) -> None:
 	meta_path = pack_root / PACK_META_FILE_NAME
 	meta = {
+		"schema_version": 1,
 		"name": meta.name,
 		"description": meta.description,
 		"command_name": meta.command_name,
 		"default_animation": meta.default_animation,
+		"hide_player": meta.hide_player,
 	}
 	meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 

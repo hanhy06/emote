@@ -1,192 +1,84 @@
 # Emote for Fabric
 
-Emote is a Minecraft Fabric emote player for BD Engine humanoid exports.
-It plays emotes from datapacks on the server, and modded clients can replace the datapack skin with the player's current skin.
+Minecraft Fabric 서버에서 BD Engine humanoid 데이터팩 이모트를 재생하는 모드입니다. 이모트 모델과 플레이어 스킨 합성은 서버에서 처리하며, MineSkin API 키가 없거나 처리가 실패하면 데이터팩에 들어 있는 기본 스킨을 그대로 사용합니다.
 
-![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
+## 설치
 
-## Quick Start
+1. 서버 `mods` 폴더에 모드 jar와 필수 의존성을 넣습니다.
+2. 이모트 데이터팩 zip 또는 폴더를 월드의 `datapacks` 폴더에 넣습니다.
+3. 서버를 시작하거나 `/emote reload`를 실행합니다.
 
-### Included Example Datapacks
+루트에 유효한 `emote-datapack.json`이 있는 데이터팩은 자동으로 발견되고 활성화됩니다. 별도 등록은 필요하지 않습니다.
 
-The repository already includes ready-to-test example datapacks in [`docs/example`](https://github.com/hanhy06/emote/tree/master/docs/example):
+## 데이터팩 메타데이터
 
-- `emote.cry.zip`
-- `emote.hello.zip`
-- `emote.no.zip`
-- `emote.yes.zip`
-
-To test them as-is:
-
-1. Put the mod jar into the server `mods` folder.
-2. Copy the four zip files above into the world `datapacks` folder.
-3. Replace `config/emote/pack.json` with this:
+각 이모트 데이터팩 루트에 `emote-datapack.json`을 둡니다.
 
 ```json
 {
-  "permissions": {
-    "": [
-      {
-        "datapack_identifier": "cry",
-        "name": "cry",
-        "command_name": "cry",
-        "description": "cry",
-        "default_animation_name": "default",
-        "options": "loop"
-      },
-      {
-        "datapack_identifier": "hello",
-        "name": "hello",
-        "command_name": "hello",
-        "description": "hello",
-        "default_animation_name": "default",
-        "options": "loop"
-      },
-      {
-        "datapack_identifier": "no",
-        "name": "no",
-        "command_name": "no",
-        "description": "no",
-        "default_animation_name": "default",
-        "options": "loop"
-      },
-      {
-        "datapack_identifier": "yes",
-        "name": "yes",
-        "command_name": "yes",
-        "description": "yes",
-        "default_animation_name": "default",
-        "options": "loop"
-      }
-    ]
-  }
+  "schema_version": 1,
+  "name": "Wave",
+  "description": "Friendly wave",
+  "command_name": "wave",
+  "default_animation": "default",
+  "hide_player": true
 }
 ```
 
-- Start the server or run `/emote reload`.
-- Try:
+- namespace는 `data/<namespace>`에서 자동 판별합니다.
+- 일반 애니메이션은 `data/<namespace>/function/a/<animation>/play_anim.mcfunction`으로 판별합니다.
+- 같은 폴더에 `play_anim_loop.mcfunction`이 있으면 `<animation>_loop` 항목을 자동 등록합니다.
+- `hide_player`가 `true`이면 재생 중 실제 플레이어를 숨깁니다.
+- `data/<namespace>/function/_/create.mcfunction`이 있어야 이모트 namespace로 인식합니다.
 
-```mcfunction
-/emote play hello
-/emote play hello default_loop
-/emote play yes
-/emote menu
-```
-
-The example datapacks already contain `play_anim_loop.mcfunction`, so `options: "loop"` immediately adds loop entries such as `default_loop`.
-
-## Key Features
-
-- Server-side emote playback from datapacks
-- Automatic datapack discovery and reload support
-- `/emote` command
-- Optional player skin replacement on modded clients
-- Optional MineSkin upload/cache support for baked player skin textures
-- `pack.json` metadata-based loop entry generation for datapacks with `play_anim_loop.mcfunction`
-- Support for BD Engine humanoid exports that use `emote:*` skin markers
-
-## Install
-
-### Server
-
-1. Put the mod jar into the server `mods` folder.
-2. Put the emote datapack zip or folder into the world `datapacks` folder.
-3. Register the datapack namespace and metadata in `config/emote/pack.json`.
-4. Start the server or run `/emote reload`.
-5. Use `/emote`.
-
-### Client
-
-Client installation is optional.
-
-- With the client mod installed, the emote model can use the player's current skin.
-- Without the client mod, the skin defined in the datapack is used instead.
-- The example datapacks include the developer skin, so their default appearance may look unusual without client skin replacement.
-
-## Datapacks
-
-Emotes are loaded from datapacks whose namespaces are listed in `config/emote/pack.json`.
-A datapack is treated as an emote when its `data/<namespace>` folder matches a configured `datapack_identifier`.
-
-### Prepare Your Own Datapack
-
-BD Engine export zips can be prepared with [`prepare_emote_datapack.py`](https://github.com/hanhy06/emote/blob/master/docs/prepare_emote_datapack.py).
-The script adds the `emote:*` markers used for player skin support and writes an `emote.name.zip` file.
+BD Engine export zip은 준비 스크립트로 변환할 수 있습니다.
 
 ```powershell
 python docs\prepare_emote_datapack.py [--defaults] [--swap-left-right] path\to\project.zip
 ```
 
-### Animation Requirements
+스크립트는 플레이어 스킨용 `emote:*` 마커를 추가하고 위 메타데이터를 생성합니다.
 
-- A normal animation entry requires `data/<namespace>/function/a/<animation>/play_anim.mcfunction`.
-- A loop entry additionally requires `data/<namespace>/function/a/<animation>/play_anim_loop.mcfunction`.
-- The included example datapacks all provide both `play_anim.mcfunction` and `play_anim_loop.mcfunction` for `default`.
+## 설정
 
-## Config
+### `config/emote/config.json`
 
-The mod uses two config files:
+- `menu_page_size`: 메뉴 한 페이지의 이모트 수
+- `mineskin_api_key`: 서버 측 플레이어 스킨 생성에 사용할 MineSkin API 키. 비어 있으면 API를 호출하지 않고 데이터팩 기본 스킨을 사용합니다.
+- `mineskin_poll_interval_seconds`: MineSkin 작업 상태 확인 간격(1~60초, 기본 3초)
+- `emote_permission`: 모든 이모트 사용에 필요한 기본 권한
 
-- `config/emote/config.json`
-- `config/emote/pack.json`
+성공한 MineSkin 결과와 처리 중인 작업은 디스크에 저장되므로 같은 스킨을 반복 업로드하지 않습니다.
 
-### `config.json`
+### `config/emote/packs.json`
 
-- `menu_page_size`: number of emotes shown per menu page
-- `mineskin_api_key`: optional MineSkin API key used to generate and permanently cache server-side player-head textures; when blank, datapack skins remain unchanged
-- `mineskin_poll_interval_seconds`: seconds between MineSkin queue status checks, from `1` to `60` (default: `3`)
-- `emote_permission`: default permission required to use emotes
-
-### `pack.json`
-
-`pack.json` maps permission strings to emote pack entries.
+설정에 없는 이모트 namespace는 기본적으로 활성화되고 추가 권한이 없습니다. 끄거나 별도 권한을 붙일 때만 override를 추가합니다.
 
 ```json
 {
-  "permissions": {
-    "": [
-      {
-        "datapack_identifier": "hello",
-        "name": "hello",
-        "command_name": "hello",
-        "description": "hello",
-        "default_animation_name": "default",
-        "options": "loop"
-      }
-    ],
-    "emote.pack.vip": [
-      {
-        "datapack_identifier": "wave_pack",
-        "name": "wave",
-        "command_name": "wave",
-        "description": "wave",
-        "default_animation_name": "default",
-        "options": ""
-      }
-    ]
+  "packs": {
+    "wave_pack": {
+      "enabled": true,
+      "permission": "emote.pack.vip"
+    },
+    "disabled_pack": {
+      "enabled": false,
+      "permission": ""
+    }
   }
 }
 ```
 
-- `permissions` maps a permission string to a list of emote packs
-- `datapack_identifier` is the datapack namespace, which means the folder name under `data/<namespace>`
-- An empty permission key `""` means the pack has no extra pack-specific permission
-- The same `datapack_identifier` cannot appear in more than one permission group
-- `command_name`, `name`, `description`, `default_animation_name`, and `options` are defined here instead of being read from the datapack itself
+## 명령어
 
-### `options`
+```mcfunction
+/emote menu
+/emote play wave
+/emote play wave default_loop
+/emote stop
+/emote reload
+```
 
-`options` is a space-separated string.
+## 라이선스
 
-- `loop`: adds extra `*_loop` animation entries when the datapack has `play_anim_loop.mcfunction`
-- `visible_player`: keeps the real player visible instead of forcing invisibility during playback
-
-Example:
-
-- `""`
-- `"loop"`
-- `"visible_player loop"`
-
-## License
-
-This project is licensed under the Apache License 2.0.
+Apache License 2.0
