@@ -69,9 +69,14 @@ class BodyFrame:
 		return dot_vector(offset_x, offset_y, offset_z, self.local_x_axis_x, self.local_x_axis_y, self.local_x_axis_z)
 
 	def vertical_offset(self, player_head_part: PlayerHeadPart) -> float:
-		offset_x = player_head_part.anchor_x - self.anchor_x
-		offset_y = player_head_part.anchor_y - self.anchor_y
-		offset_z = player_head_part.anchor_z - self.anchor_z
+		return self.vertical_offset_coordinates(
+			(player_head_part.anchor_x, player_head_part.anchor_y, player_head_part.anchor_z)
+		)
+
+	def vertical_offset_coordinates(self, coordinates: tuple[float, float, float]) -> float:
+		offset_x = coordinates[0] - self.anchor_x
+		offset_y = coordinates[1] - self.anchor_y
+		offset_z = coordinates[2] - self.anchor_z
 		return dot_vector(offset_x, offset_y, offset_z, self.local_y_axis_x, self.local_y_axis_y, self.local_y_axis_z)
 
 
@@ -328,12 +333,14 @@ def update_create_function(create_function_text: str, namespace: str, swap_left_
 	last_index = 0
 	for match, player_head_part in zip(matches, player_head_parts, strict=True):
 		updated_chunks.append(create_function_text[last_index:match.start()])
-		marker_name = part_names[player_head_part.part_index]
-		updated_chunks.append(inject_profile_name(match.group(0), marker_name))
+		marker_name = part_names.get(player_head_part.part_index)
+		updated_chunks.append(
+			match.group(0) if marker_name is None else inject_profile_name(match.group(0), marker_name)
+		)
 		last_index = match.end()
 
 	updated_chunks.append(create_function_text[last_index:])
-	return "".join(updated_chunks), len(player_head_parts)
+	return "".join(updated_chunks), len(part_names)
 
 
 def find_entity_tag_namespace(create_function_text: str) -> str:
@@ -445,7 +452,7 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
 	if not remaining_parts:
 		return assignments
 
-	body_parts = select_body_parts(remaining_parts)
+	body_parts = select_body_parts(remaining_parts, head_part)
 	if not body_parts:
 		return assignments
 
@@ -453,13 +460,18 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
 		assignments[part.part_index] = "emote:body"
 
 	body_frame = create_body_frame(body_parts)
-	side_parts = [part for part in remaining_parts if part.part_index not in assignments]
+	side_parts = select_limb_candidates(
+		[part for part in remaining_parts if part.part_index not in assignments],
+		head_part,
+	)
+	max_assignment_distance = max(head_part.scale_x, head_part.scale_y, head_part.scale_z) * 0.6
 	assign_side_parts(
 		[part for part in side_parts if body_frame.lateral_offset(part) >= 0.0],
 		body_frame,
 		"emote:left_arm",
 		"emote:left_leg",
 		assignments,
+		max_assignment_distance,
 	)
 	assign_side_parts(
 		[part for part in side_parts if body_frame.lateral_offset(part) < 0.0],
@@ -467,10 +479,8 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
 		"emote:right_arm",
 		"emote:right_leg",
 		assignments,
+		max_assignment_distance,
 	)
-
-	for part in player_head_parts:
-		assignments.setdefault(part.part_index, "emote:body")
 
 	return assignments
 
@@ -479,25 +489,66 @@ def select_head_part(player_head_parts: list[PlayerHeadPart]) -> PlayerHeadPart:
 	return max(
 		player_head_parts,
 		key=lambda part: (
-			part.anchor_y,
-			part.y,
-			-cube_deviation(part),
+			cube_similarity(part),
 			part.scale_x * part.scale_y * part.scale_z,
+			-part.part_index,
 		),
 	)
 
 
-def cube_deviation(player_head_part: PlayerHeadPart) -> float:
-	return (
-		abs(player_head_part.scale_x - player_head_part.scale_y)
-		+ abs(player_head_part.scale_y - player_head_part.scale_z)
-		+ abs(player_head_part.scale_z - player_head_part.scale_x)
+def cube_similarity(player_head_part: PlayerHeadPart) -> float:
+	largest_scale = max(player_head_part.scale_x, player_head_part.scale_y, player_head_part.scale_z)
+	if largest_scale <= 0.0:
+		return 0.0
+	return min(player_head_part.scale_x, player_head_part.scale_y, player_head_part.scale_z) / largest_scale
+
+
+def select_body_parts(
+	player_head_parts: list[PlayerHeadPart],
+	head_part: PlayerHeadPart,
+) -> list[PlayerHeadPart]:
+	body_candidates = [
+		part
+		for part in player_head_parts
+		if part.scale_x >= head_part.scale_x * 0.75
+		if part.scale_z >= head_part.scale_z * 0.25
+	]
+	if not body_candidates:
+		body_scale_x = max(part.scale_x for part in player_head_parts)
+		return [part for part in player_head_parts if body_scale_x - part.scale_x <= CLUSTER_TOLERANCE]
+
+	body_anchor_part = min(body_candidates, key=lambda part: anchor_distance(part, head_part))
+	return [
+		part
+		for part in body_candidates
+		if anchor_distance(part, body_anchor_part) <= CLUSTER_TOLERANCE
+	]
+
+
+def select_limb_candidates(
+	player_head_parts: list[PlayerHeadPart],
+	head_part: PlayerHeadPart,
+) -> list[PlayerHeadPart]:
+	return [
+		part
+		for part in player_head_parts
+		if head_part.scale_x * 0.2 <= part.scale_x <= head_part.scale_x * 0.75
+		if part.scale_z >= head_part.scale_z * 0.2
+	]
+
+
+def anchor_distance(first_part: PlayerHeadPart, second_part: PlayerHeadPart) -> float:
+	return coordinate_distance(
+		(first_part.anchor_x, first_part.anchor_y, first_part.anchor_z),
+		(second_part.anchor_x, second_part.anchor_y, second_part.anchor_z),
 	)
 
 
-def select_body_parts(player_head_parts: list[PlayerHeadPart]) -> list[PlayerHeadPart]:
-	body_scale_x = max(part.scale_x for part in player_head_parts)
-	return [part for part in player_head_parts if body_scale_x - part.scale_x <= CLUSTER_TOLERANCE]
+def coordinate_distance(first: tuple[float, float, float], second: tuple[float, float, float]) -> float:
+	offset_x = first[0] - second[0]
+	offset_y = first[1] - second[1]
+	offset_z = first[2] - second[2]
+	return math.sqrt(offset_x * offset_x + offset_y * offset_y + offset_z * offset_z)
 
 
 def create_body_frame(player_head_parts: list[PlayerHeadPart]) -> BodyFrame:
@@ -567,8 +618,37 @@ def assign_side_parts(
 	arm_marker_name: str,
 	leg_marker_name: str,
 	assignments: dict[int, str],
+	max_assignment_distance: float,
 ) -> None:
 	if not side_parts:
+		return
+
+	anchor_clusters = [cluster for cluster in cluster_by_anchor(side_parts) if len(cluster) >= 2]
+	if len(anchor_clusters) >= 2:
+		first_cluster, second_cluster = find_farthest_anchor_clusters(anchor_clusters)
+		first_center = average_anchor(first_cluster)
+		second_center = average_anchor(second_cluster)
+		if body_frame.vertical_offset_coordinates(first_center) >= body_frame.vertical_offset_coordinates(second_center):
+			arm_cluster, arm_center = first_cluster, first_center
+			leg_cluster, leg_center = second_cluster, second_center
+		else:
+			arm_cluster, arm_center = second_cluster, second_center
+			leg_cluster, leg_center = first_cluster, first_center
+		limb_roots = sorted(
+			(
+				(min(part.part_index for part in arm_cluster), arm_center, arm_marker_name),
+				(min(part.part_index for part in leg_cluster), leg_center, leg_marker_name),
+			),
+			key=lambda root: root[0],
+		)
+
+		for part in side_parts:
+			part_anchor = (part.anchor_x, part.anchor_y, part.anchor_z)
+			matching_roots = [root for root in limb_roots if root[0] <= part.part_index]
+			selected_root = matching_roots[-1] if matching_roots else limb_roots[0]
+			if coordinate_distance(part_anchor, selected_root[1]) > max_assignment_distance:
+				continue
+			assignments[part.part_index] = selected_root[2]
 		return
 
 	vertical_clusters = cluster_by_vertical_offset(side_parts, body_frame)
@@ -583,6 +663,40 @@ def assign_side_parts(
 		return
 
 	assign_cluster_by_height(side_parts, body_frame, arm_marker_name, leg_marker_name, assignments)
+
+
+def cluster_by_anchor(player_head_parts: list[PlayerHeadPart]) -> list[list[PlayerHeadPart]]:
+	clusters: list[list[PlayerHeadPart]] = []
+	for part in sorted(player_head_parts, key=lambda item: item.part_index):
+		for cluster in clusters:
+			if coordinate_distance((part.anchor_x, part.anchor_y, part.anchor_z), average_anchor(cluster)) <= CLUSTER_TOLERANCE:
+				cluster.append(part)
+				break
+		else:
+			clusters.append([part])
+	return clusters
+
+
+def find_farthest_anchor_clusters(
+	anchor_clusters: list[list[PlayerHeadPart]],
+) -> tuple[list[PlayerHeadPart], list[PlayerHeadPart]]:
+	farthest_pair = (anchor_clusters[0], anchor_clusters[1])
+	farthest_distance = -1.0
+	for first_index, first_cluster in enumerate(anchor_clusters[:-1]):
+		for second_cluster in anchor_clusters[first_index + 1:]:
+			distance = coordinate_distance(average_anchor(first_cluster), average_anchor(second_cluster))
+			if distance > farthest_distance:
+				farthest_pair = first_cluster, second_cluster
+				farthest_distance = distance
+	return farthest_pair
+
+
+def average_anchor(player_head_parts: list[PlayerHeadPart]) -> tuple[float, float, float]:
+	return (
+		average_value(player_head_parts, lambda part: part.anchor_x),
+		average_value(player_head_parts, lambda part: part.anchor_y),
+		average_value(player_head_parts, lambda part: part.anchor_z),
+	)
 
 
 def cluster_by_vertical_offset(player_head_parts: list[PlayerHeadPart], body_frame: BodyFrame) -> list[list[PlayerHeadPart]]:
