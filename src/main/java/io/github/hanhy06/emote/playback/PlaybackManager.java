@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -19,13 +18,14 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -66,12 +66,17 @@ public class PlaybackManager {
         }
 
         resetPlayerPlayback(player, namespace);
+        ActiveEmote namespaceTimeline = findActiveNamespaceEmote(namespace);
 
         PlaybackStartSnapshot startSnapshot = startPlayback(
                 player,
                 definition,
-                functionIds
+                functionIds,
+                namespaceTimeline
         );
+        if (startSnapshot == null) {
+            return PlaybackStartResult.failure("Datapack did not create an emote root.");
+        }
         ActiveEmote activeEmote = createActiveEmote(
                 player,
                 namespace,
@@ -159,26 +164,48 @@ public class PlaybackManager {
     }
 
     private void resetPlayerPlayback(ServerPlayer player, String namespace) {
-        stopMatchingNamespaceEmotes(player.getUUID(), namespace);
         this.stopEmote(player);
-        cleanupNamespace(player, namespace);
+        if (!hasActiveNamespace(namespace)) {
+            cleanupNamespace(player, namespace);
+        }
     }
 
     private PlaybackStartSnapshot startPlayback(
             ServerPlayer player,
             EmoteDefinition definition,
-            PlaybackFunctionIds functionIds
+            PlaybackFunctionIds functionIds,
+            ActiveEmote namespaceTimeline
     ) {
+        ServerLevel level = player.level();
+        Set<UUID> existingEntityUuids = findNamespaceEntityUuids(level, definition.namespace());
         executeFunction(player, functionIds.createFunctionId());
-        alignRootWithPlayer(player, definition.namespace());
+        Set<UUID> instanceEntityUuids = findNamespaceEntityUuids(level, definition.namespace());
+        instanceEntityUuids.removeAll(existingEntityUuids);
 
-        executeFunction(player, functionIds.playFunctionId());
+        UUID rootEntityUuid = findRootEntityUuid(level, definition.namespace(), instanceEntityUuids);
+        if (rootEntityUuid == null) {
+            cleanupInstanceEntities(level, instanceEntityUuids);
+            return null;
+        }
+
+        alignRootWithPlayer(player, rootEntityUuid);
+
+        if (namespaceTimeline == null) {
+            executeFunction(player, functionIds.playFunctionId());
+        } else {
+            copyAnimationState(namespaceTimeline, level.getEntity(rootEntityUuid));
+        }
         boolean playerVisibilityManaged = definition.hidePlayer();
         boolean wasInvisible = player.isInvisible();
         if (playerVisibilityManaged) {
             player.setInvisible(true);
         }
-        return new PlaybackStartSnapshot(playerVisibilityManaged, wasInvisible);
+        return new PlaybackStartSnapshot(
+                rootEntityUuid,
+                instanceEntityUuids,
+                playerVisibilityManaged,
+                wasInvisible
+        );
     }
 
     private void applyPendingPlayerSkins(MinecraftServer server) {
@@ -197,7 +224,8 @@ public class PlaybackManager {
             this.playerSkinManager.applySkinParts(
                     player,
                     pendingApplication.definition(),
-                    pendingApplication.preparedPlayerSkin()
+                    pendingApplication.preparedPlayerSkin(),
+                    activeEmote.rootEntityUuid()
             );
             this.pendingSkinApplicationMap.remove(playerUuid, pendingApplication);
         }
@@ -213,6 +241,8 @@ public class PlaybackManager {
                 player.level().dimension(),
                 namespace,
                 player.position(),
+                startSnapshot.rootEntityUuid(),
+                startSnapshot.instanceEntityUuids(),
                 startSnapshot.playerVisibilityManaged(),
                 startSnapshot.wasInvisible()
         );
@@ -227,38 +257,47 @@ public class PlaybackManager {
             return false;
         }
 
-        return true;
+        Entity rootEntity = player.level().getEntity(activeEmote.rootEntityUuid());
+        return rootEntity != null && !rootEntity.isRemoved();
     }
 
     private boolean hasMovedDuringPlayback(ServerPlayer player, ActiveEmote activeEmote) {
         return hasMoved(player.position(), activeEmote.startPosition());
     }
 
-    private void stopMatchingNamespaceEmotes(UUID playerUuid, String namespace) {
-        List<UUID> playerUuidListToStop = new ArrayList<>();
+    private ActiveEmote findActiveNamespaceEmote(String namespace) {
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
-            if (activeEmote.playerUuid().equals(playerUuid)) {
-                continue;
-            }
-
             if (!activeEmote.namespace().equals(namespace)) {
                 continue;
             }
 
-            playerUuidListToStop.add(activeEmote.playerUuid());
+            ServerLevel level = level(activeEmote);
+            Entity rootEntity = level == null ? null : level.getEntity(activeEmote.rootEntityUuid());
+            if (rootEntity != null && !rootEntity.isRemoved()) {
+                return activeEmote;
+            }
         }
 
-        for (UUID otherPlayerUuid : playerUuidListToStop) {
-            stopEmote(otherPlayerUuid);
-        }
+        return null;
+    }
+
+    private boolean hasActiveNamespace(String namespace) {
+        return findActiveNamespaceEmote(namespace) != null;
     }
 
     private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
-        executeFunction(activeEmote, activeEmote.namespace() + ":_/stop_anim");
-        executeFunction(activeEmote, activeEmote.namespace() + ":_/delete");
+        boolean lastNamespaceInstance = !hasActiveNamespace(activeEmote.namespace());
+        if (lastNamespaceInstance) {
+            executeFunction(activeEmote, activeEmote.namespace() + ":_/stop_anim");
+            executeFunction(activeEmote, activeEmote.namespace() + ":_/delete");
+        }
+
         ServerLevel level = server.getLevel(activeEmote.levelKey());
         if (level != null) {
-            cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
+            cleanupInstanceEntities(level, activeEmote.instanceEntityUuids());
+            if (lastNamespaceInstance) {
+                cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
+            }
         }
 
         ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
@@ -281,6 +320,64 @@ public class PlaybackManager {
     private boolean isLoadedFunction(MinecraftServer server, String functionId) {
         Identifier identifier = Identifier.tryParse(functionId);
         return identifier != null && server.getFunctions().get(identifier).isPresent();
+    }
+
+    private Set<UUID> findNamespaceEntityUuids(ServerLevel level, String namespace) {
+        Set<UUID> entityUuids = new HashSet<>();
+        for (Entity entity : level.getAllEntities()) {
+            if (matchesNamespaceDisplay(entity, namespace)) {
+                entityUuids.add(entity.getUUID());
+            }
+        }
+        return entityUuids;
+    }
+
+    private UUID findRootEntityUuid(ServerLevel level, String namespace, Set<UUID> instanceEntityUuids) {
+        String rootTag = namespace + "_root";
+        for (UUID entityUuid : instanceEntityUuids) {
+            Entity entity = level.getEntity(entityUuid);
+            if (entity instanceof Display.BlockDisplay && entity.entityTags().contains(rootTag)) {
+                return entityUuid;
+            }
+        }
+        return null;
+    }
+
+    private void copyAnimationState(ActiveEmote namespaceTimeline, Entity targetRoot) {
+        ServerLevel timelineLevel = level(namespaceTimeline);
+        Entity timelineRoot = timelineLevel == null
+                ? null
+                : timelineLevel.getEntity(namespaceTimeline.rootEntityUuid());
+        if (timelineRoot == null || targetRoot == null) {
+            return;
+        }
+
+        for (String tag : timelineRoot.entityTags()) {
+            if (tag.startsWith("animation_")) {
+                targetRoot.addTag(tag);
+            }
+        }
+    }
+
+    private void cleanupInstanceEntities(ServerLevel level, Set<UUID> instanceEntityUuids) {
+        Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
+        for (UUID entityUuid : instanceEntityUuids) {
+            Entity entity = level.getEntity(entityUuid);
+            if (entity != null) {
+                collectEntityTree(entity, entitiesToKill);
+            }
+        }
+
+        for (Entity entity : entitiesToKill.values()) {
+            if (!entity.isRemoved()) {
+                entity.kill(level);
+            }
+        }
+    }
+
+    private ServerLevel level(ActiveEmote activeEmote) {
+        MinecraftServer server = server();
+        return server == null ? null : server.getLevel(activeEmote.levelKey());
     }
 
     private void cleanupNamespace(ServerPlayer player, String namespace) {
@@ -375,21 +472,15 @@ public class PlaybackManager {
         return suffix.chars().allMatch(Character::isDigit);
     }
 
-    private void alignRootWithPlayer(ServerPlayer player, String namespace) {
-        MinecraftServer server = server();
-        if (server == null) {
+    private void alignRootWithPlayer(ServerPlayer player, UUID rootEntityUuid) {
+        Entity rootEntity = player.level().getEntity(rootEntityUuid);
+        if (rootEntity == null) {
             return;
         }
 
         float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
-        CommandSourceStack source = player.createCommandSourceStack()
-                .withAnchor(EntityAnchorArgument.Anchor.FEET)
-                .withRotation(new Vec2(0.0F, yaw))
-                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
-                .withSuppressedOutput();
-        String rootSelector = "@e[type=minecraft:block_display,tag=" + namespace + "_root,limit=1,sort=nearest]";
-        String command = "tp " + rootSelector + " ^ ^ ^ " + yaw + " 0";
-        server.getCommands().performPrefixedCommand(source, command);
+        rootEntity.snapTo(player.position(), yaw, 0.0F);
+        rootEntity.teleportTo(player.getX(), player.getY(), player.getZ());
     }
 
     private void executeFunction(ServerPlayer player, String functionId) {
@@ -430,9 +521,14 @@ public class PlaybackManager {
     }
 
     private record PlaybackStartSnapshot(
+            UUID rootEntityUuid,
+            Set<UUID> instanceEntityUuids,
             boolean playerVisibilityManaged,
             boolean wasInvisible
     ) {
+        private PlaybackStartSnapshot {
+            instanceEntityUuids = Set.copyOf(instanceEntityUuids);
+        }
     }
 
     private record PendingSkinApplication(

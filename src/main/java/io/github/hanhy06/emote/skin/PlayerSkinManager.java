@@ -30,6 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -97,7 +98,12 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public void applySkinParts(ServerPlayer player, EmoteDefinition definition, PreparedPlayerSkin preparedPlayerSkin) {
+    public void applySkinParts(
+            ServerPlayer player,
+            EmoteDefinition definition,
+            PreparedPlayerSkin preparedPlayerSkin,
+            UUID rootEntityUuid
+    ) {
         if (preparedPlayerSkin == null || definition.skinParts().isEmpty()) {
             return;
         }
@@ -111,19 +117,18 @@ public class PlayerSkinManager implements ConfigListener {
 
         Set<String> appliedTags = new HashSet<>();
         Set<Integer> visitedEntityIds = new HashSet<>();
-        for (Entity entity : player.level().getAllEntities()) {
-            applySkinPartsInTree(
-                    entity,
-                    requestedTags,
-                    skinPartByTag,
-                    preparedPlayerSkin,
-                    appliedTags,
-                    visitedEntityIds
-            );
-            if (appliedTags.size() == requestedTags.size()) {
-                break;
-            }
+        Entity rootEntity = player.level().getEntity(rootEntityUuid);
+        if (rootEntity == null) {
+            return;
         }
+        applySkinPartsInTree(
+                rootEntity,
+                requestedTags,
+                skinPartByTag,
+                preparedPlayerSkin,
+                appliedTags,
+                visitedEntityIds
+        );
         if (appliedTags.size() != requestedTags.size()) {
             Emote.LOGGER.warn(
                     "Applied player skin to {}/{} parts for {}",
