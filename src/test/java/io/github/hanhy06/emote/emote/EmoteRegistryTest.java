@@ -22,10 +22,10 @@ class EmoteRegistryTest {
 				"Idle",
 				"Idle animation",
 				"idle",
-				"default",
+				"a/default/play_anim_loop",
+				true,
 				Path.of("test-pack"),
 				1,
-				List.of(new EmoteAnimation("default", 20)),
 				List.of()
 			)));
 
@@ -52,10 +52,10 @@ class EmoteRegistryTest {
 			namespace,
 			namespace + " description",
 			commandName,
-			"default",
+			"a/default/play_anim_loop",
+			true,
 			Path.of(namespace + "-pack"),
 			1,
-			List.of(new EmoteAnimation("default", 20)),
 			List.of()
 		);
 	}

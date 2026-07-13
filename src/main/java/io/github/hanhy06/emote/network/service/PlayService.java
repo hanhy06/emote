@@ -26,12 +26,8 @@ public class PlayService {
 		this.emoteStarter = emoteStarter;
 	}
 
-	public PlayResult playDefault(ServerPlayer player, String commandName) {
-		return play(this.playableEmoteService.findDefaultSelection(player, commandName), player);
-	}
-
-	public PlayResult playSelection(ServerPlayer player, String commandName, String animationName) {
-		return play(this.playableEmoteService.findSelection(player, commandName, animationName), player);
+	public PlayResult play(ServerPlayer player, String commandName) {
+		return play(this.playableEmoteService.findSelection(player, commandName), player);
 	}
 
 	private PlayResult play(PlayableEmoteSelectionResult selectionResult, ServerPlayer player) {

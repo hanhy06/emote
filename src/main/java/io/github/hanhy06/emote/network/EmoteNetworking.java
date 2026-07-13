@@ -33,11 +33,11 @@ public class EmoteNetworking {
     private void registerWheelPlayReceiver() {
         ServerPlayNetworking.registerGlobalReceiver(EmoteWheelPlayPayload.TYPE, (payload, context) -> {
             ServerPlayer player = context.player();
-            context.server().execute(() -> playSelection(player, payload));
+            context.server().execute(() -> play(player, payload));
         });
     }
 
-    private void playSelection(ServerPlayer player, EmoteWheelPlayPayload payload) {
-        this.playService.playSelection(player, payload.commandName(), payload.animationName());
+    private void play(ServerPlayer player, EmoteWheelPlayPayload payload) {
+        this.playService.play(player, payload.commandName());
     }
 }

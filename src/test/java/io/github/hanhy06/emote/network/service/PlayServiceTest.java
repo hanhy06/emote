@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.network.service;
 
-import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
@@ -17,25 +16,25 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayServiceTest {
 	@Test
-	void playDefaultReturnsSuccess() {
+	void playReturnsSuccess() {
 		PlayService service = new PlayService(
 			createPlayableEmoteService(),
 			(player, selection) -> PlaybackStartResult.SUCCESS
 		);
 
-		PlayResult result = service.playDefault(null, "wave");
+		PlayResult result = service.play(null, "wave");
 
 		assertTrue(result.isSuccess());
 	}
 
 	@Test
-	void playSelectionReturnsPlaybackFailure() {
+	void playReturnsPlaybackFailure() {
 		PlayService service = new PlayService(
 			createPlayableEmoteService(),
 			(player, selection) -> PlaybackStartResult.failure(" Datapack not loaded. ")
 		);
 
-		PlayResult result = service.playSelection(null, "wave", "default");
+		PlayResult result = service.play(null, "wave");
 
 		assertFalse(result.isSuccess());
 		assertEquals("Datapack not loaded.", result.errorMessage());
@@ -48,15 +47,15 @@ class PlayServiceTest {
 			"Wave",
 			"Friendly wave",
 			"wave",
-			"default",
+			"a/default/play_anim_loop",
+			true,
 			Path.of("wave-pack"),
 			1,
-			List.of(new EmoteAnimation("default", 20)),
 			List.of()
 		)));
 		return new PlayableEmoteService(registry, new PermissionService() {
 			@Override
-			public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace, String animationName) {
+			public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace) {
 				return true;
 			}
 		});

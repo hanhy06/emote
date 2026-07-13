@@ -43,19 +43,21 @@ class BDEngineDatapackProcessorTest {
 		assertEquals("Wave", definitions.get(0).name());
 		assertEquals("Friendly wave", definitions.get(0).description());
 		assertEquals("wave", definitions.get(0).commandName());
-		assertEquals("idle", definitions.get(0).defaultAnimationName());
+		assertEquals("a/default/play_anim_loop", definitions.get(0).entrypoint());
 		assertEquals(false, definitions.get(0).hidePlayer());
 	}
 
 	@Test
-	void readDefinitionsAppendsLoopAnimationsWhenConfigured(@TempDir Path tempDir) throws IOException {
+	void readDefinitionsRejectsMissingEntrypoint(@TempDir Path tempDir) throws IOException {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
-		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack", true);
+		Path packPath = datapackDirPath.resolve("alpha_pack");
+		createDatapack(packPath, "wave_pack");
+		Files.delete(packPath.resolve("data/wave_pack/function/a/default/play_anim_loop.mcfunction"));
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
 		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
 
-		assertEquals(List.of("default", "default_loop"), definitions.get(0).animations().stream().map(animation -> animation.name()).toList());
+		assertEquals(List.of(), definitions);
 	}
 
 	@Test
@@ -73,28 +75,21 @@ class BDEngineDatapackProcessorTest {
 	}
 
 	private void createDatapack(Path packPath, String namespace) throws IOException {
-		createDatapack(packPath, namespace, false);
-	}
-
-	private void createDatapack(Path packPath, String namespace, boolean createLoopFunction) throws IOException {
 		Files.createDirectories(packPath);
 		Files.writeString(packPath.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":61,\"description\":\"test\"}}");
 		Files.writeString(packPath.resolve("emote-datapack.json"), """
 			{
-			  "schema_version": 1,
+			  "schema_version": 2,
 			  "name": "Wave",
 			  "description": "Friendly wave",
 			  "command_name": "wave",
-			  "default_animation": "idle",
+			  "entrypoint": "a/default/play_anim_loop",
 			  "hide_player": false
 			}
 			""");
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_"));
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default"));
 		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_").resolve("create.mcfunction"), "");
-		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default").resolve("play_anim.mcfunction"), "");
-		if (createLoopFunction) {
-			Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default").resolve("play_anim_loop.mcfunction"), "");
-		}
+		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default").resolve("play_anim_loop.mcfunction"), "");
 	}
 }

@@ -64,7 +64,7 @@ public class WheelController {
 
         this.lastSelectionKey = playableEmote.selectionKey();
         if (ClientPlayNetworking.canSend(EmoteWheelPlayPayload.TYPE)) {
-            ClientPlayNetworking.send(new EmoteWheelPlayPayload(playableEmote.commandName(), playableEmote.animationName()));
+            ClientPlayNetworking.send(new EmoteWheelPlayPayload(playableEmote.commandName()));
             return;
         }
 

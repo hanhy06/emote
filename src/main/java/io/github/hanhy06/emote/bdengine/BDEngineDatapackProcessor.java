@@ -4,7 +4,6 @@ import com.google.gson.Gson;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.PackConfig;
-import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
@@ -32,11 +31,10 @@ import java.util.stream.Stream;
 
 public class BDEngineDatapackProcessor {
     private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
-    private static final String PLAY_FUNCTION_NAME = "play_anim.mcfunction";
-    private static final String LOOP_PLAY_FUNCTION_NAME = "play_anim_loop.mcfunction";
     private static final String EMOTE_METADATA_FILE_NAME = "emote-datapack.json";
     private static final Gson GSON = new Gson();
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
+    private static final Pattern ENTRYPOINT_PATTERN = Pattern.compile("[a-z0-9_./-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
     private final ConfigManager configManager;
@@ -97,53 +95,14 @@ public class BDEngineDatapackProcessor {
     }
 
     private List<EmoteDefinition> filterLoadedDefinitions(List<EmoteDefinition> definitions) {
-        List<EmoteDefinition> filteredDefinitions = new ArrayList<>();
-
-        for (EmoteDefinition definition : definitions) {
-            if (isMissingCreateFunction(definition)) {
-                continue;
-            }
-
-            List<EmoteAnimation> loadedAnimations = new ArrayList<>();
-            for (EmoteAnimation animation : definition.animations()) {
-                if (isMissingAnimationFunction(definition, animation)) {
-                    continue;
-                }
-
-                loadedAnimations.add(animation);
-            }
-
-            if (loadedAnimations.isEmpty()) {
-                continue;
-            }
-
-            filteredDefinitions.add(createLoadedDefinition(definition, loadedAnimations));
-        }
-
-        return List.copyOf(filteredDefinitions);
-    }
-
-    private EmoteDefinition createLoadedDefinition(EmoteDefinition definition, List<EmoteAnimation> loadedAnimations) {
-        return new EmoteDefinition(
-                definition.namespace(),
-                definition.name(),
-                definition.description(),
-                definition.commandName(),
-                definition.defaultAnimationName(),
-                definition.hidePlayer(),
-                definition.datapackPath(),
-                definition.partCount(),
-                loadedAnimations,
-                definition.skinParts()
-        );
+        return definitions.stream()
+                .filter(definition -> !isMissingCreateFunction(definition))
+                .filter(definition -> !isMissingFunction(definition.namespace() + ":" + definition.entrypoint()))
+                .toList();
     }
 
     private boolean isMissingCreateFunction(EmoteDefinition definition) {
         return isMissingFunction(definition.namespace() + ":_/create");
-    }
-
-    private boolean isMissingAnimationFunction(EmoteDefinition definition, EmoteAnimation animation) {
-        return isMissingFunction(definition.namespace() + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName());
     }
 
     private boolean isMissingFunction(String functionId) {
@@ -323,18 +282,20 @@ public class BDEngineDatapackProcessor {
         }
 
         String namespace = namespacePath.getFileName().toString();
-        List<EmoteAnimation> animations = readAnimations(functionPath);
+        String entrypoint = createEntrypoint(packPath, metadata.entrypoint());
+        if (entrypoint == null || !Files.isRegularFile(functionPath.resolve(entrypoint + ".mcfunction"))) {
+            return null;
+        }
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
                 namespace,
                 metadata.name().trim(),
                 metadata.description().trim(),
                 createCommandName(packPath, namespace, metadata.command_name()),
-                createDefaultAnimationName(metadata.default_animation()),
+                entrypoint,
                 metadata.hide_player(),
                 packPath,
                 createFunctionData.partCount(),
-                animations,
                 createFunctionData.skinParts()
         );
     }
@@ -356,57 +317,6 @@ public class BDEngineDatapackProcessor {
     private boolean isEmoteNamespace(Path namespacePath) {
         Path functionPath = findFunctionPath(namespacePath);
         return functionPath != null && Files.isRegularFile(functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME));
-    }
-
-    private List<EmoteAnimation> readAnimations(Path functionPath) {
-        Path animationPath = functionPath.resolve("a");
-        if (!Files.isDirectory(animationPath)) {
-            return List.of();
-        }
-
-        List<EmoteAnimation> animations = new ArrayList<>();
-        List<EmoteAnimation> loopAnimations = new ArrayList<>();
-        Path keyframePath = functionPath.resolve("k");
-
-        try (Stream<Path> animationPathStream = Files.list(animationPath)) {
-            for (Path singleAnimationPath : animationPathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-                Path playFunctionPath = singleAnimationPath.resolve(PLAY_FUNCTION_NAME);
-                if (!Files.exists(playFunctionPath)) {
-                    continue;
-                }
-
-                String animationName = singleAnimationPath.getFileName().toString();
-                int keyframeCount = countKeyframes(keyframePath.resolve(animationName));
-                animations.add(new EmoteAnimation(animationName, keyframeCount));
-
-                Path loopPlayFunctionPath = singleAnimationPath.resolve(LOOP_PLAY_FUNCTION_NAME);
-                if (Files.exists(loopPlayFunctionPath)) {
-                    loopAnimations.add(EmoteAnimation.createLoop(animationName, keyframeCount));
-                }
-            }
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to read BD Engine animation paths from {}", functionPath, exception);
-        }
-
-        animations.addAll(loopAnimations);
-        return List.copyOf(animations);
-    }
-
-    private int countKeyframes(Path keyframeAnimationPath) {
-        if (!Files.isDirectory(keyframeAnimationPath)) {
-            return 0;
-        }
-
-        try (Stream<Path> filePathStream = Files.list(keyframeAnimationPath)) {
-            return (int) filePathStream
-                    .filter(Files::isRegularFile)
-                    .map(path -> path.getFileName().toString())
-                    .filter(fileName -> fileName.startsWith("keyframe_") && fileName.endsWith(".mcfunction"))
-                    .count();
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to count keyframes from {}", keyframeAnimationPath, exception);
-            return 0;
-        }
     }
 
     private CreateFunctionData readCreateFunctionData(Path createFunctionPath, String namespace) {
@@ -627,12 +537,19 @@ public class BDEngineDatapackProcessor {
         return normalizedCommandName;
     }
 
-    private String createDefaultAnimationName(String defaultAnimationName) {
-        if (defaultAnimationName == null || defaultAnimationName.isBlank()) {
-            return "default";
+    private String createEntrypoint(Path packPath, String entrypoint) {
+        String normalizedEntrypoint = entrypoint == null ? "" : entrypoint.trim().toLowerCase(Locale.ROOT);
+        if (normalizedEntrypoint.endsWith(".mcfunction")) {
+            normalizedEntrypoint = normalizedEntrypoint.substring(0, normalizedEntrypoint.length() - ".mcfunction".length());
         }
-
-        return defaultAnimationName.trim();
+        if (normalizedEntrypoint.isEmpty()
+                || normalizedEntrypoint.startsWith("/")
+                || normalizedEntrypoint.contains("..")
+                || !ENTRYPOINT_PATTERN.matcher(normalizedEntrypoint).matches()) {
+            Emote.LOGGER.warn("Invalid entrypoint in {}", packPath.getFileName());
+            return null;
+        }
+        return normalizedEntrypoint;
     }
 
     private record CreateFunctionData(int partCount, List<EmoteSkinPart> skinParts) {

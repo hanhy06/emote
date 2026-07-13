@@ -60,11 +60,6 @@ public class EmoteRegistry {
         return definition != null ? definition : findDefinition(commandNameOrNamespace);
     }
 
-    public EmoteAnimation findAnimation(String namespace, String animationName) {
-        EmoteDefinition definition = findDefinition(namespace);
-        return definition == null ? null : definition.findAnimation(animationName);
-    }
-
     public List<String> getNamespaces() {
         return this.state.namespaces();
     }
@@ -73,35 +68,12 @@ public class EmoteRegistry {
         return this.state.playNames();
     }
 
-    public List<String> getAnimationNames(String namespace) {
-        EmoteDefinition definition = findDefinition(namespace);
-        return createAnimationNames(definition);
-    }
-
-    public List<String> getAnimationNamesForPlay(String commandNameOrNamespace) {
-        EmoteDefinition definition = findDefinitionForPlay(commandNameOrNamespace);
-        return createAnimationNames(definition);
-    }
-
     public int size() {
         return this.state.definitionMap().size();
     }
 
     private String normalizeKey(String value) {
         return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private List<String> createAnimationNames(EmoteDefinition definition) {
-        if (definition == null) {
-            return List.of();
-        }
-
-        List<String> animationNames = new java.util.ArrayList<>(definition.animations().size());
-        for (EmoteAnimation animation : definition.animations()) {
-            animationNames.add(animation.name());
-        }
-
-        return List.copyOf(animationNames);
     }
 
     private record RegistryState(

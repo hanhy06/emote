@@ -11,9 +11,9 @@ class DialogManagerTest {
     @Test
     void searchFiltersAndRanksPlayableEmotes() {
         List<PlayableEmote> emotes = List.of(
-                new PlayableEmote("dance", "fast", false, "Fast Dance", "Quick movement"),
-                new PlayableEmote("wave", "default", true, "Wave", "Friendly greeting"),
-                new PlayableEmote("wave_fast", "default", true, "Other", "Wave variation")
+                new PlayableEmote("dance", "Fast Dance", "Quick movement"),
+                new PlayableEmote("wave", "Wave", "Friendly greeting"),
+                new PlayableEmote("wave_fast", "Other", "Wave variation")
         );
 
         assertEquals(

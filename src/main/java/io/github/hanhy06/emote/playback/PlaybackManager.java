@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
@@ -32,8 +31,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlaybackManager {
-    private static final long TICKS_PER_KEYFRAME = 2L;
-    private static final long PLAYBACK_BUFFER_TICKS = 8L;
     private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
     private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
     private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
@@ -51,7 +48,6 @@ public class PlaybackManager {
 
     public PlaybackStartResult startEmote(ServerPlayer player, PlayableEmoteSelection selection) {
         EmoteDefinition definition = selection.definition();
-        EmoteAnimation animation = selection.animation();
 
         MinecraftServer server = server();
         if (server == null) {
@@ -59,7 +55,7 @@ public class PlaybackManager {
         }
 
         String namespace = definition.namespace();
-        PlaybackFunctionIds functionIds = resolveFunctionIds(server, namespace, animation);
+        PlaybackFunctionIds functionIds = resolveFunctionIds(server, definition);
         if (functionIds == null) {
             return PlaybackStartResult.failure("Datapack not loaded.");
         }
@@ -78,10 +74,8 @@ public class PlaybackManager {
                 skinPreparation.preparedSkin()
         );
         ActiveEmote activeEmote = createActiveEmote(
-                server,
                 player,
                 namespace,
-                animation,
                 startSnapshot
         );
         this.activeEmoteMap.put(player.getUUID(), activeEmote);
@@ -122,12 +116,11 @@ public class PlaybackManager {
             return;
         }
 
-        long currentTick = server.getTickCount();
         List<UUID> playerUuidListToStop = new ArrayList<>();
 
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
             ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-            if (!canKeepPlaying(player, activeEmote, currentTick)) {
+            if (!canKeepPlaying(player, activeEmote)) {
                 playerUuidListToStop.add(activeEmote.playerUuid());
                 continue;
             }
@@ -150,9 +143,10 @@ public class PlaybackManager {
         }
     }
 
-    private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, String namespace, EmoteAnimation animation) {
+    private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, EmoteDefinition definition) {
+        String namespace = definition.namespace();
         String createFunctionId = namespace + ":_/create";
-        String playFunctionId = namespace + ":a/" + animation.datapackAnimationName() + "/" + animation.playFunctionName();
+        String playFunctionId = namespace + ":" + definition.entrypoint();
         if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
             return null;
         }
@@ -191,26 +185,21 @@ public class PlaybackManager {
     }
 
     private ActiveEmote createActiveEmote(
-            MinecraftServer server,
             ServerPlayer player,
             String namespace,
-            EmoteAnimation animation,
             PlaybackStartSnapshot startSnapshot
     ) {
-        long stopTick = calculateStopTick(server.getTickCount(), animation);
         return new ActiveEmote(
                 player.getUUID(),
                 player.level().dimension(),
                 namespace,
-                animation.name(),
                 player.position(),
-                stopTick,
                 startSnapshot.playerVisibilityManaged(),
                 startSnapshot.wasInvisible()
         );
     }
 
-    private boolean canKeepPlaying(ServerPlayer player, ActiveEmote activeEmote, long currentTick) {
+    private boolean canKeepPlaying(ServerPlayer player, ActiveEmote activeEmote) {
         if (player == null || !player.isAlive()) {
             return false;
         }
@@ -219,7 +208,7 @@ public class PlaybackManager {
             return false;
         }
 
-        return currentTick < activeEmote.stopTick();
+        return true;
     }
 
     private boolean hasMovedDuringPlayback(ServerPlayer player, ActiveEmote activeEmote) {
@@ -260,18 +249,6 @@ public class PlaybackManager {
             }
             this.stateListener.onEmoteStopped(player, activeEmote);
         }
-    }
-
-    private static long calculatePlaybackTicks(int keyframeCount) {
-        return Math.max(20L, (long) keyframeCount * TICKS_PER_KEYFRAME + PLAYBACK_BUFFER_TICKS);
-    }
-
-    static long calculateStopTick(long currentTick, EmoteAnimation animation) {
-        if (animation.loop()) {
-            return Long.MAX_VALUE;
-        }
-
-        return currentTick + calculatePlaybackTicks(animation.keyframeCount());
     }
 
     private boolean hasMoved(Vec3 currentPosition, Vec3 startPosition) {

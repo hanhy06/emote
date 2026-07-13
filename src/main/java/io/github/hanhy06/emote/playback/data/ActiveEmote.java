@@ -11,9 +11,7 @@ public record ActiveEmote(
 	UUID playerUuid,
 	ResourceKey<Level> levelKey,
 	String namespace,
-	String animationName,
 	Vec3 startPosition,
-	long stopTick,
 	boolean playerVisibilityManaged,
 	boolean wasInvisible
 ) {
@@ -21,7 +19,6 @@ public record ActiveEmote(
 		Objects.requireNonNull(playerUuid, "playerUuid");
 		Objects.requireNonNull(levelKey, "levelKey");
 		Objects.requireNonNull(namespace, "namespace");
-		Objects.requireNonNull(animationName, "animationName");
 		Objects.requireNonNull(startPosition, "startPosition");
 	}
 }

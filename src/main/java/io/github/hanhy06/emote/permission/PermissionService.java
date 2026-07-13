@@ -52,7 +52,7 @@ public class PermissionService implements ConfigListener, PackConfigListener {
 		return hasBasePermission(player);
 	}
 
-	public boolean canPlay(ServerPlayer player, String namespace, String animationName) {
+	public boolean canPlay(ServerPlayer player, String namespace) {
 		if (!hasBasePermission(player)) {
 			return false;
 		}

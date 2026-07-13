@@ -190,12 +190,11 @@ public class DialogManager {
     private static int searchRank(PlayableEmote emote, String query) {
         String displayName = emote.displayName().toLowerCase(Locale.ROOT);
         String commandName = emote.commandName().toLowerCase(Locale.ROOT);
-        String animationName = emote.animationName().toLowerCase(Locale.ROOT);
         String description = emote.description().toLowerCase(Locale.ROOT);
         if (displayName.equals(query)) return 0;
         if (displayName.startsWith(query)) return 1;
         if (commandName.startsWith(query)) return 2;
-        if (displayName.contains(query) || commandName.contains(query) || animationName.contains(query) || description.contains(query)) return 3;
+        if (displayName.contains(query) || commandName.contains(query) || description.contains(query)) return 3;
         return Integer.MAX_VALUE;
     }
 
@@ -237,8 +236,8 @@ public class DialogManager {
     private String createActiveEmoteText(ActiveEmote activeEmote) {
         EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.namespace());
         String displayName = definition == null
-                ? activeEmote.namespace() + ":" + activeEmote.animationName()
-                : definition.createDisplayName(activeEmote.animationName());
+                ? activeEmote.namespace()
+                : definition.name();
         return " Active: " + displayName;
     }
 

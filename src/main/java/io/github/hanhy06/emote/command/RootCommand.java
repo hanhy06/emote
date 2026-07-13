@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
-import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
@@ -163,18 +162,7 @@ public final class RootCommand {
                                 getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
                                 builder
                         ))
-                        .executes(context -> playDefaultEmote(context, playService))
-                        .then(Commands.argument("animation", StringArgumentType.word())
-                                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
-                                        getSuggestedAnimationNames(
-                                                context.getSource(),
-                                                StringArgumentType.getString(context, "emote"),
-                                                emoteRegistry,
-                                                playableEmoteService
-                                        ),
-                                        builder
-                                ))
-                                .executes(context -> playSelectedAnimation(context, playService))));
+                        .executes(context -> playEmote(context, playService)));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createStopCommand(
@@ -194,18 +182,6 @@ public final class RootCommand {
         return player == null
                 ? emoteRegistry.getPlayNames()
                 : playableEmoteService.getPlayablePlayNames(player);
-    }
-
-    private static List<String> getSuggestedAnimationNames(
-            CommandSourceStack source,
-            String commandNameOrNamespace,
-            EmoteRegistry emoteRegistry,
-            PlayableEmoteService playableEmoteService
-    ) {
-        ServerPlayer player = findPlayer(source);
-        return player == null
-                ? emoteRegistry.getAnimationNamesForPlay(commandNameOrNamespace)
-                : playableEmoteService.getPlayableAnimationNamesForPlay(player, commandNameOrNamespace);
     }
 
     private static int openMenu(
@@ -283,40 +259,16 @@ public final class RootCommand {
         source.sendSuccess(() -> Component.literal("Emotes: " + definitions.size()), false);
 
         for (EmoteDefinition definition : definitions) {
-            String animationSummary = createAnimationSummary(definition);
-
             source.sendSystemMessage(Component.literal(
                     "- " + definition.namespace()
                             + " cmd=" + definition.commandName()
-                            + " default=" + definition.defaultAnimationName()
                             + " name=" + definition.name()
                             + " parts=" + definition.partCount()
-                            + " clips=" + animationSummary
+                            + " entrypoint=" + definition.entrypoint()
             ));
         }
 
         return definitions.size();
-    }
-
-    private static String createAnimationSummary(EmoteDefinition definition) {
-        List<EmoteAnimation> animations = definition.animations();
-        if (animations.isEmpty()) {
-            return "-";
-        }
-
-        StringBuilder summary = new StringBuilder();
-        for (EmoteAnimation animation : animations) {
-            if (!summary.isEmpty()) {
-                summary.append(", ");
-            }
-
-            summary.append(animation.name())
-                    .append("(")
-                    .append(animation.keyframeCount())
-                    .append(")");
-        }
-
-        return summary.toString();
     }
 
     private static int reloadEmotes(
@@ -361,7 +313,7 @@ public final class RootCommand {
         return 1;
     }
 
-    private static int playDefaultEmote(
+    private static int playEmote(
             CommandContext<CommandSourceStack> context,
             PlayService playService
     ) throws CommandSyntaxException {
@@ -369,23 +321,7 @@ public final class RootCommand {
         ServerPlayer player = source.getPlayerOrException();
         return applyPlayResult(
                 source,
-                playService.playDefault(player, StringArgumentType.getString(context, "emote"))
-        );
-    }
-
-    private static int playSelectedAnimation(
-            CommandContext<CommandSourceStack> context,
-            PlayService playService
-    ) throws CommandSyntaxException {
-        CommandSourceStack source = context.getSource();
-        ServerPlayer player = source.getPlayerOrException();
-        return applyPlayResult(
-                source,
-                playService.playSelection(
-                        player,
-                        StringArgumentType.getString(context, "emote"),
-                        StringArgumentType.getString(context, "animation")
-                )
+                playService.play(player, StringArgumentType.getString(context, "emote"))
         );
     }
 
@@ -407,7 +343,7 @@ public final class RootCommand {
         }
 
         source.sendSuccess(
-                () -> Component.literal("Stop: " + activeEmote.namespace() + ":" + activeEmote.animationName()),
+                () -> Component.literal("Stop: " + activeEmote.namespace()),
                 false
         );
         return 1;
