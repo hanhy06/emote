@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.bdengine;
 
 import java.util.Objects;
 
-record EmoteDatapackMetadata(
+record EmoteMetadata(
         int schema_version,
         String name,
         String description,
@@ -10,9 +10,9 @@ record EmoteDatapackMetadata(
         String entrypoint,
         boolean hide_player
 ) {
-    static final int CURRENT_SCHEMA_VERSION = 2;
+    static final int CURRENT_SCHEMA_VERSION = 3;
 
-    EmoteDatapackMetadata {
+    EmoteMetadata {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(description, "description");
         Objects.requireNonNull(command_name, "command_name");

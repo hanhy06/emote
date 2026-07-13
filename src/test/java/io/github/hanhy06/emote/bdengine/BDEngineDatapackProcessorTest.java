@@ -22,7 +22,7 @@ class BDEngineDatapackProcessorTest {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
 		Path packPath = datapackDirPath.resolve("alpha_pack");
 		createDatapack(packPath, "wave_pack");
-		Files.delete(packPath.resolve("emote-datapack.json"));
+		Files.delete(packPath.resolve("data/wave_pack/emote.json"));
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
 		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
@@ -45,6 +45,20 @@ class BDEngineDatapackProcessorTest {
 		assertEquals("wave", definitions.get(0).commandName());
 		assertEquals("a/default/play_anim_loop", definitions.get(0).entrypoint());
 		assertEquals(false, definitions.get(0).hidePlayer());
+	}
+
+	@Test
+	void readDefinitionsLoadsMultipleNamespaceEmotesFromOneDatapack(@TempDir Path tempDir) throws IOException {
+		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+		Path packPath = datapackDirPath.resolve("bundle");
+		createDatapack(packPath, "wave_pack");
+		createEmote(packPath, "bow_pack", "Bow", "bow");
+
+		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
+
+		assertEquals(List.of("bow_pack", "wave_pack"), definitions.stream().map(EmoteDefinition::namespace).toList());
+		assertEquals(List.of("Bow", "Wave"), definitions.stream().map(EmoteDefinition::name).toList());
 	}
 
 	@Test
@@ -77,16 +91,21 @@ class BDEngineDatapackProcessorTest {
 	private void createDatapack(Path packPath, String namespace) throws IOException {
 		Files.createDirectories(packPath);
 		Files.writeString(packPath.resolve("pack.mcmeta"), "{\"pack\":{\"pack_format\":61,\"description\":\"test\"}}");
-		Files.writeString(packPath.resolve("emote-datapack.json"), """
+		createEmote(packPath, namespace, "Wave", "wave");
+	}
+
+	private void createEmote(Path packPath, String namespace, String name, String commandName) throws IOException {
+		Path namespacePath = Files.createDirectories(packPath.resolve("data").resolve(namespace));
+		Files.writeString(namespacePath.resolve("emote.json"), """
 			{
-			  "schema_version": 2,
-			  "name": "Wave",
+			  "schema_version": 3,
+			  "name": "%s",
 			  "description": "Friendly wave",
-			  "command_name": "wave",
+			  "command_name": "%s",
 			  "entrypoint": "a/default/play_anim_loop",
 			  "hide_player": false
 			}
-			""");
+			""".formatted(name, commandName));
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_"));
 		Files.createDirectories(packPath.resolve("data").resolve(namespace).resolve("function").resolve("a").resolve("default"));
 		Files.writeString(packPath.resolve("data").resolve(namespace).resolve("function").resolve("_").resolve("create.mcfunction"), "");

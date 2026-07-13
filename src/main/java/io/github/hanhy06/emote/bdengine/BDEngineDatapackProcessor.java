@@ -31,7 +31,7 @@ import java.util.stream.Stream;
 
 public class BDEngineDatapackProcessor {
     private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
-    private static final String EMOTE_METADATA_FILE_NAME = "emote-datapack.json";
+    private static final String EMOTE_METADATA_FILE_NAME = "emote.json";
     private static final Gson GSON = new Gson();
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
     private static final Pattern ENTRYPOINT_PATTERN = Pattern.compile("[a-z0-9_./-]+");
@@ -158,8 +158,7 @@ public class BDEngineDatapackProcessor {
     }
 
     private boolean hasEnabledEmoteNamespace(Path packRootPath, PackConfig packConfig) {
-        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))
-                || !Files.isRegularFile(packRootPath.resolve(EMOTE_METADATA_FILE_NAME))) {
+        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
             return false;
         }
 
@@ -171,7 +170,9 @@ public class BDEngineDatapackProcessor {
         try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
             for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).toList()) {
                 String namespace = namespacePath.getFileName().toString();
-                if (packConfig.isEnabled(namespace) && isEmoteNamespace(namespacePath)) {
+                if (packConfig.isEnabled(namespace)
+                        && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
+                        && isEmoteNamespace(namespacePath)) {
                     return true;
                 }
             }
@@ -223,11 +224,6 @@ public class BDEngineDatapackProcessor {
             return List.of();
         }
 
-        EmoteDatapackMetadata metadata = readMetadata(packRootPath.resolve(EMOTE_METADATA_FILE_NAME));
-        if (metadata == null) {
-            return List.of();
-        }
-
         Path dataPath = packRootPath.resolve("data");
         if (!Files.isDirectory(dataPath)) {
             return List.of();
@@ -245,6 +241,11 @@ public class BDEngineDatapackProcessor {
                     continue;
                 }
 
+                EmoteMetadata metadata = readMetadata(namespacePath.resolve(EMOTE_METADATA_FILE_NAME));
+                if (metadata == null) {
+                    continue;
+                }
+
                 EmoteDefinition definition = readDefinition(packPath, namespacePath, metadata);
                 if (definition != null) {
                     definitions.add(definition);
@@ -257,20 +258,20 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(definitions);
     }
 
-    private EmoteDatapackMetadata readMetadata(Path metadataPath) {
+    private EmoteMetadata readMetadata(Path metadataPath) {
         if (!Files.isRegularFile(metadataPath)) {
             return null;
         }
 
         try {
-            return GSON.fromJson(Files.readString(metadataPath), EmoteDatapackMetadata.class);
+            return GSON.fromJson(Files.readString(metadataPath), EmoteMetadata.class);
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read emote metadata from {}", metadataPath, exception);
             return null;
         }
     }
 
-    private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteDatapackMetadata metadata) {
+    private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteMetadata metadata) {
         Path functionPath = findFunctionPath(namespacePath);
         if (functionPath == null) {
             return null;
