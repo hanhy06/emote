@@ -155,6 +155,27 @@ class ConfigManagerTest {
 
 		assertTrue(manager.readConfig());
 		assertEquals("test-key", manager.getConfig().mineskin_api_key());
+		assertEquals(3, manager.getConfig().mineskin_poll_interval_seconds());
+	}
+
+	@Test
+	void readConfigLoadsMineSkinPollInterval(@TempDir Path tempDir) throws IOException {
+		ConfigManager manager = new ConfigManager(tempDir);
+		Files.writeString(
+			tempDir.resolve("emote").resolve("config.json"),
+			"""
+				{
+				  "version": "%s",
+				  "menu_page_size": 6,
+				  "mineskin_api_key": "test-key",
+				  "mineskin_poll_interval_seconds": 1,
+				  "emote_permission": "emote.use"
+				}
+				""".formatted(manager.getConfig().version())
+		);
+
+		assertTrue(manager.readConfig());
+		assertEquals(1, manager.getConfig().mineskin_poll_interval_seconds());
 	}
 
 	@Test

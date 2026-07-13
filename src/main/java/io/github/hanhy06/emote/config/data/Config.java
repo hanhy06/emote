@@ -8,6 +8,7 @@ public record Config(
 	String version,
 	int menu_page_size,
 	String mineskin_api_key,
+	int mineskin_poll_interval_seconds,
 	String emote_permission
 ) {
 	public static Config createDefault() {
@@ -18,6 +19,7 @@ public record Config(
 				.orElse("dev"),
 			6,
 			"",
+			3,
 			PermissionNode.DEFAULT_EMOTE_PERMISSION
 		);
 	}

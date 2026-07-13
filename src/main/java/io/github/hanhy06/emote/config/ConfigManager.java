@@ -194,6 +194,7 @@ public class ConfigManager {
         object.addProperty("version", config.version());
         object.addProperty("menu_page_size", config.menu_page_size());
         object.addProperty("mineskin_api_key", config.mineskin_api_key());
+        object.addProperty("mineskin_poll_interval_seconds", config.mineskin_poll_interval_seconds());
         object.addProperty("emote_permission", config.emote_permission());
         return object;
     }
@@ -229,6 +230,8 @@ public class ConfigManager {
         if (config.version() == null) return "version is missing";
         if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
         if (config.mineskin_api_key() == null) return "mineskin_api_key is missing";
+        if (config.mineskin_poll_interval_seconds() < 1 || config.mineskin_poll_interval_seconds() > 60)
+            return "mineskin_poll_interval_seconds must be between 1 and 60";
         if (config.emote_permission() == null) return "emote_permission is missing";
         return null;
     }
@@ -276,6 +279,7 @@ public class ConfigManager {
                 readString(object, "version", defaultConfig.version()),
                 readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
                 readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
+                readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineskin_poll_interval_seconds()),
                 readString(object, "emote_permission", defaultConfig.emote_permission())
         );
     }

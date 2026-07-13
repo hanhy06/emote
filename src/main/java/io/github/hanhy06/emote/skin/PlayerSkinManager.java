@@ -55,6 +55,7 @@ public class PlayerSkinManager implements ConfigListener {
     @Override
     public void onConfigReload(Config newConfig) {
         this.mineSkinApiKey = normalizeApiKey(newConfig.mineskin_api_key());
+        this.mineSkinApiClient.setJobPollIntervalSeconds(newConfig.mineskin_poll_interval_seconds());
     }
 
     public void prepareJoinedPlayerSkin(ServerPlayer player, List<EmoteDefinition> definitions) {

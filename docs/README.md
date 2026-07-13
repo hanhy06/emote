@@ -134,6 +134,7 @@ The mod uses two config files:
 
 - `menu_page_size`: number of emotes shown per menu page
 - `mineskin_api_key`: optional MineSkin API key used to generate and permanently cache server-side player-head textures; when blank, datapack skins remain unchanged
+- `mineskin_poll_interval_seconds`: seconds between MineSkin queue status checks, from `1` to `60` (default: `3`)
 - `emote_permission`: default permission required to use emotes
 
 ### `pack.json`

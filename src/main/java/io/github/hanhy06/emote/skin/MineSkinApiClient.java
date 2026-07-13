@@ -21,8 +21,7 @@ import java.util.function.Consumer;
 
 public class MineSkinApiClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
-    private static final int JOB_POLL_LIMIT = 40;
-    private static final int JOB_POLL_INTERVAL_MILLIS = 3000;
+    private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
     private static final long MAX_RETRY_DELAY_MILLIS = 60_000L;
     private static final String USER_AGENT = createUserAgent();
@@ -31,6 +30,14 @@ public class MineSkinApiClient {
             .connectTimeout(Duration.ofSeconds(10))
             .build();
     private final Gson gson = new Gson();
+    private volatile long jobPollIntervalMillis = 3000L;
+
+    public void setJobPollIntervalSeconds(int seconds) {
+        if (seconds < 1 || seconds > 60) {
+            throw new IllegalArgumentException("seconds must be between 1 and 60");
+        }
+        this.jobPollIntervalMillis = seconds * 1000L;
+    }
 
     public String generateSkinUrl(String apiKey, byte[] pngBytes, boolean slimModel) throws IOException, InterruptedException {
         return generateSkinUrl(apiKey, pngBytes, slimModel, ignored -> {
@@ -86,8 +93,9 @@ public class MineSkinApiClient {
             throw new IOException("MineSkin job id is missing");
         }
 
-        for (int attempt = 0; attempt < JOB_POLL_LIMIT; attempt++) {
-            Thread.sleep(JOB_POLL_INTERVAL_MILLIS);
+        long deadline = System.nanoTime() + Duration.ofMillis(JOB_TIMEOUT_MILLIS).toNanos();
+        while (System.nanoTime() < deadline) {
+            Thread.sleep(this.jobPollIntervalMillis);
 
             JsonObject jobResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI.resolve("/v2/queue/" + jobId))
                     .header("Authorization", "Bearer " + normalizedApiKey)
@@ -140,7 +148,7 @@ public class MineSkinApiClient {
         JsonObject rateLimit = findObject(responseBody, "rateLimit");
         JsonObject next = findObject(rateLimit, "next");
         long bodyDelay = readLong(next, "relative", 0L);
-        long delay = Math.max(JOB_POLL_INTERVAL_MILLIS, Math.max(headerDelay, bodyDelay));
+        long delay = Math.max(this.jobPollIntervalMillis, Math.max(headerDelay, bodyDelay));
         return Math.min(delay, MAX_RETRY_DELAY_MILLIS);
     }
 
