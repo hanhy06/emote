@@ -72,15 +72,6 @@ public class DialogManager {
             ));
         }
 
-        actionButtons.add(createTemplateButton(
-                "Search",
-                "Search emotes",
-                "/emote menu search 1 $(query)"
-        ));
-        if (!query.isEmpty()) {
-            actionButtons.add(createRunCommandButton("Clear", "Clear search", "/emote menu"));
-        }
-
         appendPageButtons(actionButtons, dialogPage, query);
 
         if (actionButtons.isEmpty()) {
@@ -108,7 +99,13 @@ public class DialogManager {
                 )))
         );
 
-        return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
+        ActionButton searchButton = createTemplateButton(
+                "Search",
+                "Search emotes; submit an empty query to clear",
+                "/emote menu search 1 $(query)",
+                310
+        );
+        return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.of(searchButton), 2);
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command) {
@@ -117,8 +114,8 @@ public class DialogManager {
         return new ActionButton(buttonData, Optional.of(action));
     }
 
-    private ActionButton createTemplateButton(String label, String tooltip, String commandTemplate) {
-        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
+    private ActionButton createTemplateButton(String label, String tooltip, String commandTemplate, int width) {
+        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), width);
         ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
                 .parse(JsonOps.INSTANCE, new JsonPrimitive(commandTemplate))
                 .getOrThrow();
