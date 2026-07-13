@@ -18,7 +18,10 @@ CREATE_FUNCTION_PATTERNS = (
 	"data/*/function/_/create.mcfunction",
 	"data/*/functions/_/create.mcfunction",
 )
-ITEM_DISPLAY_PATTERN_TEMPLATE = r'\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"{namespace}_(\d+)"[^\]]*?\]\}'
+ITEM_DISPLAY_PATTERN = re.compile(
+	r'\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"([a-z0-9_.-]+)_(\d+)"[^\]]*?\]\}',
+	re.DOTALL,
+)
 TRANSFORMATION_PATTERN = re.compile(r"transformation:\[(.*?)\]")
 CLUSTER_TOLERANCE = 0.05
 ANCHOR_OFFSET = 0.5
@@ -215,6 +218,9 @@ def prepare_emote_pack(
 			namespaces.append(namespace)
 
 			original_text = create_function_path.read_text(encoding="utf-8")
+			entity_tag_namespace = find_entity_tag_namespace(original_text)
+			normalize_bdengine_namespace(create_function_path.parents[2], entity_tag_namespace, namespace)
+			original_text = create_function_path.read_text(encoding="utf-8")
 			updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
 			if replaced_count == 0:
 				continue
@@ -305,9 +311,11 @@ def find_entrypoint_namespaces(pack_root: Path, entrypoint: str) -> list[str]:
 
 
 def update_create_function(create_function_text: str, namespace: str, swap_left_right: bool) -> tuple[str, int]:
-	pattern_text = ITEM_DISPLAY_PATTERN_TEMPLATE.replace("{namespace}", re.escape(namespace))
-	pattern = re.compile(pattern_text, re.DOTALL)
-	matches = [match for match in pattern.finditer(create_function_text) if 'id:"minecraft:player_head"' in match.group(1)]
+	matches = [
+		match
+		for match in ITEM_DISPLAY_PATTERN.finditer(create_function_text)
+		if match.group(2) == namespace and 'id:"minecraft:player_head"' in match.group(1)
+	]
 	if not matches:
 		return create_function_text, 0
 
@@ -328,6 +336,33 @@ def update_create_function(create_function_text: str, namespace: str, swap_left_
 	return "".join(updated_chunks), len(player_head_parts)
 
 
+def find_entity_tag_namespace(create_function_text: str) -> str:
+	namespaces = {
+		match.group(2)
+		for match in ITEM_DISPLAY_PATTERN.finditer(create_function_text)
+		if 'id:"minecraft:player_head"' in match.group(1)
+	}
+	if not namespaces:
+		raise SystemExit("No player_head parts were found in create.mcfunction.")
+	if len(namespaces) > 1:
+		raise SystemExit("Multiple entity tag namespaces were found in create.mcfunction.")
+	return next(iter(namespaces))
+
+
+def normalize_bdengine_namespace(namespace_path: Path, source_namespace: str, target_namespace: str) -> None:
+	if source_namespace == target_namespace:
+		return
+
+	namespace_pattern = re.compile(
+		rf"(?<![a-z0-9_.-]){re.escape(source_namespace)}(?=[:_]|(?![a-z0-9_.-]))"
+	)
+	for function_path in sorted(namespace_path.rglob("*.mcfunction")):
+		original_text = function_path.read_text(encoding="utf-8")
+		updated_text = namespace_pattern.sub(target_namespace, original_text)
+		if updated_text != original_text:
+			function_path.write_text(updated_text, encoding="utf-8", newline="\n")
+
+
 def swap_left_right_part_names(part_names: dict[int, str]) -> dict[int, str]:
 	swapped_names = {
 		"emote:left_arm": "emote:right_arm",
@@ -346,7 +381,7 @@ def parse_player_head_part(match: re.Match[str]) -> PlayerHeadPart:
 	values = read_transformation_values(item_display_text)
 
 	return PlayerHeadPart(
-		part_index=int(match.group(2)),
+		part_index=int(match.group(3)),
 		start_index=match.start(),
 		end_index=match.end(),
 		item_display_text=item_display_text,
