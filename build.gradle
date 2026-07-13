@@ -1,3 +1,5 @@
+import net.fabricmc.loom.task.prod.ClientProductionRunTask
+
 plugins {
 	id 'net.fabricmc.fabric-loom' version "${loom_version}"
 	id 'maven-publish'
@@ -41,6 +43,8 @@ processResources {
 		expand "version": inputs.properties.version
 	}
 }
+
+tasks.register("prodClient", ClientProductionRunTask)
 
 tasks.withType(JavaCompile).configureEach {
 	it.options.release = 25
