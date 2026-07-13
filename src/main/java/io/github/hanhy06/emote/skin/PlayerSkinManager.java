@@ -84,7 +84,7 @@ public class PlayerSkinManager implements ConfigListener {
         }
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {
-            return PlayerSkinPreparationResult.failure("Player skin is unavailable.");
+            return PlayerSkinPreparationResult.ready(null);
         }
         Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
