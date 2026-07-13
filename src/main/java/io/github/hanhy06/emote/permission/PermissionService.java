@@ -1,10 +1,10 @@
 package io.github.hanhy06.emote.permission;
 
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.config.IdentifierConfigListener;
+import io.github.hanhy06.emote.config.PackConfigListener;
 import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.config.data.IdentifierConfig;
-import io.github.hanhy06.emote.config.data.IdentifierEntry;
+import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.PackOverride;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,7 +15,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Predicate;
 
-public class PermissionService implements ConfigListener, IdentifierConfigListener {
+public class PermissionService implements ConfigListener, PackConfigListener {
 	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.GAMEMASTERS;
 	private Config config = Config.createDefault();
 	private Map<String, String> namespacePermissionMap = Map.of();
@@ -26,13 +26,10 @@ public class PermissionService implements ConfigListener, IdentifierConfigListen
 	}
 
 	@Override
-	public void onIdentifierConfigReload(IdentifierConfig newIdentifierConfig) {
+	public void onPackConfigReload(PackConfig newPackConfig) {
 		LinkedHashMap<String, String> nextNamespacePermissionMap = new LinkedHashMap<>();
-		for (Map.Entry<String, java.util.List<IdentifierEntry>> entry : newIdentifierConfig.permissions().entrySet()) {
-			String permission = normalizePermission(entry.getKey());
-			for (IdentifierEntry identifierEntry : entry.getValue()) {
-				nextNamespacePermissionMap.put(identifierEntry.datapack_identifier(), permission);
-			}
+		for (Map.Entry<String, PackOverride> entry : newPackConfig.packs().entrySet()) {
+			nextNamespacePermissionMap.put(entry.getKey(), normalizePermission(entry.getValue().permission()));
 		}
 
 		this.namespacePermissionMap = Map.copyOf(nextNamespacePermissionMap);

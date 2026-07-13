@@ -3,8 +3,7 @@ package io.github.hanhy06.emote.bdengine;
 import com.google.gson.Gson;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.data.IdentifierConfig;
-import io.github.hanhy06.emote.config.data.IdentifierEntry;
+import io.github.hanhy06.emote.config.data.PackConfig;
 import io.github.hanhy06.emote.emote.EmoteAnimation;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -23,12 +22,10 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -57,7 +54,7 @@ public class BDEngineDatapackProcessor {
         }
 
         Path datapackDirPath = server.getWorldPath(LevelResource.DATAPACK_DIR);
-        List<EmoteDefinition> definitions = filterLoadedDefinitions(readDefinitions(datapackDirPath, this.configManager.getIdentifierConfig()));
+        List<EmoteDefinition> definitions = filterLoadedDefinitions(readDefinitions(datapackDirPath, this.configManager.getPackConfig()));
         this.emoteRegistry.replaceDefinitions(definitions);
         return definitions.size();
     }
@@ -72,24 +69,24 @@ public class BDEngineDatapackProcessor {
 
         List<String> selectedPackIds = List.copyOf(server.getPackRepository().getSelectedIds());
         Collection<String> availablePackIds = server.getPackRepository().getAvailableIds();
-        LinkedHashSet<String> identifierPackIds = new LinkedHashSet<>();
+        LinkedHashSet<String> emotePackIds = new LinkedHashSet<>();
 
-        for (String packId : findIdentifierPackIds(server.getWorldPath(LevelResource.DATAPACK_DIR), this.configManager.getIdentifierConfig())) {
+        for (String packId : findEmotePackIds(server.getWorldPath(LevelResource.DATAPACK_DIR), this.configManager.getPackConfig())) {
             if (!availablePackIds.contains(packId)) {
                 continue;
             }
 
-            identifierPackIds.add(packId);
+            emotePackIds.add(packId);
         }
 
         List<String> reorderedPackIds = new ArrayList<>();
         for (String selectedPackId : selectedPackIds) {
-            if (!identifierPackIds.contains(selectedPackId)) {
+            if (!emotePackIds.contains(selectedPackId)) {
                 reorderedPackIds.add(selectedPackId);
             }
         }
 
-        reorderedPackIds.addAll(identifierPackIds);
+        reorderedPackIds.addAll(emotePackIds);
 
         if (!selectedPackIds.equals(reorderedPackIds)) {
             server.reloadResources(reorderedPackIds).join();
@@ -163,20 +160,15 @@ public class BDEngineDatapackProcessor {
         return Emote.SERVER;
     }
 
-    List<String> findIdentifierPackIds(Path datapackDirPath, IdentifierConfig identifierConfig) {
+    List<String> findEmotePackIds(Path datapackDirPath, PackConfig packConfig) {
         if (!Files.isDirectory(datapackDirPath)) {
-            return List.of();
-        }
-
-        Set<String> configuredNamespaces = Set.copyOf(createIdentifierMap(identifierConfig).keySet());
-        if (configuredNamespaces.isEmpty()) {
             return List.of();
         }
 
         List<String> packIds = new ArrayList<>();
         try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
             for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-                String packId = findConfiguredPackId(packPath, configuredNamespaces);
+                String packId = findEmotePackId(packPath, packConfig);
                 if (packId != null) {
                     packIds.add(packId);
                 }
@@ -188,9 +180,9 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(packIds);
     }
 
-    private String findConfiguredPackId(Path packPath, Set<String> configuredNamespaces) {
+    private String findEmotePackId(Path packPath, PackConfig packConfig) {
         if (Files.isDirectory(packPath)) {
-            return hasConfiguredNamespaces(packPath, configuredNamespaces) ? "file/" + packPath.getFileName() : null;
+            return hasEnabledEmoteNamespace(packPath, packConfig) ? "file/" + packPath.getFileName() : null;
         }
 
         String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
@@ -199,14 +191,14 @@ public class BDEngineDatapackProcessor {
         }
 
         try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-            return hasConfiguredNamespaces(fileSystem.getPath("/"), configuredNamespaces) ? "file/" + packPath.getFileName() : null;
+            return hasEnabledEmoteNamespace(fileSystem.getPath("/"), packConfig) ? "file/" + packPath.getFileName() : null;
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to inspect datapack {}", packPath, exception);
             return null;
         }
     }
 
-    private boolean hasConfiguredNamespaces(Path packRootPath, Set<String> configuredNamespaces) {
+    private boolean hasEnabledEmoteNamespace(Path packRootPath, PackConfig packConfig) {
         if (!Files.exists(packRootPath.resolve("pack.mcmeta"))
                 || !Files.isRegularFile(packRootPath.resolve(EMOTE_METADATA_FILE_NAME))) {
             return false;
@@ -219,7 +211,8 @@ public class BDEngineDatapackProcessor {
 
         try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
             for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).toList()) {
-                if (configuredNamespaces.contains(namespacePath.getFileName().toString())) {
+                String namespace = namespacePath.getFileName().toString();
+                if (packConfig.isEnabled(namespace) && isEmoteNamespace(namespacePath)) {
                     return true;
                 }
             }
@@ -230,13 +223,8 @@ public class BDEngineDatapackProcessor {
         return false;
     }
 
-    List<EmoteDefinition> readDefinitions(Path datapackDirPath, IdentifierConfig identifierConfig) {
+    List<EmoteDefinition> readDefinitions(Path datapackDirPath, PackConfig packConfig) {
         if (!Files.isDirectory(datapackDirPath)) {
-            return List.of();
-        }
-
-        LinkedHashMap<String, IdentifierEntry> identifierMap = createIdentifierMap(identifierConfig);
-        if (identifierMap.isEmpty()) {
             return List.of();
         }
 
@@ -244,7 +232,7 @@ public class BDEngineDatapackProcessor {
 
         try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
             for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-                definitions.addAll(readPackDefinitions(packPath, identifierMap));
+                definitions.addAll(readPackDefinitions(packPath, packConfig));
             }
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to scan datapack directory {}", datapackDirPath, exception);
@@ -253,9 +241,9 @@ public class BDEngineDatapackProcessor {
         return List.copyOf(definitions);
     }
 
-    private List<EmoteDefinition> readPackDefinitions(Path packPath, Map<String, IdentifierEntry> identifierMap) {
+    private List<EmoteDefinition> readPackDefinitions(Path packPath, PackConfig packConfig) {
         if (Files.isDirectory(packPath)) {
-            return readPackRoot(packPath, packPath, identifierMap);
+            return readPackRoot(packPath, packPath, packConfig);
         }
 
         String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
@@ -264,14 +252,14 @@ public class BDEngineDatapackProcessor {
         }
 
         try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-            return readPackRoot(packPath, fileSystem.getPath("/"), identifierMap);
+            return readPackRoot(packPath, fileSystem.getPath("/"), packConfig);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to read zipped datapack {}", packPath, exception);
             return List.of();
         }
     }
 
-    private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath, Map<String, IdentifierEntry> identifierMap) {
+    private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath, PackConfig packConfig) {
         if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
             return List.of();
         }
@@ -290,8 +278,11 @@ public class BDEngineDatapackProcessor {
 
         try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
             for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-                IdentifierEntry identifierEntry = identifierMap.get(namespacePath.getFileName().toString());
-                if (identifierEntry == null) {
+                if (!packConfig.isEnabled(namespacePath.getFileName().toString())) {
+                    continue;
+                }
+
+                if (!isEmoteNamespace(namespacePath)) {
                     continue;
                 }
 
@@ -360,6 +351,11 @@ public class BDEngineDatapackProcessor {
         }
 
         return null;
+    }
+
+    private boolean isEmoteNamespace(Path namespacePath) {
+        Path functionPath = findFunctionPath(namespacePath);
+        return functionPath != null && Files.isRegularFile(functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME));
     }
 
     private List<EmoteAnimation> readAnimations(Path functionPath) {
@@ -615,17 +611,6 @@ public class BDEngineDatapackProcessor {
 
     private Comparator<Path> pathComparator() {
         return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
-    }
-
-    private LinkedHashMap<String, IdentifierEntry> createIdentifierMap(IdentifierConfig identifierConfig) {
-        LinkedHashMap<String, IdentifierEntry> identifierMap = new LinkedHashMap<>();
-        for (Map.Entry<String, List<IdentifierEntry>> entry : identifierConfig.permissions().entrySet()) {
-            for (IdentifierEntry identifierEntry : entry.getValue()) {
-                identifierMap.putIfAbsent(identifierEntry.datapack_identifier(), identifierEntry);
-            }
-        }
-
-        return identifierMap;
     }
 
     private String createCommandName(Path packPath, String namespace, String commandName) {

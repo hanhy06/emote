@@ -82,7 +82,7 @@ public class EmoteLifecycle {
     private void handleDataPackReloadStart(MinecraftServer server) {
         Emote.SERVER = server;
         this.configManager.readConfig();
-        this.configManager.readIdentifierConfig();
+        this.configManager.readPackConfig();
     }
 
     private void handleDataPackReload(MinecraftServer server, boolean success) {

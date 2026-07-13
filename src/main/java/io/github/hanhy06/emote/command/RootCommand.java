@@ -270,7 +270,7 @@ public final class RootCommand {
         }
 
         boolean configLoaded = configManager.readConfig();
-        boolean identifierConfigLoaded = configManager.readIdentifierConfig();
+        boolean packConfigLoaded = configManager.readPackConfig();
         boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks();
         int emoteCount = reloadedResources
                 ? emoteRegistry.size()
@@ -281,7 +281,7 @@ public final class RootCommand {
         source.sendSuccess(
                 () -> Component.literal(
                         "Reloading: cfg=" + configLoaded
-                                + ", identifier=" + identifierConfigLoaded
+                                + ", packs=" + packConfigLoaded
                                 + ", emotes=" + emoteCount
                                 + (reloadedResources ? " (resource reload)" : "")
                 ),

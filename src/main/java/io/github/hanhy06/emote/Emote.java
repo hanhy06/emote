@@ -69,7 +69,7 @@ public class Emote implements ModInitializer {
 	public void onInitialize() {
 		registerConfigListeners();
 		this.configManager.readConfig();
-		this.configManager.readIdentifierConfig();
+		this.configManager.readPackConfig();
 
 		this.playbackManager.setStateListener(this.playbackStateSyncListener);
 
@@ -92,7 +92,7 @@ public class Emote implements ModInitializer {
 
 	private void registerConfigListeners() {
 		this.configManager.addListener(this.permissionService);
-		this.configManager.addIdentifierListener(this.permissionService);
+		this.configManager.addPackListener(this.permissionService);
 		this.configManager.addListener(SKIN_MANAGER);
 	}
 }

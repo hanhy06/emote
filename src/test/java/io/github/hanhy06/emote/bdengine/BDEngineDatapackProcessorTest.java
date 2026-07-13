@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.bdengine;
 
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.data.IdentifierConfig;
-import io.github.hanhy06.emote.config.data.IdentifierEntry;
+import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.PackOverride;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import org.junit.jupiter.api.Test;
@@ -25,10 +25,7 @@ class BDEngineDatapackProcessorTest {
 		Files.delete(packPath.resolve("emote-datapack.json"));
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
-			"",
-			new IdentifierEntry("wave_pack", "Ignored", "ignored", "Ignored", "default")
-		));
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
 
 		assertEquals(List.of(), definitions);
 	}
@@ -39,10 +36,7 @@ class BDEngineDatapackProcessorTest {
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
-			"",
-			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "idle")
-		));
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
 
 		assertEquals(1, definitions.size());
 		assertEquals("wave_pack", definitions.get(0).namespace());
@@ -59,33 +53,23 @@ class BDEngineDatapackProcessorTest {
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack", true);
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, createIdentifierConfig(
-			"",
-			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default")
-		));
+		List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
 
 		assertEquals(List.of("default", "default_loop"), definitions.get(0).animations().stream().map(animation -> animation.name()).toList());
 	}
 
 	@Test
-	void findIdentifierPackIdsKeepsOnlyConfiguredNamespaces(@TempDir Path tempDir) throws IOException {
+	void findEmotePackIdsSkipsDisabledNamespaces(@TempDir Path tempDir) throws IOException {
 		Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
 		createDatapack(datapackDirPath.resolve("alpha_pack"), "wave_pack");
 		createDatapack(datapackDirPath.resolve("beta_pack"), "bow_pack");
 
 		BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-		List<String> packIds = processor.findIdentifierPackIds(datapackDirPath, createIdentifierConfig(
-			"",
-			new IdentifierEntry("wave_pack", "Wave", "wave", "Friendly wave", "default")
-		));
+		LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
+		packs.put("bow_pack", new PackOverride(false, ""));
+		List<String> packIds = processor.findEmotePackIds(datapackDirPath, new PackConfig(packs));
 
 		assertEquals(List.of("file/alpha_pack"), packIds);
-	}
-
-	private IdentifierConfig createIdentifierConfig(String permission, IdentifierEntry... identifierEntries) {
-		LinkedHashMap<String, List<IdentifierEntry>> permissions = new LinkedHashMap<>();
-		permissions.put(permission, List.of(identifierEntries));
-		return new IdentifierConfig(permissions);
 	}
 
 	private void createDatapack(Path packPath, String namespace) throws IOException {

@@ -2,14 +2,13 @@ package io.github.hanhy06.emote.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.config.data.IdentifierConfig;
-import io.github.hanhy06.emote.config.data.IdentifierEntry;
+import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.PackOverride;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -19,12 +18,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 import java.util.function.BiConsumer;
 
 public class ConfigManager {
@@ -32,7 +29,7 @@ public class ConfigManager {
 
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
-    private static final String IDENTIFIER_FILE_NAME = "pack.json";
+    private static final String PACK_FILE_NAME = "packs.json";
 
     private final Path configDirPath;
     private final Gson gson = new GsonBuilder()
@@ -40,10 +37,10 @@ public class ConfigManager {
             .disableHtmlEscaping()
             .create();
     private final List<ConfigListener> listeners = new ArrayList<>();
-    private final List<IdentifierConfigListener> identifierListeners = new ArrayList<>();
+    private final List<PackConfigListener> packListeners = new ArrayList<>();
 
     private Config config = Config.createDefault();
-    private IdentifierConfig identifierConfig = IdentifierConfig.createDefault();
+    private PackConfig packConfig = PackConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
         INSTANCE = this;
@@ -53,12 +50,12 @@ public class ConfigManager {
             if (!Files.exists(this.configDirPath)) {
                 Files.createDirectories(this.configDirPath);
                 writeConfig(this::writeJsonFile);
-                writeIdentifierConfig(this::writeJsonFile);
+                writePackConfig(this::writeJsonFile);
                 return;
             }
 
             writeConfig(this::writeIfAbsent);
-            writeIdentifierConfig(this::writeIfAbsent);
+            writePackConfig(this::writeIfAbsent);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
         }
@@ -68,8 +65,8 @@ public class ConfigManager {
         return this.config;
     }
 
-    public IdentifierConfig getIdentifierConfig() {
-        return this.identifierConfig;
+    public PackConfig getPackConfig() {
+        return this.packConfig;
     }
 
     public boolean readConfig() {
@@ -102,26 +99,26 @@ public class ConfigManager {
         return true;
     }
 
-    public boolean readIdentifierConfig() {
-        JsonObject configJson = readJsonFile(IDENTIFIER_FILE_NAME);
-        IdentifierConfig loadedIdentifierConfig = readIdentifierConfig(configJson);
+    public boolean readPackConfig() {
+        JsonObject configJson = readJsonFile(PACK_FILE_NAME);
+        PackConfig loadedPackConfig = readPackConfig(configJson);
 
-        if (loadedIdentifierConfig == null) {
-            Emote.LOGGER.warn("Identifier config is empty or invalid. Keeping current identifier config.");
-            broadcastIdentifierConfig();
+        if (loadedPackConfig == null) {
+            Emote.LOGGER.warn("Pack config is empty or invalid. Keeping current pack config.");
+            broadcastPackConfig();
             return false;
         }
 
-        String validationError = validateIdentifierConfig(loadedIdentifierConfig);
+        String validationError = validatePackConfig(loadedPackConfig);
         if (validationError != null) {
-            Emote.LOGGER.warn("Identifier config validation failed: {}. Keeping current identifier config.", validationError);
-            broadcastIdentifierConfig();
+            Emote.LOGGER.warn("Pack config validation failed: {}. Keeping current pack config.", validationError);
+            broadcastPackConfig();
             return false;
         }
 
-        this.identifierConfig = loadedIdentifierConfig;
-        broadcastIdentifierConfig();
-        logLoaded(IDENTIFIER_FILE_NAME);
+        this.packConfig = loadedPackConfig;
+        broadcastPackConfig();
+        logLoaded(PACK_FILE_NAME);
         return true;
     }
 
@@ -129,8 +126,8 @@ public class ConfigManager {
         this.listeners.add(listener);
     }
 
-    public void addIdentifierListener(IdentifierConfigListener listener) {
-        this.identifierListeners.add(listener);
+    public void addPackListener(PackConfigListener listener) {
+        this.packListeners.add(listener);
     }
 
     public void broadcastConfig() {
@@ -139,9 +136,9 @@ public class ConfigManager {
         }
     }
 
-    public void broadcastIdentifierConfig() {
-        for (IdentifierConfigListener listener : this.identifierListeners) {
-            listener.onIdentifierConfigReload(this.identifierConfig);
+    public void broadcastPackConfig() {
+        for (PackConfigListener listener : this.packListeners) {
+            listener.onPackConfigReload(this.packConfig);
         }
     }
 
@@ -160,8 +157,8 @@ public class ConfigManager {
         writer.accept(CONFIG_FILE_NAME, createConfigJson(this.config));
     }
 
-    private void writeIdentifierConfig(BiConsumer<String, JsonObject> writer) {
-        writer.accept(IDENTIFIER_FILE_NAME, createIdentifierConfigJson(this.identifierConfig));
+    private void writePackConfig(BiConsumer<String, JsonObject> writer) {
+        writer.accept(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
     }
 
     private void writeIfAbsent(String fileName, JsonObject json) {
@@ -199,31 +196,18 @@ public class ConfigManager {
         return object;
     }
 
-    private JsonObject createIdentifierConfigJson(IdentifierConfig identifierConfig) {
+    private JsonObject createPackConfigJson(PackConfig packConfig) {
         JsonObject object = new JsonObject();
-        JsonObject permissionsJson = new JsonObject();
-        for (Map.Entry<String, List<IdentifierEntry>> entry : identifierConfig.permissions().entrySet()) {
-            JsonArray identifierArray = new JsonArray();
-            for (IdentifierEntry identifierEntry : entry.getValue()) {
-                identifierArray.add(createIdentifierJson(identifierEntry));
-            }
-
-            permissionsJson.add(entry.getKey(), identifierArray);
+        JsonObject packsJson = new JsonObject();
+        for (Map.Entry<String, PackOverride> entry : packConfig.packs().entrySet()) {
+            JsonObject overrideJson = new JsonObject();
+            overrideJson.addProperty("enabled", entry.getValue().enabled());
+            overrideJson.addProperty("permission", entry.getValue().permission());
+            packsJson.add(entry.getKey(), overrideJson);
         }
 
-        object.add("permissions", permissionsJson);
+        object.add("packs", packsJson);
         return object;
-    }
-
-    private JsonObject createIdentifierJson(IdentifierEntry identifierEntry) {
-        JsonObject identifierJson = new JsonObject();
-        identifierJson.addProperty("datapack_identifier", identifierEntry.datapack_identifier());
-        identifierJson.addProperty("name", identifierEntry.name());
-        identifierJson.addProperty("command_name", identifierEntry.command_name());
-        identifierJson.addProperty("description", identifierEntry.description());
-        identifierJson.addProperty("default_animation_name", identifierEntry.default_animation_name());
-        identifierJson.addProperty("hide_player", identifierEntry.hide_player());
-        return identifierJson;
     }
 
     private String validateConfig(Config config) {
@@ -236,34 +220,12 @@ public class ConfigManager {
         return null;
     }
 
-    private String validateIdentifierConfig(IdentifierConfig identifierConfig) {
-        if (identifierConfig.permissions() == null) return "permissions is missing";
-
-        Set<String> configuredNamespaces = new HashSet<>();
-        for (Map.Entry<String, List<IdentifierEntry>> entry : identifierConfig.permissions().entrySet()) {
-            if (entry.getKey() == null) return "permissions contains a null key";
-            if (entry.getValue() == null) return "permissions contains a null identifier list";
-
-            for (IdentifierEntry identifierEntry : entry.getValue()) {
-                if (identifierEntry == null) return "permissions contains a null identifier";
-
-                String datapackIdentifier = normalizeRequiredValue(identifierEntry.datapack_identifier());
-                if (datapackIdentifier == null)
-                    return "permissions contains an identifier with blank datapack_identifier";
-                if (!configuredNamespaces.add(datapackIdentifier)) {
-                    return "permissions contains duplicate datapack_identifier: " + datapackIdentifier;
-                }
-
-                if (normalizeRequiredValue(identifierEntry.name()) == null)
-                    return "permissions contains an identifier with blank name";
-                if (normalizeRequiredValue(identifierEntry.command_name()) == null)
-                    return "permissions contains an identifier with blank command_name";
-                if (normalizeRequiredValue(identifierEntry.description()) == null)
-                    return "permissions contains an identifier with blank description";
-                if (normalizeRequiredValue(identifierEntry.default_animation_name()) == null) {
-                    return "permissions contains an identifier with blank default_animation_name";
-                }
-            }
+    private String validatePackConfig(PackConfig packConfig) {
+        if (packConfig.packs() == null) return "packs is missing";
+        for (Map.Entry<String, PackOverride> entry : packConfig.packs().entrySet()) {
+            if (normalizeRequiredValue(entry.getKey()) == null) return "packs contains a blank namespace";
+            if (entry.getValue() == null) return "packs contains a null override";
+            if (entry.getValue().permission() == null) return "packs contains a null permission";
         }
 
         return null;
@@ -284,75 +246,33 @@ public class ConfigManager {
         );
     }
 
-    private IdentifierConfig readIdentifierConfig(JsonObject object) {
+    private PackConfig readPackConfig(JsonObject object) {
         if (object == null) {
             return null;
         }
 
-        LinkedHashMap<String, List<IdentifierEntry>> permissions = readIdentifierPermissions(object);
-        if (permissions == null) {
+        JsonElement packsElement = object.get("packs");
+        if (packsElement == null || packsElement.isJsonNull()) {
+            return PackConfig.createDefault();
+        }
+        if (!packsElement.isJsonObject()) {
             return null;
         }
 
-        return new IdentifierConfig(permissions);
-    }
-
-    private LinkedHashMap<String, List<IdentifierEntry>> readIdentifierPermissions(JsonObject object) {
-        JsonElement permissionsElement = object.get("permissions");
-        if (permissionsElement == null || permissionsElement.isJsonNull()) {
-            return new LinkedHashMap<>();
-        }
-
-        if (!permissionsElement.isJsonObject()) {
-            return null;
-        }
-
-        LinkedHashMap<String, List<IdentifierEntry>> permissions = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : permissionsElement.getAsJsonObject().entrySet()) {
-            String permission = normalizePermissionKey(entry.getKey());
-            if (permission == null || permissions.containsKey(permission) || !entry.getValue().isJsonArray()) {
+        LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : packsElement.getAsJsonObject().entrySet()) {
+            String namespace = normalizeRequiredValue(entry.getKey());
+            if (namespace == null || packs.containsKey(namespace) || !entry.getValue().isJsonObject()) {
                 return null;
             }
-
-            List<IdentifierEntry> identifierList = readIdentifierList(entry.getValue().getAsJsonArray());
-            if (identifierList == null) {
-                return null;
-            }
-
-            permissions.put(permission, identifierList);
+            JsonObject overrideObject = entry.getValue().getAsJsonObject();
+            packs.put(namespace, new PackOverride(
+                    readBoolean(overrideObject, "enabled", true),
+                    readString(overrideObject, "permission", "")
+            ));
         }
 
-        return permissions;
-    }
-
-    private List<IdentifierEntry> readIdentifierList(JsonArray identifierArray) {
-        List<IdentifierEntry> identifierList = new ArrayList<>();
-        for (JsonElement element : identifierArray) {
-            IdentifierEntry identifierEntry = readIdentifier(element);
-            if (identifierEntry == null) {
-                return null;
-            }
-
-            identifierList.add(identifierEntry);
-        }
-
-        return List.copyOf(identifierList);
-    }
-
-    private IdentifierEntry readIdentifier(JsonElement element) {
-        if (element == null || !element.isJsonObject()) {
-            return null;
-        }
-
-        JsonObject object = element.getAsJsonObject();
-        return new IdentifierEntry(
-                readString(object, "datapack_identifier", ""),
-                readString(object, "name", ""),
-                readString(object, "command_name", ""),
-                readString(object, "description", ""),
-                readString(object, "default_animation_name", ""),
-                readBoolean(object, "hide_player", true)
-        );
+        return new PackConfig(packs);
     }
 
     private String readString(JsonObject object, String key, String defaultValue) {
@@ -395,7 +315,4 @@ public class ConfigManager {
         return normalizedValue.isEmpty() ? null : normalizedValue;
     }
 
-    private String normalizePermissionKey(String permission) {
-        return permission == null ? null : permission.trim();
-    }
 }

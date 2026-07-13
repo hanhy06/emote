@@ -6,194 +6,48 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ConfigManagerTest {
-	@Test
-	void constructorCreatesPackJson(@TempDir Path tempDir) throws IOException {
-		new ConfigManager(tempDir);
+    @Test
+    void createsMinimalPackConfig(@TempDir Path tempDir) throws IOException {
+        new ConfigManager(tempDir);
 
-		assertTrue(Files.exists(tempDir.resolve("emote").resolve("config.json")));
-		assertTrue(Files.exists(tempDir.resolve("emote").resolve("pack.json")));
-		assertFalse(Files.readString(tempDir.resolve("emote").resolve("pack.json")).contains("\"version\""));
-	}
+        Path packsPath = tempDir.resolve("emote").resolve("packs.json");
+        assertTrue(Files.exists(packsPath));
+        assertTrue(Files.readString(packsPath).contains("\"packs\""));
+    }
 
-	@Test
-	void readIdentifierConfigLoadsConfiguredPacks(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("pack.json"),
-			"""
-				{
-				  "permissions": {
-				    "emote.pack.vip": [
-				      {
-				        "datapack_identifier": "wave_pack",
-				        "name": "Wave",
-				        "command_name": "wave",
-				        "description": "Friendly wave",
-				        "default_animation_name": "default"
-				      }
-				    ]
-				  }
-				}
-				"""
-		);
+    @Test
+    void readsEnabledAndPermissionOverrides(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+                {
+                  "packs": {
+                    "wave_pack": {
+                      "enabled": false,
+                      "permission": "emote.pack.vip"
+                    }
+                  }
+                }
+                """);
 
-		assertTrue(manager.readIdentifierConfig());
-		assertEquals(List.of("emote.pack.vip"), List.copyOf(manager.getIdentifierConfig().permissions().keySet()));
-		assertEquals("wave_pack", manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().datapack_identifier());
-		assertTrue(manager.getIdentifierConfig().permissions().get("emote.pack.vip").getFirst().hide_player());
-	}
+        assertTrue(manager.readPackConfig());
+        assertFalse(manager.getPackConfig().isEnabled("wave_pack"));
+        assertTrue(manager.getPackConfig().isEnabled("unconfigured_pack"));
+        assertTrue(manager.getPackConfig().findOverride("wave_pack").permission().equals("emote.pack.vip"));
+    }
 
-	@Test
-	void readIdentifierConfigLoadsOptions(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("pack.json"),
-			"""
-				{
-				  "permissions": {
-				    "": [
-				      {
-		        "datapack_identifier": "wave_pack",
-		        "name": "Wave",
-		        "command_name": "wave",
-		        "description": "Friendly wave",
-		        "default_animation_name": "default",
-		        "hide_player": false
-		      }
-		    ]
-		  }
-		}
-				"""
-		);
+    @Test
+    void rejectsBlankNamespace(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+                {"packs":{"   ":{"enabled":true,"permission":""}}}
+                """);
 
-		assertTrue(manager.readIdentifierConfig());
-		assertFalse(manager.getIdentifierConfig().permissions().get("").getFirst().hide_player());
-	}
-
-	@Test
-	void readIdentifierConfigRejectsDuplicateNamespace(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("pack.json"),
-			"""
-				{
-				  "permissions": {
-				    "": [
-				      {
-				        "datapack_identifier": "wave_pack",
-				        "name": "Wave",
-				        "command_name": "wave",
-				        "description": "Friendly wave",
-				        "default_animation_name": "default"
-				      }
-				    ],
-				    "emote.pack.vip": [
-				      {
-				        "datapack_identifier": "wave_pack",
-				        "name": "Wave VIP",
-				        "command_name": "wavevip",
-				        "description": "Friendly wave vip",
-				        "default_animation_name": "default"
-				      }
-				    ]
-				  }
-				}
-				"""
-		);
-
-		assertFalse(manager.readIdentifierConfig());
-		assertTrue(manager.getIdentifierConfig().permissions().isEmpty());
-	}
-
-	@Test
-	void readIdentifierConfigRejectsBlankIdentifierField(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("pack.json"),
-			"""
-				{
-				  "permissions": {
-				    "": [
-				      {
-				        "datapack_identifier": "wave_pack",
-				        "name": " ",
-				        "command_name": "wave",
-				        "description": "Friendly wave",
-				        "default_animation_name": "default"
-				      }
-				    ]
-				  }
-				}
-				"""
-		);
-
-		assertFalse(manager.readIdentifierConfig());
-		assertTrue(manager.getIdentifierConfig().permissions().isEmpty());
-	}
-
-	@Test
-	void readConfigLoadsMineSkinApiKey(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("config.json"),
-			"""
-				{
-				  "version": "%s",
-				  "menu_page_size": 6,
-				  "mineskin_api_key": "test-key",
-				  "emote_permission": "emote.use"
-				}
-				""".formatted(manager.getConfig().version())
-		);
-
-		assertTrue(manager.readConfig());
-		assertEquals("test-key", manager.getConfig().mineskin_api_key());
-		assertEquals(3, manager.getConfig().mineskin_poll_interval_seconds());
-	}
-
-	@Test
-	void readConfigLoadsMineSkinPollInterval(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("config.json"),
-			"""
-				{
-				  "version": "%s",
-				  "menu_page_size": 6,
-				  "mineskin_api_key": "test-key",
-				  "mineskin_poll_interval_seconds": 1,
-				  "emote_permission": "emote.use"
-				}
-				""".formatted(manager.getConfig().version())
-		);
-
-		assertTrue(manager.readConfig());
-		assertEquals(1, manager.getConfig().mineskin_poll_interval_seconds());
-	}
-
-	@Test
-	void readConfigAllowsBlankMineSkinApiKey(@TempDir Path tempDir) throws IOException {
-		ConfigManager manager = new ConfigManager(tempDir);
-		Files.writeString(
-			tempDir.resolve("emote").resolve("config.json"),
-			"""
-				{
-				  "version": "%s",
-				  "menu_page_size": 6,
-				  "mineskin_api_key": " ",
-				  "emote_permission": "emote.use"
-				}
-				""".formatted(manager.getConfig().version())
-		);
-
-		assertTrue(manager.readConfig());
-		assertEquals(" ", manager.getConfig().mineskin_api_key());
-	}
+        assertFalse(manager.readPackConfig());
+        assertTrue(manager.getPackConfig().packs().isEmpty());
+    }
 }
