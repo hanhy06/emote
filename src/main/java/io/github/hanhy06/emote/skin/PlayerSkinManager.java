@@ -57,24 +57,6 @@ public class PlayerSkinManager implements ConfigListener {
         this.mineSkinApiClient.setJobPollIntervalSeconds(newConfig.mineskin_poll_interval_seconds());
     }
 
-    public void prepareJoinedPlayerSkin(ServerPlayer player, List<EmoteDefinition> definitions) {
-        if (!hasMineSkinApiKey() || definitions.isEmpty()) {
-            return;
-        }
-        PlayerSkinSource skinSource = readPlayerSkinSource(player);
-        if (skinSource == null) {
-            return;
-        }
-        Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeysFromDefinitions(definitions);
-        if (requiredTextureKeys.isEmpty()) {
-            return;
-        }
-        Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
-        if (savedTextureUrls.size() < requiredTextureKeys.size()) {
-            scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
-        }
-    }
-
     public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
         List<EmoteSkinPart> skinParts = definition.skinParts();
         if (skinParts.isEmpty()) {
@@ -200,14 +182,6 @@ public class PlayerSkinManager implements ConfigListener {
         Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
         for (EmoteSkinPart skinPart : skinParts) {
             textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
-        }
-        return textureKeys;
-    }
-
-    private Set<PlayerSkinTextureKey> createTextureKeysFromDefinitions(List<EmoteDefinition> definitions) {
-        Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>();
-        for (EmoteDefinition definition : definitions) {
-            textureKeys.addAll(createTextureKeys(definition.skinParts()));
         }
         return textureKeys;
     }
