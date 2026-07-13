@@ -62,7 +62,6 @@ public class DialogManager {
     }
 
     public void openSearchDialog(ServerPlayer player) {
-        List<ActionButton> actions = List.of(createRunCommandButton("Back", "Back to emotes", "/emote"));
         List<Input> inputs = List.of(new Input("query", new TextInput(
                 310,
                 Component.literal("Search"),
@@ -86,7 +85,7 @@ public class DialogManager {
                 "/emote search $(query)",
                 310
         );
-        player.openDialog(Holder.direct(new MultiActionDialog(commonDialogData, actions, Optional.of(submitButton), 1)));
+        player.openDialog(Holder.direct(new MultiActionDialog(commonDialogData, List.of(submitButton), Optional.empty(), 1)));
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
@@ -129,7 +128,8 @@ public class DialogManager {
                 "/emote search",
                 310
         );
-        return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.of(searchButton), 2);
+        actionButtons.add(searchButton);
+        return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command) {
