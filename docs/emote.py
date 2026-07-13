@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-PACK_META_FILE_NAME = "emote-datapack.json"
+EMOTE_META_FILE_NAME = "emote.json"
 CREATE_FUNCTION_PATTERNS = (
 	"data/*/function/_/create.mcfunction",
 	"data/*/functions/_/create.mcfunction",
@@ -84,6 +84,17 @@ def main() -> int:
 	parser = build_argument_parser()
 	args = parser.parse_args()
 	validate_metadata_arguments(parser, args)
+	if args.bundle_name:
+		try:
+			output_path = process_bundle([path.resolve() for path in args.input_paths], args)
+		except SystemExit as exception:
+			message = str(exception)
+			if message:
+				print(f"[error] {message}")
+			return 1
+
+		print(f"[ok] {len(args.input_paths)} inputs -> {output_path}")
+		return 0
 
 	exit_code = 0
 	for input_path in args.input_paths:
@@ -105,7 +116,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(
 		description=(
 			"Convert one or more BD Engine datapacks without interactive questions. "
-			"Each output receives schema 2 emote metadata and, unless disabled, emote:* skin markers."
+			"Each output receives schema 3 emote metadata and, unless disabled, emote:* skin markers."
 		)
 	)
 	parser.add_argument("--name", help="Display name (single input only; otherwise inferred)")
@@ -121,6 +132,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 		help="Add emote metadata without adding player skin-part markers",
 	)
 	parser.add_argument("--swap-left-right", action="store_true", help="Swap inferred left/right skin markers")
+	parser.add_argument("--bundle-name", help="Combine all inputs into one emote.<name>.zip")
 	parser.add_argument("--output-dir", type=Path, help="Directory for generated emote.<name>.zip files")
 	parser.add_argument("input_paths", nargs="+", type=Path, help="One or more datapack .zip files or folders")
 	return parser
@@ -138,40 +150,84 @@ def process_input_path(input_path: Path, args: argparse.Namespace) -> Path:
 	output_path = create_output_path(input_path, args.output_dir)
 
 	with tempfile.TemporaryDirectory(prefix="emote-datapack-") as temp_dir_name:
-		temp_dir = Path(temp_dir_name)
-		work_dir = prepare_work_dir(input_path, temp_dir)
-
-		pack_root = find_pack_root(work_dir)
-		if args.metadata_only:
-			namespaces = find_entrypoint_namespaces(pack_root, args.entrypoint)
-		else:
-			create_function_paths = find_create_function_paths(pack_root)
-			if not create_function_paths:
-				raise SystemExit("No compatible create.mcfunction file was found.")
-
-			namespaces = []
-			updated_files = 0
-			for create_function_path in create_function_paths:
-				namespace = create_function_path.parents[2].name
-				namespaces.append(namespace)
-
-				original_text = create_function_path.read_text(encoding="utf-8")
-				updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
-				if replaced_count == 0:
-					continue
-
-				create_function_path.write_text(updated_text, encoding="utf-8", newline="\n")
-				updated_files += 1
-
-			if updated_files == 0:
-				raise SystemExit("No player_head parts were found in create.mcfunction.")
-
-		meta = create_emote_metadata(pack_root, input_path, namespaces, args)
-		validate_entrypoint(pack_root, namespaces, meta.entrypoint)
-		write_emote_datapack_meta(pack_root, meta)
+		pack_root, _, _ = prepare_emote_pack(input_path, args, Path(temp_dir_name))
 		write_zip(pack_root, output_path)
 
 	return output_path
+
+
+def process_bundle(input_paths: list[Path], args: argparse.Namespace) -> Path:
+	output_name = sanitize_command_name(args.bundle_name)
+	output_path = create_output_path_for_name(output_name, input_paths[0], args.output_dir)
+
+	with tempfile.TemporaryDirectory(prefix="emote-bundle-") as temp_dir_name:
+		temp_dir = Path(temp_dir_name)
+		bundle_root = temp_dir / "bundle"
+		bundle_data_root = bundle_root / "data"
+		bundle_data_root.mkdir(parents=True)
+		command_names: dict[str, str] = {}
+		namespaces: set[str] = set()
+
+		for index, input_path in enumerate(input_paths):
+			validate_input_path(input_path)
+			pack_root, input_namespaces, meta = prepare_emote_pack(input_path, args, temp_dir / f"input-{index}")
+			if index == 0:
+				shutil.copy2(pack_root / "pack.mcmeta", bundle_root / "pack.mcmeta")
+
+			for namespace in input_namespaces:
+				if namespace in namespaces:
+					raise SystemExit(f"Duplicate namespace in bundle: {namespace}")
+				if meta.command_name in command_names:
+					raise SystemExit(f"Duplicate command_name in bundle: {meta.command_name}")
+
+				namespaces.add(namespace)
+				command_names[meta.command_name] = namespace
+				shutil.copytree(pack_root / "data" / namespace, bundle_data_root / namespace)
+
+		for command_name, namespace in command_names.items():
+			if command_name in namespaces and command_name != namespace:
+				raise SystemExit(f"command_name conflicts with namespace in bundle: {command_name}")
+
+		write_zip(bundle_root, output_path)
+
+	return output_path
+
+
+def prepare_emote_pack(
+	input_path: Path,
+	args: argparse.Namespace,
+	temp_dir: Path,
+) -> tuple[Path, list[str], EmoteMetadata]:
+	work_dir = prepare_work_dir(input_path, temp_dir)
+	pack_root = find_pack_root(work_dir)
+	if args.metadata_only:
+		namespaces = find_entrypoint_namespaces(pack_root, args.entrypoint)
+	else:
+		create_function_paths = find_create_function_paths(pack_root)
+		if not create_function_paths:
+			raise SystemExit("No compatible create.mcfunction file was found.")
+
+		namespaces = []
+		updated_files = 0
+		for create_function_path in create_function_paths:
+			namespace = create_function_path.parents[2].name
+			namespaces.append(namespace)
+
+			original_text = create_function_path.read_text(encoding="utf-8")
+			updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
+			if replaced_count == 0:
+				continue
+
+			create_function_path.write_text(updated_text, encoding="utf-8", newline="\n")
+			updated_files += 1
+
+		if updated_files == 0:
+			raise SystemExit("No player_head parts were found in create.mcfunction.")
+
+	meta = create_emote_metadata(pack_root, input_path, namespaces, args)
+	validate_entrypoint(pack_root, namespaces, meta.entrypoint)
+	write_emote_metadata(pack_root, namespaces, meta)
+	return pack_root, namespaces, meta
 
 
 def validate_input_path(input_path: Path) -> None:
@@ -184,10 +240,13 @@ def validate_input_path(input_path: Path) -> None:
 
 
 def create_output_path(input_path: Path, output_dir: Path | None) -> Path:
-	stem = get_input_stem(input_path)
+	return create_output_path_for_name(get_input_stem(input_path), input_path, output_dir)
+
+
+def create_output_path_for_name(name: str, input_path: Path, output_dir: Path | None) -> Path:
 	parent = output_dir.resolve() if output_dir is not None else input_path.parent
 	parent.mkdir(parents=True, exist_ok=True)
-	return parent / f"emote.{stem}.zip"
+	return parent / f"emote.{name}.zip"
 
 
 def prepare_work_dir(input_path: Path, temp_dir: Path) -> Path:
@@ -677,7 +736,7 @@ def create_emote_metadata(
 	namespaces: list[str],
 	args: argparse.Namespace,
 ) -> EmoteMetadata:
-	existing_meta = load_existing_meta(pack_root)
+	existing_meta = load_existing_meta(pack_root, namespaces)
 	name = args.name or str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
 	description = args.description or str(existing_meta.get("description") or f"{name} emote.")
 	command_name = sanitize_command_name(args.command_name or str(
@@ -694,8 +753,10 @@ def create_emote_metadata(
 	)
 
 
-def load_existing_meta(pack_root: Path) -> dict[str, object]:
-	meta_path = pack_root / PACK_META_FILE_NAME
+def load_existing_meta(pack_root: Path, namespaces: list[str]) -> dict[str, object]:
+	if not namespaces:
+		return {}
+	meta_path = pack_root / "data" / namespaces[0] / EMOTE_META_FILE_NAME
 	if not meta_path.exists():
 		return {}
 	try:
@@ -722,17 +783,18 @@ def validate_entrypoint(pack_root: Path, namespaces: list[str], entrypoint: str)
 		raise SystemExit(f"Entrypoint was not found for namespace '{namespace}': {entrypoint}")
 
 
-def write_emote_datapack_meta(pack_root: Path, meta: EmoteMetadata) -> None:
-	meta_path = pack_root / PACK_META_FILE_NAME
+def write_emote_metadata(pack_root: Path, namespaces: list[str], meta: EmoteMetadata) -> None:
 	meta = {
-		"schema_version": 2,
+		"schema_version": 3,
 		"name": meta.name,
 		"description": meta.description,
 		"command_name": meta.command_name,
 		"entrypoint": meta.entrypoint,
 		"hide_player": meta.hide_player,
 	}
-	meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
+	for namespace in namespaces:
+		meta_path = pack_root / "data" / namespace / EMOTE_META_FILE_NAME
+		meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
 
 
 def prettify_name(value: str) -> str:
