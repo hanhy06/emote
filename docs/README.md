@@ -29,6 +29,17 @@ python docs\emote.py path\to\project.zip
 
 The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
 
+Multiple emotes can be combined into one datapack. Each input must use a different namespace and command name.
+
+```powershell
+python docs\emote.py `
+  --bundle-name basic `
+  path\to\wave.zip `
+  path\to\bow.zip
+```
+
+This creates `emote.basic.zip`. Each emote keeps its own namespace and stores its metadata at `data/<namespace>/emote.json`.
+
 The display name, description, and command name can also be specified manually.
 
 ```powershell
@@ -48,6 +59,7 @@ python docs\emote.py `
 | `--show-player`     | Keeps the actual player visible during playback.                           |
 | `--metadata-only`   | Adds metadata without applying the player's skin to the emote.              |
 | `--swap-left-right` | Swaps the automatically detected left and right body parts.                |
+| `--bundle-name`     | Combines all inputs into one `emote.<name>.zip` datapack.                   |
 | `--output-dir`      | Sets the directory for generated ZIP files.                                |
 
 Example emote datapacks are available in `docs/example`.
