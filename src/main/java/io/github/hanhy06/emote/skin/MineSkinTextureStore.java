@@ -149,6 +149,52 @@ public class MineSkinTextureStore {
         }
     }
 
+    public String loadPendingJob(String contentHash) {
+        Path filePath = resolvePendingFilePath(contentHash);
+        if (filePath == null || !Files.isRegularFile(filePath)) {
+            return null;
+        }
+        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
+            JsonElement element = JsonParser.parseReader(reader);
+            if (!element.isJsonObject()) {
+                return null;
+            }
+            JsonObject object = element.getAsJsonObject();
+            return contentHash.equals(readString(object, "content_hash")) ? readString(object, "job_id") : null;
+        } catch (IOException | RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
+            return null;
+        }
+    }
+
+    public void savePendingJob(String contentHash, String jobId) {
+        Path filePath = resolvePendingFilePath(contentHash);
+        if (filePath == null || jobId == null || jobId.isBlank()) {
+            return;
+        }
+        JsonObject object = new JsonObject();
+        object.addProperty("content_hash", contentHash);
+        object.addProperty("job_id", jobId);
+        try {
+            Files.createDirectories(filePath.getParent());
+            writeJsonAtomically(filePath, object);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to write MineSkin pending job: {}", filePath, exception);
+        }
+    }
+
+    public void clearPendingJob(String contentHash) {
+        Path filePath = resolvePendingFilePath(contentHash);
+        if (filePath == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to clear MineSkin pending job: {}", filePath, exception);
+        }
+    }
+
     private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
         JsonObject skinJson = new JsonObject();
         skinJson.addProperty("texture_hash", textureHash);
@@ -241,6 +287,14 @@ public class MineSkinTextureStore {
         }
         Path skinDirPath = resolveSkinDirPath();
         return skinDirPath == null ? null : skinDirPath.resolve("content").resolve(contentHash + ".json");
+    }
+
+    private Path resolvePendingFilePath(String contentHash) {
+        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+            return null;
+        }
+        Path skinDirPath = resolveSkinDirPath();
+        return skinDirPath == null ? null : skinDirPath.resolve("pending").resolve(contentHash + ".json");
     }
 
     private void writeJsonAtomically(Path filePath, JsonObject object) throws IOException {

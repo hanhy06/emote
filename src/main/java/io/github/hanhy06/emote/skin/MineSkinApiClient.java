@@ -17,11 +17,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
 import java.util.Objects;
+import java.util.function.Consumer;
 
 public class MineSkinApiClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
-    private static final int JOB_POLL_LIMIT = 60;
-    private static final int JOB_POLL_INTERVAL_MILLIS = 1000;
+    private static final int JOB_POLL_LIMIT = 40;
+    private static final int JOB_POLL_INTERVAL_MILLIS = 3000;
+    private static final int RATE_LIMIT_RETRY_LIMIT = 3;
+    private static final long MAX_RETRY_DELAY_MILLIS = 60_000L;
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -30,7 +33,18 @@ public class MineSkinApiClient {
     private final Gson gson = new Gson();
 
     public String generateSkinUrl(String apiKey, byte[] pngBytes, boolean slimModel) throws IOException, InterruptedException {
+        return generateSkinUrl(apiKey, pngBytes, slimModel, ignored -> {
+        });
+    }
+
+    public String generateSkinUrl(
+            String apiKey,
+            byte[] pngBytes,
+            boolean slimModel,
+            Consumer<String> queuedJobListener
+    ) throws IOException, InterruptedException {
         Objects.requireNonNull(pngBytes, "pngBytes");
+        Objects.requireNonNull(queuedJobListener, "queuedJobListener");
 
         String normalizedApiKey = normalizeApiKey(apiKey);
         if (normalizedApiKey == null) {
@@ -46,6 +60,7 @@ public class MineSkinApiClient {
                 .header("Authorization", "Bearer " + normalizedApiKey)
                 .header("User-Agent", USER_AGENT)
                 .header("Content-Type", "application/json")
+                .timeout(Duration.ofSeconds(20))
                 .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody), StandardCharsets.UTF_8))
                 .build());
         String textureUrl = readTextureUrl(queueResponse);
@@ -58,15 +73,29 @@ public class MineSkinApiClient {
             throw new IOException("MineSkin queue response did not include a job id");
         }
 
+        queuedJobListener.accept(jobId);
+        return waitForSkinUrl(normalizedApiKey, jobId);
+    }
+
+    public String waitForSkinUrl(String apiKey, String jobId) throws IOException, InterruptedException {
+        String normalizedApiKey = normalizeApiKey(apiKey);
+        if (normalizedApiKey == null) {
+            throw new IOException("MineSkin API key is missing");
+        }
+        if (jobId == null || jobId.isBlank()) {
+            throw new IOException("MineSkin job id is missing");
+        }
+
         for (int attempt = 0; attempt < JOB_POLL_LIMIT; attempt++) {
             Thread.sleep(JOB_POLL_INTERVAL_MILLIS);
 
             JsonObject jobResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI.resolve("/v2/queue/" + jobId))
                     .header("Authorization", "Bearer " + normalizedApiKey)
                     .header("User-Agent", USER_AGENT)
+                    .timeout(Duration.ofSeconds(20))
                     .GET()
                     .build());
-            textureUrl = readTextureUrl(jobResponse);
+            String textureUrl = readTextureUrl(jobResponse);
             if (textureUrl != null) {
                 return textureUrl;
             }
@@ -81,13 +110,38 @@ public class MineSkinApiClient {
     }
 
     private JsonObject sendJsonRequest(HttpRequest request) throws IOException, InterruptedException {
-        HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-        JsonObject responseBody = parseJsonObject(response.body());
-        if (response.statusCode() / 100 == 2) {
-            return responseBody;
-        }
+        for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
+            HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+            JsonObject responseBody = parseJsonObject(response.body());
+            if (response.statusCode() / 100 == 2) {
+                return responseBody;
+            }
 
-        throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
+            if (response.statusCode() == 429 && attempt < RATE_LIMIT_RETRY_LIMIT) {
+                Thread.sleep(readRetryDelayMillis(response, responseBody));
+                continue;
+            }
+
+            throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
+        }
+        throw new IOException("MineSkin rate limit retry exhausted");
+    }
+
+    long readRetryDelayMillis(HttpResponse<?> response, JsonObject responseBody) {
+        long headerDelay = response.headers().firstValue("Retry-After")
+                .flatMap(value -> {
+                    try {
+                        return java.util.Optional.of(Long.parseLong(value.trim()) * 1000L);
+                    } catch (NumberFormatException ignored) {
+                        return java.util.Optional.empty();
+                    }
+                })
+                .orElse(0L);
+        JsonObject rateLimit = findObject(responseBody, "rateLimit");
+        JsonObject next = findObject(rateLimit, "next");
+        long bodyDelay = readLong(next, "relative", 0L);
+        long delay = Math.max(JOB_POLL_INTERVAL_MILLIS, Math.max(headerDelay, bodyDelay));
+        return Math.min(delay, MAX_RETRY_DELAY_MILLIS);
     }
 
     private JsonObject parseJsonObject(String body) throws IOException {
@@ -186,6 +240,21 @@ public class MineSkinApiClient {
 
         String value = element.getAsString().trim();
         return value.isEmpty() ? null : value;
+    }
+
+    private long readLong(JsonObject parent, String key, long fallback) {
+        if (parent == null) {
+            return fallback;
+        }
+        JsonElement element = parent.get(key);
+        if (element == null || element.isJsonNull()) {
+            return fallback;
+        }
+        try {
+            return Math.max(0L, element.getAsLong());
+        } catch (RuntimeException ignored) {
+            return fallback;
+        }
     }
 
     private String normalizeApiKey(String apiKey) {

@@ -430,8 +430,19 @@ public class PlayerSkinManager implements ConfigListener {
                 if (cachedResult != null) {
                     textureUrl = cachedResult.textureUrl();
                 } else {
-                    textureUrl = this.mineSkinApiClient.generateSkinUrl(apiKey, bakedImage, skinSource.slimModel());
+                    String pendingJobId = this.mineSkinTextureStore.loadPendingJob(contentHash);
+                    if (pendingJobId != null) {
+                        textureUrl = this.mineSkinApiClient.waitForSkinUrl(apiKey, pendingJobId);
+                    } else {
+                        textureUrl = this.mineSkinApiClient.generateSkinUrl(
+                                apiKey,
+                                bakedImage,
+                                skinSource.slimModel(),
+                                jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
+                        );
+                    }
                     this.mineSkinTextureStore.saveContent(contentHash, new MineSkinTextureResult(textureUrl));
+                    this.mineSkinTextureStore.clearPendingJob(contentHash);
                 }
                 savedTextureUrls.put(textureKey, textureUrl);
                 this.mineSkinTextureStore.save(skinSource.textureHash(), skinSource.slimModel(), savedTextureUrls);

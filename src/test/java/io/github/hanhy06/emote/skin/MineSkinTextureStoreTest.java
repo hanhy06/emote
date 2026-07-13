@@ -48,4 +48,16 @@ class MineSkinTextureStoreTest {
 
         assertNull(store.loadContent("../invalid"));
     }
+
+    @Test
+    void pendingJobRoundTrip(@TempDir Path tempDir) {
+        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        String contentHash = MineSkinContentKey.create(new byte[]{7, 8, 9}, true);
+
+        store.savePendingJob(contentHash, "job-123");
+        assertEquals("job-123", store.loadPendingJob(contentHash));
+
+        store.clearPendingJob(contentHash);
+        assertNull(store.loadPendingJob(contentHash));
+    }
 }
