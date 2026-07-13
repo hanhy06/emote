@@ -1,67 +1,95 @@
-# Emote for Fabric
+# Emote
 
-Minecraft Fabric 서버에서 BD Engine humanoid 데이터팩 이모트를 재생하는 모드입니다. 이모트 모델과 플레이어 스킨 합성은 서버에서 처리하며, MineSkin API 키가 없거나 처리가 실패하면 데이터팩에 들어 있는 기본 스킨을 그대로 사용합니다.
+Emote is a Fabric mod that plays humanoid animations created with BD Engine as Minecraft emotes.
 
-## 설치
+The mod is designed with server-side use in mind. Its main feature, emote playback, works when installed only on the server. Installing the mod on the client is optional.
 
-1. 서버 `mods` 폴더에 모드 jar와 필수 의존성을 넣습니다.
-2. 이모트 데이터팩 zip 또는 폴더를 월드의 `datapacks` 폴더에 넣습니다.
-3. 서버를 시작하거나 `/emote reload`를 실행합니다.
+## Usage
 
-루트에 유효한 `emote-datapack.json`이 있는 데이터팩은 자동으로 발견되고 활성화됩니다. 별도 등록은 필요하지 않습니다.
+| Action | Description |
+|---|---|
+| `/emote` | Opens the emote menu. |
+| `/emote search` | Searches emotes by name, command, or description. |
+| `/emote play <emote>` | Plays the specified emote. |
+| `/emote stop` | Stops the currently playing emote. |
+| `/emote reload` | Reloads the configuration and emote datapacks. |
+| V key | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
 
-## 데이터팩 메타데이터
+## Adding Emotes
 
-각 이모트 데이터팩 루트에 `emote-datapack.json`을 둡니다.
+BD Engine datapack ZIP files or folders can be converted with `docs/emote.py` included in the repository.
+
+```powershell
+python docs\emote.py path\to\project.zip
+```
+
+The script adds player skin-part markers and Emote metadata to the BD Engine datapack, then creates an `emote.<name>.zip` file. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
+
+The display name, description, and command name can also be specified manually.
+
+```powershell
+python docs\emote.py `
+  --name "Hello" `
+  --description "Wave hello." `
+  --command-name hello `
+  path\to\project.zip
+```
+
+| Option | Description |
+|---|---|
+| `--name` | Sets the name shown in the menu and emote wheel. |
+| `--description` | Sets the emote description. |
+| `--command-name` | Sets the name used by `/emote play`. |
+| `--entrypoint` | Sets the function path to play. The default is `a/default/play_anim_loop`. |
+| `--show-player` | Keeps the actual player visible during playback. |
+| `--swap-left-right` | Swaps the automatically detected left and right body parts. |
+| `--output-dir` | Sets the directory for generated ZIP files. |
+
+Example emote datapacks are available in `docs/example`.
+
+## Configuration
+
+Configuration files are created automatically in `config/emote` when the server starts for the first time.
+
+### `config.json`
 
 ```json
 {
-  "schema_version": 1,
-  "name": "Wave",
-  "description": "Friendly wave",
-  "command_name": "wave",
-  "default_animation": "default",
-  "hide_player": true
+  "version": "<mod version>",
+  "menu_page_size": 6,
+  "mineskin_api_key": "",
+  "mineskin_poll_interval_seconds": 3,
+  "emote_permission": "emote.use"
 }
 ```
 
-- namespace는 `data/<namespace>`에서 자동 판별합니다.
-- 일반 애니메이션은 `data/<namespace>/function/a/<animation>/play_anim.mcfunction`으로 판별합니다.
-- 같은 폴더에 `play_anim_loop.mcfunction`이 있으면 `<animation>_loop` 항목을 자동 등록합니다.
-- `hide_player`가 `true`이면 재생 중 실제 플레이어를 숨깁니다.
-- `data/<namespace>/function/_/create.mcfunction`이 있어야 이모트 namespace로 인식합니다.
+| Setting | Description |
+|---|---|
+| `menu_page_size` | Number of emotes displayed on each menu page. |
+| `mineskin_api_key` | MineSkin API key used to apply player skins. |
+| `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. |
+| `emote_permission` | Base permission required to use emote features. |
 
-BD Engine export zip은 준비 스크립트로 변환할 수 있습니다.
+When a MineSkin API key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
 
-```powershell
-python docs\prepare_emote_datapack.py [--defaults] [--swap-left-right] path\to\project.zip
-```
+Without an API key, MineSkin is not called and the default skin included in the datapack is used instead.
 
-스크립트는 플레이어 스킨용 `emote:*` 마커를 추가하고 위 메타데이터를 생성합니다.
+### `packs.json`
 
-## 설정
-
-### `config/emote/config.json`
-
-- `menu_page_size`: 메뉴 한 페이지의 이모트 수
-- `mineskin_api_key`: 서버 측 플레이어 스킨 생성에 사용할 MineSkin API 키. 비어 있으면 API를 호출하지 않고 데이터팩 기본 스킨을 사용합니다.
-- `mineskin_poll_interval_seconds`: MineSkin 작업 상태 확인 간격(1~60초, 기본 3초)
-- `emote_permission`: 모든 이모트 사용에 필요한 기본 권한
-
-성공한 MineSkin 결과와 처리 중인 작업은 디스크에 저장되므로 같은 스킨을 반복 업로드하지 않습니다.
-
-### `config/emote/packs.json`
-
-설정에 없는 이모트 namespace는 기본적으로 활성화되고 추가 권한이 없습니다. 끄거나 별도 권한을 붙일 때만 override를 추가합니다.
+Emotes can be enabled or disabled by namespace, with an optional additional permission.
 
 ```json
 {
   "packs": {
-    "wave_pack": {
+    "hello": {
+      "enabled": true,
+      "permission": ""
+    },
+    "vip_dance": {
       "enabled": true,
       "permission": "emote.pack.vip"
     },
-    "disabled_pack": {
+    "disabled_emote": {
       "enabled": false,
       "permission": ""
     }
@@ -69,16 +97,8 @@ python docs\prepare_emote_datapack.py [--defaults] [--swap-left-right] path\to\p
 }
 ```
 
-## 명령어
+Emotes not listed in this file are enabled by default and do not require an additional permission. Run `/emote reload` after changing the configuration.
 
-```mcfunction
-/emote menu
-/emote play wave
-/emote play wave default_loop
-/emote stop
-/emote reload
-```
-
-## 라이선스
+## License
 
 Apache License 2.0
