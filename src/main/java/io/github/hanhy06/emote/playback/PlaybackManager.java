@@ -10,7 +10,6 @@ import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -127,7 +126,6 @@ public class PlaybackManager {
 
             if (hasMovedDuringPlayback(player, activeEmote)) {
                 playerUuidListToStop.add(activeEmote.playerUuid());
-                player.sendSystemMessage(Component.literal("Stop: moved"));
             }
         }
 
