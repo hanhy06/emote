@@ -81,7 +81,7 @@ public class PlayerSkinManager implements ConfigListener {
             return PlayerSkinPreparationResult.ready(null);
         }
         if (!hasMineSkinApiKey()) {
-            return PlayerSkinPreparationResult.failure("MineSkin API key is required.");
+            return PlayerSkinPreparationResult.ready(null);
         }
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
         if (skinSource == null) {

@@ -228,8 +228,7 @@ public class ConfigManager {
     private String validateConfig(Config config) {
         if (config.version() == null) return "version is missing";
         if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
-        if (config.mineskin_api_key() == null || config.mineskin_api_key().isBlank())
-            return "mineskin_api_key is required";
+        if (config.mineskin_api_key() == null) return "mineskin_api_key is missing";
         if (config.emote_permission() == null) return "emote_permission is missing";
         return null;
     }

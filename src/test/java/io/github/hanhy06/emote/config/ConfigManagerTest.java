@@ -158,7 +158,7 @@ class ConfigManagerTest {
 	}
 
 	@Test
-	void readConfigRejectsBlankMineSkinApiKey(@TempDir Path tempDir) throws IOException {
+	void readConfigAllowsBlankMineSkinApiKey(@TempDir Path tempDir) throws IOException {
 		ConfigManager manager = new ConfigManager(tempDir);
 		Files.writeString(
 			tempDir.resolve("emote").resolve("config.json"),
@@ -172,6 +172,7 @@ class ConfigManagerTest {
 				""".formatted(manager.getConfig().version())
 		);
 
-		assertFalse(manager.readConfig());
+		assertTrue(manager.readConfig());
+		assertEquals(" ", manager.getConfig().mineskin_api_key());
 	}
 }
