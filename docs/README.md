@@ -29,6 +29,8 @@ python docs\emote.py path\to\project.zip
 
 The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. It also normalizes BDEngine's internal function and entity-tag prefix to the datapack namespace. Player heads that are not part of the detected humanoid are left unchanged. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
 
+If one BDEngine project contains multiple `a/<animation>/play_anim_loop` functions, the script splits them into isolated emote namespaces such as `<namespace>_1`, `<namespace>_2`, and `<namespace>_3`. Without explicit names, their display names and command names are `1`, `2`, and `3` in animation-directory order. `--name` and `--command-name` are used as bases with numeric suffixes when supplied.
+
 Multiple emotes can be combined into one datapack. Each input must use a different namespace and command name.
 
 ```powershell
