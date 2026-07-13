@@ -27,7 +27,7 @@ BD Engine datapack ZIP files or folders can be converted with `docs/emote.py` in
 python docs\emote.py path\to\project.zip
 ```
 
-The script adds player skin-part markers and Emote metadata to the BD Engine datapack, then creates an `emote.<name>.zip` file. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
+The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
 
 The display name, description, and command name can also be specified manually.
 
@@ -46,6 +46,7 @@ python docs\emote.py `
 | `--command-name`    | Sets the name used by `/emote play`.                                       |
 | `--entrypoint`      | Sets the function path to play. The default is `a/default/play_anim_loop`. |
 | `--show-player`     | Keeps the actual player visible during playback.                           |
+| `--metadata-only`   | Adds metadata without applying the player's skin to the emote.              |
 | `--swap-left-right` | Swaps the automatically detected left and right body parts.                |
 | `--output-dir`      | Sets the directory for generated ZIP files.                                |
 

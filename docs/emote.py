@@ -105,7 +105,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
 	parser = argparse.ArgumentParser(
 		description=(
 			"Convert one or more BD Engine datapacks without interactive questions. "
-			"Each output receives emote:* skin markers and schema 2 emote metadata."
+			"Each output receives schema 2 emote metadata and, unless disabled, emote:* skin markers."
 		)
 	)
 	parser.add_argument("--name", help="Display name (single input only; otherwise inferred)")
@@ -115,6 +115,11 @@ def build_argument_parser() -> argparse.ArgumentParser:
 	visibility_group = parser.add_mutually_exclusive_group()
 	visibility_group.add_argument("--hide-player", dest="hide_player", action="store_true", default=True)
 	visibility_group.add_argument("--show-player", dest="hide_player", action="store_false")
+	parser.add_argument(
+		"--metadata-only",
+		action="store_true",
+		help="Add emote metadata without adding player skin-part markers",
+	)
 	parser.add_argument("--swap-left-right", action="store_true", help="Swap inferred left/right skin markers")
 	parser.add_argument("--output-dir", type=Path, help="Directory for generated emote.<name>.zip files")
 	parser.add_argument("input_paths", nargs="+", type=Path, help="One or more datapack .zip files or folders")
@@ -137,26 +142,29 @@ def process_input_path(input_path: Path, args: argparse.Namespace) -> Path:
 		work_dir = prepare_work_dir(input_path, temp_dir)
 
 		pack_root = find_pack_root(work_dir)
-		create_function_paths = find_create_function_paths(pack_root)
-		if not create_function_paths:
-			raise SystemExit("No compatible create.mcfunction file was found.")
+		if args.metadata_only:
+			namespaces = find_entrypoint_namespaces(pack_root, args.entrypoint)
+		else:
+			create_function_paths = find_create_function_paths(pack_root)
+			if not create_function_paths:
+				raise SystemExit("No compatible create.mcfunction file was found.")
 
-		namespaces: list[str] = []
-		updated_files = 0
-		for create_function_path in create_function_paths:
-			namespace = create_function_path.parents[2].name
-			namespaces.append(namespace)
+			namespaces = []
+			updated_files = 0
+			for create_function_path in create_function_paths:
+				namespace = create_function_path.parents[2].name
+				namespaces.append(namespace)
 
-			original_text = create_function_path.read_text(encoding="utf-8")
-			updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
-			if replaced_count == 0:
-				continue
+				original_text = create_function_path.read_text(encoding="utf-8")
+				updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
+				if replaced_count == 0:
+					continue
 
-			create_function_path.write_text(updated_text, encoding="utf-8", newline="\n")
-			updated_files += 1
+				create_function_path.write_text(updated_text, encoding="utf-8", newline="\n")
+				updated_files += 1
 
-		if updated_files == 0:
-			raise SystemExit("No player_head parts were found in create.mcfunction.")
+			if updated_files == 0:
+				raise SystemExit("No player_head parts were found in create.mcfunction.")
 
 		meta = create_emote_metadata(pack_root, input_path, namespaces, args)
 		validate_entrypoint(pack_root, namespaces, meta.entrypoint)
@@ -213,6 +221,26 @@ def find_create_function_paths(pack_root: Path) -> list[Path]:
 	for pattern in CREATE_FUNCTION_PATTERNS:
 		create_function_paths.extend(sorted(pack_root.glob(pattern)))
 	return create_function_paths
+
+
+def find_entrypoint_namespaces(pack_root: Path, entrypoint: str) -> list[str]:
+	normalized_entrypoint = entrypoint.strip().removesuffix(".mcfunction")
+	data_root = pack_root / "data"
+	if not data_root.is_dir():
+		raise SystemExit(f"Entrypoint was not found in any namespace: {normalized_entrypoint}")
+
+	namespaces = [
+		namespace_path.name
+		for namespace_path in sorted(data_root.iterdir())
+		if namespace_path.is_dir()
+		if any(
+			(namespace_path / function_folder / f"{normalized_entrypoint}.mcfunction").is_file()
+			for function_folder in ("function", "functions")
+		)
+	]
+	if not namespaces:
+		raise SystemExit(f"Entrypoint was not found in any namespace: {normalized_entrypoint}")
+	return namespaces
 
 
 def update_create_function(create_function_text: str, namespace: str, swap_left_right: bool) -> tuple[str, int]:
