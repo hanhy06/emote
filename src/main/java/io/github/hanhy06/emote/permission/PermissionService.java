@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 public class PermissionService implements ConfigListener, PackConfigListener {
-	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.GAMEMASTERS;
+	private static final PermissionLevel DEFAULT_EMOTE_PERMISSION_LEVEL = PermissionLevel.ALL;
 	private Config config = Config.createDefault();
 	private Map<String, String> namespacePermissionMap = Map.of();
 
