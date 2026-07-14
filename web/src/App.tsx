@@ -130,6 +130,7 @@ export function App() {
           <section className="editor">
             <PartPreview parts={model.parts} assignments={modelAssignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
             <aside>
+              <p><strong>좌우 기준:</strong> 캐릭터를 뒤에서 바라본 방향입니다. 정면에서는 왼쪽과 오른쪽이 반대로 보입니다.</p>
               <p>박스를 클릭하면 같은 위치의 조각도 함께 선택됩니다.</p>
               <div className="assignment-buttons">
                 {SKIN_PARTS.map((part) => (
