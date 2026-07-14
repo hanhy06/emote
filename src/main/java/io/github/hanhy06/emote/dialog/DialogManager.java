@@ -79,12 +79,7 @@ public class DialogManager {
             List.of(new PlainMessage(Component.literal("Search by name, command, or description."), 310)),
             inputs
         );
-        ActionButton submitButton = createTemplateButton(
-            "Search",
-            "Show matching emotes",
-            "/emote search $(query)",
-            310
-        );
+        ActionButton submitButton = createSearchSubmitButton();
         player.openDialog(Holder.direct(new MultiActionDialog(commonDialogData, List.of(submitButton), Optional.empty(), 1)));
     }
 
@@ -143,10 +138,14 @@ public class DialogManager {
         return new ActionButton(buttonData, Optional.of(action));
     }
 
-    private ActionButton createTemplateButton(String label, String tooltip, String commandTemplate, int width) {
-        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), width);
+    private ActionButton createSearchSubmitButton() {
+        CommonButtonData buttonData = new CommonButtonData(
+            Component.literal("Search"),
+            Optional.of(Component.literal("Show matching emotes")),
+            310
+        );
         ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
-            .parse(JsonOps.INSTANCE, new JsonPrimitive(commandTemplate))
+            .parse(JsonOps.INSTANCE, new JsonPrimitive("/emote search $(query)"))
             .getOrThrow();
         return new ActionButton(buttonData, Optional.of(new CommandTemplate(parsedTemplate)));
     }
@@ -186,8 +185,10 @@ public class DialogManager {
         }
 
         return emotes.stream()
-            .filter(emote -> searchRank(emote, normalizedQuery) < Integer.MAX_VALUE)
-            .sorted(Comparator.comparingInt(emote -> searchRank(emote, normalizedQuery)))
+            .map(emote -> new RankedEmote(emote, searchRank(emote, normalizedQuery)))
+            .filter(rankedEmote -> rankedEmote.rank() < Integer.MAX_VALUE)
+            .sorted(Comparator.comparingInt(RankedEmote::rank))
+            .map(RankedEmote::emote)
             .toList();
     }
 
@@ -252,5 +253,8 @@ public class DialogManager {
         int startIndex,
         int endIndex
     ) {
+    }
+
+    private record RankedEmote(PlayableEmote emote, int rank) {
     }
 }

@@ -234,7 +234,7 @@ public class ConfigManager {
             }
             JsonObject overrideObject = entry.getValue().getAsJsonObject();
             packs.put(namespace, new PackOverride(
-                readBoolean(overrideObject, "enabled", true),
+                readEnabled(overrideObject),
                 readString(overrideObject, "permission", "")
             ));
         }
@@ -260,10 +260,10 @@ public class ConfigManager {
         return element.getAsInt();
     }
 
-    private boolean readBoolean(JsonObject object, String key, boolean defaultValue) {
-        JsonElement element = object.get(key);
+    private boolean readEnabled(JsonObject object) {
+        JsonElement element = object.get("enabled");
         if (element == null || element.isJsonNull()) {
-            return defaultValue;
+            return true;
         }
 
         return element.getAsBoolean();
