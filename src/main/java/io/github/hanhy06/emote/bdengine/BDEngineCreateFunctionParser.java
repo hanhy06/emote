@@ -112,7 +112,7 @@ final class BDEngineCreateFunctionParser {
                 && partsForSkin.stream().allMatch(part -> part.explicitOrder() != null);
             if (hasExplicitOrder) {
                 partsForSkin.sort(
-                    Comparator.comparingInt((RawSkinPart part) -> part.explicitOrder())
+                    Comparator.comparingInt(RawSkinPart::explicitOrder)
                         .thenComparingInt(RawSkinPart::partIndex)
                 );
             } else if (isLimb(skinPart) && limbRoot != null) {

@@ -131,7 +131,7 @@ public final class RootCommand {
         return Commands.literal("enable")
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("namespace", StringArgumentType.word())
-                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     getDisabledNamespaces(),
                     builder
                 ))
@@ -146,7 +146,7 @@ public final class RootCommand {
         return Commands.literal("disable")
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("namespace", StringArgumentType.word())
-                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::namespace),
                     builder
                 ))

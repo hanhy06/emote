@@ -4,7 +4,6 @@ import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
@@ -59,7 +58,7 @@ public class HeldItemVisibilityService implements PlaybackStateListener {
     }
 
     private static void sendToTrackingPlayers(ServerPlayer player, List<Pair<EquipmentSlot, ItemStack>> equipment) {
-        ((ServerLevel) player.level()).getChunkSource().sendToTrackingPlayers(player, createPacket(player, equipment));
+        player.level().getChunkSource().sendToTrackingPlayers(player, createPacket(player, equipment));
     }
 
     private static ClientboundSetEquipmentPacket createPacket(

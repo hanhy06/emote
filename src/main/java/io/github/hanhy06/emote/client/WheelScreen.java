@@ -273,7 +273,7 @@ public class WheelScreen extends Screen {
     }
 
     private int clampPageIndex(int pageIndex) {
-        return Math.max(0, Math.min(pageIndex, getPageCount() - 1));
+        return Math.clamp(pageIndex, 0, getPageCount() - 1);
     }
 
     private void updateHoveredSlot(double mouseX, double mouseY) {
