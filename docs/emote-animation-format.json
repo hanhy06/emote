@@ -144,11 +144,11 @@
     "duration_ticks": 80,
     "loop": "loop",
     "loop_delay_ticks": 0,
-    "frames": [
+    "keyframes": [
       {
         "tick": 0,
-        "interpolation_ticks": 0,
-        "transforms": {
+        "interpolation_duration_ticks": 0,
+        "node_transforms": {
           "player_head": [
             1.0,
             0.0,
@@ -189,8 +189,8 @@
       },
       {
         "tick": 1,
-        "interpolation_ticks": 1,
-        "transforms": {
+        "interpolation_duration_ticks": 1,
+        "node_transforms": {
           "player_head": [
             0.9962,
             0.0,
@@ -249,8 +249,8 @@
       },
       {
         "tick": 40,
-        "interpolation_ticks": 0,
-        "transforms": {
+        "interpolation_duration_ticks": 0,
+        "node_transforms": {
           "caption": [
             1.0,
             0.0,
