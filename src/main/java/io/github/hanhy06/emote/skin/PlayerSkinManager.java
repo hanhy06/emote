@@ -20,14 +20,40 @@ import net.minecraft.world.item.Items;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
-    private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
-    private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
-    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
-    private final MineSkinBakeExecutor mineSkinBakeExecutor = new MineSkinBakeExecutor();
+    private final PlayerSkinBaker playerSkinBaker;
+    private final MineSkinTextureStore mineSkinTextureStore;
+    private final MineSkinApiClient mineSkinApiClient;
+    private final MineSkinBakeExecutor mineSkinBakeExecutor;
+    private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
 
     private volatile String mineSkinApiKey = "";
+
+    public PlayerSkinManager() {
+        this(
+            new PlayerSkinBaker(),
+            new MineSkinTextureStore(),
+            new MineSkinApiClient(),
+            new MineSkinBakeExecutor(),
+            PlayerSkinManager::readPlayerSkinSource
+        );
+    }
+
+    PlayerSkinManager(
+        PlayerSkinBaker playerSkinBaker,
+        MineSkinTextureStore mineSkinTextureStore,
+        MineSkinApiClient mineSkinApiClient,
+        MineSkinBakeExecutor mineSkinBakeExecutor,
+        Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
+    ) {
+        this.playerSkinBaker = Objects.requireNonNull(playerSkinBaker, "playerSkinBaker");
+        this.mineSkinTextureStore = Objects.requireNonNull(mineSkinTextureStore, "mineSkinTextureStore");
+        this.mineSkinApiClient = Objects.requireNonNull(mineSkinApiClient, "mineSkinApiClient");
+        this.mineSkinBakeExecutor = Objects.requireNonNull(mineSkinBakeExecutor, "mineSkinBakeExecutor");
+        this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
+    }
 
     @Override
     public void onConfigReload(Config newConfig) {
@@ -43,14 +69,14 @@ public class PlayerSkinManager implements ConfigListener {
         if (!MineSkinApiClient.hasApiKey(this.mineSkinApiKey)) {
             return PlayerSkinPreparationResult.ready(null);
         }
-        PlayerSkinSource skinSource = readPlayerSkinSource(player);
+        PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
             return PlayerSkinPreparationResult.ready(null);
         }
         Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
-            scheduleMineSkinBake(player.getGameProfile().name(), skinSource, requiredTextureKeys);
+            scheduleMineSkinBake(skinSource, requiredTextureKeys);
             return PlayerSkinPreparationResult.failure("Player skin is being prepared. Try again shortly.");
         }
         return PlayerSkinPreparationResult.ready(
@@ -182,7 +208,7 @@ public class PlayerSkinManager implements ConfigListener {
         return Map.copyOf(result);
     }
 
-    private void scheduleMineSkinBake(String playerName, PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
+    private void scheduleMineSkinBake(PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
         String apiKey = this.mineSkinApiKey;
         if (!MineSkinApiClient.hasApiKey(apiKey)) {
             return;
@@ -191,13 +217,12 @@ public class PlayerSkinManager implements ConfigListener {
         Set<PlayerSkinTextureKey> requestedKeys = Set.copyOf(requiredKeys);
         this.mineSkinBakeExecutor.submit(
             pendingKey,
-            () -> bakeAndSaveMineSkinTextureSet(apiKey, playerName, source, requestedKeys)
+            () -> bakeAndSaveMineSkinTextureSet(apiKey, source, requestedKeys)
         );
     }
 
     private void bakeAndSaveMineSkinTextureSet(
         String apiKey,
-        String playerName,
         PlayerSkinSource source,
         Set<PlayerSkinTextureKey> requiredKeys
     ) {
@@ -240,16 +265,16 @@ public class PlayerSkinManager implements ConfigListener {
                 saved.put(textureKey, textureUrl);
                 this.mineSkinTextureStore.save(source.textureHash(), source.slimModel(), saved);
             }
-            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", playerName, source.textureHash());
+            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
-            Emote.LOGGER.warn("MineSkin bake interrupted for {}", playerName, exception);
+            Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
         } catch (IOException | IllegalArgumentException exception) {
-            Emote.LOGGER.warn("MineSkin bake failed for {}", playerName, exception);
+            Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
         }
     }
 
-    private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
+    private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
         MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return null;
@@ -264,11 +289,17 @@ public class PlayerSkinManager implements ConfigListener {
             return null;
         }
         boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
-        return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
+        return new PlayerSkinSource(
+            player.getGameProfile().name(),
+            skinTexture.getHash(),
+            skinTexture.getUrl(),
+            slimModel
+        );
     }
 
-    private record PlayerSkinSource(String textureHash, String textureUrl, boolean slimModel) {
-        private PlayerSkinSource {
+    record PlayerSkinSource(String playerName, String textureHash, String textureUrl, boolean slimModel) {
+        PlayerSkinSource {
+            Objects.requireNonNull(playerName, "playerName");
             Objects.requireNonNull(textureHash, "textureHash");
             Objects.requireNonNull(textureUrl, "textureUrl");
         }
