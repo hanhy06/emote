@@ -13,9 +13,12 @@ import net.minecraft.util.Mth;
 import java.util.Arrays;
 import java.util.List;
 
+import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
+import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
+
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
-    static final int SLOT_COUNT = 6;
+    static final int SLOT_COUNT = WheelGeometry.SLOT_COUNT;
     private static final int LEFT_MOUSE_BUTTON = 0;
     private static final int RIGHT_MOUSE_BUTTON = 1;
     private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
@@ -73,13 +76,13 @@ public class WheelScreen extends Screen {
         this.lastMouseY = mouseY;
         updateHoveredSlot(mouseX, mouseY);
 
-        WheelMetrics metrics = createMetrics();
+        WheelMetrics metrics = WheelGeometry.createMetrics(this.width, this.height);
         List<PlayableEmote> pageEmotes = getCurrentPageEmotes();
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
 
         for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
-            SlotGeometry slot = createSlotGeometry(slotIndex, metrics);
+            SlotGeometry slot = WheelGeometry.createSlot(slotIndex, metrics);
             PlayableEmote playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
             boolean hovered = slotIndex == this.hoveredSlotIndex;
             drawSlot(graphics, slot, playableEmote, hovered);
@@ -138,7 +141,7 @@ public class WheelScreen extends Screen {
             return false;
         }
 
-        this.pageIndex = positiveModulo(this.pageIndex + direction, getPageCount());
+        this.pageIndex = Math.floorMod(this.pageIndex + direction, getPageCount());
         updateHoveredSlot(x, y);
         return true;
     }
@@ -154,7 +157,7 @@ public class WheelScreen extends Screen {
             return;
         }
 
-        this.pageIndex = positiveModulo(this.pageIndex + direction, getPageCount());
+        this.pageIndex = Math.floorMod(this.pageIndex + direction, getPageCount());
         updateHoveredSlot(mouseX, mouseY);
     }
 
@@ -185,8 +188,8 @@ public class WheelScreen extends Screen {
     }
 
     private void drawCenterHex(GuiGraphicsExtractor graphics, WheelMetrics metrics) {
-        int[] xPoints = createHexagonXPoints(metrics.centerX(), metrics.centerRadius());
-        int[] yPoints = createHexagonYPoints(metrics.centerY(), metrics.centerRadius());
+        int[] xPoints = WheelGeometry.createHexagonXPoints(metrics.centerX(), metrics.centerRadius());
+        int[] yPoints = WheelGeometry.createHexagonYPoints(metrics.centerY(), metrics.centerRadius());
         drawHex(graphics, xPoints, yPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
 
         if (this.emotes.isEmpty()) {
@@ -274,33 +277,8 @@ public class WheelScreen extends Screen {
         return Math.max(0, Math.min(pageIndex, getPageCount() - 1));
     }
 
-    private WheelMetrics createMetrics() {
-        int centerX = this.width / 2;
-        int centerY = this.height / 2 - 18;
-        int slotRadius = Mth.clamp(Math.min(this.width, this.height) / 12, 28, 44);
-        int ringRadiusLimitX = Math.max(slotRadius * 2, this.width / 2 - slotRadius - 18);
-        int ringRadiusLimitY = Math.max(slotRadius * 2, Math.min(centerY - slotRadius - 18, this.height - centerY - slotRadius - 90));
-        int ringRadius = Math.max(slotRadius * 2, Math.min(slotRadius * 3 + 20, Math.min(ringRadiusLimitX, ringRadiusLimitY)));
-        int centerRadius = Math.max(20, slotRadius - 12);
-        int descriptionWidth = Math.min(280, this.width - 48);
-        return new WheelMetrics(centerX, centerY, slotRadius, ringRadius, centerRadius, Math.max(52, slotRadius + 24), descriptionWidth);
-    }
-
-    private SlotGeometry createSlotGeometry(int slotIndex, WheelMetrics metrics) {
-        double angle = -Math.PI / 2.0D + slotIndex * (Math.PI / 3.0D);
-        int centerX = metrics.centerX() + (int) Math.round(Math.cos(angle) * metrics.ringRadius());
-        int centerY = metrics.centerY() + (int) Math.round(Math.sin(angle) * metrics.ringRadius());
-        return new SlotGeometry(
-            centerX,
-            centerY,
-            createHexagonXPoints(centerX, metrics.slotRadius()),
-            createHexagonYPoints(centerY, metrics.slotRadius()),
-            metrics.textWidth()
-        );
-    }
-
     private void updateHoveredSlot(double mouseX, double mouseY) {
-        WheelMetrics metrics = createMetrics();
+        WheelMetrics metrics = WheelGeometry.createMetrics(this.width, this.height);
         this.hoveredSlotIndex = -1;
 
         for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
@@ -308,38 +286,25 @@ public class WheelScreen extends Screen {
                 continue;
             }
 
-            SlotGeometry slot = createSlotGeometry(slotIndex, metrics);
-            if (containsPoint(slot.xPoints(), slot.yPoints(), mouseX, mouseY)) {
+            SlotGeometry slot = WheelGeometry.createSlot(slotIndex, metrics);
+            if (WheelGeometry.containsPoint(slot.xPoints(), slot.yPoints(), mouseX, mouseY)) {
                 this.hoveredSlotIndex = slotIndex;
                 return;
             }
         }
     }
 
-    private int[] createHexagonXPoints(int centerX, int radius) {
-        int[] points = new int[6];
-        for (int index = 0; index < points.length; index++) {
-            double angle = Math.PI * 2.0D * index / points.length;
-            points[index] = centerX + (int) Math.round(Math.cos(angle) * radius);
-        }
-        return points;
-    }
-
-    private int[] createHexagonYPoints(int centerY, int radius) {
-        int[] points = new int[6];
-        for (int index = 0; index < points.length; index++) {
-            double angle = Math.PI * 2.0D * index / points.length;
-            points[index] = centerY + (int) Math.round(Math.sin(angle) * radius);
-        }
-        return points;
-    }
-
     private void drawHex(GuiGraphicsExtractor graphics, int[] xPoints, int[] yPoints, int fillColor, int borderColor) {
         fillPolygon(graphics, xPoints, yPoints, borderColor);
-        int centerX = average(xPoints);
-        int centerY = average(yPoints);
-        int innerRadius = Math.max(8, estimateRadius(xPoints, centerX) - 3);
-        fillPolygon(graphics, createHexagonXPoints(centerX, innerRadius), createHexagonYPoints(centerY, innerRadius), fillColor);
+        int centerX = WheelGeometry.average(xPoints);
+        int centerY = WheelGeometry.average(yPoints);
+        int innerRadius = Math.max(8, WheelGeometry.estimateRadius(xPoints, centerX) - 3);
+        fillPolygon(
+            graphics,
+            WheelGeometry.createHexagonXPoints(centerX, innerRadius),
+            WheelGeometry.createHexagonYPoints(centerY, innerRadius),
+            fillColor
+        );
     }
 
     private void fillPolygon(GuiGraphicsExtractor graphics, int[] xPoints, int[] yPoints, int color) {
@@ -392,57 +357,4 @@ public class WheelScreen extends Screen {
         }
     }
 
-    private boolean containsPoint(int[] xPoints, int[] yPoints, double mouseX, double mouseY) {
-        boolean inside = false;
-        for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
-            boolean intersects = (yPoints[currentIndex] > mouseY) != (yPoints[previousIndex] > mouseY)
-                && mouseX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (mouseY - yPoints[currentIndex])
-                / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
-            if (intersects) {
-                inside = !inside;
-            }
-        }
-        return inside;
-    }
-
-    private int average(int[] values) {
-        int sum = 0;
-        for (int value : values) {
-            sum += value;
-        }
-        return sum / values.length;
-    }
-
-    private int estimateRadius(int[] values, int center) {
-        int total = 0;
-        for (int value : values) {
-            total += Math.abs(value - center);
-        }
-        return Math.max(1, total / values.length);
-    }
-
-    private int positiveModulo(int value, int divisor) {
-        int result = value % divisor;
-        return result < 0 ? result + divisor : result;
-    }
-
-    private record WheelMetrics(
-        int centerX,
-        int centerY,
-        int slotRadius,
-        int ringRadius,
-        int centerRadius,
-        int textWidth,
-        int descriptionWidth
-    ) {
-    }
-
-    private record SlotGeometry(
-        int centerX,
-        int centerY,
-        int[] xPoints,
-        int[] yPoints,
-        int textWidth
-    ) {
-    }
 }
