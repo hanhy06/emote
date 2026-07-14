@@ -40,11 +40,14 @@ describe("findEmoteModels", () => {
 
     expect(models).toHaveLength(1);
     expect(models[0].namespace).toBe(name);
-    expect(models[0].previewAnimation).toBe("default");
+    expect(models[0].previewFrames.length).toBeGreaterThan(1);
+    expect(models[0].previewFrames[0].animation).toBe("default");
+    expect(models[0].previewFrames[0].frameIndex).toBe(0);
     expect(models[0].parts).toHaveLength(11);
     expect(models[0].parts.every((part) => {
       const frameMatrix = firstFrame.get(part.partIndex);
       return !frameMatrix || part.matrix.every((value, index) => value === frameMatrix[index]);
     })).toBe(true);
+    expect(models[0].previewFrames.every((frame) => frame.parts.length === 11)).toBe(true);
   });
 });

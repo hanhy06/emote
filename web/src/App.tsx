@@ -9,6 +9,7 @@ export function App() {
   const [datapack, setDatapack] = useState<LoadedDatapack | null>(null);
   const [models, setModels] = useState<ParsedEmoteModel[]>([]);
   const [modelIndex, setModelIndex] = useState(0);
+  const [previewFrameIndexes, setPreviewFrameIndexes] = useState<Record<string, number>>({});
   const [assignments, setAssignments] = useState<Record<string, PartAssignments>>({});
   const [selectedParts, setSelectedParts] = useState<Set<number>>(new Set());
   const [metadata, setMetadata] = useState<ConversionOptions>({ name: "", description: "", commandName: "", hidePlayer: true });
@@ -37,6 +38,7 @@ export function App() {
         Object.fromEntries(model.parts.map((part) => [part.partIndex, part.existingAssignment])),
       ])));
       setModelIndex(0);
+      setPreviewFrameIndexes({});
       setSelectedParts(new Set());
 
       const defaultName = prettifyName(file.name.replace(/\.zip$/i, "").replace(/^emote\./i, ""));
@@ -74,10 +76,11 @@ export function App() {
 
   const handlePartSelect = useCallback((partIndex: number, additive: boolean) => {
     const model = models[modelIndex];
-    const selectedPart = model?.parts.find((part) => part.partIndex === partIndex);
+    const previewParts = model?.previewFrames[previewFrameIndexes[model.namespace] ?? 0]?.parts ?? model?.parts;
+    const selectedPart = previewParts?.find((part) => part.partIndex === partIndex);
     if (!model || !selectedPart) return;
 
-    const groupedIndices = model.parts
+    const groupedIndices = previewParts
       .filter((part) => distance(part.anchor, selectedPart.anchor) <= 0.05)
       .map((part) => part.partIndex);
 
@@ -87,7 +90,7 @@ export function App() {
       groupedIndices.forEach((index) => shouldRemove ? next.delete(index) : next.add(index));
       return next;
     });
-  }, [modelIndex, models]);
+  }, [modelIndex, models, previewFrameIndexes]);
 
   function assignSelected(skinPart: SkinPartId | null) {
     const namespace = models[modelIndex]?.namespace;
@@ -103,6 +106,9 @@ export function App() {
 
   const model = models[modelIndex];
   const modelAssignments = model ? assignments[model.namespace] ?? {} : {};
+  const previewFrameIndex = model ? previewFrameIndexes[model.namespace] ?? 0 : 0;
+  const previewFrame = model?.previewFrames[previewFrameIndex];
+  const previewParts = previewFrame?.parts ?? model?.parts ?? [];
 
   return (
     <main className="app">
@@ -119,7 +125,20 @@ export function App() {
           <div className="status">
             <strong>{datapack.fileName}</strong>
             <span>{model.parts.length}개 조각</span>
-            {model.previewAnimation && <span>{model.previewAnimation} 첫 프레임</span>}
+            {model.previewFrames.length > 0 && (
+              <label>미리보기 프레임
+                <select value={previewFrameIndex} onChange={(event) => {
+                  setPreviewFrameIndexes((current) => ({ ...current, [model.namespace]: Number(event.target.value) }));
+                  setSelectedParts(new Set());
+                }}>
+                  {model.previewFrames.map((frame, index) => (
+                    <option value={index} key={`${frame.animation}-${frame.frameIndex}`}>
+                      {frame.animation} / 프레임 {frame.frameIndex}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {models.length > 1 && (
               <select value={modelIndex} onChange={(event) => { setModelIndex(Number(event.target.value)); setSelectedParts(new Set()); }}>
                 {models.map((item, index) => <option value={index} key={item.namespace}>{item.namespace}</option>)}
@@ -128,7 +147,7 @@ export function App() {
           </div>
 
           <section className="editor">
-            <PartPreview parts={model.parts} assignments={modelAssignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+            <PartPreview parts={previewParts} assignments={modelAssignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
             <aside>
               <p><strong>좌우 기준:</strong> 캐릭터를 뒤에서 바라본 방향입니다. 정면에서는 왼쪽과 오른쪽이 반대로 보입니다.</p>
               <p>박스를 클릭하면 같은 위치의 조각도 함께 선택됩니다.</p>
@@ -141,7 +160,7 @@ export function App() {
                 <button type="button" disabled={selectedParts.size === 0} onClick={() => assignSelected(null)}>미지정</button>
               </div>
               <ul className="part-list">
-                {model.parts.map((part) => (
+                {previewParts.map((part) => (
                   <li key={part.partIndex}>
                     <button type="button" className={selectedParts.has(part.partIndex) ? "selected" : ""} onClick={(event) => handlePartSelect(part.partIndex, event.ctrlKey || event.metaKey || event.shiftKey)}>
                       <span>#{part.partIndex}</span><span>{assignmentLabel(modelAssignments[part.partIndex])}</span>

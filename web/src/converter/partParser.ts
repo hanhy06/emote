@@ -24,7 +24,13 @@ export interface ParsedEmoteModel {
   namespace: string;
   sourceTagNamespace: string;
   createFilePath: string;
-  previewAnimation: string | null;
+  previewFrames: EmotePreviewFrame[];
+  parts: PlayerHeadPart[];
+}
+
+export interface EmotePreviewFrame {
+  animation: string;
+  frameIndex: number;
   parts: PlayerHeadPart[];
 }
 
@@ -44,11 +50,11 @@ export function findEmoteModels(datapack: LoadedDatapack): ParsedEmoteModel[] {
     if (!sourceTagNamespace) continue;
     const parts = parsePlayerHeadParts(createFunctionText, sourceTagNamespace);
     if (parts.length > 0) {
-      models.push(applyFirstAnimationFrame(datapack, {
+      models.push(addAnimationPreviewFrames(datapack, {
         namespace,
         sourceTagNamespace,
         createFilePath: path,
-        previewAnimation: null,
+        previewFrames: [],
         parts,
       }));
     }
@@ -57,33 +63,40 @@ export function findEmoteModels(datapack: LoadedDatapack): ParsedEmoteModel[] {
   return models.sort((first, second) => first.namespace.localeCompare(second.namespace));
 }
 
-function applyFirstAnimationFrame(datapack: LoadedDatapack, model: ParsedEmoteModel): ParsedEmoteModel {
+function addAnimationPreviewFrames(datapack: LoadedDatapack, model: ParsedEmoteModel): ParsedEmoteModel {
   const functionFolder = model.createFilePath.split("/")[2];
-  const animationPrefix = `data/${model.namespace}/${functionFolder}/a/`;
-  const animationNames = [...datapack.files.keys()]
-    .filter((path) => path.startsWith(animationPrefix) && path.endsWith("/play_anim_loop.mcfunction"))
-    .map((path) => path.slice(animationPrefix.length).split("/")[0])
-    .sort();
+  const keyframePrefix = `data/${model.namespace}/${functionFolder}/k/`;
+  const framePaths = [...datapack.files.keys()].flatMap((path) => {
+    if (!path.startsWith(keyframePrefix)) return [];
+    const [animation, fileName, extra] = path.slice(keyframePrefix.length).split("/");
+    const frameMatch = /^keyframe_(\d+)\.mcfunction$/.exec(fileName ?? "");
+    return animation && frameMatch && !extra
+      ? [{ path, animation, frameIndex: Number.parseInt(frameMatch[1], 10) }]
+      : [];
+  }).sort((first, second) => first.animation.localeCompare(second.animation) || first.frameIndex - second.frameIndex);
   const decoder = new TextDecoder();
+  const previewFrames: EmotePreviewFrame[] = [];
+  let animation = "";
+  let currentParts = model.parts;
 
-  for (const animationName of animationNames) {
-    const framePath = `data/${model.namespace}/${functionFolder}/k/${animationName}/keyframe_0.mcfunction`;
-    const frameData = datapack.files.get(framePath);
+  for (const frame of framePaths) {
+    if (frame.animation !== animation) {
+      animation = frame.animation;
+      currentParts = model.parts;
+    }
+    const frameData = datapack.files.get(frame.path);
     if (!frameData) continue;
 
     const frameMatrices = parseKeyframeMatrices(decoder.decode(frameData), model.sourceTagNamespace);
     if (frameMatrices.size === 0) continue;
-    return {
-      ...model,
-      previewAnimation: animationName,
-      parts: model.parts.map((part) => {
-        const matrix = frameMatrices.get(part.partIndex);
-        return matrix ? createPlayerHeadPart(part.partIndex, part.namespace, matrix, part.existingAssignment) : part;
-      }),
-    };
+    currentParts = currentParts.map((part) => {
+      const matrix = frameMatrices.get(part.partIndex);
+      return matrix ? createPlayerHeadPart(part.partIndex, part.namespace, matrix, part.existingAssignment) : part;
+    });
+    previewFrames.push({ animation: frame.animation, frameIndex: frame.frameIndex, parts: currentParts });
   }
 
-  return model;
+  return { ...model, previewFrames, parts: previewFrames[0]?.parts ?? model.parts };
 }
 
 export function parseKeyframeMatrices(keyframeText: string, namespace: string): Map<number, readonly number[]> {
