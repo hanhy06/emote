@@ -147,6 +147,9 @@ export function App() {
   const previewFrameIndex = model ? previewFrameIndexes[model.namespace] ?? 0 : 0;
   const previewFrame = model?.previewFrames[previewFrameIndex];
   const previewParts = previewFrame?.parts ?? model?.parts ?? [];
+  const previewProgress = model && model.previewFrames.length > 1
+    ? previewFrameIndex * 100 / (model.previewFrames.length - 1)
+    : 100;
 
   return (
     <main className="app">
@@ -166,7 +169,7 @@ export function App() {
             {model.previewFrames.length > 0 && (
               <label className="frame-slider">
                 <span>미리보기 프레임</span>
-                <input type="range" min="0" max={model.previewFrames.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                <input type="range" min="0" max={model.previewFrames.length - 1} step="1" value={previewFrameIndex} style={{ background: `linear-gradient(to right, #1683f8 0%, #1683f8 ${previewProgress}%, #dddddd ${previewProgress}%, #dddddd 100%)` }} onChange={(event) => {
                   setPreviewFrameIndexes((current) => ({ ...current, [model.namespace]: Number(event.target.value) }));
                   setSelectedParts(new Set());
                 }} />
