@@ -116,7 +116,7 @@ function findEntityTagNamespace(createFunctionText: string): string | null {
   for (const match of createFunctionText.matchAll(ITEM_DISPLAY_PATTERN)) {
     if (match[1].includes('id:"minecraft:player_head"')) namespaces.add(match[2]);
   }
-  if (namespaces.size > 1) throw new Error("create.mcfunction에 서로 다른 조각 네임스페이스가 있습니다.");
+  if (namespaces.size > 1) throw new Error("create.mcfunction contains pieces from different namespaces.");
   return [...namespaces][0] ?? null;
 }
 
@@ -189,7 +189,7 @@ export function readTransformationValues(itemDisplayText: string): readonly numb
 
   const values = transformationMatch[1].split(",").map(parseMatrixNumber);
   if (values.length !== 16 || values.some((value) => !Number.isFinite(value))) {
-    throw new Error("player_head 변환 행렬은 유효한 숫자 16개여야 합니다.");
+    throw new Error("A player_head transformation matrix must contain 16 valid numbers.");
   }
   return values;
 }

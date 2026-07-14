@@ -41,7 +41,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       renderer = new THREE.WebGLRenderer({ antialias: true });
       setRenderError("");
     } catch {
-      setRenderError("이 브라우저에서 3D 화면을 만들지 못했습니다.");
+      setRenderError("Could not create the 3D preview in this browser.");
       return;
     }
 
@@ -163,7 +163,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
   }, [onSelectPart, parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
-  return <div className="part-preview" ref={containerRef} aria-label="이모트 조각 3D 미리보기" />;
+  return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote pieces" />;
 }
 
 type MatrixValues = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];

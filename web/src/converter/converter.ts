@@ -83,7 +83,7 @@ function splitAnimationNamespace(files: Map<string, Uint8Array>, model: ParsedEm
   sortedNames.forEach((animationName, index) => {
     const targetNamespace = `${model.namespace}_${index + 1}`;
     if (hasNamespace(files, targetNamespace)) {
-      throw new Error(`생성할 네임스페이스가 이미 존재합니다: ${targetNamespace}`);
+      throw new Error(`The target namespace already exists: ${targetNamespace}`);
     }
     copyNamespace(files, model.namespace, targetNamespace);
     normalizeNamespaceContents(files, targetNamespace, model.namespace, targetNamespace);
@@ -171,13 +171,13 @@ function cloneFiles(files: Map<string, Uint8Array>): Map<string, Uint8Array> {
 
 function readText(files: Map<string, Uint8Array>, path: string): string {
   const data = files.get(path);
-  if (!data) throw new Error(`필수 파일이 없습니다: ${path}`);
+  if (!data) throw new Error(`Required file is missing: ${path}`);
   return decoder.decode(data);
 }
 
 function validateOptions(options: ConversionOptions): void {
   if (!options.name.trim() || !options.description.trim() || !options.commandName.trim()) {
-    throw new Error("이름, 설명, 명령어 이름을 모두 입력하세요.");
+    throw new Error("Enter a name, description, and command name.");
   }
 }
 

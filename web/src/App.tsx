@@ -32,7 +32,7 @@ export function App() {
     try {
       const loadedDatapack = await loadDatapack(file);
       const foundModels = findEmoteModels(loadedDatapack);
-      if (foundModels.length === 0) throw new Error("create.mcfunction에서 player_head 조각을 찾지 못했습니다.");
+      if (foundModels.length === 0) throw new Error("No player_head pieces were found in create.mcfunction.");
 
       setDatapack(loadedDatapack);
       setModels(foundModels);
@@ -56,7 +56,7 @@ export function App() {
         hidePlayer: true,
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "ZIP 파일을 읽지 못했습니다.");
+      setError(reason instanceof Error ? reason.message : "Could not read the ZIP file.");
     } finally {
       setLoading(false);
     }
@@ -75,7 +75,7 @@ export function App() {
       anchor.click();
       setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (reason) {
-      setConversionError(reason instanceof Error ? reason.message : "변환에 실패했습니다.");
+      setConversionError(reason instanceof Error ? reason.message : "Conversion failed.");
     } finally {
       setConverting(false);
     }
@@ -155,22 +155,22 @@ export function App() {
         <label className="file-input">BD Engine ZIP<input type="file" accept=".zip,application/zip" onChange={handleFileChange} disabled={loading} /></label>
       </header>
 
-      {loading && <p>파일 읽는 중…</p>}
+      {loading && <p>Reading file…</p>}
       {error && <p className="error" role="alert">{error}</p>}
 
       {datapack && model && (
         <>
           <div className="status">
             <strong>{datapack.fileName}</strong>
-            <span>{model.parts.length}개 조각</span>
+            <span>{model.parts.length} pieces</span>
             {model.previewFrames.length > 0 && (
               <label className="frame-slider">
-                <span>미리보기 프레임</span>
+                <span>Preview frame</span>
                 <input type="range" min="0" max={model.previewFrames.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
                   setPreviewFrameIndexes((current) => ({ ...current, [model.namespace]: Number(event.target.value) }));
                   setSelectedParts(new Set());
                 }} />
-                <output>{previewFrame?.animation} / 프레임 {previewFrame?.frameIndex}</output>
+                <output>{previewFrame?.animation} / frame {previewFrame?.frameIndex}</output>
               </label>
             )}
             {models.length > 1 && (
@@ -219,5 +219,5 @@ function prettifyName(value: string): string {
 function assignmentSummary(models: ParsedEmoteModel[], assignments: Record<string, PartAssignments>): string {
   const assigned = models.reduce((total, item) => total + item.parts.filter((part) => assignments[item.namespace]?.[part.partIndex]).length, 0);
   const total = models.reduce((sum, item) => sum + item.parts.length, 0);
-  return `${assigned}/${total}개 지정됨`;
+  return `${assigned}/${total} assigned`;
 }

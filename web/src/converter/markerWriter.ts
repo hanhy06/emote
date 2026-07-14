@@ -44,7 +44,7 @@ function removeProfileMarker(itemDisplayText: string): string {
 export function injectProfileName(itemDisplayText: string, markerName: string): string {
   const markerMatch = /^emote:([a-z_]+)(?::?(\d+))?$/.exec(markerName);
   if (!markerMatch || !isSkinPartId(markerMatch[1])) {
-    throw new Error(`지원하지 않는 스킨 부위 마커입니다: ${markerName}`);
+    throw new Error(`Unsupported skin part marker: ${markerName}`);
   }
 
   const profileKey = '"minecraft:profile":{';
@@ -72,7 +72,7 @@ export function injectProfileName(itemDisplayText: string, markerName: string): 
   const itemKey = "item:{";
   const itemIndex = itemDisplayText.indexOf(itemKey);
   if (itemIndex < 0) {
-    throw new Error("item_display의 item 데이터를 찾지 못했습니다.");
+    throw new Error("Could not find item data in item_display.");
   }
   const startIndex = itemIndex + itemKey.length - 1;
   const endIndex = findMatchingBrace(itemDisplayText, startIndex);
@@ -109,7 +109,7 @@ function findMatchingBrace(text: string, startIndex: number): number {
       return index;
     }
   }
-  throw new Error("닫히지 않은 NBT 객체가 있습니다.");
+  throw new Error("An NBT object is not closed.");
 }
 
 function splitTopLevelFields(text: string): string[] {

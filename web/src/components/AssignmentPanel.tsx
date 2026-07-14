@@ -37,21 +37,21 @@ export function AssignmentPanel({
 
   return (
     <aside>
-      <p><strong>좌우 기준:</strong> 캐릭터를 뒤에서 바라본 방향입니다. 정면에서는 왼쪽과 오른쪽이 반대로 보입니다.</p>
-      <p>박스를 클릭하면 같은 위치의 조각도 함께 선택됩니다.</p>
+      <p><strong>Left/right reference:</strong> Directions are shown from behind the character. They appear reversed from the front.</p>
+      <p>Click a box to select all pieces at the same position.</p>
       <div className="assignment-buttons">
         {SKIN_PARTS.map((part) => (
           <button type="button" key={part.id} disabled={!hasSelection} onClick={() => onAssignPart(part.id)}>
             <i style={{ backgroundColor: part.color }} />{part.label}
           </button>
         ))}
-        <button type="button" disabled={!hasSelection} onClick={() => onAssignPart(null)}>미지정</button>
+        <button type="button" disabled={!hasSelection} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
-      <p><strong>팔다리 스킨 순서:</strong> 몸통에 가까운 조각은 0, 손·발에 가까운 조각은 1로 지정합니다.</p>
+      <p><strong>Limb skin order:</strong> Use 0 for the piece closer to the torso and 1 for the piece closer to the hand or foot.</p>
       <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(0)}>위쪽 0</button>
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(1)}>아래쪽 1</button>
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(null)}>자동</button>
+        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(0)}>Upper 0</button>
+        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(1)}>Lower 1</button>
+        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(null)}>Auto</button>
       </div>
       <ul className="part-list">
         {parts.map((part) => (
@@ -72,6 +72,6 @@ export function AssignmentPanel({
 }
 
 function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {
-  const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "미지정";
+  const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "Unassigned";
   return assignment && isLimbPart(assignment) && order != null ? `${label} · ${order}` : label;
 }

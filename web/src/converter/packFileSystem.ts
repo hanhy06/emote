@@ -33,7 +33,7 @@ export function findPackRoot(paths: Iterable<string>): string {
     .sort((first, second) => first.split("/").length - second.split("/").length || first.localeCompare(second));
 
   if (candidates.length === 0) {
-    throw new Error("ZIP 안에서 pack.mcmeta를 찾지 못했습니다.");
+    throw new Error("Could not find pack.mcmeta in the ZIP file.");
   }
   return candidates[0];
 }

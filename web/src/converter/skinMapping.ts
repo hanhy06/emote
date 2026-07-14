@@ -1,10 +1,10 @@
 export const SKIN_PARTS = [
-  { id: "head", label: "머리", color: "#f0b65f" },
-  { id: "body", label: "몸통", color: "#7198f5" },
-  { id: "left_arm", label: "왼팔", color: "#b184f5" },
-  { id: "right_arm", label: "오른팔", color: "#55c7dd" },
-  { id: "left_leg", label: "왼다리", color: "#ef7f9b" },
-  { id: "right_leg", label: "오른다리", color: "#74ca86" },
+  { id: "head", label: "Head", color: "#f0b65f" },
+  { id: "body", label: "Body", color: "#7198f5" },
+  { id: "left_arm", label: "Left Arm", color: "#b184f5" },
+  { id: "right_arm", label: "Right Arm", color: "#55c7dd" },
+  { id: "left_leg", label: "Left Leg", color: "#ef7f9b" },
+  { id: "right_leg", label: "Right Leg", color: "#74ca86" },
 ] as const;
 
 export type SkinPartId = typeof SKIN_PARTS[number]["id"];
