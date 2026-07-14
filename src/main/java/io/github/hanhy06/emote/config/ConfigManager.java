@@ -18,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.function.BiConsumer;
 
 public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
@@ -40,18 +39,14 @@ public class ConfigManager {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
 
         try {
-            if (!Files.exists(this.configDirPath)) {
-                Files.createDirectories(this.configDirPath);
-                writeConfig(this::writeJsonFile);
-                writePackConfig(this::writeJsonFile);
-                return;
-            }
-
-            writeConfig(this::writeIfAbsent);
-            writePackConfig(this::writeIfAbsent);
+            Files.createDirectories(this.configDirPath);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
+            return;
         }
+
+        writeIfAbsent(CONFIG_FILE_NAME, createConfigJson(this.config));
+        writeIfAbsent(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
     }
 
     public Config getConfig() {
@@ -158,14 +153,6 @@ public class ConfigManager {
             Emote.LOGGER.warn("Failed to read {}: {}", fileName, exception.getMessage());
             return null;
         }
-    }
-
-    private void writeConfig(BiConsumer<String, JsonObject> writer) {
-        writer.accept(CONFIG_FILE_NAME, createConfigJson(this.config));
-    }
-
-    private void writePackConfig(BiConsumer<String, JsonObject> writer) {
-        writer.accept(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
     }
 
     private void writeIfAbsent(String fileName, JsonObject json) {
