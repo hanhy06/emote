@@ -3,7 +3,9 @@ import { PartPreview } from "./components/PartPreview";
 import { convertDatapack, sanitizeCommandName, type ConversionOptions } from "./converter/converter";
 import { loadDatapack, type LoadedDatapack } from "./converter/packFileSystem";
 import { findEmoteModels, type ParsedEmoteModel } from "./converter/partParser";
-import { SKIN_PARTS, type PartAssignments, type SkinPartId } from "./converter/skinMapping";
+import { SKIN_PARTS, type PartAssignments, type PartOrders, type SkinPartId } from "./converter/skinMapping";
+
+const LIMB_PARTS = new Set<SkinPartId>(["left_arm", "right_arm", "left_leg", "right_leg"]);
 
 export function App() {
   const [datapack, setDatapack] = useState<LoadedDatapack | null>(null);
@@ -11,6 +13,7 @@ export function App() {
   const [modelIndex, setModelIndex] = useState(0);
   const [previewFrameIndexes, setPreviewFrameIndexes] = useState<Record<string, number>>({});
   const [assignments, setAssignments] = useState<Record<string, PartAssignments>>({});
+  const [orders, setOrders] = useState<Record<string, PartOrders>>({});
   const [selectedParts, setSelectedParts] = useState<Set<number>>(new Set());
   const [metadata, setMetadata] = useState<ConversionOptions>({ name: "", description: "", commandName: "", hidePlayer: true });
   const [error, setError] = useState("");
@@ -37,6 +40,10 @@ export function App() {
         model.namespace,
         Object.fromEntries(model.parts.map((part) => [part.partIndex, part.existingAssignment])),
       ])));
+      setOrders(Object.fromEntries(foundModels.map((model) => [
+        model.namespace,
+        Object.fromEntries(model.parts.map((part) => [part.partIndex, part.existingOrder])),
+      ])));
       setModelIndex(0);
       setPreviewFrameIndexes({});
       setSelectedParts(new Set());
@@ -60,7 +67,7 @@ export function App() {
     setConverting(true);
     setConversionError("");
     try {
-      const result = await convertDatapack(datapack, models, assignments, metadata);
+      const result = await convertDatapack(datapack, models, assignments, orders, metadata);
       const url = URL.createObjectURL(result.blob);
       const anchor = document.createElement("a");
       anchor.href = url;
@@ -102,10 +109,41 @@ export function App() {
         ...Object.fromEntries([...selectedParts].map((partIndex) => [partIndex, skinPart])),
       },
     }));
+    if (!skinPart || !LIMB_PARTS.has(skinPart)) {
+      setOrders((current) => ({
+        ...current,
+        [namespace]: {
+          ...current[namespace],
+          ...Object.fromEntries([...selectedParts].map((partIndex) => [partIndex, null])),
+        },
+      }));
+    }
+  }
+
+  function assignOrder(order: number | null) {
+    const namespace = models[modelIndex]?.namespace;
+    if (!namespace || selectedParts.size === 0) return;
+    const limbIndices = [...selectedParts].filter((partIndex) => {
+      const assignment = assignments[namespace]?.[partIndex];
+      return assignment != null && LIMB_PARTS.has(assignment);
+    });
+    if (limbIndices.length === 0) return;
+    setOrders((current) => ({
+      ...current,
+      [namespace]: {
+        ...current[namespace],
+        ...Object.fromEntries(limbIndices.map((partIndex) => [partIndex, order])),
+      },
+    }));
   }
 
   const model = models[modelIndex];
   const modelAssignments = model ? assignments[model.namespace] ?? {} : {};
+  const modelOrders = model ? orders[model.namespace] ?? {} : {};
+  const hasSelectedLimb = model ? [...selectedParts].some((partIndex) => {
+    const assignment = modelAssignments[partIndex];
+    return assignment != null && LIMB_PARTS.has(assignment);
+  }) : false;
   const previewFrameIndex = model ? previewFrameIndexes[model.namespace] ?? 0 : 0;
   const previewFrame = model?.previewFrames[previewFrameIndex];
   const previewParts = previewFrame?.parts ?? model?.parts ?? [];
@@ -159,11 +197,17 @@ export function App() {
                 ))}
                 <button type="button" disabled={selectedParts.size === 0} onClick={() => assignSelected(null)}>미지정</button>
               </div>
+              <p><strong>팔다리 스킨 순서:</strong> 몸통에 가까운 조각은 0, 손·발에 가까운 조각은 1로 지정합니다.</p>
+              <div className="assignment-buttons">
+                <button type="button" disabled={!hasSelectedLimb} onClick={() => assignOrder(0)}>위쪽 0</button>
+                <button type="button" disabled={!hasSelectedLimb} onClick={() => assignOrder(1)}>아래쪽 1</button>
+                <button type="button" disabled={!hasSelectedLimb} onClick={() => assignOrder(null)}>자동</button>
+              </div>
               <ul className="part-list">
                 {previewParts.map((part) => (
                   <li key={part.partIndex}>
                     <button type="button" className={selectedParts.has(part.partIndex) ? "selected" : ""} onClick={(event) => handlePartSelect(part.partIndex, event.ctrlKey || event.metaKey || event.shiftKey)}>
-                      <span>#{part.partIndex}</span><span>{assignmentLabel(modelAssignments[part.partIndex])}</span>
+                      <span>#{part.partIndex}</span><span>{assignmentLabel(modelAssignments[part.partIndex], modelOrders[part.partIndex])}</span>
                     </button>
                   </li>
                 ))}
@@ -192,8 +236,9 @@ function distance(first: { x: number; y: number; z: number }, second: { x: numbe
   return Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z);
 }
 
-function assignmentLabel(assignment: SkinPartId | null | undefined): string {
-  return SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "미지정";
+function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {
+  const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "미지정";
+  return assignment && LIMB_PARTS.has(assignment) && order != null ? `${label} · ${order}` : label;
 }
 
 function prettifyName(value: string): string {

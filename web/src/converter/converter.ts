@@ -2,7 +2,7 @@ import JSZip from "jszip";
 import type { LoadedDatapack } from "./packFileSystem";
 import type { ParsedEmoteModel } from "./partParser";
 import { applySkinMarkers } from "./markerWriter";
-import type { PartAssignments } from "./skinMapping";
+import type { PartAssignments, PartOrders } from "./skinMapping";
 
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
@@ -29,6 +29,7 @@ export async function convertDatapack(
   datapack: LoadedDatapack,
   models: ParsedEmoteModel[],
   assignments: Record<string, PartAssignments>,
+  orders: Record<string, PartOrders>,
   options: ConversionOptions,
 ): Promise<ConversionResult> {
   validateOptions(options);
@@ -38,7 +39,7 @@ export async function convertDatapack(
     const originalText = readText(files, model.createFilePath);
     files.set(
       model.createFilePath,
-      encoder.encode(applySkinMarkers(originalText, model.sourceTagNamespace, assignments[model.namespace] ?? {})),
+      encoder.encode(applySkinMarkers(originalText, model.sourceTagNamespace, assignments[model.namespace] ?? {}, orders[model.namespace] ?? {})),
     );
     normalizeNamespaceContents(files, model.namespace, model.sourceTagNamespace, model.namespace);
   }

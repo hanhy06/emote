@@ -18,7 +18,7 @@ describe("convertDatapack", () => {
       model.parts.map((part) => [part.partIndex, part.existingAssignment]),
     )]));
 
-    const result = await convertDatapack(datapack, models, assignments, {
+    const result = await convertDatapack(datapack, models, assignments, {}, {
       name: "Hello",
       description: "Hello emote.",
       commandName: "hello",
@@ -44,7 +44,7 @@ describe("convertDatapack", () => {
     const datapack: LoadedDatapack = { fileName: "demo.zip", rootPath: "", files };
     const models = findEmoteModels(datapack);
 
-    const result = await convertDatapack(datapack, models, { demo: { 0: "head" } }, {
+    const result = await convertDatapack(datapack, models, { demo: { 0: "head" } }, {}, {
       name: "Demo",
       description: "Demo emote.",
       commandName: "demo",

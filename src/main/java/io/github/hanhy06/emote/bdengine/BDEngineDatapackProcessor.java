@@ -37,6 +37,7 @@ public class BDEngineDatapackProcessor {
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
     private static final Pattern ENTRYPOINT_PATTERN = Pattern.compile("[a-z0-9_./-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern ORDERED_SKIN_MARKER_PATTERN = Pattern.compile("^emote:([a-z_]+)(?::(\\d+))?$");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
     private static final double ANCHOR_DISTANCE_EPSILON = 1.0E-9D;
     private final ConfigManager configManager;
@@ -349,10 +350,17 @@ public class BDEngineDatapackProcessor {
         }
 
         double[] transformationValues = readTransformationValues(itemDisplayData);
-        PlayerSkinPart playerSkinPart = PlayerSkinPart.fromId(markerMatcher.group(1));
+        Matcher orderedMarkerMatcher = ORDERED_SKIN_MARKER_PATTERN.matcher(markerMatcher.group(1));
+        if (!orderedMarkerMatcher.matches()) {
+            return null;
+        }
+        PlayerSkinPart playerSkinPart = PlayerSkinPart.fromId(orderedMarkerMatcher.group(1));
         if (playerSkinPart == null) {
             return null;
         }
+        Integer explicitOrder = orderedMarkerMatcher.group(2) == null
+            ? null
+            : Integer.parseInt(orderedMarkerMatcher.group(2));
 
         return new RawSkinPart(
             partIndex,
@@ -361,7 +369,8 @@ public class BDEngineDatapackProcessor {
             readAnchorY(transformationValues),
             readAnchorZ(transformationValues),
             readLocalY(transformationValues),
-            readLocalYScale(transformationValues)
+            readLocalYScale(transformationValues),
+            explicitOrder
         );
     }
 
@@ -384,7 +393,14 @@ public class BDEngineDatapackProcessor {
         for (Map.Entry<PlayerSkinPart, List<RawSkinPart>> entry : rawSkinPartMap.entrySet()) {
             PlayerSkinPart skinPart = entry.getKey();
             List<RawSkinPart> partsForSkin = new ArrayList<>(entry.getValue());
-            if (isLimb(skinPart) && limbRoot != null) {
+            boolean hasExplicitOrder = isLimb(skinPart)
+                && partsForSkin.stream().allMatch(part -> part.explicitOrder() != null);
+            if (hasExplicitOrder) {
+                partsForSkin.sort(
+                    Comparator.comparingInt((RawSkinPart part) -> part.explicitOrder())
+                        .thenComparingInt(RawSkinPart::partIndex)
+                );
+            } else if (isLimb(skinPart) && limbRoot != null) {
                 partsForSkin = orderConnectedParts(partsForSkin, limbRoot);
             } else {
                 partsForSkin.sort(
@@ -635,7 +651,8 @@ public class BDEngineDatapackProcessor {
         double anchorY,
         double anchorZ,
         double localY,
-        double localYScale
+        double localYScale,
+        Integer explicitOrder
     ) {
     }
 }

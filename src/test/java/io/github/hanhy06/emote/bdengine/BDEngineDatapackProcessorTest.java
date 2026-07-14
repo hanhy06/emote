@@ -143,6 +143,27 @@ class BDEngineDatapackProcessorTest {
     }
 
     @Test
+    void readDefinitionsPrefersExplicitLimbOrder(@TempDir Path tempDir) throws IOException {
+        Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
+        Path packPath = datapackDirPath.resolve("dance_pack");
+        createDatapack(packPath, "dance");
+        Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
+        Files.writeString(createFunctionPath, String.join("\n",
+            createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
+            createPlayerHead("dance", 7, "left_leg:1", 0.5D, 1.2D, 0.0D, 0.5D),
+            createPlayerHead("dance", 8, "left_leg:0", 0.5D, 0.5D, 0.0D, 0.5D)
+        ));
+
+        BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
+        List<EmoteSkinPart> skinParts = processor.readDefinitions(datapackDirPath, PackConfig.createDefault())
+            .getFirst()
+            .skinParts();
+
+        assertEquals(new PlayerSkinSegment(0, 6), findSegment(skinParts, 8, PlayerSkinPart.LEFT_LEG));
+        assertEquals(new PlayerSkinSegment(6, 12), findSegment(skinParts, 7, PlayerSkinPart.LEFT_LEG));
+    }
+
+    @Test
     void readDefinitionsKeepsEquivalentLeftLegAnchorsInPartOrder(@TempDir Path tempDir) throws IOException {
         Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
         Path packPath = datapackDirPath.resolve("dance_pack");

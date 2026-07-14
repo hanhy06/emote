@@ -1,4 +1,4 @@
-import { isSkinPartId, markerFor, type PartAssignments } from "./skinMapping";
+import { isSkinPartId, markerFor, type PartAssignments, type PartOrders } from "./skinMapping";
 
 const ITEM_DISPLAY_PATTERN = /\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"([a-z0-9_.-]+)_(\d+)"[^\]]*?\]\}/gs;
 
@@ -6,6 +6,7 @@ export function applySkinMarkers(
   createFunctionText: string,
   namespace: string,
   assignments: PartAssignments,
+  orders: PartOrders = {},
 ): string {
   const chunks: string[] = [];
   let lastIndex = 0;
@@ -20,7 +21,7 @@ export function applySkinMarkers(
     }
 
     chunks.push(createFunctionText.slice(lastIndex, match.index));
-    chunks.push(assignment ? injectProfileName(match[0], markerFor(assignment)) : removeProfileMarker(match[0]));
+    chunks.push(assignment ? injectProfileName(match[0], markerFor(assignment, orders[partIndex])) : removeProfileMarker(match[0]));
     lastIndex = match.index + match[0].length;
   }
 
@@ -41,8 +42,8 @@ function removeProfileMarker(itemDisplayText: string): string {
 }
 
 export function injectProfileName(itemDisplayText: string, markerName: string): string {
-  const markerId = markerName.replace(/^emote:/, "");
-  if (!isSkinPartId(markerId)) {
+  const markerMatch = /^emote:([a-z_]+)(?::(\d+))?$/.exec(markerName);
+  if (!markerMatch || !isSkinPartId(markerMatch[1])) {
     throw new Error(`지원하지 않는 스킨 부위 마커입니다: ${markerName}`);
   }
 

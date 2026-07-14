@@ -9,6 +9,7 @@ export const SKIN_PARTS = [
 
 export type SkinPartId = typeof SKIN_PARTS[number]["id"];
 export type PartAssignments = Record<number, SkinPartId | null>;
+export type PartOrders = Record<number, number | null>;
 
 const SKIN_PART_IDS = new Set<string>(SKIN_PARTS.map((part) => part.id));
 
@@ -16,6 +17,6 @@ export function isSkinPartId(value: string): value is SkinPartId {
   return SKIN_PART_IDS.has(value);
 }
 
-export function markerFor(skinPart: SkinPartId): string {
-  return `emote:${skinPart}`;
+export function markerFor(skinPart: SkinPartId, order?: number | null): string {
+  return `emote:${skinPart}${order == null ? "" : `:${order}`}`;
 }

@@ -11,6 +11,16 @@ describe("injectProfileName", () => {
   });
 });
 
+describe("applySkinMarkers limb order", () => {
+  it("writes an explicit limb order after the skin part marker", () => {
+    const original = 'summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{"minecraft:profile":{properties:[]}}},Tags:["demo_3"]}';
+
+    const updated = applySkinMarkers(original, "demo", { 3: "left_leg" }, { 3: 1 });
+
+    expect(updated).toContain('name:"emote:left_leg:1"');
+  });
+});
+
 describe("applySkinMarkers", () => {
   it("writes markers only to explicitly assigned player heads", () => {
     const line = (index: number) => `summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{}},Tags:["demo_${index}"]}`;

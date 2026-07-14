@@ -18,6 +18,7 @@ export interface PlayerHeadPart {
   scale: Vector3Value;
   anchor: Vector3Value;
   existingAssignment: SkinPartId | null;
+  existingOrder: number | null;
 }
 
 export interface ParsedEmoteModel {
@@ -91,7 +92,7 @@ function addAnimationPreviewFrames(datapack: LoadedDatapack, model: ParsedEmoteM
     if (frameMatrices.size === 0) continue;
     currentParts = currentParts.map((part) => {
       const matrix = frameMatrices.get(part.partIndex);
-      return matrix ? createPlayerHeadPart(part.partIndex, part.namespace, matrix, part.existingAssignment) : part;
+      return matrix ? createPlayerHeadPart(part.partIndex, part.namespace, matrix, part.existingAssignment, part.existingOrder) : part;
     });
     previewFrames.push({ animation: frame.animation, frameIndex: frame.frameIndex, parts: currentParts });
   }
@@ -132,6 +133,7 @@ export function parsePlayerHeadParts(createFunctionText: string, namespace: stri
       namespace,
       readTransformationValues(match[0]),
       readExistingAssignment(match[1]),
+      readExistingOrder(match[1]),
     ));
   }
 
@@ -143,6 +145,7 @@ function createPlayerHeadPart(
   namespace: string,
   matrix: readonly number[],
   existingAssignment: SkinPartId | null,
+  existingOrder: number | null,
 ): PlayerHeadPart {
   return {
     partIndex,
@@ -159,12 +162,18 @@ function createPlayerHeadPart(
       z: matrix[11] - matrix[9] * 0.25,
     },
     existingAssignment,
+    existingOrder,
   };
 }
 
 function readExistingAssignment(itemData: string): SkinPartId | null {
-  const markerMatch = /name\s*:\s*"emote:([a-z_]+)"/.exec(itemData);
+  const markerMatch = /name\s*:\s*"emote:([a-z_]+)(?::\d+)?"/.exec(itemData);
   return markerMatch && isSkinPartId(markerMatch[1]) ? markerMatch[1] : null;
+}
+
+function readExistingOrder(itemData: string): number | null {
+  const markerMatch = /name\s*:\s*"emote:[a-z_]+:(\d+)"/.exec(itemData);
+  return markerMatch ? Number.parseInt(markerMatch[1], 10) : null;
 }
 
 export function readTransformationValues(itemDisplayText: string): readonly number[] {
