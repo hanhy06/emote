@@ -11,7 +11,7 @@ describe("parsePlayerHeadParts", () => {
 
     expect(part.partIndex).toBe(7);
     expect(part.scale).toEqual({ x: 0.5, y: 1, z: 0.25 });
-    expect(part.anchor).toEqual({ x: 1, y: 2.5, z: 3 });
+    expect(part.anchor).toEqual({ x: 1, y: 1.75, z: 3 });
   });
 });
 

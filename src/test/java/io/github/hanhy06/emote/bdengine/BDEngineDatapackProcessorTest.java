@@ -201,7 +201,7 @@ class BDEngineDatapackProcessorTest {
         double scaleY
     ) {
         return "summon item_display ~ ~ ~ {id:\"minecraft:item_display\",item:{id:\"minecraft:player_head\",components:{\"minecraft:profile\":{name:\"emote:%s\"}}},transformation:[1f,0f,0f,%sf,0f,%sf,0f,%sf,0f,0f,1f,%sf,0f,0f,0f,1f],Tags:[\"%s_%s\"]}"
-            .formatted(skinPart, anchorX, scaleY, anchorY - scaleY * 0.5D, anchorZ, namespace, partIndex);
+            .formatted(skinPart, anchorX, scaleY, anchorY + scaleY * 0.25D, anchorZ, namespace, partIndex);
     }
 
     private PlayerSkinSegment findSegment(List<EmoteSkinPart> skinParts, int partIndex, PlayerSkinPart skinPart) {

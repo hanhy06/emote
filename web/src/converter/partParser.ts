@@ -154,9 +154,9 @@ function createPlayerHeadPart(
       z: axisLength(matrix, 2, 6, 10),
     },
     anchor: {
-      x: matrix[3] + matrix[1] * 0.5,
-      y: matrix[7] + matrix[5] * 0.5,
-      z: matrix[11] + matrix[9] * 0.5,
+      x: matrix[3] - matrix[1] * 0.25,
+      y: matrix[7] - matrix[5] * 0.25,
+      z: matrix[11] - matrix[9] * 0.25,
     },
     existingAssignment,
   };

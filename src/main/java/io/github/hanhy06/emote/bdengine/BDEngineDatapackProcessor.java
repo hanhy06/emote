@@ -551,21 +551,21 @@ public class BDEngineDatapackProcessor {
         if (transformationValues == null) {
             return 0.0D;
         }
-        return transformationValues[3] + transformationValues[1] * 0.5D;
+        return transformationValues[3] - transformationValues[1] * 0.25D;
     }
 
     private double readAnchorY(double[] transformationValues) {
         if (transformationValues == null) {
             return 0.0D;
         }
-        return transformationValues[7] + transformationValues[5] * 0.5D;
+        return transformationValues[7] - transformationValues[5] * 0.25D;
     }
 
     private double readAnchorZ(double[] transformationValues) {
         if (transformationValues == null) {
             return 0.0D;
         }
-        return transformationValues[11] + transformationValues[9] * 0.5D;
+        return transformationValues[11] - transformationValues[9] * 0.25D;
     }
 
     private double readLocalYScale(double[] transformationValues) {
