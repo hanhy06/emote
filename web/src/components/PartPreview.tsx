@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PlayerHeadPart } from "../converter/partParser";
 import { SKIN_PARTS, type PartAssignments } from "../converter/skinMapping";
+import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {
   parts: PlayerHeadPart[];
@@ -58,8 +59,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
 
     const partGroup = new THREE.Group();
     const clickableMeshes: THREE.Mesh[] = [];
-    const geometry = new THREE.BoxGeometry(1, 1, 1);
-    geometry.translate(0, 0.5, 0);
+    const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
     for (const part of parts) {
