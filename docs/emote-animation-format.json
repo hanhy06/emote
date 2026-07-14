@@ -1,6 +1,5 @@
 {
-  "format": "emote_animation",
-  "format_version": 1,
+  "schema_version": 1,
   "tick_rate": 20,
   "id": "emote:format_reference",
   "metadata": {
