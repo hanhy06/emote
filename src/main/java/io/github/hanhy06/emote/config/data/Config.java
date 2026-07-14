@@ -1,21 +1,33 @@
 package io.github.hanhy06.emote.config.data;
 
-import io.github.hanhy06.emote.Emote;
-import net.fabricmc.loader.api.FabricLoader;
+import java.util.Objects;
 
 public record Config(
-    String version,
-    int menu_page_size,
-    String mineskin_api_key,
-    int mineskin_poll_interval_seconds,
-    String emote_permission
+    int schemaVersion,
+    int menuPageSize,
+    String mineSkinApiKey,
+    int mineSkinPollIntervalSeconds,
+    String emotePermission
 ) {
+    public static final int CURRENT_SCHEMA_VERSION = 1;
+
+    public Config {
+        if (schemaVersion != CURRENT_SCHEMA_VERSION) {
+            throw new IllegalArgumentException("Unsupported config schema_version: " + schemaVersion);
+        }
+        if (menuPageSize < 1) {
+            throw new IllegalArgumentException("menu_page_size must be at least 1");
+        }
+        if (mineSkinPollIntervalSeconds < 1 || mineSkinPollIntervalSeconds > 60) {
+            throw new IllegalArgumentException("mineskin_poll_interval_seconds must be between 1 and 60");
+        }
+        Objects.requireNonNull(mineSkinApiKey, "mineSkinApiKey");
+        Objects.requireNonNull(emotePermission, "emotePermission");
+    }
+
     public static Config createDefault() {
         return new Config(
-            FabricLoader.getInstance()
-                .getModContainer(Emote.MOD_ID)
-                .map(container -> container.getMetadata().getVersion().getFriendlyString())
-                .orElse("dev"),
+            CURRENT_SCHEMA_VERSION,
             6,
             "",
             3,

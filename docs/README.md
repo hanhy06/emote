@@ -105,7 +105,7 @@ Configuration files are created automatically in `config/emote` when the server 
 
 ```json
 {
-  "version": "<mod version>",
+  "schema_version": 1,
   "menu_page_size": 6,
   "mineskin_api_key": "",
   "mineskin_poll_interval_seconds": 3,

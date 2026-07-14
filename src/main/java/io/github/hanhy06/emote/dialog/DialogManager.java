@@ -229,7 +229,7 @@ public class DialogManager {
     }
 
     private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
-        int playButtonsPerPage = Math.max(1, this.configManager.getConfig().menu_page_size());
+        int playButtonsPerPage = this.configManager.getConfig().menuPageSize();
         int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteCount / playButtonsPerPage));
         int pageNumber = Math.clamp(requestedPageNumber, 1, totalPageCount);
         int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);

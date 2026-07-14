@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.BiConsumer;
 
 public class ConfigManager {
@@ -76,23 +75,8 @@ public class ConfigManager {
             broadcastConfig();
             return false;
         }
-        Config defaultConfig = Config.createDefault();
-
         if (loadedConfig == null) {
             Emote.LOGGER.warn("Config is empty or invalid. Keeping current config.");
-            broadcastConfig();
-            return false;
-        }
-
-        if (!Objects.equals(loadedConfig.version(), defaultConfig.version())) {
-            Emote.LOGGER.warn("Config version mismatch. Keeping current config.");
-            broadcastConfig();
-            return false;
-        }
-
-        String validationError = validateConfig(loadedConfig);
-        if (validationError != null) {
-            Emote.LOGGER.warn("Config validation failed: {}. Keeping current config.", validationError);
             broadcastConfig();
             return false;
         }
@@ -116,13 +100,6 @@ public class ConfigManager {
 
         if (loadedPackConfig == null) {
             Emote.LOGGER.warn("Pack config is empty or invalid. Keeping current pack config.");
-            broadcastPackConfig();
-            return false;
-        }
-
-        String validationError = validatePackConfig(loadedPackConfig);
-        if (validationError != null) {
-            Emote.LOGGER.warn("Pack config validation failed: {}. Keeping current pack config.", validationError);
             broadcastPackConfig();
             return false;
         }
@@ -199,11 +176,11 @@ public class ConfigManager {
 
     private JsonObject createConfigJson(Config config) {
         JsonObject object = new JsonObject();
-        object.addProperty("version", config.version());
-        object.addProperty("menu_page_size", config.menu_page_size());
-        object.addProperty("mineskin_api_key", config.mineskin_api_key());
-        object.addProperty("mineskin_poll_interval_seconds", config.mineskin_poll_interval_seconds());
-        object.addProperty("emote_permission", config.emote_permission());
+        object.addProperty("schema_version", config.schemaVersion());
+        object.addProperty("menu_page_size", config.menuPageSize());
+        object.addProperty("mineskin_api_key", config.mineSkinApiKey());
+        object.addProperty("mineskin_poll_interval_seconds", config.mineSkinPollIntervalSeconds());
+        object.addProperty("emote_permission", config.emotePermission());
         return object;
     }
 
@@ -221,27 +198,6 @@ public class ConfigManager {
         return object;
     }
 
-    private String validateConfig(Config config) {
-        if (config.version() == null) return "version is missing";
-        if (config.menu_page_size() < 1) return "menu_page_size must be at least 1";
-        if (config.mineskin_api_key() == null) return "mineskin_api_key is missing";
-        if (config.mineskin_poll_interval_seconds() < 1 || config.mineskin_poll_interval_seconds() > 60)
-            return "mineskin_poll_interval_seconds must be between 1 and 60";
-        if (config.emote_permission() == null) return "emote_permission is missing";
-        return null;
-    }
-
-    private String validatePackConfig(PackConfig packConfig) {
-        if (packConfig.packs() == null) return "packs is missing";
-        for (Map.Entry<String, PackOverride> entry : packConfig.packs().entrySet()) {
-            if (normalizeRequiredValue(entry.getKey()) == null) return "packs contains a blank namespace";
-            if (entry.getValue() == null) return "packs contains a null override";
-            if (entry.getValue().permission() == null) return "packs contains a null permission";
-        }
-
-        return null;
-    }
-
     private Config readConfig(JsonObject object) {
         if (object == null) {
             return null;
@@ -249,11 +205,11 @@ public class ConfigManager {
 
         Config defaultConfig = Config.createDefault();
         return new Config(
-            readString(object, "version", defaultConfig.version()),
-            readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
-            readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
-            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineskin_poll_interval_seconds()),
-            readString(object, "emote_permission", defaultConfig.emote_permission())
+            readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
+            readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
+            readString(object, "mineskin_api_key", defaultConfig.mineSkinApiKey()),
+            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds()),
+            readString(object, "emote_permission", defaultConfig.emotePermission())
         );
     }
 

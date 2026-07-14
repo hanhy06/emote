@@ -1,24 +1,30 @@
 package io.github.hanhy06.emote.config;
 
+import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.PackOverride;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ConfigManagerTest {
     @Test
     void createsMinimalPackConfig(@TempDir Path tempDir) throws IOException {
-        new ConfigManager(tempDir);
+        ConfigManager manager = new ConfigManager(tempDir);
 
         Path packsPath = tempDir.resolve("emote").resolve("packs.json");
         assertTrue(Files.exists(packsPath));
         assertTrue(Files.readString(packsPath).contains("\"packs\""));
+        assertTrue(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("\"schema_version\": 1"));
+        assertEquals(1, manager.getConfig().schemaVersion());
     }
 
     @Test
@@ -55,13 +61,13 @@ class ConfigManagerTest {
     @Test
     void keepsCurrentConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
-        int currentPageSize = manager.getConfig().menu_page_size();
+        int currentPageSize = manager.getConfig().menuPageSize();
         Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
             {"menu_page_size":{"invalid":true}}
             """);
 
         assertFalse(manager.readConfig());
-        assertEquals(currentPageSize, manager.getConfig().menu_page_size());
+        assertEquals(currentPageSize, manager.getConfig().menuPageSize());
     }
 
     @Test
@@ -73,5 +79,29 @@ class ConfigManagerTest {
 
         assertFalse(manager.readPackConfig());
         assertTrue(manager.getPackConfig().packs().isEmpty());
+    }
+
+    @Test
+    void rejectsUnsupportedConfigSchema(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
+            {"schema_version":2}
+            """);
+
+        assertFalse(manager.readConfig());
+        assertEquals(1, manager.getConfig().schemaVersion());
+    }
+
+    @Test
+    void packConfigCopiesAndProtectsOverrides() {
+        LinkedHashMap<String, PackOverride> source = new LinkedHashMap<>();
+        source.put("wave", new PackOverride(true, ""));
+        PackConfig config = new PackConfig(source);
+
+        source.clear();
+
+        assertTrue(config.isEnabled("wave"));
+        assertEquals(1, config.packs().size());
+        assertThrows(UnsupportedOperationException.class, () -> config.packs().put("bow", new PackOverride(true, "")));
     }
 }

@@ -78,7 +78,7 @@ public class PermissionService implements ConfigListener, PackConfigListener {
     }
 
     private boolean hasBasePermission(ServerPlayer player) {
-        return hasPermission(player, this.config.emote_permission());
+        return hasPermission(player, this.config.emotePermission());
     }
 
     private boolean hasPermission(ServerPlayer player, String permission) {
