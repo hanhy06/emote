@@ -28,6 +28,7 @@ public class PlaybackManager {
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingPlaybackStart> pendingPlaybackStartMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
+    private final Set<UUID> pendingVisibilityRefreshes = ConcurrentHashMap.newKeySet();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
@@ -40,10 +41,10 @@ public class PlaybackManager {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
-    public void maintainPlayerVisibility(ServerPlayer player) {
+    public void schedulePlayerVisibilityRefresh(ServerPlayer player) {
         ActiveEmote activeEmote = findActiveEmote(player.getUUID());
         if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
-            player.setInvisible(true);
+            this.pendingVisibilityRefreshes.add(player.getUUID());
         }
     }
 
@@ -90,6 +91,7 @@ public class PlaybackManager {
     private ActiveEmote stopEmote(UUID playerUuid) {
         PendingPlaybackStart pendingStart = this.pendingPlaybackStartMap.remove(playerUuid);
         this.pendingSkinApplicationMap.remove(playerUuid);
+        this.pendingVisibilityRefreshes.remove(playerUuid);
         MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return null;
@@ -134,6 +136,11 @@ public class PlaybackManager {
 
             if (hasMovedDuringPlayback(player, activeEmote)) {
                 playerUuidListToStop.add(activeEmote.playerUuid());
+                continue;
+            }
+
+            if (this.pendingVisibilityRefreshes.remove(activeEmote.playerUuid())) {
+                forcePlayerVisibility(player);
             }
         }
 
@@ -142,6 +149,11 @@ public class PlaybackManager {
         }
 
         applyPendingPlayerSkins(server);
+    }
+
+    private void forcePlayerVisibility(ServerPlayer player) {
+        player.setInvisible(false);
+        player.setInvisible(true);
     }
 
     public void stopAllEmotes() {
