@@ -31,10 +31,10 @@ public final class JsonFileStore {
         Path temporaryPath = filePath.resolveSibling(filePath.getFileName() + ".tmp");
         try {
             try (BufferedWriter writer = Files.newBufferedWriter(
-                temporaryPath,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
+                    temporaryPath,
+                    StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING
             )) {
                 gson.toJson(object, writer);
             }

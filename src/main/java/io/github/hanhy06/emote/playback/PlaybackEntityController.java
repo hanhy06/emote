@@ -51,9 +51,9 @@ final class PlaybackEntityController {
     void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
         AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
         List<Display> displaysToKill = level.getEntitiesOfClass(
-            Display.class,
-            searchBox,
-            entity -> matchesNamespaceDisplay(entity, namespace)
+                Display.class,
+                searchBox,
+                entity -> matchesNamespaceDisplay(entity, namespace)
         );
         killEntities(level, displaysToKill);
     }

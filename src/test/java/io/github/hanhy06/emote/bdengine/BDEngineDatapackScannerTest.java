@@ -23,10 +23,10 @@ class BDEngineDatapackScannerTest {
         Files.writeString(datapackDirectory.resolve("ignored.txt"), "{}");
 
         List<String> names = new BDEngineDatapackScanner().scan(
-            datapackDirectory,
-            (packPath, packRootPath) -> Files.exists(packRootPath.resolve("pack.mcmeta"))
-                ? List.of(packPath.getFileName().toString())
-                : List.of()
+                datapackDirectory,
+                (packPath, packRootPath) -> Files.exists(packRootPath.resolve("pack.mcmeta"))
+                        ? List.of(packPath.getFileName().toString())
+                        : List.of()
         );
 
         assertEquals(List.of("alpha.zip", "beta"), names);
@@ -35,8 +35,8 @@ class BDEngineDatapackScannerTest {
     @Test
     void scanReturnsEmptyForMissingDirectory(@TempDir Path tempDir) {
         List<String> names = new BDEngineDatapackScanner().scan(
-            tempDir.resolve("missing"),
-            (packPath, packRootPath) -> List.of(packPath.getFileName().toString())
+                tempDir.resolve("missing"),
+                (packPath, packRootPath) -> List.of(packPath.getFileName().toString())
         );
 
         assertEquals(List.of(), names);
