@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
-import { findEmoteModels, parsePlayerHeadParts } from "./partParser";
+import { findEmoteModels, parseKeyframeMatrices, parsePlayerHeadParts } from "./partParser";
 import { loadDatapack } from "./packFileSystem";
 
 describe("parsePlayerHeadParts", () => {
@@ -15,16 +15,36 @@ describe("parsePlayerHeadParts", () => {
   });
 });
 
+describe("parseKeyframeMatrices", () => {
+  it("reads the first-frame matrix for each matching display tag", () => {
+    const text = 'data merge entity @e[type=item_display,tag=demo_7,distance=..1] {transformation:[1f,0f,0f,4f,0f,1f,0f,5f,0f,0f,1f,6f,0f,0f,0f,1f],interpolation_duration:0}';
+
+    const matrices = parseKeyframeMatrices(text, "demo");
+
+    expect(matrices.get(7)?.slice(3, 12)).toEqual([4, 0, 1, 0, 5, 0, 0, 1, 6]);
+  });
+});
+
 describe("findEmoteModels", () => {
   it.each(["cry", "hello", "no", "yes"])("extracts every player head from the %s example", async (name) => {
     const bytes = await readFile(new URL(`../../../docs/example/emote.${name}.zip`, import.meta.url));
     const blob = new Blob([bytes]) as Blob & { name?: string };
     blob.name = `emote.${name}.zip`;
 
-    const models = findEmoteModels(await loadDatapack(blob));
+    const datapack = await loadDatapack(blob);
+    const models = findEmoteModels(datapack);
+    const firstFrame = parseKeyframeMatrices(
+      new TextDecoder().decode(datapack.files.get(`data/${name}/function/k/default/keyframe_0.mcfunction`)),
+      name,
+    );
 
     expect(models).toHaveLength(1);
     expect(models[0].namespace).toBe(name);
+    expect(models[0].previewAnimation).toBe("default");
     expect(models[0].parts).toHaveLength(11);
+    expect(models[0].parts.every((part) => {
+      const frameMatrix = firstFrame.get(part.partIndex);
+      return !frameMatrix || part.matrix.every((value, index) => value === frameMatrix[index]);
+    })).toBe(true);
   });
 });

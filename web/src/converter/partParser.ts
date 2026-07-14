@@ -24,6 +24,7 @@ export interface ParsedEmoteModel {
   namespace: string;
   sourceTagNamespace: string;
   createFilePath: string;
+  previewAnimation: string | null;
   parts: PlayerHeadPart[];
 }
 
@@ -43,11 +44,57 @@ export function findEmoteModels(datapack: LoadedDatapack): ParsedEmoteModel[] {
     if (!sourceTagNamespace) continue;
     const parts = parsePlayerHeadParts(createFunctionText, sourceTagNamespace);
     if (parts.length > 0) {
-      models.push({ namespace, sourceTagNamespace, createFilePath: path, parts });
+      models.push(applyFirstAnimationFrame(datapack, {
+        namespace,
+        sourceTagNamespace,
+        createFilePath: path,
+        previewAnimation: null,
+        parts,
+      }));
     }
   }
 
   return models.sort((first, second) => first.namespace.localeCompare(second.namespace));
+}
+
+function applyFirstAnimationFrame(datapack: LoadedDatapack, model: ParsedEmoteModel): ParsedEmoteModel {
+  const functionFolder = model.createFilePath.split("/")[2];
+  const animationPrefix = `data/${model.namespace}/${functionFolder}/a/`;
+  const animationNames = [...datapack.files.keys()]
+    .filter((path) => path.startsWith(animationPrefix) && path.endsWith("/play_anim_loop.mcfunction"))
+    .map((path) => path.slice(animationPrefix.length).split("/")[0])
+    .sort();
+  const decoder = new TextDecoder();
+
+  for (const animationName of animationNames) {
+    const framePath = `data/${model.namespace}/${functionFolder}/k/${animationName}/keyframe_0.mcfunction`;
+    const frameData = datapack.files.get(framePath);
+    if (!frameData) continue;
+
+    const frameMatrices = parseKeyframeMatrices(decoder.decode(frameData), model.sourceTagNamespace);
+    if (frameMatrices.size === 0) continue;
+    return {
+      ...model,
+      previewAnimation: animationName,
+      parts: model.parts.map((part) => {
+        const matrix = frameMatrices.get(part.partIndex);
+        return matrix ? createPlayerHeadPart(part.partIndex, part.namespace, matrix, part.existingAssignment) : part;
+      }),
+    };
+  }
+
+  return model;
+}
+
+export function parseKeyframeMatrices(keyframeText: string, namespace: string): Map<number, readonly number[]> {
+  const matrices = new Map<number, readonly number[]>();
+  for (const line of keyframeText.split(/\r?\n/)) {
+    if (!line.includes("transformation:[")) continue;
+    const targetMatch = /tag="?([a-z0-9_.-]+)_(\d+)"?(?:,|\])/.exec(line);
+    if (!targetMatch || targetMatch[1] !== namespace) continue;
+    matrices.set(Number.parseInt(targetMatch[2], 10), readTransformationValues(line));
+  }
+  return matrices;
 }
 
 function findEntityTagNamespace(createFunctionText: string): string | null {
@@ -67,26 +114,39 @@ export function parsePlayerHeadParts(createFunctionText: string, namespace: stri
       continue;
     }
 
-    const matrix = readTransformationValues(match[0]);
-    parts.push({
-      partIndex: Number.parseInt(match[3], 10),
+    parts.push(createPlayerHeadPart(
+      Number.parseInt(match[3], 10),
       namespace,
-      matrix,
-      scale: {
-        x: axisLength(matrix, 0, 4, 8),
-        y: axisLength(matrix, 1, 5, 9),
-        z: axisLength(matrix, 2, 6, 10),
-      },
-      anchor: {
-        x: matrix[3] + matrix[1] * 0.5,
-        y: matrix[7] + matrix[5] * 0.5,
-        z: matrix[11] + matrix[9] * 0.5,
-      },
-      existingAssignment: readExistingAssignment(match[1]),
-    });
+      readTransformationValues(match[0]),
+      readExistingAssignment(match[1]),
+    ));
   }
 
   return parts.sort((first, second) => first.partIndex - second.partIndex);
+}
+
+function createPlayerHeadPart(
+  partIndex: number,
+  namespace: string,
+  matrix: readonly number[],
+  existingAssignment: SkinPartId | null,
+): PlayerHeadPart {
+  return {
+    partIndex,
+    namespace,
+    matrix,
+    scale: {
+      x: axisLength(matrix, 0, 4, 8),
+      y: axisLength(matrix, 1, 5, 9),
+      z: axisLength(matrix, 2, 6, 10),
+    },
+    anchor: {
+      x: matrix[3] + matrix[1] * 0.5,
+      y: matrix[7] + matrix[5] * 0.5,
+      z: matrix[11] + matrix[9] * 0.5,
+    },
+    existingAssignment,
+  };
 }
 
 function readExistingAssignment(itemData: string): SkinPartId | null {

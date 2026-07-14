@@ -119,6 +119,7 @@ export function App() {
           <div className="status">
             <strong>{datapack.fileName}</strong>
             <span>{model.parts.length}개 조각</span>
+            {model.previewAnimation && <span>{model.previewAnimation} 첫 프레임</span>}
             {models.length > 1 && (
               <select value={modelIndex} onChange={(event) => { setModelIndex(Number(event.target.value)); setSelectedParts(new Set()); }}>
                 {models.map((item, index) => <option value={index} key={item.namespace}>{item.namespace}</option>)}
