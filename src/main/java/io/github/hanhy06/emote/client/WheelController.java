@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.client;
 
-import io.github.hanhy06.emote.emote.PlayableEmote;
 import com.mojang.blaze3d.platform.InputConstants;
+import io.github.hanhy06.emote.emote.PlayableEmote;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;

@@ -1,10 +1,6 @@
 package io.github.hanhy06.emote.config.data;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public record PackConfig(List<String> disabled, Map<String, List<String>> permissions) {
     public PackConfig {

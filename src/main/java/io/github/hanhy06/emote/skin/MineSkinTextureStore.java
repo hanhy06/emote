@@ -1,10 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.io.JsonFileStore;
 import net.fabricmc.loader.api.FabricLoader;
@@ -12,12 +8,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 final class MineSkinTextureStore {
     private static final int CONTENT_CACHE_VERSION = 1;

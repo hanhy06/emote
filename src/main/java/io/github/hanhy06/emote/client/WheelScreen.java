@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.client;
 
+import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
+import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
@@ -12,9 +14,6 @@ import net.minecraft.util.Mth;
 
 import java.util.Arrays;
 import java.util.List;
-
-import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
-import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {

@@ -1,14 +1,14 @@
 package io.github.hanhy06.emote.skin;
 
-import javax.imageio.ImageIO;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-
 import io.github.hanhy06.emote.skin.PlayerSkinAtlas.FaceMap;
 import io.github.hanhy06.emote.skin.PlayerSkinAtlas.FaceRect;
 import io.github.hanhy06.emote.skin.PlayerSkinAtlas.PadMode;
+
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 
 final class PlayerSkinBaker {
     private static final FaceTarget BASE_TOP = new FaceTarget(8, 0, 8, 8);

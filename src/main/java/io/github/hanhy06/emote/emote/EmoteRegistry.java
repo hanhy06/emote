@@ -1,11 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
-import java.util.Collection;
-import java.util.Comparator;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 
 public class EmoteRegistry {
     private volatile RegistryState state = RegistryState.empty();
