@@ -11,6 +11,7 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class JsonFileStoreTest {
     @Test
@@ -24,7 +25,9 @@ class JsonFileStoreTest {
         JsonFileStore.writeObjectAtomically(filePath, first, new Gson());
         JsonFileStore.writeObjectAtomically(filePath, second, new Gson());
 
-        assertEquals(2, JsonFileStore.readObject(filePath).get("value").getAsInt());
+        JsonObject savedObject = JsonFileStore.readObject(filePath);
+        assertNotNull(savedObject);
+        assertEquals(2, savedObject.get("value").getAsInt());
         assertFalse(Files.exists(filePath.resolveSibling("cache.json.tmp")));
     }
 }

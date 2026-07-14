@@ -37,7 +37,7 @@ class PlayableEmoteServiceTest {
         ));
         PlayableEmoteService service = new PlayableEmoteService(
             registry,
-            (player, definition) -> !definition.namespace().equals("bow_pack")
+            (ignoredPlayer, definition) -> !definition.namespace().equals("bow_pack")
         );
 
         List<PlayableEmote> emotes = service.getPlayableEmotes(null);
@@ -53,7 +53,7 @@ class PlayableEmoteServiceTest {
             create("alpha", "shared", "Alpha"),
             create("beta", "shared", "Beta")
         ));
-        PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> true);
+        PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> true);
 
         assertEquals(List.of("shared", "alpha", "beta"), service.getPlayNames());
     }
@@ -62,7 +62,7 @@ class PlayableEmoteServiceTest {
     void findSelectionReturnsTheDatapackEntrypoint() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replaceDefinitions(List.of(create("wave_pack", "wave", "Wave")));
-        PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> true);
+        PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> true);
 
         PlayableEmoteSelection result = service.findSelection(null, "wave");
 
@@ -74,7 +74,7 @@ class PlayableEmoteServiceTest {
     void findSelectionRejectsBlockedDatapack() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replaceDefinitions(List.of(create("wave_pack", "wave", "Wave")));
-        PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> false);
+        PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> false);
 
         PlayableEmoteSelection result = service.findSelection(null, "wave");
 

@@ -33,7 +33,7 @@ class BDEngineDatapackScannerTest {
         Path datapackDirectory = Files.createDirectories(tempDir.resolve("datapacks"));
         Path directoryPack = Files.createDirectories(datapackDirectory.resolve("beta"));
         Files.writeString(directoryPack.resolve("pack.mcmeta"), "{}");
-        writeZip(datapackDirectory.resolve("alpha.zip"), "pack.mcmeta", "{}");
+        writePackZip(datapackDirectory.resolve("alpha.zip"));
         Files.writeString(datapackDirectory.resolve("ignored.txt"), "{}");
 
         List<String> names = new BDEngineDatapackScanner().scan(
@@ -50,17 +50,17 @@ class BDEngineDatapackScannerTest {
     void scanReturnsEmptyForMissingDirectory(@TempDir Path tempDir) {
         List<String> names = new BDEngineDatapackScanner().scan(
                 tempDir.resolve("missing"),
-                (packPath, packRootPath) -> List.of(packPath.getFileName().toString())
+                (packPath, ignoredPackRootPath) -> List.of(packPath.getFileName().toString())
         );
 
         assertEquals(List.of(), names);
     }
 
-    private void writeZip(Path zipPath, String entryName, String content) throws IOException {
+    private void writePackZip(Path zipPath) throws IOException {
         try (OutputStream output = Files.newOutputStream(zipPath);
              ZipOutputStream zipOutput = new ZipOutputStream(output)) {
-            zipOutput.putNextEntry(new ZipEntry(entryName));
-            zipOutput.write(content.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            zipOutput.putNextEntry(new ZipEntry("pack.mcmeta"));
+            zipOutput.write("{}".getBytes(java.nio.charset.StandardCharsets.UTF_8));
             zipOutput.closeEntry();
         }
     }

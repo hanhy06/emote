@@ -32,7 +32,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.HEAD, false);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
+        assertFaceColors(bakedImage, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
     }
 
     @Test
@@ -47,7 +47,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.BODY, false);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
+        assertFaceColors(bakedImage, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
     }
 
     @Test
@@ -62,12 +62,12 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.BODY, false);
 
-        assertDirectionalFace(bakedImage, 8, 0, 8, 8);
-        assertDirectionalFace(bakedImage, 16, 0, 8, 8);
-        assertDirectionalFace(bakedImage, 0, 8, 8, 8);
-        assertDirectionalFace(bakedImage, 8, 8, 8, 8);
-        assertDirectionalFace(bakedImage, 16, 8, 8, 8);
-        assertDirectionalFace(bakedImage, 24, 8, 8, 8);
+        assertDirectionalFace(bakedImage, 8, 0);
+        assertDirectionalFace(bakedImage, 16, 0);
+        assertDirectionalFace(bakedImage, 0, 8);
+        assertDirectionalFace(bakedImage, 8, 8);
+        assertDirectionalFace(bakedImage, 16, 8);
+        assertDirectionalFace(bakedImage, 24, 8);
     }
 
     @Test
@@ -82,7 +82,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.RIGHT_ARM, false);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
+        assertFaceColors(bakedImage, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
     }
 
     @Test
@@ -104,7 +104,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.RIGHT_ARM, true);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW);
+        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW);
     }
 
     @Test
@@ -119,7 +119,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.LEFT_ARM, true);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.MAGENTA, Color.ORANGE, Color.CYAN, Color.PINK);
+        assertFaceColors(bakedImage, Color.MAGENTA, Color.ORANGE, Color.CYAN, Color.PINK);
     }
 
     @Test
@@ -134,7 +134,7 @@ class PlayerSkinBakerTest {
 
         BufferedImage bakedImage = bake(sourceImage, PlayerSkinPart.LEFT_LEG, false);
 
-        assertFaceColors(bakedImage, Color.RED, Color.GREEN, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
+        assertFaceColors(bakedImage, Color.BLUE, Color.YELLOW, Color.MAGENTA, Color.CYAN);
     }
 
     @Test
@@ -164,15 +164,13 @@ class PlayerSkinBakerTest {
 
     private void assertFaceColors(
         BufferedImage image,
-        Color topColor,
-        Color bottomColor,
         Color rightColor,
         Color frontColor,
         Color leftColor,
         Color backColor
     ) {
-        assertEquals(topColor.getRGB(), image.getRGB(TOP.x(), TOP.y()));
-        assertEquals(bottomColor.getRGB(), image.getRGB(BOTTOM.x(), BOTTOM.y()));
+        assertEquals(Color.RED.getRGB(), image.getRGB(TOP.x(), TOP.y()));
+        assertEquals(Color.GREEN.getRGB(), image.getRGB(BOTTOM.x(), BOTTOM.y()));
         assertEquals(rightColor.getRGB(), image.getRGB(RIGHT.x(), RIGHT.y()));
         assertEquals(frontColor.getRGB(), image.getRGB(FRONT.x(), FRONT.y()));
         assertEquals(leftColor.getRGB(), image.getRGB(LEFT.x(), LEFT.y()));
@@ -206,11 +204,11 @@ class PlayerSkinBakerTest {
         }
     }
 
-    private void assertDirectionalFace(BufferedImage image, int x, int y, int width, int height) {
+    private void assertDirectionalFace(BufferedImage image, int x, int y) {
         assertEquals(Color.RED.getRGB(), image.getRGB(x, y));
-        assertEquals(Color.GREEN.getRGB(), image.getRGB(x + width - 1, y));
-        assertEquals(Color.BLUE.getRGB(), image.getRGB(x, y + height - 1));
-        assertEquals(Color.YELLOW.getRGB(), image.getRGB(x + width - 1, y + height - 1));
+        assertEquals(Color.GREEN.getRGB(), image.getRGB(x + 7, y));
+        assertEquals(Color.BLUE.getRGB(), image.getRGB(x, y + 7));
+        assertEquals(Color.YELLOW.getRGB(), image.getRGB(x + 7, y + 7));
     }
 
     private record FaceSample(int x, int y) {

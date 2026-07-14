@@ -15,7 +15,7 @@ class PlayServiceTest {
     void playReturnsSuccess() {
         PlayService service = new PlayService(
             createPlayableEmoteService(),
-            (player, definition) -> PlayResult.SUCCESS
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS
         );
 
         PlayResult result = service.play(null, "wave");
@@ -27,7 +27,7 @@ class PlayServiceTest {
     void playReturnsPlaybackFailure() {
         PlayService service = new PlayService(
             createPlayableEmoteService(),
-            (player, definition) -> PlayResult.failure(" Datapack not loaded. ")
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Datapack not loaded. ")
         );
 
         PlayResult result = service.play(null, "wave");

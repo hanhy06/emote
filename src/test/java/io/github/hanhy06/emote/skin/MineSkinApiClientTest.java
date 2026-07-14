@@ -19,10 +19,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MineSkinApiClientTest {
     @Test
     void sharedHttpClientUsesSkinRequestConnectionSettings() {
-        HttpClient httpClient = MineSkinApiClient.createHttpClient();
-
-        assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
-        assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
+        try (HttpClient httpClient = MineSkinApiClient.createHttpClient()) {
+            assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
+            assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
+        }
     }
 
     @Test
@@ -44,7 +44,7 @@ class MineSkinApiClientTest {
         MineSkinApiClient client = new MineSkinApiClient();
 
         long delay = client.readRetryDelayMillis(
-            new StubHttpResponse(HttpHeaders.of(java.util.Map.of(), (name, value) -> true)),
+            new StubHttpResponse(HttpHeaders.of(java.util.Map.of(), (ignoredName, ignoredValue) -> true)),
             JsonParser.parseString("{\"rateLimit\":{\"next\":{\"relative\":3600000}}}").getAsJsonObject()
         );
 

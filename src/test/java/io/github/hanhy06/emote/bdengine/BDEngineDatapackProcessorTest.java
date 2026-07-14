@@ -56,12 +56,12 @@ class BDEngineDatapackProcessorTest {
         List<EmoteDefinition> definitions = processor.readDefinitions(datapackDirPath, PackConfig.createDefault());
 
         assertEquals(1, definitions.size());
-        assertEquals("wave_pack", definitions.get(0).namespace());
-        assertEquals("Wave", definitions.get(0).name());
-        assertEquals("Friendly wave", definitions.get(0).description());
-        assertEquals("wave", definitions.get(0).commandName());
-        assertEquals("a/default/play_anim_loop", definitions.get(0).entrypoint());
-        assertFalse(definitions.get(0).hidePlayer());
+        assertEquals("wave_pack", definitions.getFirst().namespace());
+        assertEquals("Wave", definitions.getFirst().name());
+        assertEquals("Friendly wave", definitions.getFirst().description());
+        assertEquals("wave", definitions.getFirst().commandName());
+        assertEquals("a/default/play_anim_loop", definitions.getFirst().entrypoint());
+        assertFalse(definitions.getFirst().hidePlayer());
     }
 
     @Test
@@ -138,11 +138,11 @@ class BDEngineDatapackProcessorTest {
         createDatapack(packPath, "dance");
         Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
         Files.writeString(createFunctionPath, String.join("\n",
-            createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
-            createPlayerHead("dance", 11, "left_arm", 0.5000000001D, 1.0D, 0.0D, 0.25D),
-            createPlayerHead("dance", 12, "left_arm", 0.5D, 1.0D, 0.0D, 0.5D),
-            createPlayerHead("dance", 13, "left_arm", 0.2D, 1.6D, 0.0D, 0.5D),
-            createPlayerHead("dance", 14, "left_arm", 0.4D, 1.3D, 0.0D, 0.25D)
+            createPlayerHead(1, "body", 0.0D, 1.5D, 0.5D),
+            createPlayerHead(11, "left_arm", 0.5000000001D, 1.0D, 0.25D),
+            createPlayerHead(12, "left_arm", 0.5D, 1.0D, 0.5D),
+            createPlayerHead(13, "left_arm", 0.2D, 1.6D, 0.5D),
+            createPlayerHead(14, "left_arm", 0.4D, 1.3D, 0.25D)
         ));
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
@@ -163,9 +163,9 @@ class BDEngineDatapackProcessorTest {
         createDatapack(packPath, "dance");
         Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
         Files.writeString(createFunctionPath, String.join("\n",
-            createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
-            createPlayerHead("dance", 7, "left_leg1", 0.5D, 1.2D, 0.0D, 0.5D),
-            createPlayerHead("dance", 8, "left_leg0", 0.5D, 0.5D, 0.0D, 0.5D)
+            createPlayerHead(1, "body", 0.0D, 1.5D, 0.5D),
+            createPlayerHead(7, "left_leg1", 0.5D, 1.2D, 0.5D),
+            createPlayerHead(8, "left_leg0", 0.5D, 0.5D, 0.5D)
         ));
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
@@ -184,11 +184,11 @@ class BDEngineDatapackProcessorTest {
         createDatapack(packPath, "dance");
         Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
         Files.writeString(createFunctionPath, String.join("\n",
-            createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
-            createPlayerHead("dance", 7, "left_leg", 0.5000000001D, 0.5D, 0.0D, 0.25D),
-            createPlayerHead("dance", 8, "left_leg", 0.5D, 0.5D, 0.0D, 0.5D),
-            createPlayerHead("dance", 9, "left_leg", 0.2D, 1.2D, 0.0D, 0.5D),
-            createPlayerHead("dance", 10, "left_leg", 0.4D, 0.8D, 0.0D, 0.25D)
+            createPlayerHead(1, "body", 0.0D, 1.5D, 0.5D),
+            createPlayerHead(7, "left_leg", 0.5000000001D, 0.5D, 0.25D),
+            createPlayerHead(8, "left_leg", 0.5D, 0.5D, 0.5D),
+            createPlayerHead(9, "left_leg", 0.2D, 1.2D, 0.5D),
+            createPlayerHead(10, "left_leg", 0.4D, 0.8D, 0.25D)
         ));
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
@@ -227,16 +227,14 @@ class BDEngineDatapackProcessorTest {
     }
 
     private String createPlayerHead(
-        String namespace,
         int partIndex,
         String skinPart,
         double anchorX,
         double anchorY,
-        double anchorZ,
         double scaleY
     ) {
-        return "summon item_display ~ ~ ~ {id:\"minecraft:item_display\",item:{id:\"minecraft:player_head\",components:{\"minecraft:profile\":{name:\"emote:%s\"}}},transformation:[1f,0f,0f,%sf,0f,%sf,0f,%sf,0f,0f,1f,%sf,0f,0f,0f,1f],Tags:[\"%s_%s\"]}"
-            .formatted(skinPart, anchorX, scaleY, anchorY + scaleY * 0.25D, anchorZ, namespace, partIndex);
+        return "summon item_display ~ ~ ~ {id:\"minecraft:item_display\",item:{id:\"minecraft:player_head\",components:{\"minecraft:profile\":{name:\"emote:%s\"}}},transformation:[1f,0f,0f,%sf,0f,%sf,0f,%sf,0f,0f,1f,0f,0f,0f,0f,1f],Tags:[\"dance_%s\"]}"
+            .formatted(skinPart, anchorX, scaleY, anchorY + scaleY * 0.25D, partIndex);
     }
 
     private PlayerSkinSegment findSegment(List<EmoteSkinPart> skinParts, int partIndex, PlayerSkinPart skinPart) {
