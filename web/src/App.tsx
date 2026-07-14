@@ -3,6 +3,7 @@ import { PartPreview } from "./components/PartPreview";
 import { loadDatapack, type LoadedDatapack } from "./converter/packFileSystem";
 import { findEmoteModels, type ParsedEmoteModel } from "./converter/partParser";
 import { SKIN_PARTS, type PartAssignments, type SkinPartId } from "./converter/skinMapping";
+import { convertDatapack, sanitizeCommandName, type ConversionOptions } from "./converter/converter";
 
 export function App() {
   const [datapack, setDatapack] = useState<LoadedDatapack | null>(null);
@@ -10,6 +11,9 @@ export function App() {
   const [modelIndex, setModelIndex] = useState(0);
   const [assignments, setAssignments] = useState<Record<string, PartAssignments>>({});
   const [selectedParts, setSelectedParts] = useState<Set<number>>(new Set());
+  const [metadata, setMetadata] = useState<ConversionOptions>({ name: "", description: "", commandName: "", hidePlayer: true });
+  const [conversionError, setConversionError] = useState("");
+  const [converting, setConverting] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,10 +41,36 @@ export function App() {
       ])));
       setModelIndex(0);
       setSelectedParts(new Set());
+      const defaultName = prettifyName(file.name.replace(/\.zip$/i, "").replace(/^emote\./i, ""));
+      setMetadata({
+        name: defaultName,
+        description: `${defaultName} emote.`,
+        commandName: foundModels.length === 1 ? foundModels[0].namespace : sanitizeCommandName(defaultName),
+        hidePlayer: true,
+      });
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "ZIP 파일을 읽지 못했습니다.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleConvert() {
+    if (!datapack) return;
+    setConverting(true);
+    setConversionError("");
+    try {
+      const result = await convertDatapack(datapack, models, assignments, metadata);
+      const url = URL.createObjectURL(result.blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = result.fileName;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (reason) {
+      setConversionError(reason instanceof Error ? reason.message : "변환에 실패했습니다.");
+    } finally {
+      setConverting(false);
     }
   }
 
@@ -145,6 +175,29 @@ export function App() {
           </div>
         </section>
       )}
+
+      {datapack && models.length > 0 && (
+        <section className="export-card">
+          <div className="export-heading">
+            <div>
+              <p className="eyebrow">EXPORT</p>
+              <h2>이모트 정보</h2>
+            </div>
+            <p>여러 애니메이션이 있으면 각각 독립된 네임스페이스로 분리됩니다.</p>
+          </div>
+          <div className="metadata-grid">
+            <label>표시 이름<input value={metadata.name} onChange={(event) => setMetadata({ ...metadata, name: event.target.value })} /></label>
+            <label>명령어 이름<input value={metadata.commandName} onChange={(event) => setMetadata({ ...metadata, commandName: event.target.value })} /></label>
+            <label className="wide">설명<input value={metadata.description} onChange={(event) => setMetadata({ ...metadata, description: event.target.value })} /></label>
+            <label className="checkbox wide"><input type="checkbox" checked={metadata.hidePlayer} onChange={(event) => setMetadata({ ...metadata, hidePlayer: event.target.checked })} />재생 중 원래 플레이어 숨기기</label>
+          </div>
+          {conversionError && <p className="inline-error" role="alert">{conversionError}</p>}
+          <div className="export-actions">
+            <span>{assignmentSummary(models, assignments)}</span>
+            <button type="button" onClick={handleConvert} disabled={converting}>{converting ? "변환 중…" : "Emote ZIP 다운로드"}</button>
+          </div>
+        </section>
+      )}
     </main>
   );
 }
@@ -155,4 +208,14 @@ function distance(first: { x: number; y: number; z: number }, second: { x: numbe
 
 function assignmentLabel(assignment: SkinPartId | null | undefined): string {
   return SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "미지정";
+}
+
+function prettifyName(value: string): string {
+  return value.replaceAll("_", " ").replaceAll("-", " ").trim() || value;
+}
+
+function assignmentSummary(models: ParsedEmoteModel[], assignments: Record<string, PartAssignments>): string {
+  const assigned = models.reduce((total, model) => total + model.parts.filter((part) => assignments[model.namespace]?.[part.partIndex]).length, 0);
+  const total = models.reduce((sum, model) => sum + model.parts.length, 0);
+  return `${assigned}/${total}개 조각에 스킨 부위 지정됨`;
 }

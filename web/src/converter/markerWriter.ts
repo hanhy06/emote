@@ -13,17 +13,31 @@ export function applySkinMarkers(
   for (const match of createFunctionText.matchAll(ITEM_DISPLAY_PATTERN)) {
     const partIndex = Number.parseInt(match[3], 10);
     const assignment = assignments[partIndex];
-    if (match[2] !== namespace || !match[1].includes('id:"minecraft:player_head"') || !assignment) {
+    if (match[2] !== namespace
+      || !match[1].includes('id:"minecraft:player_head"')
+      || !Object.hasOwn(assignments, partIndex)) {
       continue;
     }
 
     chunks.push(createFunctionText.slice(lastIndex, match.index));
-    chunks.push(injectProfileName(match[0], markerFor(assignment)));
+    chunks.push(assignment ? injectProfileName(match[0], markerFor(assignment)) : removeProfileMarker(match[0]));
     lastIndex = match.index + match[0].length;
   }
 
   chunks.push(createFunctionText.slice(lastIndex));
   return chunks.join("");
+}
+
+function removeProfileMarker(itemDisplayText: string): string {
+  const profileKey = '"minecraft:profile":{';
+  const profileIndex = itemDisplayText.indexOf(profileKey);
+  if (profileIndex < 0) return itemDisplayText;
+  const startIndex = profileIndex + profileKey.length - 1;
+  const endIndex = findMatchingBrace(itemDisplayText, startIndex);
+  const fields = splitTopLevelFields(itemDisplayText.slice(startIndex + 1, endIndex));
+  const filteredFields = fields.filter((field) => !/^\s*name\s*:\s*"emote:[a-z_]+"/.test(field));
+  if (filteredFields.length === fields.length) return itemDisplayText;
+  return itemDisplayText.slice(0, startIndex + 1) + filteredFields.join(",") + itemDisplayText.slice(endIndex);
 }
 
 export function injectProfileName(itemDisplayText: string, markerName: string): string {

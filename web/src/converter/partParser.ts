@@ -22,6 +22,7 @@ export interface PlayerHeadPart {
 
 export interface ParsedEmoteModel {
   namespace: string;
+  sourceTagNamespace: string;
   createFilePath: string;
   parts: PlayerHeadPart[];
 }
@@ -37,13 +38,25 @@ export function findEmoteModels(datapack: LoadedDatapack): ParsedEmoteModel[] {
     }
 
     const namespace = pathMatch[1];
-    const parts = parsePlayerHeadParts(decoder.decode(data), namespace);
+    const createFunctionText = decoder.decode(data);
+    const sourceTagNamespace = findEntityTagNamespace(createFunctionText);
+    if (!sourceTagNamespace) continue;
+    const parts = parsePlayerHeadParts(createFunctionText, sourceTagNamespace);
     if (parts.length > 0) {
-      models.push({ namespace, createFilePath: path, parts });
+      models.push({ namespace, sourceTagNamespace, createFilePath: path, parts });
     }
   }
 
   return models.sort((first, second) => first.namespace.localeCompare(second.namespace));
+}
+
+function findEntityTagNamespace(createFunctionText: string): string | null {
+  const namespaces = new Set<string>();
+  for (const match of createFunctionText.matchAll(ITEM_DISPLAY_PATTERN)) {
+    if (match[1].includes('id:"minecraft:player_head"')) namespaces.add(match[2]);
+  }
+  if (namespaces.size > 1) throw new Error("create.mcfunction에 서로 다른 조각 네임스페이스가 있습니다.");
+  return [...namespaces][0] ?? null;
 }
 
 export function parsePlayerHeadParts(createFunctionText: string, namespace: string): PlayerHeadPart[] {

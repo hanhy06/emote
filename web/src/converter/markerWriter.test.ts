@@ -21,4 +21,13 @@ describe("applySkinMarkers", () => {
     expect(updated.match(/name:"emote:head"/g)).toHaveLength(1);
     expect(updated).toContain(line(1));
   });
+
+  it("removes an existing emote marker when a part becomes unassigned", () => {
+    const original = 'summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{"minecraft:profile":{name:"emote:head",properties:[]}}},Tags:["demo_0"]}';
+
+    const updated = applySkinMarkers(original, "demo", { 0: null });
+
+    expect(updated).not.toContain('name:"emote:head"');
+    expect(updated).toContain('"minecraft:profile":{properties:[]}');
+  });
 });

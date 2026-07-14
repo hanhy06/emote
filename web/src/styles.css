@@ -84,10 +84,32 @@ h1 { margin: 12px 0 16px; font-size: clamp(36px, 7vw, 68px); line-height: 1.02; 
 .part-list li button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 10px; color: inherit; border: 0; background: transparent; cursor: pointer; }
 .part-list li span { color: #929cac; font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
 
+.export-card { margin-top: 28px; padding: 28px; border: 1px solid #252a35; border-radius: 20px; background: #12151c; }
+.export-heading { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.export-heading .eyebrow { margin: 0 0 5px; }
+.export-heading h2 { margin: 0; font-size: 26px; }
+.export-heading > p { max-width: 420px; margin: 0; color: #929cac; font-size: 13px; line-height: 1.5; text-align: right; }
+.metadata-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.metadata-grid label { display: grid; gap: 8px; color: #b9c1cf; font-size: 13px; font-weight: 700; }
+.metadata-grid label.wide { grid-column: 1 / -1; }
+.metadata-grid input:not([type="checkbox"]) { width: 100%; min-height: 44px; padding: 0 12px; color: #edf1f8; border: 1px solid #343b49; border-radius: 9px; background: #191d26; }
+.metadata-grid input:focus { border-color: #8da9ff; outline: 2px solid #4b5f92; }
+.metadata-grid label.checkbox { display: flex; grid-template-columns: none; flex-direction: row; align-items: center; gap: 9px; }
+.metadata-grid .checkbox input { width: 17px; height: 17px; accent-color: #8da9ff; }
+.inline-error { color: #ffb5b5; }
+.export-actions { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 24px; padding-top: 22px; border-top: 1px solid #252a35; }
+.export-actions span { color: #929cac; font-size: 13px; }
+.export-actions button { min-height: 48px; padding: 0 20px; color: #07101e; border: 0; border-radius: 10px; background: #8da9ff; font-weight: 800; cursor: pointer; }
+.export-actions button:disabled { cursor: wait; opacity: 0.65; }
+
 @media (max-width: 640px) {
   .app-shell { padding: 40px 0; }
   .upload-card { align-items: stretch; flex-direction: column; }
   .preview-layout { grid-template-columns: 1fr; }
   .part-list { border-top: 1px solid #252a35; border-left: 0; }
   .part-preview { min-height: 480px; }
+  .export-heading, .export-actions { align-items: stretch; flex-direction: column; }
+  .export-heading > p { text-align: left; }
+  .metadata-grid { grid-template-columns: 1fr; }
+  .metadata-grid label.wide { grid-column: auto; }
 }
