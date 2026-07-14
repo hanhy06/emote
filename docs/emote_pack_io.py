@@ -14,10 +14,6 @@ def validate_input_path(input_path: Path) -> None:
         raise SystemExit("The input path must be a .zip file or folder.")
 
 
-def create_output_path(input_path: Path, output_dir: Path | None) -> Path:
-    return create_output_path_for_name(get_input_stem(input_path), input_path, output_dir)
-
-
 def create_output_path_for_name(name: str, input_path: Path, output_dir: Path | None) -> Path:
     parent = output_dir.resolve() if output_dir is not None else input_path.parent
     parent.mkdir(parents=True, exist_ok=True)
@@ -55,10 +51,12 @@ def get_input_stem(input_path: Path) -> str:
 
 
 def write_zip(pack_root: Path, output_path: Path) -> None:
-    if output_path.exists():
-        output_path.unlink()
-
-    with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as output_zip_file:
-        for path in sorted(pack_root.rglob("*")):
-            if not path.is_dir():
-                output_zip_file.write(path, arcname=path.relative_to(pack_root))
+    temporary_path = output_path.with_name(f".{output_path.name}.tmp")
+    try:
+        with zipfile.ZipFile(temporary_path, "w", compression=zipfile.ZIP_DEFLATED) as output_zip_file:
+            for path in sorted(pack_root.rglob("*")):
+                if not path.is_dir():
+                    output_zip_file.write(path, arcname=path.relative_to(pack_root))
+        temporary_path.replace(output_path)
+    finally:
+        temporary_path.unlink(missing_ok=True)

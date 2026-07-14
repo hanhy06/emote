@@ -18,9 +18,9 @@ if __package__:
         write_emote_metadata,
     )
     from .emote_pack_io import (
-        create_output_path,
         create_output_path_for_name,
         find_pack_root,
+        get_input_stem,
         prepare_work_dir,
         validate_input_path,
         write_zip,
@@ -34,9 +34,9 @@ else:
         write_emote_metadata,
     )
     from emote_pack_io import (
-        create_output_path,
         create_output_path_for_name,
         find_pack_root,
+        get_input_stem,
         prepare_work_dir,
         validate_input_path,
         write_zip,
@@ -58,56 +58,51 @@ ANCHOR_OFFSET = 0.5
 
 
 @dataclass(frozen=True)
-class PlayerHeadPart:
-    part_index: int
-    start_index: int
-    end_index: int
-    item_display_text: str
+class Vector3:
     x: float
     y: float
     z: float
-    scale_x: float
-    scale_y: float
-    scale_z: float
-    anchor_x: float
-    anchor_y: float
-    anchor_z: float
-    local_x_axis_x: float
-    local_x_axis_y: float
-    local_x_axis_z: float
-    local_y_axis_x: float
-    local_y_axis_y: float
-    local_y_axis_z: float
+
+    def offset_from(self, other: Vector3) -> Vector3:
+        return Vector3(self.x - other.x, self.y - other.y, self.z - other.z)
+
+    def dot(self, other: Vector3) -> float:
+        return self.x * other.x + self.y * other.y + self.z * other.z
+
+    def distance_to(self, other: Vector3) -> float:
+        offset = self.offset_from(other)
+        return math.sqrt(offset.dot(offset))
+
+    def normalized(self, fallback: Vector3) -> Vector3:
+        length = math.sqrt(self.dot(self))
+        if length <= 0.0:
+            return fallback
+        return Vector3(self.x / length, self.y / length, self.z / length)
+
+
+@dataclass(frozen=True)
+class PlayerHeadPart:
+    part_index: int
+    scale: Vector3
+    anchor: Vector3
+    local_x_axis: Vector3
+    local_y_axis: Vector3
 
 
 @dataclass(frozen=True)
 class BodyFrame:
-    anchor_x: float
-    anchor_y: float
-    anchor_z: float
-    local_x_axis_x: float
-    local_x_axis_y: float
-    local_x_axis_z: float
-    local_y_axis_x: float
-    local_y_axis_y: float
-    local_y_axis_z: float
+    anchor: Vector3
+    local_x_axis: Vector3
+    local_y_axis: Vector3
 
     def lateral_offset(self, player_head_part: PlayerHeadPart) -> float:
-        offset_x = player_head_part.anchor_x - self.anchor_x
-        offset_y = player_head_part.anchor_y - self.anchor_y
-        offset_z = player_head_part.anchor_z - self.anchor_z
-        return dot_vector(offset_x, offset_y, offset_z, self.local_x_axis_x, self.local_x_axis_y, self.local_x_axis_z)
+        return player_head_part.anchor.offset_from(self.anchor).dot(self.local_x_axis)
 
     def vertical_offset(self, player_head_part: PlayerHeadPart) -> float:
-        return self.vertical_offset_coordinates(
-            (player_head_part.anchor_x, player_head_part.anchor_y, player_head_part.anchor_z)
-        )
+        return self.vertical_offset_at(player_head_part.anchor)
 
-    def vertical_offset_coordinates(self, coordinates: tuple[float, float, float]) -> float:
-        offset_x = coordinates[0] - self.anchor_x
-        offset_y = coordinates[1] - self.anchor_y
-        offset_z = coordinates[2] - self.anchor_z
-        return dot_vector(offset_x, offset_y, offset_z, self.local_y_axis_x, self.local_y_axis_y, self.local_y_axis_z)
+    def vertical_offset_at(self, coordinates: Vector3) -> float:
+        return coordinates.offset_from(self.anchor).dot(self.local_y_axis)
 
 
 def main() -> int:
@@ -177,7 +172,7 @@ def validate_metadata_arguments(parser: argparse.ArgumentParser, args: argparse.
 
 def process_input_path(input_path: Path, args: argparse.Namespace) -> Path:
     validate_input_path(input_path)
-    output_path = create_output_path(input_path, args.output_dir)
+    output_path = create_output_path_for_name(get_input_stem(input_path), input_path, args.output_dir)
 
     with tempfile.TemporaryDirectory(prefix="emote-datapack-") as temp_dir_name:
         pack_root, _, _ = prepare_emote_pack(input_path, args, Path(temp_dir_name))
@@ -246,8 +241,13 @@ def prepare_emote_pack(
 
             original_text = create_function_path.read_text(encoding="utf-8")
             entity_tag_namespace = find_entity_tag_namespace(original_text)
-            normalize_bdengine_namespace(create_function_path.parents[2], entity_tag_namespace, namespace)
-            original_text = create_function_path.read_text(encoding="utf-8")
+            normalized_files = normalize_bdengine_namespace(
+                create_function_path.parents[2],
+                entity_tag_namespace,
+                namespace,
+                {create_function_path: original_text},
+            )
+            original_text = normalized_files[create_function_path]
             updated_text, replaced_count = update_create_function(original_text, namespace, args.swap_left_right)
             if replaced_count == 0:
                 continue
@@ -390,18 +390,28 @@ def find_entity_tag_namespace(create_function_text: str) -> str:
     return next(iter(namespaces))
 
 
-def normalize_bdengine_namespace(namespace_path: Path, source_namespace: str, target_namespace: str) -> None:
+def normalize_bdengine_namespace(
+    namespace_path: Path,
+    source_namespace: str,
+    target_namespace: str,
+    loaded_files: dict[Path, str] | None = None,
+) -> dict[Path, str]:
+    normalized_files = dict(loaded_files or {})
     if source_namespace == target_namespace:
-        return
+        return normalized_files
 
     namespace_pattern = re.compile(
         rf"(?<![a-z0-9_.-]){re.escape(source_namespace)}(?=[:_]|(?![a-z0-9_.-]))"
     )
     for function_path in sorted(namespace_path.rglob("*.mcfunction")):
-        original_text = function_path.read_text(encoding="utf-8")
+        original_text = normalized_files.get(function_path)
+        if original_text is None:
+            original_text = function_path.read_text(encoding="utf-8")
         updated_text = namespace_pattern.sub(target_namespace, original_text)
+        normalized_files[function_path] = updated_text
         if updated_text != original_text:
             function_path.write_text(updated_text, encoding="utf-8", newline="\n")
+    return normalized_files
 
 
 def swap_left_right_part_names(part_names: dict[int, str]) -> dict[int, str]:
@@ -423,24 +433,18 @@ def parse_player_head_part(match: re.Match[str]) -> PlayerHeadPart:
 
     return PlayerHeadPart(
         part_index=int(match.group(3)),
-        start_index=match.start(),
-        end_index=match.end(),
-        item_display_text=item_display_text,
-        x=values[3],
-        y=values[7],
-        z=values[11],
-        scale_x=read_axis_scale(values, 0, 4, 8),
-        scale_y=read_axis_scale(values, 1, 5, 9),
-        scale_z=read_axis_scale(values, 2, 6, 10),
-        anchor_x=values[3] + values[1] * ANCHOR_OFFSET,
-        anchor_y=values[7] + values[5] * ANCHOR_OFFSET,
-        anchor_z=values[11] + values[9] * ANCHOR_OFFSET,
-        local_x_axis_x=values[0],
-        local_x_axis_y=values[4],
-        local_x_axis_z=values[8],
-        local_y_axis_x=values[1],
-        local_y_axis_y=values[5],
-        local_y_axis_z=values[9],
+        scale=Vector3(
+            read_axis_scale(values, 0, 4, 8),
+            read_axis_scale(values, 1, 5, 9),
+            read_axis_scale(values, 2, 6, 10),
+        ),
+        anchor=Vector3(
+            values[3] + values[1] * ANCHOR_OFFSET,
+            values[7] + values[5] * ANCHOR_OFFSET,
+            values[11] + values[9] * ANCHOR_OFFSET,
+        ),
+        local_x_axis=Vector3(values[0], values[4], values[8]),
+        local_y_axis=Vector3(values[1], values[5], values[9]),
     )
 
 
@@ -498,7 +502,7 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
         [part for part in remaining_parts if part.part_index not in assignments],
         head_part,
     )
-    max_assignment_distance = max(head_part.scale_x, head_part.scale_y, head_part.scale_z) * 0.6
+    max_assignment_distance = max(head_part.scale.x, head_part.scale.y, head_part.scale.z) * 0.6
     assign_side_parts(
         [part for part in side_parts if body_frame.lateral_offset(part) >= 0.0],
         body_frame,
@@ -524,17 +528,17 @@ def select_head_part(player_head_parts: list[PlayerHeadPart]) -> PlayerHeadPart:
         player_head_parts,
         key=lambda part: (
             cube_similarity(part),
-            part.scale_x * part.scale_y * part.scale_z,
+            part.scale.x * part.scale.y * part.scale.z,
             -part.part_index,
         ),
     )
 
 
 def cube_similarity(player_head_part: PlayerHeadPart) -> float:
-    largest_scale = max(player_head_part.scale_x, player_head_part.scale_y, player_head_part.scale_z)
+    largest_scale = max(player_head_part.scale.x, player_head_part.scale.y, player_head_part.scale.z)
     if largest_scale <= 0.0:
         return 0.0
-    return min(player_head_part.scale_x, player_head_part.scale_y, player_head_part.scale_z) / largest_scale
+    return min(player_head_part.scale.x, player_head_part.scale.y, player_head_part.scale.z) / largest_scale
 
 
 def select_body_parts(
@@ -544,12 +548,12 @@ def select_body_parts(
     body_candidates = [
         part
         for part in player_head_parts
-        if part.scale_x >= head_part.scale_x * 0.75
-        if part.scale_z >= head_part.scale_z * 0.25
+        if part.scale.x >= head_part.scale.x * 0.75
+        if part.scale.z >= head_part.scale.z * 0.25
     ]
     if not body_candidates:
-        body_scale_x = max(part.scale_x for part in player_head_parts)
-        return [part for part in player_head_parts if body_scale_x - part.scale_x <= CLUSTER_TOLERANCE]
+        body_scale_x = max(part.scale.x for part in player_head_parts)
+        return [part for part in player_head_parts if body_scale_x - part.scale.x <= CLUSTER_TOLERANCE]
 
     body_anchor_part = min(body_candidates, key=lambda part: anchor_distance(part, head_part))
     return [
@@ -566,53 +570,24 @@ def select_limb_candidates(
     return [
         part
         for part in player_head_parts
-        if head_part.scale_x * 0.2 <= part.scale_x <= head_part.scale_x * 0.75
-        if part.scale_z >= head_part.scale_z * 0.2
+        if head_part.scale.x * 0.2 <= part.scale.x <= head_part.scale.x * 0.75
+        if part.scale.z >= head_part.scale.z * 0.2
     ]
 
 
 def anchor_distance(first_part: PlayerHeadPart, second_part: PlayerHeadPart) -> float:
-    return coordinate_distance(
-        (first_part.anchor_x, first_part.anchor_y, first_part.anchor_z),
-        (second_part.anchor_x, second_part.anchor_y, second_part.anchor_z),
-    )
-
-
-def coordinate_distance(first: tuple[float, float, float], second: tuple[float, float, float]) -> float:
-    offset_x = first[0] - second[0]
-    offset_y = first[1] - second[1]
-    offset_z = first[2] - second[2]
-    return math.sqrt(offset_x * offset_x + offset_y * offset_y + offset_z * offset_z)
+    return first_part.anchor.distance_to(second_part.anchor)
 
 
 def create_body_frame(player_head_parts: list[PlayerHeadPart]) -> BodyFrame:
-    local_x_axis = normalize_vector(
-        average_value(player_head_parts, lambda part: part.local_x_axis_x),
-        average_value(player_head_parts, lambda part: part.local_x_axis_y),
-        average_value(player_head_parts, lambda part: part.local_x_axis_z),
-        1.0,
-        0.0,
-        0.0,
-    )
-    local_y_axis = normalize_vector(
-        average_value(player_head_parts, lambda part: part.local_y_axis_x),
-        average_value(player_head_parts, lambda part: part.local_y_axis_y),
-        average_value(player_head_parts, lambda part: part.local_y_axis_z),
-        0.0,
-        1.0,
-        0.0,
-    )
-
     return BodyFrame(
-        anchor_x=average_value(player_head_parts, lambda part: part.anchor_x),
-        anchor_y=average_value(player_head_parts, lambda part: part.anchor_y),
-        anchor_z=average_value(player_head_parts, lambda part: part.anchor_z),
-        local_x_axis_x=local_x_axis[0],
-        local_x_axis_y=local_x_axis[1],
-        local_x_axis_z=local_x_axis[2],
-        local_y_axis_x=local_y_axis[0],
-        local_y_axis_y=local_y_axis[1],
-        local_y_axis_z=local_y_axis[2],
+        anchor=average_vector(player_head_parts, lambda part: part.anchor),
+        local_x_axis=average_vector(player_head_parts, lambda part: part.local_x_axis).normalized(
+            Vector3(1.0, 0.0, 0.0)
+        ),
+        local_y_axis=average_vector(player_head_parts, lambda part: part.local_y_axis).normalized(
+            Vector3(0.0, 1.0, 0.0)
+        ),
     )
 
 
@@ -620,30 +595,15 @@ def average_value(player_head_parts: list[PlayerHeadPart], value_getter: Callabl
     return sum(value_getter(part) for part in player_head_parts) / len(player_head_parts)
 
 
-def normalize_vector(
-    x: float,
-    y: float,
-    z: float,
-    fallback_x: float,
-    fallback_y: float,
-    fallback_z: float,
-) -> tuple[float, float, float]:
-    length = math.sqrt(x * x + y * y + z * z)
-    if length <= 0.0:
-        return fallback_x, fallback_y, fallback_z
-
-    return x / length, y / length, z / length
-
-
-def dot_vector(
-    first_x: float,
-    first_y: float,
-    first_z: float,
-    second_x: float,
-    second_y: float,
-    second_z: float,
-) -> float:
-    return first_x * second_x + first_y * second_y + first_z * second_z
+def average_vector(
+    player_head_parts: list[PlayerHeadPart],
+    vector_getter: Callable[[PlayerHeadPart], Vector3],
+) -> Vector3:
+    return Vector3(
+        average_value(player_head_parts, lambda part: vector_getter(part).x),
+        average_value(player_head_parts, lambda part: vector_getter(part).y),
+        average_value(player_head_parts, lambda part: vector_getter(part).z),
+    )
 
 
 def assign_side_parts(
@@ -662,7 +622,7 @@ def assign_side_parts(
         first_cluster, second_cluster = find_farthest_anchor_clusters(anchor_clusters)
         first_center = average_anchor(first_cluster)
         second_center = average_anchor(second_cluster)
-        if body_frame.vertical_offset_coordinates(first_center) >= body_frame.vertical_offset_coordinates(second_center):
+        if body_frame.vertical_offset_at(first_center) >= body_frame.vertical_offset_at(second_center):
             arm_cluster, arm_center = first_cluster, first_center
             leg_cluster, leg_center = second_cluster, second_center
         else:
@@ -677,10 +637,9 @@ def assign_side_parts(
         )
 
         for part in side_parts:
-            part_anchor = (part.anchor_x, part.anchor_y, part.anchor_z)
             matching_roots = [root for root in limb_roots if root[0] <= part.part_index]
             selected_root = matching_roots[-1] if matching_roots else limb_roots[0]
-            if coordinate_distance(part_anchor, selected_root[1]) > max_assignment_distance:
+            if part.anchor.distance_to(selected_root[1]) > max_assignment_distance:
                 continue
             assignments[part.part_index] = selected_root[2]
         return
@@ -703,7 +662,7 @@ def cluster_by_anchor(player_head_parts: list[PlayerHeadPart]) -> list[list[Play
     clusters: list[list[PlayerHeadPart]] = []
     for part in sorted(player_head_parts, key=lambda item: item.part_index):
         for cluster in clusters:
-            if coordinate_distance((part.anchor_x, part.anchor_y, part.anchor_z), average_anchor(cluster)) <= CLUSTER_TOLERANCE:
+            if part.anchor.distance_to(average_anchor(cluster)) <= CLUSTER_TOLERANCE:
                 cluster.append(part)
                 break
         else:
@@ -718,19 +677,15 @@ def find_farthest_anchor_clusters(
     farthest_distance = -1.0
     for first_index, first_cluster in enumerate(anchor_clusters[:-1]):
         for second_cluster in anchor_clusters[first_index + 1:]:
-            distance = coordinate_distance(average_anchor(first_cluster), average_anchor(second_cluster))
+            distance = average_anchor(first_cluster).distance_to(average_anchor(second_cluster))
             if distance > farthest_distance:
                 farthest_pair = first_cluster, second_cluster
                 farthest_distance = distance
     return farthest_pair
 
 
-def average_anchor(player_head_parts: list[PlayerHeadPart]) -> tuple[float, float, float]:
-    return (
-        average_value(player_head_parts, lambda part: part.anchor_x),
-        average_value(player_head_parts, lambda part: part.anchor_y),
-        average_value(player_head_parts, lambda part: part.anchor_z),
-    )
+def average_anchor(player_head_parts: list[PlayerHeadPart]) -> Vector3:
+    return average_vector(player_head_parts, lambda part: part.anchor)
 
 
 def cluster_by_vertical_offset(player_head_parts: list[PlayerHeadPart], body_frame: BodyFrame) -> list[list[PlayerHeadPart]]:

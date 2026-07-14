@@ -29,11 +29,13 @@ class EmotePackIoTest(unittest.TestCase):
             (pack_root / "pack.mcmeta").write_text("{}", encoding="utf-8")
             (pack_root / "data/demo/file.txt").write_text("value", encoding="utf-8")
             output_path = temp_dir / "output.zip"
+            output_path.write_text("previous output", encoding="utf-8")
 
             write_zip(pack_root, output_path)
 
             with zipfile.ZipFile(output_path) as output_zip:
                 self.assertEqual(["data/demo/file.txt", "pack.mcmeta"], sorted(output_zip.namelist()))
+            self.assertFalse((temp_dir / ".output.zip.tmp").exists())
 
     def test_removes_emote_prefix_from_input_name(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir_name:

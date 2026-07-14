@@ -3,7 +3,14 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from docs.emote import EmoteTarget, PlayerHeadPart, create_emote_metadata, infer_part_names, split_animation_namespaces
+from docs.emote import (
+    EmoteTarget,
+    PlayerHeadPart,
+    Vector3,
+    create_emote_metadata,
+    infer_part_names,
+    split_animation_namespaces,
+)
 
 
 class MultiAnimationDatapackTest(unittest.TestCase):
@@ -126,24 +133,10 @@ def create_part(
 ) -> PlayerHeadPart:
     return PlayerHeadPart(
         part_index=part_index,
-        start_index=0,
-        end_index=0,
-        item_display_text="",
-        x=anchor[0],
-        y=anchor[1] - 0.5,
-        z=anchor[2],
-        scale_x=scale[0],
-        scale_y=scale[1],
-        scale_z=scale[2],
-        anchor_x=anchor[0],
-        anchor_y=anchor[1],
-        anchor_z=anchor[2],
-        local_x_axis_x=1.0,
-        local_x_axis_y=0.0,
-        local_x_axis_z=0.0,
-        local_y_axis_x=0.0,
-        local_y_axis_y=1.0,
-        local_y_axis_z=0.0,
+        scale=Vector3(*scale),
+        anchor=Vector3(*anchor),
+        local_x_axis=Vector3(1.0, 0.0, 0.0),
+        local_y_axis=Vector3(0.0, 1.0, 0.0),
     )
 
 
