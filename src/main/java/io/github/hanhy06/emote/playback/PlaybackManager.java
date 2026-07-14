@@ -15,15 +15,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -33,11 +29,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlaybackManager {
     private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
     private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
-    private static final double NAMESPACE_CLEANUP_SEARCH_DISTANCE = 24.0D;
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingPlaybackStart> pendingPlaybackStartMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
     private final PlayerSkinManager playerSkinManager;
+    private final PlaybackEntityController entityController = new PlaybackEntityController();
     private PlaybackStateListener stateListener = PlaybackStateListener.NONE;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
@@ -66,7 +62,7 @@ public class PlaybackManager {
         }
 
         resetPlayerPlayback(player, namespace);
-        Set<UUID> existingEntityUuids = findNamespaceEntityUuids(player.level(), namespace);
+        Set<UUID> existingEntityUuids = this.entityController.findNamespaceEntityUuids(player.level(), namespace);
         executeFunction(player, functionIds.createFunctionId());
         this.pendingPlaybackStartMap.put(
             player.getUUID(),
@@ -222,12 +218,12 @@ public class PlaybackManager {
     ) {
         EmoteDefinition definition = pendingStart.definition();
         ServerLevel level = player.level();
-        Set<UUID> instanceEntityUuids = findNamespaceEntityUuids(level, definition.namespace());
+        Set<UUID> instanceEntityUuids = this.entityController.findNamespaceEntityUuids(level, definition.namespace());
         instanceEntityUuids.removeAll(pendingStart.existingEntityUuids());
 
-        UUID rootEntityUuid = findRootEntityUuid(level, definition.namespace(), instanceEntityUuids);
+        UUID rootEntityUuid = this.entityController.findRootEntityUuid(level, definition.namespace(), instanceEntityUuids);
         if (rootEntityUuid == null) {
-            cleanupInstanceEntities(level, instanceEntityUuids);
+            this.entityController.cleanupInstanceEntities(level, instanceEntityUuids);
             return null;
         }
 
@@ -258,12 +254,12 @@ public class PlaybackManager {
             return;
         }
 
-        Set<UUID> instanceEntityUuids = findNamespaceEntityUuids(
+        Set<UUID> instanceEntityUuids = this.entityController.findNamespaceEntityUuids(
             level,
             pendingStart.definition().namespace()
         );
         instanceEntityUuids.removeAll(pendingStart.existingEntityUuids());
-        cleanupInstanceEntities(level, instanceEntityUuids);
+        this.entityController.cleanupInstanceEntities(level, instanceEntityUuids);
     }
 
     private void applyPendingPlayerSkins(MinecraftServer server) {
@@ -357,9 +353,9 @@ public class PlaybackManager {
 
         ServerLevel level = server.getLevel(activeEmote.levelKey());
         if (level != null) {
-            cleanupInstanceEntities(level, activeEmote.instanceEntityUuids());
+            this.entityController.cleanupInstanceEntities(level, activeEmote.instanceEntityUuids());
             if (lastNamespaceInstance) {
-                cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
+                this.entityController.cleanupNamespaceEntitiesNearby(level, activeEmote.namespace(), activeEmote.startPosition());
             }
         }
 
@@ -385,27 +381,6 @@ public class PlaybackManager {
         return identifier != null && server.getFunctions().get(identifier).isPresent();
     }
 
-    private Set<UUID> findNamespaceEntityUuids(ServerLevel level, String namespace) {
-        Set<UUID> entityUuids = new HashSet<>();
-        for (Entity entity : level.getAllEntities()) {
-            if (matchesNamespaceDisplay(entity, namespace)) {
-                entityUuids.add(entity.getUUID());
-            }
-        }
-        return entityUuids;
-    }
-
-    private UUID findRootEntityUuid(ServerLevel level, String namespace, Set<UUID> instanceEntityUuids) {
-        String rootTag = namespace + "_root";
-        for (UUID entityUuid : instanceEntityUuids) {
-            Entity entity = level.getEntity(entityUuid);
-            if (entity instanceof Display.BlockDisplay && entity.entityTags().contains(rootTag)) {
-                return entityUuid;
-            }
-        }
-        return null;
-    }
-
     private void copyAnimationState(ActiveEmote namespaceTimeline, Entity targetRoot) {
         ServerLevel timelineLevel = level(namespaceTimeline);
         Entity timelineRoot = timelineLevel == null
@@ -418,22 +393,6 @@ public class PlaybackManager {
         for (String tag : timelineRoot.entityTags()) {
             if (tag.startsWith("animation_")) {
                 targetRoot.addTag(tag);
-            }
-        }
-    }
-
-    private void cleanupInstanceEntities(ServerLevel level, Set<UUID> instanceEntityUuids) {
-        Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
-        for (UUID entityUuid : instanceEntityUuids) {
-            Entity entity = level.getEntity(entityUuid);
-            if (entity != null) {
-                collectEntityTree(entity, entitiesToKill);
-            }
-        }
-
-        for (Entity entity : entitiesToKill.values()) {
-            if (!entity.isRemoved()) {
-                entity.kill(level);
             }
         }
     }
@@ -453,86 +412,7 @@ public class PlaybackManager {
             executeFunction(player, namespace + ":_/delete");
         }
 
-        cleanupNamespaceEntities(player.level(), namespace);
-    }
-
-    private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
-        AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
-        List<Display> displaysToKill = level.getEntitiesOfClass(
-            Display.class,
-            searchBox,
-            entity -> matchesNamespaceDisplay(entity, namespace)
-        );
-        for (Entity entity : displaysToKill) {
-            if (!entity.isRemoved()) {
-                entity.kill(level);
-            }
-        }
-    }
-
-    private void cleanupNamespaceEntities(ServerLevel level, String namespace) {
-        Map<Integer, Entity> entitiesToKill = new LinkedHashMap<>();
-
-        for (Entity entity : level.getAllEntities()) {
-            if (!matchesNamespaceDisplay(entity, namespace)) {
-                continue;
-            }
-
-            collectEntityTree(entity, entitiesToKill);
-        }
-
-        for (Entity entity : entitiesToKill.values()) {
-            if (!entity.isRemoved()) {
-                entity.kill(level);
-            }
-        }
-    }
-
-    private void collectEntityTree(Entity entity, Map<Integer, Entity> entitiesToKill) {
-        if (entitiesToKill.containsKey(entity.getId())) {
-            return;
-        }
-
-        for (Entity passenger : entity.getPassengers()) {
-            collectEntityTree(passenger, entitiesToKill);
-        }
-
-        entitiesToKill.put(entity.getId(), entity);
-    }
-
-    private boolean matchesNamespaceDisplay(Entity entity, String namespace) {
-        if (!(entity instanceof Display)) {
-            return false;
-        }
-
-        for (String tag : entity.entityTags()) {
-            if (isCleanupTag(tag, namespace)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private boolean isCleanupTag(String tag, String namespace) {
-        if (tag.equals(namespace) || tag.equals(namespace + "_root") || tag.equals(namespace + "_camera")) {
-            return true;
-        }
-
-        if (!tag.startsWith(namespace + "_")) {
-            return false;
-        }
-
-        String suffix = tag.substring(namespace.length() + 1);
-        if (suffix.isEmpty()) {
-            return false;
-        }
-
-        if (suffix.charAt(0) == 'p') {
-            return suffix.length() > 1 && suffix.substring(1).chars().allMatch(Character::isDigit);
-        }
-
-        return suffix.chars().allMatch(Character::isDigit);
+        this.entityController.cleanupNamespaceEntities(player.level(), namespace);
     }
 
     private void alignRootWithPlayer(ServerPlayer player, UUID rootEntityUuid) {
