@@ -470,7 +470,7 @@ public class PlaybackManager {
         }
 
         CommandSourceStack source = player.createCommandSourceStack()
-            .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+            .withPermission(LevelBasedPermissionSet.OWNER)
             .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "function " + functionId);
     }
@@ -488,7 +488,7 @@ public class PlaybackManager {
 
         CommandSourceStack source = server.createCommandSourceStack()
             .withLevel(level)
-            .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+            .withPermission(LevelBasedPermissionSet.OWNER)
             .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "function " + functionId);
     }
