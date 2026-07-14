@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-public class MineSkinTextureStore {
+final class MineSkinTextureStore {
     private static final int CONTENT_CACHE_VERSION = 1;
     private final Path skinDirPath;
     private final Gson gson = new GsonBuilder()
@@ -32,7 +32,7 @@ public class MineSkinTextureStore {
         .disableHtmlEscaping()
         .create();
 
-    public MineSkinTextureStore() {
+    MineSkinTextureStore() {
         this(null);
     }
 
@@ -40,7 +40,7 @@ public class MineSkinTextureStore {
         this.skinDirPath = skinDirPath;
     }
 
-    public Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {
+    Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {
         Path filePath = resolveFilePath(textureHash, slimModel);
         if (filePath == null || !Files.exists(filePath)) {
             return Map.of();
@@ -75,7 +75,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public void save(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
+    void save(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
         if (textureUrlMap.isEmpty()) {
             return;
         }
@@ -105,7 +105,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public MineSkinTextureResult loadContent(String contentHash) {
+    MineSkinTextureResult loadContent(String contentHash) {
         Path filePath = resolveContentFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -131,7 +131,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public void saveContent(String contentHash, MineSkinTextureResult result) {
+    void saveContent(String contentHash, MineSkinTextureResult result) {
         Path filePath = resolveContentFilePath(contentHash);
         if (filePath == null) {
             return;
@@ -149,7 +149,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public String loadPendingJob(String contentHash) {
+    String loadPendingJob(String contentHash) {
         Path filePath = resolvePendingFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -167,7 +167,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public void savePendingJob(String contentHash, String jobId) {
+    void savePendingJob(String contentHash, String jobId) {
         Path filePath = resolvePendingFilePath(contentHash);
         if (filePath == null || jobId == null || jobId.isBlank()) {
             return;
@@ -183,7 +183,7 @@ public class MineSkinTextureStore {
         }
     }
 
-    public void clearPendingJob(String contentHash) {
+    void clearPendingJob(String contentHash) {
         Path filePath = resolvePendingFilePath(contentHash);
         if (filePath == null) {
             return;

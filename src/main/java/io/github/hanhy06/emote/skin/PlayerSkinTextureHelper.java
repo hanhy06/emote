@@ -11,11 +11,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
 
-public final class PlayerSkinTextureHelper {
+final class PlayerSkinTextureHelper {
     private PlayerSkinTextureHelper() {
     }
 
-    public static ResolvableProfile createProfile(String profileName, String textureUrl) {
+    static ResolvableProfile createProfile(String profileName, String textureUrl) {
         UUID profileId = UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8));
         PropertyMap properties = new PropertyMap(ImmutableMultimap.of(
             "textures",

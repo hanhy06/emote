@@ -10,7 +10,7 @@ import io.github.hanhy06.emote.skin.PlayerSkinAtlas.FaceMap;
 import io.github.hanhy06.emote.skin.PlayerSkinAtlas.FaceRect;
 import io.github.hanhy06.emote.skin.PlayerSkinAtlas.PadMode;
 
-public class PlayerSkinBaker {
+final class PlayerSkinBaker {
     private static final FaceTarget BASE_TOP = new FaceTarget(8, 0, 8, 8);
     private static final FaceTarget BASE_BOTTOM = new FaceTarget(16, 0, 8, 8);
     private static final FaceTarget BASE_RIGHT = new FaceTarget(0, 8, 8, 8);
@@ -25,7 +25,7 @@ public class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_LEFT = new FaceTarget(48, 8, 8, 8);
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
-    public byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) throws IOException {
+    byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) throws IOException {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
 

@@ -19,7 +19,7 @@ import java.util.Base64;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-public class MineSkinApiClient {
+final class MineSkinApiClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
     private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
@@ -31,14 +31,14 @@ public class MineSkinApiClient {
     private final Gson gson = new Gson();
     private volatile long jobPollIntervalMillis = 3000L;
 
-    public void setJobPollIntervalSeconds(int seconds) {
+    void setJobPollIntervalSeconds(int seconds) {
         if (seconds < 1 || seconds > 60) {
             throw new IllegalArgumentException("seconds must be between 1 and 60");
         }
         this.jobPollIntervalMillis = seconds * 1000L;
     }
 
-    public String generateSkinUrl(
+    String generateSkinUrl(
         String apiKey,
         byte[] pngBytes,
         boolean slimModel,
@@ -78,7 +78,7 @@ public class MineSkinApiClient {
         return waitForSkinUrlWithApiKey(normalizedApiKey, jobId);
     }
 
-    public String waitForSkinUrl(String apiKey, String jobId) throws IOException, InterruptedException {
+    String waitForSkinUrl(String apiKey, String jobId) throws IOException, InterruptedException {
         String normalizedApiKey = normalizeApiKey(apiKey);
         if (normalizedApiKey == null) {
             throw new IOException("MineSkin API key is missing");
