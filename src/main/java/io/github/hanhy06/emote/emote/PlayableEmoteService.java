@@ -6,6 +6,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.function.Predicate;
 
 public class PlayableEmoteService {
     private final EmoteRegistry emoteRegistry;
@@ -28,10 +29,18 @@ public class PlayableEmoteService {
             .toList();
     }
 
+    public List<String> getPlayNames() {
+        return collectPlayNames(ignored -> true);
+    }
+
     public List<String> getPlayablePlayNames(ServerPlayer player) {
+        return collectPlayNames(definition -> canPlay(player, definition));
+    }
+
+    private List<String> collectPlayNames(Predicate<EmoteDefinition> definitionFilter) {
         LinkedHashMap<String, String> names = new LinkedHashMap<>();
         for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
-            if (canPlay(player, definition)) {
+            if (definitionFilter.test(definition)) {
                 names.putIfAbsent(definition.commandName(), definition.commandName());
                 names.putIfAbsent(definition.namespace(), definition.namespace());
             }

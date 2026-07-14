@@ -6,7 +6,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class EmoteRegistryTest {
@@ -33,30 +32,5 @@ class EmoteRegistryTest {
         } finally {
             Locale.setDefault(previousLocale);
         }
-    }
-
-    @Test
-    void getPlayNamesKeepsFirstCommandAliasOrder() {
-        EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(
-            createDefinition("alpha", "shared"),
-            createDefinition("beta", "shared")
-        ));
-
-        assertEquals(List.of("shared", "alpha", "beta"), registry.getPlayNames());
-    }
-
-    private EmoteDefinition createDefinition(String namespace, String commandName) {
-        return new EmoteDefinition(
-            namespace,
-            namespace,
-            namespace + " description",
-            commandName,
-            "a/default/play_anim_loop",
-            true,
-            Path.of(namespace + "-pack"),
-            1,
-            List.of()
-        );
     }
 }

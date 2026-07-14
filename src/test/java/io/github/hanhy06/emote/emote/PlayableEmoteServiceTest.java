@@ -29,6 +29,18 @@ class PlayableEmoteServiceTest {
     }
 
     @Test
+    void getPlayNamesKeepsFirstCommandAliasOrder() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replaceDefinitions(List.of(
+            createDefinition("alpha", "shared", "Alpha"),
+            createDefinition("beta", "shared", "Beta")
+        ));
+        PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> true);
+
+        assertEquals(List.of("shared", "alpha", "beta"), service.getPlayNames());
+    }
+
+    @Test
     void findSelectionReturnsTheDatapackEntrypoint() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replaceDefinitions(List.of(createDefinition("wave_pack", "wave", "Wave")));

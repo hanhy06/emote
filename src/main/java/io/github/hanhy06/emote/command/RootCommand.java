@@ -127,7 +127,7 @@ public final class RootCommand {
     private List<String> getSuggestedPlayNames(CommandSourceStack source) {
         ServerPlayer player = findPlayer(source);
         return player == null
-            ? this.emoteRegistry.getPlayNames()
+            ? this.playableEmoteService.getPlayNames()
             : this.playableEmoteService.getPlayablePlayNames(player);
     }
 

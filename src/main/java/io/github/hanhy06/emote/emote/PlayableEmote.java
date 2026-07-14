@@ -12,8 +12,4 @@ public record PlayableEmote(String commandName, String displayName, String descr
     public String createPlayCommand() {
         return "emote play " + this.commandName;
     }
-
-    public String selectionKey() {
-        return this.commandName;
-    }
 }

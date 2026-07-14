@@ -1,6 +1,9 @@
 package io.github.hanhy06.emote.skin;
 
 import java.util.Locale;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 public enum PlayerSkinPart {
     HEAD("head"),
@@ -10,6 +13,8 @@ public enum PlayerSkinPart {
     RIGHT_LEG("right_leg"),
     LEFT_LEG("left_leg");
 
+    private static final Map<String, PlayerSkinPart> BY_ID = java.util.Arrays.stream(values())
+        .collect(Collectors.toUnmodifiableMap(PlayerSkinPart::id, Function.identity()));
     private final String id;
 
     PlayerSkinPart(String id) {
@@ -26,20 +31,9 @@ public enum PlayerSkinPart {
         }
 
         String normalizedId = id.toLowerCase(Locale.ROOT);
-        return switch (normalizedId) {
-            case "head" -> HEAD;
-            case "body" -> BODY;
-            case "right_arm" -> RIGHT_ARM;
-            case "left_arm" -> LEFT_ARM;
-            case "right_leg" -> RIGHT_LEG;
-            case "left_leg" -> LEFT_LEG;
-            case "emote:head" -> HEAD;
-            case "emote:body" -> BODY;
-            case "emote:right_arm" -> RIGHT_ARM;
-            case "emote:left_arm" -> LEFT_ARM;
-            case "emote:right_leg" -> RIGHT_LEG;
-            case "emote:left_leg" -> LEFT_LEG;
-            default -> null;
-        };
+        if (normalizedId.startsWith("emote:")) {
+            normalizedId = normalizedId.substring("emote:".length());
+        }
+        return BY_ID.get(normalizedId);
     }
 }

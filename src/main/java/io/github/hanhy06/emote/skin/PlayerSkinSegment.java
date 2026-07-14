@@ -13,8 +13,4 @@ public record PlayerSkinSegment(int startY, int endY) {
             throw new IllegalArgumentException("endY must be between " + (startY + 1) + " and " + SIDE_FACE_HEIGHT);
         }
     }
-
-    public String id() {
-        return this.startY + "-" + this.endY;
-    }
 }

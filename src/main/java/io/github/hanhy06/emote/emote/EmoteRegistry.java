@@ -11,9 +11,7 @@ public class EmoteRegistry {
     private volatile RegistryState state = RegistryState.empty();
 
     public void replaceDefinitions(Collection<EmoteDefinition> definitions) {
-        List<EmoteDefinition> sortedDefinitions = definitions instanceof List<EmoteDefinition> definitionList
-            ? new java.util.ArrayList<>(definitionList)
-            : new java.util.ArrayList<>(definitions);
+        List<EmoteDefinition> sortedDefinitions = new java.util.ArrayList<>(definitions);
         sortedDefinitions.sort(Comparator.comparing(EmoteDefinition::namespace));
 
         LinkedHashMap<String, EmoteDefinition> definitionMap = new LinkedHashMap<>();
@@ -23,18 +21,10 @@ public class EmoteRegistry {
             commandDefinitionMap.putIfAbsent(normalizeKey(definition.commandName()), definition);
         }
 
-        List<EmoteDefinition> definitionList = List.copyOf(definitionMap.values());
-        LinkedHashMap<String, String> playNameMap = new LinkedHashMap<>();
-        for (EmoteDefinition definition : definitionList) {
-            playNameMap.putIfAbsent(definition.commandName(), definition.commandName());
-            playNameMap.putIfAbsent(definition.namespace(), definition.namespace());
-        }
-
         this.state = new RegistryState(
             Map.copyOf(definitionMap),
             Map.copyOf(commandDefinitionMap),
-            definitionList,
-            List.copyOf(playNameMap.values())
+            List.copyOf(definitionMap.values())
         );
     }
 
@@ -55,10 +45,6 @@ public class EmoteRegistry {
         return definition != null ? definition : findDefinition(commandNameOrNamespace);
     }
 
-    public List<String> getPlayNames() {
-        return this.state.playNames();
-    }
-
     public int size() {
         return this.state.definitionMap().size();
     }
@@ -70,11 +56,10 @@ public class EmoteRegistry {
     private record RegistryState(
         Map<String, EmoteDefinition> definitionMap,
         Map<String, EmoteDefinition> commandDefinitionMap,
-        List<EmoteDefinition> definitions,
-        List<String> playNames
+        List<EmoteDefinition> definitions
     ) {
         private static RegistryState empty() {
-            return new RegistryState(Map.of(), Map.of(), List.of(), List.of());
+            return new RegistryState(Map.of(), Map.of(), List.of());
         }
     }
 }
