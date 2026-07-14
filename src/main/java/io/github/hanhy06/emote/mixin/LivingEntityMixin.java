@@ -15,10 +15,10 @@ import java.util.Map;
 
 @Mixin(LivingEntity.class)
 abstract class LivingEntityMixin {
-    @Inject(method = "updateInvisibilityStatus", at = @At("TAIL"))
-    private void emote$afterInvisibilityUpdate(CallbackInfo callbackInfo) {
+    @Inject(method = "updateDataBeforeSync", at = @At("TAIL"))
+    private void emote$afterDataPreparedForSync(CallbackInfo callbackInfo) {
         if ((Object) this instanceof ServerPlayer player) {
-            PlaybackVisibilityCallback.EVENT.invoker().afterInvisibilityUpdate(player);
+            PlaybackVisibilityCallback.EVENT.invoker().afterDataPreparedForSync(player);
         }
     }
 

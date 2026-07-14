@@ -53,7 +53,7 @@ public class EmoteLifecycle {
 
     private void registerPlaybackCallbacks() {
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackManager.tick());
-        PlaybackVisibilityCallback.EVENT.register(this.playbackManager::schedulePlayerVisibilityRefresh);
+        PlaybackVisibilityCallback.EVENT.register(this.playbackManager::maintainPlayerVisibility);
     }
 
     private void registerInterruptionCallbacks() {

@@ -9,10 +9,10 @@ public interface PlaybackVisibilityCallback {
         PlaybackVisibilityCallback.class,
         callbacks -> player -> {
             for (PlaybackVisibilityCallback callback : callbacks) {
-                callback.afterInvisibilityUpdate(player);
+                callback.afterDataPreparedForSync(player);
             }
         }
     );
 
-    void afterInvisibilityUpdate(ServerPlayer player);
+    void afterDataPreparedForSync(ServerPlayer player);
 }
