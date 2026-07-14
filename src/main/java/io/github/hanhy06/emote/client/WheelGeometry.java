@@ -26,11 +26,11 @@ final class WheelGeometry {
         int centerX = metrics.centerX() + (int) Math.round(Math.cos(angle) * metrics.ringRadius());
         int centerY = metrics.centerY() + (int) Math.round(Math.sin(angle) * metrics.ringRadius());
         return new SlotGeometry(
-            centerX,
-            centerY,
-            createHexagonXPoints(centerX, metrics.slotRadius()),
-            createHexagonYPoints(centerY, metrics.slotRadius()),
-            metrics.textWidth()
+                centerX,
+                centerY,
+                createHexagonXPoints(centerX, metrics.slotRadius()),
+                createHexagonYPoints(centerY, metrics.slotRadius()),
+                metrics.textWidth()
         );
     }
 
@@ -56,8 +56,8 @@ final class WheelGeometry {
         boolean inside = false;
         for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
             boolean intersects = (yPoints[currentIndex] > pointY) != (yPoints[previousIndex] > pointY)
-                && pointX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (pointY - yPoints[currentIndex])
-                / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
+                    && pointX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (pointY - yPoints[currentIndex])
+                    / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
             if (intersects) {
                 inside = !inside;
             }
@@ -82,22 +82,22 @@ final class WheelGeometry {
     }
 
     record WheelMetrics(
-        int centerX,
-        int centerY,
-        int slotRadius,
-        int ringRadius,
-        int centerRadius,
-        int textWidth,
-        int descriptionWidth
+            int centerX,
+            int centerY,
+            int slotRadius,
+            int ringRadius,
+            int centerRadius,
+            int textWidth,
+            int descriptionWidth
     ) {
     }
 
     record SlotGeometry(
-        int centerX,
-        int centerY,
-        int[] xPoints,
-        int[] yPoints,
-        int textWidth
+            int centerX,
+            int centerY,
+            int[] xPoints,
+            int[] yPoints,
+            int textWidth
     ) {
     }
 }
