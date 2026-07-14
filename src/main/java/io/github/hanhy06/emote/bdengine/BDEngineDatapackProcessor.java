@@ -14,8 +14,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.IOException;
-import java.nio.file.FileSystem;
-import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -43,6 +41,7 @@ public class BDEngineDatapackProcessor {
     private static final double ANCHOR_DISTANCE_EPSILON = 1.0E-9D;
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
+    private final BDEngineDatapackScanner datapackScanner = new BDEngineDatapackScanner();
 
     public BDEngineDatapackProcessor(ConfigManager configManager, EmoteRegistry emoteRegistry) {
         this.configManager = configManager;
@@ -124,41 +123,11 @@ public class BDEngineDatapackProcessor {
     }
 
     List<String> findEmotePackIds(Path datapackDirPath, PackConfig packConfig) {
-        if (!Files.isDirectory(datapackDirPath)) {
-            return List.of();
-        }
-
-        List<String> packIds = new ArrayList<>();
-        try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
-            for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-                String packId = findEmotePackId(packPath, packConfig);
-                if (packId != null) {
-                    packIds.add(packId);
-                }
-            }
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to scan datapack ids from {}", datapackDirPath, exception);
-        }
-
-        return List.copyOf(packIds);
-    }
-
-    private String findEmotePackId(Path packPath, PackConfig packConfig) {
-        if (Files.isDirectory(packPath)) {
-            return hasEnabledEmoteNamespace(packPath, packConfig) ? "file/" + packPath.getFileName() : null;
-        }
-
-        String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
-        if (!Files.isRegularFile(packPath) || !fileName.endsWith(".zip")) {
-            return null;
-        }
-
-        try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-            return hasEnabledEmoteNamespace(fileSystem.getPath("/"), packConfig) ? "file/" + packPath.getFileName() : null;
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to inspect datapack {}", packPath, exception);
-            return null;
-        }
+        return this.datapackScanner.scan(datapackDirPath, (packPath, packRootPath) ->
+            hasEnabledEmoteNamespace(packRootPath, packConfig)
+                ? List.of("file/" + packPath.getFileName())
+                : List.of()
+        );
     }
 
     private boolean hasEnabledEmoteNamespace(Path packRootPath, PackConfig packConfig) {
@@ -188,21 +157,10 @@ public class BDEngineDatapackProcessor {
     }
 
     List<EmoteDefinition> readDefinitions(Path datapackDirPath, PackConfig packConfig) {
-        if (!Files.isDirectory(datapackDirPath)) {
-            return List.of();
-        }
-
-        List<EmoteDefinition> definitions = new ArrayList<>();
-
-        try (Stream<Path> packPathStream = Files.list(datapackDirPath)) {
-            for (Path packPath : packPathStream.sorted(pathComparator()).toList()) {
-                definitions.addAll(readPackDefinitions(packPath, packConfig));
-            }
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to scan datapack directory {}", datapackDirPath, exception);
-        }
-
-        return filterDefinitionConflicts(definitions);
+        return filterDefinitionConflicts(this.datapackScanner.scan(
+            datapackDirPath,
+            (packPath, packRootPath) -> readPackRoot(packPath, packRootPath, packConfig)
+        ));
     }
 
     private List<EmoteDefinition> filterDefinitionConflicts(List<EmoteDefinition> definitions) {
@@ -246,24 +204,6 @@ public class BDEngineDatapackProcessor {
 
     private String normalizeSelectionKey(String value) {
         return value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private List<EmoteDefinition> readPackDefinitions(Path packPath, PackConfig packConfig) {
-        if (Files.isDirectory(packPath)) {
-            return readPackRoot(packPath, packPath, packConfig);
-        }
-
-        String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
-        if (!Files.isRegularFile(packPath) || !fileName.endsWith(".zip")) {
-            return List.of();
-        }
-
-        try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-            return readPackRoot(packPath, fileSystem.getPath("/"), packConfig);
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to read zipped datapack {}", packPath, exception);
-            return List.of();
-        }
     }
 
     private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath, PackConfig packConfig) {
