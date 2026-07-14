@@ -6,6 +6,7 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.config.data.Config;
+import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
@@ -88,7 +89,7 @@ public class PlayerSkinManager implements ConfigListener {
         Set<String> requestedTags = new LinkedHashSet<>();
         Map<String, EmoteSkinPart> skinPartByTag = new HashMap<>();
         for (EmoteSkinPart skinPart : definition.skinParts()) {
-            String requestedTag = definition.namespace() + "_" + skinPart.partIndex();
+            String requestedTag = EmoteDatapackNames.partTag(definition.namespace(), skinPart.partIndex());
             requestedTags.add(requestedTag);
             skinPartByTag.put(requestedTag, skinPart);
         }

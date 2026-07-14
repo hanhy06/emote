@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.server.ServerFunctionLookup;
@@ -106,10 +107,13 @@ public class BDEngineDatapackProcessor {
         List<EmoteDefinition> definitions
     ) {
         return definitions.stream()
-            .filter(definition -> ServerFunctionLookup.isLoaded(server, definition.namespace() + ":_/create"))
             .filter(definition -> ServerFunctionLookup.isLoaded(
                 server,
-                definition.namespace() + ":" + definition.entrypoint()
+                EmoteDatapackNames.createFunctionId(definition.namespace())
+            ))
+            .filter(definition -> ServerFunctionLookup.isLoaded(
+                server,
+                EmoteDatapackNames.entrypointFunctionId(definition.namespace(), definition.entrypoint())
             ))
             .toList();
     }

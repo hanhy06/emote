@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
@@ -174,8 +175,8 @@ public class PlaybackManager {
 
     private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, EmoteDefinition definition) {
         String namespace = definition.namespace();
-        String createFunctionId = namespace + ":_/create";
-        String playFunctionId = namespace + ":" + definition.entrypoint();
+        String createFunctionId = EmoteDatapackNames.createFunctionId(namespace);
+        String playFunctionId = EmoteDatapackNames.entrypointFunctionId(namespace, definition.entrypoint());
         if (!ServerFunctionLookup.isLoaded(server, createFunctionId)
             || !ServerFunctionLookup.isLoaded(server, playFunctionId)) {
             return null;
@@ -372,8 +373,8 @@ public class PlaybackManager {
     private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
         boolean lastNamespaceInstance = !hasActiveNamespace(activeEmote.namespace());
         if (lastNamespaceInstance) {
-            executeFunction(activeEmote, activeEmote.namespace() + ":_/stop_anim");
-            executeFunction(activeEmote, activeEmote.namespace() + ":_/delete");
+            executeFunction(activeEmote, EmoteDatapackNames.stopAnimationFunctionId(activeEmote.namespace()));
+            executeFunction(activeEmote, EmoteDatapackNames.deleteFunctionId(activeEmote.namespace()));
         }
 
         ServerLevel level = server.getLevel(activeEmote.levelKey());
@@ -413,7 +414,7 @@ public class PlaybackManager {
         }
 
         for (String tag : timelineRoot.entityTags()) {
-            if (tag.startsWith("animation_")) {
+            if (EmoteDatapackNames.isAnimationTag(tag)) {
                 targetRoot.addTag(tag);
             }
         }
@@ -430,8 +431,9 @@ public class PlaybackManager {
             return;
         }
 
-        if (ServerFunctionLookup.isLoaded(server, namespace + ":_/delete")) {
-            executeFunction(player, namespace + ":_/delete");
+        String deleteFunctionId = EmoteDatapackNames.deleteFunctionId(namespace);
+        if (ServerFunctionLookup.isLoaded(server, deleteFunctionId)) {
+            executeFunction(player, deleteFunctionId);
         }
 
         this.entityController.cleanupNamespaceEntities(player.level(), namespace);
