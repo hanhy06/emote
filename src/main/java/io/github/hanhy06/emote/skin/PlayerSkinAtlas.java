@@ -8,43 +8,37 @@ final class PlayerSkinAtlas {
                     faces(8, 0, 8, 8, 0, 8, 8, 8),
                     faces(40, 0, 8, 8, 32, 8, 8, 8),
                     null,
-                    null,
-                    false
+                    null
             ),
             PlayerSkinPart.BODY, new PartAtlas(
                     faces(20, 16, 8, 4, 16, 20, 4, 12),
                     faces(20, 32, 8, 4, 16, 36, 4, 12),
                     null,
-                    null,
-                    false
+                    null
             ),
             PlayerSkinPart.RIGHT_ARM, new PartAtlas(
                     faces(44, 16, 4, 4, 40, 20, 4, 12),
                     faces(44, 32, 4, 4, 40, 36, 4, 12),
                     slimRightArmFaces(16, 20),
-                    slimRightArmFaces(32, 36),
-                    false
+                    slimRightArmFaces(32, 36)
             ),
             PlayerSkinPart.LEFT_ARM, new PartAtlas(
                     faces(36, 48, 4, 4, 32, 52, 4, 12),
                     faces(52, 48, 4, 4, 48, 52, 4, 12),
                     slimLeftArmFaces(48, 52),
-                    slimLeftArmFaces(48, 52, true),
-                    true
+                    slimLeftArmFaces(48, 52, true)
             ),
             PlayerSkinPart.RIGHT_LEG, new PartAtlas(
                     faces(4, 16, 4, 4, 0, 20, 4, 12),
                     faces(4, 32, 4, 4, 0, 36, 4, 12),
                     null,
-                    null,
-                    false
+                    null
             ),
             PlayerSkinPart.LEFT_LEG, new PartAtlas(
                     faces(20, 48, 4, 4, 16, 52, 4, 12),
                     faces(4, 48, 4, 4, 0, 52, 4, 12),
                     null,
-                    null,
-                    true
+                    null
             )
     );
 
@@ -60,11 +54,11 @@ final class PlayerSkinAtlas {
     }
 
     static FaceMap orientedBaseFaces(PlayerSkinPart part) {
-        return orient(part(part), part(part).base());
+        return part(part).base();
     }
 
     static FaceMap orientedOverlayFaces(PlayerSkinPart part) {
-        return orient(part(part), part(part).overlay());
+        return part(part).overlay();
     }
 
     static FaceMap slimBaseFaces(PlayerSkinPart part) {
@@ -84,20 +78,6 @@ final class PlayerSkinAtlas {
             throw new IllegalArgumentException(part + " does not have a slim atlas");
         }
         return faces;
-    }
-
-    private static FaceMap orient(PartAtlas part, FaceMap faces) {
-        if (!part.swapSides()) {
-            return faces;
-        }
-        return new FaceMap(
-                faces.top(),
-                faces.bottom(),
-                faces.left(),
-                faces.front(),
-                faces.right(),
-                faces.back()
-        );
     }
 
     private static FaceMap faces(
@@ -171,8 +151,7 @@ final class PlayerSkinAtlas {
             FaceMap base,
             FaceMap overlay,
             FaceMap slimBase,
-            FaceMap slimOverlay,
-            boolean swapSides
+            FaceMap slimOverlay
     ) {
     }
 }
