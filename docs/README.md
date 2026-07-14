@@ -2,25 +2,43 @@
 
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
 
-Emote is a Fabric mod that plays humanoid animations created with BD Engine as Minecraft emotes.
+Emote is a Fabric mod that turns humanoid animations created with BD Engine into multiplayer Minecraft emotes.
 
-The mod is designed with server-side use in mind. Its main feature, emote playback, works when installed only on the server. Installing the mod on the client is optional.
+The mod is designed around server-side playback. Vanilla clients can browse and play emotes without installing the mod. The optional client installation adds an emote wheel, automatic third-person view, and localized client UI.
 
 > Don’t judge the mod by the demo—the developer is a programmer, not an animator. I’m looking forward to seeing the much better emotes you create!
 
 ## Usage
 
-| Action                       | Description                                                                                              |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/emote`                     | Opens the emote menu.                                                                                    |
-| `/emote search`              | Opens the emote search dialog.                                                                           |
-| `/emote play <emote>`        | Plays an emote by command name or namespace.                                                             |
-| `/emote stop`                | Stops the currently playing emote.                                                                       |
-| `/emote stop-all`            | Stops every active emote. Requires game master permission.                                               |
-| `/emote enable <namespace>`  | Enables an emote namespace and reloads emotes. Requires game master permission.                          |
-| `/emote disable <namespace>` | Disables an emote namespace and reloads emotes. Requires game master permission.                         |
-| `/emote reload`              | Reloads the configuration and emote datapacks.                                                           |
-| V key                        | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
+| Action                       | Permission  | Description                                                                                              |
+| ---------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
+| `/emote`                     | `emote.use` | Opens the emote menu.                                                                                    |
+| `/emote search`              | `emote.use` | Opens the emote search dialog.                                                                           |
+| `/emote list`                | `emote.use` | Lists registered emotes and their internal details.                                                      |
+| `/emote play <emote>`        | `emote.use` | Plays an emote by command name or namespace.                                                             |
+| `/emote stop`                | `emote.use` | Stops the currently playing emote.                                                                       |
+| `/emote stop-all`            | Game master | Stops every active or pending emote.                                                                     |
+| `/emote enable <namespace>`  | Game master | Enables an emote namespace in `packs.json` and reloads emotes.                                           |
+| `/emote disable <namespace>` | Game master | Disables an emote namespace, stops its active instances, and reloads emotes.                             |
+| `/emote reload`              | Admin       | Reloads the configuration and emote datapacks.                                                           |
+| V key                        | Client mod  | Opens the emote wheel. Release the key toward a slot to play its emote.                                  |
+
+`emote.use` is the default base permission and can be changed in `config.json`. An emote can also require an additional permission through `packs.json`.
+
+### Playback behavior
+
+Only one emote can be active per player. Starting another emote replaces the current one. Playback stops when the player:
+
+- moves away from the starting position;
+- takes damage;
+- attacks another entity;
+- mounts an entity;
+- dies, changes dimension, or disconnects; or
+- is affected by a datapack reload or an operator stop command.
+
+An emote cannot start while the player is already riding an entity. When an emote hides the player, held items are also hidden from observers without changing the player's actual inventory.
+
+The optional client mod switches the player to third-person view during playback and restores the previous camera afterward. Its default emote-wheel binding is V and can be changed in Minecraft's controls menu.
 
 ## Adding Emotes
 
@@ -123,9 +141,7 @@ Configuration files are created automatically in `config/emote` when the server 
 | `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. Must be between 1 and 60. |
 | `emote_permission`               | Base permission required to use emote features.                                                                |
 
-When a [MineSkin API](https://account.mineskin.org/) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures are cached on the server, so the same skin does not need to be processed repeatedly.
-
-MineSkin's current free-tier rate limit is sufficient for typical small servers and private sessions with friends. Since processed skins are cached, the API normally only needs to process a skin when it has not been seen before or has changed.
+When a [MineSkin API](https://account.mineskin.org/) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures and pending jobs are cached on the server, so the same skin does not need to be processed repeatedly.
 
 Without an API key, or if the player's skin cannot be prepared, the default skin included in the datapack is used instead.
 
@@ -152,7 +168,25 @@ Emotes can be enabled or disabled by namespace, with an optional additional perm
 }
 ```
 
-Emotes not listed in this file are enabled by default and do not require an additional permission. Run `/emote reload` after changing the configuration.
+Emotes not listed in this file are enabled by default and do not require an additional permission. Run `/emote reload` after editing the file manually. `/emote enable` and `/emote disable` update this file automatically while preserving an existing permission override.
+
+## Troubleshooting
+
+### An emote does not appear
+
+Run `/emote reload` and check the server log. A namespace is skipped when its metadata is invalid, required functions are missing, it is disabled, or its namespace or command name conflicts with another emote.
+
+### The emote wheel opens the regular menu
+
+The wheel has not received emote data from the server. Confirm that the mod is installed on both the server and client and that their Minecraft versions match. The server-driven menu remains available as a fallback.
+
+### The player's skin is not applied
+
+Confirm that `mineskin_api_key` is configured and that the datapack contains valid `emote:*` skin-part markers. If MineSkin is unavailable or skin preparation fails, playback uses the textures included in the datapack.
+
+### Configuration changes are ignored
+
+Check that both JSON files are valid, then run `/emote reload`. Invalid values are rejected and the currently loaded configuration remains active.
 
 ## License
 
