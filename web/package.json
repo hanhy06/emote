@@ -13,11 +13,14 @@
     "jszip": "latest",
     "react": "latest",
     "react-dom": "latest",
+    "three": "^0.185.1",
     "vite": "latest"
   },
   "devDependencies": {
+    "@types/node": "^26.1.1",
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@types/three": "^0.185.1",
     "typescript": "latest",
     "vitest": "latest"
   }

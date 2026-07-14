@@ -1,8 +1,12 @@
 import { useState, type ChangeEvent } from "react";
+import { PartPreview } from "./components/PartPreview";
 import { loadDatapack, type LoadedDatapack } from "./converter/packFileSystem";
+import { findEmoteModels, type ParsedEmoteModel } from "./converter/partParser";
 
 export function App() {
   const [datapack, setDatapack] = useState<LoadedDatapack | null>(null);
+  const [models, setModels] = useState<ParsedEmoteModel[]>([]);
+  const [modelIndex, setModelIndex] = useState(0);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -15,8 +19,16 @@ export function App() {
     setLoading(true);
     setError("");
     setDatapack(null);
+    setModels([]);
     try {
-      setDatapack(await loadDatapack(file));
+      const loadedDatapack = await loadDatapack(file);
+      const foundModels = findEmoteModels(loadedDatapack);
+      if (foundModels.length === 0) {
+        throw new Error("호환되는 create.mcfunction에서 player_head 조각을 찾지 못했습니다.");
+      }
+      setDatapack(loadedDatapack);
+      setModels(foundModels);
+      setModelIndex(0);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "ZIP 파일을 읽지 못했습니다.");
     } finally {
@@ -51,6 +63,41 @@ export function App() {
           <span>{datapack.files.size.toLocaleString()}개 파일을 찾았습니다.</span>
         </section>
       )}
+
+      {models[modelIndex] && (
+        <section className="workspace">
+          <div className="workspace-header">
+            <div>
+              <p className="eyebrow">3D PREVIEW</p>
+              <h2>{models[modelIndex].namespace}</h2>
+            </div>
+            {models.length > 1 && (
+              <select value={modelIndex} onChange={(event) => setModelIndex(Number(event.target.value))}>
+                {models.map((model, index) => <option value={index} key={model.namespace}>{model.namespace}</option>)}
+              </select>
+            )}
+          </div>
+          <div className="preview-layout">
+            <PartPreview parts={models[modelIndex].parts} />
+            <aside className="part-list">
+              <h3>감지한 조각</h3>
+              <p>{models[modelIndex].parts.length}개의 player_head</p>
+              <ol>
+                {models[modelIndex].parts.map((part) => (
+                  <li key={part.partIndex}>
+                    <strong>#{part.partIndex}</strong>
+                    <span>{formatVector(part.anchor)}</span>
+                  </li>
+                ))}
+              </ol>
+            </aside>
+          </div>
+        </section>
+      )}
     </main>
   );
+}
+
+function formatVector(vector: { x: number; y: number; z: number }): string {
+  return `${vector.x.toFixed(2)}, ${vector.y.toFixed(2)}, ${vector.z.toFixed(2)}`;
 }

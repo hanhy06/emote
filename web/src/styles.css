@@ -9,6 +9,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
+select { font: inherit; }
 
 .app-shell {
   width: min(1040px, calc(100% - 32px));
@@ -59,7 +60,26 @@ h1 { margin: 12px 0 16px; font-size: clamp(36px, 7vw, 68px); line-height: 1.02; 
 .notice.success { color: #c9fbe5; background: #10251e; border: 1px solid #1d4c3c; }
 .notice.error { color: #ffd2d2; background: #2a1518; border: 1px solid #633039; }
 
+.workspace { margin-top: 28px; overflow: hidden; border: 1px solid #252a35; border-radius: 20px; background: #12151c; }
+.workspace-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 22px 24px; border-bottom: 1px solid #252a35; }
+.workspace-header p { margin: 0 0 5px; }
+.workspace-header h2 { margin: 0; font-size: 26px; }
+.workspace-header select { min-width: 160px; padding: 10px 12px; color: #e9edf4; border: 1px solid #343b49; border-radius: 10px; background: #191d26; }
+.preview-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; min-height: 620px; }
+.part-preview { min-width: 0; min-height: 620px; cursor: grab; }
+.part-preview:active { cursor: grabbing; }
+.part-preview canvas { display: block; width: 100%; height: 100%; }
+.part-list { padding: 22px; border-left: 1px solid #252a35; background: #10131a; }
+.part-list h3 { margin: 0 0 5px; }
+.part-list > p { margin: 0 0 16px; color: #929cac; font-size: 14px; }
+.part-list ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.part-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; background: #191d26; }
+.part-list li span { color: #929cac; font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
+
 @media (max-width: 640px) {
   .app-shell { padding: 40px 0; }
   .upload-card { align-items: stretch; flex-direction: column; }
+  .preview-layout { grid-template-columns: 1fr; }
+  .part-list { border-top: 1px solid #252a35; border-left: 0; }
+  .part-preview { min-height: 480px; }
 }
