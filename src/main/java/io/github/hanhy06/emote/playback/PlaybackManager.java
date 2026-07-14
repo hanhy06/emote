@@ -40,6 +40,13 @@ public class PlaybackManager {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
+    public void maintainPlayerVisibility(ServerPlayer player) {
+        ActiveEmote activeEmote = findActiveEmote(player.getUUID());
+        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
+            player.setInvisible(true);
+        }
+    }
+
     public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
         MinecraftServer server = Emote.SERVER;
         if (server == null) {

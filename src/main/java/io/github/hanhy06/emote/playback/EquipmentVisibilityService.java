@@ -12,15 +12,22 @@ import net.minecraft.world.item.ItemStack;
 import java.util.List;
 import java.util.Map;
 
-public class HeldItemVisibilityService implements PlaybackStateListener {
-    private static final List<Pair<EquipmentSlot, ItemStack>> EMPTY_HANDS = List.of(
-        Pair.of(EquipmentSlot.MAINHAND, ItemStack.EMPTY),
-        Pair.of(EquipmentSlot.OFFHAND, ItemStack.EMPTY)
+public class EquipmentVisibilityService implements PlaybackStateListener {
+    private static final List<EquipmentSlot> PLAYER_EQUIPMENT_SLOTS = List.of(
+        EquipmentSlot.MAINHAND,
+        EquipmentSlot.OFFHAND,
+        EquipmentSlot.FEET,
+        EquipmentSlot.LEGS,
+        EquipmentSlot.CHEST,
+        EquipmentSlot.HEAD
     );
+    private static final List<Pair<EquipmentSlot, ItemStack>> EMPTY_EQUIPMENT = PLAYER_EQUIPMENT_SLOTS.stream()
+        .map(slot -> Pair.of(slot, ItemStack.EMPTY))
+        .toList();
 
     private final PlaybackManager playbackManager;
 
-    public HeldItemVisibilityService(PlaybackManager playbackManager) {
+    public EquipmentVisibilityService(PlaybackManager playbackManager) {
         this.playbackManager = playbackManager;
     }
 
@@ -31,30 +38,33 @@ public class HeldItemVisibilityService implements PlaybackStateListener {
 
     @Override
     public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-        sendToTrackingPlayers(player, EMPTY_HANDS);
+        sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
     @Override
     public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
-        sendToTrackingPlayers(player, List.of(
-            Pair.of(EquipmentSlot.MAINHAND, player.getMainHandItem().copy()),
-            Pair.of(EquipmentSlot.OFFHAND, player.getOffhandItem().copy())
-        ));
+        sendToTrackingPlayers(player, createVisibleEquipment(player));
     }
 
     private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
         if (entity instanceof ServerPlayer emotePlayer && this.playbackManager.findActiveEmote(emotePlayer.getUUID()) != null) {
-            trackingPlayer.connection.send(createPacket(emotePlayer, EMPTY_HANDS));
+            trackingPlayer.connection.send(createPacket(emotePlayer, EMPTY_EQUIPMENT));
         }
     }
 
     private void handleEquipmentSync(ServerPlayer player, Map<EquipmentSlot, ItemStack> changedItems) {
-        if (!changedItems.containsKey(EquipmentSlot.MAINHAND) && !changedItems.containsKey(EquipmentSlot.OFFHAND)) {
+        if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
         if (this.playbackManager.findActiveEmote(player.getUUID()) != null) {
-            sendToTrackingPlayers(player, EMPTY_HANDS);
+            sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
+    }
+
+    private static List<Pair<EquipmentSlot, ItemStack>> createVisibleEquipment(ServerPlayer player) {
+        return PLAYER_EQUIPMENT_SLOTS.stream()
+            .map(slot -> Pair.of(slot, player.getItemBySlot(slot).copy()))
+            .toList();
     }
 
     private static void sendToTrackingPlayers(ServerPlayer player, List<Pair<EquipmentSlot, ItemStack>> equipment) {

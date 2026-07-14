@@ -8,7 +8,7 @@
         "ServerPlayerMixin"
     ],
     "client": [
-        "ItemInHandLayerMixin"
+        "AvatarRendererMixin"
     ],
     "injectors": {
         "defaultRequire": 1
