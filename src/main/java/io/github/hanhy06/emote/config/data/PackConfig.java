@@ -27,7 +27,7 @@ public record PackConfig(List<String> disabled, Map<String, List<String>> permis
     }
 
     public static PackConfig createDefault() {
-        return new PackConfig(List.of(), Map.of("default", List.of("*")));
+        return new PackConfig(List.of(), Map.of("emote.default", List.of("*")));
     }
 
     public boolean isEnabled(String namespace) {

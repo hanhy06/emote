@@ -11,10 +11,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PermissionServiceTest {
     @Test
     void defaultAllowsOnlyConfiguredNamespaces() {
-        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission) -> false);
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue);
         service.onPackConfigReload(new PackConfig(
             List.of(),
-            Map.of("default", List.of("wave_pack"))
+            Map.of("emote.default", List.of("wave_pack"))
         ));
 
         assertTrue(service.canPlay(null, "wave_pack"));
@@ -24,12 +24,12 @@ class PermissionServiceTest {
     @Test
     void wildcardAllowsEveryNamespaceForPermission() {
         PermissionService service = new PermissionService(
-            (ignoredPlayer, permission) -> permission.equals("emote.pack.admin")
+            (ignoredPlayer, permission, ignoredDefaultValue) -> permission.equals("emote.pack.admin")
         );
         service.onPackConfigReload(new PackConfig(
             List.of(),
             Map.of(
-                "default", List.of(),
+                "emote.default", List.of(),
                 "emote.pack.vip", List.of("bow_pack"),
                 "emote.pack.admin", List.of("*")
             )
@@ -41,7 +41,7 @@ class PermissionServiceTest {
 
     @Test
     void emptyPermissionsDenyEveryNamespace() {
-        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission) -> false);
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, ignoredDefaultValue) -> false);
         service.onPackConfigReload(new PackConfig(List.of(), Map.of()));
 
         assertFalse(service.canPlay(null, "wave_pack"));
@@ -49,7 +49,9 @@ class PermissionServiceTest {
 
     @Test
     void defaultConfigAllowsEveryNamespace() {
-        PermissionService service = new PermissionService();
+        PermissionService service = new PermissionService(
+            (ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue
+        );
         service.onPackConfigReload(PackConfig.createDefault());
 
         assertTrue(service.canPlay(null, "wave_pack"));
@@ -57,11 +59,13 @@ class PermissionServiceTest {
 
     @Test
     void canPlayCombinesDefaultAndGrantedPermissionGroups() {
-        PermissionService service = new PermissionService((ignored, permission) -> permission.equals("emote.pack.vip"));
+        PermissionService service = new PermissionService(
+            (ignored, permission, defaultValue) -> defaultValue || permission.equals("emote.pack.vip")
+        );
         service.onPackConfigReload(new PackConfig(
             List.of(),
             Map.of(
-                "default", List.of("wave_pack"),
+                "emote.default", List.of("wave_pack"),
                 "emote.pack.vip", List.of("bow_pack"),
                 "emote.pack.admin", List.of("*")
             )
@@ -74,12 +78,22 @@ class PermissionServiceTest {
 
     @Test
     void grantedWildcardPermissionAllowsEveryNamespace() {
-        PermissionService service = new PermissionService((ignored, permission) -> permission.equals("emote.pack.admin"));
+        PermissionService service = new PermissionService(
+            (ignored, permission, ignoredDefaultValue) -> permission.equals("emote.pack.admin")
+        );
         service.onPackConfigReload(new PackConfig(
             List.of(),
             Map.of("emote.pack.admin", List.of("*"))
         ));
 
         assertTrue(service.canPlay(null, "missing_pack"));
+    }
+
+    @Test
+    void explicitDefaultPermissionDenialRemovesDefaultAccess() {
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, ignoredDefaultValue) -> false);
+        service.onPackConfigReload(PackConfig.createDefault());
+
+        assertFalse(service.canPlay(null, "wave_pack"));
     }
 }

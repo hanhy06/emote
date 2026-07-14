@@ -26,7 +26,7 @@ class ConfigManagerTest {
         assertTrue(Files.exists(packsPath));
         assertTrue(Files.readString(packsPath).contains("\"disabled\""));
         assertTrue(Files.readString(packsPath).contains("\"permissions\""));
-        assertTrue(Files.readString(packsPath).contains("\"default\""));
+        assertTrue(Files.readString(packsPath).contains("\"emote.default\""));
         assertTrue(Files.readString(packsPath).contains("\"*\""));
         assertTrue(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("\"schema_version\": 1"));
         assertFalse(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("emote_permission"));
@@ -40,7 +40,7 @@ class ConfigManagerTest {
             {
               "disabled": ["wave_pack"],
               "permissions": {
-                "default": ["wave_pack"],
+                "emote.default": ["wave_pack"],
                 "emote.pack.vip": ["*"]
               }
             }
@@ -49,7 +49,7 @@ class ConfigManagerTest {
         assertTrue(manager.readPackConfig());
         assertFalse(manager.getPackConfig().isEnabled("wave_pack"));
         assertTrue(manager.getPackConfig().isEnabled("unconfigured_pack"));
-        assertEquals(List.of("wave_pack"), manager.getPackConfig().permissions().get("default"));
+        assertEquals(List.of("wave_pack"), manager.getPackConfig().permissions().get("emote.default"));
         assertEquals(List.of("*"), manager.getPackConfig().permissions().get("emote.pack.vip"));
     }
 
@@ -126,7 +126,7 @@ class ConfigManagerTest {
     void packConfigCopiesAndProtectsValues() {
         ArrayList<String> disabled = new ArrayList<>(List.of("wave"));
         LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
-        permissions.put("default", List.of("wave"));
+        permissions.put("emote.default", List.of("wave"));
         PackConfig config = new PackConfig(disabled, permissions);
 
         disabled.clear();
@@ -134,7 +134,7 @@ class ConfigManagerTest {
 
         assertFalse(config.isEnabled("wave"));
         assertEquals(List.of("wave"), config.disabled());
-        assertEquals(Map.of("default", List.of("wave")), config.permissions());
+        assertEquals(Map.of("emote.default", List.of("wave")), config.permissions());
         assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("bow"));
         assertThrows(UnsupportedOperationException.class, () -> config.permissions().put("vip", List.of("bow")));
     }
