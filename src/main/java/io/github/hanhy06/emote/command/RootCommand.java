@@ -6,18 +6,17 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.bdengine.BDEngineDatapackProcessor;
-import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.service.PlayResult;
 import io.github.hanhy06.emote.network.service.PlayService;
-import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.server.EmoteReloadResult;
+import io.github.hanhy06.emote.server.EmoteReloadService;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -35,25 +34,21 @@ public final class RootCommand {
     public static void register(
         EmoteRegistry emoteRegistry,
         PlaybackManager playbackManager,
-        BDEngineDatapackProcessor bdEngineDatapackProcessor,
-        ConfigManager configManager,
         DialogManager dialogManager,
         PlayableEmoteService playableEmoteService,
         PlayService playService,
         PermissionService permissionService,
-        WheelSyncService wheelSyncService
+        EmoteReloadService reloadService
     ) {
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) ->
             dispatcher.register(createRootCommand(
                 emoteRegistry,
                 playbackManager,
-                bdEngineDatapackProcessor,
-                configManager,
                 dialogManager,
                 playableEmoteService,
                 playService,
                 permissionService,
-                wheelSyncService
+                reloadService
             ))
         );
     }
@@ -61,26 +56,18 @@ public final class RootCommand {
     private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(
         EmoteRegistry emoteRegistry,
         PlaybackManager playbackManager,
-        BDEngineDatapackProcessor bdEngineDatapackProcessor,
-        ConfigManager configManager,
         DialogManager dialogManager,
         PlayableEmoteService playableEmoteService,
         PlayService playService,
         PermissionService permissionService,
-        WheelSyncService wheelSyncService
+        EmoteReloadService reloadService
     ) {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
             .then(createMenuCommand(dialogManager, permissionService))
             .then(createSearchCommand(dialogManager, permissionService))
             .then(createListCommand(emoteRegistry, permissionService))
-            .then(createReloadCommand(
-                emoteRegistry,
-                bdEngineDatapackProcessor,
-                configManager,
-                permissionService,
-                wheelSyncService
-            ))
+            .then(createReloadCommand(reloadService, permissionService))
             .then(createPlayCommand(emoteRegistry, playableEmoteService, playService, permissionService))
             .then(createStopCommand(playbackManager, permissionService));
     }
@@ -133,21 +120,12 @@ public final class RootCommand {
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createReloadCommand(
-        EmoteRegistry emoteRegistry,
-        BDEngineDatapackProcessor bdEngineDatapackProcessor,
-        ConfigManager configManager,
-        PermissionService permissionService,
-        WheelSyncService wheelSyncService
+        EmoteReloadService reloadService,
+        PermissionService permissionService
     ) {
         return Commands.literal("reload")
             .requires(permissionService.requireReload())
-            .executes(context -> reloadEmotes(
-                context.getSource(),
-                emoteRegistry,
-                bdEngineDatapackProcessor,
-                configManager,
-                wheelSyncService
-            ));
+            .executes(context -> reloadEmotes(context.getSource(), reloadService));
     }
 
     private static LiteralArgumentBuilder<CommandSourceStack> createPlayCommand(
@@ -273,35 +251,24 @@ public final class RootCommand {
 
     private static int reloadEmotes(
         CommandSourceStack source,
-        EmoteRegistry emoteRegistry,
-        BDEngineDatapackProcessor bdEngineDatapackProcessor,
-        ConfigManager configManager,
-        WheelSyncService wheelSyncService
+        EmoteReloadService reloadService
     ) {
         if (Emote.SERVER == null) {
             source.sendFailure(Component.literal("Server unavailable."));
             return 0;
         }
 
-        boolean configLoaded = configManager.readConfig();
-        boolean packConfigLoaded = configManager.readPackConfig();
-        boolean reloadedResources = bdEngineDatapackProcessor.enableEmoteDatapacks();
-        int emoteCount = reloadedResources
-            ? emoteRegistry.size()
-            : bdEngineDatapackProcessor.reloadServerEmotes();
-        if (!reloadedResources) {
-            wheelSyncService.syncAll();
-        }
+        EmoteReloadResult result = reloadService.reloadFromCommand();
         source.sendSuccess(
             () -> Component.literal(
-                "Reloading: cfg=" + configLoaded
-                    + ", packs=" + packConfigLoaded
-                    + ", emotes=" + emoteCount
-                    + (reloadedResources ? " (resource reload)" : "")
+                "Reloading: cfg=" + result.configLoaded()
+                    + ", packs=" + result.packConfigLoaded()
+                    + ", emotes=" + result.emoteCount()
+                    + (result.resourceReload() ? " (resource reload)" : "")
             ),
             true
         );
-        return emoteCount;
+        return result.emoteCount();
     }
 
     private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {

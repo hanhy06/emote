@@ -14,6 +14,7 @@ import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.EmoteLifecycle;
+import io.github.hanhy06.emote.server.EmoteReloadService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
@@ -55,13 +56,19 @@ public class Emote implements ModInitializer {
         this.playbackManager
     );
     private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
+    private final EmoteReloadService reloadService = new EmoteReloadService(
+        this.configManager,
+        this.emoteRegistry,
+        this.bdEngineDatapackProcessor,
+        this.playbackManager,
+        this.wheelSyncService
+    );
 
     private final EmoteNetworking networking = new EmoteNetworking();
     private final EmoteLifecycle lifecycle = new EmoteLifecycle(
-        this.configManager,
         this.skinManager,
         this.playbackManager,
-        this.bdEngineDatapackProcessor,
+        this.reloadService,
         this.wheelSyncService
     );
 
@@ -78,13 +85,11 @@ public class Emote implements ModInitializer {
         RootCommand.register(
             this.emoteRegistry,
             this.playbackManager,
-            this.bdEngineDatapackProcessor,
-            this.configManager,
             this.dialogManager,
             this.playableEmoteService,
             this.playService,
             this.permissionService,
-            this.wheelSyncService
+            this.reloadService
         );
 
         LOGGER.info("{} ready", MOD_ID);
