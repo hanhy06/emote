@@ -12,8 +12,8 @@ public class EmoteRegistry {
 
     public void replaceDefinitions(Collection<EmoteDefinition> definitions) {
         List<EmoteDefinition> sortedDefinitions = definitions instanceof List<EmoteDefinition> definitionList
-                ? new java.util.ArrayList<>(definitionList)
-                : new java.util.ArrayList<>(definitions);
+            ? new java.util.ArrayList<>(definitionList)
+            : new java.util.ArrayList<>(definitions);
         sortedDefinitions.sort(Comparator.comparing(EmoteDefinition::namespace));
 
         LinkedHashMap<String, EmoteDefinition> definitionMap = new LinkedHashMap<>();
@@ -31,10 +31,10 @@ public class EmoteRegistry {
         }
 
         this.state = new RegistryState(
-                Map.copyOf(definitionMap),
-                Map.copyOf(commandDefinitionMap),
-                definitionList,
-                List.copyOf(playNameMap.values())
+            Map.copyOf(definitionMap),
+            Map.copyOf(commandDefinitionMap),
+            definitionList,
+            List.copyOf(playNameMap.values())
         );
     }
 
@@ -68,10 +68,10 @@ public class EmoteRegistry {
     }
 
     private record RegistryState(
-            Map<String, EmoteDefinition> definitionMap,
-            Map<String, EmoteDefinition> commandDefinitionMap,
-            List<EmoteDefinition> definitions,
-            List<String> playNames
+        Map<String, EmoteDefinition> definitionMap,
+        Map<String, EmoteDefinition> commandDefinitionMap,
+        List<EmoteDefinition> definitions,
+        List<String> playNames
     ) {
         private static RegistryState empty() {
             return new RegistryState(Map.of(), Map.of(), List.of(), List.of());

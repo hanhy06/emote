@@ -19,8 +19,8 @@ class MineSkinApiClientTest {
         MineSkinApiClient client = new MineSkinApiClient();
 
         long delay = client.readRetryDelayMillis(
-                new StubHttpResponse(HttpHeaders.of(java.util.Map.of(), (name, value) -> true)),
-                JsonParser.parseString("{\"rateLimit\":{\"next\":{\"relative\":3600000}}}").getAsJsonObject()
+            new StubHttpResponse(HttpHeaders.of(java.util.Map.of(), (name, value) -> true)),
+            JsonParser.parseString("{\"rateLimit\":{\"next\":{\"relative\":3600000}}}").getAsJsonObject()
         );
 
         assertEquals(3_600_000L, delay);

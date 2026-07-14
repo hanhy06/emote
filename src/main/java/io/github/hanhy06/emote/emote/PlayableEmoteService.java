@@ -22,10 +22,10 @@ public class PlayableEmoteService {
 
     public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
         return this.emoteRegistry.getDefinitions().stream()
-                .filter(definition -> canPlay(player, definition))
-                .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::commandName))
-                .map(definition -> new PlayableEmote(definition.commandName(), definition.name(), definition.description()))
-                .toList();
+            .filter(definition -> canPlay(player, definition))
+            .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::commandName))
+            .map(definition -> new PlayableEmote(definition.commandName(), definition.name(), definition.description()))
+            .toList();
     }
 
     public List<String> getPlayablePlayNames(ServerPlayer player) {

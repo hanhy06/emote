@@ -13,12 +13,12 @@ public class EmoteClient implements ClientModInitializer {
     private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
     private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
     private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
-            new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
+        new KeyMapping("key.emote.wheel", GLFW.GLFW_KEY_V, KeyMapping.Category.MISC)
     );
 
     private final EmoteClientNetworking networking = new EmoteClientNetworking(
-            EMOTE_PERSPECTIVE_CONTROLLER,
-            EMOTE_WHEEL_CONTROLLER
+        EMOTE_PERSPECTIVE_CONTROLLER,
+        EMOTE_WHEEL_CONTROLLER
     );
 
     @Override

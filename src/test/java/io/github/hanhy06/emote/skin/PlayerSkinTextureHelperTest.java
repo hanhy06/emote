@@ -17,13 +17,13 @@ class PlayerSkinTextureHelperTest {
         String decodedTextures = new String(Base64.getDecoder().decode(encodedTextures), StandardCharsets.UTF_8);
 
         assertEquals(
-                textureUrl,
-                JsonParser.parseString(decodedTextures)
-                        .getAsJsonObject()
-                        .getAsJsonObject("textures")
-                        .getAsJsonObject("SKIN")
-                        .get("url")
-                        .getAsString()
+            textureUrl,
+            JsonParser.parseString(decodedTextures)
+                .getAsJsonObject()
+                .getAsJsonObject("textures")
+                .getAsJsonObject("SKIN")
+                .get("url")
+                .getAsString()
         );
     }
 }

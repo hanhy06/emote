@@ -26,8 +26,8 @@ public class MineSkinApiClient {
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(10))
-            .build();
+        .connectTimeout(Duration.ofSeconds(10))
+        .build();
     private final Gson gson = new Gson();
     private volatile long jobPollIntervalMillis = 3000L;
 
@@ -39,10 +39,10 @@ public class MineSkinApiClient {
     }
 
     public String generateSkinUrl(
-            String apiKey,
-            byte[] pngBytes,
-            boolean slimModel,
-            Consumer<String> queuedJobListener
+        String apiKey,
+        byte[] pngBytes,
+        boolean slimModel,
+        Consumer<String> queuedJobListener
     ) throws IOException, InterruptedException {
         Objects.requireNonNull(pngBytes, "pngBytes");
         Objects.requireNonNull(queuedJobListener, "queuedJobListener");
@@ -58,12 +58,12 @@ public class MineSkinApiClient {
         requestBody.addProperty("visibility", "unlisted");
 
         JsonObject queueResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI)
-                .header("Authorization", "Bearer " + normalizedApiKey)
-                .header("User-Agent", USER_AGENT)
-                .header("Content-Type", "application/json")
-                .timeout(Duration.ofSeconds(20))
-                .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody), StandardCharsets.UTF_8))
-                .build());
+            .header("Authorization", "Bearer " + normalizedApiKey)
+            .header("User-Agent", USER_AGENT)
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(20))
+            .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody), StandardCharsets.UTF_8))
+            .build());
         String textureUrl = readTextureUrl(queueResponse);
         if (textureUrl != null) {
             return textureUrl;
@@ -92,11 +92,11 @@ public class MineSkinApiClient {
             Thread.sleep(this.jobPollIntervalMillis);
 
             JsonObject jobResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI.resolve("/v2/queue/" + jobId))
-                    .header("Authorization", "Bearer " + normalizedApiKey)
-                    .header("User-Agent", USER_AGENT)
-                    .timeout(Duration.ofSeconds(20))
-                    .GET()
-                    .build());
+                .header("Authorization", "Bearer " + normalizedApiKey)
+                .header("User-Agent", USER_AGENT)
+                .timeout(Duration.ofSeconds(20))
+                .GET()
+                .build());
             String textureUrl = readTextureUrl(jobResponse);
             if (textureUrl != null) {
                 return textureUrl;
@@ -131,14 +131,14 @@ public class MineSkinApiClient {
 
     long readRetryDelayMillis(HttpResponse<?> response, JsonObject responseBody) {
         long headerDelay = response.headers().firstValue("Retry-After")
-                .flatMap(value -> {
-                    try {
-                        return java.util.Optional.of(Long.parseLong(value.trim()) * 1000L);
-                    } catch (NumberFormatException ignored) {
-                        return java.util.Optional.empty();
-                    }
-                })
-                .orElse(0L);
+            .flatMap(value -> {
+                try {
+                    return java.util.Optional.of(Long.parseLong(value.trim()) * 1000L);
+                } catch (NumberFormatException ignored) {
+                    return java.util.Optional.empty();
+                }
+            })
+            .orElse(0L);
         JsonObject rateLimit = findObject(responseBody, "rateLimit");
         JsonObject next = findObject(rateLimit, "next");
         long bodyDelay = readLong(next, "relative", 0L);
@@ -278,9 +278,9 @@ public class MineSkinApiClient {
     private static String createUserAgent() {
         try {
             return FabricLoader.getInstance()
-                    .getModContainer(Emote.MOD_ID)
-                    .map(container -> Emote.MOD_ID + "/" + container.getMetadata().getVersion().getFriendlyString())
-                    .orElse(Emote.MOD_ID + "/dev");
+                .getModContainer(Emote.MOD_ID)
+                .map(container -> Emote.MOD_ID + "/" + container.getMetadata().getVersion().getFriendlyString())
+                .orElse(Emote.MOD_ID + "/dev");
         } catch (RuntimeException exception) {
             return Emote.MOD_ID + "/dev";
         }

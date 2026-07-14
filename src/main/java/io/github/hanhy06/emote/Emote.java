@@ -22,77 +22,77 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Emote implements ModInitializer {
-	public static final String MOD_ID = "emote";
-	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	public static MinecraftServer SERVER;
+    public static final String MOD_ID = "emote";
+    public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
+    public static MinecraftServer SERVER;
 
-	private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
-	private final PlayerSkinManager skinManager = new PlayerSkinManager();
+    private final ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
+    private final PlayerSkinManager skinManager = new PlayerSkinManager();
 
-	private final EmoteRegistry emoteRegistry = new EmoteRegistry();
-	private final PermissionService permissionService = new PermissionService();
-	private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
-		this.emoteRegistry,
-		this.permissionService
-	);
+    private final EmoteRegistry emoteRegistry = new EmoteRegistry();
+    private final PermissionService permissionService = new PermissionService();
+    private final PlayableEmoteService playableEmoteService = new PlayableEmoteService(
+        this.emoteRegistry,
+        this.permissionService
+    );
 
-	private final PlaybackManager playbackManager = new PlaybackManager(this.skinManager);
-	private final PlaybackStateService playbackStateService = new PlaybackStateService();
-	private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
+    private final PlaybackManager playbackManager = new PlaybackManager(this.skinManager);
+    private final PlaybackStateService playbackStateService = new PlaybackStateService();
+    private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
 
-	private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(
-		this.configManager,
-		this.emoteRegistry
-	);
-	private final DialogManager dialogManager = new DialogManager(
-		this.configManager,
-		this.emoteRegistry,
-		this.playableEmoteService,
-		this.playbackManager
-	);
-	private final PlayService playService = new PlayService(
-		this.playableEmoteService,
-		this.playbackManager
-	);
-	private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
+    private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(
+        this.configManager,
+        this.emoteRegistry
+    );
+    private final DialogManager dialogManager = new DialogManager(
+        this.configManager,
+        this.emoteRegistry,
+        this.playableEmoteService,
+        this.playbackManager
+    );
+    private final PlayService playService = new PlayService(
+        this.playableEmoteService,
+        this.playbackManager
+    );
+    private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
 
-	private final EmoteNetworking networking = new EmoteNetworking();
-	private final EmoteLifecycle lifecycle = new EmoteLifecycle(
-		this.configManager,
-		this.skinManager,
-		this.playbackManager,
-		this.bdEngineDatapackProcessor,
-		this.wheelSyncService
-	);
+    private final EmoteNetworking networking = new EmoteNetworking();
+    private final EmoteLifecycle lifecycle = new EmoteLifecycle(
+        this.configManager,
+        this.skinManager,
+        this.playbackManager,
+        this.bdEngineDatapackProcessor,
+        this.wheelSyncService
+    );
 
-	@Override
-	public void onInitialize() {
-		registerConfigListeners();
-		this.configManager.readConfig();
-		this.configManager.readPackConfig();
+    @Override
+    public void onInitialize() {
+        registerConfigListeners();
+        this.configManager.readConfig();
+        this.configManager.readPackConfig();
 
-		this.playbackManager.setStateListener(this.playbackStateSyncListener);
+        this.playbackManager.setStateListener(this.playbackStateSyncListener);
 
-		this.networking.register();
-		this.lifecycle.register();
-		RootCommand.register(
-			this.emoteRegistry,
-			this.playbackManager,
-			this.bdEngineDatapackProcessor,
-			this.configManager,
-			this.dialogManager,
-			this.playableEmoteService,
-			this.playService,
-			this.permissionService,
-			this.wheelSyncService
-		);
+        this.networking.register();
+        this.lifecycle.register();
+        RootCommand.register(
+            this.emoteRegistry,
+            this.playbackManager,
+            this.bdEngineDatapackProcessor,
+            this.configManager,
+            this.dialogManager,
+            this.playableEmoteService,
+            this.playService,
+            this.permissionService,
+            this.wheelSyncService
+        );
 
-		LOGGER.info("{} ready", MOD_ID);
-	}
+        LOGGER.info("{} ready", MOD_ID);
+    }
 
-	private void registerConfigListeners() {
-		this.configManager.addListener(this.permissionService);
-		this.configManager.addPackListener(this.permissionService);
-		this.configManager.addListener(this.skinManager);
-	}
+    private void registerConfigListeners() {
+        this.configManager.addListener(this.permissionService);
+        this.configManager.addPackListener(this.permissionService);
+        this.configManager.addListener(this.skinManager);
+    }
 }

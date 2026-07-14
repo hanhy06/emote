@@ -4,6 +4,14 @@
 # Linux start script should use lf
 /gradlew        text eol=lf
 
+# Project sources use a single platform-independent line ending.
+*               text=auto eol=lf
+*.java          text eol=lf
+*.gradle        text eol=lf
+*.properties    text eol=lf
+*.py            text eol=lf
+*.json          text eol=lf
+*.md            text eol=lf
+
 # These are Windows script files and should use crlf
 *.bat           text eol=crlf
-

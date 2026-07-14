@@ -11,18 +11,18 @@ class DialogManagerTest {
     @Test
     void searchFiltersAndRanksPlayableEmotes() {
         List<PlayableEmote> emotes = List.of(
-                new PlayableEmote("dance", "Fast Dance", "Quick movement"),
-                new PlayableEmote("wave", "Wave", "Friendly greeting"),
-                new PlayableEmote("wave_fast", "Other", "Wave variation")
+            new PlayableEmote("dance", "Fast Dance", "Quick movement"),
+            new PlayableEmote("wave", "Wave", "Friendly greeting"),
+            new PlayableEmote("wave_fast", "Other", "Wave variation")
         );
 
         assertEquals(
-                List.of("wave", "wave_fast"),
-                DialogManager.filterPlayableEmotes(emotes, "WAVE").stream().map(PlayableEmote::commandName).toList()
+            List.of("wave", "wave_fast"),
+            DialogManager.filterPlayableEmotes(emotes, "WAVE").stream().map(PlayableEmote::commandName).toList()
         );
         assertEquals(
-                List.of("dance"),
-                DialogManager.filterPlayableEmotes(emotes, "quick").stream().map(PlayableEmote::commandName).toList()
+            List.of("dance"),
+            DialogManager.filterPlayableEmotes(emotes, "quick").stream().map(PlayableEmote::commandName).toList()
         );
     }
 }

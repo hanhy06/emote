@@ -15,49 +15,49 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayServiceTest {
-	@Test
-	void playReturnsSuccess() {
-		PlayService service = new PlayService(
-			createPlayableEmoteService(),
-			(player, selection) -> PlaybackStartResult.SUCCESS
-		);
+    @Test
+    void playReturnsSuccess() {
+        PlayService service = new PlayService(
+            createPlayableEmoteService(),
+            (player, selection) -> PlaybackStartResult.SUCCESS
+        );
 
-		PlayResult result = service.play(null, "wave");
+        PlayResult result = service.play(null, "wave");
 
-		assertTrue(result.isSuccess());
-	}
+        assertTrue(result.isSuccess());
+    }
 
-	@Test
-	void playReturnsPlaybackFailure() {
-		PlayService service = new PlayService(
-			createPlayableEmoteService(),
-			(player, selection) -> PlaybackStartResult.failure(" Datapack not loaded. ")
-		);
+    @Test
+    void playReturnsPlaybackFailure() {
+        PlayService service = new PlayService(
+            createPlayableEmoteService(),
+            (player, selection) -> PlaybackStartResult.failure(" Datapack not loaded. ")
+        );
 
-		PlayResult result = service.play(null, "wave");
+        PlayResult result = service.play(null, "wave");
 
-		assertFalse(result.isSuccess());
-		assertEquals("Datapack not loaded.", result.errorMessage());
-	}
+        assertFalse(result.isSuccess());
+        assertEquals("Datapack not loaded.", result.errorMessage());
+    }
 
-	private PlayableEmoteService createPlayableEmoteService() {
-		EmoteRegistry registry = new EmoteRegistry();
-		registry.replaceDefinitions(List.of(new EmoteDefinition(
-			"wave",
-			"Wave",
-			"Friendly wave",
-			"wave",
-			"a/default/play_anim_loop",
-			true,
-			Path.of("wave-pack"),
-			1,
-			List.of()
-		)));
-		return new PlayableEmoteService(registry, new PermissionService() {
-			@Override
-			public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace) {
-				return true;
-			}
-		});
-	}
+    private PlayableEmoteService createPlayableEmoteService() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replaceDefinitions(List.of(new EmoteDefinition(
+            "wave",
+            "Wave",
+            "Friendly wave",
+            "wave",
+            "a/default/play_anim_loop",
+            true,
+            Path.of("wave-pack"),
+            1,
+            List.of()
+        )));
+        return new PlayableEmoteService(registry, new PermissionService() {
+            @Override
+            public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace) {
+                return true;
+            }
+        });
+    }
 }

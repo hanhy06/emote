@@ -28,9 +28,9 @@ public class MineSkinTextureStore {
     private static final int CONTENT_CACHE_VERSION = 1;
     private final Path skinDirPath;
     private final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .disableHtmlEscaping()
-            .create();
+        .setPrettyPrinting()
+        .disableHtmlEscaping()
+        .create();
 
     public MineSkinTextureStore() {
         this(null);
@@ -203,9 +203,9 @@ public class MineSkinTextureStore {
         JsonArray texturesJson = new JsonArray();
         List<Map.Entry<PlayerSkinTextureKey, String>> textureEntries = new ArrayList<>(textureUrlMap.entrySet());
         textureEntries.sort(Comparator
-                .comparing((Map.Entry<PlayerSkinTextureKey, String> entry) -> entry.getKey().skinPart().ordinal())
-                .thenComparing(entry -> entry.getKey().skinSegment().startY())
-                .thenComparing(entry -> entry.getKey().skinSegment().endY()));
+            .comparing((Map.Entry<PlayerSkinTextureKey, String> entry) -> entry.getKey().skinPart().ordinal())
+            .thenComparing(entry -> entry.getKey().skinSegment().startY())
+            .thenComparing(entry -> entry.getKey().skinSegment().endY()));
 
         for (Map.Entry<PlayerSkinTextureKey, String> textureEntry : textureEntries) {
             JsonObject textureJson = new JsonObject();
@@ -300,10 +300,10 @@ public class MineSkinTextureStore {
     private void writeJsonAtomically(Path filePath, JsonObject object) throws IOException {
         Path temporaryPath = filePath.resolveSibling(filePath.getFileName() + ".tmp");
         try (BufferedWriter writer = Files.newBufferedWriter(
-                temporaryPath,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
+            temporaryPath,
+            StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
         )) {
             this.gson.toJson(object, writer);
         }

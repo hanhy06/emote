@@ -9,21 +9,21 @@ import java.util.Set;
 import java.util.UUID;
 
 public record ActiveEmote(
-	UUID playerUuid,
-	ResourceKey<Level> levelKey,
-	String namespace,
-	Vec3 startPosition,
-	UUID rootEntityUuid,
-	Set<UUID> instanceEntityUuids,
-	boolean playerVisibilityManaged,
-	boolean wasInvisible
+    UUID playerUuid,
+    ResourceKey<Level> levelKey,
+    String namespace,
+    Vec3 startPosition,
+    UUID rootEntityUuid,
+    Set<UUID> instanceEntityUuids,
+    boolean playerVisibilityManaged,
+    boolean wasInvisible
 ) {
-	public ActiveEmote {
-		Objects.requireNonNull(playerUuid, "playerUuid");
-		Objects.requireNonNull(levelKey, "levelKey");
-		Objects.requireNonNull(namespace, "namespace");
-		Objects.requireNonNull(startPosition, "startPosition");
-		Objects.requireNonNull(rootEntityUuid, "rootEntityUuid");
-		instanceEntityUuids = Set.copyOf(instanceEntityUuids);
-	}
+    public ActiveEmote {
+        Objects.requireNonNull(playerUuid, "playerUuid");
+        Objects.requireNonNull(levelKey, "levelKey");
+        Objects.requireNonNull(namespace, "namespace");
+        Objects.requireNonNull(startPosition, "startPosition");
+        Objects.requireNonNull(rootEntityUuid, "rootEntityUuid");
+        instanceEntityUuids = Set.copyOf(instanceEntityUuids);
+    }
 }

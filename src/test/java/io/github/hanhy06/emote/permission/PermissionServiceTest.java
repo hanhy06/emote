@@ -9,18 +9,18 @@ import java.util.LinkedHashMap;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PermissionServiceTest {
-	@Test
-	void onPackConfigReloadBuildsNamespacePermissionMap() {
-		PermissionService service = new PermissionService();
-		service.onPackConfigReload(new PackConfig(
-			new LinkedHashMap<>(java.util.Map.of(
-				"wave_pack", new PackOverride(true, ""),
-				"bow_pack", new PackOverride(true, "emote.pack.vip")
-			))
-		));
+    @Test
+    void onPackConfigReloadBuildsNamespacePermissionMap() {
+        PermissionService service = new PermissionService();
+        service.onPackConfigReload(new PackConfig(
+            new LinkedHashMap<>(java.util.Map.of(
+                "wave_pack", new PackOverride(true, ""),
+                "bow_pack", new PackOverride(true, "emote.pack.vip")
+            ))
+        ));
 
-		assertEquals("", service.findNamespacePermission("wave_pack"));
-		assertEquals("emote.pack.vip", service.findNamespacePermission("bow_pack"));
-		assertEquals("", service.findNamespacePermission("missing_pack"));
-	}
+        assertEquals("", service.findNamespacePermission("wave_pack"));
+        assertEquals("emote.pack.vip", service.findNamespacePermission("bow_pack"));
+        assertEquals("", service.findNamespacePermission("missing_pack"));
+    }
 }

@@ -3,12 +3,12 @@ package io.github.hanhy06.emote.bdengine;
 import java.util.Objects;
 
 record EmoteMetadata(
-        int schema_version,
-        String name,
-        String description,
-        String command_name,
-        String entrypoint,
-        boolean hide_player
+    int schema_version,
+    String name,
+    String description,
+    String command_name,
+    String entrypoint,
+    boolean hide_player
 ) {
     static final int CURRENT_SCHEMA_VERSION = 3;
 

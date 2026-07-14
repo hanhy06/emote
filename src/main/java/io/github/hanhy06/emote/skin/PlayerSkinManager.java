@@ -76,15 +76,15 @@ public class PlayerSkinManager implements ConfigListener {
             return PlayerSkinPreparationResult.failure("Player skin is being prepared. Try again shortly.");
         }
         return PlayerSkinPreparationResult.ready(
-                new PreparedPlayerSkin(savedTextureUrls)
+            new PreparedPlayerSkin(savedTextureUrls)
         );
     }
 
     public void applySkinParts(
-            ServerPlayer player,
-            EmoteDefinition definition,
-            PreparedPlayerSkin preparedPlayerSkin,
-            UUID rootEntityUuid
+        ServerPlayer player,
+        EmoteDefinition definition,
+        PreparedPlayerSkin preparedPlayerSkin,
+        UUID rootEntityUuid
     ) {
         if (preparedPlayerSkin == null || definition.skinParts().isEmpty()) {
             return;
@@ -104,30 +104,30 @@ public class PlayerSkinManager implements ConfigListener {
             return;
         }
         applySkinPartsInTree(
-                rootEntity,
-                requestedTags,
-                skinPartByTag,
-                preparedPlayerSkin,
-                appliedTags,
-                visitedEntityIds
+            rootEntity,
+            requestedTags,
+            skinPartByTag,
+            preparedPlayerSkin,
+            appliedTags,
+            visitedEntityIds
         );
         if (appliedTags.size() != requestedTags.size()) {
             Emote.LOGGER.warn(
-                    "Applied player skin to {}/{} parts for {}",
-                    appliedTags.size(),
-                    requestedTags.size(),
-                    definition.namespace()
+                "Applied player skin to {}/{} parts for {}",
+                appliedTags.size(),
+                requestedTags.size(),
+                definition.namespace()
             );
         }
     }
 
     private void applySkinPartsInTree(
-            Entity entity,
-            Set<String> requestedTags,
-            Map<String, EmoteSkinPart> skinPartByTag,
-            PreparedPlayerSkin preparedPlayerSkin,
-            Set<String> appliedTags,
-            Set<Integer> visitedEntityIds
+        Entity entity,
+        Set<String> requestedTags,
+        Map<String, EmoteSkinPart> skinPartByTag,
+        PreparedPlayerSkin preparedPlayerSkin,
+        Set<String> appliedTags,
+        Set<Integer> visitedEntityIds
     ) {
         if (!visitedEntityIds.add(entity.getId())) {
             return;
@@ -146,12 +146,12 @@ public class PlayerSkinManager implements ConfigListener {
         }
         for (Entity passenger : entity.getPassengers()) {
             applySkinPartsInTree(
-                    passenger,
-                    requestedTags,
-                    skinPartByTag,
-                    preparedPlayerSkin,
-                    appliedTags,
-                    visitedEntityIds
+                passenger,
+                requestedTags,
+                skinPartByTag,
+                preparedPlayerSkin,
+                appliedTags,
+                visitedEntityIds
             );
         }
     }
@@ -187,12 +187,12 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private Map<PlayerSkinTextureKey, String> loadMineSkinTextureSet(
-            PlayerSkinSource skinSource,
-            Set<PlayerSkinTextureKey> requiredTextureKeys
+        PlayerSkinSource skinSource,
+        Set<PlayerSkinTextureKey> requiredTextureKeys
     ) {
         Map<PlayerSkinTextureKey, String> stored = this.mineSkinTextureStore.load(
-                skinSource.textureHash(),
-                skinSource.slimModel()
+            skinSource.textureHash(),
+            skinSource.slimModel()
         );
         Map<PlayerSkinTextureKey, String> result = new HashMap<>();
         for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
@@ -224,10 +224,10 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private void bakeAndSaveMineSkinTextureSet(
-            String apiKey,
-            String playerName,
-            PlayerSkinSource source,
-            Set<PlayerSkinTextureKey> requiredKeys
+        String apiKey,
+        String playerName,
+        PlayerSkinSource source,
+        Set<PlayerSkinTextureKey> requiredKeys
     ) {
         try {
             Map<PlayerSkinTextureKey, String> stored = this.mineSkinTextureStore.load(source.textureHash(), source.slimModel());
@@ -240,10 +240,10 @@ public class PlayerSkinManager implements ConfigListener {
             Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
             for (PlayerSkinTextureKey textureKey : missingKeys) {
                 byte[] bakedImage = this.playerSkinBaker.bake(
-                        sourceImage,
-                        textureKey.skinPart(),
-                        textureKey.skinSegment(),
-                        source.slimModel()
+                    sourceImage,
+                    textureKey.skinPart(),
+                    textureKey.skinSegment(),
+                    source.slimModel()
                 );
                 String contentHash = MineSkinContentKey.create(bakedImage, source.slimModel());
                 MineSkinTextureResult cachedResult = this.mineSkinTextureStore.loadContent(contentHash);
@@ -256,10 +256,10 @@ public class PlayerSkinManager implements ConfigListener {
                         textureUrl = this.mineSkinApiClient.waitForSkinUrl(apiKey, pendingJobId);
                     } else {
                         textureUrl = this.mineSkinApiClient.generateSkinUrl(
-                                apiKey,
-                                bakedImage,
-                                source.slimModel(),
-                                jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
+                            apiKey,
+                            bakedImage,
+                            source.slimModel(),
+                            jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
                         );
                     }
                     this.mineSkinTextureStore.saveContent(contentHash, new MineSkinTextureResult(textureUrl));

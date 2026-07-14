@@ -7,15 +7,15 @@ import java.util.List;
 import java.util.Objects;
 
 public record EmoteDefinition(
-        String namespace,
-        String name,
-        String description,
-        String commandName,
-        String entrypoint,
-        boolean hidePlayer,
-        Path datapackPath,
-        int partCount,
-        List<EmoteSkinPart> skinParts
+    String namespace,
+    String name,
+    String description,
+    String commandName,
+    String entrypoint,
+    boolean hidePlayer,
+    Path datapackPath,
+    int partCount,
+    List<EmoteSkinPart> skinParts
 ) {
     public EmoteDefinition {
         Objects.requireNonNull(namespace, "namespace");

@@ -100,9 +100,9 @@ public class BDEngineDatapackProcessor {
 
     private List<EmoteDefinition> filterLoadedDefinitions(List<EmoteDefinition> definitions) {
         return definitions.stream()
-                .filter(definition -> !isMissingCreateFunction(definition))
-                .filter(definition -> !isMissingFunction(definition.namespace() + ":" + definition.entrypoint()))
-                .toList();
+            .filter(definition -> !isMissingCreateFunction(definition))
+            .filter(definition -> !isMissingFunction(definition.namespace() + ":" + definition.entrypoint()))
+            .toList();
     }
 
     private boolean isMissingCreateFunction(EmoteDefinition definition) {
@@ -175,8 +175,8 @@ public class BDEngineDatapackProcessor {
             for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).toList()) {
                 String namespace = namespacePath.getFileName().toString();
                 if (packConfig.isEnabled(namespace)
-                        && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
-                        && isEmoteNamespace(namespacePath)) {
+                    && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
+                    && isEmoteNamespace(namespacePath)) {
                     return true;
                 }
             }
@@ -216,8 +216,8 @@ public class BDEngineDatapackProcessor {
         }
 
         List<EmoteDefinition> namespaceCandidates = definitions.stream()
-                .filter(definition -> !conflictingNamespaces.contains(definition.namespace()))
-                .toList();
+            .filter(definition -> !conflictingNamespaces.contains(definition.namespace()))
+            .toList();
         Map<String, EmoteDefinition> commandDefinitions = new LinkedHashMap<>();
         Set<String> conflictingCommands = new HashSet<>();
         for (EmoteDefinition definition : namespaceCandidates) {
@@ -240,8 +240,8 @@ public class BDEngineDatapackProcessor {
         }
 
         return namespaceCandidates.stream()
-                .filter(definition -> !conflictingCommands.contains(normalizeSelectionKey(definition.commandName())))
-                .toList();
+            .filter(definition -> !conflictingCommands.contains(normalizeSelectionKey(definition.commandName())))
+            .toList();
     }
 
     private String normalizeSelectionKey(String value) {
@@ -336,15 +336,15 @@ public class BDEngineDatapackProcessor {
         }
         CreateFunctionData createFunctionData = readCreateFunctionData(createFunctionPath, namespace);
         return new EmoteDefinition(
-                namespace,
-                metadata.name().trim(),
-                metadata.description().trim(),
-                createCommandName(packPath, namespace, metadata.command_name()),
-                entrypoint,
-                metadata.hide_player(),
-                packPath,
-                createFunctionData.partCount(),
-                createFunctionData.skinParts()
+            namespace,
+            metadata.name().trim(),
+            metadata.description().trim(),
+            createCommandName(packPath, namespace, metadata.command_name()),
+            entrypoint,
+            metadata.hide_player(),
+            packPath,
+            createFunctionData.partCount(),
+            createFunctionData.skinParts()
         );
     }
 
@@ -415,13 +415,13 @@ public class BDEngineDatapackProcessor {
         }
 
         return new RawSkinPart(
-                partIndex,
-                playerSkinPart,
-                readAnchorX(transformationValues),
-                readAnchorY(transformationValues),
-                readAnchorZ(transformationValues),
-                readLocalY(transformationValues),
-                readLocalYScale(transformationValues)
+            partIndex,
+            playerSkinPart,
+            readAnchorX(transformationValues),
+            readAnchorY(transformationValues),
+            readAnchorZ(transformationValues),
+            readLocalY(transformationValues),
+            readLocalYScale(transformationValues)
         );
     }
 
@@ -448,8 +448,8 @@ public class BDEngineDatapackProcessor {
                 partsForSkin = orderConnectedParts(partsForSkin, limbRoot);
             } else {
                 partsForSkin.sort(
-                        Comparator.comparingInt(RawSkinPart::partIndex)
-                                .thenComparing(Comparator.comparingDouble(RawSkinPart::localY).reversed())
+                    Comparator.comparingInt(RawSkinPart::partIndex)
+                        .thenComparing(Comparator.comparingDouble(RawSkinPart::localY).reversed())
                 );
             }
 
@@ -462,9 +462,9 @@ public class BDEngineDatapackProcessor {
 
     private boolean isLimb(PlayerSkinPart skinPart) {
         return skinPart == PlayerSkinPart.LEFT_ARM
-                || skinPart == PlayerSkinPart.RIGHT_ARM
-                || skinPart == PlayerSkinPart.LEFT_LEG
-                || skinPart == PlayerSkinPart.RIGHT_LEG;
+            || skinPart == PlayerSkinPart.RIGHT_ARM
+            || skinPart == PlayerSkinPart.LEFT_LEG
+            || skinPart == PlayerSkinPart.RIGHT_LEG;
     }
 
     private double[] averageAnchor(List<RawSkinPart> parts) {
@@ -493,8 +493,8 @@ public class BDEngineDatapackProcessor {
             for (RawSkinPart candidate : remainingParts.subList(1, remainingParts.size())) {
                 double candidateDistance = anchorDistanceSquared(candidate, previousAnchor);
                 if (candidateDistance < nextDistance - ANCHOR_DISTANCE_EPSILON
-                        || (Math.abs(candidateDistance - nextDistance) <= ANCHOR_DISTANCE_EPSILON
-                            && candidate.partIndex() < nextPart.partIndex())) {
+                    || (Math.abs(candidateDistance - nextDistance) <= ANCHOR_DISTANCE_EPSILON
+                    && candidate.partIndex() < nextPart.partIndex())) {
                     nextPart = candidate;
                     nextDistance = candidateDistance;
                 }
@@ -536,8 +536,8 @@ public class BDEngineDatapackProcessor {
         }
 
         double totalScale = partsForSkin.stream()
-                .mapToDouble(rawSkinPart -> Math.max(rawSkinPart.localYScale(), 0.0D))
-                .sum();
+            .mapToDouble(rawSkinPart -> Math.max(rawSkinPart.localYScale(), 0.0D))
+            .sum();
         if (totalScale <= 0.0D) {
             totalScale = partsForSkin.size();
         }
@@ -556,9 +556,9 @@ public class BDEngineDatapackProcessor {
             int remainingPartCount = partsForSkin.size() - index - 1;
             int segmentEnd = calculateSegmentEnd(segmentStart, accumulatedScale, totalScale, remainingPartCount);
             segmentedSkinParts.add(new EmoteSkinPart(
-                    rawSkinPart.partIndex(),
-                    rawSkinPart.skinPart(),
-                    new PlayerSkinSegment(segmentStart, segmentEnd)
+                rawSkinPart.partIndex(),
+                rawSkinPart.skinPart(),
+                new PlayerSkinSegment(segmentStart, segmentEnd)
             ));
             segmentStart = segmentEnd;
         }
@@ -676,9 +676,9 @@ public class BDEngineDatapackProcessor {
             normalizedEntrypoint = normalizedEntrypoint.substring(0, normalizedEntrypoint.length() - ".mcfunction".length());
         }
         if (normalizedEntrypoint.isEmpty()
-                || normalizedEntrypoint.startsWith("/")
-                || normalizedEntrypoint.contains("..")
-                || !ENTRYPOINT_PATTERN.matcher(normalizedEntrypoint).matches()) {
+            || normalizedEntrypoint.startsWith("/")
+            || normalizedEntrypoint.contains("..")
+            || !ENTRYPOINT_PATTERN.matcher(normalizedEntrypoint).matches()) {
             Emote.LOGGER.warn("Invalid entrypoint in {}", packPath.getFileName());
             return null;
         }
@@ -689,13 +689,13 @@ public class BDEngineDatapackProcessor {
     }
 
     private record RawSkinPart(
-            int partIndex,
-            PlayerSkinPart skinPart,
-            double anchorX,
-            double anchorY,
-            double anchorZ,
-            double localY,
-            double localYScale
+        int partIndex,
+        PlayerSkinPart skinPart,
+        double anchorX,
+        double anchorY,
+        double anchorZ,
+        double localY,
+        double localYScale
     ) {
     }
 }

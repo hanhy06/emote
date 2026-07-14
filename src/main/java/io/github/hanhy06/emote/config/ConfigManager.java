@@ -31,9 +31,9 @@ public class ConfigManager {
 
     private final Path configDirPath;
     private final Gson gson = new GsonBuilder()
-            .setPrettyPrinting()
-            .disableHtmlEscaping()
-            .create();
+        .setPrettyPrinting()
+        .disableHtmlEscaping()
+        .create();
     private final List<ConfigListener> listeners = new ArrayList<>();
     private final List<PackConfigListener> packListeners = new ArrayList<>();
 
@@ -185,10 +185,10 @@ public class ConfigManager {
         Path filePath = this.configDirPath.resolve(fileName);
 
         try (BufferedWriter writer = Files.newBufferedWriter(
-                filePath,
-                StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE,
-                StandardOpenOption.TRUNCATE_EXISTING
+            filePath,
+            StandardCharsets.UTF_8,
+            StandardOpenOption.CREATE,
+            StandardOpenOption.TRUNCATE_EXISTING
         )) {
             this.gson.toJson(json, writer);
             Emote.LOGGER.info("Saved {}", fileName);
@@ -249,11 +249,11 @@ public class ConfigManager {
 
         Config defaultConfig = Config.createDefault();
         return new Config(
-                readString(object, "version", defaultConfig.version()),
-                readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
-                readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
-                readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineskin_poll_interval_seconds()),
-                readString(object, "emote_permission", defaultConfig.emote_permission())
+            readString(object, "version", defaultConfig.version()),
+            readInt(object, "menu_page_size", defaultConfig.menu_page_size()),
+            readString(object, "mineskin_api_key", defaultConfig.mineskin_api_key()),
+            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineskin_poll_interval_seconds()),
+            readString(object, "emote_permission", defaultConfig.emote_permission())
         );
     }
 
@@ -278,8 +278,8 @@ public class ConfigManager {
             }
             JsonObject overrideObject = entry.getValue().getAsJsonObject();
             packs.put(namespace, new PackOverride(
-                    readBoolean(overrideObject, "enabled", true),
-                    readString(overrideObject, "permission", "")
+                readBoolean(overrideObject, "enabled", true),
+                readString(overrideObject, "permission", "")
             ));
         }
 

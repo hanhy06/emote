@@ -25,15 +25,15 @@ class ConfigManagerTest {
     void readsEnabledAndPermissionOverrides(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-                {
-                  "packs": {
-                    "wave_pack": {
-                      "enabled": false,
-                      "permission": "emote.pack.vip"
-                    }
-                  }
+            {
+              "packs": {
+                "wave_pack": {
+                  "enabled": false,
+                  "permission": "emote.pack.vip"
                 }
-                """);
+              }
+            }
+            """);
 
         assertTrue(manager.readPackConfig());
         assertFalse(manager.getPackConfig().isEnabled("wave_pack"));
@@ -45,8 +45,8 @@ class ConfigManagerTest {
     void rejectsBlankNamespace(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-                {"packs":{"   ":{"enabled":true,"permission":""}}}
-                """);
+            {"packs":{"   ":{"enabled":true,"permission":""}}}
+            """);
 
         assertFalse(manager.readPackConfig());
         assertTrue(manager.getPackConfig().packs().isEmpty());
@@ -57,8 +57,8 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
         int currentPageSize = manager.getConfig().menu_page_size();
         Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
-                {"menu_page_size":{"invalid":true}}
-                """);
+            {"menu_page_size":{"invalid":true}}
+            """);
 
         assertFalse(manager.readConfig());
         assertEquals(currentPageSize, manager.getConfig().menu_page_size());
@@ -68,8 +68,8 @@ class ConfigManagerTest {
     void keepsCurrentPackConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-                {"packs":{"wave_pack":{"enabled":{"invalid":true},"permission":""}}}
-                """);
+            {"packs":{"wave_pack":{"enabled":{"invalid":true},"permission":""}}}
+            """);
 
         assertFalse(manager.readPackConfig());
         assertTrue(manager.getPackConfig().packs().isEmpty());

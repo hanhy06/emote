@@ -1,32 +1,32 @@
 {
-	"schemaVersion": 1,
-	"id": "emote",
-	"version": "${version}",
-	"name": "emote",
-	"description": "full server side emote player",
-	"authors": [
-		"hanhy06"
-	],
-	"contact": {
-		"homepage": "https://modrinth.com/mod/emote",
-		"sources": "https://github.com/hanhy06/emote"
-	},
-	"license": "Apache Version 2.0",
-	"icon": "assets/emote/icon.png",
-	"environment": "*",
-	"entrypoints": {
-		"main": [
-			"io.github.hanhy06.emote.Emote"
-		],
-		"client": [
-			"io.github.hanhy06.emote.EmoteClient"
-		]
-	},
-	"depends": {
-		"fabricloader": ">=0.19",
-		"minecraft": "~26.2",
-		"java": ">=25",
-		"fabric-api": "*",
-		"fabric-permissions-api-v0": "*"
-	}
+    "schemaVersion": 1,
+    "id": "emote",
+    "version": "${version}",
+    "name": "emote",
+    "description": "full server side emote player",
+    "authors": [
+        "hanhy06"
+    ],
+    "contact": {
+        "homepage": "https://modrinth.com/mod/emote",
+        "sources": "https://github.com/hanhy06/emote"
+    },
+    "license": "Apache Version 2.0",
+    "icon": "assets/emote/icon.png",
+    "environment": "*",
+    "entrypoints": {
+        "main": [
+            "io.github.hanhy06.emote.Emote"
+        ],
+        "client": [
+            "io.github.hanhy06.emote.EmoteClient"
+        ]
+    },
+    "depends": {
+        "fabricloader": ">=0.19",
+        "minecraft": "~26.2",
+        "java": ">=25",
+        "fabric-api": "*",
+        "fabric-permissions-api-v0": "*"
+    }
 }

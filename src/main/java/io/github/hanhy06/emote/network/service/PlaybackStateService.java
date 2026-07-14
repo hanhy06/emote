@@ -5,22 +5,22 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlaybackStateService {
-	private static final EmotePlaybackStatePayload ACTIVE_PAYLOAD = new EmotePlaybackStatePayload(true);
-	private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false);
+    private static final EmotePlaybackStatePayload ACTIVE_PAYLOAD = new EmotePlaybackStatePayload(true);
+    private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false);
 
-	public void syncActive(ServerPlayer player) {
-		sync(player, ACTIVE_PAYLOAD);
-	}
+    public void syncActive(ServerPlayer player) {
+        sync(player, ACTIVE_PAYLOAD);
+    }
 
-	public void syncInactive(ServerPlayer player) {
-		sync(player, INACTIVE_PAYLOAD);
-	}
+    public void syncInactive(ServerPlayer player) {
+        sync(player, INACTIVE_PAYLOAD);
+    }
 
-	private void sync(ServerPlayer player, EmotePlaybackStatePayload payload) {
-		if (!ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
-			return;
-		}
+    private void sync(ServerPlayer player, EmotePlaybackStatePayload payload) {
+        if (!ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
+            return;
+        }
 
-		ServerPlayNetworking.send(player, payload);
-	}
+        ServerPlayNetworking.send(player, payload);
+    }
 }

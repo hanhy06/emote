@@ -13,8 +13,8 @@ public class EmoteClientNetworking {
     private final WheelController wheelController;
 
     public EmoteClientNetworking(
-            PerspectiveController perspectiveController,
-            WheelController wheelController
+        PerspectiveController perspectiveController,
+        WheelController wheelController
     ) {
         this.perspectiveController = perspectiveController;
         this.wheelController = wheelController;
@@ -27,13 +27,13 @@ public class EmoteClientNetworking {
 
     private void registerPlaybackStateReceiver() {
         ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, ignoredContext) ->
-                Minecraft.getInstance().execute(() -> this.perspectiveController.handlePlaybackState(payload.active()))
+            Minecraft.getInstance().execute(() -> this.perspectiveController.handlePlaybackState(payload.active()))
         );
     }
 
     private void registerWheelSyncReceiver() {
         ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, ignoredContext) ->
-                Minecraft.getInstance().execute(() -> this.wheelController.updateEmotes(payload.emotes()))
+            Minecraft.getInstance().execute(() -> this.wheelController.updateEmotes(payload.emotes()))
         );
     }
 }

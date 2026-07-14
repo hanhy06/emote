@@ -41,10 +41,10 @@ public class DialogManager {
     private final PlaybackManager playbackManager;
 
     public DialogManager(
-            ConfigManager configManager,
-            EmoteRegistry emoteRegistry,
-            PlayableEmoteService playableEmoteService,
-            PlaybackManager playbackManager
+        ConfigManager configManager,
+        EmoteRegistry emoteRegistry,
+        PlayableEmoteService playableEmoteService,
+        PlaybackManager playbackManager
     ) {
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
@@ -63,27 +63,27 @@ public class DialogManager {
 
     public void openSearchDialog(ServerPlayer player) {
         List<Input> inputs = List.of(new Input("query", new TextInput(
-                310,
-                Component.literal("Search"),
-                true,
-                "",
-                64,
-                Optional.empty()
+            310,
+            Component.literal("Search"),
+            true,
+            "",
+            64,
+            Optional.empty()
         )));
         CommonDialogData commonDialogData = new CommonDialogData(
-                Component.literal("Search Emotes"),
-                Optional.empty(),
-                true,
-                false,
-                DialogAction.CLOSE,
-                List.of(new PlainMessage(Component.literal("Search by name, command, or description."), 310)),
-                inputs
+            Component.literal("Search Emotes"),
+            Optional.empty(),
+            true,
+            false,
+            DialogAction.CLOSE,
+            List.of(new PlainMessage(Component.literal("Search by name, command, or description."), 310)),
+            inputs
         );
         ActionButton submitButton = createTemplateButton(
-                "Search",
-                "Show matching emotes",
-                "/emote search $(query)",
-                310
+            "Search",
+            "Show matching emotes",
+            "/emote search $(query)",
+            310
         );
         player.openDialog(Holder.direct(new MultiActionDialog(commonDialogData, List.of(submitButton), Optional.empty(), 1)));
     }
@@ -96,9 +96,9 @@ public class DialogManager {
         for (PlayableEmote playableEmote : playableEmoteList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
             String command = "/" + playableEmote.createPlayCommand();
             actionButtons.add(createRunCommandButton(
-                    playableEmote.displayName(),
-                    playableEmote.description(),
-                    command
+                playableEmote.displayName(),
+                playableEmote.description(),
+                command
             ));
         }
 
@@ -109,25 +109,25 @@ public class DialogManager {
         }
 
         List<DialogBody> dialogBody = List.of(new PlainMessage(
-                Component.literal(createBodyText(dialogPage, player, query)),
-                240
+            Component.literal(createBodyText(dialogPage, player, query)),
+            240
         ));
         CommonDialogData commonDialogData = new CommonDialogData(
-                Component.literal("Emote Menu"),
-                Optional.empty(),
-                true,
-                false,
-                DialogAction.CLOSE,
-                dialogBody,
-                List.of()
+            Component.literal("Emote Menu"),
+            Optional.empty(),
+            true,
+            false,
+            DialogAction.CLOSE,
+            dialogBody,
+            List.of()
         );
 
         if (query.isEmpty()) {
             actionButtons.add(createRunCommandButton(
-                    "Search",
-                    "Open emote search",
-                    "/emote search",
-                    310
+                "Search",
+                "Open emote search",
+                "/emote search",
+                310
             ));
         }
         return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
@@ -146,8 +146,8 @@ public class DialogManager {
     private ActionButton createTemplateButton(String label, String tooltip, String commandTemplate, int width) {
         CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), width);
         ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
-                .parse(JsonOps.INSTANCE, new JsonPrimitive(commandTemplate))
-                .getOrThrow();
+            .parse(JsonOps.INSTANCE, new JsonPrimitive(commandTemplate))
+            .getOrThrow();
         return new ActionButton(buttonData, Optional.of(new CommandTemplate(parsedTemplate)));
     }
 
@@ -166,17 +166,17 @@ public class DialogManager {
         }
 
         actionButtons.add(dialogPage.pageNumber() > 1
-                ? createRunCommandButton("Prev", "Open the previous emote page", createPageCommand(dialogPage.pageNumber() - 1, query))
-                : createStaticButton("Prev", "No previous page"));
+            ? createRunCommandButton("Prev", "Open the previous emote page", createPageCommand(dialogPage.pageNumber() - 1, query))
+            : createStaticButton("Prev", "No previous page"));
         actionButtons.add(dialogPage.pageNumber() < dialogPage.totalPageCount()
-                ? createRunCommandButton("Next", "Open the next emote page", createPageCommand(dialogPage.pageNumber() + 1, query))
-                : createStaticButton("Next", "No next page"));
+            ? createRunCommandButton("Next", "Open the next emote page", createPageCommand(dialogPage.pageNumber() + 1, query))
+            : createStaticButton("Next", "No next page"));
     }
 
     private String createPageCommand(int pageNumber, String query) {
         return query.isEmpty()
-                ? "/emote menu " + pageNumber
-                : "/emote search " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query) + " " + pageNumber;
+            ? "/emote menu " + pageNumber
+            : "/emote search " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query) + " " + pageNumber;
     }
 
     static List<PlayableEmote> filterPlayableEmotes(List<PlayableEmote> emotes, String query) {
@@ -186,9 +186,9 @@ public class DialogManager {
         }
 
         return emotes.stream()
-                .filter(emote -> searchRank(emote, normalizedQuery) < Integer.MAX_VALUE)
-                .sorted(Comparator.comparingInt(emote -> searchRank(emote, normalizedQuery)))
-                .toList();
+            .filter(emote -> searchRank(emote, normalizedQuery) < Integer.MAX_VALUE)
+            .sorted(Comparator.comparingInt(emote -> searchRank(emote, normalizedQuery)))
+            .toList();
     }
 
     private static int searchRank(PlayableEmote emote, String query) {
@@ -213,8 +213,8 @@ public class DialogManager {
 
         ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
         String activeEmoteText = activeEmote == null
-                ? ""
-                : createActiveEmoteText(activeEmote);
+            ? ""
+            : createActiveEmoteText(activeEmote);
 
         if (dialogPage.playableEmoteCount() == 0) {
             return (query.isEmpty() ? "No usable emotes." : "No matching emotes.") + activeEmoteText;
@@ -225,7 +225,7 @@ public class DialogManager {
         }
 
         return (dialogPage.startIndex() + 1) + "-" + dialogPage.endIndex() + "/" + dialogPage.playableEmoteCount()
-                + " | " + dialogPage.pageNumber() + "/" + dialogPage.totalPageCount() + "." + activeEmoteText;
+            + " | " + dialogPage.pageNumber() + "/" + dialogPage.totalPageCount() + "." + activeEmoteText;
     }
 
     private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
@@ -240,17 +240,17 @@ public class DialogManager {
     private String createActiveEmoteText(ActiveEmote activeEmote) {
         EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.namespace());
         String displayName = definition == null
-                ? activeEmote.namespace()
-                : definition.name();
+            ? activeEmote.namespace()
+            : definition.name();
         return " Active: " + displayName;
     }
 
     private record DialogPage(
-            int playableEmoteCount,
-            int pageNumber,
-            int totalPageCount,
-            int startIndex,
-            int endIndex
+        int playableEmoteCount,
+        int pageNumber,
+        int totalPageCount,
+        int startIndex,
+        int endIndex
     ) {
     }
 }

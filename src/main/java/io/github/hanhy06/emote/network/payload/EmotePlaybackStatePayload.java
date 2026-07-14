@@ -8,15 +8,15 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 
 public record EmotePlaybackStatePayload(boolean active) implements CustomPacketPayload {
-	public static final Type<EmotePlaybackStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Emote.MOD_ID, "playback_state"));
-	public static final StreamCodec<RegistryFriendlyByteBuf, EmotePlaybackStatePayload> STREAM_CODEC = StreamCodec.composite(
-		ByteBufCodecs.BOOL,
-		EmotePlaybackStatePayload::active,
-		EmotePlaybackStatePayload::new
-	);
+    public static final Type<EmotePlaybackStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Emote.MOD_ID, "playback_state"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, EmotePlaybackStatePayload> STREAM_CODEC = StreamCodec.composite(
+        ByteBufCodecs.BOOL,
+        EmotePlaybackStatePayload::active,
+        EmotePlaybackStatePayload::new
+    );
 
-	@Override
-	public Type<EmotePlaybackStatePayload> type() {
-		return TYPE;
-	}
+    @Override
+    public Type<EmotePlaybackStatePayload> type() {
+        return TYPE;
+    }
 }

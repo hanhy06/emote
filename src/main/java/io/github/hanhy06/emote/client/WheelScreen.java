@@ -160,10 +160,10 @@ public class WheelScreen extends Screen {
 
     private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, PlayableEmote playableEmote, boolean hovered) {
         int fillColor = playableEmote == null
-                ? SLOT_EMPTY_FILL_COLOR
-                : hovered
-                  ? SLOT_HIGHLIGHT_FILL_COLOR
-                  : SLOT_FILL_COLOR;
+            ? SLOT_EMPTY_FILL_COLOR
+            : hovered
+              ? SLOT_HIGHLIGHT_FILL_COLOR
+              : SLOT_FILL_COLOR;
         drawHex(graphics, slot.xPoints(), slot.yPoints(), fillColor, SLOT_BORDER_COLOR);
 
         if (playableEmote == null) {
@@ -175,11 +175,11 @@ public class WheelScreen extends Screen {
         int lineStartY = slot.centerY() - (visibleLineCount * this.font.lineHeight) / 2;
         for (int lineIndex = 0; lineIndex < visibleLineCount; lineIndex++) {
             graphics.centeredText(
-                    this.font,
-                    lines.get(lineIndex),
-                    slot.centerX(),
-                    lineStartY + lineIndex * this.font.lineHeight,
-                    TITLE_COLOR
+                this.font,
+                lines.get(lineIndex),
+                slot.centerX(),
+                lineStartY + lineIndex * this.font.lineHeight,
+                TITLE_COLOR
             );
         }
     }
@@ -203,19 +203,19 @@ public class WheelScreen extends Screen {
     private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<PlayableEmote> pageEmotes) {
         int footerTop = Math.min(this.height - 70, metrics.centerY() + metrics.ringRadius() + metrics.slotRadius() + 14);
         PlayableEmote hoveredEmote = this.hoveredSlotIndex >= 0 && this.hoveredSlotIndex < pageEmotes.size()
-                ? pageEmotes.get(this.hoveredSlotIndex)
-                : null;
+            ? pageEmotes.get(this.hoveredSlotIndex)
+            : null;
 
         if (hoveredEmote != null) {
             graphics.centeredText(this.font, Component.literal(hoveredEmote.displayName()), metrics.centerX(), footerTop, TITLE_COLOR);
             graphics.textWithWordWrap(
-                    this.font,
-                    Component.literal(hoveredEmote.description()),
-                    metrics.centerX() - metrics.descriptionWidth() / 2,
-                    footerTop + 14,
-                    metrics.descriptionWidth(),
-                    BODY_COLOR,
-                    true
+                this.font,
+                Component.literal(hoveredEmote.description()),
+                metrics.centerX() - metrics.descriptionWidth() / 2,
+                footerTop + 14,
+                metrics.descriptionWidth(),
+                BODY_COLOR,
+                true
             );
             return;
         }
@@ -226,11 +226,11 @@ public class WheelScreen extends Screen {
         }
 
         graphics.centeredText(
-                this.font,
-                Component.translatable("screen.emote.wheel.footer.release_to_play", this.bindingLabel),
-                metrics.centerX(),
-                footerTop,
-                BODY_COLOR
+            this.font,
+            Component.translatable("screen.emote.wheel.footer.release_to_play", this.bindingLabel),
+            metrics.centerX(),
+            footerTop,
+            BODY_COLOR
         );
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.close"), metrics.centerX(), footerTop + 14, MUTED_COLOR);
         if (getPageCount() > 1) {
@@ -256,8 +256,8 @@ public class WheelScreen extends Screen {
 
         int emoteIndex = this.pageIndex * SLOT_COUNT + slotIndex;
         return emoteIndex >= 0 && emoteIndex < this.emotes.size()
-                ? this.emotes.get(emoteIndex)
-                : null;
+            ? this.emotes.get(emoteIndex)
+            : null;
     }
 
     private List<PlayableEmote> getCurrentPageEmotes() {
@@ -291,11 +291,11 @@ public class WheelScreen extends Screen {
         int centerX = metrics.centerX() + (int) Math.round(Math.cos(angle) * metrics.ringRadius());
         int centerY = metrics.centerY() + (int) Math.round(Math.sin(angle) * metrics.ringRadius());
         return new SlotGeometry(
-                centerX,
-                centerY,
-                createHexagonXPoints(centerX, metrics.slotRadius()),
-                createHexagonYPoints(centerY, metrics.slotRadius()),
-                metrics.textWidth()
+            centerX,
+            centerY,
+            createHexagonXPoints(centerX, metrics.slotRadius()),
+            createHexagonYPoints(centerY, metrics.slotRadius()),
+            metrics.textWidth()
         );
     }
 
@@ -396,8 +396,8 @@ public class WheelScreen extends Screen {
         boolean inside = false;
         for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
             boolean intersects = (yPoints[currentIndex] > mouseY) != (yPoints[previousIndex] > mouseY)
-                    && mouseX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (mouseY - yPoints[currentIndex])
-                    / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
+                && mouseX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (mouseY - yPoints[currentIndex])
+                / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];
             if (intersects) {
                 inside = !inside;
             }
@@ -427,22 +427,22 @@ public class WheelScreen extends Screen {
     }
 
     private record WheelMetrics(
-            int centerX,
-            int centerY,
-            int slotRadius,
-            int ringRadius,
-            int centerRadius,
-            int textWidth,
-            int descriptionWidth
+        int centerX,
+        int centerY,
+        int slotRadius,
+        int ringRadius,
+        int centerRadius,
+        int textWidth,
+        int descriptionWidth
     ) {
     }
 
     private record SlotGeometry(
-            int centerX,
-            int centerY,
-            int[] xPoints,
-            int[] yPoints,
-            int textWidth
+        int centerX,
+        int centerY,
+        int[] xPoints,
+        int[] yPoints,
+        int textWidth
     ) {
     }
 }

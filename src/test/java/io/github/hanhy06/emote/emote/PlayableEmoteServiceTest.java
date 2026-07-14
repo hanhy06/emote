@@ -14,12 +14,12 @@ class PlayableEmoteServiceTest {
     void getPlayableEmotesCreatesOneEntryPerVisibleDatapack() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replaceDefinitions(List.of(
-                createDefinition("wave_pack", "wave", "Wave"),
-                createDefinition("bow_pack", "bow", "Bow")
+            createDefinition("wave_pack", "wave", "Wave"),
+            createDefinition("bow_pack", "bow", "Bow")
         ));
         PlayableEmoteService service = new PlayableEmoteService(
-                registry,
-                (player, definition) -> !definition.namespace().equals("bow_pack")
+            registry,
+            (player, definition) -> !definition.namespace().equals("bow_pack")
         );
 
         List<PlayableEmote> emotes = service.getPlayableEmotes(null);
@@ -54,15 +54,15 @@ class PlayableEmoteServiceTest {
 
     private EmoteDefinition createDefinition(String namespace, String commandName, String name) {
         return new EmoteDefinition(
-                namespace,
-                name,
-                name + " description",
-                commandName,
-                "a/default/play_anim_loop",
-                true,
-                Path.of(namespace + "-pack"),
-                1,
-                List.of()
+            namespace,
+            name,
+            name + " description",
+            commandName,
+            "a/default/play_anim_loop",
+            true,
+            Path.of(namespace + "-pack"),
+            1,
+            List.of()
         );
     }
 }

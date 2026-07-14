@@ -19,11 +19,11 @@ public class EmoteLifecycle {
     private final WheelSyncService wheelSyncService;
 
     public EmoteLifecycle(
-            ConfigManager configManager,
-            PlayerSkinManager skinManager,
-            PlaybackManager playbackManager,
-            BDEngineDatapackProcessor bdEngineDatapackProcessor,
-            WheelSyncService wheelSyncService
+        ConfigManager configManager,
+        PlayerSkinManager skinManager,
+        PlaybackManager playbackManager,
+        BDEngineDatapackProcessor bdEngineDatapackProcessor,
+        WheelSyncService wheelSyncService
     ) {
         this.configManager = configManager;
         this.skinManager = skinManager;

@@ -72,14 +72,14 @@ public class PlaybackManager {
         Set<UUID> existingEntityUuids = findNamespaceEntityUuids(player.level(), namespace);
         executeFunction(player, functionIds.createFunctionId());
         this.pendingPlaybackStartMap.put(
-                player.getUUID(),
-                new PendingPlaybackStart(
-                        player.level().dimension(),
-                        definition,
-                        functionIds,
-                        existingEntityUuids,
-                        skinPreparation.preparedSkin()
-                )
+            player.getUUID(),
+            new PendingPlaybackStart(
+                player.level().dimension(),
+                definition,
+                functionIds,
+                existingEntityUuids,
+                skinPreparation.preparedSkin()
+            )
         );
         return PlaybackStartResult.SUCCESS;
     }
@@ -185,8 +185,8 @@ public class PlaybackManager {
 
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player == null
-                    || !player.isAlive()
-                    || !player.level().dimension().equals(pendingStart.levelKey())) {
+                || !player.isAlive()
+                || !player.level().dimension().equals(pendingStart.levelKey())) {
                 cleanupPendingPlaybackStart(server, pendingStart);
                 continue;
             }
@@ -194,25 +194,25 @@ public class PlaybackManager {
             PlaybackStartSnapshot startSnapshot = finishPlaybackStart(player, pendingStart);
             if (startSnapshot == null) {
                 Emote.LOGGER.warn(
-                        "Datapack did not create an emote root for namespace {}",
-                        pendingStart.definition().namespace()
+                    "Datapack did not create an emote root for namespace {}",
+                    pendingStart.definition().namespace()
                 );
                 continue;
             }
 
             ActiveEmote activeEmote = createActiveEmote(
-                    player,
-                    pendingStart.definition().namespace(),
-                    startSnapshot
+                player,
+                pendingStart.definition().namespace(),
+                startSnapshot
             );
             this.activeEmoteMap.put(playerUuid, activeEmote);
             if (pendingStart.preparedPlayerSkin() != null) {
                 this.pendingSkinApplicationMap.put(
-                        playerUuid,
-                        new PendingSkinApplication(
-                                pendingStart.definition(),
-                                pendingStart.preparedPlayerSkin()
-                        )
+                    playerUuid,
+                    new PendingSkinApplication(
+                        pendingStart.definition(),
+                        pendingStart.preparedPlayerSkin()
+                    )
                 );
             }
             this.stateListener.onEmoteStarted(player, activeEmote);
@@ -220,8 +220,8 @@ public class PlaybackManager {
     }
 
     private PlaybackStartSnapshot finishPlaybackStart(
-            ServerPlayer player,
-            PendingPlaybackStart pendingStart
+        ServerPlayer player,
+        PendingPlaybackStart pendingStart
     ) {
         EmoteDefinition definition = pendingStart.definition();
         ServerLevel level = player.level();
@@ -248,10 +248,10 @@ public class PlaybackManager {
             player.setInvisible(true);
         }
         return new PlaybackStartSnapshot(
-                rootEntityUuid,
-                instanceEntityUuids,
-                playerVisibilityManaged,
-                wasInvisible
+            rootEntityUuid,
+            instanceEntityUuids,
+            playerVisibilityManaged,
+            wasInvisible
         );
     }
 
@@ -262,8 +262,8 @@ public class PlaybackManager {
         }
 
         Set<UUID> instanceEntityUuids = findNamespaceEntityUuids(
-                level,
-                pendingStart.definition().namespace()
+            level,
+            pendingStart.definition().namespace()
         );
         instanceEntityUuids.removeAll(pendingStart.existingEntityUuids());
         cleanupInstanceEntities(level, instanceEntityUuids);
@@ -276,36 +276,36 @@ public class PlaybackManager {
             ActiveEmote activeEmote = this.activeEmoteMap.get(playerUuid);
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (activeEmote == null
-                    || player == null
-                    || !activeEmote.namespace().equals(pendingApplication.definition().namespace())) {
+                || player == null
+                || !activeEmote.namespace().equals(pendingApplication.definition().namespace())) {
                 this.pendingSkinApplicationMap.remove(playerUuid, pendingApplication);
                 continue;
             }
 
             this.playerSkinManager.applySkinParts(
-                    player,
-                    pendingApplication.definition(),
-                    pendingApplication.preparedPlayerSkin(),
-                    activeEmote.rootEntityUuid()
+                player,
+                pendingApplication.definition(),
+                pendingApplication.preparedPlayerSkin(),
+                activeEmote.rootEntityUuid()
             );
             this.pendingSkinApplicationMap.remove(playerUuid, pendingApplication);
         }
     }
 
     private ActiveEmote createActiveEmote(
-            ServerPlayer player,
-            String namespace,
-            PlaybackStartSnapshot startSnapshot
+        ServerPlayer player,
+        String namespace,
+        PlaybackStartSnapshot startSnapshot
     ) {
         return new ActiveEmote(
-                player.getUUID(),
-                player.level().dimension(),
-                namespace,
-                player.position(),
-                startSnapshot.rootEntityUuid(),
-                startSnapshot.instanceEntityUuids(),
-                startSnapshot.playerVisibilityManaged(),
-                startSnapshot.wasInvisible()
+            player.getUUID(),
+            player.level().dimension(),
+            namespace,
+            player.position(),
+            startSnapshot.rootEntityUuid(),
+            startSnapshot.instanceEntityUuids(),
+            startSnapshot.playerVisibilityManaged(),
+            startSnapshot.wasInvisible()
         );
     }
 
@@ -348,7 +348,7 @@ public class PlaybackManager {
 
     private boolean hasPendingNamespace(String namespace) {
         return this.pendingPlaybackStartMap.values().stream()
-                .anyMatch(pendingStart -> pendingStart.definition().namespace().equals(namespace));
+            .anyMatch(pendingStart -> pendingStart.definition().namespace().equals(namespace));
     }
 
     private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
@@ -412,8 +412,8 @@ public class PlaybackManager {
     private void copyAnimationState(ActiveEmote namespaceTimeline, Entity targetRoot) {
         ServerLevel timelineLevel = level(namespaceTimeline);
         Entity timelineRoot = timelineLevel == null
-                ? null
-                : timelineLevel.getEntity(namespaceTimeline.rootEntityUuid());
+            ? null
+            : timelineLevel.getEntity(namespaceTimeline.rootEntityUuid());
         if (timelineRoot == null || targetRoot == null) {
             return;
         }
@@ -462,9 +462,9 @@ public class PlaybackManager {
     private void cleanupNamespaceEntitiesNearby(ServerLevel level, String namespace, Vec3 origin) {
         AABB searchBox = new AABB(origin, origin).inflate(NAMESPACE_CLEANUP_SEARCH_DISTANCE);
         List<Display> displaysToKill = level.getEntitiesOfClass(
-                Display.class,
-                searchBox,
-                entity -> matchesNamespaceDisplay(entity, namespace)
+            Display.class,
+            searchBox,
+            entity -> matchesNamespaceDisplay(entity, namespace)
         );
         for (Entity entity : displaysToKill) {
             if (!entity.isRemoved()) {
@@ -556,8 +556,8 @@ public class PlaybackManager {
         }
 
         CommandSourceStack source = player.createCommandSourceStack()
-                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
-                .withSuppressedOutput();
+            .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+            .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "function " + functionId);
     }
 
@@ -573,9 +573,9 @@ public class PlaybackManager {
         }
 
         CommandSourceStack source = server.createCommandSourceStack()
-                .withLevel(level)
-                .withMaximumPermission(LevelBasedPermissionSet.OWNER)
-                .withSuppressedOutput();
+            .withLevel(level)
+            .withMaximumPermission(LevelBasedPermissionSet.OWNER)
+            .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "function " + functionId);
     }
 
@@ -587,10 +587,10 @@ public class PlaybackManager {
     }
 
     private record PlaybackStartSnapshot(
-            UUID rootEntityUuid,
-            Set<UUID> instanceEntityUuids,
-            boolean playerVisibilityManaged,
-            boolean wasInvisible
+        UUID rootEntityUuid,
+        Set<UUID> instanceEntityUuids,
+        boolean playerVisibilityManaged,
+        boolean wasInvisible
     ) {
         private PlaybackStartSnapshot {
             instanceEntityUuids = Set.copyOf(instanceEntityUuids);
@@ -598,17 +598,17 @@ public class PlaybackManager {
     }
 
     private record PendingSkinApplication(
-            EmoteDefinition definition,
-            PreparedPlayerSkin preparedPlayerSkin
+        EmoteDefinition definition,
+        PreparedPlayerSkin preparedPlayerSkin
     ) {
     }
 
     private record PendingPlaybackStart(
-            ResourceKey<Level> levelKey,
-            EmoteDefinition definition,
-            PlaybackFunctionIds functionIds,
-            Set<UUID> existingEntityUuids,
-            PreparedPlayerSkin preparedPlayerSkin
+        ResourceKey<Level> levelKey,
+        EmoteDefinition definition,
+        PlaybackFunctionIds functionIds,
+        Set<UUID> existingEntityUuids,
+        PreparedPlayerSkin preparedPlayerSkin
     ) {
         private PendingPlaybackStart {
             existingEntityUuids = Set.copyOf(existingEntityUuids);

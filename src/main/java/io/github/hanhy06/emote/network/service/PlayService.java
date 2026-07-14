@@ -8,44 +8,44 @@ import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlayService {
-	private final PlayableEmoteService playableEmoteService;
-	private final EmoteStarter emoteStarter;
+    private final PlayableEmoteService playableEmoteService;
+    private final EmoteStarter emoteStarter;
 
-	public PlayService(
-		PlayableEmoteService playableEmoteService,
-		PlaybackManager playbackManager
-	) {
-		this(playableEmoteService, playbackManager::startEmote);
-	}
+    public PlayService(
+        PlayableEmoteService playableEmoteService,
+        PlaybackManager playbackManager
+    ) {
+        this(playableEmoteService, playbackManager::startEmote);
+    }
 
-	PlayService(
-		PlayableEmoteService playableEmoteService,
-		EmoteStarter emoteStarter
-	) {
-		this.playableEmoteService = playableEmoteService;
-		this.emoteStarter = emoteStarter;
-	}
+    PlayService(
+        PlayableEmoteService playableEmoteService,
+        EmoteStarter emoteStarter
+    ) {
+        this.playableEmoteService = playableEmoteService;
+        this.emoteStarter = emoteStarter;
+    }
 
-	public PlayResult play(ServerPlayer player, String commandName) {
-		return play(this.playableEmoteService.findSelection(player, commandName), player);
-	}
+    public PlayResult play(ServerPlayer player, String commandName) {
+        return play(this.playableEmoteService.findSelection(player, commandName), player);
+    }
 
-	private PlayResult play(PlayableEmoteSelectionResult selectionResult, ServerPlayer player) {
-		if (!selectionResult.isSuccess()) {
-			return PlayResult.failure(selectionResult.errorMessage());
-		}
+    private PlayResult play(PlayableEmoteSelectionResult selectionResult, ServerPlayer player) {
+        if (!selectionResult.isSuccess()) {
+            return PlayResult.failure(selectionResult.errorMessage());
+        }
 
-		PlayableEmoteSelection selection = selectionResult.selection();
-		PlaybackStartResult playResult = this.emoteStarter.start(player, selection);
-		if (!playResult.isSuccess()) {
-			return PlayResult.failure(playResult.errorMessage());
-		}
+        PlayableEmoteSelection selection = selectionResult.selection();
+        PlaybackStartResult playResult = this.emoteStarter.start(player, selection);
+        if (!playResult.isSuccess()) {
+            return PlayResult.failure(playResult.errorMessage());
+        }
 
-		return PlayResult.success();
-	}
+        return PlayResult.success();
+    }
 
-	@FunctionalInterface
-	interface EmoteStarter {
-		PlaybackStartResult start(ServerPlayer player, PlayableEmoteSelection selection);
-	}
+    @FunctionalInterface
+    interface EmoteStarter {
+        PlaybackStartResult start(ServerPlayer player, PlayableEmoteSelection selection);
+    }
 }
