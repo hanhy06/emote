@@ -1,23 +1,28 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class PlaybackStartResultTest {
+class PlayResultTest {
     @Test
     void successHasNoErrorMessage() {
-        assertTrue(PlaybackStartResult.SUCCESS.isSuccess());
+        assertTrue(PlayResult.SUCCESS.isSuccess());
     }
 
     @Test
     void failureTrimsErrorMessage() {
-        PlaybackStartResult result = PlaybackStartResult.failure(" Datapack not loaded. ");
+        PlayResult result = PlayResult.failure(" Datapack not loaded. ");
 
         assertFalse(result.isSuccess());
         assertEquals("Datapack not loaded.", result.errorMessage());
+    }
+
+    @Test
+    void failureRejectsBlankErrorMessage() {
+        assertThrows(IllegalArgumentException.class, () -> PlayResult.failure(" "));
     }
 }

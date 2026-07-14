@@ -1,10 +1,10 @@
 package io.github.hanhy06.emote.network.service;
 
+import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
-import io.github.hanhy06.emote.emote.PlayableEmoteSelectionResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlayService {
@@ -27,25 +27,15 @@ public class PlayService {
     }
 
     public PlayResult play(ServerPlayer player, String commandName) {
-        return play(this.playableEmoteService.findSelection(player, commandName), player);
-    }
-
-    private PlayResult play(PlayableEmoteSelectionResult selectionResult, ServerPlayer player) {
-        if (!selectionResult.isSuccess()) {
-            return PlayResult.failure(selectionResult.errorMessage());
+        PlayableEmoteSelection selection = this.playableEmoteService.findSelection(player, commandName);
+        if (!selection.isSuccess()) {
+            return PlayResult.failure(selection.errorMessage());
         }
-
-        PlayableEmoteSelection selection = selectionResult.selection();
-        PlaybackStartResult playResult = this.emoteStarter.start(player, selection);
-        if (!playResult.isSuccess()) {
-            return PlayResult.failure(playResult.errorMessage());
-        }
-
-        return PlayResult.success();
+        return this.emoteStarter.start(player, selection.definition());
     }
 
     @FunctionalInterface
     interface EmoteStarter {
-        PlaybackStartResult start(ServerPlayer player, PlayableEmoteSelection selection);
+        PlayResult start(ServerPlayer player, EmoteDefinition definition);
     }
 }

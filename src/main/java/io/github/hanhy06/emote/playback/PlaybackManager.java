@@ -2,9 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
+import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
-import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
@@ -49,23 +48,21 @@ public class PlaybackManager {
         this.stateListener = stateListener == null ? PlaybackStateListener.NONE : stateListener;
     }
 
-    public PlaybackStartResult startEmote(ServerPlayer player, PlayableEmoteSelection selection) {
-        EmoteDefinition definition = selection.definition();
-
+    public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
         MinecraftServer server = server();
         if (server == null) {
-            return PlaybackStartResult.failure("Server unavailable.");
+            return PlayResult.failure("Server unavailable.");
         }
 
         String namespace = definition.namespace();
         PlaybackFunctionIds functionIds = resolveFunctionIds(server, definition);
         if (functionIds == null) {
-            return PlaybackStartResult.failure("Datapack not loaded.");
+            return PlayResult.failure("Datapack not loaded.");
         }
 
         PlayerSkinPreparationResult skinPreparation = this.playerSkinManager.preparePlayerSkin(player, definition);
         if (!skinPreparation.isReady()) {
-            return PlaybackStartResult.failure(skinPreparation.errorMessage());
+            return PlayResult.failure(skinPreparation.errorMessage());
         }
 
         resetPlayerPlayback(player, namespace);
@@ -81,7 +78,7 @@ public class PlaybackManager {
                 skinPreparation.preparedSkin()
             )
         );
-        return PlaybackStartResult.SUCCESS;
+        return PlayResult.SUCCESS;
     }
 
     public ActiveEmote stopEmote(ServerPlayer player) {

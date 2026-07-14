@@ -2,9 +2,9 @@ package io.github.hanhy06.emote.network.service;
 
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.data.PlaybackStartResult;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -19,7 +19,7 @@ class PlayServiceTest {
     void playReturnsSuccess() {
         PlayService service = new PlayService(
             createPlayableEmoteService(),
-            (player, selection) -> PlaybackStartResult.SUCCESS
+            (player, definition) -> PlayResult.SUCCESS
         );
 
         PlayResult result = service.play(null, "wave");
@@ -31,7 +31,7 @@ class PlayServiceTest {
     void playReturnsPlaybackFailure() {
         PlayService service = new PlayService(
             createPlayableEmoteService(),
-            (player, selection) -> PlaybackStartResult.failure(" Datapack not loaded. ")
+            (player, definition) -> PlayResult.failure(" Datapack not loaded. ")
         );
 
         PlayResult result = service.play(null, "wave");

@@ -39,15 +39,15 @@ public class PlayableEmoteService {
         return List.copyOf(names.values());
     }
 
-    public PlayableEmoteSelectionResult findSelection(ServerPlayer player, String commandName) {
+    public PlayableEmoteSelection findSelection(ServerPlayer player, String commandName) {
         EmoteDefinition definition = this.emoteRegistry.findDefinitionForPlay(commandName);
         if (definition == null) {
-            return PlayableEmoteSelectionResult.failure("Unknown: " + commandName);
+            return PlayableEmoteSelection.failure("Unknown: " + commandName);
         }
         if (!canPlay(player, definition)) {
-            return PlayableEmoteSelectionResult.failure("No emote permission.");
+            return PlayableEmoteSelection.failure("No emote permission.");
         }
-        return PlayableEmoteSelectionResult.success(new PlayableEmoteSelection(definition));
+        return PlayableEmoteSelection.success(definition);
     }
 
     private boolean canPlay(ServerPlayer player, EmoteDefinition definition) {

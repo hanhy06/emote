@@ -34,10 +34,10 @@ class PlayableEmoteServiceTest {
         registry.replaceDefinitions(List.of(createDefinition("wave_pack", "wave", "Wave")));
         PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> true);
 
-        PlayableEmoteSelectionResult result = service.findSelection(null, "wave");
+        PlayableEmoteSelection result = service.findSelection(null, "wave");
 
         assertTrue(result.isSuccess());
-        assertEquals("a/default/play_anim_loop", result.selection().definition().entrypoint());
+        assertEquals("a/default/play_anim_loop", result.definition().entrypoint());
     }
 
     @Test
@@ -46,7 +46,7 @@ class PlayableEmoteServiceTest {
         registry.replaceDefinitions(List.of(createDefinition("wave_pack", "wave", "Wave")));
         PlayableEmoteService service = new PlayableEmoteService(registry, (player, definition) -> false);
 
-        PlayableEmoteSelectionResult result = service.findSelection(null, "wave");
+        PlayableEmoteSelection result = service.findSelection(null, "wave");
 
         assertFalse(result.isSuccess());
         assertEquals("No emote permission.", result.errorMessage());
