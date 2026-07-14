@@ -66,16 +66,12 @@ public class EmoteLifecycle {
     }
 
     private void registerConnectionCallbacks() {
-        ServerPlayConnectionEvents.JOIN.register((handler, ignoredSender, ignoredServer) -> syncJoinedPlayer(handler.player));
-        ServerPlayConnectionEvents.DISCONNECT.register((handler, ignoredServer) -> stopDisconnectedPlayer(handler.player));
-    }
-
-    private void syncJoinedPlayer(net.minecraft.server.level.ServerPlayer player) {
-        this.wheelSyncService.syncPlayer(player);
-    }
-
-    private void stopDisconnectedPlayer(net.minecraft.server.level.ServerPlayer player) {
-        this.playbackManager.stopEmote(player);
+        ServerPlayConnectionEvents.JOIN.register(
+            (handler, ignoredSender, ignoredServer) -> this.wheelSyncService.syncPlayer(handler.player)
+        );
+        ServerPlayConnectionEvents.DISCONNECT.register(
+            (handler, ignoredServer) -> this.playbackManager.stopEmote(handler.player)
+        );
     }
 
     private void handleServerStarted(MinecraftServer server) {
