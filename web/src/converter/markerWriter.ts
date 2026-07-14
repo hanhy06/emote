@@ -42,7 +42,7 @@ function removeProfileMarker(itemDisplayText: string): string {
 }
 
 export function injectProfileName(itemDisplayText: string, markerName: string): string {
-  const markerMatch = /^emote:([a-z_]+)(?::(\d+))?$/.exec(markerName);
+  const markerMatch = /^emote:([a-z_]+)(?::?(\d+))?$/.exec(markerName);
   if (!markerMatch || !isSkinPartId(markerMatch[1])) {
     throw new Error(`지원하지 않는 스킨 부위 마커입니다: ${markerName}`);
   }

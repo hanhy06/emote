@@ -94,7 +94,7 @@ item:{
 
 Valid markers are `emote:head`, `emote:body`, `emote:left_arm`, `emote:right_arm`, `emote:left_leg`, and `emote:right_leg`. If one limb uses multiple player heads, give every piece the same limb marker. Player heads without a valid marker keep the texture stored in the datapack.
 
-For deterministic limb skin splitting, append an order to every piece of that limb, such as `emote:left_leg:0` for the piece nearest the body and `emote:left_leg:1` for the piece nearest the foot. When every piece has an order, explicit order takes priority over position-based inference.
+For deterministic limb skin splitting, append an order to every piece of that limb, such as `emote:left_leg0` for the piece nearest the body and `emote:left_leg1` for the piece nearest the foot. When every piece has an order, explicit order takes priority over position-based inference. The compact suffix keeps profile names within Minecraft's 16-character limit.
 
 The display name, description, and command name can also be specified manually.
 

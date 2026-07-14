@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.bdengine;
 
+import com.google.gson.JsonPrimitive;
+import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.PackConfig;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
@@ -7,6 +9,7 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinSegment;
+import net.minecraft.util.ExtraCodecs;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -18,8 +21,19 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BDEngineDatapackProcessorTest {
+    @Test
+    void orderedMarkerFitsMinecraftPlayerProfileNameCodec() {
+        assertTrue(ExtraCodecs.PLAYER_NAME.parse(JsonOps.INSTANCE, new JsonPrimitive("emote:right_arm1"))
+            .result()
+            .isPresent());
+        assertFalse(ExtraCodecs.PLAYER_NAME.parse(JsonOps.INSTANCE, new JsonPrimitive("emote:right_arm:1"))
+            .result()
+            .isPresent());
+    }
+
     @Test
     void readDefinitionsIgnoresPackWithoutEmoteMetadata(@TempDir Path tempDir) throws IOException {
         Path datapackDirPath = Files.createDirectories(tempDir.resolve("datapacks"));
@@ -150,8 +164,8 @@ class BDEngineDatapackProcessorTest {
         Path createFunctionPath = packPath.resolve("data/dance/function/_/create.mcfunction");
         Files.writeString(createFunctionPath, String.join("\n",
             createPlayerHead("dance", 1, "body", 0.0D, 1.5D, 0.0D, 0.5D),
-            createPlayerHead("dance", 7, "left_leg:1", 0.5D, 1.2D, 0.0D, 0.5D),
-            createPlayerHead("dance", 8, "left_leg:0", 0.5D, 0.5D, 0.0D, 0.5D)
+            createPlayerHead("dance", 7, "left_leg1", 0.5D, 1.2D, 0.0D, 0.5D),
+            createPlayerHead("dance", 8, "left_leg0", 0.5D, 0.5D, 0.0D, 0.5D)
         ));
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());

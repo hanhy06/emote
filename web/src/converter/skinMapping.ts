@@ -18,5 +18,5 @@ export function isSkinPartId(value: string): value is SkinPartId {
 }
 
 export function markerFor(skinPart: SkinPartId, order?: number | null): string {
-  return `emote:${skinPart}${order == null ? "" : `:${order}`}`;
+  return `emote:${skinPart}${order == null ? "" : order}`;
 }

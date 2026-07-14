@@ -15,9 +15,10 @@ describe("applySkinMarkers limb order", () => {
   it("writes an explicit limb order after the skin part marker", () => {
     const original = 'summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{"minecraft:profile":{properties:[]}}},Tags:["demo_3"]}';
 
-    const updated = applySkinMarkers(original, "demo", { 3: "left_leg" }, { 3: 1 });
+    const updated = applySkinMarkers(original, "demo", { 3: "right_arm" }, { 3: 1 });
 
-    expect(updated).toContain('name:"emote:left_leg:1"');
+    expect(updated).toContain('name:"emote:right_arm1"');
+    expect("emote:right_arm1").toHaveLength(16);
   });
 });
 

@@ -37,7 +37,7 @@ public class BDEngineDatapackProcessor {
     private static final Pattern COMMAND_NAME_PATTERN = Pattern.compile("[a-z0-9_-]+");
     private static final Pattern ENTRYPOINT_PATTERN = Pattern.compile("[a-z0-9_./-]+");
     private static final Pattern PLAYER_SKIN_MARKER_PATTERN = Pattern.compile("name\\s*:\\s*\"([^\"]+)\"");
-    private static final Pattern ORDERED_SKIN_MARKER_PATTERN = Pattern.compile("^emote:([a-z_]+)(?::(\\d+))?$");
+    private static final Pattern ORDERED_SKIN_MARKER_PATTERN = Pattern.compile("^emote:([a-z_]+)(?::?(\\d+))?$");
     private static final Pattern TRANSFORMATION_PATTERN = Pattern.compile("transformation:\\[(.*?)]");
     private static final double ANCHOR_DISTANCE_EPSILON = 1.0E-9D;
     private final ConfigManager configManager;

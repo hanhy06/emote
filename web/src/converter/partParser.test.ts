@@ -5,7 +5,7 @@ import { loadDatapack } from "./packFileSystem";
 
 describe("parsePlayerHeadParts", () => {
   it("reads part index, scale, and transformed center", () => {
-    const text = 'summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{"minecraft:profile":{name:"emote:left_leg:1"}}},transformation:[0.5f,0f,0f,1f,0f,1f,0f,2f,0f,0f,0.25f,3f,0f,0f,0f,1f],Tags:["demo_7"]}';
+    const text = 'summon item_display ~ ~ ~ {id:"minecraft:item_display",item:{id:"minecraft:player_head",components:{"minecraft:profile":{name:"emote:left_leg1"}}},transformation:[0.5f,0f,0f,1f,0f,1f,0f,2f,0f,0f,0.25f,3f,0f,0f,0f,1f],Tags:["demo_7"]}';
 
     const [part] = parsePlayerHeadParts(text, "demo");
 

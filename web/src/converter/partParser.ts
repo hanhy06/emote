@@ -167,12 +167,12 @@ function createPlayerHeadPart(
 }
 
 function readExistingAssignment(itemData: string): SkinPartId | null {
-  const markerMatch = /name\s*:\s*"emote:([a-z_]+)(?::\d+)?"/.exec(itemData);
+  const markerMatch = /name\s*:\s*"emote:([a-z_]+)(?::?\d+)?"/.exec(itemData);
   return markerMatch && isSkinPartId(markerMatch[1]) ? markerMatch[1] : null;
 }
 
 function readExistingOrder(itemData: string): number | null {
-  const markerMatch = /name\s*:\s*"emote:[a-z_]+:(\d+)"/.exec(itemData);
+  const markerMatch = /name\s*:\s*"emote:[a-z_]+:?(\d+)"/.exec(itemData);
   return markerMatch ? Number.parseInt(markerMatch[1], 10) : null;
 }
 
