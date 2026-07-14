@@ -1,0 +1,448 @@
+{
+  "format": "emote_animation",
+  "format_version": 1,
+  "tick_rate": 20,
+  "id": "emote:format_reference",
+  "metadata": {
+    "name": "Format Reference",
+    "description": "Reference emote containing every runtime feature supported by the format draft.",
+    "command_name": "format_reference",
+    "hide_player": true
+  },
+  "transform_space": {
+    "coordinate_space": "root_local",
+    "matrix_layout": "row_major",
+    "matrix_size": 16
+  },
+  "root": {
+    "entity_type": "minecraft:block_display",
+    "entity_nbt": "{view_range:64.0f,shadow_radius:0.0f,shadow_strength:0.0f}"
+  },
+  "nodes": {
+    "player_head": {
+      "type": "item_display",
+      "item_display": "none",
+      "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
+      "skin": {
+        "part": "head",
+        "order": 0
+      },
+      "default_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.75,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "enchanted_sword": {
+      "type": "item_display",
+      "item_display": "fixed",
+      "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{levels:{\"minecraft:sharpness\":5}}}}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
+      "default_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.5,
+        0.0,
+        1.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "stage": {
+      "type": "block_display",
+      "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
+      "default_matrix": [
+        2.0,
+        0.0,
+        0.0,
+        -1.0,
+        0.0,
+        0.1,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        2.0,
+        -1.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "caption": {
+      "type": "text_display",
+      "text": {
+        "text": "Emote"
+      },
+      "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
+      "default_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        2.4,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    },
+    "effect_anchor": {
+      "type": "anchor",
+      "default_matrix": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        1.5,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    }
+  },
+  "timeline": {
+    "duration_ticks": 80,
+    "loop": "loop",
+    "loop_delay_ticks": 0,
+    "frames": [
+      {
+        "tick": 0,
+        "interpolation_ticks": 0,
+        "transforms": {
+          "player_head": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.75,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "enchanted_sword": [
+            1.0,
+            0.0,
+            0.0,
+            0.5,
+            0.0,
+            1.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      {
+        "tick": 1,
+        "interpolation_ticks": 1,
+        "transforms": {
+          "player_head": [
+            0.9962,
+            0.0,
+            0.0872,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            1.76,
+            -0.0872,
+            0.0,
+            0.9962,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "enchanted_sword": [
+            0.9848,
+            -0.1736,
+            0.0,
+            0.52,
+            0.1736,
+            0.9848,
+            0.0,
+            1.02,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ],
+          "effect_anchor": [
+            1.0,
+            0.0,
+            0.0,
+            0.52,
+            0.0,
+            1.0,
+            0.0,
+            1.45,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      },
+      {
+        "tick": 40,
+        "interpolation_ticks": 0,
+        "transforms": {
+          "caption": [
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            2.6,
+            0.0,
+            0.0,
+            1.0,
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+            1.0
+          ]
+        }
+      }
+    ],
+    "events": {
+      "start": [
+        {
+          "type": "sound",
+          "sound": "minecraft:entity.player.levelup",
+          "category": "players",
+          "origin": {
+            "type": "root",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "volume": 1.0,
+          "pitch": 1.0
+        },
+        {
+          "type": "command",
+          "source": "player",
+          "origin": {
+            "type": "root",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "commands": [
+            "say emote started"
+          ]
+        }
+      ],
+      "timeline": [
+        {
+          "tick": 10,
+          "type": "particle",
+          "particle_snbt": "minecraft:flame",
+          "origin": {
+            "type": "node",
+            "node": "effect_anchor",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "spread": [
+            0.2,
+            0.2,
+            0.2
+          ],
+          "speed": 0.02,
+          "count": 12,
+          "force": false
+        },
+        {
+          "tick": 20,
+          "type": "sound",
+          "sound": "minecraft:item.trident.throw",
+          "category": "players",
+          "origin": {
+            "type": "node",
+            "node": "enchanted_sword",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "volume": 0.8,
+          "pitch": 1.2
+        },
+        {
+          "tick": 30,
+          "type": "node_patch",
+          "node": "enchanted_sword",
+          "merge_entity_nbt": "{glowing:0b}",
+          "item_stack_snbt": "{id:\"minecraft:netherite_sword\",count:1,components:{\"minecraft:enchantment_glint_override\":true}}"
+        },
+        {
+          "tick": 40,
+          "type": "node_patch",
+          "node": "stage",
+          "block_state_snbt": "{Name:\"minecraft:diamond_block\"}"
+        },
+        {
+          "tick": 50,
+          "type": "node_patch",
+          "node": "caption",
+          "text": {
+            "text": "Runtime event",
+            "color": "gold",
+            "bold": true
+          },
+          "merge_entity_nbt": "{glowing:1b}"
+        },
+        {
+          "tick": 60,
+          "type": "command",
+          "source": "server",
+          "execute_condition": "if entity @a[distance=..16]",
+          "origin": {
+            "type": "node",
+            "node": "effect_anchor",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "commands": [
+            "particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.0 8 normal"
+          ]
+        }
+      ],
+      "loop": [
+        {
+          "type": "sound",
+          "sound": "minecraft:block.note_block.hat",
+          "category": "players",
+          "origin": {
+            "type": "root",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "volume": 0.4,
+          "pitch": 1.0
+        }
+      ],
+      "stop": [
+        {
+          "type": "particle",
+          "particle_snbt": "minecraft:poof",
+          "origin": {
+            "type": "root",
+            "offset": [
+              0.0,
+              1.0,
+              0.0
+            ]
+          },
+          "spread": [
+            0.3,
+            0.5,
+            0.3
+          ],
+          "speed": 0.02,
+          "count": 16,
+          "force": false
+        },
+        {
+          "type": "command",
+          "source": "player",
+          "origin": {
+            "type": "player",
+            "offset": [
+              0.0,
+              0.0,
+              0.0
+            ]
+          },
+          "commands": [
+            "say emote stopped"
+          ]
+        }
+      ]
+    }
+  }
+}
