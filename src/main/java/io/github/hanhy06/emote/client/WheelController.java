@@ -16,7 +16,7 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelController {
-    private static final String MENU_FALLBACK_COMMAND = "emote menu";
+    private static final String MENU_FALLBACK_COMMAND = "emote";
     private List<PlayableEmote> syncedEmotes = List.of();
     private boolean syncedFromServer;
     private String lastSelectedCommandName = "";
