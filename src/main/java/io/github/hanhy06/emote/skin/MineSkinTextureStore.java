@@ -5,18 +5,13 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.io.JsonFileStore;
 import net.fabricmc.loader.api.FabricLoader;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -46,13 +41,13 @@ final class MineSkinTextureStore {
             return Map.of();
         }
 
-        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            JsonElement element = JsonParser.parseReader(reader);
-            if (!element.isJsonObject()) {
+        try {
+            JsonObject skinJson = JsonFileStore.readObject(filePath);
+            if (skinJson == null) {
                 return Map.of();
             }
 
-            JsonArray textures = readTextures(element.getAsJsonObject());
+            JsonArray textures = readTextures(skinJson);
             if (textures == null) {
                 return Map.of();
             }
@@ -80,18 +75,6 @@ final class MineSkinTextureStore {
             return;
         }
 
-        Path skinDirPath = resolveSkinDirPath();
-        if (skinDirPath == null) {
-            return;
-        }
-
-        try {
-            Files.createDirectories(skinDirPath);
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to create MineSkin skin directory: {}", skinDirPath, exception);
-            return;
-        }
-
         Path filePath = resolveFilePath(textureHash, slimModel);
         if (filePath == null) {
             return;
@@ -99,7 +82,7 @@ final class MineSkinTextureStore {
 
         JsonObject skinJson = createSkinJson(textureHash, slimModel, textureUrlMap);
         try {
-            writeJsonAtomically(filePath, skinJson);
+            JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
         }
@@ -111,13 +94,12 @@ final class MineSkinTextureStore {
             return null;
         }
 
-        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            JsonElement element = JsonParser.parseReader(reader);
-            if (!element.isJsonObject()) {
+        try {
+            JsonObject object = JsonFileStore.readObject(filePath);
+            if (object == null) {
                 return null;
             }
 
-            JsonObject object = element.getAsJsonObject();
             Integer version = readInt(object, "version");
             String storedHash = readString(object, "content_hash");
             String textureUrl = readString(object, "texture_url");
@@ -142,8 +124,7 @@ final class MineSkinTextureStore {
         object.addProperty("content_hash", contentHash);
         object.addProperty("texture_url", result.textureUrl());
         try {
-            Files.createDirectories(filePath.getParent());
-            writeJsonAtomically(filePath, object);
+            JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
         }
@@ -154,12 +135,11 @@ final class MineSkinTextureStore {
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
         }
-        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            JsonElement element = JsonParser.parseReader(reader);
-            if (!element.isJsonObject()) {
+        try {
+            JsonObject object = JsonFileStore.readObject(filePath);
+            if (object == null) {
                 return null;
             }
-            JsonObject object = element.getAsJsonObject();
             return contentHash.equals(readString(object, "content_hash")) ? readString(object, "job_id") : null;
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
@@ -176,8 +156,7 @@ final class MineSkinTextureStore {
         object.addProperty("content_hash", contentHash);
         object.addProperty("job_id", jobId);
         try {
-            Files.createDirectories(filePath.getParent());
-            writeJsonAtomically(filePath, object);
+            JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin pending job: {}", filePath, exception);
         }
@@ -295,24 +274,6 @@ final class MineSkinTextureStore {
         }
         Path skinDirPath = resolveSkinDirPath();
         return skinDirPath == null ? null : skinDirPath.resolve("pending").resolve(contentHash + ".json");
-    }
-
-    private void writeJsonAtomically(Path filePath, JsonObject object) throws IOException {
-        Path temporaryPath = filePath.resolveSibling(filePath.getFileName() + ".tmp");
-        try (BufferedWriter writer = Files.newBufferedWriter(
-            temporaryPath,
-            StandardCharsets.UTF_8,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        )) {
-            this.gson.toJson(object, writer);
-        }
-
-        try {
-            Files.move(temporaryPath, filePath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-        } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
-            Files.move(temporaryPath, filePath, StandardCopyOption.REPLACE_EXISTING);
-        }
     }
 
     private Path resolveSkinDirPath() {

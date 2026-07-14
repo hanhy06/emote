@@ -4,19 +4,15 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.PackConfig;
 import io.github.hanhy06.emote.config.data.PackOverride;
+import io.github.hanhy06.emote.io.JsonFileStore;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -132,9 +128,8 @@ public class ConfigManager {
 
     private JsonObject readJsonFile(String fileName) {
         Path filePath = this.configDirPath.resolve(fileName);
-        try (BufferedReader reader = Files.newBufferedReader(filePath, StandardCharsets.UTF_8)) {
-            JsonElement element = JsonParser.parseReader(reader);
-            return element.isJsonObject() ? element.getAsJsonObject() : null;
+        try {
+            return JsonFileStore.readObject(filePath);
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read {}: {}", fileName, exception.getMessage());
             return null;
@@ -161,13 +156,8 @@ public class ConfigManager {
     private void writeJsonFile(String fileName, JsonObject json) {
         Path filePath = this.configDirPath.resolve(fileName);
 
-        try (BufferedWriter writer = Files.newBufferedWriter(
-            filePath,
-            StandardCharsets.UTF_8,
-            StandardOpenOption.CREATE,
-            StandardOpenOption.TRUNCATE_EXISTING
-        )) {
-            this.gson.toJson(json, writer);
+        try {
+            JsonFileStore.writeObjectAtomically(filePath, json, this.gson);
             Emote.LOGGER.info("Saved {}", fileName);
         } catch (IOException exception) {
             Emote.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
