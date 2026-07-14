@@ -21,8 +21,11 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.HttpURLConnection;
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -38,7 +41,8 @@ public class PlayerSkinManager implements ConfigListener {
 
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
     private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
-    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
+    private final HttpClient httpClient = MineSkinApiClient.createHttpClient();
+    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient(this.httpClient);
     private final MineSkinBakeExecutor mineSkinBakeExecutor = new MineSkinBakeExecutor();
 
     private volatile String mineSkinApiKey = "";
@@ -281,31 +285,27 @@ public class PlayerSkinManager implements ConfigListener {
         return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
     }
 
-    private BufferedImage downloadSkinImage(String textureUrl) throws IOException {
-        HttpURLConnection connection = (HttpURLConnection) URI.create(textureUrl).toURL().openConnection();
-        connection.setConnectTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
-        connection.setReadTimeout(SKIN_DOWNLOAD_TIMEOUT_MILLIS);
-        connection.setInstanceFollowRedirects(true);
-        try {
-            int responseCode = connection.getResponseCode();
-            if (responseCode / 100 != 2) {
-                throw new IOException("unexpected skin response: " + responseCode);
+    private BufferedImage downloadSkinImage(String textureUrl) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(textureUrl))
+            .timeout(Duration.ofMillis(SKIN_DOWNLOAD_TIMEOUT_MILLIS))
+            .GET()
+            .build();
+        HttpResponse<InputStream> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        byte[] imageBytes;
+        try (InputStream input = response.body()) {
+            if (response.statusCode() / 100 != 2) {
+                throw new IOException("unexpected skin response: " + response.statusCode());
             }
-            byte[] imageBytes;
-            try (InputStream input = connection.getInputStream()) {
-                imageBytes = input.readNBytes(MAX_SKIN_DOWNLOAD_BYTES + 1);
-            }
+            imageBytes = input.readNBytes(MAX_SKIN_DOWNLOAD_BYTES + 1);
             if (imageBytes.length > MAX_SKIN_DOWNLOAD_BYTES) {
                 throw new IOException("skin image exceeds maximum size");
             }
-            BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
-            if (image == null) {
-                throw new IOException("skin image decode failed");
-            }
-            return image;
-        } finally {
-            connection.disconnect();
         }
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        if (image == null) {
+            throw new IOException("skin image decode failed");
+        }
+        return image;
     }
 
     private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {

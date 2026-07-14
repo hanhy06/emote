@@ -25,11 +25,24 @@ final class MineSkinApiClient {
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
     private static final String USER_AGENT = createUserAgent();
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-        .connectTimeout(Duration.ofSeconds(10))
-        .build();
+    private final HttpClient httpClient;
     private final Gson gson = new Gson();
     private volatile long jobPollIntervalMillis = 3000L;
+
+    MineSkinApiClient() {
+        this(createHttpClient());
+    }
+
+    MineSkinApiClient(HttpClient httpClient) {
+        this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
+    }
+
+    static HttpClient createHttpClient() {
+        return HttpClient.newBuilder()
+            .connectTimeout(Duration.ofSeconds(10))
+            .followRedirects(HttpClient.Redirect.NORMAL)
+            .build();
+    }
 
     void setJobPollIntervalSeconds(int seconds) {
         if (seconds < 1 || seconds > 60) {

@@ -9,6 +9,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -16,6 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MineSkinApiClientTest {
+    @Test
+    void sharedHttpClientUsesSkinRequestConnectionSettings() {
+        HttpClient httpClient = MineSkinApiClient.createHttpClient();
+
+        assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
+        assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
+    }
+
     @Test
     void apiKeyPresenceAcceptsRawAndBearerFormats() {
         assertTrue(MineSkinApiClient.hasApiKey("api-key"));
