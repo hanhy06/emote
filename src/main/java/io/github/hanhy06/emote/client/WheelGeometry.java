@@ -10,9 +10,17 @@ final class WheelGeometry {
         int centerX = width / 2;
         int centerY = height / 2 - 18;
         int slotRadius = Math.clamp(Math.min(width, height) / 12, 28, 44);
-        int ringRadiusLimitX = Math.max(slotRadius * 2, width / 2 - slotRadius - 18);
-        int ringRadiusLimitY = Math.max(slotRadius * 2, Math.min(centerY - slotRadius - 18, height - centerY - slotRadius - 90));
-        int ringRadius = Math.max(slotRadius * 2, Math.min(slotRadius * 3 + 20, Math.min(ringRadiusLimitX, ringRadiusLimitY)));
+        int minimumRingRadius = slotRadius * 2;
+        int horizontalRingSpace = width / 2 - slotRadius - 18;
+        int verticalRingSpace = Math.min(
+            centerY - slotRadius - 18,
+            height - centerY - slotRadius - 90
+        );
+        int ringRadiusLimitX = Math.max(minimumRingRadius, horizontalRingSpace);
+        int ringRadiusLimitY = Math.max(minimumRingRadius, verticalRingSpace);
+        int maximumRingRadius = Math.min(ringRadiusLimitX, ringRadiusLimitY);
+        int preferredRingRadius = slotRadius * 3 + 20;
+        int ringRadius = Math.clamp(preferredRingRadius, minimumRingRadius, maximumRingRadius);
         int centerRadius = Math.max(20, slotRadius - 12);
         int descriptionWidth = Math.min(280, width - 48);
         return new WheelMetrics(centerX, centerY, slotRadius, ringRadius, centerRadius, Math.max(52, slotRadius + 24), descriptionWidth);
