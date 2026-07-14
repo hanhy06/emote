@@ -29,9 +29,7 @@ import net.minecraft.server.dialog.input.TextInput;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Optional;
 
 public class DialogManager {
@@ -60,7 +58,8 @@ public class DialogManager {
     }
 
     public void openDialog(ServerPlayer player, int pageNumber, String query) {
-        Dialog dialog = createRootDialog(player, pageNumber, normalizeQuery(query));
+        String dialogQuery = query == null ? "" : query.trim();
+        Dialog dialog = createRootDialog(player, pageNumber, dialogQuery);
         player.openDialog(Holder.direct(dialog));
     }
 
@@ -87,7 +86,7 @@ public class DialogManager {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<PlayableEmote> playableEmoteList = filterPlayableEmotes(this.playableEmoteService.getPlayableEmotes(player), query);
+        List<PlayableEmote> playableEmoteList = this.playableEmoteService.getPlayableEmotes(player, query);
         DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
@@ -189,35 +188,6 @@ public class DialogManager {
             : "/emote search " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query) + " " + pageNumber;
     }
 
-    static List<PlayableEmote> filterPlayableEmotes(List<PlayableEmote> emotes, String query) {
-        String normalizedQuery = normalizeQuery(query);
-        if (normalizedQuery.isEmpty()) {
-            return List.copyOf(emotes);
-        }
-
-        return emotes.stream()
-            .map(emote -> new RankedEmote(emote, searchRank(emote, normalizedQuery)))
-            .filter(rankedEmote -> rankedEmote.rank() < Integer.MAX_VALUE)
-            .sorted(Comparator.comparingInt(RankedEmote::rank))
-            .map(RankedEmote::emote)
-            .toList();
-    }
-
-    private static int searchRank(PlayableEmote emote, String query) {
-        String displayName = emote.displayName().toLowerCase(Locale.ROOT);
-        String commandName = emote.commandName().toLowerCase(Locale.ROOT);
-        String description = emote.description().toLowerCase(Locale.ROOT);
-        if (displayName.equals(query)) return 0;
-        if (displayName.startsWith(query)) return 1;
-        if (commandName.startsWith(query)) return 2;
-        if (displayName.contains(query) || commandName.contains(query) || description.contains(query)) return 3;
-        return Integer.MAX_VALUE;
-    }
-
-    private static String normalizeQuery(String query) {
-        return query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
-    }
-
     private String createBodyText(DialogPage dialogPage, ServerPlayer player, String query) {
         if (this.emoteRegistry.size() == 0) {
             return "No emotes.";
@@ -266,6 +236,4 @@ public class DialogManager {
     ) {
     }
 
-    private record RankedEmote(PlayableEmote emote, int rank) {
-    }
 }

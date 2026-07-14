@@ -11,6 +11,24 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayableEmoteServiceTest {
     @Test
+    void searchFiltersAndRanksPlayableEmotes() {
+        List<PlayableEmote> emotes = List.of(
+            new PlayableEmote("dance", "Fast Dance", "Quick movement"),
+            new PlayableEmote("wave", "Wave", "Friendly greeting"),
+            new PlayableEmote("wave_fast", "Other", "Wave variation")
+        );
+
+        assertEquals(
+            List.of("wave", "wave_fast"),
+            PlayableEmoteService.filterPlayableEmotes(emotes, "WAVE").stream().map(PlayableEmote::commandName).toList()
+        );
+        assertEquals(
+            List.of("dance"),
+            PlayableEmoteService.filterPlayableEmotes(emotes, "quick").stream().map(PlayableEmote::commandName).toList()
+        );
+    }
+
+    @Test
     void getPlayableEmotesCreatesOneEntryPerVisibleDatapack() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replaceDefinitions(List.of(
