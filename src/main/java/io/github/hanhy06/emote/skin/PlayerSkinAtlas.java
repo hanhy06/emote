@@ -25,8 +25,8 @@ final class PlayerSkinAtlas {
             PlayerSkinPart.LEFT_ARM, new PartAtlas(
                     faces(36, 48, 4, 4, 32, 52, 4, 12),
                     faces(52, 48, 4, 4, 48, 52, 4, 12),
-                    slimLeftArmFaces(48, 52),
-                    slimLeftArmFaces(48, 52, true)
+                    slimLeftArmFaces(false),
+                    slimLeftArmFaces(true)
             ),
             PlayerSkinPart.RIGHT_LEG, new PartAtlas(
                     faces(4, 16, 4, 4, 0, 20, 4, 12),
@@ -94,34 +94,32 @@ final class PlayerSkinAtlas {
 
     private static FaceMap slimRightArmFaces(int topY, int sideY) {
         return new FaceMap(
-                slimRect(44, topY, 3, 4, PadMode.LEFT),
-                slimRect(47, topY, 3, 4, PadMode.LEFT),
+                slimRect(44, topY, 4, PadMode.LEFT),
+                slimRect(47, topY, 4, PadMode.LEFT),
                 new FaceRect(40, sideY, 4, 12),
-                slimRect(44, sideY, 3, 12, PadMode.LEFT),
+                slimRect(44, sideY, 12, PadMode.LEFT),
                 new FaceRect(47, sideY, 4, 12),
-                slimRect(51, sideY, 3, 12, PadMode.RIGHT)
+                slimRect(51, sideY, 12, PadMode.RIGHT)
         );
     }
 
-    private static FaceMap slimLeftArmFaces(int topY, int sideY) {
-        return slimLeftArmFaces(topY, sideY, false);
-    }
-
-    private static FaceMap slimLeftArmFaces(int topY, int sideY, boolean overlay) {
+    private static FaceMap slimLeftArmFaces(boolean overlay) {
+        int topY = 48;
+        int sideY = 52;
         int topX = overlay ? 52 : 36;
         int rightX = overlay ? 48 : 32;
         return new FaceMap(
-                slimRect(topX, topY, 3, 4, PadMode.RIGHT),
-                slimRect(topX + 3, topY, 3, 4, PadMode.RIGHT),
+                slimRect(topX, topY, 4, PadMode.RIGHT),
+                slimRect(topX + 3, topY, 4, PadMode.RIGHT),
                 new FaceRect(rightX, sideY, 4, 12),
-                slimRect(topX, sideY, 3, 12, PadMode.RIGHT),
+                slimRect(topX, sideY, 12, PadMode.RIGHT),
                 new FaceRect(topX + 3, sideY, 4, 12),
-                slimRect(topX + 7, sideY, 3, 12, PadMode.LEFT)
+                slimRect(topX + 7, sideY, 12, PadMode.LEFT)
         );
     }
 
-    private static FaceRect slimRect(int x, int y, int width, int height, PadMode padMode) {
-        return new FaceRect(x, y, width, height, width + 1, padMode);
+    private static FaceRect slimRect(int x, int y, int height, PadMode padMode) {
+        return new FaceRect(x, y, 3, height, 4, padMode);
     }
 
     record FaceRect(int x, int y, int width, int height, int virtualWidth, PadMode padMode) {

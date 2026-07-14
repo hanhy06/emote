@@ -164,7 +164,7 @@ public class PlayerSkinManager implements ConfigListener {
             return false;
         }
         ItemStack profileStack = itemStack.copy();
-        profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile("emote", textureUrl));
+        profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
         return itemSlot.set(profileStack);
     }
 

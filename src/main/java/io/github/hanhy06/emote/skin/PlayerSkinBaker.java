@@ -72,24 +72,26 @@ final class PlayerSkinBaker {
             }
         }
 
-        copyLegacyLimb(normalizedImage, 0, 16, 16, 48);
-        copyLegacyLimb(normalizedImage, 40, 16, 32, 48);
+        copyLegacyLimb(normalizedImage, 0, 16);
+        copyLegacyLimb(normalizedImage, 40, 32);
         return normalizedImage;
     }
 
-    private void copyLegacyLimb(BufferedImage image, int srcX, int srcY, int dstX, int dstY) {
-        copyMirroredArea(image, srcX + 4, srcY, 4, 4, dstX + 4, dstY);
-        copyMirroredArea(image, srcX + 8, srcY, 4, 4, dstX + 8, dstY);
-        copyMirroredArea(image, srcX, srcY + 4, 4, 12, dstX + 8, dstY + 4);
-        copyMirroredArea(image, srcX + 4, srcY + 4, 4, 12, dstX + 4, dstY + 4);
-        copyMirroredArea(image, srcX + 8, srcY + 4, 4, 12, dstX, dstY + 4);
-        copyMirroredArea(image, srcX + 12, srcY + 4, 4, 12, dstX + 12, dstY + 4);
+    private void copyLegacyLimb(BufferedImage image, int sourceX, int targetX) {
+        int sourceY = 16;
+        int targetY = 48;
+        copyMirroredArea(image, sourceX + 4, sourceY, 4, targetX + 4, targetY);
+        copyMirroredArea(image, sourceX + 8, sourceY, 4, targetX + 8, targetY);
+        copyMirroredArea(image, sourceX, sourceY + 4, 12, targetX + 8, targetY + 4);
+        copyMirroredArea(image, sourceX + 4, sourceY + 4, 12, targetX + 4, targetY + 4);
+        copyMirroredArea(image, sourceX + 8, sourceY + 4, 12, targetX, targetY + 4);
+        copyMirroredArea(image, sourceX + 12, sourceY + 4, 12, targetX + 12, targetY + 4);
     }
 
-    private void copyMirroredArea(BufferedImage image, int sourceX, int sourceY, int width, int height, int targetX, int targetY) {
-        for (int x = 0; x < width; x++) {
+    private void copyMirroredArea(BufferedImage image, int sourceX, int sourceY, int height, int targetX, int targetY) {
+        for (int x = 0; x < 4; x++) {
             for (int y = 0; y < height; y++) {
-                int color = image.getRGB(sourceX + (width - 1 - x), sourceY + y);
+                int color = image.getRGB(sourceX + (3 - x), sourceY + y);
                 image.setRGB(targetX + x, targetY + y, color);
             }
         }

@@ -12,7 +12,7 @@ class PlayerSkinTextureHelperTest {
     @Test
     void createsProfileWithMineSkinTextureUrl() {
         String textureUrl = "https://textures.minecraft.net/texture/cached";
-        var profile = PlayerSkinTextureHelper.createProfile("emote", textureUrl).partialProfile();
+        var profile = PlayerSkinTextureHelper.createProfile(textureUrl).partialProfile();
         String encodedTextures = profile.properties().get("textures").iterator().next().value();
         String decodedTextures = new String(Base64.getDecoder().decode(encodedTextures), StandardCharsets.UTF_8);
 

@@ -202,7 +202,7 @@ public class ConfigManager {
         return new Config(
             readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
             readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
-            readString(object, "mineskin_api_key", defaultConfig.mineSkinApiKey()),
+            readMineSkinApiKey(object, defaultConfig.mineSkinApiKey()),
             readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds())
         );
     }
@@ -262,8 +262,8 @@ public class ConfigManager {
         return new PackConfig(disabled, permissions);
     }
 
-    private String readString(JsonObject object, String key, String defaultValue) {
-        JsonElement element = object.get(key);
+    private String readMineSkinApiKey(JsonObject object, String defaultValue) {
+        JsonElement element = object.get("mineskin_api_key");
         if (element == null || element.isJsonNull()) {
             return defaultValue;
         }

@@ -158,7 +158,7 @@ final class MineSkinApiClient {
             .orElse(0L);
         JsonObject rateLimit = findObject(responseBody, "rateLimit");
         JsonObject next = findObject(rateLimit, "next");
-        long bodyDelay = readNonNegativeLong(next, "relative");
+        long bodyDelay = readRelativeDelay(next);
         return Math.max(this.jobPollIntervalMillis, Math.max(headerDelay, bodyDelay));
     }
 
@@ -260,11 +260,11 @@ final class MineSkinApiClient {
         return value.isEmpty() ? null : value;
     }
 
-    private long readNonNegativeLong(JsonObject parent, String key) {
+    private long readRelativeDelay(JsonObject parent) {
         if (parent == null) {
             return 0L;
         }
-        JsonElement element = parent.get(key);
+        JsonElement element = parent.get("relative");
         if (element == null || element.isJsonNull()) {
             return 0L;
         }
