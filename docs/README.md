@@ -23,7 +23,7 @@ The mod is designed around server-side playback. Vanilla clients can browse and 
 | `/emote reload`              | Admin       | Reloads the configuration and emote datapacks.                                                           |
 | V key                        | Client mod  | Opens the emote wheel. Release the key toward a slot to play its emote.                                  |
 
-Basic emote commands do not require permission. An individual emote can require a permission through `packs.json`.
+Basic emote commands do not require permission. Playable emotes can be grouped by permission through `packs.json`.
 
 ### Playback behavior
 
@@ -145,38 +145,24 @@ Without an API key, or if the player's skin cannot be prepared, the default skin
 
 ### `packs.json`
 
-Emotes can be enabled or disabled by namespace. Play permissions define which namespaces each player can use.
+All discovered emotes are enabled by default. `disabled` lists the namespaces that should not be loaded, and play permissions define which enabled namespaces each player can use.
 
 ```json
 {
-  "packs": {
-    "hello": {
-      "enabled": true
-    },
-    "vip_dance": {
-      "enabled": true
-    },
-    "disabled_emote": {
-      "enabled": false
-    }
-  },
+  "disabled": [
+    "disabled_emote"
+  ],
   "permissions": {
     "default": [
-      "hello"
-    ],
-    "emote.pack.vip": [
-      "vip_dance"
-    ],
-    "emote.pack.admin": [
       "*"
     ]
   }
 }
 ```
 
-`default` lists the emotes available to every player. Other keys are permission nodes, and a player can use the combined namespaces granted by all of their permissions. `*` grants every enabled emote. An emote that is not granted by `default`, a matching permission, or `*` cannot be played. A disabled emote cannot be played regardless of permission.
+`default` lists the emotes available to every player and contains `*` in a newly generated configuration, so installing a datapack makes its emotes immediately playable. Other keys are permission nodes, and a player can use the combined namespaces granted by all of their permissions. `*` grants every enabled emote. An emote that is not granted by `default`, a matching permission, or `*` cannot be played. A namespace in `disabled` cannot be played regardless of permission.
 
-Run `/emote reload` after editing the file manually. `/emote enable` and `/emote disable` only update the namespace's enabled state and preserve all permission groups.
+Run `/emote reload` after editing the file manually. `/emote enable` removes a namespace from `disabled`, while `/emote disable` adds it. Both commands preserve all permission groups.
 
 ## Troubleshooting
 

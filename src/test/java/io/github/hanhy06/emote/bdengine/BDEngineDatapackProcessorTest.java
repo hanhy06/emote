@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.bdengine;
 
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.PackConfig;
-import io.github.hanhy06.emote.config.data.PackOverride;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
@@ -14,7 +13,6 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -86,9 +84,10 @@ class BDEngineDatapackProcessorTest {
         createDatapack(datapackDirPath.resolve("beta_pack"), "bow_pack");
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
-        LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
-        packs.put("bow_pack", new PackOverride(false));
-        List<String> packIds = processor.findEmotePackIds(datapackDirPath, new PackConfig(packs, Map.of()));
+        List<String> packIds = processor.findEmotePackIds(
+            datapackDirPath,
+            new PackConfig(List.of("bow_pack"), Map.of())
+        );
 
         assertEquals(List.of("file/alpha_pack"), packIds);
     }

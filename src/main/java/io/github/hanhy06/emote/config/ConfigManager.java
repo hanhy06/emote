@@ -8,7 +8,6 @@ import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.PackConfig;
-import io.github.hanhy06.emote.config.data.PackOverride;
 import io.github.hanhy06.emote.io.JsonFileStore;
 
 import java.io.IOException;
@@ -16,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -121,9 +121,13 @@ public class ConfigManager {
             throw new IllegalArgumentException("pack namespace must not be blank");
         }
 
-        LinkedHashMap<String, PackOverride> nextPacks = new LinkedHashMap<>(this.packConfig.packs());
-        nextPacks.put(normalizedNamespace, new PackOverride(enabled));
-        PackConfig nextPackConfig = new PackConfig(nextPacks, this.packConfig.permissions());
+        LinkedHashSet<String> nextDisabled = new LinkedHashSet<>(this.packConfig.disabled());
+        if (enabled) {
+            nextDisabled.remove(normalizedNamespace);
+        } else {
+            nextDisabled.add(normalizedNamespace);
+        }
+        PackConfig nextPackConfig = new PackConfig(List.copyOf(nextDisabled), this.packConfig.permissions());
 
         if (!writeJsonFile(PACK_FILE_NAME, createPackConfigJson(nextPackConfig))) {
             return false;
@@ -197,14 +201,9 @@ public class ConfigManager {
 
     private JsonObject createPackConfigJson(PackConfig packConfig) {
         JsonObject object = new JsonObject();
-        JsonObject packsJson = new JsonObject();
-        for (Map.Entry<String, PackOverride> entry : packConfig.packs().entrySet()) {
-            JsonObject overrideJson = new JsonObject();
-            overrideJson.addProperty("enabled", entry.getValue().enabled());
-            packsJson.add(entry.getKey(), overrideJson);
-        }
-
-        object.add("packs", packsJson);
+        JsonArray disabledJson = new JsonArray();
+        packConfig.disabled().forEach(disabledJson::add);
+        object.add("disabled", disabledJson);
         JsonObject permissionsJson = new JsonObject();
         for (Map.Entry<String, List<String>> entry : packConfig.permissions().entrySet()) {
             JsonArray namespacesJson = new JsonArray();
@@ -234,20 +233,22 @@ public class ConfigManager {
             return null;
         }
 
-        JsonElement packsElement = object.get("packs");
-        if (packsElement != null && !packsElement.isJsonNull() && !packsElement.isJsonObject()) {
+        JsonElement disabledElement = object.get("disabled");
+        if (disabledElement != null && !disabledElement.isJsonNull() && !disabledElement.isJsonArray()) {
             return null;
         }
 
-        LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
-        if (packsElement != null && !packsElement.isJsonNull()) {
-            for (Map.Entry<String, JsonElement> entry : packsElement.getAsJsonObject().entrySet()) {
-                String namespace = normalizeRequiredValue(entry.getKey());
-                if (namespace == null || packs.containsKey(namespace) || !entry.getValue().isJsonObject()) {
+        List<String> disabled = new ArrayList<>();
+        if (disabledElement != null && !disabledElement.isJsonNull()) {
+            for (JsonElement namespaceElement : disabledElement.getAsJsonArray()) {
+                if (!namespaceElement.isJsonPrimitive() || !namespaceElement.getAsJsonPrimitive().isString()) {
                     return null;
                 }
-                JsonObject overrideObject = entry.getValue().getAsJsonObject();
-                packs.put(namespace, new PackOverride(readEnabled(overrideObject)));
+                String namespace = normalizeRequiredValue(namespaceElement.getAsString());
+                if (namespace == null) {
+                    return null;
+                }
+                disabled.add(namespace);
             }
         }
 
@@ -279,7 +280,7 @@ public class ConfigManager {
             }
         }
 
-        return new PackConfig(packs, permissions);
+        return new PackConfig(disabled, permissions);
     }
 
     private String readString(JsonObject object, String key, String defaultValue) {
@@ -298,15 +299,6 @@ public class ConfigManager {
         }
 
         return element.getAsInt();
-    }
-
-    private boolean readEnabled(JsonObject object) {
-        JsonElement element = object.get("enabled");
-        if (element == null || element.isJsonNull()) {
-            return true;
-        }
-
-        return element.getAsBoolean();
     }
 
     private void logLoaded(String fileName) {

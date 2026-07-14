@@ -16,7 +16,7 @@ class PermissionServiceTest {
     void defaultAllowsOnlyConfiguredNamespaces() {
         PermissionService service = new PermissionService();
         service.onPackConfigReload(new PackConfig(
-            Map.of(),
+            List.of(),
             Map.of("default", List.of("wave_pack"))
         ));
 
@@ -28,7 +28,7 @@ class PermissionServiceTest {
     void wildcardAllowsEveryNamespaceForPermission() {
         PermissionService service = new PermissionService();
         service.onPackConfigReload(new PackConfig(
-            Map.of(),
+            List.of(),
             Map.of(
                 "default", List.of(),
                 "emote.pack.vip", List.of("bow_pack"),
@@ -43,17 +43,26 @@ class PermissionServiceTest {
     @Test
     void emptyPermissionsDenyEveryNamespace() {
         PermissionService service = new PermissionService();
-        service.onPackConfigReload(PackConfig.createDefault());
+        service.onPackConfigReload(new PackConfig(List.of(), Map.of()));
 
         assertFalse(service.isDefaultAllowed("wave_pack"));
         assertTrue(service.findPermissions("wave_pack").isEmpty());
     }
 
     @Test
+    void defaultConfigAllowsEveryNamespace() {
+        PermissionService service = new PermissionService();
+        service.onPackConfigReload(PackConfig.createDefault());
+
+        assertTrue(service.isDefaultAllowed("wave_pack"));
+        assertTrue(service.canPlay(null, "wave_pack"));
+    }
+
+    @Test
     void canPlayCombinesDefaultAndGrantedPermissionGroups() {
         PermissionService service = new PermissionService((ignored, permission) -> permission.equals("emote.pack.vip"));
         service.onPackConfigReload(new PackConfig(
-            Map.of(),
+            List.of(),
             Map.of(
                 "default", List.of("wave_pack"),
                 "emote.pack.vip", List.of("bow_pack"),
@@ -70,7 +79,7 @@ class PermissionServiceTest {
     void grantedWildcardPermissionAllowsEveryNamespace() {
         PermissionService service = new PermissionService((ignored, permission) -> permission.equals("emote.pack.admin"));
         service.onPackConfigReload(new PackConfig(
-            Map.of(),
+            List.of(),
             Map.of("emote.pack.admin", List.of("*"))
         ));
 

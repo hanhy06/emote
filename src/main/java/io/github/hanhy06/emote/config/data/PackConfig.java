@@ -6,16 +6,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public record PackConfig(Map<String, PackOverride> packs, Map<String, List<String>> permissions) {
+public record PackConfig(List<String> disabled, Map<String, List<String>> permissions) {
     public PackConfig {
-        LinkedHashMap<String, PackOverride> copiedPacks = new LinkedHashMap<>(Objects.requireNonNull(packs, "packs"));
-        for (Map.Entry<String, PackOverride> entry : copiedPacks.entrySet()) {
-            if (entry.getKey() == null || entry.getKey().isBlank()) {
-                throw new IllegalArgumentException("pack namespace must not be blank");
-            }
-            Objects.requireNonNull(entry.getValue(), "pack override");
+        List<String> copiedDisabled = List.copyOf(Objects.requireNonNull(disabled, "disabled"));
+        if (copiedDisabled.stream().anyMatch(namespace -> namespace == null || namespace.isBlank())) {
+            throw new IllegalArgumentException("disabled namespace must not be blank");
         }
-        packs = Collections.unmodifiableMap(copiedPacks);
+        disabled = copiedDisabled.stream().map(String::trim).distinct().toList();
 
         LinkedHashMap<String, List<String>> copiedPermissions = new LinkedHashMap<>();
         for (Map.Entry<String, List<String>> entry : Objects.requireNonNull(permissions, "permissions").entrySet()) {
@@ -34,15 +31,10 @@ public record PackConfig(Map<String, PackOverride> packs, Map<String, List<Strin
     }
 
     public static PackConfig createDefault() {
-        return new PackConfig(Map.of(), Map.of("default", List.of()));
-    }
-
-    public PackOverride findOverride(String namespace) {
-        return packs.get(namespace);
+        return new PackConfig(List.of(), Map.of("default", List.of("*")));
     }
 
     public boolean isEnabled(String namespace) {
-        PackOverride packOverride = findOverride(namespace);
-        return packOverride == null || packOverride.enabled();
+        return !disabled.contains(namespace);
     }
 }

@@ -27,7 +27,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 import java.util.List;
-import java.util.Map;
 
 public final class RootCommand {
     private final EmoteRegistry emoteRegistry;
@@ -302,10 +301,7 @@ public final class RootCommand {
     }
 
     private List<String> getDisabledNamespaces() {
-        return this.configManager.getPackConfig().packs().entrySet().stream()
-            .filter(entry -> !entry.getValue().enabled())
-            .map(Map.Entry::getKey)
-            .toList();
+        return this.configManager.getPackConfig().disabled();
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {

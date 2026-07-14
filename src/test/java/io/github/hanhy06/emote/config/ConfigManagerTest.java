@@ -1,13 +1,13 @@
 package io.github.hanhy06.emote.config;
 
 import io.github.hanhy06.emote.config.data.PackConfig;
-import io.github.hanhy06.emote.config.data.PackOverride;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,24 +24,21 @@ class ConfigManagerTest {
 
         Path packsPath = tempDir.resolve("emote").resolve("packs.json");
         assertTrue(Files.exists(packsPath));
-        assertTrue(Files.readString(packsPath).contains("\"packs\""));
+        assertTrue(Files.readString(packsPath).contains("\"disabled\""));
         assertTrue(Files.readString(packsPath).contains("\"permissions\""));
         assertTrue(Files.readString(packsPath).contains("\"default\""));
+        assertTrue(Files.readString(packsPath).contains("\"*\""));
         assertTrue(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("\"schema_version\": 1"));
         assertFalse(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("emote_permission"));
         assertEquals(1, manager.getConfig().schemaVersion());
     }
 
     @Test
-    void readsEnabledOverridesAndPermissionGroups(@TempDir Path tempDir) throws IOException {
+    void readsDisabledNamespacesAndPermissionGroups(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
             {
-              "packs": {
-                "wave_pack": {
-                  "enabled": false
-                }
-              },
+              "disabled": ["wave_pack"],
               "permissions": {
                 "default": ["wave_pack"],
                 "emote.pack.vip": ["*"]
@@ -57,11 +54,11 @@ class ConfigManagerTest {
     }
 
     @Test
-    void updatesPackEnabledStateAndPreservesPermissionGroups(@TempDir Path tempDir) throws IOException {
+    void updatesDisabledNamespacesAndPreservesPermissionGroups(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
             {
-              "packs":{"wave_pack":{"enabled":true}},
+              "disabled": [],
               "permissions":{"emote.pack.vip":["wave_pack"]}
             }
             """);
@@ -69,24 +66,26 @@ class ConfigManagerTest {
 
         assertTrue(manager.setPackEnabled("wave_pack", false));
 
-        PackOverride packOverride = manager.getPackConfig().findOverride("wave_pack");
-        assertFalse(packOverride.enabled());
+        assertEquals(List.of("wave_pack"), manager.getPackConfig().disabled());
         assertEquals(List.of("wave_pack"), manager.getPackConfig().permissions().get("emote.pack.vip"));
         String savedConfig = Files.readString(tempDir.resolve("emote").resolve("packs.json"));
-        assertTrue(savedConfig.contains("\"enabled\": false"));
+        assertTrue(savedConfig.contains("\"disabled\""));
         assertTrue(savedConfig.contains("\"emote.pack.vip\""));
         assertTrue(savedConfig.contains("\"wave_pack\""));
+
+        assertTrue(manager.setPackEnabled("wave_pack", true));
+        assertTrue(manager.getPackConfig().disabled().isEmpty());
     }
 
     @Test
     void rejectsBlankNamespace(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-            {"packs":{"   ":{"enabled":true}}}
+            {"disabled":["   "]}
             """);
 
         assertFalse(manager.readPackConfig());
-        assertTrue(manager.getPackConfig().packs().isEmpty());
+        assertTrue(manager.getPackConfig().disabled().isEmpty());
     }
 
     @Test
@@ -105,11 +104,11 @@ class ConfigManagerTest {
     void keepsCurrentPackConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-            {"packs":{"wave_pack":{"enabled":{"invalid":true}}}}
+            {"disabled":{"invalid":true}}
             """);
 
         assertFalse(manager.readPackConfig());
-        assertTrue(manager.getPackConfig().packs().isEmpty());
+        assertTrue(manager.getPackConfig().disabled().isEmpty());
     }
 
     @Test
@@ -124,20 +123,19 @@ class ConfigManagerTest {
     }
 
     @Test
-    void packConfigCopiesAndProtectsOverrides() {
-        LinkedHashMap<String, PackOverride> source = new LinkedHashMap<>();
-        source.put("wave", new PackOverride(true));
+    void packConfigCopiesAndProtectsValues() {
+        ArrayList<String> disabled = new ArrayList<>(List.of("wave"));
         LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
         permissions.put("default", List.of("wave"));
-        PackConfig config = new PackConfig(source, permissions);
+        PackConfig config = new PackConfig(disabled, permissions);
 
-        source.clear();
+        disabled.clear();
         permissions.clear();
 
-        assertTrue(config.isEnabled("wave"));
-        assertEquals(1, config.packs().size());
+        assertFalse(config.isEnabled("wave"));
+        assertEquals(List.of("wave"), config.disabled());
         assertEquals(Map.of("default", List.of("wave")), config.permissions());
-        assertThrows(UnsupportedOperationException.class, () -> config.packs().put("bow", new PackOverride(true)));
+        assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("bow"));
         assertThrows(UnsupportedOperationException.class, () -> config.permissions().put("vip", List.of("bow")));
     }
 }
