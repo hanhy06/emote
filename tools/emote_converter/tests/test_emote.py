@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from docs.emote import (
+from tools.emote_converter.emote import (
     EmoteTarget,
     PlayerHeadPart,
     Vector3,

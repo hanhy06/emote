@@ -3,7 +3,7 @@ import unittest
 import zipfile
 from pathlib import Path
 
-from docs.emote_pack_io import find_pack_root, get_input_stem, prepare_work_dir, write_zip
+from tools.emote_converter.emote_pack_io import find_pack_root, get_input_stem, prepare_work_dir, write_zip
 
 
 class EmotePackIoTest(unittest.TestCase):

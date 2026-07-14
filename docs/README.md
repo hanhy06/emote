@@ -21,10 +21,10 @@ The mod is designed with server-side use in mind. Its main feature, emote playba
 
 ## Adding Emotes
 
-BD Engine datapack ZIP files or folders can be converted with `docs/emote.py` included in the repository.
+BD Engine datapack ZIP files or folders can be converted with `tools/emote_converter/emote.py` included in the repository.
 
 ```powershell
-python docs\emote.py path\to\project.zip
+python tools\emote_converter\emote.py path\to\project.zip
 ```
 
 The script adds Emote metadata and, by default, player skin-part markers to the BD Engine datapack, then creates an `emote.<name>.zip` file. It also normalizes BDEngine's internal function and entity-tag prefix to the datapack namespace. Player heads that are not part of the detected humanoid are left unchanged. Place the generated file in the world's `datapacks` directory and run `/emote reload` to register it.
@@ -34,7 +34,7 @@ If one BDEngine project contains multiple `a/<animation>/play_anim_loop` functio
 Multiple emotes can be combined into one datapack. Each input must use a different namespace and command name.
 
 ```powershell
-python docs\emote.py `
+python tools\emote_converter\emote.py `
   --bundle-name basic `
   path\to\wave.zip `
   path\to\bow.zip
@@ -76,7 +76,7 @@ Valid markers are `emote:head`, `emote:body`, `emote:left_arm`, `emote:right_arm
 The display name, description, and command name can also be specified manually.
 
 ```powershell
-python docs\emote.py `
+python tools\emote_converter\emote.py `
   --name "Hello" `
   --description "Wave hello." `
   --command-name hello `
