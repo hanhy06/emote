@@ -16,6 +16,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -86,8 +87,8 @@ class BDEngineDatapackProcessorTest {
 
         BDEngineDatapackProcessor processor = new BDEngineDatapackProcessor(new ConfigManager(tempDir), new EmoteRegistry());
         LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
-        packs.put("bow_pack", new PackOverride(false, ""));
-        List<String> packIds = processor.findEmotePackIds(datapackDirPath, new PackConfig(packs));
+        packs.put("bow_pack", new PackOverride(false));
+        List<String> packIds = processor.findEmotePackIds(datapackDirPath, new PackConfig(packs, Map.of()));
 
         assertEquals(List.of("file/alpha_pack"), packIds);
     }

@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
@@ -121,10 +122,8 @@ public class ConfigManager {
         }
 
         LinkedHashMap<String, PackOverride> nextPacks = new LinkedHashMap<>(this.packConfig.packs());
-        PackOverride currentOverride = nextPacks.get(normalizedNamespace);
-        String permission = currentOverride == null ? "" : currentOverride.permission();
-        nextPacks.put(normalizedNamespace, new PackOverride(enabled, permission));
-        PackConfig nextPackConfig = new PackConfig(nextPacks);
+        nextPacks.put(normalizedNamespace, new PackOverride(enabled));
+        PackConfig nextPackConfig = new PackConfig(nextPacks, this.packConfig.permissions());
 
         if (!writeJsonFile(PACK_FILE_NAME, createPackConfigJson(nextPackConfig))) {
             return false;
@@ -202,11 +201,17 @@ public class ConfigManager {
         for (Map.Entry<String, PackOverride> entry : packConfig.packs().entrySet()) {
             JsonObject overrideJson = new JsonObject();
             overrideJson.addProperty("enabled", entry.getValue().enabled());
-            overrideJson.addProperty("permission", entry.getValue().permission());
             packsJson.add(entry.getKey(), overrideJson);
         }
 
         object.add("packs", packsJson);
+        JsonObject permissionsJson = new JsonObject();
+        for (Map.Entry<String, List<String>> entry : packConfig.permissions().entrySet()) {
+            JsonArray namespacesJson = new JsonArray();
+            entry.getValue().forEach(namespacesJson::add);
+            permissionsJson.add(entry.getKey(), namespacesJson);
+        }
+        object.add("permissions", permissionsJson);
         return object;
     }
 
@@ -230,27 +235,51 @@ public class ConfigManager {
         }
 
         JsonElement packsElement = object.get("packs");
-        if (packsElement == null || packsElement.isJsonNull()) {
-            return PackConfig.createDefault();
-        }
-        if (!packsElement.isJsonObject()) {
+        if (packsElement != null && !packsElement.isJsonNull() && !packsElement.isJsonObject()) {
             return null;
         }
 
         LinkedHashMap<String, PackOverride> packs = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : packsElement.getAsJsonObject().entrySet()) {
-            String namespace = normalizeRequiredValue(entry.getKey());
-            if (namespace == null || packs.containsKey(namespace) || !entry.getValue().isJsonObject()) {
-                return null;
+        if (packsElement != null && !packsElement.isJsonNull()) {
+            for (Map.Entry<String, JsonElement> entry : packsElement.getAsJsonObject().entrySet()) {
+                String namespace = normalizeRequiredValue(entry.getKey());
+                if (namespace == null || packs.containsKey(namespace) || !entry.getValue().isJsonObject()) {
+                    return null;
+                }
+                JsonObject overrideObject = entry.getValue().getAsJsonObject();
+                packs.put(namespace, new PackOverride(readEnabled(overrideObject)));
             }
-            JsonObject overrideObject = entry.getValue().getAsJsonObject();
-            packs.put(namespace, new PackOverride(
-                readEnabled(overrideObject),
-                readString(overrideObject, "permission", "")
-            ));
         }
 
-        return new PackConfig(packs);
+        JsonElement permissionsElement = object.get("permissions");
+        if (permissionsElement != null && !permissionsElement.isJsonNull() && !permissionsElement.isJsonObject()) {
+            return null;
+        }
+
+        LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
+        if (permissionsElement != null && !permissionsElement.isJsonNull()) {
+            for (Map.Entry<String, JsonElement> entry : permissionsElement.getAsJsonObject().entrySet()) {
+                String permission = normalizeRequiredValue(entry.getKey());
+                if (permission == null || permissions.containsKey(permission) || !entry.getValue().isJsonArray()) {
+                    return null;
+                }
+
+                List<String> namespaces = new ArrayList<>();
+                for (JsonElement namespaceElement : entry.getValue().getAsJsonArray()) {
+                    if (!namespaceElement.isJsonPrimitive() || !namespaceElement.getAsJsonPrimitive().isString()) {
+                        return null;
+                    }
+                    String namespace = normalizeRequiredValue(namespaceElement.getAsString());
+                    if (namespace == null) {
+                        return null;
+                    }
+                    namespaces.add(namespace);
+                }
+                permissions.put(permission, namespaces);
+            }
+        }
+
+        return new PackConfig(packs, permissions);
     }
 
     private String readString(JsonObject object, String key, String defaultValue) {

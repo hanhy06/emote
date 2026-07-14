@@ -145,28 +145,38 @@ Without an API key, or if the player's skin cannot be prepared, the default skin
 
 ### `packs.json`
 
-Emotes can be enabled or disabled by namespace, with an optional additional permission.
+Emotes can be enabled or disabled by namespace. Play permissions define which namespaces each player can use.
 
 ```json
 {
   "packs": {
     "hello": {
-      "enabled": true,
-      "permission": ""
+      "enabled": true
     },
     "vip_dance": {
-      "enabled": true,
-      "permission": "emote.pack.vip"
+      "enabled": true
     },
     "disabled_emote": {
-      "enabled": false,
-      "permission": ""
+      "enabled": false
     }
+  },
+  "permissions": {
+    "default": [
+      "hello"
+    ],
+    "emote.pack.vip": [
+      "vip_dance"
+    ],
+    "emote.pack.admin": [
+      "*"
+    ]
   }
 }
 ```
 
-Emotes not listed in this file are enabled by default and do not require an additional permission. Run `/emote reload` after editing the file manually. `/emote enable` and `/emote disable` update this file automatically while preserving an existing permission override.
+`default` lists the emotes available to every player. Other keys are permission nodes, and a player can use the combined namespaces granted by all of their permissions. `*` grants every enabled emote. An emote that is not granted by `default`, a matching permission, or `*` cannot be played. A disabled emote cannot be played regardless of permission.
+
+Run `/emote reload` after editing the file manually. `/emote enable` and `/emote disable` only update the namespace's enabled state and preserve all permission groups.
 
 ## Troubleshooting
 
