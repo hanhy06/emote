@@ -1,18 +1,48 @@
 from __future__ import annotations
 
 import argparse
-import json
 import math
-import shutil
 import re
+import shutil
 import tempfile
-import zipfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+if __package__:
+    from .emote_metadata import (
+        EmoteMetadata,
+        EmoteTarget,
+        create_emote_metadata,
+        sanitize_command_name,
+        write_emote_metadata,
+    )
+    from .emote_pack_io import (
+        create_output_path,
+        create_output_path_for_name,
+        find_pack_root,
+        prepare_work_dir,
+        validate_input_path,
+        write_zip,
+    )
+else:
+    from emote_metadata import (
+        EmoteMetadata,
+        EmoteTarget,
+        create_emote_metadata,
+        sanitize_command_name,
+        write_emote_metadata,
+    )
+    from emote_pack_io import (
+        create_output_path,
+        create_output_path_for_name,
+        find_pack_root,
+        prepare_work_dir,
+        validate_input_path,
+        write_zip,
+    )
 
-EMOTE_META_FILE_NAME = "emote.json"
+
 LEGACY_PACK_META_FILE_NAME = "emote-datapack.json"
 CREATE_FUNCTION_PATTERNS = (
     "data/*/function/_/create.mcfunction",
@@ -78,21 +108,6 @@ class BodyFrame:
         offset_y = coordinates[1] - self.anchor_y
         offset_z = coordinates[2] - self.anchor_z
         return dot_vector(offset_x, offset_y, offset_z, self.local_y_axis_x, self.local_y_axis_y, self.local_y_axis_z)
-
-
-@dataclass(frozen=True)
-class EmoteMetadata:
-    name: str
-    description: str
-    command_name: str
-    entrypoint: str
-    hide_player: bool
-
-
-@dataclass(frozen=True)
-class EmoteTarget:
-    namespace: str
-    entrypoint: str
 
 
 def main() -> int:
@@ -305,51 +320,6 @@ def split_animation_namespaces(
         shutil.rmtree(namespace_path)
 
     return targets
-
-
-def validate_input_path(input_path: Path) -> None:
-    if not input_path.exists():
-        raise SystemExit("The input path does not exist.")
-    if input_path.is_file() and input_path.suffix.lower() != ".zip":
-        raise SystemExit("The input file must be a .zip.")
-    if not input_path.is_file() and not input_path.is_dir():
-        raise SystemExit("The input path must be a .zip file or folder.")
-
-
-def create_output_path(input_path: Path, output_dir: Path | None) -> Path:
-    return create_output_path_for_name(get_input_stem(input_path), input_path, output_dir)
-
-
-def create_output_path_for_name(name: str, input_path: Path, output_dir: Path | None) -> Path:
-    parent = output_dir.resolve() if output_dir is not None else input_path.parent
-    parent.mkdir(parents=True, exist_ok=True)
-    return parent / f"emote.{name}.zip"
-
-
-def prepare_work_dir(input_path: Path, temp_dir: Path) -> Path:
-    work_dir = temp_dir / "work"
-    work_dir.mkdir(parents=True, exist_ok=True)
-    if input_path.is_dir():
-        copy_dir = work_dir / input_path.name
-        shutil.copytree(input_path, copy_dir)
-        return copy_dir
-
-    extract_dir = work_dir / "extract"
-    extract_dir.mkdir(parents=True, exist_ok=True)
-    with zipfile.ZipFile(input_path) as input_zip_file:
-        input_zip_file.extractall(extract_dir)
-    return extract_dir
-
-
-def find_pack_root(extract_dir: Path) -> Path:
-    pack_meta_paths = sorted(
-        extract_dir.rglob("pack.mcmeta"),
-        key=lambda path: (len(path.parts), str(path).lower()),
-    )
-    if not pack_meta_paths:
-        raise SystemExit("pack.mcmeta was not found inside the input path.")
-
-    return pack_meta_paths[0].parent
 
 
 def find_create_function_paths(pack_root: Path) -> list[Path]:
@@ -945,97 +915,12 @@ def find_matching_brace(value: str, open_index: int) -> int:
     raise SystemExit("A closing brace could not be found.")
 
 
-def create_emote_metadata(
-    pack_root: Path,
-    input_path: Path,
-    targets: list[EmoteTarget],
-    args: argparse.Namespace,
-) -> dict[str, EmoteMetadata]:
-    metadata: dict[str, EmoteMetadata] = {}
-    multiple_emotes = len(targets) > 1
-    for index, target in enumerate(targets, start=1):
-        existing_meta = load_existing_meta(pack_root, target.namespace)
-        if multiple_emotes:
-            name = f"{args.name} {index}" if args.name else target.namespace
-            command_name = f"{sanitize_command_name(args.command_name)}_{index}" if args.command_name else target.namespace
-        else:
-            name = args.name or str(existing_meta.get("name") or prettify_name(get_input_stem(input_path)))
-            command_name = sanitize_command_name(args.command_name or str(
-                existing_meta.get("command_name") or target.namespace
-            ))
-
-        description = args.description or str(existing_meta.get("description") or f"{name} emote.")
-        metadata[target.namespace] = EmoteMetadata(
-            name=name,
-            description=description,
-            command_name=command_name,
-            entrypoint=target.entrypoint,
-            hide_player=args.hide_player,
-        )
-    return metadata
-
-
-def load_existing_meta(pack_root: Path, namespace: str) -> dict[str, object]:
-    meta_path = pack_root / "data" / namespace / EMOTE_META_FILE_NAME
-    if not meta_path.exists():
-        return {}
-    try:
-        loaded_meta = json.loads(meta_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return {}
-    if not isinstance(loaded_meta, dict):
-        return {}
-    return loaded_meta
-
-
-def get_input_stem(input_path: Path) -> str:
-    stem = input_path.stem if input_path.is_file() else input_path.name
-    if stem.startswith("emote."):
-        stem = stem[6:]
-    return stem
-
-
 def validate_entrypoint(pack_root: Path, namespaces: list[str], entrypoint: str) -> None:
     function_folders = ("function", "functions")
     for namespace in namespaces:
         if any((pack_root / "data" / namespace / folder / f"{entrypoint}.mcfunction").is_file() for folder in function_folders):
             continue
         raise SystemExit(f"Entrypoint was not found for namespace '{namespace}': {entrypoint}")
-
-
-def write_emote_metadata(pack_root: Path, metadata: dict[str, EmoteMetadata]) -> None:
-    for namespace, emote_meta in metadata.items():
-        meta = {
-            "schema_version": 3,
-            "name": emote_meta.name,
-            "description": emote_meta.description,
-            "command_name": emote_meta.command_name,
-            "entrypoint": emote_meta.entrypoint,
-            "hide_player": emote_meta.hide_player,
-        }
-        meta_path = pack_root / "data" / namespace / EMOTE_META_FILE_NAME
-        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
-
-
-def prettify_name(value: str) -> str:
-    prettified_value = value.replace("_", " ").replace("-", " ").strip()
-    return prettified_value or value
-
-
-def sanitize_command_name(value: str) -> str:
-    command_name = re.sub(r"[^a-z0-9_-]+", "_", value.lower()).strip("_")
-    return command_name or "emote"
-
-
-def write_zip(pack_root: Path, output_path: Path) -> None:
-    if output_path.exists():
-        output_path.unlink()
-
-    with zipfile.ZipFile(output_path, "w", compression=zipfile.ZIP_DEFLATED) as output_zip_file:
-        for path in sorted(pack_root.rglob("*")):
-            if path.is_dir():
-                continue
-            output_zip_file.write(path, arcname=path.relative_to(pack_root))
 
 
 if __name__ == "__main__":
