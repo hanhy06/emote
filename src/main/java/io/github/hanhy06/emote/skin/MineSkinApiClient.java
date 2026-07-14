@@ -23,7 +23,6 @@ public class MineSkinApiClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
     private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
-    private static final long MAX_RETRY_DELAY_MILLIS = 60_000L;
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient = HttpClient.newBuilder()
@@ -143,8 +142,7 @@ public class MineSkinApiClient {
         JsonObject rateLimit = findObject(responseBody, "rateLimit");
         JsonObject next = findObject(rateLimit, "next");
         long bodyDelay = readLong(next, "relative", 0L);
-        long delay = Math.max(this.jobPollIntervalMillis, Math.max(headerDelay, bodyDelay));
-        return Math.min(delay, MAX_RETRY_DELAY_MILLIS);
+        return Math.max(this.jobPollIntervalMillis, Math.max(headerDelay, bodyDelay));
     }
 
     private JsonObject parseJsonObject(String body) throws IOException {
