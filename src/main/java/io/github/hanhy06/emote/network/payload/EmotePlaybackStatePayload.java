@@ -6,6 +6,7 @@ import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
+import org.jspecify.annotations.NonNull;
 
 public record EmotePlaybackStatePayload(boolean active) implements CustomPacketPayload {
     public static final Type<EmotePlaybackStatePayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Emote.MOD_ID, "playback_state"));
@@ -16,7 +17,7 @@ public record EmotePlaybackStatePayload(boolean active) implements CustomPacketP
     );
 
     @Override
-    public Type<EmotePlaybackStatePayload> type() {
+    public @NonNull Type<EmotePlaybackStatePayload> type() {
         return TYPE;
     }
 }

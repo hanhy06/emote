@@ -17,7 +17,8 @@ abstract class EntityMixin {
         boolean sendEventAndTriggers,
         CallbackInfoReturnable<Boolean> callbackInfo
     ) {
-        if (callbackInfo.getReturnValueZ() && (Object) this instanceof ServerPlayer player) {
+        Entity entity = (Entity) (Object) this;
+        if (callbackInfo.getReturnValueZ() && entity instanceof ServerPlayer player) {
             PlaybackMountCallback.EVENT.invoker().afterMount(player);
         }
     }
