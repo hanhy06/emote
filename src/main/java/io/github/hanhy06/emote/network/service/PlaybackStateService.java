@@ -1,18 +1,22 @@
 package io.github.hanhy06.emote.network.service;
 
 import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
+import io.github.hanhy06.emote.playback.PlaybackStateListener;
+import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
-public class PlaybackStateService {
+public class PlaybackStateService implements PlaybackStateListener {
     private static final EmotePlaybackStatePayload ACTIVE_PAYLOAD = new EmotePlaybackStatePayload(true);
     private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false);
 
-    public void syncActive(ServerPlayer player) {
+    @Override
+    public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
         sync(player, ACTIVE_PAYLOAD);
     }
 
-    public void syncInactive(ServerPlayer player) {
+    @Override
+    public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
         sync(player, INACTIVE_PAYLOAD);
     }
 

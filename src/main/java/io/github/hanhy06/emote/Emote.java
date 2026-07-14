@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.network.EmoteNetworking;
 import io.github.hanhy06.emote.network.service.PlayService;
 import io.github.hanhy06.emote.network.service.PlaybackStateService;
-import io.github.hanhy06.emote.network.service.PlaybackStateSyncListener;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.HeldItemVisibilityService;
@@ -41,7 +40,6 @@ public class Emote implements ModInitializer {
     private final PlaybackManager playbackManager = new PlaybackManager(this.skinManager);
     private final HeldItemVisibilityService heldItemVisibilityService = new HeldItemVisibilityService(this.playbackManager);
     private final PlaybackStateService playbackStateService = new PlaybackStateService();
-    private final PlaybackStateSyncListener playbackStateSyncListener = new PlaybackStateSyncListener(this.playbackStateService);
 
     private final BDEngineDatapackProcessor bdEngineDatapackProcessor = new BDEngineDatapackProcessor(
         this.configManager,
@@ -90,7 +88,7 @@ public class Emote implements ModInitializer {
         this.configManager.readConfig();
         this.configManager.readPackConfig();
 
-        this.playbackManager.addStateListener(this.playbackStateSyncListener);
+        this.playbackManager.addStateListener(this.playbackStateService);
         this.playbackManager.addStateListener(this.heldItemVisibilityService);
         this.heldItemVisibilityService.register();
 
