@@ -15,7 +15,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
-import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -253,7 +252,7 @@ public class PlaybackManager {
             return null;
         }
 
-        alignInstanceWithPlayer(player, rootEntityUuid, instanceEntityUuids);
+        this.entityController.alignInstanceWithPlayer(player, rootEntityUuid, instanceEntityUuids);
 
         ActiveEmote namespaceTimeline = findActiveNamespaceEmote(definition.namespace());
         if (namespaceTimeline == null) {
@@ -406,18 +405,10 @@ public class PlaybackManager {
 
     private void copyAnimationState(ActiveEmote namespaceTimeline, Entity targetRoot) {
         ServerLevel timelineLevel = level(namespaceTimeline);
-        Entity timelineRoot = timelineLevel == null
-            ? null
-            : timelineLevel.getEntity(namespaceTimeline.rootEntityUuid());
-        if (timelineRoot == null || targetRoot == null) {
+        if (timelineLevel == null) {
             return;
         }
-
-        for (String tag : timelineRoot.entityTags()) {
-            if (EmoteDatapackNames.isAnimationTag(tag)) {
-                targetRoot.addTag(tag);
-            }
-        }
+        this.entityController.copyAnimationTags(timelineLevel, namespaceTimeline.rootEntityUuid(), targetRoot);
     }
 
     private ServerLevel level(ActiveEmote activeEmote) {
@@ -437,28 +428,6 @@ public class PlaybackManager {
         }
 
         this.entityController.cleanupNamespaceEntities(player.level(), namespace);
-    }
-
-    private void alignInstanceWithPlayer(
-        ServerPlayer player,
-        UUID rootEntityUuid,
-        Set<UUID> instanceEntityUuids
-    ) {
-        Entity rootEntity = player.level().getEntity(rootEntityUuid);
-        if (rootEntity == null) {
-            return;
-        }
-
-        float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
-        rootEntity.snapTo(player.position(), yaw, 0.0F);
-        rootEntity.teleportTo(player.getX(), player.getY(), player.getZ());
-
-        for (UUID entityUuid : instanceEntityUuids) {
-            Entity entity = player.level().getEntity(entityUuid);
-            if (entity != null && entity != rootEntity) {
-                entity.snapTo(entity.position(), yaw, 0.0F);
-            }
-        }
     }
 
     private void executeFunction(ServerPlayer player, String functionId) {

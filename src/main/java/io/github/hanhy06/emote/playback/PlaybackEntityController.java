@@ -2,6 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.AABB;
@@ -36,6 +38,37 @@ final class PlaybackEntityController {
             }
         }
         return null;
+    }
+
+    void alignInstanceWithPlayer(ServerPlayer player, UUID rootEntityUuid, Set<UUID> instanceEntityUuids) {
+        Entity rootEntity = player.level().getEntity(rootEntityUuid);
+        if (rootEntity == null) {
+            return;
+        }
+
+        float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
+        rootEntity.snapTo(player.position(), yaw, 0.0F);
+        rootEntity.teleportTo(player.getX(), player.getY(), player.getZ());
+
+        for (UUID entityUuid : instanceEntityUuids) {
+            Entity entity = player.level().getEntity(entityUuid);
+            if (entity != null && entity != rootEntity) {
+                entity.snapTo(entity.position(), yaw, 0.0F);
+            }
+        }
+    }
+
+    void copyAnimationTags(ServerLevel sourceLevel, UUID sourceRootEntityUuid, Entity targetRoot) {
+        Entity sourceRoot = sourceLevel.getEntity(sourceRootEntityUuid);
+        if (sourceRoot == null || targetRoot == null) {
+            return;
+        }
+
+        for (String tag : sourceRoot.entityTags()) {
+            if (EmoteDatapackNames.isAnimationTag(tag)) {
+                targetRoot.addTag(tag);
+            }
+        }
     }
 
     void cleanupInstanceEntities(ServerLevel level, Set<UUID> instanceEntityUuids) {
