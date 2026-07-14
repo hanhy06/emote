@@ -75,7 +75,7 @@ public class MineSkinApiClient {
         }
 
         queuedJobListener.accept(jobId);
-        return waitForSkinUrl(normalizedApiKey, jobId);
+        return waitForSkinUrlWithApiKey(normalizedApiKey, jobId);
     }
 
     public String waitForSkinUrl(String apiKey, String jobId) throws IOException, InterruptedException {
@@ -83,6 +83,14 @@ public class MineSkinApiClient {
         if (normalizedApiKey == null) {
             throw new IOException("MineSkin API key is missing");
         }
+        return waitForSkinUrlWithApiKey(normalizedApiKey, jobId);
+    }
+
+    static boolean hasApiKey(String apiKey) {
+        return normalizeApiKey(apiKey) != null;
+    }
+
+    private String waitForSkinUrlWithApiKey(String apiKey, String jobId) throws IOException, InterruptedException {
         if (jobId == null || jobId.isBlank()) {
             throw new IOException("MineSkin job id is missing");
         }
@@ -92,7 +100,7 @@ public class MineSkinApiClient {
             Thread.sleep(this.jobPollIntervalMillis);
 
             JsonObject jobResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI.resolve("/v2/queue/" + jobId))
-                .header("Authorization", "Bearer " + normalizedApiKey)
+                .header("Authorization", "Bearer " + apiKey)
                 .header("User-Agent", USER_AGENT)
                 .timeout(Duration.ofSeconds(20))
                 .GET()
@@ -258,13 +266,17 @@ public class MineSkinApiClient {
         }
     }
 
-    private String normalizeApiKey(String apiKey) {
+    private static String normalizeApiKey(String apiKey) {
         if (apiKey == null) {
             return null;
         }
 
         String normalizedApiKey = apiKey.trim();
         if (normalizedApiKey.isEmpty()) {
+            return null;
+        }
+
+        if (normalizedApiKey.equalsIgnoreCase("Bearer")) {
             return null;
         }
 

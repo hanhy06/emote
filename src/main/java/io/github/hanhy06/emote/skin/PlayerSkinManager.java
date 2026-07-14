@@ -45,7 +45,7 @@ public class PlayerSkinManager implements ConfigListener {
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.mineSkinApiKey = normalizeApiKey(newConfig.mineSkinApiKey());
+        this.mineSkinApiKey = newConfig.mineSkinApiKey();
         this.mineSkinApiClient.setJobPollIntervalSeconds(newConfig.mineSkinPollIntervalSeconds());
     }
 
@@ -54,7 +54,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinParts.isEmpty()) {
             return PlayerSkinPreparationResult.ready(null);
         }
-        if (!hasMineSkinApiKey()) {
+        if (!MineSkinApiClient.hasApiKey(this.mineSkinApiKey)) {
             return PlayerSkinPreparationResult.ready(null);
         }
         PlayerSkinSource skinSource = readPlayerSkinSource(player);
@@ -198,7 +198,7 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void scheduleMineSkinBake(String playerName, PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
         String apiKey = this.mineSkinApiKey;
-        if (apiKey.isBlank()) {
+        if (!MineSkinApiClient.hasApiKey(apiKey)) {
             return;
         }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
@@ -310,18 +310,6 @@ public class PlayerSkinManager implements ConfigListener {
 
     private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
         return entityTags.stream().filter(requestedTags::contains).findFirst().orElse(null);
-    }
-
-    private boolean hasMineSkinApiKey() {
-        return !this.mineSkinApiKey.isBlank();
-    }
-
-    private String normalizeApiKey(String apiKey) {
-        if (apiKey == null) {
-            return "";
-        }
-        String normalized = apiKey.trim();
-        return normalized.regionMatches(true, 0, "Bearer ", 0, 7) ? normalized.substring(7).trim() : normalized;
     }
 
     private MinecraftServer server() {

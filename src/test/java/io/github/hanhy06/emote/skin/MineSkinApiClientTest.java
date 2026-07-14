@@ -12,8 +12,24 @@ import java.net.http.HttpResponse;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MineSkinApiClientTest {
+    @Test
+    void apiKeyPresenceAcceptsRawAndBearerFormats() {
+        assertTrue(MineSkinApiClient.hasApiKey("api-key"));
+        assertTrue(MineSkinApiClient.hasApiKey("  Bearer api-key  "));
+        assertTrue(MineSkinApiClient.hasApiKey("  bearer api-key  "));
+    }
+
+    @Test
+    void apiKeyPresenceRejectsMissingValues() {
+        assertFalse(MineSkinApiClient.hasApiKey(null));
+        assertFalse(MineSkinApiClient.hasApiKey("  "));
+        assertFalse(MineSkinApiClient.hasApiKey("Bearer   "));
+    }
+
     @Test
     void rateLimitDelayKeepsHourlyResetDuration() {
         MineSkinApiClient client = new MineSkinApiClient();
