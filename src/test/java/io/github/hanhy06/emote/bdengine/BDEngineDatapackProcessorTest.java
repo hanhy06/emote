@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class BDEngineDatapackProcessorTest {
     @Test
@@ -47,7 +48,7 @@ class BDEngineDatapackProcessorTest {
         assertEquals("Friendly wave", definitions.get(0).description());
         assertEquals("wave", definitions.get(0).commandName());
         assertEquals("a/default/play_anim_loop", definitions.get(0).entrypoint());
-        assertEquals(false, definitions.get(0).hidePlayer());
+        assertFalse(definitions.get(0).hidePlayer());
     }
 
     @Test

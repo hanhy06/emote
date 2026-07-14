@@ -2,10 +2,10 @@ package io.github.hanhy06.emote.emote;
 
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 
+import static io.github.hanhy06.emote.test.EmoteDefinitionFixture.create;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class EmoteRegistryTest {
@@ -16,17 +16,7 @@ class EmoteRegistryTest {
 
         try {
             EmoteRegistry registry = new EmoteRegistry();
-            registry.replaceDefinitions(List.of(new EmoteDefinition(
-                "idle",
-                "Idle",
-                "Idle animation",
-                "idle",
-                "a/default/play_anim_loop",
-                true,
-                Path.of("test-pack"),
-                1,
-                List.of()
-            )));
+            registry.replaceDefinitions(List.of(create("idle", "idle", "Idle")));
 
             assertNotNull(registry.findDefinitionByCommandName("IDLE"));
         } finally {

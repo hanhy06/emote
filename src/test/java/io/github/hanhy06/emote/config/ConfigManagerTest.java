@@ -44,7 +44,7 @@ class ConfigManagerTest {
         assertTrue(manager.readPackConfig());
         assertFalse(manager.getPackConfig().isEnabled("wave_pack"));
         assertTrue(manager.getPackConfig().isEnabled("unconfigured_pack"));
-        assertTrue(manager.getPackConfig().findOverride("wave_pack").permission().equals("emote.pack.vip"));
+        assertEquals("emote.pack.vip", manager.getPackConfig().findOverride("wave_pack").permission());
     }
 
     @Test
