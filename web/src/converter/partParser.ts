@@ -1,4 +1,5 @@
 import type { LoadedDatapack } from "./packFileSystem";
+import { isSkinPartId, type SkinPartId } from "./skinMapping";
 
 const ITEM_DISPLAY_PATTERN = /\{id:"minecraft:item_display",item:\{(.*?)\},.*?Tags:\[[^\]]*?"([a-z0-9_.-]+)_(\d+)"[^\]]*?\]\}/gs;
 const TRANSFORMATION_PATTERN = /transformation:\[(.*?)\]/s;
@@ -16,6 +17,7 @@ export interface PlayerHeadPart {
   matrix: readonly number[];
   scale: Vector3Value;
   anchor: Vector3Value;
+  existingAssignment: SkinPartId | null;
 }
 
 export interface ParsedEmoteModel {
@@ -67,10 +69,16 @@ export function parsePlayerHeadParts(createFunctionText: string, namespace: stri
         y: matrix[7] + matrix[5] * 0.5,
         z: matrix[11] + matrix[9] * 0.5,
       },
+      existingAssignment: readExistingAssignment(match[1]),
     });
   }
 
   return parts.sort((first, second) => first.partIndex - second.partIndex);
+}
+
+function readExistingAssignment(itemData: string): SkinPartId | null {
+  const markerMatch = /name\s*:\s*"emote:([a-z_]+)"/.exec(itemData);
+  return markerMatch && isSkinPartId(markerMatch[1]) ? markerMatch[1] : null;
 }
 
 export function readTransformationValues(itemDisplayText: string): readonly number[] {

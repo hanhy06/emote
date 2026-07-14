@@ -71,9 +71,17 @@ h1 { margin: 12px 0 16px; font-size: clamp(36px, 7vw, 68px); line-height: 1.02; 
 .part-preview canvas { display: block; width: 100%; height: 100%; }
 .part-list { padding: 22px; border-left: 1px solid #252a35; background: #10131a; }
 .part-list h3 { margin: 0 0 5px; }
-.part-list > p { margin: 0 0 16px; color: #929cac; font-size: 14px; }
+.part-list > p { margin: 0 0 16px; color: #929cac; font-size: 13px; line-height: 1.5; }
+.assignment-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; margin-bottom: 18px; }
+.assignment-grid button { display: flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 9px; color: #e9edf4; border: 1px solid #303746; border-radius: 8px; background: #191d26; cursor: pointer; }
+.assignment-grid button:hover:not(:disabled) { border-color: #7187bc; background: #202634; }
+.assignment-grid button:disabled { cursor: default; opacity: 0.4; }
+.assignment-grid i { width: 9px; height: 9px; border-radius: 50%; }
+.assignment-grid .unassign { justify-content: center; grid-column: 1 / -1; color: #aeb6c5; }
 .part-list ol { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
-.part-list li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 8px; background: #191d26; }
+.part-list li { border: 1px solid transparent; border-radius: 8px; background: #191d26; }
+.part-list li.selected { border-color: #8da9ff; background: #222a3a; }
+.part-list li button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; padding: 9px 10px; color: inherit; border: 0; background: transparent; cursor: pointer; }
 .part-list li span { color: #929cac; font-family: "SFMono-Regular", Consolas, monospace; font-size: 11px; }
 
 @media (max-width: 640px) {

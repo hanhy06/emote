@@ -2,12 +2,18 @@ import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PlayerHeadPart } from "../converter/partParser";
+import { SKIN_PARTS, type PartAssignments } from "../converter/skinMapping";
 
 interface PartPreviewProps {
   parts: PlayerHeadPart[];
+  assignments: PartAssignments;
+  selectedParts: ReadonlySet<number>;
+  onSelectPart: (partIndex: number, additive: boolean) => void;
 }
 
-export function PartPreview({ parts }: PartPreviewProps) {
+const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
+
+export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -40,20 +46,26 @@ export function PartPreview({ parts }: PartPreviewProps) {
     scene.add(grid);
 
     const partGroup = new THREE.Group();
+    const clickableMeshes: THREE.Mesh[] = [];
     const geometry = new THREE.BoxGeometry(1, 1, 1);
     geometry.translate(0, 0.5, 0);
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
     for (const part of parts) {
+      const assignment = assignments[part.partIndex];
       const material = new THREE.MeshStandardMaterial({
-        color: new THREE.Color().setHSL((part.partIndex * 0.083) % 1, 0.62, 0.58),
+        color: assignment ? ASSIGNMENT_COLORS.get(assignment) : "#687286",
+        emissive: selectedParts.has(part.partIndex) ? "#526fae" : "#000000",
+        emissiveIntensity: selectedParts.has(part.partIndex) ? 0.7 : 0,
         roughness: 0.72,
         metalness: 0.04,
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]);
+      mesh.userData.partIndex = part.partIndex;
       partGroup.add(mesh);
+      clickableMeshes.push(mesh);
 
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0xdce5ff }));
       edges.matrixAutoUpdate = false;
@@ -82,6 +94,30 @@ export function PartPreview({ parts }: PartPreviewProps) {
     });
     resizeObserver.observe(container);
 
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+    let pointerStart: { x: number; y: number } | null = null;
+    const handlePointerDown = (event: PointerEvent) => {
+      pointerStart = { x: event.clientX, y: event.clientY };
+    };
+    const handlePointerUp = (event: PointerEvent) => {
+      if (!pointerStart || Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
+        pointerStart = null;
+        return;
+      }
+      pointerStart = null;
+      const bounds = renderer.domElement.getBoundingClientRect();
+      pointer.x = ((event.clientX - bounds.left) / bounds.width) * 2 - 1;
+      pointer.y = -((event.clientY - bounds.top) / bounds.height) * 2 + 1;
+      raycaster.setFromCamera(pointer, camera);
+      const intersection = raycaster.intersectObjects(clickableMeshes, false)[0];
+      if (intersection) {
+        onSelectPart(intersection.object.userData.partIndex as number, event.ctrlKey || event.metaKey || event.shiftKey);
+      }
+    };
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    renderer.domElement.addEventListener("pointerup", handlePointerUp);
+
     let animationFrame = 0;
     const render = () => {
       controls.update();
@@ -93,6 +129,8 @@ export function PartPreview({ parts }: PartPreviewProps) {
     return () => {
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointerup", handlePointerUp);
       controls.dispose();
       geometry.dispose();
       edgeGeometry.dispose();
@@ -105,7 +143,7 @@ export function PartPreview({ parts }: PartPreviewProps) {
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [parts]);
+  }, [assignments, onSelectPart, parts, selectedParts]);
 
   return <div className="part-preview" ref={containerRef} aria-label="이모트 조각 3D 미리보기" />;
 }
