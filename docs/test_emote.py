@@ -91,10 +91,10 @@ class InferPartNamesTest(unittest.TestCase):
         assignments = infer_part_names(parts)
 
         self.assertEqual("emote:head", assignments[0])
-        self.assertTrue(all(assignments[index] == "emote:right_leg" for index in range(3, 7)))
-        self.assertTrue(all(assignments[index] == "emote:left_leg" for index in range(7, 11)))
-        self.assertTrue(all(assignments[index] == "emote:left_arm" for index in range(11, 15)))
-        self.assertTrue(all(assignments[index] == "emote:right_arm" for index in range(15, 19)))
+        self.assertTrue(all(assignments[index] == "emote:left_leg" for index in range(3, 7)))
+        self.assertTrue(all(assignments[index] == "emote:right_leg" for index in range(7, 11)))
+        self.assertTrue(all(assignments[index] == "emote:right_arm" for index in range(11, 15)))
+        self.assertTrue(all(assignments[index] == "emote:left_arm" for index in range(15, 19)))
 
     def test_non_humanoid_player_heads_are_not_assigned_skin_markers(self) -> None:
         parts = [

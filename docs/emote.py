@@ -532,16 +532,16 @@ def infer_part_names(player_head_parts: list[PlayerHeadPart]) -> dict[int, str]:
 	assign_side_parts(
 		[part for part in side_parts if body_frame.lateral_offset(part) >= 0.0],
 		body_frame,
-		"emote:left_arm",
-		"emote:left_leg",
+		"emote:right_arm",
+		"emote:right_leg",
 		assignments,
 		max_assignment_distance,
 	)
 	assign_side_parts(
 		[part for part in side_parts if body_frame.lateral_offset(part) < 0.0],
 		body_frame,
-		"emote:right_arm",
-		"emote:right_leg",
+		"emote:left_arm",
+		"emote:left_leg",
 		assignments,
 		max_assignment_distance,
 	)
