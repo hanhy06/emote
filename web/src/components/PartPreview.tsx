@@ -15,6 +15,16 @@ const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]
 
 export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const materialsRef = useRef(new Map<number, THREE.MeshStandardMaterial>());
+
+  useEffect(() => {
+    for (const [partIndex, material] of materialsRef.current) {
+      const assignment = assignments[partIndex];
+      material.color.set(assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#687286");
+      material.emissive.set(selectedParts.has(partIndex) ? "#526fae" : "#000000");
+      material.emissiveIntensity = selectedParts.has(partIndex) ? 0.7 : 0;
+    }
+  }, [assignments, selectedParts]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -60,6 +70,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
         roughness: 0.72,
         metalness: 0.04,
       });
+      materialsRef.current.set(part.partIndex, material);
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number]);
@@ -142,8 +153,9 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       });
       renderer.dispose();
       renderer.domElement.remove();
+      materialsRef.current.clear();
     };
-  }, [assignments, onSelectPart, parts, selectedParts]);
+  }, [onSelectPart, parts]);
 
   return <div className="part-preview" ref={containerRef} aria-label="이모트 조각 3D 미리보기" />;
 }

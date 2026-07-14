@@ -16,15 +16,15 @@ describe("parsePlayerHeadParts", () => {
 });
 
 describe("findEmoteModels", () => {
-  it("extracts every player head from the hello example", async () => {
-    const bytes = await readFile(new URL("../../../docs/example/emote.hello.zip", import.meta.url));
+  it.each(["cry", "hello", "no", "yes"])("extracts every player head from the %s example", async (name) => {
+    const bytes = await readFile(new URL(`../../../docs/example/emote.${name}.zip`, import.meta.url));
     const blob = new Blob([bytes]) as Blob & { name?: string };
-    blob.name = "emote.hello.zip";
+    blob.name = `emote.${name}.zip`;
 
     const models = findEmoteModels(await loadDatapack(blob));
 
     expect(models).toHaveLength(1);
-    expect(models[0].namespace).toBe("hello");
+    expect(models[0].namespace).toBe(name);
     expect(models[0].parts).toHaveLength(11);
   });
 });
