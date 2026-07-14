@@ -49,6 +49,9 @@ public class PlaybackManager {
         if (server == null) {
             return PlayResult.failure("Server unavailable.");
         }
+        if (player.isPassenger()) {
+            return PlayResult.failure("Cannot play an emote while riding.");
+        }
 
         String namespace = definition.namespace();
         PlaybackFunctionIds functionIds = resolveFunctionIds(server, definition);
