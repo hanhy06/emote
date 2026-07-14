@@ -13,9 +13,7 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .status { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .status select { margin-left: auto; }
 .frame-slider { display: flex; align-items: center; gap: 8px; }
-.frame-slider input { appearance: none; width: 220px; height: 6px; margin: 0; border: 1px solid #bbb; border-radius: 999px; }
-.frame-slider input::-webkit-slider-thumb { appearance: none; width: 18px; height: 18px; border: 0; border-radius: 50%; background: #1683f8; cursor: pointer; }
-.frame-slider input::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #1683f8; cursor: pointer; }
+.frame-slider input { width: 220px; }
 .frame-slider output { min-width: 130px; }
 .error { color: #b00020; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) 250px; border: 1px solid #aaa; }
