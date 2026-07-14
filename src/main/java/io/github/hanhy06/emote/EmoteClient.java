@@ -28,6 +28,10 @@ public class EmoteClient implements ClientModInitializer {
         EMOTE_WHEEL_CONTROLLER.registerBinding(EMOTE_WHEEL_KEY);
     }
 
+    public static boolean isPlaybackActive() {
+        return EMOTE_PERSPECTIVE_CONTROLLER.isPlaybackActive();
+    }
+
     private void registerConnectionCallbacks() {
         ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
         ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());

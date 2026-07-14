@@ -22,6 +22,7 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,16 +33,16 @@ public class PlaybackManager {
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingPlaybackStart> pendingPlaybackStartMap = new ConcurrentHashMap<>();
     private final Map<UUID, PendingSkinApplication> pendingSkinApplicationMap = new ConcurrentHashMap<>();
+    private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
-    private PlaybackStateListener stateListener = PlaybackStateListener.NONE;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         this.playerSkinManager = playerSkinManager;
     }
 
-    public void setStateListener(PlaybackStateListener stateListener) {
-        this.stateListener = stateListener == null ? PlaybackStateListener.NONE : stateListener;
+    public void addStateListener(PlaybackStateListener stateListener) {
+        this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
     public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
@@ -211,7 +212,9 @@ public class PlaybackManager {
                     )
                 );
             }
-            this.stateListener.onEmoteStarted(player, activeEmote);
+            for (PlaybackStateListener stateListener : this.stateListeners) {
+                stateListener.onEmoteStarted(player, activeEmote);
+            }
         }
     }
 
@@ -367,7 +370,9 @@ public class PlaybackManager {
             if (activeEmote.playerVisibilityManaged()) {
                 player.setInvisible(activeEmote.wasInvisible());
             }
-            this.stateListener.onEmoteStopped(player, activeEmote);
+            for (PlaybackStateListener stateListener : this.stateListeners) {
+                stateListener.onEmoteStopped(player, activeEmote);
+            }
         }
     }
 

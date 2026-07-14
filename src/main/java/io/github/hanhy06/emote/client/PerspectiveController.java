@@ -9,19 +9,26 @@ import net.minecraft.client.Minecraft;
 public class PerspectiveController {
     private CameraType previousCameraType = CameraType.FIRST_PERSON;
     private boolean restoreCameraOnStop;
+    private boolean playbackActive;
 
     public void clear() {
         this.previousCameraType = CameraType.FIRST_PERSON;
         this.restoreCameraOnStop = false;
+        this.playbackActive = false;
     }
 
     public void handlePlaybackState(boolean active) {
+        this.playbackActive = active;
         if (active) {
             switchToThirdPersonIfNeeded();
             return;
         }
 
         restorePerspectiveIfNeeded();
+    }
+
+    public boolean isPlaybackActive() {
+        return this.playbackActive;
     }
 
     private void switchToThirdPersonIfNeeded() {

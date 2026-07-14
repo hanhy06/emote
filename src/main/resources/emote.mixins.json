@@ -3,7 +3,11 @@
     "package": "io.github.hanhy06.emote.mixin",
     "compatibilityLevel": "JAVA_25",
     "mixins": [
-        "EntityMixin"
+        "EntityMixin",
+        "LivingEntityMixin"
+    ],
+    "client": [
+        "ItemInHandLayerMixin"
     ],
     "injectors": {
         "defaultRequire": 1
