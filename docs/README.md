@@ -10,18 +10,18 @@ The mod is designed around server-side playback. Vanilla clients can browse and 
 
 ## Usage
 
-| Action                       | Permission  | Description                                                                                              |
-| ---------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
-| `/emote`                     | None        | Opens the emote menu.                                                                                    |
-| `/emote search`              | None        | Opens the emote search dialog.                                                                           |
-| `/emote list`                | None        | Lists registered emotes and their internal details.                                                      |
-| `/emote play <emote>`        | Per-emote   | Plays an emote by command name or namespace.                                                             |
-| `/emote stop`                | None        | Stops the currently playing emote.                                                                       |
-| `/emote stop-all`            | Game master | Stops every active or pending emote.                                                                     |
-| `/emote enable <namespace>`  | Game master | Enables an emote namespace in `packs.json` and reloads emotes.                                           |
-| `/emote disable <namespace>` | Game master | Disables an emote namespace, stops its active instances, and reloads emotes.                             |
-| `/emote reload`              | Admin       | Reloads the configuration and emote datapacks.                                                           |
-| V key                        | Client mod  | Opens the emote wheel. Release the key toward a slot to play its emote.                                  |
+| Action                       | Permission  | Description                                                                  |
+|------------------------------|-------------|------------------------------------------------------------------------------|
+| `/emote`                     | None        | Opens the emote menu.                                                        |
+| `/emote search`              | None        | Opens the emote search dialog.                                               |
+| `/emote list`                | None        | Lists registered emotes and their internal details.                          |
+| `/emote play <emote>`        | Per-emote   | Plays an emote by command name or namespace.                                 |
+| `/emote stop`                | None        | Stops the currently playing emote.                                           |
+| `/emote stop-all`            | Game master | Stops every active or pending emote.                                         |
+| `/emote enable <namespace>`  | Game master | Enables an emote namespace in `packs.json` and reloads emotes.               |
+| `/emote disable <namespace>` | Game master | Disables an emote namespace, stops its active instances, and reloads emotes. |
+| `/emote reload`              | Admin       | Reloads the configuration and emote datapacks.                               |
+| V key                        | Client mod  | Opens the emote wheel. Release the key toward a slot to play its emote.      |
 
 Basic emote commands do not require permission. Playable emotes can be grouped by permission through `packs.json`.
 
@@ -107,15 +107,15 @@ python tools\emote_converter\emote.py `
 ```
 
 | Option              | Description                                                                |
-| ------------------- | -------------------------------------------------------------------------- |
+|---------------------|----------------------------------------------------------------------------|
 | `--name`            | Sets the name shown in the menu and emote wheel.                           |
 | `--description`     | Sets the emote description.                                                |
 | `--command-name`    | Sets the name used by `/emote play`.                                       |
 | `--entrypoint`      | Sets the function path to play. The default is `a/default/play_anim_loop`. |
 | `--show-player`     | Keeps the actual player visible during playback.                           |
-| `--metadata-only`   | Adds metadata without applying the player's skin to the emote.              |
+| `--metadata-only`   | Adds metadata without applying the player's skin to the emote.             |
 | `--swap-left-right` | Swaps the automatically detected left and right body parts.                |
-| `--bundle-name`     | Combines all inputs into one `emote.<name>.zip` datapack.                   |
+| `--bundle-name`     | Combines all inputs into one `emote.<name>.zip` datapack.                  |
 | `--output-dir`      | Sets the directory for generated ZIP files.                                |
 
 Example emote datapacks are available in `docs/example`.
@@ -136,7 +136,7 @@ Configuration files are created automatically in `config/emote` when the server 
 ```
 
 | Setting                          | Description                                                                                                    |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+|----------------------------------|----------------------------------------------------------------------------------------------------------------|
 | `menu_page_size`                 | Number of emotes displayed on each menu page.                                                                  |
 | `mineskin_api_key`               | MineSkin API key used to apply player skins.                                                                   |
 | `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. Must be between 1 and 60. |
