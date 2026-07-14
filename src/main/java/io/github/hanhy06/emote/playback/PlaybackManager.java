@@ -4,12 +4,16 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.PlayResult;
+import io.github.hanhy06.emote.mixin.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.server.ServerFunctionLookup;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -38,13 +42,6 @@ public class PlaybackManager {
 
     public void addStateListener(PlaybackStateListener stateListener) {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
-    }
-
-    public void maintainPlayerVisibility(ServerPlayer player) {
-        ActiveEmote activeEmote = findActiveEmote(player.getUUID());
-        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
-            player.setInvisible(true);
-        }
     }
 
     public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
@@ -136,6 +133,8 @@ public class PlaybackManager {
                 playerUuidListToStop.add(activeEmote.playerUuid());
                 continue;
             }
+
+            syncPlayerVisibility(player, activeEmote);
         }
 
         for (UUID playerUuid : playerUuidListToStop) {
@@ -143,6 +142,21 @@ public class PlaybackManager {
         }
 
         applyPendingPlayerSkins(server);
+    }
+
+    private void syncPlayerVisibility(ServerPlayer player, ActiveEmote activeEmote) {
+        if (!activeEmote.playerVisibilityManaged()) {
+            return;
+        }
+
+        player.setInvisible(true);
+        EntityDataAccessor<Byte> sharedFlagsId = EntitySharedFlagsAccessor.emote$getSharedFlagsId();
+        byte sharedFlags = player.getEntityData().get(sharedFlagsId);
+        ClientboundSetEntityDataPacket visibilityPacket = new ClientboundSetEntityDataPacket(
+            player.getId(),
+            List.of(SynchedEntityData.DataValue.create(sharedFlagsId, sharedFlags))
+        );
+        player.level().getChunkSource().sendToTrackingPlayersAndSelf(player, visibilityPacket);
     }
 
     public void stopAllEmotes() {

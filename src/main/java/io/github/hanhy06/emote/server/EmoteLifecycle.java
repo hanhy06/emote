@@ -4,7 +4,6 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackInterruptionCallback;
-import io.github.hanhy06.emote.playback.PlaybackVisibilityCallback;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -53,7 +52,6 @@ public class EmoteLifecycle {
 
     private void registerPlaybackCallbacks() {
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackManager.tick());
-        PlaybackVisibilityCallback.EVENT.register(this.playbackManager::maintainPlayerVisibility);
     }
 
     private void registerInterruptionCallbacks() {
