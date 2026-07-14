@@ -32,8 +32,8 @@ final class PlayerSkinBaker {
         boolean useWideSlimArmAtlas = usesWideSlimArmAtlas(skinPart, effectiveSlimModel);
         BufferedImage bakingImage = useWideSlimArmAtlas ? expandSlimArmToWideAtlas(normalizedImage, skinPart) : normalizedImage;
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
-        FaceMap baseFaces = PlayerSkinAtlas.orientedBaseFaces(skinPart);
-        FaceMap overlayFaces = PlayerSkinAtlas.orientedOverlayFaces(skinPart);
+        FaceMap baseFaces = PlayerSkinAtlas.baseFaces(skinPart);
+        FaceMap overlayFaces = PlayerSkinAtlas.overlayFaces(skinPart);
 
         drawTopFace(outputImage, bakingImage, baseFaces, BASE_TOP);
         drawBottomFace(outputImage, bakingImage, baseFaces, BASE_BOTTOM);
@@ -172,18 +172,8 @@ final class PlayerSkinBaker {
 
     private BufferedImage expandSlimArmToWideAtlas(BufferedImage sourceImage, PlayerSkinPart skinPart) {
         BufferedImage expandedImage = copyImage(sourceImage);
-        switch (skinPart) {
-            case RIGHT_ARM -> {
-                copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimBaseFaces(skinPart), PlayerSkinAtlas.baseFaces(skinPart));
-                copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimOverlayFaces(skinPart), PlayerSkinAtlas.overlayFaces(skinPart));
-            }
-            case LEFT_ARM -> {
-                copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimBaseFaces(skinPart), PlayerSkinAtlas.baseFaces(skinPart));
-                copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimOverlayFaces(skinPart), PlayerSkinAtlas.overlayFaces(skinPart));
-            }
-            default -> {
-            }
-        }
+        copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimBaseFaces(skinPart), PlayerSkinAtlas.baseFaces(skinPart));
+        copyFaceMap(expandedImage, sourceImage, PlayerSkinAtlas.slimOverlayFaces(skinPart), PlayerSkinAtlas.overlayFaces(skinPart));
         return expandedImage;
     }
 

@@ -53,14 +53,6 @@ final class PlayerSkinAtlas {
         return part(part).overlay();
     }
 
-    static FaceMap orientedBaseFaces(PlayerSkinPart part) {
-        return part(part).base();
-    }
-
-    static FaceMap orientedOverlayFaces(PlayerSkinPart part) {
-        return part(part).overlay();
-    }
-
     static FaceMap slimBaseFaces(PlayerSkinPart part) {
         return requireSlimFaces(part, part(part).slimBase());
     }
