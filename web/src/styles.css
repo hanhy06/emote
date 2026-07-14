@@ -12,6 +12,9 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .file-input { display: flex; align-items: center; gap: 8px; }
 .status { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
 .status select { margin-left: auto; }
+.frame-slider { display: flex; align-items: center; gap: 8px; }
+.frame-slider input { width: 220px; }
+.frame-slider output { min-width: 130px; }
 .error { color: #b00020; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) 250px; border: 1px solid #aaa; }
 .part-preview { position: relative; min-width: 0; height: 620px; overflow: hidden; background: #f4f4f4; cursor: grab; }

@@ -164,17 +164,13 @@ export function App() {
             <strong>{datapack.fileName}</strong>
             <span>{model.parts.length}개 조각</span>
             {model.previewFrames.length > 0 && (
-              <label>미리보기 프레임
-                <select value={previewFrameIndex} onChange={(event) => {
+              <label className="frame-slider">
+                <span>미리보기 프레임</span>
+                <input type="range" min="0" max={model.previewFrames.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
                   setPreviewFrameIndexes((current) => ({ ...current, [model.namespace]: Number(event.target.value) }));
                   setSelectedParts(new Set());
-                }}>
-                  {model.previewFrames.map((frame, index) => (
-                    <option value={index} key={`${frame.animation}-${frame.frameIndex}`}>
-                      {frame.animation} / 프레임 {frame.frameIndex}
-                    </option>
-                  ))}
-                </select>
+                }} />
+                <output>{previewFrame?.animation} / 프레임 {previewFrame?.frameIndex}</output>
               </label>
             )}
             {models.length > 1 && (
