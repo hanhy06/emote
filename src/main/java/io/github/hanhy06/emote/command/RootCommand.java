@@ -6,6 +6,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -26,6 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
 import java.util.List;
+import java.util.Map;
 
 public final class RootCommand {
     private final EmoteRegistry emoteRegistry;
@@ -35,6 +37,7 @@ public final class RootCommand {
     private final PlayService playService;
     private final PermissionService permissionService;
     private final EmoteReloadService reloadService;
+    private final ConfigManager configManager;
 
     public RootCommand(
         EmoteRegistry emoteRegistry,
@@ -43,7 +46,8 @@ public final class RootCommand {
         PlayableEmoteService playableEmoteService,
         PlayService playService,
         PermissionService permissionService,
-        EmoteReloadService reloadService
+        EmoteReloadService reloadService,
+        ConfigManager configManager
     ) {
         this.emoteRegistry = emoteRegistry;
         this.playbackManager = playbackManager;
@@ -52,6 +56,7 @@ public final class RootCommand {
         this.playService = playService;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
+        this.configManager = configManager;
     }
 
     public void register() {
@@ -63,22 +68,14 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createRootCommand() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource()))
-            .then(createMenuCommand())
             .then(createSearchCommand())
             .then(createListCommand())
             .then(createReloadCommand())
             .then(createPlayCommand())
-            .then(createStopCommand());
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createMenuCommand() {
-        return Commands.literal("menu")
-            .executes(context -> openMenu(context.getSource()))
-            .then(Commands.argument("page", IntegerArgumentType.integer(1))
-                .executes(context -> openMenu(
-                    context.getSource(),
-                    IntegerArgumentType.getInteger(context, "page")
-                )));
+            .then(createStopCommand())
+            .then(createStopAllCommand())
+            .then(createEnableCommand())
+            .then(createDisableCommand());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createSearchCommand() {
@@ -122,6 +119,42 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createStopCommand() {
         return Commands.literal("stop")
             .executes(context -> stopEmote(context.getSource()));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> createStopAllCommand() {
+        return Commands.literal("stop-all")
+            .requires(this.permissionService.requireGameMaster())
+            .executes(context -> stopAllEmotes(context.getSource()));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
+        return Commands.literal("enable")
+            .requires(this.permissionService.requireGameMaster())
+            .then(Commands.argument("namespace", StringArgumentType.word())
+                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                    getDisabledNamespaces(),
+                    builder
+                ))
+                .executes(context -> setPackEnabled(
+                    context.getSource(),
+                    StringArgumentType.getString(context, "namespace"),
+                    true
+                )));
+    }
+
+    private LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
+        return Commands.literal("disable")
+            .requires(this.permissionService.requireGameMaster())
+            .then(Commands.argument("namespace", StringArgumentType.word())
+                .suggests((context, builder) -> SharedSuggestionProvider.suggest(
+                    this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::namespace),
+                    builder
+                ))
+                .executes(context -> setPackEnabled(
+                    context.getSource(),
+                    StringArgumentType.getString(context, "namespace"),
+                    false
+                )));
     }
 
     private List<String> getSuggestedPlayNames(CommandSourceStack source) {
@@ -257,6 +290,47 @@ public final class RootCommand {
             false
         );
         return 1;
+    }
+
+    private int stopAllEmotes(CommandSourceStack source) {
+        this.playbackManager.stopAllEmotes();
+        source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
+        return 1;
+    }
+
+    private int setPackEnabled(CommandSourceStack source, String namespace, boolean enabled) {
+        if (enabled) {
+            if (this.configManager.getPackConfig().isEnabled(namespace)) {
+                source.sendFailure(Component.literal("Emote is not disabled: " + namespace));
+                return 0;
+            }
+        } else if (this.emoteRegistry.findDefinition(namespace) == null) {
+            source.sendFailure(Component.literal("Emote is not enabled: " + namespace));
+            return 0;
+        }
+
+        if (!this.configManager.setPackEnabled(namespace, enabled)) {
+            source.sendFailure(Component.literal("Failed to save packs.json."));
+            return 0;
+        }
+        if (!enabled) {
+            this.playbackManager.stopNamespace(namespace);
+        }
+
+        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();
+        String action = enabled ? "Enabled" : "Disabled";
+        source.sendSuccess(
+            () -> Component.literal(action + " emote: " + namespace + " (emotes=" + reloadResult.emoteCount() + ")"),
+            true
+        );
+        return 1;
+    }
+
+    private List<String> getDisabledNamespaces() {
+        return this.configManager.getPackConfig().packs().entrySet().stream()
+            .filter(entry -> !entry.getValue().enabled())
+            .map(Map.Entry::getKey)
+            .toList();
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {

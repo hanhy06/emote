@@ -154,6 +154,24 @@ public class PlaybackManager {
         this.pendingSkinApplicationMap.clear();
     }
 
+    public void stopNamespace(String namespace) {
+        List<UUID> pendingPlayerUuidList = this.pendingPlaybackStartMap.entrySet().stream()
+            .filter(entry -> entry.getValue().definition().namespace().equals(namespace))
+            .map(Map.Entry::getKey)
+            .toList();
+        for (UUID playerUuid : pendingPlayerUuidList) {
+            stopEmote(playerUuid);
+        }
+
+        List<UUID> playerUuidList = this.activeEmoteMap.entrySet().stream()
+            .filter(entry -> entry.getValue().namespace().equals(namespace))
+            .map(Map.Entry::getKey)
+            .toList();
+        for (UUID playerUuid : playerUuidList) {
+            stopEmote(playerUuid);
+        }
+    }
+
     private PlaybackFunctionIds resolveFunctionIds(MinecraftServer server, EmoteDefinition definition) {
         String namespace = definition.namespace();
         String createFunctionId = namespace + ":_/create";

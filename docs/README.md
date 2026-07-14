@@ -10,14 +10,17 @@ The mod is designed with server-side use in mind. Its main feature, emote playba
 
 ## Usage
 
-| Action                | Description                                                                                              |
-| --------------------- | -------------------------------------------------------------------------------------------------------- |
-| `/emote`              | Opens the emote menu.                                                                                    |
-| `/emote search`       | Opens the emote search dialog.                                                                           |
-| `/emote play <emote>` | Plays an emote by command name or namespace.                                                             |
-| `/emote stop`         | Stops the currently playing emote.                                                                       |
-| `/emote reload`       | Reloads the configuration and emote datapacks.                                                           |
-| V key                 | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
+| Action                       | Description                                                                                              |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `/emote`                     | Opens the emote menu.                                                                                    |
+| `/emote search`              | Opens the emote search dialog.                                                                           |
+| `/emote play <emote>`        | Plays an emote by command name or namespace.                                                             |
+| `/emote stop`                | Stops the currently playing emote.                                                                       |
+| `/emote stop-all`            | Stops every active emote. Requires game master permission.                                               |
+| `/emote enable <namespace>`  | Enables an emote namespace and reloads emotes. Requires game master permission.                          |
+| `/emote disable <namespace>` | Disables an emote namespace and reloads emotes. Requires game master permission.                         |
+| `/emote reload`              | Reloads the configuration and emote datapacks.                                                           |
+| V key                        | Opens the emote wheel when the client mod is installed. Release the key toward a slot to play its emote. |
 
 ## Adding Emotes
 

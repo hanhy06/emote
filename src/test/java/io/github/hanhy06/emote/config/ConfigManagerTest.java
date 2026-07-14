@@ -48,6 +48,24 @@ class ConfigManagerTest {
     }
 
     @Test
+    void updatesPackEnabledStateAndPreservesPermission(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+            {"packs":{"wave_pack":{"enabled":true,"permission":"emote.pack.vip"}}}
+            """);
+        assertTrue(manager.readPackConfig());
+
+        assertTrue(manager.setPackEnabled("wave_pack", false));
+
+        PackOverride packOverride = manager.getPackConfig().findOverride("wave_pack");
+        assertFalse(packOverride.enabled());
+        assertEquals("emote.pack.vip", packOverride.permission());
+        String savedConfig = Files.readString(tempDir.resolve("emote").resolve("packs.json"));
+        assertTrue(savedConfig.contains("\"enabled\": false"));
+        assertTrue(savedConfig.contains("\"permission\": \"emote.pack.vip\""));
+    }
+
+    @Test
     void rejectsBlankNamespace(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """

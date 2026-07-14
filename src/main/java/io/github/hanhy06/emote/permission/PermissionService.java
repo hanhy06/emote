@@ -48,6 +48,10 @@ public class PermissionService implements ConfigListener, PackConfigListener {
         return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN);
     }
 
+    public boolean canManageEmotes(CommandSourceStack source) {
+        return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+    }
+
     public boolean canStop(ServerPlayer player) {
         return hasBasePermission(player);
     }
@@ -62,6 +66,10 @@ public class PermissionService implements ConfigListener, PackConfigListener {
 
     public Predicate<CommandSourceStack> requireReload() {
         return this::canReload;
+    }
+
+    public Predicate<CommandSourceStack> requireGameMaster() {
+        return this::canManageEmotes;
     }
 
     private ServerPlayer findPlayer(CommandSourceStack source) {

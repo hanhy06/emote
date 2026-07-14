@@ -80,7 +80,8 @@ public class Emote implements ModInitializer {
         this.playableEmoteService,
         this.playService,
         this.permissionService,
-        this.reloadService
+        this.reloadService,
+        this.configManager
     );
 
     @Override

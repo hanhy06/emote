@@ -114,6 +114,27 @@ public class ConfigManager {
         this.packListeners.add(listener);
     }
 
+    public boolean setPackEnabled(String namespace, boolean enabled) {
+        String normalizedNamespace = normalizeRequiredValue(namespace);
+        if (normalizedNamespace == null) {
+            throw new IllegalArgumentException("pack namespace must not be blank");
+        }
+
+        LinkedHashMap<String, PackOverride> nextPacks = new LinkedHashMap<>(this.packConfig.packs());
+        PackOverride currentOverride = nextPacks.get(normalizedNamespace);
+        String permission = currentOverride == null ? "" : currentOverride.permission();
+        nextPacks.put(normalizedNamespace, new PackOverride(enabled, permission));
+        PackConfig nextPackConfig = new PackConfig(nextPacks);
+
+        if (!writeJsonFile(PACK_FILE_NAME, createPackConfigJson(nextPackConfig))) {
+            return false;
+        }
+
+        this.packConfig = nextPackConfig;
+        broadcastPackConfig();
+        return true;
+    }
+
     private void broadcastConfig() {
         for (ConfigListener listener : this.listeners) {
             listener.onConfigReload(this.config);
@@ -153,14 +174,16 @@ public class ConfigManager {
         writeJsonFile(fileName, json);
     }
 
-    private void writeJsonFile(String fileName, JsonObject json) {
+    private boolean writeJsonFile(String fileName, JsonObject json) {
         Path filePath = this.configDirPath.resolve(fileName);
 
         try {
             JsonFileStore.writeObjectAtomically(filePath, json, this.gson);
             Emote.LOGGER.info("Saved {}", fileName);
+            return true;
         } catch (IOException exception) {
             Emote.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
+            return false;
         }
     }
 
