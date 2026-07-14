@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.server;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.playback.PlaybackMountCallback;
+import io.github.hanhy06.emote.playback.PlaybackInterruptionCallback;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -55,7 +55,7 @@ public class EmoteLifecycle {
     }
 
     private void registerInterruptionCallbacks() {
-        PlaybackMountCallback.EVENT.register(this.playbackManager::stopEmote);
+        PlaybackInterruptionCallback.EVENT.register(this.playbackManager::stopEmote);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
                 this.playbackManager.stopEmote(player);
