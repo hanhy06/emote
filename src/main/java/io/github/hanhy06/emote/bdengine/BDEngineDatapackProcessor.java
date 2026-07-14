@@ -6,10 +6,10 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.config.data.PackConfig;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.server.ServerFunctionLookup;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.PlayerSkinSegment;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.level.storage.LevelResource;
 
@@ -56,7 +56,10 @@ public class BDEngineDatapackProcessor {
         }
 
         Path datapackDirPath = server.getWorldPath(LevelResource.DATAPACK_DIR);
-        List<EmoteDefinition> definitions = filterLoadedDefinitions(readDefinitions(datapackDirPath, this.configManager.getPackConfig()));
+        List<EmoteDefinition> definitions = filterLoadedDefinitions(
+            server,
+            readDefinitions(datapackDirPath, this.configManager.getPackConfig())
+        );
         this.emoteRegistry.replaceDefinitions(definitions);
         return definitions.size();
     }
@@ -98,25 +101,17 @@ public class BDEngineDatapackProcessor {
         return false;
     }
 
-    private List<EmoteDefinition> filterLoadedDefinitions(List<EmoteDefinition> definitions) {
+    private List<EmoteDefinition> filterLoadedDefinitions(
+        MinecraftServer server,
+        List<EmoteDefinition> definitions
+    ) {
         return definitions.stream()
-            .filter(definition -> !isMissingCreateFunction(definition))
-            .filter(definition -> !isMissingFunction(definition.namespace() + ":" + definition.entrypoint()))
+            .filter(definition -> ServerFunctionLookup.isLoaded(server, definition.namespace() + ":_/create"))
+            .filter(definition -> ServerFunctionLookup.isLoaded(
+                server,
+                definition.namespace() + ":" + definition.entrypoint()
+            ))
             .toList();
-    }
-
-    private boolean isMissingCreateFunction(EmoteDefinition definition) {
-        return isMissingFunction(definition.namespace() + ":_/create");
-    }
-
-    private boolean isMissingFunction(String functionId) {
-        MinecraftServer server = server();
-        if (server == null) {
-            return true;
-        }
-
-        Identifier identifier = Identifier.tryParse(functionId);
-        return identifier == null || server.getFunctions().get(identifier).isEmpty();
     }
 
     private MinecraftServer server() {

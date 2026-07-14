@@ -4,11 +4,11 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.server.ServerFunctionLookup;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -176,7 +176,8 @@ public class PlaybackManager {
         String namespace = definition.namespace();
         String createFunctionId = namespace + ":_/create";
         String playFunctionId = namespace + ":" + definition.entrypoint();
-        if (!isLoadedFunction(server, createFunctionId) || !isLoadedFunction(server, playFunctionId)) {
+        if (!ServerFunctionLookup.isLoaded(server, createFunctionId)
+            || !ServerFunctionLookup.isLoaded(server, playFunctionId)) {
             return null;
         }
 
@@ -402,11 +403,6 @@ public class PlaybackManager {
         return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
     }
 
-    private boolean isLoadedFunction(MinecraftServer server, String functionId) {
-        Identifier identifier = Identifier.tryParse(functionId);
-        return identifier != null && server.getFunctions().get(identifier).isPresent();
-    }
-
     private void copyAnimationState(ActiveEmote namespaceTimeline, Entity targetRoot) {
         ServerLevel timelineLevel = level(namespaceTimeline);
         Entity timelineRoot = timelineLevel == null
@@ -434,7 +430,7 @@ public class PlaybackManager {
             return;
         }
 
-        if (isLoadedFunction(server, namespace + ":_/delete")) {
+        if (ServerFunctionLookup.isLoaded(server, namespace + ":_/delete")) {
             executeFunction(player, namespace + ":_/delete");
         }
 
