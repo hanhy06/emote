@@ -1,9 +1,5 @@
-package io.github.hanhy06.emote.network.service;
+package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.PlayResult;
-import io.github.hanhy06.emote.emote.PlayableEmoteSelection;
-import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.server.level.ServerPlayer;
 

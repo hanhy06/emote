@@ -1,8 +1,5 @@
-package io.github.hanhy06.emote.network.service;
+package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayResult;
-import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import org.junit.jupiter.api.Test;
 
