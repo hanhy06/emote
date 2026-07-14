@@ -250,7 +250,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return null;
         }
@@ -265,10 +265,6 @@ public class PlayerSkinManager implements ConfigListener {
         }
         boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
         return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
-    }
-
-    private MinecraftServer server() {
-        return Emote.SERVER;
     }
 
     private record PlayerSkinSource(String textureHash, String textureUrl, boolean slimModel) {

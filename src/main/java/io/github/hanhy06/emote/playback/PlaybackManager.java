@@ -41,7 +41,7 @@ public class PlaybackManager {
     }
 
     public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return PlayResult.failure("Server unavailable.");
         }
@@ -83,7 +83,7 @@ public class PlaybackManager {
     private ActiveEmote stopEmote(UUID playerUuid) {
         PendingPlaybackStart pendingStart = this.pendingPlaybackStartMap.remove(playerUuid);
         this.pendingSkinApplicationMap.remove(playerUuid);
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return null;
         }
@@ -106,7 +106,7 @@ public class PlaybackManager {
     }
 
     public void tick() {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return;
         }
@@ -407,12 +407,12 @@ public class PlaybackManager {
     }
 
     private ServerLevel level(ActiveEmote activeEmote) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         return server == null ? null : server.getLevel(activeEmote.levelKey());
     }
 
     private void cleanupNamespace(ServerPlayer player, String namespace) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return;
         }
@@ -426,7 +426,7 @@ public class PlaybackManager {
     }
 
     private void executeFunction(ServerPlayer player, String functionId) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return;
         }
@@ -438,7 +438,7 @@ public class PlaybackManager {
     }
 
     private void executeFunction(ActiveEmote activeEmote, String functionId) {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return;
         }
@@ -453,10 +453,6 @@ public class PlaybackManager {
             .withPermission(LevelBasedPermissionSet.OWNER)
             .withSuppressedOutput();
         server.getCommands().performPrefixedCommand(source, "function " + functionId);
-    }
-
-    private MinecraftServer server() {
-        return Emote.SERVER;
     }
 
     private record PlaybackFunctionIds(String createFunctionId, String playFunctionId) {

@@ -34,7 +34,7 @@ public class BDEngineDatapackProcessor {
     }
 
     public int reloadServerEmotes() {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return 0;
         }
@@ -49,7 +49,7 @@ public class BDEngineDatapackProcessor {
     }
 
     public boolean enableEmoteDatapacks() {
-        MinecraftServer server = server();
+        MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return false;
         }
@@ -99,10 +99,6 @@ public class BDEngineDatapackProcessor {
                 EmoteDatapackNames.entrypointFunctionId(definition.namespace(), definition.entrypoint())
             ))
             .toList();
-    }
-
-    private MinecraftServer server() {
-        return Emote.SERVER;
     }
 
     List<String> findEmotePackIds(Path datapackDirPath, PackConfig packConfig) {
