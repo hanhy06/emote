@@ -28,10 +28,15 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 
 public final class RootCommand {
-    private RootCommand() {
-    }
+    private final EmoteRegistry emoteRegistry;
+    private final PlaybackManager playbackManager;
+    private final DialogManager dialogManager;
+    private final PlayableEmoteService playableEmoteService;
+    private final PlayService playService;
+    private final PermissionService permissionService;
+    private final EmoteReloadService reloadService;
 
-    public static void register(
+    public RootCommand(
         EmoteRegistry emoteRegistry,
         PlaybackManager playbackManager,
         DialogManager dialogManager,
@@ -40,195 +45,143 @@ public final class RootCommand {
         PermissionService permissionService,
         EmoteReloadService reloadService
     ) {
+        this.emoteRegistry = emoteRegistry;
+        this.playbackManager = playbackManager;
+        this.dialogManager = dialogManager;
+        this.playableEmoteService = playableEmoteService;
+        this.playService = playService;
+        this.permissionService = permissionService;
+        this.reloadService = reloadService;
+    }
+
+    public void register() {
         CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) ->
-            dispatcher.register(createRootCommand(
-                emoteRegistry,
-                playbackManager,
-                dialogManager,
-                playableEmoteService,
-                playService,
-                permissionService,
-                reloadService
-            ))
+            dispatcher.register(createRootCommand())
         );
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createRootCommand(
-        EmoteRegistry emoteRegistry,
-        PlaybackManager playbackManager,
-        DialogManager dialogManager,
-        PlayableEmoteService playableEmoteService,
-        PlayService playService,
-        PermissionService permissionService,
-        EmoteReloadService reloadService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createRootCommand() {
         return Commands.literal("emote")
-            .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
-            .then(createMenuCommand(dialogManager, permissionService))
-            .then(createSearchCommand(dialogManager, permissionService))
-            .then(createListCommand(emoteRegistry, permissionService))
-            .then(createReloadCommand(reloadService, permissionService))
-            .then(createPlayCommand(emoteRegistry, playableEmoteService, playService, permissionService))
-            .then(createStopCommand(playbackManager, permissionService));
+            .executes(context -> openMenu(context.getSource()))
+            .then(createMenuCommand())
+            .then(createSearchCommand())
+            .then(createListCommand())
+            .then(createReloadCommand())
+            .then(createPlayCommand())
+            .then(createStopCommand());
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createMenuCommand(
-        DialogManager dialogManager,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createMenuCommand() {
         return Commands.literal("menu")
-            .executes(context -> openMenu(context.getSource(), dialogManager, permissionService))
+            .executes(context -> openMenu(context.getSource()))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
                 .executes(context -> openMenu(
                     context.getSource(),
-                    dialogManager,
-                    permissionService,
                     IntegerArgumentType.getInteger(context, "page")
                 )));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createSearchCommand(
-        DialogManager dialogManager,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createSearchCommand() {
         return Commands.literal("search")
-            .executes(context -> openSearch(context.getSource(), dialogManager, permissionService))
+            .executes(context -> openSearch(context.getSource()))
             .then(Commands.argument("query", StringArgumentType.string())
                 .executes(context -> openMenu(
                     context.getSource(),
-                    dialogManager,
-                    permissionService,
                     1,
                     StringArgumentType.getString(context, "query")
                 ))
                 .then(Commands.argument("page", IntegerArgumentType.integer(1))
                     .executes(context -> openMenu(
                         context.getSource(),
-                        dialogManager,
-                        permissionService,
                         IntegerArgumentType.getInteger(context, "page"),
                         StringArgumentType.getString(context, "query")
                     ))));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createListCommand(
-        EmoteRegistry emoteRegistry,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .executes(context -> listEmotes(context.getSource(), emoteRegistry, permissionService));
+            .executes(context -> listEmotes(context.getSource()));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createReloadCommand(
-        EmoteReloadService reloadService,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(permissionService.requireReload())
-            .executes(context -> reloadEmotes(context.getSource(), reloadService));
+            .requires(this.permissionService.requireReload())
+            .executes(context -> reloadEmotes(context.getSource()));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createPlayCommand(
-        EmoteRegistry emoteRegistry,
-        PlayableEmoteService playableEmoteService,
-        PlayService playService,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
             .then(Commands.argument("emote", StringArgumentType.word())
                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
-                    getSuggestedPlayNames(context.getSource(), emoteRegistry, playableEmoteService),
+                    getSuggestedPlayNames(context.getSource()),
                     builder
                 ))
-                .executes(context -> playEmote(context, playService)));
+                .executes(this::playEmote));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> createStopCommand(
-        PlaybackManager playbackManager,
-        PermissionService permissionService
-    ) {
+    private LiteralArgumentBuilder<CommandSourceStack> createStopCommand() {
         return Commands.literal("stop")
-            .executes(context -> stopEmote(context.getSource(), playbackManager, permissionService));
+            .executes(context -> stopEmote(context.getSource()));
     }
 
-    private static List<String> getSuggestedPlayNames(
-        CommandSourceStack source,
-        EmoteRegistry emoteRegistry,
-        PlayableEmoteService playableEmoteService
-    ) {
+    private List<String> getSuggestedPlayNames(CommandSourceStack source) {
         ServerPlayer player = findPlayer(source);
         return player == null
-            ? emoteRegistry.getPlayNames()
-            : playableEmoteService.getPlayablePlayNames(player);
+            ? this.emoteRegistry.getPlayNames()
+            : this.playableEmoteService.getPlayablePlayNames(player);
     }
 
-    private static int openMenu(
-        CommandSourceStack source,
-        DialogManager dialogManager,
-        PermissionService permissionService
-    ) throws CommandSyntaxException {
-        return openMenu(source, dialogManager, permissionService, 1);
+    private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
+        return openMenu(source, 1);
     }
 
-    private static int openMenu(
+    private int openMenu(
         CommandSourceStack source,
-        DialogManager dialogManager,
-        PermissionService permissionService,
         int pageNumber
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!permissionService.canOpenDialog(player)) {
+        if (!this.permissionService.canOpenDialog(player)) {
             source.sendFailure(Component.literal("No menu permission."));
             return 0;
         }
 
-        dialogManager.openDialog(player, pageNumber);
+        this.dialogManager.openDialog(player, pageNumber);
         return 1;
     }
 
-    private static int openSearch(
-        CommandSourceStack source,
-        DialogManager dialogManager,
-        PermissionService permissionService
-    ) throws CommandSyntaxException {
+    private int openSearch(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!permissionService.canOpenDialog(player)) {
+        if (!this.permissionService.canOpenDialog(player)) {
             source.sendFailure(Component.literal("No menu permission."));
             return 0;
         }
 
-        dialogManager.openSearchDialog(player);
+        this.dialogManager.openSearchDialog(player);
         return 1;
     }
 
-    private static int openMenu(
+    private int openMenu(
         CommandSourceStack source,
-        DialogManager dialogManager,
-        PermissionService permissionService,
         int pageNumber,
         String query
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!permissionService.canOpenDialog(player)) {
+        if (!this.permissionService.canOpenDialog(player)) {
             source.sendFailure(Component.literal("No menu permission."));
             return 0;
         }
 
-        dialogManager.openDialog(player, pageNumber, query);
+        this.dialogManager.openDialog(player, pageNumber, query);
         return 1;
     }
 
-    private static int listEmotes(
-        CommandSourceStack source,
-        EmoteRegistry emoteRegistry,
-        PermissionService permissionService
-    ) {
-        if (!permissionService.canList(source)) {
+    private int listEmotes(CommandSourceStack source) {
+        if (!this.permissionService.canList(source)) {
             source.sendFailure(Component.literal("No list permission."));
             return 0;
         }
 
-        List<EmoteDefinition> definitions = emoteRegistry.getDefinitions();
+        List<EmoteDefinition> definitions = this.emoteRegistry.getDefinitions();
         if (definitions.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
@@ -249,16 +202,13 @@ public final class RootCommand {
         return definitions.size();
     }
 
-    private static int reloadEmotes(
-        CommandSourceStack source,
-        EmoteReloadService reloadService
-    ) {
+    private int reloadEmotes(CommandSourceStack source) {
         if (Emote.SERVER == null) {
             source.sendFailure(Component.literal("Server unavailable."));
             return 0;
         }
 
-        EmoteReloadResult result = reloadService.reloadFromCommand();
+        EmoteReloadResult result = this.reloadService.reloadFromCommand();
         source.sendSuccess(
             () -> Component.literal(
                 "Reloading: cfg=" + result.configLoaded()
@@ -280,30 +230,23 @@ public final class RootCommand {
         return 1;
     }
 
-    private static int playEmote(
-        CommandContext<CommandSourceStack> context,
-        PlayService playService
-    ) throws CommandSyntaxException {
+    private int playEmote(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
         return applyPlayResult(
             source,
-            playService.play(player, StringArgumentType.getString(context, "emote"))
+            this.playService.play(player, StringArgumentType.getString(context, "emote"))
         );
     }
 
-    private static int stopEmote(
-        CommandSourceStack source,
-        PlaybackManager playbackManager,
-        PermissionService permissionService
-    ) throws CommandSyntaxException {
+    private int stopEmote(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!permissionService.canStop(player)) {
+        if (!this.permissionService.canStop(player)) {
             source.sendFailure(Component.literal("No stop permission."));
             return 0;
         }
 
-        ActiveEmote activeEmote = playbackManager.stopEmote(player);
+        ActiveEmote activeEmote = this.playbackManager.stopEmote(player);
         if (activeEmote == null) {
             source.sendFailure(Component.literal("No active emote."));
             return 0;

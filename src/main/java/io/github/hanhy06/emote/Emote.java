@@ -71,6 +71,15 @@ public class Emote implements ModInitializer {
         this.reloadService,
         this.wheelSyncService
     );
+    private final RootCommand rootCommand = new RootCommand(
+        this.emoteRegistry,
+        this.playbackManager,
+        this.dialogManager,
+        this.playableEmoteService,
+        this.playService,
+        this.permissionService,
+        this.reloadService
+    );
 
     @Override
     public void onInitialize() {
@@ -82,15 +91,7 @@ public class Emote implements ModInitializer {
 
         this.networking.register();
         this.lifecycle.register();
-        RootCommand.register(
-            this.emoteRegistry,
-            this.playbackManager,
-            this.dialogManager,
-            this.playableEmoteService,
-            this.playService,
-            this.permissionService,
-            this.reloadService
-        );
+        this.rootCommand.register();
 
         LOGGER.info("{} ready", MOD_ID);
     }
