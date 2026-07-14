@@ -1,0 +1,12 @@
+{
+    "key.emote.wheel": "Roue des emotes",
+    "screen.emote.wheel.title": "Roue des emotes",
+    "screen.emote.wheel.center.no_usable": "Aucune emote",
+    "screen.emote.wheel.center.emotes": "utilisable",
+    "screen.emote.wheel.center.release": "Relâchez pour",
+    "screen.emote.wheel.center.to_play": "jouer",
+    "screen.emote.wheel.footer.no_usable": "La roue est synchronisée, mais vous ne pouvez utiliser aucune emote.",
+    "screen.emote.wheel.footer.release_to_play": "Relâchez %s pour jouer l’emote.",
+    "screen.emote.wheel.footer.close": "Relâchez hors d’un emplacement ou appuyez sur Échap pour fermer.",
+    "screen.emote.wheel.footer.page_click": "Clic gauche : page précédente ; clic droit : page suivante."
+}

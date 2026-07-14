@@ -1,0 +1,12 @@
+{
+    "key.emote.wheel": "이모트 휠",
+    "screen.emote.wheel.title": "이모트 휠",
+    "screen.emote.wheel.center.no_usable": "사용 가능한",
+    "screen.emote.wheel.center.emotes": "이모트 없음",
+    "screen.emote.wheel.center.release": "키를 놓아",
+    "screen.emote.wheel.center.to_play": "재생",
+    "screen.emote.wheel.footer.no_usable": "휠이 동기화되었지만 사용할 수 있는 이모트가 없습니다.",
+    "screen.emote.wheel.footer.release_to_play": "%s 키를 놓으면 재생합니다.",
+    "screen.emote.wheel.footer.close": "슬롯 바깥에서 키를 놓거나 Esc 키를 누르면 닫습니다.",
+    "screen.emote.wheel.footer.page_click": "왼쪽 클릭: 이전 페이지, 오른쪽 클릭: 다음 페이지"
+}

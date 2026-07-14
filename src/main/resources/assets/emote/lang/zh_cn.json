@@ -1,0 +1,12 @@
+{
+    "key.emote.wheel": "表情轮盘",
+    "screen.emote.wheel.title": "表情轮盘",
+    "screen.emote.wheel.center.no_usable": "无可用",
+    "screen.emote.wheel.center.emotes": "表情",
+    "screen.emote.wheel.center.release": "松开",
+    "screen.emote.wheel.center.to_play": "即可播放",
+    "screen.emote.wheel.footer.no_usable": "轮盘已同步，但你没有可用的表情。",
+    "screen.emote.wheel.footer.release_to_play": "松开 %s 即可播放。",
+    "screen.emote.wheel.footer.close": "在槽位外松开按键或按 Esc 键关闭。",
+    "screen.emote.wheel.footer.page_click": "左键：上一页，右键：下一页"
+}
