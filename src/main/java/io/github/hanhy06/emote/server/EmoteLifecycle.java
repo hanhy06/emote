@@ -86,7 +86,7 @@ public class EmoteLifecycle {
     private void handleServerStopping(MinecraftServer server) {
         Emote.SERVER = server;
         this.playbackManager.stopAllEmotes();
-        this.skinManager.clear();
+        this.skinManager.cancelPendingBakes();
         Emote.SERVER = null;
         Emote.LOGGER.info("stop emotes");
     }

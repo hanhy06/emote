@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
 class MineSkinBakeExecutorTest {
     @Test
-    void clearInterruptsRunningTaskAndAllowsNewTasks() {
+    void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
             MineSkinBakeExecutor executor = new MineSkinBakeExecutor();
             CountDownLatch started = new CountDownLatch(1);
@@ -29,13 +29,13 @@ class MineSkinBakeExecutorTest {
             });
 
             assertTrue(started.await(1, TimeUnit.SECONDS));
-            executor.clear();
+            executor.cancelAll();
 
             CountDownLatch restarted = new CountDownLatch(1);
             assertTrue(executor.submit("skin", restarted::countDown));
             assertTrue(restarted.await(1, TimeUnit.SECONDS));
             assertTrue(interrupted.await(1, TimeUnit.SECONDS));
-            executor.clear();
+            executor.cancelAll();
         });
     }
 
@@ -58,7 +58,7 @@ class MineSkinBakeExecutorTest {
         assertTrue(started.await(1, TimeUnit.SECONDS));
         assertFalse(executor.submit("skin", runCount::incrementAndGet));
         release.countDown();
-        executor.clear();
+        executor.cancelAll();
 
         assertEquals(1, runCount.get());
     }

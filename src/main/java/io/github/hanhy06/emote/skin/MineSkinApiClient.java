@@ -4,7 +4,11 @@ import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import net.fabricmc.loader.api.FabricLoader;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -17,6 +21,8 @@ import java.util.function.Consumer;
 
 final class MineSkinApiClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
+    private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
+    private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
     private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
     private static final String USER_AGENT = createUserAgent();
@@ -45,6 +51,30 @@ final class MineSkinApiClient {
             throw new IllegalArgumentException("seconds must be between 1 and 60");
         }
         this.jobPollIntervalMillis = seconds * 1000L;
+    }
+
+    BufferedImage downloadSkinImage(String textureUrl) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(textureUrl))
+            .timeout(Duration.ofMillis(SKIN_DOWNLOAD_TIMEOUT_MILLIS))
+            .GET()
+            .build();
+        HttpResponse<InputStream> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+        byte[] imageBytes;
+        try (InputStream input = response.body()) {
+            if (response.statusCode() / 100 != 2) {
+                throw new IOException("unexpected skin response: " + response.statusCode());
+            }
+            imageBytes = input.readNBytes(MAX_SKIN_DOWNLOAD_BYTES + 1);
+            if (imageBytes.length > MAX_SKIN_DOWNLOAD_BYTES) {
+                throw new IOException("skin image exceeds maximum size");
+            }
+        }
+
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        if (image == null) {
+            throw new IOException("skin image decode failed");
+        }
+        return image;
     }
 
     String generateSkinUrl(

@@ -42,7 +42,7 @@ final class MineSkinBakeExecutor {
         }
     }
 
-    synchronized void clear() {
+    synchronized void cancelAll() {
         this.pendingTasks.clear();
         if (this.executor == null) {
             return;

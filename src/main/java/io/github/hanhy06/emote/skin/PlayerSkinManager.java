@@ -17,26 +17,14 @@ import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.*;
 
 public class PlayerSkinManager implements ConfigListener {
-    private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
-    private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
-
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
     private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
-    private final HttpClient httpClient = MineSkinApiClient.createHttpClient();
-    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient(this.httpClient);
+    private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
     private final MineSkinBakeExecutor mineSkinBakeExecutor = new MineSkinBakeExecutor();
 
     private volatile String mineSkinApiKey = "";
@@ -146,8 +134,8 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
-    public void clear() {
-        this.mineSkinBakeExecutor.clear();
+    public void cancelPendingBakes() {
+        this.mineSkinBakeExecutor.cancelAll();
     }
 
     private boolean applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
@@ -220,7 +208,7 @@ public class PlayerSkinManager implements ConfigListener {
             if (missingKeys.isEmpty()) {
                 return;
             }
-            BufferedImage sourceImage = downloadSkinImage(source.textureUrl());
+            BufferedImage sourceImage = this.mineSkinApiClient.downloadSkinImage(source.textureUrl());
             Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
             for (PlayerSkinTextureKey textureKey : missingKeys) {
                 byte[] bakedImage = this.playerSkinBaker.bake(
@@ -277,29 +265,6 @@ public class PlayerSkinManager implements ConfigListener {
         }
         boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
         return new PlayerSkinSource(skinTexture.getHash(), skinTexture.getUrl(), slimModel);
-    }
-
-    private BufferedImage downloadSkinImage(String textureUrl) throws IOException, InterruptedException {
-        HttpRequest request = HttpRequest.newBuilder(URI.create(textureUrl))
-            .timeout(Duration.ofMillis(SKIN_DOWNLOAD_TIMEOUT_MILLIS))
-            .GET()
-            .build();
-        HttpResponse<InputStream> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-        byte[] imageBytes;
-        try (InputStream input = response.body()) {
-            if (response.statusCode() / 100 != 2) {
-                throw new IOException("unexpected skin response: " + response.statusCode());
-            }
-            imageBytes = input.readNBytes(MAX_SKIN_DOWNLOAD_BYTES + 1);
-            if (imageBytes.length > MAX_SKIN_DOWNLOAD_BYTES) {
-                throw new IOException("skin image exceeds maximum size");
-            }
-        }
-        BufferedImage image = ImageIO.read(new ByteArrayInputStream(imageBytes));
-        if (image == null) {
-            throw new IOException("skin image decode failed");
-        }
-        return image;
     }
 
     private MinecraftServer server() {
