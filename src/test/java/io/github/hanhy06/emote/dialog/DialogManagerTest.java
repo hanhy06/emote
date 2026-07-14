@@ -9,6 +9,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DialogManagerTest {
     @Test
+    void pageCommandUsesRootPageArgumentWithoutMenuSubcommand() {
+        assertEquals("/emote 2", DialogManager.createPageCommand(2, ""));
+        assertEquals("/emote search wave 2", DialogManager.createPageCommand(2, "wave"));
+    }
+
+    @Test
     void searchFiltersAndRanksPlayableEmotes() {
         List<PlayableEmote> emotes = List.of(
             new PlayableEmote("dance", "Fast Dance", "Quick movement"),

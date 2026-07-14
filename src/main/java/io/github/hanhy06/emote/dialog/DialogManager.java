@@ -172,9 +172,9 @@ public class DialogManager {
             : createStaticButton("Next", "No next page"));
     }
 
-    private String createPageCommand(int pageNumber, String query) {
+    static String createPageCommand(int pageNumber, String query) {
         return query.isEmpty()
-            ? "/emote menu " + pageNumber
+            ? "/emote " + pageNumber
             : "/emote search " + com.mojang.brigadier.arguments.StringArgumentType.escapeIfRequired(query) + " " + pageNumber;
     }
 

@@ -67,6 +67,11 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createRootCommand() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource()))
+            .then(Commands.argument("page", IntegerArgumentType.integer(1))
+                .executes(context -> openMenu(
+                    context.getSource(),
+                    IntegerArgumentType.getInteger(context, "page")
+                )))
             .then(createSearchCommand())
             .then(createListCommand())
             .then(createReloadCommand())
