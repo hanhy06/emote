@@ -114,15 +114,10 @@ public class BDEngineDatapackProcessor {
     }
 
     private boolean hasEnabledEmoteNamespace(Path packRootPath, PackConfig packConfig) {
-        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
-            return false;
-        }
-
         for (Path namespacePath : this.datapackScanner.findNamespacePaths(packRootPath)) {
             String namespace = namespacePath.getFileName().toString();
             if (packConfig.isEnabled(namespace)
-                && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
-                && isEmoteNamespace(namespacePath)) {
+                && findNamespaceFiles(namespacePath) != null) {
                 return true;
             }
         }
@@ -181,26 +176,23 @@ public class BDEngineDatapackProcessor {
     }
 
     private List<EmoteDefinition> readPackRoot(Path packPath, Path packRootPath, PackConfig packConfig) {
-        if (!Files.exists(packRootPath.resolve("pack.mcmeta"))) {
-            return List.of();
-        }
-
         List<EmoteDefinition> definitions = new ArrayList<>();
         for (Path namespacePath : this.datapackScanner.findNamespacePaths(packRootPath)) {
             if (!packConfig.isEnabled(namespacePath.getFileName().toString())) {
                 continue;
             }
 
-            if (!isEmoteNamespace(namespacePath)) {
+            NamespaceFiles namespaceFiles = findNamespaceFiles(namespacePath);
+            if (namespaceFiles == null) {
                 continue;
             }
 
-            EmoteMetadata metadata = readMetadata(namespacePath.resolve(EMOTE_METADATA_FILE_NAME));
+            EmoteMetadata metadata = readMetadata(namespaceFiles.metadataPath());
             if (metadata == null) {
                 continue;
             }
 
-            EmoteDefinition definition = readDefinition(packPath, namespacePath, metadata);
+            EmoteDefinition definition = readDefinition(packPath, namespacePath, namespaceFiles, metadata);
             if (definition != null) {
                 definitions.add(definition);
             }
@@ -222,23 +214,21 @@ public class BDEngineDatapackProcessor {
         }
     }
 
-    private EmoteDefinition readDefinition(Path packPath, Path namespacePath, EmoteMetadata metadata) {
-        Path functionPath = findFunctionPath(namespacePath);
-        if (functionPath == null) {
-            return null;
-        }
-
-        Path createFunctionPath = functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME);
-        if (!Files.exists(createFunctionPath)) {
-            return null;
-        }
-
+    private EmoteDefinition readDefinition(
+        Path packPath,
+        Path namespacePath,
+        NamespaceFiles namespaceFiles,
+        EmoteMetadata metadata
+    ) {
         String namespace = namespacePath.getFileName().toString();
         String entrypoint = createEntrypoint(packPath, metadata.entrypoint());
-        if (entrypoint == null || !Files.isRegularFile(functionPath.resolve(entrypoint + ".mcfunction"))) {
+        if (entrypoint == null || !Files.isRegularFile(namespaceFiles.functionPath().resolve(entrypoint + ".mcfunction"))) {
             return null;
         }
-        BDEngineCreateFunctionParser.Result createFunctionData = this.createFunctionParser.parse(createFunctionPath, namespace);
+        BDEngineCreateFunctionParser.Result createFunctionData = this.createFunctionParser.parse(
+            namespaceFiles.createFunctionPath(),
+            namespace
+        );
         return new EmoteDefinition(
             namespace,
             metadata.name().trim(),
@@ -266,9 +256,21 @@ public class BDEngineDatapackProcessor {
         return null;
     }
 
-    private boolean isEmoteNamespace(Path namespacePath) {
+    private NamespaceFiles findNamespaceFiles(Path namespacePath) {
+        Path metadataPath = namespacePath.resolve(EMOTE_METADATA_FILE_NAME);
+        if (!Files.isRegularFile(metadataPath)) {
+            return null;
+        }
+
         Path functionPath = findFunctionPath(namespacePath);
-        return functionPath != null && Files.isRegularFile(functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME));
+        if (functionPath == null) {
+            return null;
+        }
+
+        Path createFunctionPath = functionPath.resolve("_").resolve(CREATE_FUNCTION_NAME);
+        return Files.isRegularFile(createFunctionPath)
+            ? new NamespaceFiles(metadataPath, functionPath, createFunctionPath)
+            : null;
     }
 
     private String createCommandName(Path packPath, String namespace, String commandName) {
@@ -298,6 +300,9 @@ public class BDEngineDatapackProcessor {
             return null;
         }
         return normalizedEntrypoint;
+    }
+
+    private record NamespaceFiles(Path metadataPath, Path functionPath, Path createFunctionPath) {
     }
 
 }

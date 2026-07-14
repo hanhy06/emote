@@ -46,7 +46,7 @@ final class BDEngineDatapackScanner {
 
     private <T> List<T> readPack(Path packPath, PackReader<T> reader) {
         if (Files.isDirectory(packPath)) {
-            return reader.read(packPath, packPath);
+            return readPackRoot(packPath, packPath, reader);
         }
 
         String fileName = packPath.getFileName().toString().toLowerCase(Locale.ROOT);
@@ -55,11 +55,17 @@ final class BDEngineDatapackScanner {
         }
 
         try (FileSystem fileSystem = FileSystems.newFileSystem(packPath, Map.of())) {
-            return reader.read(packPath, fileSystem.getPath("/"));
+            return readPackRoot(packPath, fileSystem.getPath("/"), reader);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to read zipped datapack {}", packPath, exception);
             return List.of();
         }
+    }
+
+    private <T> List<T> readPackRoot(Path packPath, Path packRootPath, PackReader<T> reader) {
+        return Files.isRegularFile(packRootPath.resolve("pack.mcmeta"))
+            ? reader.read(packPath, packRootPath)
+            : List.of();
     }
 
     private Comparator<Path> pathComparator() {

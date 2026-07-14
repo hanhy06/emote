@@ -33,6 +33,7 @@ class BDEngineDatapackScannerTest {
         Path datapackDirectory = Files.createDirectories(tempDir.resolve("datapacks"));
         Path directoryPack = Files.createDirectories(datapackDirectory.resolve("beta"));
         Files.writeString(directoryPack.resolve("pack.mcmeta"), "{}");
+        Files.createDirectories(datapackDirectory.resolve("not_a_pack"));
         writePackZip(datapackDirectory.resolve("alpha.zip"));
         Files.writeString(datapackDirectory.resolve("ignored.txt"), "{}");
 
