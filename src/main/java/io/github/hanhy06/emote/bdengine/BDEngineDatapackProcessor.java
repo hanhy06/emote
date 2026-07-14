@@ -29,7 +29,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Stream;
 
 public class BDEngineDatapackProcessor {
     private static final String CREATE_FUNCTION_NAME = "create.mcfunction";
@@ -135,22 +134,13 @@ public class BDEngineDatapackProcessor {
             return false;
         }
 
-        Path dataPath = packRootPath.resolve("data");
-        if (!Files.isDirectory(dataPath)) {
-            return false;
-        }
-
-        try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
-            for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).toList()) {
-                String namespace = namespacePath.getFileName().toString();
-                if (packConfig.isEnabled(namespace)
-                    && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
-                    && isEmoteNamespace(namespacePath)) {
-                    return true;
-                }
+        for (Path namespacePath : this.datapackScanner.findNamespacePaths(packRootPath)) {
+            String namespace = namespacePath.getFileName().toString();
+            if (packConfig.isEnabled(namespace)
+                && Files.isRegularFile(namespacePath.resolve(EMOTE_METADATA_FILE_NAME))
+                && isEmoteNamespace(namespacePath)) {
+                return true;
             }
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to scan datapack namespaces from {}", packRootPath, exception);
         }
 
         return false;
@@ -211,35 +201,25 @@ public class BDEngineDatapackProcessor {
             return List.of();
         }
 
-        Path dataPath = packRootPath.resolve("data");
-        if (!Files.isDirectory(dataPath)) {
-            return List.of();
-        }
-
         List<EmoteDefinition> definitions = new ArrayList<>();
-
-        try (Stream<Path> namespacePathStream = Files.list(dataPath)) {
-            for (Path namespacePath : namespacePathStream.filter(Files::isDirectory).sorted(pathComparator()).toList()) {
-                if (!packConfig.isEnabled(namespacePath.getFileName().toString())) {
-                    continue;
-                }
-
-                if (!isEmoteNamespace(namespacePath)) {
-                    continue;
-                }
-
-                EmoteMetadata metadata = readMetadata(namespacePath.resolve(EMOTE_METADATA_FILE_NAME));
-                if (metadata == null) {
-                    continue;
-                }
-
-                EmoteDefinition definition = readDefinition(packPath, namespacePath, metadata);
-                if (definition != null) {
-                    definitions.add(definition);
-                }
+        for (Path namespacePath : this.datapackScanner.findNamespacePaths(packRootPath)) {
+            if (!packConfig.isEnabled(namespacePath.getFileName().toString())) {
+                continue;
             }
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to read datapack namespaces from {}", packPath, exception);
+
+            if (!isEmoteNamespace(namespacePath)) {
+                continue;
+            }
+
+            EmoteMetadata metadata = readMetadata(namespacePath.resolve(EMOTE_METADATA_FILE_NAME));
+            if (metadata == null) {
+                continue;
+            }
+
+            EmoteDefinition definition = readDefinition(packPath, namespacePath, metadata);
+            if (definition != null) {
+                definitions.add(definition);
+            }
         }
 
         return List.copyOf(definitions);
@@ -605,10 +585,6 @@ public class BDEngineDatapackProcessor {
         }
 
         return Double.parseDouble(normalizedValue);
-    }
-
-    private Comparator<Path> pathComparator() {
-        return Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT));
     }
 
     private String createCommandName(Path packPath, String namespace, String commandName) {

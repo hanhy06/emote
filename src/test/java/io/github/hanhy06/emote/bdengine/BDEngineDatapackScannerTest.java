@@ -15,6 +15,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class BDEngineDatapackScannerTest {
     @Test
+    void findNamespacePathsReturnsDirectoriesInNameOrder(@TempDir Path tempDir) throws IOException {
+        Path dataPath = Files.createDirectories(tempDir.resolve("data"));
+        Files.createDirectories(dataPath.resolve("beta"));
+        Files.createDirectories(dataPath.resolve("Alpha"));
+        Files.writeString(dataPath.resolve("ignored.json"), "{}");
+
+        List<String> namespaces = new BDEngineDatapackScanner().findNamespacePaths(tempDir).stream()
+            .map(path -> path.getFileName().toString())
+            .toList();
+
+        assertEquals(List.of("Alpha", "beta"), namespaces);
+    }
+
+    @Test
     void scanReadsDirectoriesAndZipFilesInNameOrder(@TempDir Path tempDir) throws IOException {
         Path datapackDirectory = Files.createDirectories(tempDir.resolve("datapacks"));
         Path directoryPack = Files.createDirectories(datapackDirectory.resolve("beta"));

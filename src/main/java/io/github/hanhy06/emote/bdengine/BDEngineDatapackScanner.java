@@ -31,6 +31,23 @@ final class BDEngineDatapackScanner {
         return List.copyOf(results);
     }
 
+    List<Path> findNamespacePaths(Path packRootPath) {
+        Path dataPath = packRootPath.resolve("data");
+        if (!Files.isDirectory(dataPath)) {
+            return List.of();
+        }
+
+        try (Stream<Path> namespacePaths = Files.list(dataPath)) {
+            return namespacePaths
+                .filter(Files::isDirectory)
+                .sorted(pathComparator())
+                .toList();
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to scan datapack namespaces from {}", packRootPath, exception);
+            return List.of();
+        }
+    }
+
     private <T> List<T> readPack(Path packPath, PackReader<T> reader) {
         if (Files.isDirectory(packPath)) {
             return reader.read(packPath, packPath);
