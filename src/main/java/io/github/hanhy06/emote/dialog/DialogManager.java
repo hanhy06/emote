@@ -35,6 +35,9 @@ import java.util.Locale;
 import java.util.Optional;
 
 public class DialogManager {
+    private static final int SMALL_BUTTON_WIDTH = 150;
+    private static final int WIDE_BUTTON_WIDTH = 310;
+
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
     private final PlayableEmoteService playableEmoteService;
@@ -122,14 +125,14 @@ public class DialogManager {
                 "Search",
                 "Open emote search",
                 "/emote search",
-                310
+                searchButtonWidth(actionButtons.size())
             ));
         }
         return new MultiActionDialog(commonDialogData, List.copyOf(actionButtons), Optional.empty(), 2);
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command) {
-        return createRunCommandButton(label, tooltip, command, 150);
+        return createRunCommandButton(label, tooltip, command, SMALL_BUTTON_WIDTH);
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command, int width) {
@@ -142,7 +145,7 @@ public class DialogManager {
         CommonButtonData buttonData = new CommonButtonData(
             Component.literal("Search"),
             Optional.of(Component.literal("Show matching emotes")),
-            310
+            WIDE_BUTTON_WIDTH
         );
         ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
             .parse(JsonOps.INSTANCE, new JsonPrimitive("/emote search $(query)"))
@@ -151,8 +154,16 @@ public class DialogManager {
     }
 
     private ActionButton createStaticButton(String label, String tooltip) {
-        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), 150);
+        CommonButtonData buttonData = new CommonButtonData(
+            Component.literal(label),
+            Optional.of(Component.literal(tooltip)),
+            SMALL_BUTTON_WIDTH
+        );
         return new ActionButton(buttonData, Optional.empty());
+    }
+
+    static int searchButtonWidth(int existingButtonCount) {
+        return (existingButtonCount & 1) == 0 ? WIDE_BUTTON_WIDTH : SMALL_BUTTON_WIDTH;
     }
 
     private void appendPageButtons(List<ActionButton> actionButtons, DialogPage dialogPage, String query) {
