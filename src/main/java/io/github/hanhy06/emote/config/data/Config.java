@@ -6,8 +6,7 @@ public record Config(
     int schemaVersion,
     int menuPageSize,
     String mineSkinApiKey,
-    int mineSkinPollIntervalSeconds,
-    String emotePermission
+    int mineSkinPollIntervalSeconds
 ) {
     public static final int CURRENT_SCHEMA_VERSION = 1;
 
@@ -22,7 +21,6 @@ public record Config(
             throw new IllegalArgumentException("mineskin_poll_interval_seconds must be between 1 and 60");
         }
         Objects.requireNonNull(mineSkinApiKey, "mineSkinApiKey");
-        Objects.requireNonNull(emotePermission, "emotePermission");
     }
 
     public static Config createDefault() {
@@ -30,8 +28,7 @@ public record Config(
             CURRENT_SCHEMA_VERSION,
             6,
             "",
-            3,
-            "emote.use"
+            3
         );
     }
 }

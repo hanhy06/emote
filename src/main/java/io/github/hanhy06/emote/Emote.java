@@ -102,7 +102,6 @@ public class Emote implements ModInitializer {
     }
 
     private void registerConfigListeners() {
-        this.configManager.addListener(this.permissionService);
         this.configManager.addPackListener(this.permissionService);
         this.configManager.addListener(this.skinManager);
     }

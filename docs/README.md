@@ -12,18 +12,18 @@ The mod is designed around server-side playback. Vanilla clients can browse and 
 
 | Action                       | Permission  | Description                                                                                              |
 | ---------------------------- | ----------- | -------------------------------------------------------------------------------------------------------- |
-| `/emote`                     | `emote.use` | Opens the emote menu.                                                                                    |
-| `/emote search`              | `emote.use` | Opens the emote search dialog.                                                                           |
-| `/emote list`                | `emote.use` | Lists registered emotes and their internal details.                                                      |
-| `/emote play <emote>`        | `emote.use` | Plays an emote by command name or namespace.                                                             |
-| `/emote stop`                | `emote.use` | Stops the currently playing emote.                                                                       |
+| `/emote`                     | None        | Opens the emote menu.                                                                                    |
+| `/emote search`              | None        | Opens the emote search dialog.                                                                           |
+| `/emote list`                | None        | Lists registered emotes and their internal details.                                                      |
+| `/emote play <emote>`        | Per-emote   | Plays an emote by command name or namespace.                                                             |
+| `/emote stop`                | None        | Stops the currently playing emote.                                                                       |
 | `/emote stop-all`            | Game master | Stops every active or pending emote.                                                                     |
 | `/emote enable <namespace>`  | Game master | Enables an emote namespace in `packs.json` and reloads emotes.                                           |
 | `/emote disable <namespace>` | Game master | Disables an emote namespace, stops its active instances, and reloads emotes.                             |
 | `/emote reload`              | Admin       | Reloads the configuration and emote datapacks.                                                           |
 | V key                        | Client mod  | Opens the emote wheel. Release the key toward a slot to play its emote.                                  |
 
-`emote.use` is the default base permission and can be changed in `config.json`. An emote can also require an additional permission through `packs.json`.
+Basic emote commands do not require permission. An individual emote can require a permission through `packs.json`.
 
 ### Playback behavior
 
@@ -129,8 +129,7 @@ Configuration files are created automatically in `config/emote` when the server 
   "schema_version": 1,
   "menu_page_size": 6,
   "mineskin_api_key": "",
-  "mineskin_poll_interval_seconds": 3,
-  "emote_permission": "emote.use"
+  "mineskin_poll_interval_seconds": 3
 }
 ```
 
@@ -139,7 +138,6 @@ Configuration files are created automatically in `config/emote` when the server 
 | `menu_page_size`                 | Number of emotes displayed on each menu page.                                                                  |
 | `mineskin_api_key`               | MineSkin API key used to apply player skins.                                                                   |
 | `mineskin_poll_interval_seconds` | Interval in seconds between checks for completion of a MineSkin skin-generation job. Must be between 1 and 60. |
-| `emote_permission`               | Base permission required to use emote features.                                                                |
 
 When a [MineSkin API](https://account.mineskin.org/) key is configured, the player's current skin is applied to the head, body, arms, and legs of compatible emotes. Generated skin textures and pending jobs are cached on the server, so the same skin does not need to be processed repeatedly.
 

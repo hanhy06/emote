@@ -173,22 +173,12 @@ public final class RootCommand {
         int pageNumber
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!this.permissionService.canOpenDialog(player)) {
-            source.sendFailure(Component.literal("No menu permission."));
-            return 0;
-        }
-
         this.dialogManager.openDialog(player, pageNumber);
         return 1;
     }
 
     private int openSearch(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!this.permissionService.canOpenDialog(player)) {
-            source.sendFailure(Component.literal("No menu permission."));
-            return 0;
-        }
-
         this.dialogManager.openSearchDialog(player);
         return 1;
     }
@@ -199,21 +189,11 @@ public final class RootCommand {
         String query
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!this.permissionService.canOpenDialog(player)) {
-            source.sendFailure(Component.literal("No menu permission."));
-            return 0;
-        }
-
         this.dialogManager.openDialog(player, pageNumber, query);
         return 1;
     }
 
     private int listEmotes(CommandSourceStack source) {
-        if (!this.permissionService.canList(source)) {
-            source.sendFailure(Component.literal("No list permission."));
-            return 0;
-        }
-
         List<EmoteDefinition> definitions = this.emoteRegistry.getDefinitions();
         if (definitions.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
@@ -274,11 +254,6 @@ public final class RootCommand {
 
     private int stopEmote(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        if (!this.permissionService.canStop(player)) {
-            source.sendFailure(Component.literal("No stop permission."));
-            return 0;
-        }
-
         ActiveEmote activeEmote = this.playbackManager.stopEmote(player);
         if (activeEmote == null) {
             source.sendFailure(Component.literal("No active emote."));

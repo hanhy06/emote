@@ -193,7 +193,6 @@ public class ConfigManager {
         object.addProperty("menu_page_size", config.menuPageSize());
         object.addProperty("mineskin_api_key", config.mineSkinApiKey());
         object.addProperty("mineskin_poll_interval_seconds", config.mineSkinPollIntervalSeconds());
-        object.addProperty("emote_permission", config.emotePermission());
         return object;
     }
 
@@ -221,8 +220,7 @@ public class ConfigManager {
             readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
             readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
             readString(object, "mineskin_api_key", defaultConfig.mineSkinApiKey()),
-            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds()),
-            readString(object, "emote_permission", defaultConfig.emotePermission())
+            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds())
         );
     }
 
