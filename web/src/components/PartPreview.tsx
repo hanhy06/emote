@@ -90,7 +90,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     controls.target.copy(center);
-    camera.position.copy(center).add(new THREE.Vector3(size * 1.2, size * 0.5, size * 1.4));
+    camera.position.copy(center).add(new THREE.Vector3(size * 1.5, size * 0.625, size * 1.75));
     camera.near = Math.max(size / 100, 0.01);
     camera.far = Math.max(size * 20, 100);
     camera.updateProjectionMatrix();
