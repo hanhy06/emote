@@ -31,9 +31,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class PlayerSkinManager implements ConfigListener {
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
@@ -42,12 +39,7 @@ public class PlayerSkinManager implements ConfigListener {
     private final PlayerSkinBaker playerSkinBaker = new PlayerSkinBaker();
     private final MineSkinTextureStore mineSkinTextureStore = new MineSkinTextureStore();
     private final MineSkinApiClient mineSkinApiClient = new MineSkinApiClient();
-    private final Set<String> pendingMineSkinBakeKeys = ConcurrentHashMap.newKeySet();
-    private final ExecutorService mineSkinBakeExecutor = Executors.newSingleThreadExecutor(task -> {
-        Thread thread = new Thread(task, "emote-mineskin");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private final MineSkinBakeExecutor mineSkinBakeExecutor = new MineSkinBakeExecutor();
 
     private volatile String mineSkinApiKey = "";
 
@@ -157,7 +149,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public void clear() {
-        this.pendingMineSkinBakeKeys.clear();
+        this.mineSkinBakeExecutor.clear();
     }
 
     private boolean applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
@@ -210,17 +202,11 @@ public class PlayerSkinManager implements ConfigListener {
             return;
         }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-        if (!this.pendingMineSkinBakeKeys.add(pendingKey)) {
-            return;
-        }
         Set<PlayerSkinTextureKey> requestedKeys = Set.copyOf(requiredKeys);
-        this.mineSkinBakeExecutor.execute(() -> {
-            try {
-                bakeAndSaveMineSkinTextureSet(apiKey, playerName, source, requestedKeys);
-            } finally {
-                this.pendingMineSkinBakeKeys.remove(pendingKey);
-            }
-        });
+        this.mineSkinBakeExecutor.submit(
+            pendingKey,
+            () -> bakeAndSaveMineSkinTextureSet(apiKey, playerName, source, requestedKeys)
+        );
     }
 
     private void bakeAndSaveMineSkinTextureSet(
