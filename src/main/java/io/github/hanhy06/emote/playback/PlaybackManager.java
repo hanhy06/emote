@@ -227,7 +227,7 @@ public class PlaybackManager {
             return null;
         }
 
-        alignRootWithPlayer(player, rootEntityUuid);
+        alignInstanceWithPlayer(player, rootEntityUuid, instanceEntityUuids);
 
         ActiveEmote namespaceTimeline = findActiveNamespaceEmote(definition.namespace());
         if (namespaceTimeline == null) {
@@ -415,7 +415,11 @@ public class PlaybackManager {
         this.entityController.cleanupNamespaceEntities(player.level(), namespace);
     }
 
-    private void alignRootWithPlayer(ServerPlayer player, UUID rootEntityUuid) {
+    private void alignInstanceWithPlayer(
+        ServerPlayer player,
+        UUID rootEntityUuid,
+        Set<UUID> instanceEntityUuids
+    ) {
         Entity rootEntity = player.level().getEntity(rootEntityUuid);
         if (rootEntity == null) {
             return;
@@ -424,6 +428,13 @@ public class PlaybackManager {
         float yaw = Mth.wrapDegrees(player.getYRot() + 180.0F);
         rootEntity.snapTo(player.position(), yaw, 0.0F);
         rootEntity.teleportTo(player.getX(), player.getY(), player.getZ());
+
+        for (UUID entityUuid : instanceEntityUuids) {
+            Entity entity = player.level().getEntity(entityUuid);
+            if (entity != null && entity != rootEntity) {
+                entity.snapTo(entity.position(), yaw, 0.0F);
+            }
+        }
     }
 
     private void executeFunction(ServerPlayer player, String functionId) {
