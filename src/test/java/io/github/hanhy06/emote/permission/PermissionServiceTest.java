@@ -5,28 +5,27 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PermissionServiceTest {
     @Test
     void defaultAllowsOnlyConfiguredNamespaces() {
-        PermissionService service = new PermissionService();
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission) -> false);
         service.onPackConfigReload(new PackConfig(
             List.of(),
             Map.of("default", List.of("wave_pack"))
         ));
 
-        assertTrue(service.isDefaultAllowed("wave_pack"));
-        assertFalse(service.isDefaultAllowed("bow_pack"));
+        assertTrue(service.canPlay(null, "wave_pack"));
+        assertFalse(service.canPlay(null, "bow_pack"));
     }
 
     @Test
     void wildcardAllowsEveryNamespaceForPermission() {
-        PermissionService service = new PermissionService();
+        PermissionService service = new PermissionService(
+            (ignoredPlayer, permission) -> permission.equals("emote.pack.admin")
+        );
         service.onPackConfigReload(new PackConfig(
             List.of(),
             Map.of(
@@ -36,17 +35,16 @@ class PermissionServiceTest {
             )
         ));
 
-        assertEquals(Set.of("emote.pack.vip", "emote.pack.admin"), Set.copyOf(service.findPermissions("bow_pack")));
-        assertEquals(List.of("emote.pack.admin"), service.findPermissions("missing_pack"));
+        assertTrue(service.canPlay(null, "bow_pack"));
+        assertTrue(service.canPlay(null, "missing_pack"));
     }
 
     @Test
     void emptyPermissionsDenyEveryNamespace() {
-        PermissionService service = new PermissionService();
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission) -> false);
         service.onPackConfigReload(new PackConfig(List.of(), Map.of()));
 
-        assertFalse(service.isDefaultAllowed("wave_pack"));
-        assertTrue(service.findPermissions("wave_pack").isEmpty());
+        assertFalse(service.canPlay(null, "wave_pack"));
     }
 
     @Test
@@ -54,7 +52,6 @@ class PermissionServiceTest {
         PermissionService service = new PermissionService();
         service.onPackConfigReload(PackConfig.createDefault());
 
-        assertTrue(service.isDefaultAllowed("wave_pack"));
         assertTrue(service.canPlay(null, "wave_pack"));
     }
 

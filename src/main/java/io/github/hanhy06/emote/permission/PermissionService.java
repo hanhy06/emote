@@ -62,18 +62,6 @@ public class PermissionService implements PackConfigListener {
         return this::canManageEmotes;
     }
 
-    boolean isDefaultAllowed(String namespace) {
-        return includesNamespace(this.permissionNamespaces.get(DEFAULT_PERMISSION), namespace);
-    }
-
-    List<String> findPermissions(String namespace) {
-        return this.permissionNamespaces.entrySet().stream()
-            .filter(entry -> !entry.getKey().equals(DEFAULT_PERMISSION))
-            .filter(entry -> includesNamespace(entry.getValue(), namespace))
-            .map(Map.Entry::getKey)
-            .toList();
-    }
-
     private boolean includesNamespace(List<String> namespaces, String namespace) {
         return namespaces != null && (namespaces.contains(ALL_NAMESPACES) || namespaces.contains(namespace));
     }
