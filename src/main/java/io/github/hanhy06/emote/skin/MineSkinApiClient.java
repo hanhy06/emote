@@ -129,7 +129,7 @@ final class MineSkinApiClient {
     }
 
     private JsonObject sendJsonRequest(HttpRequest request) throws IOException, InterruptedException {
-        for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
+        for (int attempt = 0; ; attempt++) {
             HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
             JsonObject responseBody = parseJsonObject(response.body());
             if (response.statusCode() / 100 == 2) {
@@ -143,7 +143,6 @@ final class MineSkinApiClient {
 
             throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
         }
-        throw new IOException("MineSkin rate limit retry exhausted");
     }
 
     long readRetryDelayMillis(HttpResponse<?> response, JsonObject responseBody) {

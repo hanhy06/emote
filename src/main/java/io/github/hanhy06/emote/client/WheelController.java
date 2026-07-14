@@ -114,6 +114,7 @@ public class WheelController {
     }
 
     private static void drainClicks(KeyMapping keyMapping) {
+        //noinspection StatementWithEmptyBody
         while (keyMapping.consumeClick()) {
         }
     }
