@@ -181,7 +181,7 @@ public class PlaybackManager {
 
     private void resetPlayerPlayback(ServerPlayer player, String namespace) {
         this.stopEmote(player);
-        if (!hasActiveNamespace(namespace) && !hasPendingNamespace(namespace)) {
+        if (hasNoActiveNamespace(namespace) && !hasPendingNamespace(namespace)) {
             cleanupNamespace(player, namespace);
         }
     }
@@ -355,8 +355,8 @@ public class PlaybackManager {
         return null;
     }
 
-    private boolean hasActiveNamespace(String namespace) {
-        return findActiveNamespaceEmote(namespace) != null;
+    private boolean hasNoActiveNamespace(String namespace) {
+        return findActiveNamespaceEmote(namespace) == null;
     }
 
     private boolean hasPendingNamespace(String namespace) {
@@ -365,7 +365,7 @@ public class PlaybackManager {
     }
 
     private void stopActiveEmote(MinecraftServer server, ActiveEmote activeEmote) {
-        boolean lastNamespaceInstance = !hasActiveNamespace(activeEmote.namespace());
+        boolean lastNamespaceInstance = hasNoActiveNamespace(activeEmote.namespace());
         if (lastNamespaceInstance) {
             executeFunction(activeEmote, EmoteDatapackNames.stopAnimationFunctionId(activeEmote.namespace()));
             executeFunction(activeEmote, EmoteDatapackNames.deleteFunctionId(activeEmote.namespace()));

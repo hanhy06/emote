@@ -114,9 +114,7 @@ public class WheelController {
     }
 
     private static void drainClicks(KeyMapping keyMapping) {
-        boolean hasQueuedClick = keyMapping.consumeClick();
-        while (hasQueuedClick) {
-            hasQueuedClick = keyMapping.consumeClick();
+        while (keyMapping.consumeClick()) {
         }
     }
 

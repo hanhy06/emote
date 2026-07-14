@@ -123,7 +123,7 @@ public class PlayerSkinManager implements ConfigListener {
             return;
         }
         if (entity instanceof Display.ItemDisplay display) {
-            String tag = findRequestedTag(display.entityTags(), requestedTags);
+            String tag = display.entityTags().stream().filter(requestedTags::contains).findFirst().orElse(null);
             if (tag != null && !appliedTags.contains(tag)) {
                 EmoteSkinPart skinPart = skinPartByTag.get(tag);
                 if (skinPart != null && applyMineSkinProfile(display, skinPart, preparedPlayerSkin)) {
@@ -300,10 +300,6 @@ public class PlayerSkinManager implements ConfigListener {
             throw new IOException("skin image decode failed");
         }
         return image;
-    }
-
-    private String findRequestedTag(Set<String> entityTags, Set<String> requestedTags) {
-        return entityTags.stream().filter(requestedTags::contains).findFirst().orElse(null);
     }
 
     private MinecraftServer server() {

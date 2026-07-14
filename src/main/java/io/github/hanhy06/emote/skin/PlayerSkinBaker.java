@@ -35,15 +35,15 @@ final class PlayerSkinBaker {
         FaceMap baseFaces = PlayerSkinAtlas.baseFaces(skinPart);
         FaceMap overlayFaces = PlayerSkinAtlas.overlayFaces(skinPart);
 
-        drawTopFace(outputImage, bakingImage, baseFaces, BASE_TOP);
-        drawBottomFace(outputImage, bakingImage, baseFaces, BASE_BOTTOM);
+        drawFace(outputImage, bakingImage, baseFaces.top(), BASE_TOP);
+        drawFace(outputImage, bakingImage, baseFaces.bottom(), BASE_BOTTOM);
         drawFace(outputImage, bakingImage, createSegment(baseFaces.right(), skinSegment), BASE_RIGHT);
         drawFace(outputImage, bakingImage, createSegment(baseFaces.front(), skinSegment), BASE_FRONT);
         drawFace(outputImage, bakingImage, createSegment(baseFaces.left(), skinSegment), BASE_LEFT);
         drawFace(outputImage, bakingImage, createSegment(baseFaces.back(), skinSegment), BASE_BACK);
 
-        drawTopFace(outputImage, bakingImage, overlayFaces, OVERLAY_TOP);
-        drawBottomFace(outputImage, bakingImage, overlayFaces, OVERLAY_BOTTOM);
+        drawFace(outputImage, bakingImage, overlayFaces.top(), OVERLAY_TOP);
+        drawFace(outputImage, bakingImage, overlayFaces.bottom(), OVERLAY_BOTTOM);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.right(), skinSegment), OVERLAY_RIGHT);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.front(), skinSegment), OVERLAY_FRONT);
         drawFace(outputImage, bakingImage, createSegment(overlayFaces.left(), skinSegment), OVERLAY_LEFT);
@@ -148,24 +148,6 @@ final class PlayerSkinBaker {
             faceRect.virtualWidth(),
             faceRect.padMode()
         );
-    }
-
-    private void drawTopFace(
-        BufferedImage outputImage,
-        BufferedImage sourceImage,
-        FaceMap fullFaces,
-        FaceTarget targetRect
-    ) {
-        drawFace(outputImage, sourceImage, fullFaces.top(), targetRect);
-    }
-
-    private void drawBottomFace(
-        BufferedImage outputImage,
-        BufferedImage sourceImage,
-        FaceMap fullFaces,
-        FaceTarget targetRect
-    ) {
-        drawFace(outputImage, sourceImage, fullFaces.bottom(), targetRect);
     }
 
     private boolean usesWideSlimArmAtlas(PlayerSkinPart skinPart, boolean slimModel) {
