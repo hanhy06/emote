@@ -41,3 +41,11 @@ replay_*.log
 *.hprof
 *.jfr
 logs/
+
+# web converter
+
+web/node_modules/
+web/dist/
+web/*.tsbuildinfo
+web/vite.config.js
+web/vite.config.d.ts
