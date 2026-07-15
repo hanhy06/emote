@@ -68,7 +68,14 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
     for (const transform of track.transforms) {
       const tick = secondsToTicks(transform.timeSeconds, `${animation.id}/${nodeId} transform`);
       const keyframe = keyframes.get(tick) ?? { tick };
-      const duration = transform.interpolation.type === "step" ? 0 : tick - previousTick;
+      const explicitDuration = transform.interpolation.type === "linear"
+        ? transform.interpolation.durationSeconds
+        : undefined;
+      const duration = transform.interpolation.type === "step"
+        ? 0
+        : explicitDuration == null
+          ? tick - previousTick
+          : secondsToTicks(explicitDuration, `${animation.id}/${nodeId} interpolation`);
       keyframe.node_transforms = {
         ...keyframe.node_transforms,
         [nodeId]: { matrix: transform.matrix, interpolation_duration_ticks: duration },

@@ -57,8 +57,8 @@ export function App() {
       setAssignments(Object.fromEntries(candidates.map((candidate) => [candidate.partIndex, candidate.node.skin?.part ?? null])));
       setOrders(Object.fromEntries(candidates.map((candidate) => [candidate.partIndex, candidate.node.skin?.order ?? null])));
       setMetadata({
-        minecraftVersion: "26.2",
-        namespace: imported.suggestedMetadata.command_name,
+        minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
+        namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.command_name,
         ...imported.suggestedMetadata,
       });
     } catch (reason) {

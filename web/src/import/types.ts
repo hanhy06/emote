@@ -1,11 +1,13 @@
 import type { EmoteEvent, EmoteMetadata, Matrix16 } from "../format/emoteAnimation";
 
-export type ImportSource = "bd_datapack" | "bd_project" | "animated_java_json";
+export type ImportSource = "bd_datapack" | "bd_project" | "animated_java_json" | "emote_json";
 
 export interface ImportedProject {
   source: ImportSource;
   sourceName: string;
   suggestedMetadata: EmoteMetadata;
+  suggestedMinecraftVersion?: string;
+  suggestedNamespace?: string;
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
@@ -64,7 +66,7 @@ export interface ImportedTransformKeyframe {
 
 export type ImportedInterpolation =
   | { type: "step" }
-  | { type: "linear" }
+  | { type: "linear"; durationSeconds?: number }
   | { type: "sampled_linear" };
 
 export interface ImportedVisibilityKeyframe {
