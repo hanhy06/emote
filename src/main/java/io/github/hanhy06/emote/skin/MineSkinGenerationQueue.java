@@ -7,16 +7,16 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.function.Supplier;
 
-final class MineSkinBakeExecutor {
+final class MineSkinGenerationQueue {
     private final Supplier<ExecutorService> executorFactory;
     private final Map<String, Object> pendingTasks = new HashMap<>();
     private ExecutorService executor;
 
-    MineSkinBakeExecutor() {
-        this(MineSkinBakeExecutor::createExecutor);
+    MineSkinGenerationQueue() {
+        this(MineSkinGenerationQueue::createExecutor);
     }
 
-    MineSkinBakeExecutor(Supplier<ExecutorService> executorFactory) {
+    MineSkinGenerationQueue(Supplier<ExecutorService> executorFactory) {
         this.executorFactory = executorFactory;
     }
 

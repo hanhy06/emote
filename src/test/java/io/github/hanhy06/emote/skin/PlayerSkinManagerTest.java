@@ -26,14 +26,14 @@ class PlayerSkinManagerTest {
 
     @Test
     void preparePlayerSkinReturnsStoredTextures(@TempDir Path tempDir) {
-        MineSkinTextureStore textureStore = new MineSkinTextureStore(tempDir);
+        MineSkinCache textureStore = new MineSkinCache(tempDir);
         textureStore.save("skin-hash", false, Map.of(HEAD_TEXTURE_KEY, "https://textures.example/head"));
 
-        try (HttpClient httpClient = MineSkinApiClient.createHttpClient()) {
+        try (HttpClient httpClient = MineSkinClient.createHttpClient()) {
             PlayerSkinManager manager = createManager(
                 textureStore,
-                new MineSkinApiClient(httpClient),
-                new MineSkinBakeExecutor(),
+                new MineSkinClient(httpClient),
+                new MineSkinGenerationQueue(),
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
@@ -50,11 +50,11 @@ class PlayerSkinManagerTest {
     @Test
     void preparePlayerSkinSchedulesMissingTextures(@TempDir Path tempDir) {
         try (CapturingExecutorService executorService = new CapturingExecutorService();
-             HttpClient httpClient = MineSkinApiClient.createHttpClient()) {
-            MineSkinBakeExecutor bakeExecutor = new MineSkinBakeExecutor(() -> executorService);
+             HttpClient httpClient = MineSkinClient.createHttpClient()) {
+            MineSkinGenerationQueue bakeExecutor = new MineSkinGenerationQueue(() -> executorService);
             PlayerSkinManager manager = createManager(
-                new MineSkinTextureStore(tempDir),
-                new MineSkinApiClient(httpClient),
+                new MineSkinCache(tempDir),
+                new MineSkinClient(httpClient),
                 bakeExecutor,
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
@@ -70,9 +70,9 @@ class PlayerSkinManagerTest {
     }
 
     private PlayerSkinManager createManager(
-        MineSkinTextureStore textureStore,
-        MineSkinApiClient apiClient,
-        MineSkinBakeExecutor bakeExecutor,
+        MineSkinCache textureStore,
+        MineSkinClient apiClient,
+        MineSkinGenerationQueue bakeExecutor,
         PlayerSkinManager.PlayerSkinSource skinSource
     ) {
         PlayerSkinManager manager = new PlayerSkinManager(

@@ -20,7 +20,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-final class MineSkinApiClient {
+final class MineSkinClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
@@ -32,11 +32,11 @@ final class MineSkinApiClient {
     private final Gson gson = new Gson();
     private volatile long jobPollIntervalMillis = 3000L;
 
-    MineSkinApiClient() {
+    MineSkinClient() {
         this(createHttpClient());
     }
 
-    MineSkinApiClient(HttpClient httpClient) {
+    MineSkinClient(HttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
 

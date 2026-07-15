@@ -17,10 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MineSkinApiClientTest {
+class MineSkinClientTest {
     @Test
     void sharedHttpClientUsesSkinRequestConnectionSettings() {
-        try (HttpClient httpClient = MineSkinApiClient.createHttpClient()) {
+        try (HttpClient httpClient = MineSkinClient.createHttpClient()) {
             assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
             assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
         }
@@ -28,23 +28,23 @@ class MineSkinApiClientTest {
 
     @Test
     void apiKeyPresenceAcceptsRawAndBearerFormats() {
-        assertTrue(MineSkinApiClient.hasApiKey("api-key"));
-        assertTrue(MineSkinApiClient.hasApiKey("  Bearer api-key  "));
-        assertTrue(MineSkinApiClient.hasApiKey("  bearer api-key  "));
+        assertTrue(MineSkinClient.hasApiKey("api-key"));
+        assertTrue(MineSkinClient.hasApiKey("  Bearer api-key  "));
+        assertTrue(MineSkinClient.hasApiKey("  bearer api-key  "));
     }
 
     @Test
     void apiKeyPresenceRejectsMissingValues() {
-        assertFalse(MineSkinApiClient.hasApiKey(null));
-        assertFalse(MineSkinApiClient.hasApiKey("  "));
-        assertFalse(MineSkinApiClient.hasApiKey("Bearer   "));
+        assertFalse(MineSkinClient.hasApiKey(null));
+        assertFalse(MineSkinClient.hasApiKey("  "));
+        assertFalse(MineSkinClient.hasApiKey("Bearer   "));
     }
 
     @Test
     void uploadBodyUsesMultipartFileInsteadOfDataUrl() {
         byte[] pngBytes = new byte[]{0, 1, 2, (byte)255};
 
-        MineSkinApiClient.MultipartBody body = MineSkinApiClient.createUploadBody(pngBytes, true);
+        MineSkinClient.MultipartBody body = MineSkinClient.createUploadBody(pngBytes, true);
         String bodyText = new String(body.bytes(), StandardCharsets.ISO_8859_1);
 
         assertTrue(body.contentType().startsWith("multipart/form-data; boundary=emote-"));
@@ -60,7 +60,7 @@ class MineSkinApiClientTest {
 
     @Test
     void rateLimitDelayKeepsHourlyResetDuration() {
-        MineSkinApiClient client = new MineSkinApiClient();
+        MineSkinClient client = new MineSkinClient();
 
         long delay = client.readRetryDelayMillis(
             new StubHttpResponse(HttpHeaders.of(java.util.Map.of(), (ignoredName, ignoredValue) -> true)),

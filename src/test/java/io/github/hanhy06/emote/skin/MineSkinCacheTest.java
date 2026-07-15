@@ -12,10 +12,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class MineSkinTextureStoreTest {
+class MineSkinCacheTest {
     @Test
     void saveAndLoadRoundTrip(@TempDir Path tempDir) {
-        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        MineSkinCache store = new MineSkinCache(tempDir);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.of(
             new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL), "https://textures.minecraft.net/texture/head",
             new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)), "https://textures.minecraft.net/texture/left_arm"
@@ -28,9 +28,9 @@ class MineSkinTextureStoreTest {
 
     @Test
     void contentCacheRoundTrip(@TempDir Path tempDir) {
-        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        MineSkinCache store = new MineSkinCache(tempDir);
         String contentHash = MineSkinContentKey.create(new byte[]{1, 2, 3}, false);
-        MineSkinTextureResult result = new MineSkinTextureResult("https://textures.minecraft.net/texture/shared");
+        String result = "https://textures.minecraft.net/texture/shared";
 
         store.saveContent(contentHash, result);
 
@@ -46,18 +46,18 @@ class MineSkinTextureStoreTest {
 
     @Test
     void rejectsInvalidContentHash(@TempDir Path tempDir) {
-        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        MineSkinCache store = new MineSkinCache(tempDir);
 
         assertNull(store.loadContent("../invalid"));
     }
 
     @Test
     void pendingJobRoundTrip(@TempDir Path tempDir) {
-        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        MineSkinCache store = new MineSkinCache(tempDir);
         String contentHash = MineSkinContentKey.create(new byte[]{7, 8, 9}, true);
 
         store.savePendingJob(contentHash, "job-123");
-        MineSkinTextureStore.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
+        MineSkinCache.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
         assertEquals("job-123", pendingJob.jobId());
         assertTrue(pendingJob.submittedAtEpochMillis() > 0L);
 
@@ -67,7 +67,7 @@ class MineSkinTextureStoreTest {
 
     @Test
     void failureBlocksRetryUntilCooldownExpires(@TempDir Path tempDir) {
-        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        MineSkinCache store = new MineSkinCache(tempDir);
         String contentHash = MineSkinContentKey.create(new byte[]{10, 11, 12}, false);
 
         store.saveFailure(contentHash, "failed", 2_000L);

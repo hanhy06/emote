@@ -10,7 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-final class MineSkinTextureStore {
+final class MineSkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
     private final Path skinDirPath;
@@ -19,11 +19,11 @@ final class MineSkinTextureStore {
         .disableHtmlEscaping()
         .create();
 
-    MineSkinTextureStore() {
+    MineSkinCache() {
         this(null);
     }
 
-    MineSkinTextureStore(Path skinDirPath) {
+    MineSkinCache(Path skinDirPath) {
         this.skinDirPath = skinDirPath;
     }
 
@@ -80,7 +80,7 @@ final class MineSkinTextureStore {
         }
     }
 
-    MineSkinTextureResult loadContent(String contentHash) {
+    String loadContent(String contentHash) {
         Path filePath = resolveContentFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -98,14 +98,14 @@ final class MineSkinTextureStore {
             if (version == null || version != CONTENT_CACHE_VERSION || !contentHash.equals(storedHash) || textureUrl == null) {
                 return null;
             }
-            return new MineSkinTextureResult(textureUrl);
+            return textureUrl;
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
             return null;
         }
     }
 
-    void saveContent(String contentHash, MineSkinTextureResult result) {
+    void saveContent(String contentHash, String textureUrl) {
         Path filePath = resolveContentFilePath(contentHash);
         if (filePath == null) {
             return;
@@ -114,7 +114,7 @@ final class MineSkinTextureStore {
         JsonObject object = new JsonObject();
         object.addProperty("version", CONTENT_CACHE_VERSION);
         object.addProperty("content_hash", contentHash);
-        object.addProperty("texture_url", result.textureUrl());
+        object.addProperty("texture_url", textureUrl);
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {

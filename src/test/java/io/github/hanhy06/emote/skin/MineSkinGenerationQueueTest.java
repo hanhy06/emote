@@ -12,11 +12,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
-class MineSkinBakeExecutorTest {
+class MineSkinGenerationQueueTest {
     @Test
     void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            MineSkinBakeExecutor executor = new MineSkinBakeExecutor();
+            MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
             CountDownLatch started = new CountDownLatch(1);
             CountDownLatch interrupted = new CountDownLatch(1);
             executor.submit("skin", () -> {
@@ -41,7 +41,7 @@ class MineSkinBakeExecutorTest {
 
     @Test
     void submitDeduplicatesPendingSkinKey() throws InterruptedException {
-        MineSkinBakeExecutor executor = new MineSkinBakeExecutor();
+        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger runCount = new AtomicInteger();
