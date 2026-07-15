@@ -13,7 +13,7 @@ class MineSkinGenerationQueueTest {
     @Test
     void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+            MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
             CountDownLatch started = new CountDownLatch(1);
             CountDownLatch interrupted = new CountDownLatch(1);
             executor.submit("skin", () -> {
@@ -38,7 +38,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void submitDeduplicatesPendingSkinKey() throws InterruptedException {
-        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         AtomicInteger runCount = new AtomicInteger();

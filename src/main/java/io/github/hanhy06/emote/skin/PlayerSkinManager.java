@@ -15,31 +15,22 @@ import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
-import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
-    private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
-    private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
-    private final PlayerSkinBaker playerSkinBaker;
-    private final MineSkinCache mineSkinCache;
-    private final MineSkinClient mineSkinClient;
-    private final MineSkinGenerationQueue mineSkinGenerationQueue;
+    private final MineSkinManager mineSkinManager;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
-
-    private volatile String mineSkinApiKey = "";
 
     public PlayerSkinManager() {
         this(
             new PlayerSkinBaker(),
             new MineSkinCache(),
             new MineSkinClient(),
-            new MineSkinGenerationQueue(),
+            new MineSkinManager.GenerationQueue(),
             PlayerSkinManager::readPlayerSkinSource
         );
     }
@@ -48,20 +39,22 @@ public class PlayerSkinManager implements ConfigListener {
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache mineSkinCache,
         MineSkinClient mineSkinClient,
-        MineSkinGenerationQueue mineSkinGenerationQueue,
+        MineSkinManager.GenerationQueue generationQueue,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
-        this.playerSkinBaker = Objects.requireNonNull(playerSkinBaker, "playerSkinBaker");
-        this.mineSkinCache = Objects.requireNonNull(mineSkinCache, "mineSkinCache");
-        this.mineSkinClient = Objects.requireNonNull(mineSkinClient, "mineSkinClient");
-        this.mineSkinGenerationQueue = Objects.requireNonNull(mineSkinGenerationQueue, "mineSkinGenerationQueue");
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
+        this.mineSkinManager = new MineSkinManager(
+            Objects.requireNonNull(playerSkinBaker, "playerSkinBaker"),
+            Objects.requireNonNull(mineSkinCache, "mineSkinCache"),
+            Objects.requireNonNull(mineSkinClient, "mineSkinClient"),
+            Objects.requireNonNull(generationQueue, "generationQueue"),
+            this::notifySkinReady
+        );
     }
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.mineSkinApiKey = newConfig.mineSkinApiKey();
-        this.mineSkinClient.setJobPollIntervalSeconds(newConfig.mineSkinPollIntervalSeconds());
+        this.mineSkinManager.configure(newConfig.mineSkinApiKey(), newConfig.mineSkinPollIntervalSeconds());
     }
 
     public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
@@ -75,18 +68,11 @@ public class PlayerSkinManager implements ConfigListener {
         ServerPlayer player,
         Set<PlayerSkinTextureKey> requiredTextureKeys
     ) {
-        if (!MineSkinClient.hasApiKey(this.mineSkinApiKey)) {
-            return null;
-        }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
             return null;
         }
-        Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
-        if (savedTextureUrls.size() < requiredTextureKeys.size()) {
-            scheduleMineSkinBake(skinSource, requiredTextureKeys);
-        }
-        return savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls);
+        return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
     }
 
     public void applySkinParts(
@@ -110,7 +96,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public void cancelPendingBakes() {
-        this.mineSkinGenerationQueue.cancelAll();
+        this.mineSkinManager.cancelPendingBakes();
     }
 
     private boolean applyMineSkinProfile(
@@ -146,115 +132,6 @@ public class PlayerSkinManager implements ConfigListener {
             textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
         }
         return textureKeys;
-    }
-
-    private Map<PlayerSkinTextureKey, String> loadMineSkinTextureSet(
-        PlayerSkinSource skinSource,
-        Set<PlayerSkinTextureKey> requiredTextureKeys
-    ) {
-        Map<PlayerSkinTextureKey, String> stored = this.mineSkinCache.load(
-            skinSource.textureHash(),
-            skinSource.slimModel()
-        );
-        Map<PlayerSkinTextureKey, String> result = new HashMap<>();
-        for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
-            String textureUrl = stored.get(textureKey);
-            if (textureUrl != null) {
-                result.put(textureKey, textureUrl);
-            }
-        }
-        return Map.copyOf(result);
-    }
-
-    private void scheduleMineSkinBake(PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
-        String apiKey = this.mineSkinApiKey;
-        if (!MineSkinClient.hasApiKey(apiKey)) {
-            return;
-        }
-        String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-        Set<PlayerSkinTextureKey> requestedKeys = Set.copyOf(requiredKeys);
-        this.mineSkinGenerationQueue.submit(
-            pendingKey,
-            () -> bakeAndSaveMineSkinTextureSet(apiKey, source, requestedKeys)
-        );
-    }
-
-    private void bakeAndSaveMineSkinTextureSet(
-        String apiKey,
-        PlayerSkinSource source,
-        Set<PlayerSkinTextureKey> requiredKeys
-    ) {
-        try {
-            Map<PlayerSkinTextureKey, String> stored = this.mineSkinCache.load(source.textureHash(), source.slimModel());
-            Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(requiredKeys);
-            missingKeys.removeAll(stored.keySet());
-            if (missingKeys.isEmpty()) {
-                return;
-            }
-            BufferedImage sourceImage = this.mineSkinClient.downloadSkinImage(source.textureUrl());
-            Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
-            boolean savedAny = false;
-            for (PlayerSkinTextureKey textureKey : missingKeys) {
-                byte[] bakedImage = this.playerSkinBaker.bake(
-                    sourceImage,
-                    textureKey.skinPart(),
-                    textureKey.skinSegment(),
-                    source.slimModel()
-                );
-                String contentHash = MineSkinContentKey.create(bakedImage, source.slimModel());
-                String cachedTextureUrl = this.mineSkinCache.loadContent(contentHash);
-                String textureUrl;
-                if (cachedTextureUrl != null) {
-                    textureUrl = cachedTextureUrl;
-                } else {
-                    long now = System.currentTimeMillis();
-                    if (this.mineSkinCache.isRetryBlocked(contentHash, now)) {
-                        continue;
-                    }
-                    MineSkinCache.MineSkinPendingJob pendingJob = this.mineSkinCache.loadPendingJob(contentHash);
-                    if (pendingJob != null && now - pendingJob.submittedAtEpochMillis() > PENDING_JOB_MAX_AGE_MILLIS) {
-                        this.mineSkinCache.clearPendingJob(contentHash);
-                        pendingJob = null;
-                    }
-                    try {
-                        if (pendingJob != null) {
-                            textureUrl = this.mineSkinClient.waitForSkinUrl(apiKey, pendingJob.jobId());
-                        } else {
-                            textureUrl = this.mineSkinClient.generateSkinUrl(
-                                apiKey,
-                                bakedImage,
-                                source.slimModel(),
-                                jobId -> this.mineSkinCache.savePendingJob(contentHash, jobId)
-                            );
-                        }
-                    } catch (MineSkinJobFailedException exception) {
-                        this.mineSkinCache.clearPendingJob(contentHash);
-                        this.mineSkinCache.saveFailure(
-                            contentHash,
-                            exception.getMessage(),
-                            now + FAILED_JOB_RETRY_DELAY_MILLIS
-                        );
-                        Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
-                        continue;
-                    }
-                    this.mineSkinCache.saveContent(contentHash, textureUrl);
-                    this.mineSkinCache.clearPendingJob(contentHash);
-                    this.mineSkinCache.clearFailure(contentHash);
-                }
-                saved.put(textureKey, textureUrl);
-                this.mineSkinCache.save(source.textureHash(), source.slimModel(), saved);
-                savedAny = true;
-            }
-            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
-            if (savedAny) {
-                notifySkinReady(source.playerUuid());
-            }
-        } catch (InterruptedException exception) {
-            Thread.currentThread().interrupt();
-            Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
-        } catch (IOException | IllegalArgumentException exception) {
-            Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
-        }
     }
 
     private void notifySkinReady(UUID playerUuid) {

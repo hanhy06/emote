@@ -8,6 +8,8 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 final class MineSkinCache {
@@ -25,6 +27,17 @@ final class MineSkinCache {
 
     MineSkinCache(Path skinDirPath) {
         this.skinDirPath = skinDirPath;
+    }
+
+    static String createContentKey(byte[] pngBytes, boolean slimModel) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            digest.update((byte)(slimModel ? 1 : 0));
+            digest.update(pngBytes);
+            return HexFormat.of().formatHex(digest.digest());
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
     }
 
     Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {

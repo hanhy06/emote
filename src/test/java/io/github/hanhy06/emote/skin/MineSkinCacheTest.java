@@ -25,7 +25,7 @@ class MineSkinCacheTest {
     @Test
     void contentCacheRoundTrip(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinContentKey.create(new byte[]{1, 2, 3}, false);
+        String contentHash = MineSkinCache.createContentKey(new byte[]{1, 2, 3}, false);
         String result = "https://textures.minecraft.net/texture/shared";
 
         store.saveContent(contentHash, result);
@@ -37,7 +37,7 @@ class MineSkinCacheTest {
     void contentKeyIncludesModelVariant() {
         byte[] image = new byte[]{4, 5, 6};
 
-        assertNotEquals(MineSkinContentKey.create(image, false), MineSkinContentKey.create(image, true));
+        assertNotEquals(MineSkinCache.createContentKey(image, false), MineSkinCache.createContentKey(image, true));
     }
 
     @Test
@@ -50,7 +50,7 @@ class MineSkinCacheTest {
     @Test
     void pendingJobRoundTrip(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinContentKey.create(new byte[]{7, 8, 9}, true);
+        String contentHash = MineSkinCache.createContentKey(new byte[]{7, 8, 9}, true);
 
         store.savePendingJob(contentHash, "job-123");
         MineSkinCache.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
@@ -64,7 +64,7 @@ class MineSkinCacheTest {
     @Test
     void failureBlocksRetryUntilCooldownExpires(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinContentKey.create(new byte[]{10, 11, 12}, false);
+        String contentHash = MineSkinCache.createContentKey(new byte[]{10, 11, 12}, false);
 
         store.saveFailure(contentHash, "failed", 2_000L);
 

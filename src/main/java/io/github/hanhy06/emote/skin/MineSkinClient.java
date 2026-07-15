@@ -29,7 +29,6 @@ final class MineSkinClient {
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient;
-    private final Gson gson = new Gson();
     private volatile long jobPollIntervalMillis = 3000L;
 
     MineSkinClient() {
@@ -200,7 +199,7 @@ final class MineSkinClient {
 
             String jobStatus = readJobStatus(jobResponse);
             if ("failed".equalsIgnoreCase(jobStatus)) {
-                throw new MineSkinJobFailedException(readErrorMessage(jobResponse, "MineSkin job failed"));
+                throw new JobFailedException(readErrorMessage(jobResponse, "MineSkin job failed"));
             }
         }
 
@@ -382,6 +381,12 @@ final class MineSkinClient {
                 .orElse(Emote.MOD_ID + "/dev");
         } catch (RuntimeException exception) {
             return Emote.MOD_ID + "/dev";
+        }
+    }
+
+    static final class JobFailedException extends IOException {
+        JobFailedException(String message) {
+            super(message);
         }
     }
 }
