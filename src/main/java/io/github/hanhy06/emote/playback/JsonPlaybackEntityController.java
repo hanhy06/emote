@@ -60,6 +60,34 @@ public final class JsonPlaybackEntityController {
         node.setVisible(visible);
     }
 
+    public void applyTransformation(
+        JsonPlaybackNodes playbackNodes,
+        NodeInstance node,
+        EmoteAnimation.Matrix matrix,
+        int interpolationDurationTicks
+    ) {
+        node.setCurrentMatrix(matrix);
+        if (node.isAnchor()) {
+            return;
+        }
+        CompoundTag data = new CompoundTag();
+        data.store(
+            "transformation",
+            Transformation.EXTENDED_CODEC,
+            new Transformation(playbackNodes.root().displayMatrix(matrix))
+        );
+        data.putInt("interpolation_duration", interpolationDurationTicks);
+        data.putInt("start_interpolation", 0);
+        TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
+    }
+
+    public void resetNode(JsonPlaybackNodes playbackNodes, NodeInstance node) {
+        applyTransformation(playbackNodes, node, node.definition().defaultMatrix(), 0);
+        if (!node.isAnchor()) {
+            setVisible(node, initialVisibility(node.definition()));
+        }
+    }
+
     private NodeInstance createNode(
         ServerLevel level,
         EmoteRootTransform root,
