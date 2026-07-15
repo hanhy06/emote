@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16 } from "../../format/matrix";
+import { requireRecord } from "../../format/runtimeValue";
 import {
   findMatchingSnbtDelimiter,
   omitSnbtFields,
@@ -245,7 +246,7 @@ function readFrameDelayTicks(text: string, path: string): number {
 function readMetadata(files: Map<string, Uint8Array>, namespace: string): { name: string; description: string; commandName: string; hidePlayer: boolean; entrypoint: string } {
   const data = files.get(`data/${namespace}/emote.json`);
   if (!data) return { name: namespace, description: `${namespace} emote.`, commandName: namespace, hidePlayer: true, entrypoint: "a/default/play_anim_loop" };
-  const value = JSON.parse(decoder.decode(data)) as Record<string, unknown>;
+  const value = requireRecord(JSON.parse(decoder.decode(data)), `data/${namespace}/emote.json`);
   return {
     name: typeof value.name === "string" ? value.name : namespace,
     description: typeof value.description === "string" ? value.description : `${namespace} emote.`,

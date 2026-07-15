@@ -80,6 +80,17 @@ describe("animatedJavaJsonAdapter", () => {
     });
     await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow("baked animations");
   });
+
+  it("reports the path of malformed blueprint input", async () => {
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:test" },
+      nodes: { item: { type: "item_display" } },
+      animations: { idle: { loop_mode: null, length: 1 } },
+    });
+
+    await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow("animations.idle.loop_mode must be an object");
+  });
 });
 
 function blueprint(nodes: Record<string, unknown>, animations: Record<string, unknown>) {

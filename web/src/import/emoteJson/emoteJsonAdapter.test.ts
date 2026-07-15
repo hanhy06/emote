@@ -47,4 +47,17 @@ describe("emoteJsonAdapter", () => {
     expect(recompiled.id).toBe(source.id);
     expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration_ticks).toBe(2);
   });
+
+  it("reports the path of malformed runtime input", async () => {
+    const malformed = {
+      schema_version: 1,
+      minecraft_version: "26.2",
+      tick_rate: 20,
+      id: "demo:broken",
+      metadata: null,
+    };
+
+    await expect(emoteJsonAdapter.import({ name: "broken.json", bytes: encoder.encode(JSON.stringify(malformed)) }))
+      .rejects.toThrow("metadata must be an object");
+  });
 });

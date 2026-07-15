@@ -2,6 +2,17 @@ import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
+import {
+  optionalArray,
+  optionalBoolean,
+  optionalNumber,
+  optionalRecord,
+  optionalString,
+  requireArray,
+  requireNumber,
+  requireNumberArray,
+  requireRecord,
+} from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
@@ -71,7 +82,10 @@ export const bdProjectAdapter: ImportAdapter = {
     if (archive.version !== 1) throw new Error(`Unsupported BD project PRJ2 version: ${archive.version}`);
     const sceneBytes = archive.files.get("scene.json");
     if (!sceneBytes) throw new Error("BD project does not contain scene.json.");
-    const parsed = JSON.parse(decoder.decode(sceneBytes)) as BdSceneNode | BdSceneNode[];
+    const parsedValue = JSON.parse(decoder.decode(sceneBytes)) as unknown;
+    const parsed = Array.isArray(parsedValue)
+      ? parsedValue.map((node, index) => requireBdSceneNode(node, `scene[${index}]`))
+      : requireBdSceneNode(parsedValue, "scene");
     const root = Array.isArray(parsed) ? parsed[0] : parsed;
     if (!root?.isCollection) throw new Error("BD project scene root is invalid.");
     if ((root.listAnim?.length ?? 0) > 1) throw new Error("BD projects with multiple animations are not supported yet.");
@@ -282,4 +296,63 @@ function createBlockState(name: string): string {
 
 function number(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) ? value! : fallback;
+}
+
+function requireBdSceneNode(value: unknown, path: string): BdSceneNode {
+  const node = requireRecord(value, path);
+  optionalBoolean(node.isCollection, `${path}.isCollection`);
+  optionalBoolean(node.isItemDisplay, `${path}.isItemDisplay`);
+  optionalBoolean(node.isBlockDisplay, `${path}.isBlockDisplay`);
+  optionalBoolean(node.isTextDisplay, `${path}.isTextDisplay`);
+  optionalString(node.name, `${path}.name`);
+  optionalString(node.nbt, `${path}.nbt`);
+  if (node.transforms !== undefined) requireNumberArray(node.transforms, `${path}.transforms`);
+  if (node.pivotCustom !== undefined) requireNumberArray(node.pivotCustom, `${path}.pivotCustom`);
+  if (node.defaultTransform !== undefined) requireBdTransform(node.defaultTransform, `${path}.defaultTransform`);
+  if (node.animation !== undefined && node.animation !== null) {
+    requireArray(node.animation, `${path}.animation`).forEach((sampleValue, index) => {
+      const samplePath = `${path}.animation[${index}]`;
+      const sample = requireRecord(sampleValue, samplePath);
+      requireNumber(sample.time, `${samplePath}.time`);
+      requireBdTransform(sample, samplePath);
+    });
+  }
+  optionalNumber(node.emissiveIntensity, `${path}.emissiveIntensity`);
+  const brightness = optionalRecord(node.brightness, `${path}.brightness`);
+  if (brightness) {
+    optionalNumber(brightness.sky, `${path}.brightness.sky`);
+    optionalNumber(brightness.block, `${path}.brightness.block`);
+  }
+  const tagHead = optionalRecord(node.tagHead, `${path}.tagHead`);
+  if (tagHead) optionalString(tagHead.Value, `${path}.tagHead.Value`);
+  for (const [index, animationValue] of (optionalArray(node.listAnim, `${path}.listAnim`) ?? []).entries()) {
+    const animation = requireRecord(animationValue, `${path}.listAnim[${index}]`);
+    optionalNumber(animation.id, `${path}.listAnim[${index}].id`);
+    optionalString(animation.name, `${path}.listAnim[${index}].name`);
+  }
+  for (const [index, soundValue] of (optionalArray(node.listSound, `${path}.listSound`) ?? []).entries()) {
+    const sound = requireRecord(soundValue, `${path}.listSound[${index}]`);
+    optionalArray(sound.tracks, `${path}.listSound[${index}].tracks`);
+  }
+  const children = optionalArray(node.children, `${path}.children`) ?? [];
+  node.children = children.map((child, index) => requireBdSceneNode(child, `${path}.children[${index}]`));
+  return node as BdSceneNode;
+}
+
+function requireBdTransform(value: unknown, path: string): void {
+  const transform = requireRecord(value, path);
+  if (transform.position !== undefined) requireVectorLike(transform.position, `${path}.position`);
+  if (transform.rotation !== undefined) requireVectorLike(transform.rotation, `${path}.rotation`);
+  if (transform.scale !== undefined) requireVectorLike(transform.scale, `${path}.scale`);
+}
+
+function requireVectorLike(value: unknown, path: string): void {
+  if (Array.isArray(value)) {
+    requireNumberArray(value, path);
+    return;
+  }
+  const vector = requireRecord(value, path);
+  optionalNumber(vector.x, `${path}.x`);
+  optionalNumber(vector.y, `${path}.y`);
+  optionalNumber(vector.z, `${path}.z`);
 }

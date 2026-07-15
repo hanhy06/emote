@@ -1,4 +1,5 @@
 import type { EmoteAnimation, EmoteEvent } from "../../format/emoteAnimation";
+import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { asMatrix16 } from "../../format/matrix";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { validateEmoteAnimation } from "../../format/validator";
@@ -24,7 +25,7 @@ export const emoteJsonAdapter: ImportAdapter = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const animation = JSON.parse(decoder.decode(input.bytes)) as EmoteAnimation;
+    const animation = requireEmoteAnimation(JSON.parse(decoder.decode(input.bytes)));
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new Error(`Invalid emote animation at ${issues[0].path}: ${issues[0].message}`);
