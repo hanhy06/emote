@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.mixin.bridge.PlaybackHooks;
+import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;

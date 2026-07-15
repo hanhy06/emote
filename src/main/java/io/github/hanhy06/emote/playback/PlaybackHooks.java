@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.mixin.bridge;
+package io.github.hanhy06.emote.playback;
 
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;

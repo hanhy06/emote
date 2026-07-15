@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.mixin;
 
-import io.github.hanhy06.emote.mixin.bridge.PlaybackHooks;
+import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
