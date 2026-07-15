@@ -31,6 +31,7 @@ class ConfigManagerTest {
         assertTrue(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("\"schema_version\": 1"));
         assertFalse(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("emote_permission"));
         assertEquals(1, manager.getConfig().schemaVersion());
+        assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
     }
 
     @Test

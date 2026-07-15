@@ -15,6 +15,7 @@ public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String PACK_FILE_NAME = "packs.json";
+    private static final String ANIMATION_DIRECTORY_NAME = "animations";
 
     private final Path configDirPath;
     private final Gson gson = new GsonBuilder()
@@ -32,6 +33,7 @@ public class ConfigManager {
 
         try {
             Files.createDirectories(this.configDirPath);
+            Files.createDirectories(getAnimationDirectory());
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
             return;
@@ -47,6 +49,10 @@ public class ConfigManager {
 
     public PackConfig getPackConfig() {
         return this.packConfig;
+    }
+
+    public Path getAnimationDirectory() {
+        return this.configDirPath.resolve(ANIMATION_DIRECTORY_NAME);
     }
 
     public boolean readConfig() {
