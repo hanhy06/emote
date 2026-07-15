@@ -41,10 +41,14 @@ final class ConfigJsonCodec {
             return null;
         }
         Config defaultConfig = Config.createDefault();
+        JsonElement mineSkinApiKeyElement = object.get("mineskin_api_key");
+        String mineSkinApiKey = mineSkinApiKeyElement == null || mineSkinApiKeyElement.isJsonNull()
+            ? defaultConfig.mineSkinApiKey()
+            : mineSkinApiKeyElement.getAsString();
         return new Config(
             readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
             readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
-            readMineSkinApiKey(object, defaultConfig.mineSkinApiKey()),
+            mineSkinApiKey,
             readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds())
         );
     }
@@ -98,11 +102,6 @@ final class ConfigJsonCodec {
             }
         }
         return new EmoteAccessConfig(disabled, permissions);
-    }
-
-    private String readMineSkinApiKey(JsonObject object, String defaultValue) {
-        JsonElement element = object.get("mineskin_api_key");
-        return element == null || element.isJsonNull() ? defaultValue : element.getAsString();
     }
 
     private int readInt(JsonObject object, String key, int defaultValue) {

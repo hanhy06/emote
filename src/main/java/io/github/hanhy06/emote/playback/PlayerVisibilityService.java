@@ -66,7 +66,7 @@ final class PlayerVisibilityService {
     private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
         if (entity instanceof ServerPlayer emotePlayer
             && this.playbackManager.findActiveEmote(emotePlayer.getUUID()) != null) {
-            trackingPlayer.connection.send(createEquipmentPacket(emotePlayer, EMPTY_EQUIPMENT));
+            trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
 
@@ -96,13 +96,9 @@ final class PlayerVisibilityService {
     }
 
     private static void sendToTrackingPlayers(ServerPlayer player, List<Pair<EquipmentSlot, ItemStack>> equipment) {
-        player.level().getChunkSource().sendToTrackingPlayers(player, createEquipmentPacket(player, equipment));
-    }
-
-    private static ClientboundSetEquipmentPacket createEquipmentPacket(
-        ServerPlayer player,
-        List<Pair<EquipmentSlot, ItemStack>> equipment
-    ) {
-        return new ClientboundSetEquipmentPacket(player.getId(), equipment);
+        player.level().getChunkSource().sendToTrackingPlayers(
+            player,
+            new ClientboundSetEquipmentPacket(player.getId(), equipment)
+        );
     }
 }
