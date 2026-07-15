@@ -10,11 +10,11 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class JsonEventPlayerTest {
+class EventPlayerTest {
     @Test
     void preservesLifecycleAndArrayOrder() {
         List<String> executed = new ArrayList<>();
-        JsonEventPlayer player = new JsonEventPlayer(animation(), event -> executed.addAll(event.commands()));
+        EventPlayer player = new EventPlayer(animation(), event -> executed.addAll(event.commands()));
 
         player.start();
         player.timelineTick(1);

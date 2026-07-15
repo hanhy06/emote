@@ -11,7 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class JsonEmoteSkinPartFactoryTest {
+class EmoteSkinPartFactoryTest {
     @Test
     void usesExplicitOrderAndLocalYScaleForLimbSegments() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
@@ -19,14 +19,14 @@ class JsonEmoteSkinPartFactoryTest {
         nodes.put("inner", itemNode(1.0D, EmoteAnimation.SkinPart.LEFT_ARM, 0));
         nodes.put("head", itemNode(1.0D, EmoteAnimation.SkinPart.HEAD, 0));
 
-        List<JsonEmoteSkinPart> parts = new JsonEmoteSkinPartFactory().create(animation(nodes));
+        List<EmoteSkinPart> parts = new EmoteSkinPartFactory().create(animation(nodes));
 
         assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").skinSegment());
         assertEquals(PlayerSkinSegment.FULL, find(parts, "head").skinSegment());
     }
 
-    private JsonEmoteSkinPart find(List<JsonEmoteSkinPart> parts, String nodeId) {
+    private EmoteSkinPart find(List<EmoteSkinPart> parts, String nodeId) {
         return parts.stream().filter(part -> part.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }
 

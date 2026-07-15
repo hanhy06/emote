@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.animation.EmoteAnimation;
-import io.github.hanhy06.emote.skin.JsonEmoteSkinPart;
-import io.github.hanhy06.emote.skin.JsonEmoteSkinPartFactory;
+import io.github.hanhy06.emote.skin.EmoteSkinPart;
+import io.github.hanhy06.emote.skin.EmoteSkinPartFactory;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -10,7 +10,7 @@ import java.util.Objects;
 
 public record RegisteredEmote(
     EmoteAnimation.Loaded source,
-    List<JsonEmoteSkinPart> skinParts
+    List<EmoteSkinPart> skinParts
 ) {
     public RegisteredEmote {
         Objects.requireNonNull(source, "source");
@@ -18,7 +18,7 @@ public record RegisteredEmote(
     }
 
     public static RegisteredEmote from(EmoteAnimation.Loaded source) {
-        return new RegisteredEmote(source, new JsonEmoteSkinPartFactory().create(source.animation()));
+        return new RegisteredEmote(source, new EmoteSkinPartFactory().create(source.animation()));
     }
 
     public EmoteAnimation animation() {

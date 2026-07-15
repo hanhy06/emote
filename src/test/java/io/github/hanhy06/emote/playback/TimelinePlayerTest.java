@@ -11,7 +11,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class JsonTimelinePlayerTest {
+class TimelinePlayerTest {
     @Test
     void sendsTransformAtInterpolationStartAndReachesTargetAtKeyframeTick() {
         FakeTarget target = new FakeTarget();
@@ -24,7 +24,7 @@ class JsonTimelinePlayerTest {
                 keyframe(10, 10.0D, 4)
             )
         );
-        JsonTimelinePlayer player = new JsonTimelinePlayer(animation, target);
+        TimelinePlayer player = new TimelinePlayer(animation, target);
 
         player.start();
         for (int tick = 1; tick <= 5; tick++) {
@@ -41,13 +41,13 @@ class JsonTimelinePlayerTest {
         player.advance();
         player.advance();
         assertEquals(10.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(JsonTimelinePlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.FINISHED, player.advance());
     }
 
     @Test
     void exposesLoopBoundaryBeforeDelayAndRestart() {
         FakeTarget target = new FakeTarget();
-        JsonTimelinePlayer player = new JsonTimelinePlayer(
+        TimelinePlayer player = new TimelinePlayer(
             animation(
                 2,
                 EmoteAnimation.LoopMode.LOOP,
@@ -58,12 +58,12 @@ class JsonTimelinePlayerTest {
         );
 
         player.start();
-        assertEquals(JsonTimelinePlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(JsonTimelinePlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(JsonTimelinePlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
-        assertEquals(JsonTimelinePlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(JsonTimelinePlayer.AdvanceResult.RESTARTED, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.RESTARTED, player.advance());
         assertEquals(0, player.currentTick());
         assertEquals(2, target.resetCount);
     }
@@ -79,7 +79,7 @@ class JsonTimelinePlayerTest {
                 new EmoteAnimation.Keyframe(2, Map.of(), Map.of("node", new EmoteAnimation.NodeState(false)))
             )
         );
-        JsonTimelinePlayer player = new JsonTimelinePlayer(animation, target);
+        TimelinePlayer player = new TimelinePlayer(animation, target);
 
         player.start();
         player.advance();
@@ -119,7 +119,7 @@ class JsonTimelinePlayerTest {
         ));
     }
 
-    private static final class FakeTarget implements JsonTimelinePlayer.TimelineTarget {
+    private static final class FakeTarget implements TimelinePlayer.TimelineTarget {
         private final List<AppliedTransform> transforms = new ArrayList<>();
         private final List<Boolean> visibility = new ArrayList<>();
         private int resetCount;

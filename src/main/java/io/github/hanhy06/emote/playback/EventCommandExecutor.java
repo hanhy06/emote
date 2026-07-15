@@ -13,17 +13,17 @@ import org.joml.Vector3f;
 
 import java.util.Objects;
 
-public final class JsonEventCommandExecutor implements JsonEventPlayer.EventExecutor {
+public final class EventCommandExecutor implements EventPlayer.EventExecutor {
     private final MinecraftServer server;
     private final ServerPlayer player;
-    private final JsonPlaybackNodes nodes;
-    private final JsonTimelinePlayer timeline;
+    private final PlaybackNodes nodes;
+    private final TimelinePlayer timeline;
 
-    public JsonEventCommandExecutor(
+    public EventCommandExecutor(
         MinecraftServer server,
         ServerPlayer player,
-        JsonPlaybackNodes nodes,
-        JsonTimelinePlayer timeline
+        PlaybackNodes nodes,
+        TimelinePlayer timeline
     ) {
         this.server = Objects.requireNonNull(server, "server");
         this.player = Objects.requireNonNull(player, "player");
@@ -74,15 +74,15 @@ public final class JsonEventCommandExecutor implements JsonEventPlayer.EventExec
     }
 
     private Entity requiredEntity(String nodeId) {
-        JsonPlaybackNodes.NodeInstance node = requiredNode(nodeId);
+        PlaybackNodes.NodeInstance node = requiredNode(nodeId);
         if (node.entity() == null || node.entity().isRemoved()) {
             throw new IllegalStateException("Command source node entity is unavailable: " + nodeId);
         }
         return node.entity();
     }
 
-    private JsonPlaybackNodes.NodeInstance requiredNode(String nodeId) {
-        JsonPlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
+    private PlaybackNodes.NodeInstance requiredNode(String nodeId) {
+        PlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
         if (node == null) {
             throw new IllegalStateException("Command references missing playback node: " + nodeId);
         }

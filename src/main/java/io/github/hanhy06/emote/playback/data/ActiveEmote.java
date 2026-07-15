@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.playback.data;
 
-import io.github.hanhy06.emote.playback.JsonEventPlayer;
-import io.github.hanhy06.emote.playback.JsonPlaybackNodes;
-import io.github.hanhy06.emote.playback.JsonTimelinePlayer;
+import io.github.hanhy06.emote.playback.EventPlayer;
+import io.github.hanhy06.emote.playback.PlaybackNodes;
+import io.github.hanhy06.emote.playback.TimelinePlayer;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -15,9 +15,9 @@ public record ActiveEmote(
     ResourceKey<Level> levelKey,
     String id,
     Vec3 startPosition,
-    JsonPlaybackNodes nodes,
-    JsonTimelinePlayer timeline,
-    JsonEventPlayer events,
+    PlaybackNodes nodes,
+    TimelinePlayer timeline,
+    EventPlayer events,
     boolean playerVisibilityManaged,
     boolean wasInvisible
 ) {

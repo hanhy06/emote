@@ -4,14 +4,14 @@ import io.github.hanhy06.emote.animation.EmoteAnimation;
 
 import java.util.*;
 
-public final class JsonEventPlayer {
+public final class EventPlayer {
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
     private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
     private boolean started;
     private boolean stopped;
 
-    public JsonEventPlayer(EmoteAnimation animation, EventExecutor executor) {
+    public EventPlayer(EmoteAnimation animation, EventExecutor executor) {
         this.events = animation.timeline().events();
         this.executor = Objects.requireNonNull(executor, "executor");
         this.timelineEvents = indexTimelineEvents(this.events.timeline());

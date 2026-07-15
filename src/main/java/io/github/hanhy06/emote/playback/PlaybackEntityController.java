@@ -18,12 +18,12 @@ import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
 
-import static io.github.hanhy06.emote.playback.JsonPlaybackNodes.*;
+import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
-public final class JsonPlaybackEntityController {
+public final class PlaybackEntityController {
     private static final String RUNTIME_TAG = "emote.runtime";
 
-    public JsonPlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
+    public PlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
         ServerLevel level = player.level();
         EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
@@ -32,14 +32,14 @@ public final class JsonPlaybackEntityController {
                 NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue());
                 instances.put(entry.getKey(), instance);
             }
-            return new JsonPlaybackNodes(root, instances);
+            return new PlaybackNodes(root, instances);
         } catch (RuntimeException exception) {
             removeEntities(level, instances.values());
             throw exception;
         }
     }
 
-    public void remove(ServerLevel level, JsonPlaybackNodes nodes) {
+    public void remove(ServerLevel level, PlaybackNodes nodes) {
         removeEntities(level, nodes.nodes().values());
     }
 
@@ -61,7 +61,7 @@ public final class JsonPlaybackEntityController {
     }
 
     public void applyTransformation(
-        JsonPlaybackNodes playbackNodes,
+        PlaybackNodes playbackNodes,
         NodeInstance node,
         EmoteAnimation.Matrix matrix,
         int interpolationDurationTicks
@@ -81,7 +81,7 @@ public final class JsonPlaybackEntityController {
         TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
     }
 
-    public void resetNode(JsonPlaybackNodes playbackNodes, NodeInstance node) {
+    public void resetNode(PlaybackNodes playbackNodes, NodeInstance node) {
         applyTransformation(playbackNodes, node, node.definition().defaultMatrix(), 0);
         if (!node.isAnchor()) {
             setVisible(node, initialVisibility(node.definition()));

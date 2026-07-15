@@ -25,7 +25,7 @@ public class PlaybackManager {
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
     private final PlayerSkinManager playerSkinManager;
-    private final JsonPlaybackEntityController entityController = new JsonPlaybackEntityController();
+    private final PlaybackEntityController entityController = new PlaybackEntityController();
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         this.playerSkinManager = playerSkinManager;
@@ -53,14 +53,14 @@ public class PlaybackManager {
         }
 
         stopEmote(player);
-        JsonPlaybackNodes nodes = null;
+        PlaybackNodes nodes = null;
         try {
             nodes = this.entityController.spawn(player, emote.animation());
-            JsonTimelinePlayer timeline = new JsonTimelinePlayer(emote.animation(), nodes, this.entityController);
+            TimelinePlayer timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
             timeline.start();
-            JsonEventPlayer events = new JsonEventPlayer(
+            EventPlayer events = new EventPlayer(
                 emote.animation(),
-                new JsonEventCommandExecutor(server, player, nodes, timeline)
+                new EventCommandExecutor(server, player, nodes, timeline)
             );
             ActiveEmote activeEmote = new ActiveEmote(
                 player.getUUID(),
@@ -134,17 +134,17 @@ public class PlaybackManager {
 
             try {
                 int previousTick = activeEmote.timeline().currentTick();
-                JsonTimelinePlayer.AdvanceResult result = activeEmote.timeline().advance();
+                TimelinePlayer.AdvanceResult result = activeEmote.timeline().advance();
                 if (activeEmote.timeline().currentTick() != previousTick) {
                     activeEmote.events().timelineTick(activeEmote.timeline().currentTick());
                 }
-                if (result == JsonTimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
+                if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
                     activeEmote.events().loop();
                     result = activeEmote.timeline().continueAfterLoopEvent();
                 }
-                if (result == JsonTimelinePlayer.AdvanceResult.RESTARTED) {
+                if (result == TimelinePlayer.AdvanceResult.RESTARTED) {
                     activeEmote.events().timelineTick(0);
-                } else if (result == JsonTimelinePlayer.AdvanceResult.FINISHED) {
+                } else if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                     playerUuidListToStop.add(activeEmote.playerUuid());
                     continue;
                 }

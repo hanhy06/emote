@@ -87,8 +87,8 @@ class PlayerSkinManagerTest {
         return manager;
     }
 
-    private List<JsonEmoteSkinPart> createSkinParts() {
-        return List.of(new JsonEmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
+    private List<EmoteSkinPart> createSkinParts() {
+        return List.of(new EmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

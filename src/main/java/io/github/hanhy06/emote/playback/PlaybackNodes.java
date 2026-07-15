@@ -9,8 +9,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.Map;
 import java.util.Objects;
 
-public record JsonPlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
-    public JsonPlaybackNodes {
+public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
+    public PlaybackNodes {
         Objects.requireNonNull(root, "root");
         nodes = Map.copyOf(nodes);
     }

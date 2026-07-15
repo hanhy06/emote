@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.animation.EmoteAnimation;
 
 import java.util.*;
 
-public final class JsonTimelinePlayer {
+public final class TimelinePlayer {
     private final EmoteAnimation animation;
     private final TimelineTarget target;
     private final Map<Integer, List<TransformActivation>> transformActivations;
@@ -18,15 +18,15 @@ public final class JsonTimelinePlayer {
     private boolean finished;
     private boolean awaitingLoopContinuation;
 
-    public JsonTimelinePlayer(
+    public TimelinePlayer(
         EmoteAnimation animation,
-        JsonPlaybackNodes nodes,
-        JsonPlaybackEntityController entityController
+        PlaybackNodes nodes,
+        PlaybackEntityController entityController
     ) {
         this(animation, new EntityTimelineTarget(nodes, entityController));
     }
 
-    JsonTimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
+    TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
         this.animation = Objects.requireNonNull(animation, "animation");
         this.target = Objects.requireNonNull(target, "target");
         this.transformActivations = createTransformActivations(animation.timeline().keyframes());
@@ -203,8 +203,8 @@ public final class JsonTimelinePlayer {
     }
 
     private record EntityTimelineTarget(
-        JsonPlaybackNodes nodes,
-        JsonPlaybackEntityController entityController
+        PlaybackNodes nodes,
+        PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
         public Transformation createTransformation(EmoteAnimation.Matrix matrix) {
@@ -231,8 +231,8 @@ public final class JsonTimelinePlayer {
             this.nodes.nodes().values().forEach(node -> this.entityController.resetNode(this.nodes, node));
         }
 
-        private JsonPlaybackNodes.NodeInstance requiredNode(String nodeId) {
-            JsonPlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
+        private PlaybackNodes.NodeInstance requiredNode(String nodeId) {
+            PlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
             if (node == null) {
                 throw new IllegalStateException("Missing playback node: " + nodeId);
             }
