@@ -1,4 +1,3 @@
-import JSZip from "jszip";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16 } from "../../format/matrix";
 import { requireRecord } from "../../format/runtimeValue";
@@ -19,17 +18,13 @@ import type {
   ImportedTimelineEvent,
   ImportedTransformKeyframe,
 } from "../types";
+import { isZip, loadPack } from "./datapackArchive";
 
 const decoder = new TextDecoder();
 const DISPLAY_START = /\{id:"minecraft:(item_display|block_display|text_display)"/g;
 const KEYFRAME_PATH = /^data\/([^/]+)\/(function|functions)\/k\/([^/]+)\/keyframe_(\d+)\.mcfunction$/;
 const CREATE_PATH = /^data\/([^/]+)\/(function|functions)\/_\/create\.mcfunction$/;
 const STRUCTURAL_KEYFRAME_COMMAND = /^(data merge entity .*?\{transformation:|schedule function )/;
-
-interface LoadedPack {
-  name: string;
-  files: Map<string, Uint8Array>;
-}
 
 export const bdDatapackAdapter: ImportAdapter = {
   id: "bd_datapack",
@@ -84,28 +79,6 @@ export const bdDatapackAdapter: ImportAdapter = {
     };
   },
 };
-
-async function loadPack(input: ImportInput): Promise<LoadedPack> {
-  const zip = await JSZip.loadAsync(input.bytes);
-  const rawFiles = new Map<string, Uint8Array>();
-  await Promise.all(Object.values(zip.files).filter((entry) => !entry.dir).map(async (entry) => {
-    rawFiles.set(entry.name.replaceAll("\\", "/").replace(/^\.\//, ""), await entry.async("uint8array"));
-  }));
-  const root = findPackRoot(rawFiles.keys());
-  return {
-    name: input.name,
-    files: new Map([...rawFiles].filter(([path]) => path.startsWith(root)).map(([path, data]) => [path.slice(root.length), data])),
-  };
-}
-
-function findPackRoot(paths: Iterable<string>): string {
-  const candidates = [...paths]
-    .filter((path) => path === "pack.mcmeta" || path.endsWith("/pack.mcmeta"))
-    .map((path) => path.slice(0, -"pack.mcmeta".length))
-    .sort((first, second) => first.split("/").length - second.split("/").length || first.localeCompare(second));
-  if (candidates.length === 0) throw new Error("Could not find pack.mcmeta in the ZIP file.");
-  return candidates[0];
-}
 
 function parseNodes(createText: string, namespace: string): Record<string, ImportedNode> {
   const nodes: Record<string, ImportedNode> = {};
@@ -289,10 +262,6 @@ function parseTextComponent(raw: string | null): unknown {
 
 function commandLines(text: string): string[] {
   return text.split(/\r?\n/).map((line) => line.trim()).filter((line) => line && !line.startsWith("#"));
-}
-
-function isZip(bytes: Uint8Array): boolean {
-  return bytes.length >= 4 && bytes[0] === 0x50 && bytes[1] === 0x4b;
 }
 
 function escapeRegExp(value: string): string {
