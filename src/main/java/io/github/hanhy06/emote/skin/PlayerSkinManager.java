@@ -18,7 +18,9 @@ import net.minecraft.world.item.Items;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Function;
+import java.util.function.Consumer;
 
 public class PlayerSkinManager implements ConfigListener {
     private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
@@ -28,6 +30,7 @@ public class PlayerSkinManager implements ConfigListener {
     private final MineSkinApiClient mineSkinApiClient;
     private final MineSkinBakeExecutor mineSkinBakeExecutor;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
+    private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
 
     private volatile String mineSkinApiKey = "";
 
@@ -100,6 +103,10 @@ public class PlayerSkinManager implements ConfigListener {
                 applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);
             }
         }
+    }
+
+    public void addReadyListener(Consumer<UUID> readyListener) {
+        this.readyListeners.add(Objects.requireNonNull(readyListener, "readyListener"));
     }
 
     public void cancelPendingBakes() {
@@ -182,6 +189,7 @@ public class PlayerSkinManager implements ConfigListener {
             }
             BufferedImage sourceImage = this.mineSkinApiClient.downloadSkinImage(source.textureUrl());
             Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
+            boolean savedAny = false;
             for (PlayerSkinTextureKey textureKey : missingKeys) {
                 byte[] bakedImage = this.playerSkinBaker.bake(
                     sourceImage,
@@ -231,14 +239,30 @@ public class PlayerSkinManager implements ConfigListener {
                 }
                 saved.put(textureKey, textureUrl);
                 this.mineSkinTextureStore.save(source.textureHash(), source.slimModel(), saved);
+                savedAny = true;
             }
             Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
+            if (savedAny) {
+                notifySkinReady(source.playerUuid());
+            }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
         } catch (IOException | IllegalArgumentException exception) {
             Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
         }
+    }
+
+    private void notifySkinReady(UUID playerUuid) {
+        MinecraftServer server = Emote.SERVER;
+        if (server == null || this.readyListeners.isEmpty()) {
+            return;
+        }
+        server.execute(() -> {
+            for (Consumer<UUID> readyListener : this.readyListeners) {
+                readyListener.accept(playerUuid);
+            }
+        });
     }
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
@@ -257,6 +281,7 @@ public class PlayerSkinManager implements ConfigListener {
         }
         boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
         return new PlayerSkinSource(
+            player.getUUID(),
             player.getGameProfile().name(),
             skinTexture.getHash(),
             skinTexture.getUrl(),
@@ -264,8 +289,9 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    record PlayerSkinSource(String playerName, String textureHash, String textureUrl, boolean slimModel) {
+    record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl, boolean slimModel) {
         PlayerSkinSource {
+            Objects.requireNonNull(playerUuid, "playerUuid");
             Objects.requireNonNull(playerName, "playerName");
             Objects.requireNonNull(textureHash, "textureHash");
             Objects.requireNonNull(textureUrl, "textureUrl");

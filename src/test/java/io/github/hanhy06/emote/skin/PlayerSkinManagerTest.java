@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -33,7 +34,7 @@ class PlayerSkinManagerTest {
                 textureStore,
                 new MineSkinApiClient(httpClient),
                 new MineSkinBakeExecutor(),
-                new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
             PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());
@@ -55,7 +56,7 @@ class PlayerSkinManagerTest {
                 new MineSkinTextureStore(tempDir),
                 new MineSkinApiClient(httpClient),
                 bakeExecutor,
-                new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
             PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());

@@ -29,6 +29,7 @@ public class PlaybackManager {
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         this.playerSkinManager = playerSkinManager;
+        this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
     }
 
     public void addStateListener(PlaybackStateListener stateListener) {
@@ -67,6 +68,7 @@ public class PlaybackManager {
                 nodes,
                 timeline,
                 events,
+                emote.skinParts(),
                 emote.hidePlayer(),
                 player.isInvisible()
             );
@@ -94,6 +96,20 @@ public class PlaybackManager {
             }
             return PlayResult.failure("Failed to start emote.");
         }
+    }
+
+    private void refreshPlayerSkin(UUID playerUuid) {
+        MinecraftServer server = Emote.SERVER;
+        ActiveEmote activeEmote = this.activeEmoteMap.get(playerUuid);
+        if (server == null || activeEmote == null) {
+            return;
+        }
+        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+        if (player == null) {
+            return;
+        }
+        PreparedPlayerSkin preparedSkin = this.playerSkinManager.preparePlayerSkin(player, activeEmote.skinParts());
+        this.playerSkinManager.applySkinParts(activeEmote.nodes().nodes(), activeEmote.skinParts(), preparedSkin);
     }
 
     public ActiveEmote stopEmote(ServerPlayer player) {
