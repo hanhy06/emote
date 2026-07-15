@@ -1,0 +1,668 @@
+package io.github.hanhy06.emote.animation;
+
+import com.google.gson.*;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
+import net.minecraft.resources.Identifier;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.*;
+
+import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
+
+public final class EmoteAnimationJsonLoader {
+    private static final int SCHEMA_VERSION = 1;
+    private static final int TICK_RATE = 20;
+    private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
+        "none",
+        "thirdperson_lefthand",
+        "thirdperson_righthand",
+        "firstperson_lefthand",
+        "firstperson_righthand",
+        "head",
+        "gui",
+        "ground",
+        "fixed",
+        "on_shelf"
+    );
+
+    public Loaded load(Path sourcePath, String expectedMinecraftVersion) throws EmoteAnimationLoadException {
+        byte[] bytes;
+        try {
+            bytes = Files.readAllBytes(sourcePath);
+        } catch (IOException exception) {
+            throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
+        }
+        return parse(sourcePath, bytes, expectedMinecraftVersion);
+    }
+
+    public Loaded parse(Path sourcePath, byte[] bytes, String expectedMinecraftVersion)
+        throws EmoteAnimationLoadException {
+        Objects.requireNonNull(sourcePath, "sourcePath");
+        Objects.requireNonNull(bytes, "bytes");
+        Objects.requireNonNull(expectedMinecraftVersion, "expectedMinecraftVersion");
+
+        JsonElement rootElement;
+        try {
+            rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
+        } catch (JsonParseException exception) {
+            throw new EmoteAnimationLoadException(sourcePath, "$", "invalid JSON", exception);
+        }
+        if (!rootElement.isJsonObject()) {
+            throw error(sourcePath, "$", "must be an object");
+        }
+
+        JsonObject root = rootElement.getAsJsonObject();
+        requireExactInt(root, "schema_version", "$", SCHEMA_VERSION, sourcePath);
+        String minecraftVersion = requireString(root, "minecraft_version", "$", sourcePath);
+        if (!minecraftVersion.equals(expectedMinecraftVersion)) {
+            throw error(sourcePath, "$.minecraft_version", "must equal server version " + expectedMinecraftVersion);
+        }
+        requireExactInt(root, "tick_rate", "$", TICK_RATE, sourcePath);
+
+        String idText = requireString(root, "id", "$", sourcePath);
+        Identifier id = parseId(idText, sourcePath);
+        Metadata metadata = parseMetadata(requireObject(root, "metadata", "$", sourcePath), sourcePath);
+        parseTransformSpace(requireObject(root, "transform_space", "$", sourcePath), sourcePath);
+        Map<String, Node> nodes = parseNodes(requireObject(root, "nodes", "$", sourcePath), sourcePath);
+        Timeline timeline = parseTimeline(requireObject(root, "timeline", "$", sourcePath), nodes, sourcePath);
+        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, nodes, timeline));
+    }
+
+    private Metadata parseMetadata(JsonObject object, Path sourcePath) throws EmoteAnimationLoadException {
+        String name = requireString(object, "name", "$.metadata", sourcePath);
+        if (name.isBlank()) {
+            throw error(sourcePath, "$.metadata.name", "must not be blank");
+        }
+        String description = requireString(object, "description", "$.metadata", sourcePath);
+        boolean hidePlayer = requireBoolean(object, "hide_player", "$.metadata", sourcePath);
+        return new Metadata(name, description, hidePlayer);
+    }
+
+    private void parseTransformSpace(JsonObject object, Path sourcePath) throws EmoteAnimationLoadException {
+        requireExactString(object, "coordinate_space", "$.transform_space", "root_local", sourcePath);
+        requireExactString(object, "matrix_layout", "$.transform_space", "row_major", sourcePath);
+        requireExactInt(object, "matrix_size", "$.transform_space", 16, sourcePath);
+    }
+
+    private Map<String, Node> parseNodes(JsonObject object, Path sourcePath) throws EmoteAnimationLoadException {
+        LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+            String nodeId = entry.getKey();
+            String path = "$.nodes." + nodeId;
+            if (nodeId.isBlank()) {
+                throw error(sourcePath, "$.nodes", "node id must not be blank");
+            }
+            if (!entry.getValue().isJsonObject()) {
+                throw error(sourcePath, path, "must be an object");
+            }
+            nodes.put(nodeId, parseNode(entry.getValue().getAsJsonObject(), path, sourcePath));
+        }
+        return Collections.unmodifiableMap(nodes);
+    }
+
+    private Node parseNode(JsonObject object, String path, Path sourcePath) throws EmoteAnimationLoadException {
+        String type = requireString(object, "type", path, sourcePath);
+        Matrix defaultMatrix = parseMatrix(requireArray(object, "default_matrix", path, sourcePath), path + ".default_matrix", sourcePath);
+        if (type.equals("anchor")) {
+            if (object.has("visible")) {
+                throw error(sourcePath, path + ".visible", "is not supported by anchor nodes");
+            }
+            if (object.has("entity_nbt")) {
+                throw error(sourcePath, path + ".entity_nbt", "is not supported by anchor nodes");
+            }
+            return new AnchorNode(defaultMatrix);
+        }
+
+        boolean visible = optionalBoolean(object, "visible", path, true, sourcePath);
+        CompoundTag entityNbt = optionalCompoundSnbt(object, "entity_nbt", path, sourcePath);
+        return switch (type) {
+            case "item_display" -> new ItemNode(
+                visible,
+                defaultMatrix,
+                entityNbt,
+                requireCompoundSnbt(object, "item_stack_snbt", path, sourcePath),
+                parseItemDisplay(object, path, sourcePath),
+                parseSkin(object, path, sourcePath)
+            );
+            case "block_display" -> new BlockNode(
+                visible,
+                defaultMatrix,
+                entityNbt,
+                requireCompoundSnbt(object, "block_state_snbt", path, sourcePath)
+            );
+            case "text_display" -> new TextNode(
+                visible,
+                defaultMatrix,
+                entityNbt,
+                requireElement(object, "text", path, sourcePath)
+            );
+            default -> throw error(sourcePath, path + ".type", "unsupported node type: " + type);
+        };
+    }
+
+    private String parseItemDisplay(JsonObject object, String path, Path sourcePath) throws EmoteAnimationLoadException {
+        String value = requireString(object, "item_display", path, sourcePath);
+        if (!ITEM_DISPLAY_VALUES.contains(value)) {
+            throw error(sourcePath, path + ".item_display", "unsupported item display context: " + value);
+        }
+        return value;
+    }
+
+    private Skin parseSkin(JsonObject object, String path, Path sourcePath) throws EmoteAnimationLoadException {
+        JsonElement element = object.get("skin");
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (!element.isJsonObject()) {
+            throw error(sourcePath, path + ".skin", "must be an object");
+        }
+        JsonObject skin = element.getAsJsonObject();
+        String partText = requireString(skin, "part", path + ".skin", sourcePath);
+        SkinPart part = switch (partText) {
+            case "head" -> SkinPart.HEAD;
+            case "body" -> SkinPart.BODY;
+            case "left_arm" -> SkinPart.LEFT_ARM;
+            case "right_arm" -> SkinPart.RIGHT_ARM;
+            case "left_leg" -> SkinPart.LEFT_LEG;
+            case "right_leg" -> SkinPart.RIGHT_LEG;
+            default -> throw error(sourcePath, path + ".skin.part", "unsupported skin part: " + partText);
+        };
+        int order = requireInt(skin, "order", path + ".skin", sourcePath);
+        if (order < 0) {
+            throw error(sourcePath, path + ".skin.order", "must not be negative");
+        }
+        return new Skin(part, order);
+    }
+
+    private Timeline parseTimeline(JsonObject object, Map<String, Node> nodes, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        int durationTicks = requireInt(object, "duration_ticks", "$.timeline", sourcePath);
+        if (durationTicks <= 0) {
+            throw error(sourcePath, "$.timeline.duration_ticks", "must be greater than zero");
+        }
+        String loopText = requireString(object, "loop", "$.timeline", sourcePath);
+        LoopMode loop = switch (loopText) {
+            case "once" -> LoopMode.ONCE;
+            case "loop" -> LoopMode.LOOP;
+            default -> throw error(sourcePath, "$.timeline.loop", "unsupported loop mode: " + loopText);
+        };
+        int loopDelayTicks = requireInt(object, "loop_delay_ticks", "$.timeline", sourcePath);
+        if (loopDelayTicks < 0) {
+            throw error(sourcePath, "$.timeline.loop_delay_ticks", "must not be negative");
+        }
+        if (loop == LoopMode.ONCE && loopDelayTicks != 0) {
+            throw error(sourcePath, "$.timeline.loop_delay_ticks", "must be zero when loop is once");
+        }
+        List<Keyframe> keyframes = parseKeyframes(
+            requireArray(object, "keyframes", "$.timeline", sourcePath),
+            durationTicks,
+            nodes,
+            sourcePath
+        );
+        Events events = parseEvents(optionalObject(object, "events", "$.timeline", sourcePath), durationTicks, nodes, sourcePath);
+        return new Timeline(durationTicks, loop, loopDelayTicks, keyframes, events);
+    }
+
+    private List<Keyframe> parseKeyframes(
+        JsonArray array,
+        int durationTicks,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        List<Keyframe> keyframes = new ArrayList<>();
+        Map<String, Integer> previousTransformTicks = new HashMap<>();
+        int previousTick = -1;
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.timeline.keyframes[" + index + "]";
+            JsonObject object = requireObject(array.get(index), path, sourcePath);
+            int tick = requireInt(object, "tick", path, sourcePath);
+            if (tick < 0 || tick > durationTicks) {
+                throw error(sourcePath, path + ".tick", "must be between 0 and duration_ticks");
+            }
+            if (tick <= previousTick) {
+                throw error(sourcePath, path + ".tick", "keyframes must be strictly ordered by tick");
+            }
+            previousTick = tick;
+            int defaultInterpolation = optionalInt(object, "interpolation_duration_ticks", path, 0, sourcePath);
+            if (defaultInterpolation < 0) {
+                throw error(sourcePath, path + ".interpolation_duration_ticks", "must not be negative");
+            }
+
+            Map<String, NodeTransform> transforms = parseNodeTransforms(
+                optionalObject(object, "node_transforms", path, sourcePath),
+                path,
+                tick,
+                defaultInterpolation,
+                previousTransformTicks,
+                nodes,
+                sourcePath
+            );
+            Map<String, NodeState> states = parseNodeStates(
+                optionalObject(object, "node_states", path, sourcePath),
+                path,
+                nodes,
+                sourcePath
+            );
+            keyframes.add(new Keyframe(tick, transforms, states));
+        }
+        return List.copyOf(keyframes);
+    }
+
+    private Map<String, NodeTransform> parseNodeTransforms(
+        JsonObject object,
+        String keyframePath,
+        int tick,
+        int defaultInterpolation,
+        Map<String, Integer> previousTransformTicks,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        if (object == null) {
+            return Map.of();
+        }
+        LinkedHashMap<String, NodeTransform> transforms = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+            String nodeId = entry.getKey();
+            String path = keyframePath + ".node_transforms." + nodeId;
+            requireNode(nodes, nodeId, path, sourcePath);
+            JsonObject transform = requireObject(entry.getValue(), path, sourcePath);
+            int interpolation = optionalInt(
+                transform,
+                "interpolation_duration_ticks",
+                path,
+                defaultInterpolation,
+                sourcePath
+            );
+            int previousTransformTick = previousTransformTicks.getOrDefault(nodeId, 0);
+            if (interpolation < 0 || interpolation > tick - previousTransformTick) {
+                throw error(
+                    sourcePath,
+                    path + ".interpolation_duration_ticks",
+                    "must fit between the previous transform tick and the current tick"
+                );
+            }
+            transforms.put(nodeId, new NodeTransform(
+                parseMatrix(requireArray(transform, "matrix", path, sourcePath), path + ".matrix", sourcePath),
+                interpolation
+            ));
+            previousTransformTicks.put(nodeId, tick);
+        }
+        return Collections.unmodifiableMap(transforms);
+    }
+
+    private Map<String, NodeState> parseNodeStates(
+        JsonObject object,
+        String keyframePath,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        if (object == null) {
+            return Map.of();
+        }
+        LinkedHashMap<String, NodeState> states = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+            String nodeId = entry.getKey();
+            String path = keyframePath + ".node_states." + nodeId;
+            Node node = requireNode(nodes, nodeId, path, sourcePath);
+            if (node instanceof AnchorNode) {
+                throw error(sourcePath, path, "anchor nodes do not support visible state");
+            }
+            JsonObject state = requireObject(entry.getValue(), path, sourcePath);
+            states.put(nodeId, new NodeState(requireBoolean(state, "visible", path, sourcePath)));
+        }
+        return Collections.unmodifiableMap(states);
+    }
+
+    private Events parseEvents(JsonObject object, int durationTicks, Map<String, Node> nodes, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (object == null) {
+            return Events.empty();
+        }
+        return new Events(
+            parseEventArray(optionalArray(object, "start", "$.timeline.events", sourcePath), "$.timeline.events.start", nodes, sourcePath),
+            parseTimelineEventArray(
+                optionalArray(object, "timeline", "$.timeline.events", sourcePath),
+                durationTicks,
+                nodes,
+                sourcePath
+            ),
+            parseEventArray(optionalArray(object, "loop", "$.timeline.events", sourcePath), "$.timeline.events.loop", nodes, sourcePath),
+            parseEventArray(optionalArray(object, "stop", "$.timeline.events", sourcePath), "$.timeline.events.stop", nodes, sourcePath)
+        );
+    }
+
+    private List<Event> parseEventArray(JsonArray array, String path, Map<String, Node> nodes, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (array == null) {
+            return List.of();
+        }
+        List<Event> events = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            String eventPath = path + "[" + index + "]";
+            JsonObject event = requireObject(array.get(index), eventPath, sourcePath);
+            events.add(parseEvent(event, eventPath, nodes, sourcePath));
+        }
+        return List.copyOf(events);
+    }
+
+    private List<TimelineEvent> parseTimelineEventArray(
+        JsonArray array,
+        int durationTicks,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        if (array == null) {
+            return List.of();
+        }
+        List<TimelineEvent> events = new ArrayList<>();
+        int previousTick = -1;
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.timeline.events.timeline[" + index + "]";
+            JsonObject object = requireObject(array.get(index), path, sourcePath);
+            int tick = requireInt(object, "tick", path, sourcePath);
+            if (tick < 0 || tick >= durationTicks) {
+                throw error(sourcePath, path + ".tick", "must be between 0 and duration_ticks - 1");
+            }
+            if (tick < previousTick) {
+                throw error(sourcePath, path + ".tick", "timeline events must be ordered by tick");
+            }
+            previousTick = tick;
+            Event event = parseEvent(object, path, nodes, sourcePath);
+            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands()));
+        }
+        return List.copyOf(events);
+    }
+
+    private Event parseEvent(JsonObject object, String path, Map<String, Node> nodes, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        CommandSource source = parseCommandSource(requireObject(object, "source", path, sourcePath), path + ".source", nodes, sourcePath);
+        CommandOrigin origin = parseCommandOrigin(requireObject(object, "origin", path, sourcePath), path + ".origin", nodes, sourcePath);
+        JsonArray commandArray = requireArray(object, "commands", path, sourcePath);
+        List<String> commands = new ArrayList<>();
+        for (int index = 0; index < commandArray.size(); index++) {
+            String commandPath = path + ".commands[" + index + "]";
+            JsonElement element = commandArray.get(index);
+            if (!isString(element)) {
+                throw error(sourcePath, commandPath, "must be a string");
+            }
+            String command = element.getAsString();
+            if (command.isBlank()) {
+                throw error(sourcePath, commandPath, "must not be blank");
+            }
+            if (command.startsWith("/")) {
+                throw error(sourcePath, commandPath, "must not start with /");
+            }
+            commands.add(command);
+        }
+        return new Event(source, origin, commands);
+    }
+
+    private CommandSource parseCommandSource(
+        JsonObject object,
+        String path,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        String type = requireString(object, "type", path, sourcePath);
+        return switch (type) {
+            case "player" -> new CommandSource(SourceType.PLAYER, null);
+            case "server" -> new CommandSource(SourceType.SERVER, null);
+            case "node" -> {
+                String nodeId = requireString(object, "node", path, sourcePath);
+                Node node = requireNode(nodes, nodeId, path + ".node", sourcePath);
+                if (node instanceof AnchorNode) {
+                    throw error(sourcePath, path + ".node", "anchor nodes cannot be command sources");
+                }
+                yield new CommandSource(SourceType.NODE, nodeId);
+            }
+            default -> throw error(sourcePath, path + ".type", "unsupported source type: " + type);
+        };
+    }
+
+    private CommandOrigin parseCommandOrigin(
+        JsonObject object,
+        String path,
+        Map<String, Node> nodes,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        String type = requireString(object, "type", path, sourcePath);
+        Vec3 offset = parseOffset(optionalArray(object, "offset", path, sourcePath), path + ".offset", sourcePath);
+        return switch (type) {
+            case "root" -> new CommandOrigin(OriginType.ROOT, null, offset);
+            case "node" -> {
+                String nodeId = requireString(object, "node", path, sourcePath);
+                requireNode(nodes, nodeId, path + ".node", sourcePath);
+                yield new CommandOrigin(OriginType.NODE, nodeId, offset);
+            }
+            default -> throw error(sourcePath, path + ".type", "unsupported origin type: " + type);
+        };
+    }
+
+    private Vec3 parseOffset(JsonArray array, String path, Path sourcePath) throws EmoteAnimationLoadException {
+        if (array == null) {
+            return Vec3.ZERO;
+        }
+        if (array.size() != 3) {
+            throw error(sourcePath, path, "must contain 3 values");
+        }
+        return new Vec3(
+            requireFiniteDouble(array.get(0), path + "[0]", sourcePath),
+            requireFiniteDouble(array.get(1), path + "[1]", sourcePath),
+            requireFiniteDouble(array.get(2), path + "[2]", sourcePath)
+        );
+    }
+
+    private Matrix parseMatrix(JsonArray array, String path, Path sourcePath) throws EmoteAnimationLoadException {
+        if (array.size() != 16) {
+            throw error(sourcePath, path, "must contain 16 values");
+        }
+        List<Double> values = new ArrayList<>(16);
+        for (int index = 0; index < array.size(); index++) {
+            values.add(requireFiniteDouble(array.get(index), path + "[" + index + "]", sourcePath));
+        }
+        return new Matrix(values);
+    }
+
+    private Identifier parseId(String value, Path sourcePath) throws EmoteAnimationLoadException {
+        int separator = value.indexOf(':');
+        if (separator <= 0 || separator == value.length() - 1) {
+            throw error(sourcePath, "$.id", "must use namespace:path format");
+        }
+        Identifier id = Identifier.tryParse(value);
+        if (id == null || !id.toString().equals(value)) {
+            throw error(sourcePath, "$.id", "must be a valid lowercase Minecraft identifier");
+        }
+        return id;
+    }
+
+    private CompoundTag optionalCompoundSnbt(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (!object.has(key) || object.get(key).isJsonNull()) {
+            return new CompoundTag();
+        }
+        return requireCompoundSnbt(object, key, path, sourcePath);
+    }
+
+    private CompoundTag requireCompoundSnbt(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        String fieldPath = path + "." + key;
+        String value = requireString(object, key, path, sourcePath);
+        try {
+            return TagParser.parseCompoundFully(value);
+        } catch (CommandSyntaxException exception) {
+            throw new EmoteAnimationLoadException(sourcePath, fieldPath, "invalid compound SNBT", exception);
+        }
+    }
+
+    private Node requireNode(Map<String, Node> nodes, String nodeId, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        Node node = nodes.get(nodeId);
+        if (node == null) {
+            throw error(sourcePath, path, "references unknown node: " + nodeId);
+        }
+        return node;
+    }
+
+    private JsonObject requireObject(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        return requireObject(requireElement(object, key, path, sourcePath), path + "." + key, sourcePath);
+    }
+
+    private JsonObject requireObject(JsonElement element, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (!element.isJsonObject()) {
+            throw error(sourcePath, path, "must be an object");
+        }
+        return element.getAsJsonObject();
+    }
+
+    private JsonObject optionalObject(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        return requireObject(element, path + "." + key, sourcePath);
+    }
+
+    private JsonArray requireArray(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = requireElement(object, key, path, sourcePath);
+        if (!element.isJsonArray()) {
+            throw error(sourcePath, path + "." + key, "must be an array");
+        }
+        return element.getAsJsonArray();
+    }
+
+    private JsonArray optionalArray(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (!element.isJsonArray()) {
+            throw error(sourcePath, path + "." + key, "must be an array");
+        }
+        return element.getAsJsonArray();
+    }
+
+    private JsonElement requireElement(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            throw error(sourcePath, path + "." + key, "is required");
+        }
+        return element;
+    }
+
+    private String requireString(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = requireElement(object, key, path, sourcePath);
+        if (!isString(element)) {
+            throw error(sourcePath, path + "." + key, "must be a string");
+        }
+        return element.getAsString();
+    }
+
+    private void requireExactString(
+        JsonObject object,
+        String key,
+        String path,
+        String expected,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        String value = requireString(object, key, path, sourcePath);
+        if (!value.equals(expected)) {
+            throw error(sourcePath, path + "." + key, "must equal " + expected);
+        }
+    }
+
+    private boolean requireBoolean(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = requireElement(object, key, path, sourcePath);
+        if (!isBoolean(element)) {
+            throw error(sourcePath, path + "." + key, "must be a boolean");
+        }
+        return element.getAsBoolean();
+    }
+
+    private boolean optionalBoolean(JsonObject object, String key, String path, boolean defaultValue, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (!object.has(key) || object.get(key).isJsonNull()) {
+            return defaultValue;
+        }
+        return requireBoolean(object, key, path, sourcePath);
+    }
+
+    private int requireInt(JsonObject object, String key, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        JsonElement element = requireElement(object, key, path, sourcePath);
+        if (!isNumber(element)) {
+            throw error(sourcePath, path + "." + key, "must be an integer");
+        }
+        try {
+            return element.getAsBigDecimal().intValueExact();
+        } catch (ArithmeticException exception) {
+            throw error(sourcePath, path + "." + key, "must be a 32-bit integer");
+        }
+    }
+
+    private int optionalInt(JsonObject object, String key, String path, int defaultValue, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (!object.has(key) || object.get(key).isJsonNull()) {
+            return defaultValue;
+        }
+        return requireInt(object, key, path, sourcePath);
+    }
+
+    private void requireExactInt(JsonObject object, String key, String path, int expected, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        int value = requireInt(object, key, path, sourcePath);
+        if (value != expected) {
+            throw error(sourcePath, path + "." + key, "must equal " + expected);
+        }
+    }
+
+    private double requireFiniteDouble(JsonElement element, String path, Path sourcePath)
+        throws EmoteAnimationLoadException {
+        if (!isNumber(element)) {
+            throw error(sourcePath, path, "must be a number");
+        }
+        double value = element.getAsDouble();
+        if (!Double.isFinite(value)) {
+            throw error(sourcePath, path, "must be finite");
+        }
+        return value;
+    }
+
+    private boolean isString(JsonElement element) {
+        return element.isJsonPrimitive() && element.getAsJsonPrimitive().isString();
+    }
+
+    private boolean isBoolean(JsonElement element) {
+        return element.isJsonPrimitive() && element.getAsJsonPrimitive().isBoolean();
+    }
+
+    private boolean isNumber(JsonElement element) {
+        return element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber();
+    }
+
+    private String sha256(byte[] bytes) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
+    private static EmoteAnimationLoadException error(Path sourcePath, String fieldPath, String message) {
+        return new EmoteAnimationLoadException(sourcePath, fieldPath, message);
+    }
+}
