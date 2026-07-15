@@ -148,7 +148,7 @@ public final class RootCommand {
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::id),
+                    this.emoteRegistry.getAll().stream().map(RegisteredEmote::id),
                     builder
                 ))
                 .executes(context -> setEmoteEnabled(
@@ -195,24 +195,24 @@ public final class RootCommand {
     }
 
     private int listEmotes(CommandSourceStack source) {
-        List<EmoteDefinition> definitions = this.emoteRegistry.getDefinitions();
-        if (definitions.isEmpty()) {
+        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
+        if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal("Emotes: " + definitions.size()), false);
+        source.sendSuccess(() -> Component.literal("Emotes: " + emotes.size()), false);
 
-        for (EmoteDefinition definition : definitions) {
+        for (RegisteredEmote emote : emotes) {
             source.sendSystemMessage(Component.literal(
-                "- " + definition.id()
-                    + " name=" + definition.name()
-                    + " parts=" + definition.partCount()
-                    + " source=" + definition.loadedAnimation().sourcePath().getFileName()
+                "- " + emote.id()
+                    + " name=" + emote.name()
+                    + " nodes=" + emote.nodeCount()
+                    + " source=" + emote.sourcePath().getFileName()
             ));
         }
 
-        return definitions.size();
+        return emotes.size();
     }
 
     private int reloadEmotes(CommandSourceStack source) {
@@ -278,7 +278,7 @@ public final class RootCommand {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteRegistry.findDefinition(id) == null) {
+        } else if (this.emoteRegistry.find(id) == null) {
             source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }

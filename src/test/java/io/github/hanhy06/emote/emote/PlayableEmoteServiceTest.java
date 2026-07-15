@@ -4,7 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static io.github.hanhy06.emote.test.EmoteDefinitionFixture.create;
+import static io.github.hanhy06.emote.test.RegisteredEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlayableEmoteServiceTest {
@@ -29,7 +29,7 @@ class PlayableEmoteServiceTest {
     @Test
     void exposesOnlyPermittedIds() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(
+        registry.replace(List.of(
             create("demo:wave", "Wave"),
             create("demo:bow", "Bow")
         ));
@@ -45,7 +45,7 @@ class PlayableEmoteServiceTest {
     @Test
     void selectionRequiresTheExactId() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(create("demo:wave", "Wave")));
+        registry.replace(List.of(create("demo:wave", "Wave")));
         PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> true);
 
         assertTrue(service.findSelection(null, "demo:wave").isSuccess());
@@ -55,7 +55,7 @@ class PlayableEmoteServiceTest {
     @Test
     void findSelectionRejectsBlockedEmote() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(create("demo:wave", "Wave")));
+        registry.replace(List.of(create("demo:wave", "Wave")));
         PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> false);
 
         PlayableEmoteSelection result = service.findSelection(null, "demo:wave");

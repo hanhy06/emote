@@ -3,10 +3,10 @@ package io.github.hanhy06.emote.dialog;
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
+import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import net.minecraft.core.Holder;
@@ -214,10 +214,10 @@ public class DialogManager {
     }
 
     private String createActiveEmoteText(ActiveEmote activeEmote) {
-        EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.id());
-        String displayName = definition == null
+        RegisteredEmote emote = this.emoteRegistry.find(activeEmote.id());
+        String displayName = emote == null
             ? activeEmote.id()
-            : definition.name();
+            : emote.name();
         return " Active: " + displayName;
     }
 

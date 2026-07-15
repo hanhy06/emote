@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import net.minecraft.server.MinecraftServer;
 
@@ -24,11 +24,11 @@ public final class EmoteAnimationService {
     }
 
     public int reload(MinecraftServer server) {
-        var definitions = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
-            .map(EmoteDefinition::create)
-            .filter(definition -> this.configManager.getEmoteAccessConfig().isEnabled(definition.id()))
+        var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
+            .map(RegisteredEmote::from)
+            .filter(emote -> this.configManager.getEmoteAccessConfig().isEnabled(emote.id()))
             .toList();
-        this.emoteRegistry.replaceDefinitions(definitions);
-        return definitions.size();
+        this.emoteRegistry.replace(emotes);
+        return emotes.size();
     }
 }

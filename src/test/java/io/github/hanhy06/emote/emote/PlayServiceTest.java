@@ -5,7 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
-import static io.github.hanhy06.emote.test.EmoteDefinitionFixture.create;
+import static io.github.hanhy06.emote.test.RegisteredEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -38,7 +38,7 @@ class PlayServiceTest {
 
     private PlayableEmoteService createPlayableEmoteService() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(create("wave", "Wave")));
+        registry.replace(List.of(create("wave", "Wave")));
         return new PlayableEmoteService(registry, new PermissionService() {
             @Override
             public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String id) {

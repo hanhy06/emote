@@ -27,11 +27,11 @@ public class PlayService {
         if (!selection.isSuccess()) {
             return PlayResult.failure(selection.errorMessage());
         }
-        return this.emoteStarter.start(player, selection.definition());
+        return this.emoteStarter.start(player, selection.emote());
     }
 
     @FunctionalInterface
     interface EmoteStarter {
-        PlayResult start(ServerPlayer player, EmoteDefinition definition);
+        PlayResult start(ServerPlayer player, RegisteredEmote emote);
     }
 }

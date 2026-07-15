@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.mixin.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
@@ -35,7 +35,7 @@ public class PlaybackManager {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
-    public PlayResult startEmote(ServerPlayer player, EmoteDefinition definition) {
+    public PlayResult startEmote(ServerPlayer player, RegisteredEmote emote) {
         MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return PlayResult.failure("Server unavailable.");
@@ -46,7 +46,7 @@ public class PlaybackManager {
 
         PlayerSkinPreparationResult skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            definition.skinParts()
+            emote.skinParts()
         );
         if (!skinPreparation.isReady()) {
             return PlayResult.failure(skinPreparation.errorMessage());
@@ -55,22 +55,22 @@ public class PlaybackManager {
         stopEmote(player);
         JsonPlaybackNodes nodes = null;
         try {
-            nodes = this.entityController.spawn(player, definition.animation());
-            JsonTimelinePlayer timeline = new JsonTimelinePlayer(definition.animation(), nodes, this.entityController);
+            nodes = this.entityController.spawn(player, emote.animation());
+            JsonTimelinePlayer timeline = new JsonTimelinePlayer(emote.animation(), nodes, this.entityController);
             timeline.start();
             JsonEventPlayer events = new JsonEventPlayer(
-                definition.animation(),
+                emote.animation(),
                 new JsonEventCommandExecutor(server, player, nodes, timeline)
             );
             ActiveEmote activeEmote = new ActiveEmote(
                 player.getUUID(),
                 player.level().dimension(),
-                definition.id(),
+                emote.id(),
                 player.position(),
                 nodes,
                 timeline,
                 events,
-                definition.hidePlayer(),
+                emote.hidePlayer(),
                 player.isInvisible()
             );
             this.activeEmoteMap.put(player.getUUID(), activeEmote);
@@ -79,9 +79,9 @@ public class PlaybackManager {
             }
             this.playerSkinManager.applySkinParts(
                 nodes.nodes(),
-                definition.skinParts(),
+                emote.skinParts(),
                 skinPreparation.preparedSkin(),
-                definition.id()
+                emote.id()
             );
             events.start();
             for (PlaybackStateListener stateListener : this.stateListeners) {
@@ -89,7 +89,7 @@ public class PlaybackManager {
             }
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to start emote {} for {}", definition.id(), player.getScoreboardName(), exception);
+            Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             ActiveEmote activeEmote = this.activeEmoteMap.remove(player.getUUID());
             if (activeEmote != null) {
                 cleanupActiveEmote(server, activeEmote, false);

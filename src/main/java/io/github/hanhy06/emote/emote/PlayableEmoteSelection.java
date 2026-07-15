@@ -3,22 +3,22 @@ package io.github.hanhy06.emote.emote;
 import java.util.Objects;
 
 public record PlayableEmoteSelection(
-    EmoteDefinition definition,
+    RegisteredEmote emote,
     String errorMessage
 ) {
     public PlayableEmoteSelection {
-        boolean hasDefinition = definition != null;
+        boolean hasEmote = emote != null;
         boolean hasErrorMessage = errorMessage != null && !errorMessage.isBlank();
-        if (hasDefinition == hasErrorMessage) {
-            throw new IllegalArgumentException("definition or errorMessage must be set");
+        if (hasEmote == hasErrorMessage) {
+            throw new IllegalArgumentException("emote or errorMessage must be set");
         }
         if (hasErrorMessage) {
             errorMessage = errorMessage.trim();
         }
     }
 
-    public static PlayableEmoteSelection success(EmoteDefinition definition) {
-        return new PlayableEmoteSelection(Objects.requireNonNull(definition, "definition"), null);
+    public static PlayableEmoteSelection success(RegisteredEmote emote) {
+        return new PlayableEmoteSelection(Objects.requireNonNull(emote, "emote"), null);
     }
 
     public static PlayableEmoteSelection failure(String errorMessage) {
@@ -26,6 +26,6 @@ public record PlayableEmoteSelection(
     }
 
     public boolean isSuccess() {
-        return this.definition != null;
+        return this.emote != null;
     }
 }

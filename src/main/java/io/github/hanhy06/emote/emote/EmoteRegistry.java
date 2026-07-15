@@ -5,24 +5,24 @@ import java.util.*;
 public class EmoteRegistry {
     private volatile RegistryState state = RegistryState.empty();
 
-    public void replaceDefinitions(Collection<EmoteDefinition> definitions) {
-        List<EmoteDefinition> sorted = new ArrayList<>(definitions);
-        sorted.sort(Comparator.comparing(EmoteDefinition::id));
+    public void replace(Collection<RegisteredEmote> emotes) {
+        List<RegisteredEmote> sorted = new ArrayList<>(emotes);
+        sorted.sort(Comparator.comparing(RegisteredEmote::id));
 
-        LinkedHashMap<String, EmoteDefinition> byId = new LinkedHashMap<>();
-        for (EmoteDefinition definition : sorted) {
-            if (byId.putIfAbsent(definition.id(), definition) != null) {
-                throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
+        LinkedHashMap<String, RegisteredEmote> byId = new LinkedHashMap<>();
+        for (RegisteredEmote emote : sorted) {
+            if (byId.putIfAbsent(emote.id(), emote) != null) {
+                throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
             }
         }
         this.state = new RegistryState(Map.copyOf(byId), List.copyOf(sorted));
     }
 
-    public List<EmoteDefinition> getDefinitions() {
+    public List<RegisteredEmote> getAll() {
         return this.state.definitions();
     }
 
-    public EmoteDefinition findDefinition(String id) {
+    public RegisteredEmote find(String id) {
         return this.state.byId().get(id);
     }
 
@@ -30,7 +30,7 @@ public class EmoteRegistry {
         return this.state.definitions().size();
     }
 
-    private record RegistryState(Map<String, EmoteDefinition> byId, List<EmoteDefinition> definitions) {
+    private record RegistryState(Map<String, RegisteredEmote> byId, List<RegisteredEmote> definitions) {
         private static RegistryState empty() {
             return new RegistryState(Map.of(), List.of());
         }
