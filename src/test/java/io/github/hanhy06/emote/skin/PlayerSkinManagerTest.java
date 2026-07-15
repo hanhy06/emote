@@ -1,22 +1,19 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.config.data.Config;
+import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.jspecify.annotations.NonNull;
 
 import java.net.http.HttpClient;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PlayerSkinManagerTest {
     private static final PlayerSkinTextureKey HEAD_TEXTURE_KEY = new PlayerSkinTextureKey(
