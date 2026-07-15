@@ -17,7 +17,11 @@ const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]
 export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<number, THREE.MeshStandardMaterial>());
+  const onSelectPartRef = useRef(onSelectPart);
+  const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const [renderError, setRenderError] = useState("");
+
+  onSelectPartRef.current = onSelectPart;
 
   useEffect(() => {
     for (const [partIndex, material] of materialsRef.current) {
@@ -89,8 +93,14 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     const bounds = new THREE.Box3().setFromObject(partGroup);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
-    controls.target.copy(center);
-    camera.position.copy(center).add(new THREE.Vector3(size * 1.5, size * 0.625, size * 1.75));
+    const previousCamera = cameraStateRef.current;
+    if (previousCamera) {
+      controls.target.copy(previousCamera.target);
+      camera.position.copy(previousCamera.position);
+    } else {
+      controls.target.copy(center);
+      camera.position.copy(center).add(new THREE.Vector3(size * 1.5, size * 0.625, size * 1.75));
+    }
     camera.near = Math.max(size / 100, 0.01);
     camera.far = Math.max(size * 20, 100);
     camera.updateProjectionMatrix();
@@ -129,7 +139,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       pointer.y = -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const intersection = raycaster.intersectObjects(clickableMeshes, false)[0];
-      if (intersection) onSelectPart(intersection.object.userData.partIndex as number, event.ctrlKey || event.metaKey || event.shiftKey);
+      if (intersection) onSelectPartRef.current(intersection.object.userData.partIndex as number, event.ctrlKey || event.metaKey || event.shiftKey);
     };
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
@@ -143,6 +153,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     render();
 
     return () => {
+      cameraStateRef.current = { position: camera.position.clone(), target: controls.target.clone() };
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
       renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
@@ -160,7 +171,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       renderer.domElement.remove();
       materialsRef.current.clear();
     };
-  }, [onSelectPart, parts]);
+  }, [parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
   return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote pieces" />;
