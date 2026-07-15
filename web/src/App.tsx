@@ -50,7 +50,9 @@ export function App() {
   const animation = project?.animations[animationIndex];
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTicks = useMemo(() => animationTicks(animation), [animation]);
-  const previewTick = previewTicks[Math.min(previewFrameIndex, previewTicks.length - 1)] ?? 0;
+  const previewTick = previewFrameIndex === 0
+    ? null
+    : previewTicks[Math.min(previewFrameIndex - 1, previewTicks.length - 1)] ?? 0;
   const previewParts = useMemo(
     () => createPreviewParts(skinCandidates, animation, previewTick),
     [animation, previewTick, skinCandidates],
@@ -164,13 +166,13 @@ export function App() {
             <strong>{project.sourceName}</strong>
             <span>{session.adapterLabel}</span>
             <span>{Object.keys(project.nodes).length} nodes</span>
-            {previewTicks.length > 1 && skinCandidates.length > 0 && (
+            {skinCandidates.length > 0 && (
               <label className="frame-slider">
                 <span>Preview</span>
-                <input type="range" min="0" max={previewTicks.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
                   setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
                 }} />
-                <output>{previewTick} tick</output>
+                <output>{previewTick === null ? "Create" : `${previewTick} tick`}</output>
               </label>
             )}
             {project.animations.length > 1 && (
@@ -243,9 +245,10 @@ function animationTicks(animation: ImportedAnimation | undefined): number[] {
 function createPreviewParts(
   candidates: SkinCandidate[],
   animation: ImportedAnimation | undefined,
-  tick: number,
+  tick: number | null,
 ): PlayerHeadPart[] {
   return candidates.map((candidate) => {
+    if (tick === null) return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, candidate.node.defaultMatrix);
     const track = animation?.tracks[candidate.nodeId];
     const matrix = track?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix ?? candidate.node.defaultMatrix;
     return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, matrix);

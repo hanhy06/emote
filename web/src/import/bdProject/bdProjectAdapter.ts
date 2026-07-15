@@ -63,7 +63,7 @@ export const bdProjectAdapter: ImportAdapter = {
     if (displays.length === 0) throw new Error("BD project does not contain display nodes.");
     const sampleTimes = collectSampleTimes(root);
     const frameTimes = sampleTimes.length > 0 ? sampleTimes : [0];
-    const nodes = Object.fromEntries(displays.map((entry) => [entry.id, createImportedNode(entry, frameTimes[0])]));
+    const nodes = Object.fromEntries(displays.map((entry) => [entry.id, createImportedNode(entry)]));
     const tracks = Object.fromEntries(displays.map((entry) => [entry.id, {
       transforms: frameTimes.map((time, index): ImportedTransformKeyframe => ({
         tick: time * TICKS_PER_BD_SAMPLE,
@@ -130,9 +130,9 @@ function collectSampleTimes(root: BdSceneNode): number[] {
     : [];
 }
 
-function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNode {
+function createImportedNode(entry: DisplayEntry): ImportedNode {
   const node = entry.node;
-  const defaultMatrix = evaluateDisplayMatrix(entry, firstTime);
+  const defaultMatrix = evaluateDisplayDefaultMatrix(entry);
   const entityNbt = createEntityNbt(node);
   if (node.isItemDisplay) {
     const item = parseItemName(node.name ?? "minecraft:air");
@@ -164,6 +164,19 @@ function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNod
     ...(entityNbt ? { entityNbt } : {}),
     text: { text: node.name ?? "" },
   };
+}
+
+function evaluateDisplayDefaultMatrix(entry: DisplayEntry): Matrix16 {
+  const matrix = new Matrix4();
+  for (const ancestor of entry.ancestors) {
+    matrix.multiply(ancestor.defaultTransform
+      ? matrixFromTransform(ancestor.defaultTransform)
+      : matrixFromArray(ancestor.transforms, ancestor.name ?? "collection"));
+  }
+  const pivot = vector(entry.ancestors.at(-1)?.pivotCustom, [0, 0, 0]);
+  matrix.multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
+  matrix.multiply(matrixFromArray(entry.node.transforms, entry.node.name ?? entry.id));
+  return matrix4ToRowMajor(matrix, "BD default composed matrix");
 }
 
 function evaluateDisplayMatrix(entry: DisplayEntry, time: number): Matrix16 {
