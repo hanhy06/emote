@@ -19,7 +19,7 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
         private final String id;
         private final EmoteAnimation.Node node;
         private final Display entity;
-        private final DisplayContent displayContent;
+        private DisplayContent displayContent;
         private EmoteAnimation.Matrix currentMatrix;
         private boolean visible;
 
@@ -52,6 +52,13 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
 
         public DisplayContent displayContent() {
             return this.displayContent;
+        }
+
+        public void setItemStack(ItemStack itemStack) {
+            if (!(this.displayContent instanceof ItemContent)) {
+                throw new IllegalStateException("Node is not an item display: " + this.id);
+            }
+            this.displayContent = new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
         }
 
         public EmoteAnimation.Matrix currentMatrix() {
