@@ -31,7 +31,54 @@ describe("bdProjectAdapter", () => {
     expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix).toEqual(IDENTITY_MATRIX);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
+
+  it("bakes sparse BD keyframes with their saved interpolation curve", async () => {
+    const curveFuncSave = JSON.stringify([{ x: 0, y: 0 }, { x: 0.5, y: 0.25 }, { x: 1, y: 1 }]);
+    const input = {
+      name: "Sparse.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        listAnim: [{ name: "Default" }],
+        children: [{
+          isCollection: true,
+          name: "Animated parent",
+          defaultTransform: transform(0),
+          animation: [{ time: 5, ...transform(3) }],
+          children: [{
+            isCollection: true,
+            name: "Animated child",
+            defaultTransform: transform(0),
+            animation: [
+              { time: 0, ...transform(0) },
+              { time: 5, ...transform(10), curveFuncSave },
+              { time: 10, ...transform(0), curveFuncSave },
+            ],
+            children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+          }],
+        }],
+      }),
+    };
+
+    const project = await bdProjectAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "sparse" });
+    expect(animation.timeline.duration_ticks).toBe(22);
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.display_0?.interpolation_duration_ticks))
+      .toEqual([0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]);
+    expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
+    expect(animation.timeline.keyframes[1].node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
+    expect(animation.timeline.keyframes[5].node_transforms?.display_0?.matrix[3]).toBeCloseTo(13);
+    expect(() => serializeEmoteAnimation(animation)).not.toThrow();
+  });
 });
+
+function transform(x: number) {
+  return {
+    position: { x, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scale: { x: 1, y: 1, z: 1 },
+  };
+}
 
 function createProject(scene: unknown): Uint8Array {
   const encoder = new TextEncoder();

@@ -35,8 +35,10 @@ export interface BdTransform {
   scale?: VectorLike;
 }
 
-interface BdAnimationSample extends BdTransform {
+export interface BdAnimationSample extends BdTransform {
   time: number;
+  curve?: string;
+  curveFuncSave?: string;
 }
 
 export type VectorLike = { x?: number; y?: number; z?: number } | number[];
@@ -57,6 +59,8 @@ export function requireBdSceneNode(value: unknown, path: string): BdSceneNode {
       const samplePath = `${path}.animation[${index}]`;
       const sample = requireRecord(sampleValue, samplePath);
       requireNumber(sample.time, `${samplePath}.time`);
+      optionalString(sample.curve, `${samplePath}.curve`);
+      optionalString(sample.curveFuncSave, `${samplePath}.curveFuncSave`);
       requireBdTransform(sample, samplePath);
     });
   }

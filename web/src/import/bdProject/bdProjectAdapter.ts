@@ -6,7 +6,7 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
-import { requireBdSceneNode, type BdSceneNode, type BdTransform, type VectorLike } from "./bdProjectSchema";
+import { requireBdSceneNode, type BdAnimationSample, type BdSceneNode, type BdTransform, type VectorLike } from "./bdProjectSchema";
 import { hasGzipHeader, readPrj2 } from "./prj2";
 
 const decoder = new TextDecoder();
@@ -18,6 +18,13 @@ interface DisplayEntry {
   node: BdSceneNode;
   ancestors: BdSceneNode[];
 }
+
+interface BdCurvePoint {
+  x: number;
+  y: number;
+}
+
+const BD_CURVE_POINTS_CACHE = new WeakMap<BdAnimationSample, BdCurvePoint[] | null>();
 
 export const bdProjectAdapter: ImportAdapter = {
   id: "bd_project",
@@ -118,10 +125,9 @@ function collectSampleTimes(root: BdSceneNode): number[] {
   };
   visit(root);
   const sorted = [...times].sort((first, second) => first - second);
-  sorted.forEach((time, index) => {
-    if (time !== index) throw new Error("BD animation samples must be contiguous from time 0.");
-  });
-  return sorted;
+  return sorted.length > 0
+    ? Array.from({ length: sorted[sorted.length - 1] + 1 }, (_, time) => time)
+    : [];
 }
 
 function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNode {
@@ -172,12 +178,83 @@ function evaluateDisplayMatrix(entry: DisplayEntry, time: number): Matrix16 {
 function evaluateCollection(node: BdSceneNode, time: number): Matrix4 {
   const samples = node.animation ?? [];
   if (samples.length > 0) {
-    const sample = samples.find((candidate) => candidate.time === time);
-    if (!sample) throw new Error(`BD node ${node.name ?? "<unnamed>"} has no animation sample at ${time}.`);
-    return matrixFromTransform(sample);
+    const sorted = [...samples].sort((first, second) => first.time - second.time);
+    if (sorted.length === 1) return matrixFromTransform(sorted[0]);
+    const exact = sorted.find((sample) => sample.time === time);
+    if (exact) return matrixFromTransform(exact);
+    const nextIndex = sorted.findIndex((sample) => sample.time > time);
+    if (nextIndex < 0) return matrixFromTransform(sorted[sorted.length - 1]);
+    if (nextIndex === 0) {
+      if (node.defaultTransform) return matrixFromTransform(node.defaultTransform);
+      return matrixFromArray(node.transforms, node.name ?? "collection");
+    }
+    const previous = sorted[nextIndex - 1];
+    const next = sorted[nextIndex];
+    const progress = (time - previous.time) / (next.time - previous.time);
+    return matrixFromTransform(interpolateTransform(previous, next, evaluateCurve(next, progress)));
   }
   if (node.defaultTransform) return matrixFromTransform(node.defaultTransform);
   return matrixFromArray(node.transforms, node.name ?? "collection");
+}
+
+function interpolateTransform(previous: BdTransform, next: BdTransform, progress: number): BdTransform {
+  const previousPosition = vector(previous.position, [0, 0, 0]);
+  const nextPosition = vector(next.position, [0, 0, 0]);
+  const previousRotation = vector(previous.rotation, [0, 0, 0]);
+  const nextRotation = vector(next.rotation, [0, 0, 0]);
+  const previousScale = vector(previous.scale, [1, 1, 1]);
+  const nextScale = vector(next.scale, [1, 1, 1]);
+  const interpolate = (first: number, second: number) => first + (second - first) * progress;
+  return {
+    position: previousPosition.map((value, index) => interpolate(value, nextPosition[index])),
+    rotation: previousRotation.map((value, index) => interpolate(value, nextRotation[index])),
+    scale: previousScale.map((value, index) => interpolate(value, nextScale[index])),
+  };
+}
+
+function evaluateCurve(sample: BdAnimationSample, progress: number): number {
+  const points = curvePoints(sample);
+  if (!points || points.length === 0) return progress;
+  if (progress <= points[0].x) return points[0].y;
+  for (let index = 1; index < points.length; index++) {
+    const next = points[index];
+    if (progress > next.x) continue;
+    const previous = points[index - 1];
+    const width = next.x - previous.x;
+    if (width <= 0) return next.y;
+    const localProgress = (progress - previous.x) / width;
+    return previous.y + (next.y - previous.y) * localProgress;
+  }
+  return points[points.length - 1].y;
+}
+
+function curvePoints(sample: BdAnimationSample): BdCurvePoint[] | null {
+  const cached = BD_CURVE_POINTS_CACHE.get(sample);
+  if (cached !== undefined) return cached;
+  if (!sample.curveFuncSave?.trim()) {
+    BD_CURVE_POINTS_CACHE.set(sample, null);
+    return null;
+  }
+  let value: unknown;
+  try {
+    value = JSON.parse(sample.curveFuncSave);
+  } catch (error) {
+    throw new Error(`BD animation sample at ${sample.time} contains invalid curveFuncSave JSON.`, { cause: error });
+  }
+  if (!Array.isArray(value)) throw new Error(`BD animation sample at ${sample.time} curveFuncSave must be an array.`);
+  const points = value.map((point, index): BdCurvePoint => {
+    if (typeof point !== "object" || point === null || Array.isArray(point)) {
+      throw new Error(`BD animation sample at ${sample.time} curveFuncSave[${index}] must be an object.`);
+    }
+    const x = (point as Record<string, unknown>).x;
+    const y = (point as Record<string, unknown>).y;
+    if (typeof x !== "number" || !Number.isFinite(x) || typeof y !== "number" || !Number.isFinite(y)) {
+      throw new Error(`BD animation sample at ${sample.time} curveFuncSave[${index}] must contain finite x and y values.`);
+    }
+    return { x, y };
+  });
+  BD_CURVE_POINTS_CACHE.set(sample, points);
+  return points;
 }
 
 function matrixFromTransform(transform: BdTransform): Matrix4 {
