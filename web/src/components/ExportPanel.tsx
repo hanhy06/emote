@@ -34,6 +34,12 @@ export function ExportPanel({
         <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.target.value })} /></label>
         <label>Display name<input value={metadata.name} onChange={(event) => onMetadataChange({ ...metadata, name: event.target.value })} /></label>
         <label>Description<input value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.target.value })} /></label>
+        <label>Playback mode<select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
+          <option value="source">Source setting</option>
+          <option value="once">Play once</option>
+          <option value="loop">Loop</option>
+          <option value="server_sync">Server-synchronized loop</option>
+        </select></label>
         <label className="checkbox"><input type="checkbox" checked={metadata.hide_player} onChange={(event) => onMetadataChange({ ...metadata, hide_player: event.target.checked })} />Hide original player</label>
       </div>
       {error && <p className="error" role="alert">{error}</p>}

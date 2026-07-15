@@ -29,17 +29,31 @@ public final class PlaybackEntityController {
     private static final String RUNTIME_TAG = "emote.runtime";
 
     public PlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
+        PlaybackNodes nodes = create(player, animation);
+        add(player.level(), nodes);
+        return nodes;
+    }
+
+    public PlaybackNodes create(ServerPlayer player, EmoteAnimation animation) {
         ServerLevel level = player.level();
         EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
+        for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
+            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue());
+            instances.put(entry.getKey(), instance);
+        }
+        return new PlaybackNodes(root, instances);
+    }
+
+    public void add(ServerLevel level, PlaybackNodes nodes) {
         try {
-            for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
-                NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue());
-                instances.put(entry.getKey(), instance);
+            for (NodeInstance node : nodes.nodes().values()) {
+                if (!node.isAnchor() && !level.addFreshEntity(node.entity())) {
+                    throw new IllegalStateException("Failed to add display entity for node " + node.id());
+                }
             }
-            return new PlaybackNodes(root, instances);
         } catch (RuntimeException exception) {
-            removeEntities(level, instances.values());
+            removeEntities(level, nodes.nodes().values());
             throw exception;
         }
     }
@@ -70,15 +84,23 @@ public final class PlaybackEntityController {
         EmoteAnimation.Matrix matrix,
         int interpolationDurationTicks
     ) {
+        applyTransformation(
+            node,
+            new Transformation(playbackNodes.root().displayMatrix(matrix)),
+            interpolationDurationTicks
+        );
+    }
+
+    public void applyTransformation(
+        NodeInstance node,
+        Transformation transformation,
+        int interpolationDurationTicks
+    ) {
         if (node.isAnchor()) {
             return;
         }
         CompoundTag data = new CompoundTag();
-        data.store(
-            "transformation",
-            Transformation.EXTENDED_CODEC,
-            new Transformation(playbackNodes.root().displayMatrix(matrix))
-        );
+        data.store("transformation", Transformation.EXTENDED_CODEC, transformation);
         data.putInt("interpolation_duration", interpolationDurationTicks);
         data.putInt("start_interpolation", 0);
         TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
@@ -113,9 +135,6 @@ public final class PlaybackEntityController {
         NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
         if (!visible) {
             setVisible(instance, false);
-        }
-        if (!level.addFreshEntity(entity)) {
-            throw new IllegalStateException("Failed to add display entity for node " + nodeId);
         }
         return instance;
     }

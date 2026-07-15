@@ -133,7 +133,8 @@ public record EmoteAnimation(
 
     public enum LoopMode {
         ONCE,
-        LOOP
+        LOOP,
+        SERVER_SYNC
     }
 
     public record Keyframe(

@@ -32,6 +32,17 @@ class EmoteAnimationJsonLoaderTest {
     }
 
     @Test
+    void loadsServerSynchronizedLoopWithoutChangingSchemaVersion() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("timeline").addProperty("loop", "server_sync");
+
+        EmoteAnimation.Loaded loaded = parse(root);
+
+        assertEquals(1, root.get("schema_version").getAsInt());
+        assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().timeline().loop());
+    }
+
+    @Test
     void loadsAllRepositoryExamplesWhileIgnoringUnknownMetadata() throws Exception {
         List<Path> examplePaths;
         try (var paths = Files.list(Path.of("docs/example"))) {

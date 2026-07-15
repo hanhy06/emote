@@ -78,6 +78,7 @@ export function App() {
         metadata: {
           minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
           namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.name,
+          playbackMode: "source",
           ...imported.suggestedMetadata,
         },
         conversionError: "",

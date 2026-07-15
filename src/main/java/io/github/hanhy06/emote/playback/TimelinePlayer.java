@@ -11,6 +11,7 @@ public final class TimelinePlayer {
     private final Map<Integer, List<TransformActivation>> transformActivations;
     private final Map<Integer, List<StateActivation>> stateActivations;
     private final Map<String, TransformState> transformStates = new HashMap<>();
+    private List<TransformActivation> pendingInterpolations = List.of();
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -41,6 +42,41 @@ public final class TimelinePlayer {
         resetToTickZero();
     }
 
+    public void startSynchronized(long serverTick) {
+        if (this.started) {
+            throw new IllegalStateException("Timeline already started");
+        }
+        if (this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
+            throw new IllegalStateException("Timeline is not server synchronized");
+        }
+
+        this.started = true;
+        resetToTickZero();
+        int duration = this.animation.timeline().durationTicks();
+        long cycleLength = (long)duration + this.animation.timeline().loopDelayTicks();
+        long phase = Math.floorMod(serverTick, cycleLength);
+        int timelineTick = (int)Math.min(phase, duration);
+        for (int tick = 1; tick <= timelineTick; tick++) {
+            this.currentTick = tick;
+            applyTick(tick);
+        }
+        if (phase >= duration) {
+            this.remainingLoopDelay = (int)(cycleLength - phase);
+        } else {
+            this.pendingInterpolations = activeInterpolationsAt((int)phase);
+        }
+        for (String nodeId : this.animation.nodes().keySet()) {
+            this.target.setTransformation(nodeId, currentTransformation(nodeId));
+        }
+    }
+
+    public void resumeSynchronizedInterpolation() {
+        if (!this.started || this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
+            throw new IllegalStateException("Synchronized timeline has not started");
+        }
+        resumePendingInterpolations();
+    }
+
     public AdvanceResult advance() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
@@ -61,6 +97,7 @@ public final class TimelinePlayer {
         }
 
         this.currentTick++;
+        resumePendingInterpolations();
         applyTick(this.currentTick);
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
@@ -105,6 +142,29 @@ public final class TimelinePlayer {
         this.currentTick = 0;
         this.remainingLoopDelay = 0;
         applyTick(0);
+    }
+
+    private List<TransformActivation> activeInterpolationsAt(int tick) {
+        return this.transformActivations.entrySet().stream()
+            .filter(entry -> entry.getKey() <= tick)
+            .flatMap(entry -> entry.getValue().stream())
+            .filter(activation -> activation.transform().interpolationDurationTicks() > 0)
+            .filter(activation -> tick < activation.targetTick())
+            .toList();
+    }
+
+    private void resumePendingInterpolations() {
+        if (this.pendingInterpolations.isEmpty()) {
+            return;
+        }
+        for (TransformActivation activation : this.pendingInterpolations) {
+            this.target.applyTransform(
+                activation.nodeId(),
+                activation.transform().matrix(),
+                Math.max(0, activation.targetTick() - this.currentTick)
+            );
+        }
+        this.pendingInterpolations = List.of();
     }
 
     private void applyTick(int tick) {
@@ -168,6 +228,8 @@ public final class TimelinePlayer {
 
         void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks);
 
+        void setTransformation(String nodeId, Transformation transformation);
+
         void setVisible(String nodeId, boolean visible);
 
         void resetAll();
@@ -215,6 +277,11 @@ public final class TimelinePlayer {
                 matrix,
                 interpolationDurationTicks
             );
+        }
+
+        @Override
+        public void setTransformation(String nodeId, Transformation transformation) {
+            this.entityController.applyTransformation(requiredNode(nodeId), transformation, 0);
         }
 
         @Override

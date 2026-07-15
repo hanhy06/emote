@@ -26,7 +26,7 @@ describe("emoteJsonAdapter", () => {
       },
       timeline: {
         duration_ticks: 4,
-        loop: "loop",
+        loop: "server_sync",
         loop_delay_ticks: 2,
         keyframes: [
           { tick: 0, node_transforms: { arm: { matrix: IDENTITY } } },
@@ -45,6 +45,7 @@ describe("emoteJsonAdapter", () => {
 
     expect(project.nodes.arm.type === "item_display" && project.nodes.arm.skin).toEqual({ part: "right_arm", order: 1 });
     expect(recompiled.id).toBe(source.id);
+    expect(recompiled.timeline.loop).toBe("server_sync");
     expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration_ticks).toBe(2);
   });
 

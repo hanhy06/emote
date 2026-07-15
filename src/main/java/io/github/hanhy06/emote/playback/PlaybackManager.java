@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.animation.EmoteAnimation;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -58,9 +59,18 @@ public class PlaybackManager {
         stopEmote(player);
         PlaybackNodes nodes = null;
         try {
-            nodes = this.entityController.spawn(player, emote.animation());
-            TimelinePlayer timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
-            timeline.start();
+            TimelinePlayer timeline;
+            if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                nodes = this.entityController.create(player, emote.animation());
+                timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
+                timeline.startSynchronized(server.overworld().getGameTime());
+                this.entityController.add(player.level(), nodes);
+                timeline.resumeSynchronizedInterpolation();
+            } else {
+                nodes = this.entityController.spawn(player, emote.animation());
+                timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
+                timeline.start();
+            }
             EventPlayer events = new EventPlayer(
                 emote.animation(),
                 new EventCommandExecutor(server, player, nodes, timeline)

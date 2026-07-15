@@ -21,6 +21,7 @@ final class EmoteTimelineJsonParser {
         LoopMode loop = switch (loopText) {
             case "once" -> LoopMode.ONCE;
             case "loop" -> LoopMode.LOOP;
+            case "server_sync" -> LoopMode.SERVER_SYNC;
             default -> throw error(sourcePath, "$.timeline.loop", "unsupported loop mode: " + loopText);
         };
         int loopDelayTicks = requireInt(object, "loop_delay_ticks", "$.timeline", sourcePath);

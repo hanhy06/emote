@@ -36,12 +36,15 @@ describe("exportAnimation", () => {
     const result = exportAnimation(project, {
       minecraftVersion: "26.2",
       namespace: "test",
+      playbackMode: "server_sync",
       ...project.suggestedMetadata,
     }, { body: { part: "body", order: 9 } }, 0);
     const animation = JSON.parse(await result.blob.text());
 
     expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
     expect(animation.metadata).toEqual({ name: "Test", description: "Test emote.", hide_player: true });
+    expect(animation.schema_version).toBe(1);
+    expect(animation.timeline.loop).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
   });
 });

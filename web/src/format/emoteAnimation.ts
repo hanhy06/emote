@@ -45,7 +45,7 @@ export type EmoteNode =
 
 export interface EmoteTimeline {
   duration_ticks: number;
-  loop: "once" | "loop";
+  loop: "once" | "loop" | "server_sync";
   loop_delay_ticks: number;
   keyframes: EmoteKeyframe[];
   events?: {

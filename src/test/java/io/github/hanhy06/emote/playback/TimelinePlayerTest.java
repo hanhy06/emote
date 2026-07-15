@@ -88,6 +88,52 @@ class TimelinePlayerTest {
         assertEquals(List.of(false), target.visibility);
     }
 
+    @Test
+    void startsServerSynchronizedLoopAtServerPhaseAndResumesInterpolation() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(
+                10,
+                EmoteAnimation.LoopMode.SERVER_SYNC,
+                0,
+                List.of(keyframe(0, 0.0D, 0), keyframe(10, 10.0D, 10))
+            ),
+            target
+        );
+
+        player.startSynchronized(5L);
+
+        assertEquals(5, player.currentTick());
+        assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
+        assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
+
+        player.resumeSynchronizedInterpolation();
+        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
+        player.advance();
+        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
+    }
+
+    @Test
+    void startsServerSynchronizedLoopInsideLoopDelay() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(
+                2,
+                EmoteAnimation.LoopMode.SERVER_SYNC,
+                2,
+                List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))
+            ),
+            target
+        );
+
+        player.startSynchronized(3L);
+
+        assertEquals(2, player.currentTick());
+        assertEquals(2.0F, target.snapshots.getLast(), 0.0001F);
+        assertEquals(TimelinePlayer.AdvanceResult.RESTARTED, player.advance());
+        assertEquals(0, player.currentTick());
+    }
+
     private EmoteAnimation animation(
         int duration,
         EmoteAnimation.LoopMode loop,
@@ -121,6 +167,7 @@ class TimelinePlayerTest {
 
     private static final class FakeTarget implements TimelinePlayer.TimelineTarget {
         private final List<AppliedTransform> transforms = new ArrayList<>();
+        private final List<Float> snapshots = new ArrayList<>();
         private final List<Boolean> visibility = new ArrayList<>();
         private int resetCount;
 
@@ -132,6 +179,11 @@ class TimelinePlayerTest {
         @Override
         public void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks) {
             this.transforms.add(new AppliedTransform(matrix.value(3), interpolationDurationTicks));
+        }
+
+        @Override
+        public void setTransformation(String nodeId, Transformation transformation) {
+            this.snapshots.add(transformation.getMatrix().m30());
         }
 
         @Override

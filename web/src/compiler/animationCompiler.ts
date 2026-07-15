@@ -14,6 +14,7 @@ export interface CompileOptions {
   minecraftVersion: string;
   namespace?: string;
   metadata?: EmoteMetadata;
+  loop?: EmoteAnimation["timeline"]["loop"];
 }
 
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
@@ -33,6 +34,7 @@ interface CompileContext {
   baseMetadata: EmoteMetadata;
   multiple: boolean;
   minecraftVersion: string;
+  loop?: EmoteAnimation["timeline"]["loop"];
 }
 
 function prepareCompile(project: ImportedProject, options: CompileOptions): CompileContext {
@@ -47,7 +49,7 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }
-  return { namespace, baseMetadata, multiple, minecraftVersion: options.minecraftVersion };
+  return { namespace, baseMetadata, multiple, minecraftVersion: options.minecraftVersion, loop: options.loop };
 }
 
 function compileAnimation(
@@ -66,7 +68,7 @@ function compileAnimation(
     },
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: compileNodes(project.nodes),
-    timeline: compileTimeline(animation),
+    timeline: compileTimeline(animation, context.loop),
   };
 }
 
@@ -92,7 +94,10 @@ function compileNodes(nodes: Record<string, ImportedNode>): Record<string, Emote
   }));
 }
 
-function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline"] {
+function compileTimeline(
+  animation: ImportedAnimation,
+  loopOverride?: EmoteAnimation["timeline"]["loop"],
+): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const keyframes = new Map<number, EmoteKeyframe>();
   for (const [nodeId, track] of Object.entries(animation.tracks)) {
@@ -127,10 +132,11 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
     ...event,
     tick: requireTick(event.tick, `${animation.id} event`),
   }));
+  const loop = loopOverride ?? animation.loop;
   return {
     duration_ticks: durationTicks,
-    loop: animation.loop === "loop" ? "loop" : "once",
-    loop_delay_ticks: animation.loop === "loop" ? requireTick(animation.loopDelayTicks, `${animation.id} loop delay`) : 0,
+    loop,
+    loop_delay_ticks: loop === "once" ? 0 : requireTick(animation.loopDelayTicks, `${animation.id} loop delay`),
     keyframes: [...keyframes.values()].sort((first, second) => first.tick - second.tick),
     events: {
       ...(animation.events.start.length ? { start: animation.events.start } : {}),

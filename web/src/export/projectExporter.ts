@@ -1,11 +1,12 @@
 import { compileImportedAnimation } from "../compiler/animationCompiler";
-import type { EmoteMetadata } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmoteMetadata } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
 
 export interface ExportOptions extends EmoteMetadata {
   minecraftVersion: string;
   namespace: string;
+  playbackMode: "source" | EmoteAnimation["timeline"]["loop"];
 }
 
 export interface ExportResult {
@@ -25,6 +26,7 @@ export function exportAnimation(
   const animation = compileImportedAnimation(applySkinAssignments(project, skinAssignments), {
     minecraftVersion: options.minecraftVersion,
     namespace: options.namespace,
+    ...(options.playbackMode === "source" ? {} : { loop: options.playbackMode }),
     metadata: {
       name: options.name,
       description: options.description,
