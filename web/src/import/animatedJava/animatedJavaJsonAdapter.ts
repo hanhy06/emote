@@ -1,12 +1,12 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import { asMatrix16, secondsToTicks } from "../../compiler/animationCompiler";
+import { secondsToTicks } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
+import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 
 const decoder = new TextDecoder();
 const encoder = new TextEncoder();
-const IDENTITY = asMatrix16([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], "identity");
 
 interface AjBlueprint {
   format_version: number;
@@ -261,7 +261,7 @@ function composeAjMatrix(position: number[], rotation: number[], scale: number[]
     "YXZ",
   );
   const matrix = new Matrix4().compose(new Vector3(...position), new Quaternion().setFromEuler(euler), new Vector3(...scale));
-  return matrixToRowMajor(matrix);
+  return matrix4ToRowMajor(matrix, "Animated Java matrix");
 }
 
 function quaternionToAjRotation(quaternion: Quaternion): [number, number, number] {
@@ -270,19 +270,9 @@ function quaternionToAjRotation(quaternion: Quaternion): [number, number, number
 }
 
 function readDefaultMatrix(node: AjNode, id: string): Matrix16 {
-  const values = node.default_transformation?.matrix ?? IDENTITY;
+  const values = node.default_transformation?.matrix ?? IDENTITY_MATRIX;
   if (values.length !== 16 || values.some((value) => !Number.isFinite(value))) throw new Error(`Animated Java node ${id} has an invalid default matrix.`);
-  return matrixToRowMajor(new Matrix4().fromArray(values));
-}
-
-function matrixToRowMajor(matrix: Matrix4): Matrix16 {
-  const value = matrix.elements;
-  return asMatrix16([
-    value[0], value[4], value[8], value[12],
-    value[1], value[5], value[9], value[13],
-    value[2], value[6], value[10], value[14],
-    value[3], value[7], value[11], value[15],
-  ], "Animated Java matrix");
+  return matrix4ToRowMajor(new Matrix4().fromArray(values), `Animated Java node ${id} default matrix`);
 }
 
 function writeBoneArtifacts(

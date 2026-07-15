@@ -1,5 +1,5 @@
-import { asMatrix16 } from "../../compiler/animationCompiler";
 import type { EmoteAnimation, EmoteEvent } from "../../format/emoteAnimation";
+import { asMatrix16 } from "../../format/matrix";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";

@@ -4,7 +4,6 @@ import type {
   EmoteMetadata,
   EmoteNode,
   EmoteTimelineEvent,
-  Matrix16,
 } from "../format/emoteAnimation";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
 
@@ -116,13 +115,6 @@ export function secondsToTicks(seconds: number, label: string): number {
     throw new Error(`${label} does not fall on a 20 TPS tick: ${seconds}`);
   }
   return rounded;
-}
-
-export function asMatrix16(values: readonly number[], label: string): Matrix16 {
-  if (values.length !== 16 || values.some((value) => !Number.isFinite(value))) {
-    throw new Error(`${label} must contain 16 finite numbers.`);
-  }
-  return values as Matrix16;
 }
 
 function sanitizeResourcePath(value: string): string {

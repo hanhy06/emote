@@ -1,6 +1,6 @@
 import JSZip from "jszip";
-import { asMatrix16 } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
+import { IDENTITY_MATRIX, asMatrix16 } from "../../format/matrix";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type {
   ImportDiagnostic,
@@ -264,7 +264,7 @@ function readNodeTag(compound: string, namespace: string): string | null {
 
 function readMatrix(text: string, label: string): Matrix16 {
   const raw = /transformation:\[(.*?)\]/s.exec(text)?.[1];
-  if (!raw) return asMatrix16([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], label);
+  if (!raw) return IDENTITY_MATRIX;
   return asMatrix16(raw.split(",").map((value) => Number.parseFloat(value.trim().replace(/[fd]$/i, ""))), label);
 }
 

@@ -1,12 +1,11 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import { asMatrix16 } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
+import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { hasGzipHeader, readPrj2 } from "./prj2";
 
 const decoder = new TextDecoder();
-const IDENTITY = asMatrix16([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], "identity");
 
 interface BdSceneNode {
   isCollection?: boolean;
@@ -193,7 +192,7 @@ function evaluateDisplayMatrix(entry: DisplayEntry, time: number): Matrix16 {
   const pivot = vector(entry.ancestors.at(-1)?.pivotCustom, [0, 0, 0]);
   matrix.multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
   matrix.multiply(matrixFromArray(entry.node.transforms, entry.node.name ?? entry.id));
-  return matrixToRowMajor(matrix);
+  return matrix4ToRowMajor(matrix, "BD composed matrix");
 }
 
 function evaluateCollection(node: BdSceneNode, time: number): Matrix4 {
@@ -219,17 +218,7 @@ function matrixFromTransform(transform: BdTransform): Matrix4 {
 }
 
 function matrixFromArray(values: number[] | undefined, label: string): Matrix4 {
-  return new Matrix4().set(...asMatrix16(values ?? IDENTITY, `${label} transforms`));
-}
-
-function matrixToRowMajor(matrix: Matrix4): Matrix16 {
-  const values = matrix.elements;
-  return asMatrix16([
-    values[0], values[4], values[8], values[12],
-    values[1], values[5], values[9], values[13],
-    values[2], values[6], values[10], values[14],
-    values[3], values[7], values[11], values[15],
-  ], "BD composed matrix");
+  return new Matrix4().set(...asMatrix16(values ?? IDENTITY_MATRIX, `${label} transforms`));
 }
 
 function vector(value: VectorLike | undefined, fallback: [number, number, number]): [number, number, number] {
