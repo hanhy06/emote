@@ -19,8 +19,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.function.Function;
 import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
     private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;

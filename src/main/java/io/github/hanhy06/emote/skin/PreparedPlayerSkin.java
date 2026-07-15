@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 public record PreparedPlayerSkin(
