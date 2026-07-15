@@ -22,6 +22,7 @@ public class ConfigManager {
         .setPrettyPrinting()
         .disableHtmlEscaping()
         .create();
+    private final ConfigJsonCodec jsonCodec = new ConfigJsonCodec();
     private final List<ConfigListener> listeners = new ArrayList<>();
     private final List<EmoteAccessConfigListener> emoteAccessListeners = new ArrayList<>();
 
@@ -39,8 +40,8 @@ public class ConfigManager {
             return;
         }
 
-        writeIfAbsent(CONFIG_FILE_NAME, createConfigJson(this.config));
-        writeIfAbsent(EMOTE_ACCESS_FILE_NAME, createEmoteAccessConfigJson(this.emoteAccessConfig));
+        writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(this.config));
+        writeIfAbsent(EMOTE_ACCESS_FILE_NAME, this.jsonCodec.writeEmoteAccessConfig(this.emoteAccessConfig));
     }
 
     public Config getConfig() {
@@ -59,7 +60,7 @@ public class ConfigManager {
         JsonObject configJson = readJsonFile(CONFIG_FILE_NAME);
         Config loadedConfig;
         try {
-            loadedConfig = readConfig(configJson);
+            loadedConfig = this.jsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Config contains invalid field values. Keeping current config.", exception);
             broadcastConfig();
@@ -81,7 +82,7 @@ public class ConfigManager {
         JsonObject configJson = readJsonFile(EMOTE_ACCESS_FILE_NAME);
         EmoteAccessConfig loadedConfig;
         try {
-            loadedConfig = readEmoteAccessConfig(configJson);
+            loadedConfig = this.jsonCodec.readEmoteAccessConfig(configJson);
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
             broadcastEmoteAccessConfig();
@@ -125,7 +126,7 @@ public class ConfigManager {
             this.emoteAccessConfig.permissions()
         );
 
-        if (!writeJsonFile(EMOTE_ACCESS_FILE_NAME, createEmoteAccessConfigJson(nextConfig))) {
+        if (!writeJsonFile(EMOTE_ACCESS_FILE_NAME, this.jsonCodec.writeEmoteAccessConfig(nextConfig))) {
             return false;
         }
 
@@ -176,117 +177,6 @@ public class ConfigManager {
             Emote.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
             return false;
         }
-    }
-
-    private JsonObject createConfigJson(Config config) {
-        JsonObject object = new JsonObject();
-        object.addProperty("schema_version", config.schemaVersion());
-        object.addProperty("menu_page_size", config.menuPageSize());
-        object.addProperty("mineskin_api_key", config.mineSkinApiKey());
-        object.addProperty("mineskin_poll_interval_seconds", config.mineSkinPollIntervalSeconds());
-        return object;
-    }
-
-    private JsonObject createEmoteAccessConfigJson(EmoteAccessConfig config) {
-        JsonObject object = new JsonObject();
-        JsonArray disabledJson = new JsonArray();
-        config.disabled().forEach(disabledJson::add);
-        object.add("disabled", disabledJson);
-        JsonObject permissionsJson = new JsonObject();
-        for (Map.Entry<String, List<String>> entry : config.permissions().entrySet()) {
-            JsonArray idsJson = new JsonArray();
-            entry.getValue().forEach(idsJson::add);
-            permissionsJson.add(entry.getKey(), idsJson);
-        }
-        object.add("permissions", permissionsJson);
-        return object;
-    }
-
-    private Config readConfig(JsonObject object) {
-        if (object == null) {
-            return null;
-        }
-
-        Config defaultConfig = Config.createDefault();
-        return new Config(
-            readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
-            readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
-            readMineSkinApiKey(object, defaultConfig.mineSkinApiKey()),
-            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds())
-        );
-    }
-
-    private EmoteAccessConfig readEmoteAccessConfig(JsonObject object) {
-        if (object == null) {
-            return null;
-        }
-
-        JsonElement disabledElement = object.get("disabled");
-        if (disabledElement != null && !disabledElement.isJsonNull() && !disabledElement.isJsonArray()) {
-            return null;
-        }
-
-        List<String> disabled = new ArrayList<>();
-        if (disabledElement != null && !disabledElement.isJsonNull()) {
-            for (JsonElement idElement : disabledElement.getAsJsonArray()) {
-                if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
-                    return null;
-                }
-                String id = normalizeRequiredValue(idElement.getAsString());
-                if (id == null) {
-                    return null;
-                }
-                disabled.add(id);
-            }
-        }
-
-        JsonElement permissionsElement = object.get("permissions");
-        if (permissionsElement != null && !permissionsElement.isJsonNull() && !permissionsElement.isJsonObject()) {
-            return null;
-        }
-
-        LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
-        if (permissionsElement != null && !permissionsElement.isJsonNull()) {
-            for (Map.Entry<String, JsonElement> entry : permissionsElement.getAsJsonObject().entrySet()) {
-                String permission = normalizeRequiredValue(entry.getKey());
-                if (permission == null || permissions.containsKey(permission) || !entry.getValue().isJsonArray()) {
-                    return null;
-                }
-
-                List<String> ids = new ArrayList<>();
-                for (JsonElement idElement : entry.getValue().getAsJsonArray()) {
-                    if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
-                        return null;
-                    }
-                    String id = normalizeRequiredValue(idElement.getAsString());
-                    if (id == null) {
-                        return null;
-                    }
-                    ids.add(id);
-                }
-                permissions.put(permission, ids);
-            }
-        }
-
-        return new EmoteAccessConfig(disabled, permissions);
-    }
-
-    private String readMineSkinApiKey(JsonObject object, String defaultValue) {
-        JsonElement element = object.get("mineskin_api_key");
-        if (element == null || element.isJsonNull()) {
-            return defaultValue;
-        }
-
-        return element.getAsString();
-    }
-
-    private int readInt(JsonObject object, String key, int defaultValue) {
-        JsonElement element = object.get(key);
-        if (element == null || element.isJsonNull()) {
-            return defaultValue;
-        }
-
-        return element.getAsInt();
     }
 
     private void logLoaded(String fileName) {
