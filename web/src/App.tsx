@@ -40,6 +40,7 @@ export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [explodedPreview, setExplodedPreview] = useState(false);
 
   const project = session?.project ?? null;
   const animationIndex = session?.animationIndex ?? 0;
@@ -64,6 +65,7 @@ export function App() {
     setLoading(true);
     setError("");
     setSession(null);
+    setExplodedPreview(false);
     try {
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
       const detected = await detectAdapter(IMPORT_ADAPTERS, input);
@@ -167,13 +169,19 @@ export function App() {
             <span>{session.adapterLabel}</span>
             <span>{Object.keys(project.nodes).length} nodes</span>
             {skinCandidates.length > 0 && (
-              <label className="frame-slider">
-                <span>Preview</span>
-                <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
-                  setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
-                }} />
-                <output>{previewTick === null ? "Create" : `${previewTick} tick`}</output>
-              </label>
+              <>
+                <label className="frame-slider">
+                  <span>Preview</span>
+                  <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
+                    setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
+                  }} />
+                  <output>{previewTick === null ? "Create" : `${previewTick} tick`}</output>
+                </label>
+                <label className="explode-toggle">
+                  <input type="checkbox" checked={explodedPreview} onChange={(event) => setExplodedPreview(event.target.checked)} />
+                  Explode
+                </label>
+              </>
             )}
             {project.animations.length > 1 && (
               <select value={animationIndex} onChange={(event) => {
@@ -190,7 +198,7 @@ export function App() {
 
           {skinCandidates.length > 0 ? (
             <section className="editor">
-              <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+              <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} exploded={explodedPreview} onSelectPart={handlePartSelect} />
               <AssignmentPanel
                 parts={previewParts}
                 assignments={assignments}

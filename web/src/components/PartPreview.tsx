@@ -9,12 +9,13 @@ interface PartPreviewProps {
   parts: PlayerHeadPart[];
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
+  exploded: boolean;
   onSelectPart: (nodeId: string, additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
+export function PartPreview({ parts, assignments, selectedParts, exploded, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
@@ -63,6 +64,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
 
     const partGroup = new THREE.Group();
     const clickableMeshes: THREE.Mesh[] = [];
+    const partObjects: { mesh: THREE.Mesh; edges: THREE.LineSegments }[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
@@ -87,8 +89,35 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       edges.matrixAutoUpdate = false;
       edges.matrix.copy(mesh.matrix);
       partGroup.add(edges);
+      partObjects.push({ mesh, edges });
     }
     scene.add(partGroup);
+
+    const originalBounds = new THREE.Box3().setFromObject(partGroup);
+    if (exploded && !originalBounds.isEmpty()) {
+      const modelCenter = originalBounds.getCenter(new THREE.Vector3());
+      const explodeDistance = Math.max(originalBounds.getSize(new THREE.Vector3()).length() * 0.12, 0.15);
+      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+      partObjects.forEach(({ mesh, edges }, index) => {
+        const partCenter = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+        const direction = partCenter.sub(modelCenter);
+        const vertical = 1 - 2 * (index + 0.5) / partObjects.length;
+        const radial = Math.sqrt(Math.max(0, 1 - vertical * vertical));
+        const uniqueDirection = new THREE.Vector3(
+          Math.cos(index * goldenAngle) * radial,
+          vertical,
+          Math.sin(index * goldenAngle) * radial,
+        );
+        direction.normalize().multiplyScalar(0.7).addScaledVector(uniqueDirection, 0.3).normalize();
+        const translation = new THREE.Matrix4().makeTranslation(
+          direction.x * explodeDistance,
+          direction.y * explodeDistance,
+          direction.z * explodeDistance,
+        );
+        mesh.matrix.premultiply(translation);
+        edges.matrix.copy(mesh.matrix);
+      });
+    }
 
     const bounds = new THREE.Box3().setFromObject(partGroup);
     const center = bounds.getCenter(new THREE.Vector3());
@@ -171,7 +200,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       renderer.domElement.remove();
       materialsRef.current.clear();
     };
-  }, [parts]);
+  }, [exploded, parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
   return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote pieces" />;
