@@ -82,7 +82,6 @@ export const bdProjectAdapter: ImportAdapter = {
       suggestedMetadata: {
         name: sourceStem,
         description: `${sourceStem} emote.`,
-        command_name: sanitizeResourcePath(sourceStem, "default"),
         hide_player: true,
       },
       nodes,

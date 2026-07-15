@@ -23,7 +23,6 @@ export interface EmoteAnimation {
 export interface EmoteMetadata {
   name: string;
   description: string;
-  command_name: string;
   hide_player: boolean;
 }
 

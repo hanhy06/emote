@@ -11,7 +11,7 @@ function animation(): EmoteAnimation {
     minecraft_version: "26.2",
     tick_rate: 20,
     id: "emote:test",
-    metadata: { name: "Test", description: "Test emote.", command_name: "test", hide_player: true },
+    metadata: { name: "Test", description: "Test emote.", hide_player: true },
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: {
       display: { type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },

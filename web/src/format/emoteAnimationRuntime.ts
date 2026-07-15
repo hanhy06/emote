@@ -36,7 +36,6 @@ function requireMetadata(value: unknown): void {
   const metadata = requireRecord(value, "metadata");
   requireString(metadata.name, "metadata.name");
   requireString(metadata.description, "metadata.description");
-  requireString(metadata.command_name, "metadata.command_name");
   requireBoolean(metadata.hide_player, "metadata.hide_player");
 }
 

@@ -77,7 +77,7 @@ export function App() {
         orders: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, candidate.node.skin?.order ?? null])),
         metadata: {
           minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
-          namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.command_name,
+          namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.name,
           ...imported.suggestedMetadata,
         },
         conversionError: "",

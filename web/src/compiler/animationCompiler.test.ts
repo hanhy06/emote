@@ -34,7 +34,7 @@ function importedProject(): ImportedProject {
   return {
       source: "emote_json",
       sourceName: "test.json",
-      suggestedMetadata: { name: "Test", description: "Test emote.", command_name: "test", hide_player: true },
+      suggestedMetadata: { name: "Test", description: "Test emote.", hide_player: true },
       nodes: { anchor: { id: "anchor", type: "anchor", defaultMatrix: IDENTITY } },
       animations: [{
         id: "test",

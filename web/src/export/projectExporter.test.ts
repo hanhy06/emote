@@ -10,7 +10,7 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "test.json",
-      suggestedMetadata: { name: "Test", description: "Test emote.", command_name: "test", hide_player: true },
+      suggestedMetadata: { name: "Test", description: "Test emote.", hide_player: true },
       nodes: {
         body: {
           id: "body",
@@ -41,5 +41,7 @@ describe("exportAnimation", () => {
     const animation = JSON.parse(await result.blob.text());
 
     expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
+    expect(animation.metadata).toEqual({ name: "Test", description: "Test emote.", hide_player: true });
+    expect(result.fileName).toBe("emote.test.json");
   });
 });

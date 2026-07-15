@@ -28,13 +28,12 @@ export function exportAnimation(
     metadata: {
       name: options.name,
       description: options.description,
-      command_name: options.command_name,
       hide_player: options.hide_player,
     },
   }, animationIndex);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-    fileName: `emote.${sanitizeFileName(animation.metadata.command_name)}.json`,
+    fileName: `emote.${sanitizeFileName(animation.metadata.name)}.json`,
   };
 }
 

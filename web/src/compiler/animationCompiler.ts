@@ -18,14 +18,14 @@ export interface CompileOptions {
 
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
   const context = prepareCompile(project, options);
-  return project.animations.map((animation, index) => compileAnimation(project, animation, index, context));
+  return project.animations.map((animation) => compileAnimation(project, animation, context));
 }
 
 export function compileImportedAnimation(project: ImportedProject, options: CompileOptions, animationIndex: number): EmoteAnimation {
   const context = prepareCompile(project, options);
   const animation = project.animations[animationIndex];
   if (!animation) throw new ConversionError("unknown_animation", `Animation ${animationIndex + 1} does not exist.`);
-  return compileAnimation(project, animation, animationIndex, context);
+  return compileAnimation(project, animation, context);
 }
 
 interface CompileContext {
@@ -38,7 +38,7 @@ interface CompileContext {
 function prepareCompile(project: ImportedProject, options: CompileOptions): CompileContext {
   const importError = project.diagnostics.find((diagnostic) => diagnostic.severity === "error");
   if (importError) throw ConversionError.fromIssue(importError);
-  const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.command_name ?? project.suggestedMetadata.command_name);
+  const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.name ?? project.suggestedMetadata.name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
   const multiple = project.animations.length > 1;
   const ids = new Set<string>();
@@ -53,7 +53,6 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
 function compileAnimation(
   project: ImportedProject,
   animation: ImportedAnimation,
-  index: number,
   context: CompileContext,
 ): EmoteAnimation {
   return {
@@ -64,7 +63,6 @@ function compileAnimation(
     metadata: {
       ...context.baseMetadata,
       name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
-      command_name: context.multiple ? `${sanitizeResourcePath(context.baseMetadata.command_name)}_${index + 1}` : sanitizeResourcePath(context.baseMetadata.command_name),
     },
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: compileNodes(project.nodes),

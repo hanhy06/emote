@@ -13,7 +13,7 @@ describe("emoteJsonAdapter", () => {
       minecraft_version: "26.2",
       tick_rate: 20,
       id: "demo:wave",
-      metadata: { name: "Wave", description: "Wave emote.", command_name: "wave", hide_player: true },
+      metadata: { name: "Wave", description: "Wave emote.", hide_player: true },
       transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
       nodes: {
         arm: {

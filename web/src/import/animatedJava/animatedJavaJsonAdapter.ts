@@ -41,7 +41,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     return {
       source: "animated_java_json",
       sourceName: input.name,
-      suggestedMetadata: { name, description: `${name} emote.`, command_name: sanitizeResourcePath(resource.path, "default"), hide_player: true },
+      suggestedMetadata: { name, description: `${name} emote.`, hide_player: true },
       nodes,
       animations,
       diagnostics: [],
