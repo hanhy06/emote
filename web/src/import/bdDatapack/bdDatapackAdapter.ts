@@ -1,6 +1,5 @@
 import JSZip from "jszip";
 import { asMatrix16 } from "../../compiler/animationCompiler";
-import { findPackRoot } from "../../converter/packFileSystem";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type {
@@ -88,6 +87,15 @@ async function loadPack(input: ImportInput): Promise<LoadedPack> {
     name: input.name,
     files: new Map([...rawFiles].filter(([path]) => path.startsWith(root)).map(([path, data]) => [path.slice(root.length), data])),
   };
+}
+
+function findPackRoot(paths: Iterable<string>): string {
+  const candidates = [...paths]
+    .filter((path) => path === "pack.mcmeta" || path.endsWith("/pack.mcmeta"))
+    .map((path) => path.slice(0, -"pack.mcmeta".length))
+    .sort((first, second) => first.split("/").length - second.split("/").length || first.localeCompare(second));
+  if (candidates.length === 0) throw new Error("Could not find pack.mcmeta in the ZIP file.");
+  return candidates[0];
 }
 
 function parseNodes(createText: string, namespace: string): Record<string, ImportedNode> {

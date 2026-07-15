@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { PlayerHeadPart } from "../converter/partParser";
-import { SKIN_PARTS, type PartAssignments } from "../converter/skinMapping";
+import type { PlayerHeadPart } from "../preview/playerHeadPart";
+import { SKIN_PARTS, type PartAssignments } from "../preview/skinMapping";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {

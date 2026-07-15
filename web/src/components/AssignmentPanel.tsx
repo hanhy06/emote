@@ -1,12 +1,12 @@
 import type { MouseEvent } from "react";
-import type { PlayerHeadPart } from "../converter/partParser";
+import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   isLimbPart,
   SKIN_PARTS,
   type PartAssignments,
   type PartOrders,
   type SkinPartId,
-} from "../converter/skinMapping";
+} from "../preview/skinMapping";
 
 interface AssignmentPanelProps {
   parts: PlayerHeadPart[];

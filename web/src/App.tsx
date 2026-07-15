@@ -2,12 +2,12 @@ import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
-import { createPlayerHeadPart, type PlayerHeadPart } from "./converter/partParser";
-import { isLimbPart, type PartAssignments, type PartOrders, type SkinPartId } from "./converter/skinMapping";
 import { downloadExport, exportAnimation, exportResource, type ExportOptions } from "./export/projectExporter";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter } from "./import/adapterRegistry";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
+import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
+import { isLimbPart, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
 
 interface SkinCandidate {
   nodeId: string;
@@ -33,8 +33,8 @@ export function App() {
   const previewTimes = useMemo(() => animationTimes(animation), [animation]);
   const previewTime = previewTimes[Math.min(previewFrameIndex, previewTimes.length - 1)] ?? 0;
   const previewParts = useMemo(
-    () => createPreviewParts(skinCandidates, animation, previewTime, assignments, orders),
-    [animation, assignments, orders, previewTime, skinCandidates],
+    () => createPreviewParts(skinCandidates, animation, previewTime),
+    [animation, previewTime, skinCandidates],
   );
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -225,19 +225,11 @@ function createPreviewParts(
   candidates: SkinCandidate[],
   animation: ImportedAnimation | undefined,
   time: number,
-  assignments: PartAssignments,
-  orders: PartOrders,
 ): PlayerHeadPart[] {
   return candidates.map((candidate) => {
     const track = animation?.tracks[candidate.nodeId];
     const matrix = track?.transforms.filter((keyframe) => keyframe.timeSeconds <= time).at(-1)?.matrix ?? candidate.node.defaultMatrix;
-    return createPlayerHeadPart(
-      candidate.partIndex,
-      "preview",
-      matrix,
-      assignments[candidate.partIndex] ?? null,
-      orders[candidate.partIndex] ?? null,
-    );
+    return createPlayerHeadPart(candidate.partIndex, matrix);
   });
 }
 
