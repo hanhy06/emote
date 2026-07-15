@@ -14,6 +14,7 @@ import java.util.function.Supplier;
 final class MineSkinManager {
     private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
+    private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
 
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinCache cache;
@@ -164,7 +165,7 @@ final class MineSkinManager {
                 );
             }
         } catch (MineSkinClient.RateLimitException exception) {
-            this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
+            this.cache.saveFailure(contentHash, exception.getMessage(), now + RATE_LIMIT_RETRY_DELAY_MILLIS);
             Emote.LOGGER.warn(
                 "MineSkin generation rate limit reached for baked texture {}. "
                     + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
@@ -174,8 +175,8 @@ final class MineSkinManager {
             return null;
         } catch (MineSkinClient.JobFailedException exception) {
             this.cache.clearPendingJob(contentHash);
-            this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
             if (exception.isRateLimited()) {
+                this.cache.saveFailure(contentHash, exception.getMessage(), now + RATE_LIMIT_RETRY_DELAY_MILLIS);
                 Emote.LOGGER.warn(
                     "MineSkin generation rate limit reached for baked texture {}. "
                         + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
@@ -183,6 +184,7 @@ final class MineSkinManager {
                     exception.getMessage()
                 );
             } else {
+                this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
                 Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
             }
             return null;
