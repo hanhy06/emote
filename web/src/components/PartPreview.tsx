@@ -9,13 +9,12 @@ interface PartPreviewProps {
   parts: PlayerHeadPart[];
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
-  exploded: boolean;
   onSelectPart: (nodeId: string, additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export function PartPreview({ parts, assignments, selectedParts, exploded, onSelectPart }: PartPreviewProps) {
+export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
@@ -64,7 +63,6 @@ export function PartPreview({ parts, assignments, selectedParts, exploded, onSel
 
     const partGroup = new THREE.Group();
     const clickableMeshes: THREE.Mesh[] = [];
-    const partObjects: { mesh: THREE.Mesh; edges: THREE.LineSegments }[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
@@ -89,35 +87,8 @@ export function PartPreview({ parts, assignments, selectedParts, exploded, onSel
       edges.matrixAutoUpdate = false;
       edges.matrix.copy(mesh.matrix);
       partGroup.add(edges);
-      partObjects.push({ mesh, edges });
     }
     scene.add(partGroup);
-
-    const originalBounds = new THREE.Box3().setFromObject(partGroup);
-    if (exploded && !originalBounds.isEmpty()) {
-      const modelCenter = originalBounds.getCenter(new THREE.Vector3());
-      const explodeDistance = Math.max(originalBounds.getSize(new THREE.Vector3()).length() * 0.12, 0.15);
-      const goldenAngle = Math.PI * (3 - Math.sqrt(5));
-      partObjects.forEach(({ mesh, edges }, index) => {
-        const partCenter = new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
-        const direction = partCenter.sub(modelCenter);
-        const vertical = 1 - 2 * (index + 0.5) / partObjects.length;
-        const radial = Math.sqrt(Math.max(0, 1 - vertical * vertical));
-        const uniqueDirection = new THREE.Vector3(
-          Math.cos(index * goldenAngle) * radial,
-          vertical,
-          Math.sin(index * goldenAngle) * radial,
-        );
-        direction.normalize().multiplyScalar(0.7).addScaledVector(uniqueDirection, 0.3).normalize();
-        const translation = new THREE.Matrix4().makeTranslation(
-          direction.x * explodeDistance,
-          direction.y * explodeDistance,
-          direction.z * explodeDistance,
-        );
-        mesh.matrix.premultiply(translation);
-        edges.matrix.copy(mesh.matrix);
-      });
-    }
 
     const bounds = new THREE.Box3().setFromObject(partGroup);
     const center = bounds.getCenter(new THREE.Vector3());
@@ -154,6 +125,7 @@ export function PartPreview({ parts, assignments, selectedParts, exploded, onSel
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let pointerStart: { x: number; y: number } | null = null;
+    let clickCycle: { x: number; y: number; nodeIds: string[]; index: number } | null = null;
     const handlePointerDown = (event: PointerEvent) => {
       pointerStart = { x: event.clientX, y: event.clientY };
     };
@@ -167,8 +139,19 @@ export function PartPreview({ parts, assignments, selectedParts, exploded, onSel
       pointer.x = ((event.clientX - rectangle.left) / rectangle.width) * 2 - 1;
       pointer.y = -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const intersection = raycaster.intersectObjects(clickableMeshes, false)[0];
-      if (intersection) onSelectPartRef.current(intersection.object.userData.nodeId as string, event.ctrlKey || event.metaKey || event.shiftKey);
+      const nodeIds = [...new Set(raycaster.intersectObjects(clickableMeshes, false)
+        .map((intersection) => intersection.object.userData.nodeId as string))];
+      if (nodeIds.length === 0) {
+        clickCycle = null;
+        return;
+      }
+      const continuesCycle = clickCycle !== null
+        && Math.hypot(event.clientX - clickCycle.x, event.clientY - clickCycle.y) <= 8
+        && nodeIds.length === clickCycle.nodeIds.length
+        && nodeIds.every((nodeId, index) => nodeId === clickCycle!.nodeIds[index]);
+      const index = continuesCycle ? (clickCycle!.index + 1) % nodeIds.length : 0;
+      clickCycle = { x: event.clientX, y: event.clientY, nodeIds, index };
+      onSelectPartRef.current(nodeIds[index], event.ctrlKey || event.metaKey || event.shiftKey);
     };
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
@@ -200,7 +183,7 @@ export function PartPreview({ parts, assignments, selectedParts, exploded, onSel
       renderer.domElement.remove();
       materialsRef.current.clear();
     };
-  }, [exploded, parts]);
+  }, [parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
   return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote pieces" />;

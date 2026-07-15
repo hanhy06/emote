@@ -15,7 +15,6 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .frame-slider { display: flex; align-items: center; gap: 8px; }
 .frame-slider input { width: 220px; }
 .frame-slider output { min-width: 130px; }
-.explode-toggle { display: flex; align-items: center; gap: 4px; }
 .error { color: #b00020; }
 .warning { color: #7a5200; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) 250px; border: 1px solid #aaa; }
