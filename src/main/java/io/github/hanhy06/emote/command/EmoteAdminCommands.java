@@ -15,8 +15,6 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 
-import java.util.List;
-
 final class EmoteAdminCommands {
     private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
@@ -54,7 +52,10 @@ final class EmoteAdminCommands {
         return Commands.literal("enable")
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(getDisabledIds(), builder))
+                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                    this.configManager.getEmoteAccessConfig().disabled(),
+                    builder
+                ))
                 .executes(context -> setEmoteEnabled(
                     context.getSource(),
                     IdentifierArgument.getId(context, "id").toString(),
@@ -126,9 +127,5 @@ final class EmoteAdminCommands {
             true
         );
         return 1;
-    }
-
-    private List<String> getDisabledIds() {
-        return this.configManager.getEmoteAccessConfig().disabled();
     }
 }

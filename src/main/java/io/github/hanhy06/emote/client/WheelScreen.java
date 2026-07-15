@@ -42,7 +42,7 @@ public class WheelScreen extends Screen {
         super(Component.translatable("screen.emote.wheel.title"));
         this.controller = controller;
         this.emotes = List.copyOf(emotes);
-        this.pageIndex = clampPageIndex(pageIndex);
+        this.pageIndex = Math.clamp(pageIndex, 0, getPageCount() - 1);
         this.bindingLabel = bindingLabel;
     }
 
@@ -269,10 +269,6 @@ public class WheelScreen extends Screen {
 
     private int getPageCount() {
         return Math.max(1, (this.emotes.size() + WheelGeometry.SLOT_COUNT - 1) / WheelGeometry.SLOT_COUNT);
-    }
-
-    private int clampPageIndex(int pageIndex) {
-        return Math.clamp(pageIndex, 0, getPageCount() - 1);
     }
 
     private void updateHoveredSlot(double mouseX, double mouseY) {

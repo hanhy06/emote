@@ -42,7 +42,8 @@ public class PermissionService implements EmoteAccessConfigListener {
         for (Map.Entry<String, List<String>> entry : this.permissionIds.entrySet()) {
             String permission = entry.getKey();
             boolean grantedByDefault = permission.equals(DEFAULT_PERMISSION);
-            if (includesId(entry.getValue(), id)
+            List<String> ids = entry.getValue();
+            if (ids != null && (ids.contains(ALL_IDS) || ids.contains(id))
                 && this.permissionChecker.test(player, permission, grantedByDefault)) {
                 return true;
             }
@@ -56,10 +57,6 @@ public class PermissionService implements EmoteAccessConfigListener {
 
     public Predicate<CommandSourceStack> requireGameMaster() {
         return this::canManageEmotes;
-    }
-
-    private boolean includesId(List<String> ids, String id) {
-        return ids != null && (ids.contains(ALL_IDS) || ids.contains(id));
     }
 
     @FunctionalInterface

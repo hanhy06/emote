@@ -78,7 +78,7 @@ public class ConfigManager {
 
         this.config = loadedConfig;
         broadcastConfig();
-        logLoaded(CONFIG_FILE_NAME);
+        Emote.LOGGER.info("Loaded {}", CONFIG_FILE_NAME);
         return true;
     }
 
@@ -101,7 +101,7 @@ public class ConfigManager {
 
         this.emoteAccessConfig = loadedConfig;
         broadcastEmoteAccessConfig();
-        logLoaded(EMOTE_ACCESS_FILE_NAME);
+        Emote.LOGGER.info("Loaded {}", EMOTE_ACCESS_FILE_NAME);
         return true;
     }
 
@@ -181,10 +181,6 @@ public class ConfigManager {
             Emote.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
             return false;
         }
-    }
-
-    private void logLoaded(String fileName) {
-        Emote.LOGGER.info("Loaded {}", fileName);
     }
 
     private String normalizeRequiredValue(String value) {

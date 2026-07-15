@@ -47,7 +47,7 @@ public class WheelController {
         }
 
         if (!this.syncedFromServer) {
-            openMenuFallback(client.player);
+            client.player.connection.sendUnattendedCommand(MENU_FALLBACK_COMMAND, null);
             return;
         }
 
@@ -62,10 +62,6 @@ public class WheelController {
 
         this.lastSelectedId = playableEmote.id();
         player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
-    }
-
-    private void openMenuFallback(LocalPlayer player) {
-        player.connection.sendUnattendedCommand(MENU_FALLBACK_COMMAND, null);
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
@@ -123,12 +119,8 @@ public class WheelController {
         InputConstants.Key boundKey = KeyMappingHelper.getBoundKeyOf(keyMapping);
         return switch (boundKey.getType()) {
             case KEYSYM -> InputConstants.isKeyDown(client.getWindow(), boundKey.getValue());
-            case MOUSE -> isMouseButtonDown(client, boundKey.getValue());
+            case MOUSE -> GLFW.glfwGetMouseButton(client.getWindow().handle(), boundKey.getValue()) == GLFW.GLFW_PRESS;
             case SCANCODE -> keyMapping.isDown();
         };
-    }
-
-    private static boolean isMouseButtonDown(Minecraft client, int button) {
-        return GLFW.glfwGetMouseButton(client.getWindow().handle(), button) == GLFW.GLFW_PRESS;
     }
 }
