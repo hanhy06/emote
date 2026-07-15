@@ -1,7 +1,6 @@
 import type { MouseEvent } from "react";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
-  isLimbPart,
   SKIN_PARTS,
   type PartAssignments,
   type PartOrders,
@@ -13,9 +12,9 @@ interface AssignmentPanelProps {
   assignments: PartAssignments;
   orders: PartOrders;
   selectedParts: ReadonlySet<number>;
-  hasSelectedLimb: boolean;
+  hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
-  onAssignOrder: (order: number | null) => void;
+  onAssignOrder: (order: number) => void;
   onSelectPart: (partIndex: number, additive: boolean) => void;
 }
 
@@ -24,7 +23,7 @@ export function AssignmentPanel({
   assignments,
   orders,
   selectedParts,
-  hasSelectedLimb,
+  hasSelectedAssignment,
   onAssignPart,
   onAssignOrder,
   onSelectPart,
@@ -47,11 +46,10 @@ export function AssignmentPanel({
         ))}
         <button type="button" disabled={!hasSelection} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
-      <p><strong>Limb skin order:</strong> Use 0 for the piece closer to the torso and 1 for the piece closer to the hand or foot.</p>
+      <p><strong>Skin order:</strong> Use 0 for the first piece and 1 for the second piece of the same body part.</p>
       <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(0)}>Upper 0</button>
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(1)}>Lower 1</button>
-        <button type="button" disabled={!hasSelectedLimb} onClick={() => onAssignOrder(null)}>Auto</button>
+        <button type="button" disabled={!hasSelectedAssignment} onClick={() => onAssignOrder(0)}>Order 0</button>
+        <button type="button" disabled={!hasSelectedAssignment} onClick={() => onAssignOrder(1)}>Order 1</button>
       </div>
       <ul className="part-list">
         {parts.map((part) => (
@@ -73,5 +71,5 @@ export function AssignmentPanel({
 
 function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {
   const label = SKIN_PARTS.find((part) => part.id === assignment)?.label ?? "Unassigned";
-  return assignment && isLimbPart(assignment) && order != null ? `${label} · ${order}` : label;
+  return assignment && order != null ? `${label} · ${order}` : label;
 }

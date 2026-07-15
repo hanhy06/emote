@@ -10,9 +10,3 @@ export const SKIN_PARTS = [
 export type SkinPartId = typeof SKIN_PARTS[number]["id"];
 export type PartAssignments = Record<number, SkinPartId | null>;
 export type PartOrders = Record<number, number | null>;
-
-const LIMB_PART_IDS = new Set<SkinPartId>(["left_arm", "right_arm", "left_leg", "right_leg"]);
-
-export function isLimbPart(value: SkinPartId): boolean {
-  return LIMB_PART_IDS.has(value);
-}

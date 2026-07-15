@@ -7,7 +7,7 @@ import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter } from "./import/adapterRegistry";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
-import { isLimbPart, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
+import type { PartAssignments, PartOrders, SkinPartId } from "./preview/skinMapping";
 
 interface SkinCandidate {
   nodeId: string;
@@ -113,23 +113,17 @@ export function App() {
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
     setAssignments((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, part])) }));
-    if (!part || !isLimbPart(part)) {
+    if (!part) {
       setOrders((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, null])) }));
     }
   }
 
-  function assignOrder(order: number | null) {
-    const indices = [...selectedParts].filter((index) => {
-      const part = assignments[index];
-      return part != null && isLimbPart(part);
-    });
+  function assignOrder(order: number) {
+    const indices = [...selectedParts].filter((index) => assignments[index] != null);
     if (indices.length) setOrders((current) => ({ ...current, ...Object.fromEntries(indices.map((index) => [index, order])) }));
   }
 
-  const hasSelectedLimb = [...selectedParts].some((index) => {
-    const part = assignments[index];
-    return part != null && isLimbPart(part);
-  });
+  const hasSelectedAssignment = [...selectedParts].some((index) => assignments[index] != null);
 
   return (
     <main className="app">
@@ -180,7 +174,7 @@ export function App() {
                 assignments={assignments}
                 orders={orders}
                 selectedParts={selectedParts}
-                hasSelectedLimb={hasSelectedLimb}
+                hasSelectedAssignment={hasSelectedAssignment}
                 onAssignPart={assignSelected}
                 onAssignOrder={assignOrder}
                 onSelectPart={handlePartSelect}
