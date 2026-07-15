@@ -4,7 +4,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./converter/partParser";
 import { isLimbPart, type PartAssignments, type PartOrders, type SkinPartId } from "./converter/skinMapping";
-import { downloadExport, exportProject, type ExportOptions } from "./export/projectExporter";
+import { downloadExport, exportAnimation, exportResource, type ExportOptions } from "./export/projectExporter";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter } from "./import/adapterRegistry";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
@@ -27,7 +27,6 @@ export function App() {
   const [error, setError] = useState("");
   const [conversionError, setConversionError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [converting, setConverting] = useState(false);
 
   const animation = project?.animations[animationIndex];
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
@@ -70,21 +69,32 @@ export function App() {
     }
   }
 
-  async function handleConvert() {
+  function skinAssignments(): Record<string, ImportedSkinPart | null> {
+    const skins: Record<string, ImportedSkinPart | null> = {};
+    for (const candidate of skinCandidates) {
+      const part = assignments[candidate.partIndex];
+      skins[candidate.nodeId] = part ? { part, order: orders[candidate.partIndex] ?? 0 } : null;
+    }
+    return skins;
+  }
+
+  function handleAnimationDownload(index: number) {
     if (!project) return;
-    setConverting(true);
     setConversionError("");
     try {
-      const skins: Record<string, ImportedSkinPart | null> = {};
-      for (const candidate of skinCandidates) {
-        const part = assignments[candidate.partIndex];
-        skins[candidate.nodeId] = part ? { part, order: orders[candidate.partIndex] ?? 0 } : null;
-      }
-      downloadExport(await exportProject(project, metadata, skins));
+      downloadExport(exportAnimation(project, metadata, skinAssignments(), index));
     } catch (reason) {
       setConversionError(reason instanceof Error ? reason.message : "Conversion failed.");
-    } finally {
-      setConverting(false);
+    }
+  }
+
+  function handleResourceDownload(index: number) {
+    if (!project) return;
+    setConversionError("");
+    try {
+      downloadExport(exportResource(project, metadata.minecraftVersion, index));
+    } catch (reason) {
+      setConversionError(reason instanceof Error ? reason.message : "Resource export failed.");
     }
   }
 
@@ -183,10 +193,12 @@ export function App() {
           <ExportPanel
             metadata={metadata}
             assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.length)}
+            animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
+            resources={project.artifacts.map((item) => ({ label: item.path.split("/").at(-1) ?? item.path, detail: item.path }))}
             error={conversionError}
-            converting={converting}
             onMetadataChange={setMetadata}
-            onConvert={handleConvert}
+            onDownloadAnimation={handleAnimationDownload}
+            onDownloadResource={handleResourceDownload}
           />
         </>
       )}

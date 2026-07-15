@@ -36,6 +36,11 @@ aside > p { margin: 0 0 12px; font-size: 13px; }
 .fields label { display: grid; gap: 4px; font-size: 13px; }
 .fields .checkbox { display: flex; align-items: center; }
 .export-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; }
+.download-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.download-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #d7d7d7; }
+.download-list span { min-width: 0; }
+.download-list small { display: block; margin-top: 3px; overflow-wrap: anywhere; color: #666; }
+.resource-note { color: #555; }
 @media (max-width: 700px) {
   header, .export-row { align-items: stretch; flex-direction: column; }
   .file-input { align-items: stretch; flex-direction: column; }
