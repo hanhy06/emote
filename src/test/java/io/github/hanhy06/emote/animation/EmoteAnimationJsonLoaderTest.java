@@ -29,7 +29,6 @@ class EmoteAnimationJsonLoaderTest {
         assertEquals(5, loaded.animation().nodes().size());
         assertEquals(80, loaded.animation().timeline().durationTicks());
         assertEquals(64, loaded.sha256().length());
-        assertEquals(16, loaded.shortFingerprint().length());
     }
 
     @Test

@@ -228,10 +228,6 @@ public record EmoteAnimation(
             Objects.requireNonNull(sha256, "sha256");
             Objects.requireNonNull(animation, "animation");
         }
-
-        public String shortFingerprint() {
-            return this.sha256.substring(0, 16);
-        }
     }
 
     private static CompoundTag copy(CompoundTag tag) {
