@@ -5,8 +5,8 @@ import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.mixin.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.PlayerSkinPreparationResult;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -44,13 +44,10 @@ public class PlaybackManager {
             return PlayResult.failure("Cannot play an emote while riding.");
         }
 
-        PlayerSkinPreparationResult skinPreparation = this.playerSkinManager.preparePlayerSkin(
+        PreparedPlayerSkin preparedSkin = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
         );
-        if (!skinPreparation.isReady()) {
-            return PlayResult.failure(skinPreparation.errorMessage());
-        }
 
         stopEmote(player);
         PlaybackNodes nodes = null;
@@ -80,8 +77,7 @@ public class PlaybackManager {
             this.playerSkinManager.applySkinParts(
                 nodes.nodes(),
                 emote.skinParts(),
-                skinPreparation.preparedSkin(),
-                emote.id()
+                preparedSkin
             );
             events.start();
             for (PlaybackStateListener stateListener : this.stateListeners) {

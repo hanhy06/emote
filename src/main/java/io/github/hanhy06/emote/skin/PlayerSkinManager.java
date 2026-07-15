@@ -59,59 +59,44 @@ public class PlayerSkinManager implements ConfigListener {
         this.mineSkinApiClient.setJobPollIntervalSeconds(newConfig.mineSkinPollIntervalSeconds());
     }
 
-    public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
+    public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
         if (skinParts.isEmpty()) {
-            return PlayerSkinPreparationResult.ready(null);
+            return null;
         }
         return preparePlayerSkin(player, createTextureKeys(skinParts));
     }
 
-    private PlayerSkinPreparationResult preparePlayerSkin(
+    private PreparedPlayerSkin preparePlayerSkin(
         ServerPlayer player,
         Set<PlayerSkinTextureKey> requiredTextureKeys
     ) {
         if (!MineSkinApiClient.hasApiKey(this.mineSkinApiKey)) {
-            return PlayerSkinPreparationResult.ready(null);
+            return null;
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
-            return PlayerSkinPreparationResult.ready(null);
+            return null;
         }
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
             scheduleMineSkinBake(skinSource, requiredTextureKeys);
-            return PlayerSkinPreparationResult.failure("Player skin is being prepared. Try again shortly.");
         }
-        return PlayerSkinPreparationResult.ready(
-            new PreparedPlayerSkin(savedTextureUrls)
-        );
+        return savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls);
     }
 
     public void applySkinParts(
         Map<String, NodeInstance> nodes,
         List<EmoteSkinPart> skinParts,
-        PreparedPlayerSkin preparedPlayerSkin,
-        String animationId
+        PreparedPlayerSkin preparedPlayerSkin
     ) {
         if (preparedPlayerSkin == null || skinParts.isEmpty()) {
             return;
         }
-        int appliedCount = 0;
         for (EmoteSkinPart skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
-            if (node != null
-                && node.entity() instanceof Display.ItemDisplay display
-                && applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin)) {
-                appliedCount++;
+            if (node != null && node.entity() instanceof Display.ItemDisplay display) {
+                applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);
             }
-        }
-        if (appliedCount != skinParts.size()) {
-            Emote.LOGGER.warn(
-                "Applied player skin to {}/{} JSON nodes for {}",
-                appliedCount,
-                skinParts.size(),
-                animationId
-            );
         }
     }
 

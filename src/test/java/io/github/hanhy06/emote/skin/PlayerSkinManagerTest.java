@@ -13,8 +13,8 @@ import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlayerSkinManagerTest {
@@ -36,13 +36,12 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createSkinParts());
+            PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertTrue(result.isReady());
-            assertNotNull(result.preparedSkin());
+            assertNotNull(result);
             assertEquals(
                 "https://textures.example/head",
-                result.preparedSkin().findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
+                result.findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
             );
         }
     }
@@ -59,10 +58,9 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createSkinParts());
+            PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertFalse(result.isReady());
-            assertEquals("Player skin is being prepared. Try again shortly.", result.errorMessage());
+            assertNull(result);
             assertNotNull(executorService.command);
 
             manager.cancelPendingBakes();
