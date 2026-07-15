@@ -3,13 +3,9 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.mixin.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
-import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
-import net.minecraft.network.syncher.EntityDataAccessor;
-import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -26,10 +22,16 @@ public class PlaybackManager {
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
+    private final PlayerVisibilityService playerVisibilityService;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         this.playerSkinManager = playerSkinManager;
+        this.playerVisibilityService = new PlayerVisibilityService(this);
         this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
+    }
+
+    public void registerVisibilityService() {
+        this.playerVisibilityService.register();
     }
 
     public void addStateListener(PlaybackStateListener stateListener) {
@@ -77,9 +79,7 @@ public class PlaybackManager {
                 player.isInvisible()
             );
             this.activeEmoteMap.put(player.getUUID(), activeEmote);
-            if (activeEmote.playerVisibilityManaged()) {
-                player.setInvisible(true);
-            }
+            this.playerVisibilityService.start(player, activeEmote);
             this.playerSkinManager.applySkinParts(
                 nodes.nodes(),
                 emote.skinParts(),
@@ -164,7 +164,7 @@ public class PlaybackManager {
                     playerUuidListToStop.add(activeEmote.playerUuid());
                     continue;
                 }
-                syncPlayerVisibility(player, activeEmote);
+                this.playerVisibilityService.tick(player, activeEmote);
             } catch (RuntimeException exception) {
                 Emote.LOGGER.warn("Failed while playing emote {}", activeEmote.id(), exception);
                 playerUuidListToStop.add(activeEmote.playerUuid());
@@ -204,9 +204,7 @@ public class PlaybackManager {
             }
             ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
             if (player != null) {
-                if (activeEmote.playerVisibilityManaged()) {
-                    player.setInvisible(activeEmote.wasInvisible());
-                }
+                this.playerVisibilityService.stop(player, activeEmote);
                 if (notifyListeners) {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
                         stateListener.onEmoteStopped(player, activeEmote);
@@ -214,20 +212,6 @@ public class PlaybackManager {
                 }
             }
         }
-    }
-
-    private void syncPlayerVisibility(ServerPlayer player, ActiveEmote activeEmote) {
-        if (!activeEmote.playerVisibilityManaged()) {
-            return;
-        }
-        player.setInvisible(true);
-        EntityDataAccessor<Byte> sharedFlagsId = EntitySharedFlagsAccessor.emote$getSharedFlagsId();
-        byte sharedFlags = player.getEntityData().get(sharedFlagsId);
-        ClientboundSetEntityDataPacket visibilityPacket = new ClientboundSetEntityDataPacket(
-            player.getId(),
-            List.of(SynchedEntityData.DataValue.create(sharedFlagsId, sharedFlags))
-        );
-        player.level().getChunkSource().sendToTrackingPlayersAndSelf(player, visibilityPacket);
     }
 
     private boolean canKeepPlaying(ServerPlayer player, ActiveEmote activeEmote) {
