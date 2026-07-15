@@ -1,6 +1,13 @@
 import JSZip from "jszip";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16 } from "../../format/matrix";
+import {
+  findMatchingSnbtDelimiter,
+  omitSnbtFields,
+  readSnbtCompoundField,
+  readSnbtRawField,
+  readSnbtStringField,
+} from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type {
   ImportDiagnostic,
@@ -101,13 +108,13 @@ function findPackRoot(paths: Iterable<string>): string {
 function parseNodes(createText: string, namespace: string): Record<string, ImportedNode> {
   const nodes: Record<string, ImportedNode> = {};
   for (const compound of extractDisplayCompounds(createText)) {
-    const type = readStringField(compound, "id")?.replace("minecraft:", "");
+    const type = readSnbtStringField(compound, "id")?.replace("minecraft:", "");
     const tag = readNodeTag(compound, namespace);
     if (!tag || (type !== "item_display" && type !== "block_display" && type !== "text_display")) continue;
     const defaultMatrix = readMatrix(compound, `${tag} transformation`);
     const entityNbt = remainingEntityNbt(compound);
     if (type === "item_display") {
-      const itemStack = readCompoundField(compound, "item");
+      const itemStack = readSnbtCompoundField(compound, "item");
       if (!itemStack) throw new Error(`Item display ${tag} does not contain an item stack.`);
       const marker = /name\s*:\s*"emote:(head|body|left_arm|right_arm|left_leg|right_leg)(\d+)?"/.exec(itemStack);
       nodes[tag] = {
@@ -118,15 +125,15 @@ function parseNodes(createText: string, namespace: string): Record<string, Impor
         visible: true,
         ...(entityNbt ? { entityNbt } : {}),
         itemStackSnbt: itemStack,
-        itemDisplay: readStringField(compound, "item_display") ?? "none",
+        itemDisplay: readSnbtStringField(compound, "item_display") ?? "none",
         ...(marker ? { skin: { part: marker[1] as NonNullable<Extract<ImportedNode, { type: "item_display" }>["skin"]>["part"], order: Number.parseInt(marker[2] ?? "0", 10) } } : {}),
       };
     } else if (type === "block_display") {
-      const blockState = readCompoundField(compound, "block_state");
+      const blockState = readSnbtCompoundField(compound, "block_state");
       if (!blockState) throw new Error(`Block display ${tag} does not contain block_state.`);
       nodes[tag] = { id: tag, parentId: null, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), blockStateSnbt: blockState };
     } else {
-      const text = readRawField(compound, "text");
+      const text = readSnbtRawField(compound, "text");
       nodes[tag] = { id: tag, parentId: null, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), text: parseTextComponent(text) };
     }
   }
@@ -250,13 +257,13 @@ function readMetadata(files: Map<string, Uint8Array>, namespace: string): { name
 function extractDisplayCompounds(text: string): string[] {
   const compounds: string[] = [];
   for (const match of text.matchAll(DISPLAY_START)) {
-    compounds.push(text.slice(match.index, findMatching(text, match.index, "{", "}") + 1));
+    compounds.push(text.slice(match.index, findMatchingSnbtDelimiter(text, match.index, "{", "}") + 1));
   }
   return compounds;
 }
 
 function readNodeTag(compound: string, namespace: string): string | null {
-  const tags = readRawField(compound, "Tags");
+  const tags = readSnbtRawField(compound, "Tags");
   if (!tags) return null;
   const expected = new RegExp(`"(${escapeRegExp(namespace)}_\\d+)"`);
   return expected.exec(tags)?.[1] ?? null;
@@ -270,72 +277,7 @@ function readMatrix(text: string, label: string): Matrix16 {
 
 function remainingEntityNbt(compound: string): string | undefined {
   const owned = new Set(["id", "item", "item_display", "block_state", "text", "transformation", "interpolation_duration", "start_interpolation", "teleport_duration", "Tags", "Pos", "Rotation"]);
-  const fields = splitTopLevel(compound.slice(1, -1)).filter((field) => !owned.has(fieldName(field)));
-  return fields.length ? `{${fields.join(",")}}` : undefined;
-}
-
-function readStringField(compound: string, name: string): string | null {
-  const raw = readRawField(compound, name)?.trim();
-  return raw?.startsWith('"') && raw.endsWith('"') ? raw.slice(1, -1) : null;
-}
-
-function readCompoundField(compound: string, name: string): string | null {
-  const raw = readRawField(compound, name)?.trim();
-  return raw?.startsWith("{") && raw.endsWith("}") ? raw : null;
-}
-
-function readRawField(compound: string, name: string): string | null {
-  const field = splitTopLevel(compound.slice(1, -1)).find((candidate) => fieldName(candidate) === name);
-  if (!field) return null;
-  return field.slice(field.indexOf(":") + 1);
-}
-
-function fieldName(field: string): string {
-  return field.slice(0, field.indexOf(":")).trim().replace(/^"|"$/g, "");
-}
-
-function splitTopLevel(text: string): string[] {
-  const fields: string[] = [];
-  let start = 0;
-  let braces = 0;
-  let brackets = 0;
-  let inString = false;
-  let escaped = false;
-  for (let index = 0; index < text.length; index++) {
-    const character = text[index];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (character === "\\") escaped = true;
-      else if (character === '"') inString = false;
-    } else if (character === '"') inString = true;
-    else if (character === "{") braces++;
-    else if (character === "}") braces--;
-    else if (character === "[") brackets++;
-    else if (character === "]") brackets--;
-    else if (character === "," && braces === 0 && brackets === 0) {
-      fields.push(text.slice(start, index));
-      start = index + 1;
-    }
-  }
-  fields.push(text.slice(start));
-  return fields.filter((field) => field.trim());
-}
-
-function findMatching(text: string, start: number, open: string, close: string): number {
-  let depth = 0;
-  let inString = false;
-  let escaped = false;
-  for (let index = start; index < text.length; index++) {
-    const character = text[index];
-    if (inString) {
-      if (escaped) escaped = false;
-      else if (character === "\\") escaped = true;
-      else if (character === '"') inString = false;
-    } else if (character === '"') inString = true;
-    else if (character === open) depth++;
-    else if (character === close && --depth === 0) return index;
-  }
-  throw new Error(`Unclosed ${open} in BD Engine SNBT.`);
+  return omitSnbtFields(compound, owned);
 }
 
 function parseTextComponent(raw: string | null): unknown {

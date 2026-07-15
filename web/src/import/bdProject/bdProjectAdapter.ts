@@ -2,6 +2,7 @@ import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
+import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { hasGzipHeader, readPrj2 } from "./prj2";
@@ -228,12 +229,18 @@ function vector(value: VectorLike | undefined, fallback: [number, number, number
 }
 
 function createEntityNbt(node: BdSceneNode): string | undefined {
-  const fields: string[] = [];
+  const fields: [string, string][] = [];
   const sky = node.brightness?.sky;
   const block = node.brightness?.block;
-  if (Number.isInteger(sky) && Number.isInteger(block)) fields.push(`brightness:{sky:${sky},block:${block}}`);
-  if (node.nbt?.trim()) fields.push(node.nbt.trim().replace(/^\{|\}$/g, ""));
-  return fields.length ? `{${fields.join(",")}}` : undefined;
+  if (Number.isInteger(sky) && Number.isInteger(block)) {
+    fields.push(["brightness", serializeSnbtCompound([["sky", String(sky)], ["block", String(block)]])]);
+  }
+  if (node.nbt?.trim()) {
+    const raw = node.nbt.trim();
+    const compound = raw.startsWith("{") && raw.endsWith("}") ? raw : `{${raw}}`;
+    fields.push(...parseSnbtCompound(compound, `BD node ${node.name ?? "<unnamed>"} NBT`).map(({ name, value }) => [name, value] as [string, string]));
+  }
+  return fields.length ? serializeSnbtCompound(fields) : undefined;
 }
 
 function parseItemName(name: string): { id: string; display: string } {
@@ -243,19 +250,31 @@ function parseItemName(name: string): { id: string; display: string } {
 
 function createItemStack(id: string, texture: string | undefined): string {
   if (id === "minecraft:player_head" && texture) {
-    return `{id:"${id}",Count:1,components:{"minecraft:profile":{properties:[{name:"textures",value:"${texture}"}]}}}`;
+    const property = serializeSnbtCompound([
+      ["name", serializeSnbtString("textures")],
+      ["value", serializeSnbtString(texture)],
+    ]);
+    const profile = serializeSnbtCompound([["properties", `[${property}]`]]);
+    return serializeSnbtCompound([
+      ["id", serializeSnbtString(id)],
+      ["Count", "1"],
+      ["components", serializeSnbtCompound([["minecraft:profile", profile]])],
+    ]);
   }
-  return `{id:"${id}",Count:1}`;
+  return serializeSnbtCompound([["id", serializeSnbtString(id)], ["Count", "1"]]);
 }
 
 function createBlockState(name: string): string {
   const match = /^([^\[]+)(?:\[([^\]]+)\])?$/.exec(name.trim());
   const id = normalizeResourceLocation(match?.[1] || "air");
-  const properties = match?.[2]?.split(",").flatMap((entry) => {
-    const [key, value] = entry.split("=", 2);
-    return key && value ? [`${key}:"${value}"`] : [];
-  });
-  return properties?.length ? `{Name:"${id}",Properties:{${properties.join(",")}}}` : `{Name:"${id}"}`;
+  const properties = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((entry): [string, string][] => {
+    const pair = splitSnbtPair(entry, "=");
+    return pair?.[0] && pair[1] ? [[pair[0], serializeSnbtString(pair[1])]] : [];
+  }) : [];
+  return serializeSnbtCompound([
+    ["Name", serializeSnbtString(id)],
+    ["Properties", properties.length ? serializeSnbtCompound(properties) : undefined],
+  ]);
 }
 
 function number(value: number | undefined, fallback: number): number {

@@ -3,6 +3,7 @@ import { secondsToTicks } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
+import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 
@@ -130,7 +131,13 @@ function importNode(
       visible: true,
       ...(entityNbt ? { entityNbt } : {}),
       itemDisplay: "none",
-      itemStackSnbt: `{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"${resource.namespace}:${modelPath}"}}`,
+      itemStackSnbt: serializeSnbtCompound([
+        ["id", serializeSnbtString("minecraft:paper")],
+        ["count", "1"],
+        ["components", serializeSnbtCompound([
+          ["minecraft:item_model", serializeSnbtString(`${resource.namespace}:${modelPath}`)],
+        ])],
+      ]),
     };
   }
   const properties = node.display_properties ?? {};
@@ -328,40 +335,48 @@ function resolveTexture(provider: AjElement["faces"][string]["texture_provider"]
 
 function displayPropertiesToNbt(properties: Record<string, unknown> | undefined): string | undefined {
   if (!properties) return undefined;
-  const fields: string[] = [];
+  const fields: [string, string][] = [];
   for (const key of ["billboard", "shadow_radius", "shadow_strength", "glow_color_override"] as const) {
     const value = properties[key];
-    if (typeof value === "string") fields.push(`${key}:"${value}"`);
-    else if (typeof value === "number" && Number.isFinite(value)) fields.push(`${key}:${value}`);
+    if (typeof value === "string") fields.push([key, serializeSnbtString(value)]);
+    else if (typeof value === "number" && Number.isFinite(value)) fields.push([key, String(value)]);
   }
-  if (properties.is_glowing === true) fields.push("glowing:1b");
+  if (properties.is_glowing === true) fields.push(["glowing", "1b"]);
   if (properties.is_custom_brightness_enabled === true && isRecord(properties.custom_brightness)) {
     const sky = numberProperty(properties.custom_brightness, "sky", 0);
     const block = numberProperty(properties.custom_brightness, "block", 0);
-    fields.push(`brightness:{sky:${sky},block:${block}}`);
+    fields.push(["brightness", serializeSnbtCompound([["sky", String(sky)], ["block", String(block)]])]);
   }
-  return fields.length ? `{${fields.join(",")}}` : undefined;
+  return fields.length ? serializeSnbtCompound(fields) : undefined;
 }
 
 function itemArgumentToSnbt(value: string): string {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
-  const components = match?.[2]?.split(",").flatMap((component) => {
-    const [key, raw] = component.split("=", 2);
-    if (!key || raw === undefined) return [];
-    return [`"${normalizeResourceLocation(key)}":${raw}`];
-  });
-  return components?.length ? `{id:"${id}",count:1,components:{${components.join(",")}}}` : `{id:"${id}",count:1}`;
+  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component): [string, string][] => {
+    const pair = splitSnbtPair(component, "=");
+    if (!pair?.[0] || !pair[1]) return [];
+    return [[normalizeResourceLocation(pair[0]), pair[1]]];
+  }) : [];
+  return serializeSnbtCompound([
+    ["id", serializeSnbtString(id)],
+    ["count", "1"],
+    ["components", components.length ? serializeSnbtCompound(components) : undefined],
+  ]);
 }
 
 function blockArgumentToSnbt(value: string): string {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
-  const properties = match?.[2]?.split(",").flatMap((property) => {
-    const [key, raw] = property.split("=", 2);
-    return key && raw ? [`${key}:"${raw}"`] : [];
-  });
-  return properties?.length ? `{Name:"${id}",Properties:{${properties.join(",")}}}` : `{Name:"${id}"}`;
+  const properties = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((property): [string, string][] => {
+    const pair = splitSnbtPair(property, "=");
+    if (!pair?.[0] || !pair[1]) return [];
+    return [[pair[0], serializeSnbtString(pair[1])]];
+  }) : [];
+  return serializeSnbtCompound([
+    ["Name", serializeSnbtString(id)],
+    ["Properties", properties.length ? serializeSnbtCompound(properties) : undefined],
+  ]);
 }
 
 function parseText(value: string): unknown {
