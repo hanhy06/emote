@@ -70,13 +70,6 @@ public final class TimelinePlayer {
         }
     }
 
-    public void resumeSynchronizedInterpolation() {
-        if (!this.started || this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
-            throw new IllegalStateException("Synchronized timeline has not started");
-        }
-        resumePendingInterpolations();
-    }
-
     public AdvanceResult advance() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
@@ -97,6 +90,7 @@ public final class TimelinePlayer {
         }
 
         this.currentTick++;
+        // Let newly spawned displays establish the synchronized snapshot before sending a new interpolation target.
         resumePendingInterpolations();
         applyTick(this.currentTick);
         if (this.currentTick < this.animation.timeline().durationTicks()) {

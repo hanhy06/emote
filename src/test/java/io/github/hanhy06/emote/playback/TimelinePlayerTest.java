@@ -107,10 +107,8 @@ class TimelinePlayerTest {
         assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
         assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
 
-        player.resumeSynchronizedInterpolation();
-        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
         player.advance();
-        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
+        assertEquals(new AppliedTransform(10.0D, 4), target.transforms.getLast());
     }
 
     @Test
