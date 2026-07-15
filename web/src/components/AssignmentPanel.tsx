@@ -85,7 +85,7 @@ export function AssignmentPanel({
     }
   }
 
-  function handleOrderChange(event: ChangeEvent<HTMLSelectElement>) {
+  function handleOrderChange(event: ChangeEvent<HTMLInputElement>) {
     const order = Number(event.target.value);
     if (Number.isInteger(order)) assignOrderAndScroll(order);
   }
@@ -104,10 +104,16 @@ export function AssignmentPanel({
       </div>
       <label className="order-control">
         <strong>Skin order</strong>
-        <select value={selectedOrder} disabled={!hasSelectedAssignment} onChange={handleOrderChange}>
-          <option value="" disabled>Select order</option>
-          {[0, 1, 2, 3, 4].map((order) => <option value={order} key={order}>{order}</option>)}
-        </select>
+        <input
+          type="range"
+          min="0"
+          max="9"
+          step="1"
+          value={selectedOrder || "0"}
+          disabled={!hasSelectedAssignment}
+          onChange={handleOrderChange}
+        />
+        <output>{selectedOrder || "0"}</output>
       </label>
       <ul className="part-list" ref={partList}>
         {parts.map((part) => (

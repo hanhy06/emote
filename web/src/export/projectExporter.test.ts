@@ -38,9 +38,9 @@ describe("exportAnimation", () => {
       minecraftVersion: "26.2",
       namespace: "test",
       ...project.suggestedMetadata,
-    }, { body: { part: "body", order: 1 } }, 0);
+    }, { body: { part: "body", order: 9 } }, 0);
     const animation = JSON.parse(await result.blob.text());
 
-    expect(animation.nodes.body.skin).toEqual({ part: "body", order: 1 });
+    expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
   });
 });

@@ -107,6 +107,11 @@ export function App() {
     setAssignments((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, part])) }));
     if (!part) {
       setOrders((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, null])) }));
+    } else {
+      setOrders((current) => ({
+        ...current,
+        ...Object.fromEntries([...selectedParts].map((index) => [index, current[index] ?? 0])),
+      }));
     }
   }
 

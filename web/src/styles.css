@@ -27,8 +27,9 @@ aside > p { margin: 0 0 12px; font-size: 13px; }
 .assignment-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
 .assignment-buttons button { display: flex; align-items: center; gap: 6px; }
 .assignment-buttons i { width: 10px; height: 10px; }
-.order-control { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
-.order-control select { min-width: 112px; }
+.order-control { display: grid; grid-template-columns: auto minmax(0, 1fr) 2ch; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
+.order-control input { min-width: 0; padding: 0; }
+.order-control output { text-align: right; font-variant-numeric: tabular-nums; }
 .part-list { position: relative; flex: 1; min-height: 0; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; }
 .part-list button { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; }
 .part-list button.selected { border-color: #1467c8; background: #dcecff; }
