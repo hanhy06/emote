@@ -7,7 +7,7 @@ import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter } from "./import/adapterRegistry";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
-import type { PartAssignments, PartOrders, SkinPartId } from "./preview/skinMapping";
+import { selectPart, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
 
 interface SkinCandidate {
   nodeId: string;
@@ -99,16 +99,8 @@ export function App() {
   }
 
   const handlePartSelect = useCallback((partIndex: number, additive: boolean) => {
-    const selectedPart = previewParts.find((part) => part.partIndex === partIndex);
-    if (!selectedPart) return;
-    const grouped = previewParts.filter((part) => distance(part.anchor, selectedPart.anchor) <= 0.05).map((part) => part.partIndex);
-    setSelectedParts((current) => {
-      const next = additive ? new Set(current) : new Set<number>();
-      const remove = additive && grouped.every((index) => next.has(index));
-      grouped.forEach((index) => remove ? next.delete(index) : next.add(index));
-      return next;
-    });
-  }, [previewParts]);
+    setSelectedParts((current) => selectPart(current, partIndex, additive));
+  }, []);
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
@@ -235,8 +227,4 @@ function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignm
 
 function emptyOptions(): ExportOptions {
   return { minecraftVersion: "26.2", namespace: "emote", name: "", description: "", command_name: "", hide_player: true };
-}
-
-function distance(first: { x: number; y: number; z: number }, second: { x: number; y: number; z: number }): number {
-  return Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z);
 }

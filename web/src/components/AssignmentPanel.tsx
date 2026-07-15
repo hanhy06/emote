@@ -93,7 +93,7 @@ export function AssignmentPanel({
   return (
     <aside>
       <p><strong>Left/right reference:</strong> Directions are shown from behind the character. They appear reversed from the front.</p>
-      <p>Click a box to select all pieces at the same position.</p>
+      <p>Click a model to select only that model. Hold Ctrl, Shift, or Command to select multiple models.</p>
       <div className="assignment-buttons">
         {SKIN_PARTS.map((part) => (
           <button type="button" key={part.id} disabled={!hasSelection} onClick={() => onAssignPart(part.id)}>

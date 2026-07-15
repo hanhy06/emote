@@ -10,3 +10,11 @@ export const SKIN_PARTS = [
 export type SkinPartId = typeof SKIN_PARTS[number]["id"];
 export type PartAssignments = Record<number, SkinPartId | null>;
 export type PartOrders = Record<number, number | null>;
+
+export function selectPart(current: ReadonlySet<number>, partIndex: number, additive: boolean): Set<number> {
+  if (!additive) return new Set([partIndex]);
+  const next = new Set(current);
+  if (next.has(partIndex)) next.delete(partIndex);
+  else next.add(partIndex);
+  return next;
+}
