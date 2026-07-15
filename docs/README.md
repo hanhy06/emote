@@ -1,41 +1,49 @@
 # Emote
 
-> Use the converter to export a BD Engine project as an emote animation JSON file.
-
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
 
-Emote is a Fabric mod that turns humanoid animations created with BD Engine into multiplayer Minecraft emotes.
+Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine and Animated Java.
 
-The mod can run entirely on the server. Installing it on the client is optional and adds an emote wheel, automatic third-person view, and localized UI.
+The mod can be installed on the server only. Installing it on the client also adds an emote wheel and automatic third-person view while an emote is playing.
+
+The web converter exports BD Engine projects and Animated Java blueprints as Emote animation JSON files.
 
 > Don’t judge the mod by the demo—the developer is a programmer, not an animator. I’m looking forward to seeing the much better emotes you create!
 
+- [Web converter](https://hanhy06.github.io/emote/)
 - [Modrinth](https://modrinth.com/mod/emote)
 - [GitHub](https://github.com/hanhy06/emote)
 
 ## User Commands
 
-| Command               | Description                                                                        |
-|-----------------------|------------------------------------------------------------------------------------|
-| `/emote`              | Opens the emote menu.                                                              |
-| `/emote search`       | Opens the emote search dialog.                                                     |
-| `/emote list`         | Lists registered emotes.                                                           |
-| `/emote play <id>`    | Plays an emote by its exact `namespace:path` ID.                                  |
-| `/emote stop`         | Stops the currently playing emote.                                                 |
-| `V`                   | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
+| Command | Description |
+|---|---|
+| `/emote` | Opens the emote menu. |
+| `/emote search` | Opens the emote search dialog. |
+| `/emote list` | Lists registered emotes. |
+| `/emote play <id>` | Plays the emote with the exact `namespace:path` ID. |
+| `/emote stop` | Stops the currently playing emote. |
+| `V` | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
 
 ## Admin Commands
 
-| Command                      | Description                                       |
-|------------------------------|---------------------------------------------------|
-| `/emote stop-all`     | Stops every active emote.                          |
-| `/emote enable <id>` | Enables an emote and reloads the emote list.       |
-| `/emote disable <id>`| Disables an emote and stops its active instances.  |
-| `/emote reload`      | Reloads configuration and animation JSON files.   |
+| Command | Description |
+|---|---|
+| `/emote stop-all` | Stops every active emote. |
+| `/emote enable <id>` | Enables an emote and reloads the emote list. |
+| `/emote disable <id>` | Disables an emote and stops its active instances. |
+| `/emote reload` | Reloads configuration and animation JSON files. |
 
 ## Server Configuration
 
-Configuration files are created in `config/emote` when the server starts for the first time.
+The following files and directories are created in `config/emote` when the server starts for the first time:
+
+```text
+config/emote/
+├── config.json
+├── emotes.json
+└── animations/
+```
 
 ### `config.json`
 
@@ -48,13 +56,13 @@ Configuration files are created in `config/emote` when the server starts for the
 }
 ```
 
-| Setting                          | Description                                                                 |
-|----------------------------------|-----------------------------------------------------------------------------|
-| `menu_page_size`                 | Number of emotes displayed on each menu page.                               |
-| `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                      |
+| Setting | Description |
+|---|---|
+| `menu_page_size` | Number of emotes displayed on each menu page. |
+| `mineskin_api_key` | MineSkin API key used to apply player skins to emotes. |
 | `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds. |
 
-### `packs.json`
+### `emotes.json`
 
 Controls emote availability and play permissions.
 
@@ -64,7 +72,7 @@ Controls emote availability and play permissions.
     "example:disabled"
   ],
   "permissions": {
-    "default": [
+    "emote.default": [
       "example:hello",
       "example:yes",
       "example:no"
@@ -80,16 +88,16 @@ Controls emote availability and play permissions.
 }
 ```
 
-- `disabled` contains exact animation IDs that should not be loaded.
-- `default` contains emotes available to every player.
-- Other keys are permission nodes that grant additional emotes.
+- `disabled` contains the exact IDs of emotes that should not be loaded.
+- `emote.default` contains emotes available to every player.
+- Other keys are permission nodes that grant access to additional emotes.
 - `*` grants access to every enabled emote.
 
 Run `/emote reload` after editing the file manually.
 
 ## Animation Files
 
-Put one or more `.json` files directly in `config/emote/animations`:
+Put `.json` files exported by the converter in `config/emote/animations`:
 
 ```text
 config/emote/animations/
@@ -98,50 +106,17 @@ config/emote/animations/
 └── another-emote.json
 ```
 
-The file name is only for storage. The root `id` field is the sole registration, command, permission, enable/disable, UI, and network identifier. See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json).
+The file name is only used for storage. The root `id` field is the identifier used by commands, permissions, enable/disable settings, and the UI.
 
-Unknown metadata fields are ignored. Invalid files are skipped independently, and every file sharing a duplicate `id` is rejected.
+See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json) for details.
+
+Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
 ## Player Skin Support
 
-Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playing player’s skin to the head, body, arms, and legs of compatible emotes.
+Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playing player’s skin to compatible emotes.
 
-If no API key is configured, the textures stored in the JSON item stacks are used instead. Generated textures and pending jobs are cached on the server.
-
-To mark a skin part, add `skin.part` and `skin.order` to a `minecraft:player_head` item display node.
-
-```json
-{
-  "type": "item_display",
-  "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
-  "skin": {
-    "part": "left_arm",
-    "order": 0
-  }
-}
-```
-
-The following part values are supported:
-
-| Part      | Value       |
-|-----------|-------------|
-| Head      | `head`      |
-| Body      | `body`      |
-| Left arm  | `left_arm`  |
-| Right arm | `right_arm` |
-| Left leg  | `left_leg`  |
-| Right leg | `right_leg` |
-
-A number starting from `0` can be appended to any marker to define the order of multiple pieces.
-
-```text
-`order: 0`
-`order: 1`
-```
-
-Lower numbers identify pieces closer to the center of the body. When ordering a part, every piece of that part must include a number.
-
-Player heads without a valid `skin` object keep the texture stored in the JSON.
+Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
 
 ## Troubleshooting
 
@@ -151,19 +126,30 @@ Run `/emote reload` and check the server log.
 
 An emote may be skipped when:
 
-- its animation JSON is invalid or targets another Minecraft version;
-- its exact ID is disabled in `packs.json`; or
+- its animation JSON is invalid;
+- its Minecraft version does not match the server;
+- its exact ID is listed in `disabled` in `emotes.json`; or
 - another file declares the same ID.
+
+### An emote cannot be played
+
+Check that:
+
+- the emote is granted in `emotes.json`;
+- the player has the required permission; and
+- the exact `namespace:path` ID is being used.
 
 ### The player’s skin is not applied
 
-Confirm that `mineskin_api_key` is configured and that compatible item nodes contain valid `skin` objects.
+Confirm that `mineskin_api_key` is configured and check the server log.
 
-If MineSkin is unavailable, the textures included in the animation JSON are used.
+If MineSkin is unavailable, the textures stored in the animation JSON are used instead.
 
 ### Configuration changes are ignored
 
-Check that the JSON syntax is valid, then run `/emote reload`. Invalid configuration is rejected and the currently loaded configuration remains active.
+Check that the JSON syntax is valid, then run `/emote reload`.
+
+Invalid configuration is rejected and the previously loaded configuration remains active.
 
 ## License
 
