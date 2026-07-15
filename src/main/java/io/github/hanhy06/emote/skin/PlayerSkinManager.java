@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.emote.EmoteDatapackNames;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.playback.JsonPlaybackNodes.NodeInstance;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -66,6 +67,20 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinParts.isEmpty()) {
             return PlayerSkinPreparationResult.ready(null);
         }
+        return preparePlayerSkin(player, createTextureKeys(skinParts));
+    }
+
+    public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, List<JsonEmoteSkinPart> skinParts) {
+        if (skinParts.isEmpty()) {
+            return PlayerSkinPreparationResult.ready(null);
+        }
+        return preparePlayerSkin(player, createJsonTextureKeys(skinParts));
+    }
+
+    private PlayerSkinPreparationResult preparePlayerSkin(
+        ServerPlayer player,
+        Set<PlayerSkinTextureKey> requiredTextureKeys
+    ) {
         if (!MineSkinApiClient.hasApiKey(this.mineSkinApiKey)) {
             return PlayerSkinPreparationResult.ready(null);
         }
@@ -73,7 +88,6 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinSource == null) {
             return PlayerSkinPreparationResult.ready(null);
         }
-        Set<PlayerSkinTextureKey> requiredTextureKeys = createTextureKeys(skinParts);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadMineSkinTextureSet(skinSource, requiredTextureKeys);
         if (savedTextureUrls.size() < requiredTextureKeys.size()) {
             scheduleMineSkinBake(skinSource, requiredTextureKeys);
@@ -82,6 +96,34 @@ public class PlayerSkinManager implements ConfigListener {
         return PlayerSkinPreparationResult.ready(
             new PreparedPlayerSkin(savedTextureUrls)
         );
+    }
+
+    public void applySkinParts(
+        Map<String, NodeInstance> nodes,
+        List<JsonEmoteSkinPart> skinParts,
+        PreparedPlayerSkin preparedPlayerSkin,
+        String animationId
+    ) {
+        if (preparedPlayerSkin == null || skinParts.isEmpty()) {
+            return;
+        }
+        int appliedCount = 0;
+        for (JsonEmoteSkinPart skinPart : skinParts) {
+            NodeInstance node = nodes.get(skinPart.nodeId());
+            if (node != null
+                && node.entity() instanceof Display.ItemDisplay display
+                && applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin)) {
+                appliedCount++;
+            }
+        }
+        if (appliedCount != skinParts.size()) {
+            Emote.LOGGER.warn(
+                "Applied player skin to {}/{} JSON nodes for {}",
+                appliedCount,
+                skinParts.size(),
+                animationId
+            );
+        }
     }
 
     public void applySkinParts(
@@ -165,7 +207,16 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private boolean applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
-        String textureUrl = preparedSkin.findTextureUrl(skinPart.skinPart(), skinPart.skinSegment());
+        return applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedSkin);
+    }
+
+    private boolean applyMineSkinProfile(
+        Display.ItemDisplay display,
+        PlayerSkinPart skinPart,
+        PlayerSkinSegment skinSegment,
+        PreparedPlayerSkin preparedSkin
+    ) {
+        String textureUrl = preparedSkin.findTextureUrl(skinPart, skinSegment);
         if (textureUrl == null) {
             return false;
         }
@@ -185,6 +236,14 @@ public class PlayerSkinManager implements ConfigListener {
     private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
         Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
         for (EmoteSkinPart skinPart : skinParts) {
+            textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+        }
+        return textureKeys;
+    }
+
+    private Set<PlayerSkinTextureKey> createJsonTextureKeys(List<JsonEmoteSkinPart> skinParts) {
+        Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
+        for (JsonEmoteSkinPart skinPart : skinParts) {
             textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
         }
         return textureKeys;

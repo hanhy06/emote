@@ -1,0 +1,175 @@
+package io.github.hanhy06.emote.playback;
+
+import com.mojang.math.Transformation;
+import com.mojang.serialization.JsonOps;
+import io.github.hanhy06.emote.animation.EmoteAnimation;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.*;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.TypedEntityData;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.*;
+
+import static io.github.hanhy06.emote.playback.JsonPlaybackNodes.*;
+
+public final class JsonPlaybackEntityController {
+    private static final String RUNTIME_TAG = "emote.runtime";
+
+    public JsonPlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
+        ServerLevel level = player.level();
+        EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
+        LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
+        try {
+            for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
+                NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue());
+                instances.put(entry.getKey(), instance);
+            }
+            return new JsonPlaybackNodes(root, instances);
+        } catch (RuntimeException exception) {
+            removeEntities(level, instances.values());
+            throw exception;
+        }
+    }
+
+    public void remove(ServerLevel level, JsonPlaybackNodes nodes) {
+        removeEntities(level, nodes.nodes().values());
+    }
+
+    public void setVisible(NodeInstance node, boolean visible) {
+        if (node.isAnchor()) {
+            return;
+        }
+        CompoundTag data = new CompoundTag();
+        var registryOps = node.entity().registryAccess().createSerializationContext(NbtOps.INSTANCE);
+        if (node.displayContent() instanceof ItemContent itemContent) {
+            data.store("item", ItemStack.CODEC, registryOps, visible ? itemContent.itemStack() : ItemStack.EMPTY);
+        } else if (node.displayContent() instanceof BlockContent blockContent) {
+            data.store("block_state", BlockState.CODEC, registryOps, visible ? blockContent.blockState() : Blocks.AIR.defaultBlockState());
+        } else if (node.displayContent() instanceof TextContent textContent) {
+            data.store("text", ComponentSerialization.CODEC, registryOps, visible ? textContent.text() : Component.empty());
+        }
+        TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
+        node.setVisible(visible);
+    }
+
+    private NodeInstance createNode(
+        ServerLevel level,
+        EmoteRootTransform root,
+        String nodeId,
+        EmoteAnimation.Node node
+    ) {
+        if (node instanceof EmoteAnimation.AnchorNode) {
+            return new NodeInstance(nodeId, node, null, null, true);
+        }
+
+        Display entity = createDisplay(level, node);
+        TypedEntityData.of(entity.getType(), entityNbt(node)).loadInto(entity);
+        entity.setPos(root.position());
+        entity.setYRot(0.0F);
+        entity.setXRot(0.0F);
+        entity.addTag(RUNTIME_TAG);
+
+        DisplayContent content = applyRuntimeData(entity, root, node);
+        boolean visible = initialVisibility(node);
+        NodeInstance instance = new NodeInstance(nodeId, node, entity, content, visible);
+        if (!visible) {
+            setVisible(instance, false);
+        }
+        if (!level.addFreshEntity(entity)) {
+            throw new IllegalStateException("Failed to add display entity for node " + nodeId);
+        }
+        return instance;
+    }
+
+    private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
+        Display display;
+        if (node instanceof EmoteAnimation.ItemNode) {
+            display = EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+        } else if (node instanceof EmoteAnimation.BlockNode) {
+            display = EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+        } else if (node instanceof EmoteAnimation.TextNode) {
+            display = EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+        } else {
+            throw new IllegalArgumentException("Unsupported display node: " + node.getClass().getName());
+        }
+        if (display == null) {
+            throw new IllegalStateException("Failed to create display entity");
+        }
+        return display;
+    }
+
+    private DisplayContent applyRuntimeData(Display entity, EmoteRootTransform root, EmoteAnimation.Node node) {
+        var registryOps = entity.registryAccess().createSerializationContext(NbtOps.INSTANCE);
+        CompoundTag data = new CompoundTag();
+        data.store("transformation", Transformation.EXTENDED_CODEC, new Transformation(root.displayMatrix(node.defaultMatrix())));
+        data.putInt("interpolation_duration", 0);
+        data.putInt("start_interpolation", 0);
+
+        DisplayContent content;
+        if (node instanceof EmoteAnimation.ItemNode itemNode) {
+            ItemStack itemStack = ItemStack.CODEC.parse(registryOps, itemNode.itemStackNbt()).getOrThrow();
+            ItemDisplayContext context = Arrays.stream(ItemDisplayContext.values())
+                .filter(value -> value.getSerializedName().equals(itemNode.itemDisplay()))
+                .findFirst()
+                .orElseThrow();
+            data.store("item", ItemStack.CODEC, registryOps, itemStack);
+            data.store("item_display", ItemDisplayContext.CODEC, context);
+            content = new ItemContent(itemStack);
+        } else if (node instanceof EmoteAnimation.BlockNode blockNode) {
+            BlockState blockState = BlockState.CODEC.parse(registryOps, blockNode.blockStateNbt()).getOrThrow();
+            data.store("block_state", BlockState.CODEC, registryOps, blockState);
+            content = new BlockContent(blockState);
+        } else if (node instanceof EmoteAnimation.TextNode textNode) {
+            var jsonOps = entity.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+            Component text = ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
+            data.store("text", ComponentSerialization.CODEC, registryOps, text);
+            content = new TextContent(text);
+        } else {
+            throw new IllegalArgumentException("Unsupported display node: " + node.getClass().getName());
+        }
+        TypedEntityData.of(entity.getType(), data).loadInto(entity);
+        return content;
+    }
+
+    private CompoundTag entityNbt(EmoteAnimation.Node node) {
+        if (node instanceof EmoteAnimation.ItemNode itemNode) {
+            return itemNode.entityNbt();
+        }
+        if (node instanceof EmoteAnimation.BlockNode blockNode) {
+            return blockNode.entityNbt();
+        }
+        if (node instanceof EmoteAnimation.TextNode textNode) {
+            return textNode.entityNbt();
+        }
+        return new CompoundTag();
+    }
+
+    private boolean initialVisibility(EmoteAnimation.Node node) {
+        if (node instanceof EmoteAnimation.ItemNode itemNode) {
+            return itemNode.visible();
+        }
+        if (node instanceof EmoteAnimation.BlockNode blockNode) {
+            return blockNode.visible();
+        }
+        if (node instanceof EmoteAnimation.TextNode textNode) {
+            return textNode.visible();
+        }
+        return true;
+    }
+
+    private void removeEntities(ServerLevel level, Collection<NodeInstance> nodes) {
+        for (NodeInstance node : nodes) {
+            if (node.entity() != null && !node.entity().isRemoved()) {
+                node.entity().kill(level);
+            }
+        }
+    }
+}
