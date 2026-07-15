@@ -35,7 +35,7 @@ class PlayableEmoteServiceTest {
         ));
         PlayableEmoteService service = new PlayableEmoteService(
             registry,
-            (ignoredPlayer, definition) -> !definition.id().equals("demo:bow")
+            (ignoredPlayer, emote) -> !emote.id().equals("demo:bow")
         );
 
         assertEquals(List.of("Wave"), service.getPlayableEmotes(null).stream().map(PlayableEmote::displayName).toList());

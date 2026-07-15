@@ -17,7 +17,7 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
 
     public static final class NodeInstance {
         private final String id;
-        private final EmoteAnimation.Node definition;
+        private final EmoteAnimation.Node node;
         private final Display entity;
         private final DisplayContent displayContent;
         private EmoteAnimation.Matrix currentMatrix;
@@ -25,16 +25,16 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
 
         public NodeInstance(
             String id,
-            EmoteAnimation.Node definition,
+            EmoteAnimation.Node node,
             Display entity,
             DisplayContent displayContent,
             boolean visible
         ) {
             this.id = Objects.requireNonNull(id, "id");
-            this.definition = Objects.requireNonNull(definition, "definition");
+            this.node = Objects.requireNonNull(node, "node");
             this.entity = entity;
             this.displayContent = displayContent;
-            this.currentMatrix = definition.defaultMatrix();
+            this.currentMatrix = node.defaultMatrix();
             this.visible = visible;
         }
 
@@ -42,8 +42,8 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
             return this.id;
         }
 
-        public EmoteAnimation.Node definition() {
-            return this.definition;
+        public EmoteAnimation.Node node() {
+            return this.node;
         }
 
         public Display entity() {

@@ -14,7 +14,6 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.EquipmentVisibilityService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.EmoteLifecycle;
-import io.github.hanhy06.emote.server.EmoteAnimationService;
 import io.github.hanhy06.emote.server.EmoteReloadService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
@@ -42,11 +41,6 @@ public class Emote implements ModInitializer {
     private final EquipmentVisibilityService equipmentVisibilityService = new EquipmentVisibilityService(this.playbackManager);
     private final PlaybackStateService playbackStateService = new PlaybackStateService();
 
-    private final EmoteAnimationService animationService = new EmoteAnimationService(
-        this.configManager,
-        this.emoteRegistry,
-        new EmoteAnimationDirectoryLoader()
-    );
     private final DialogManager dialogManager = new DialogManager(
         this.configManager,
         this.emoteRegistry,
@@ -60,7 +54,8 @@ public class Emote implements ModInitializer {
     private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
     private final EmoteReloadService reloadService = new EmoteReloadService(
         this.configManager,
-        this.animationService,
+        this.emoteRegistry,
+        new EmoteAnimationDirectoryLoader(),
         this.playbackManager,
         this.wheelSyncService
     );

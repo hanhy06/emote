@@ -82,9 +82,9 @@ public final class PlaybackEntityController {
     }
 
     public void resetNode(PlaybackNodes playbackNodes, NodeInstance node) {
-        applyTransformation(playbackNodes, node, node.definition().defaultMatrix(), 0);
+        applyTransformation(playbackNodes, node, node.node().defaultMatrix(), 0);
         if (!node.isAnchor()) {
-            setVisible(node, initialVisibility(node.definition()));
+            setVisible(node, initialVisibility(node.node()));
         }
     }
 

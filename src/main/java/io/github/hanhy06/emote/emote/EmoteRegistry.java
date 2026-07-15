@@ -19,7 +19,7 @@ public class EmoteRegistry {
     }
 
     public List<RegisteredEmote> getAll() {
-        return this.state.definitions();
+        return this.state.emotes();
     }
 
     public RegisteredEmote find(String id) {
@@ -27,10 +27,10 @@ public class EmoteRegistry {
     }
 
     public int size() {
-        return this.state.definitions().size();
+        return this.state.emotes().size();
     }
 
-    private record RegistryState(Map<String, RegisteredEmote> byId, List<RegisteredEmote> definitions) {
+    private record RegistryState(Map<String, RegisteredEmote> byId, List<RegisteredEmote> emotes) {
         private static RegistryState empty() {
             return new RegistryState(Map.of(), List.of());
         }

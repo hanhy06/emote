@@ -1,25 +1,31 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
+import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.server.MinecraftServer;
 
 public final class EmoteReloadService {
     private final ConfigManager configManager;
-    private final EmoteAnimationService animationService;
+    private final EmoteRegistry emoteRegistry;
+    private final EmoteAnimationDirectoryLoader directoryLoader;
     private final PlaybackManager playbackManager;
     private final WheelSyncService wheelSyncService;
 
     public EmoteReloadService(
         ConfigManager configManager,
-        EmoteAnimationService animationService,
+        EmoteRegistry emoteRegistry,
+        EmoteAnimationDirectoryLoader directoryLoader,
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
     ) {
         this.configManager = configManager;
-        this.animationService = animationService;
+        this.emoteRegistry = emoteRegistry;
+        this.directoryLoader = directoryLoader;
         this.playbackManager = playbackManager;
         this.wheelSyncService = wheelSyncService;
     }
@@ -29,8 +35,7 @@ public final class EmoteReloadService {
         if (server == null) {
             return;
         }
-        int emoteCount = this.animationService.reload(server);
-        this.wheelSyncService.syncAll();
+        int emoteCount = reloadRegistry(server);
         Emote.LOGGER.info("emotes={}", emoteCount);
     }
 
@@ -46,9 +51,18 @@ public final class EmoteReloadService {
             return 0;
         }
         this.playbackManager.stopAllEmotes();
-        int emoteCount = this.animationService.reload(server);
+        int emoteCount = reloadRegistry(server);
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);
         return emoteCount;
+    }
+
+    private int reloadRegistry(MinecraftServer server) {
+        var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
+            .map(RegisteredEmote::from)
+            .filter(emote -> this.configManager.getEmoteAccessConfig().isEnabled(emote.id()))
+            .toList();
+        this.emoteRegistry.replace(emotes);
+        return emotes.size();
     }
 }

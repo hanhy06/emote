@@ -33,7 +33,7 @@ class EmoteAnimationJsonLoaderTest {
     }
 
     @Test
-    void loadsAllRepositoryExamplesWithLegacyCommandNameIgnored() throws Exception {
+    void loadsAllRepositoryExamplesWhileIgnoringUnknownMetadata() throws Exception {
         List<Path> examplePaths;
         try (var paths = Files.list(Path.of("docs/example"))) {
             examplePaths = paths.filter(path -> path.getFileName().toString().endsWith(".json")).sorted().toList();

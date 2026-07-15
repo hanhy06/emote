@@ -63,7 +63,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinParts.isEmpty()) {
             return PlayerSkinPreparationResult.ready(null);
         }
-        return preparePlayerSkin(player, createJsonTextureKeys(skinParts));
+        return preparePlayerSkin(player, createTextureKeys(skinParts));
     }
 
     private PlayerSkinPreparationResult preparePlayerSkin(
@@ -142,7 +142,7 @@ public class PlayerSkinManager implements ConfigListener {
         return itemSlot.set(profileStack);
     }
 
-    private Set<PlayerSkinTextureKey> createJsonTextureKeys(List<EmoteSkinPart> skinParts) {
+    private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
         Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
         for (EmoteSkinPart skinPart : skinParts) {
             textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
