@@ -3,7 +3,7 @@ name: Deploy web converter to GitHub Pages
 on:
   push:
     branches:
-      - 0.7.0
+      - main
     paths:
       - "web/**"
       - ".github/workflows/pages.yml"
