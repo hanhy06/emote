@@ -11,11 +11,11 @@ interface AssignmentPanelProps {
   parts: PlayerHeadPart[];
   assignments: PartAssignments;
   orders: PartOrders;
-  selectedParts: ReadonlySet<number>;
+  selectedParts: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
   onAssignOrder: (order: number) => void;
-  onSelectPart: (partIndex: number, additive: boolean) => void;
+  onSelectPart: (nodeId: string, additive: boolean) => void;
 }
 
 export function AssignmentPanel({
@@ -29,11 +29,11 @@ export function AssignmentPanel({
   onSelectPart,
 }: AssignmentPanelProps) {
   const hasSelection = selectedParts.size > 0;
-  const partItems = useRef(new Map<number, HTMLLIElement>());
+  const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
   const selectedOrders = [...selectedParts]
-    .filter((index) => assignments[index] != null && orders[index] != null)
-    .map((index) => orders[index]!);
+    .filter((nodeId) => assignments[nodeId] != null && orders[nodeId] != null)
+    .map((nodeId) => orders[nodeId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
     : "";
@@ -41,8 +41,8 @@ export function AssignmentPanel({
   useEffect(() => {
     const list = partList.current;
     const selectedItems = parts
-      .filter((part) => selectedParts.has(part.partIndex))
-      .map((part) => partItems.current.get(part.partIndex))
+      .filter((part) => selectedParts.has(part.nodeId))
+      .map((part) => partItems.current.get(part.nodeId))
       .filter((item): item is HTMLLIElement => item != null);
     if (!list || selectedItems.length === 0) return;
     const firstItem = selectedItems[0];
@@ -59,21 +59,21 @@ export function AssignmentPanel({
     }
   }, [parts, selectedParts]);
 
-  function handlePartClick(event: MouseEvent<HTMLButtonElement>, partIndex: number) {
-    onSelectPart(partIndex, event.ctrlKey || event.metaKey || event.shiftKey);
+  function handlePartClick(event: MouseEvent<HTMLButtonElement>, nodeId: string) {
+    onSelectPart(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
   }
 
   function assignOrderAndScroll(order: number) {
     onAssignOrder(order);
     const lastSelectedPosition = parts.reduce(
-      (last, part, index) => selectedParts.has(part.partIndex) ? index : last,
+      (last, part, index) => selectedParts.has(part.nodeId) ? index : last,
       -1,
     );
     const nextPart = parts[lastSelectedPosition + 1];
     if (nextPart) {
       requestAnimationFrame(() => {
         const list = partList.current;
-        const item = partItems.current.get(nextPart.partIndex);
+        const item = partItems.current.get(nextPart.nodeId);
         if (!list || !item) return;
         const itemBottom = item.offsetTop + item.offsetHeight;
         if (itemBottom > list.scrollTop + list.clientHeight) {
@@ -118,19 +118,19 @@ export function AssignmentPanel({
       <ul className="part-list" ref={partList}>
         {parts.map((part) => (
           <li
-            key={part.partIndex}
+            key={part.nodeId}
             ref={(element) => {
-              if (element) partItems.current.set(part.partIndex, element);
-              else partItems.current.delete(part.partIndex);
+              if (element) partItems.current.set(part.nodeId, element);
+              else partItems.current.delete(part.nodeId);
             }}
           >
             <button
               type="button"
-              className={selectedParts.has(part.partIndex) ? "selected" : ""}
-              onClick={(event) => handlePartClick(event, part.partIndex)}
+              className={selectedParts.has(part.nodeId) ? "selected" : ""}
+              onClick={(event) => handlePartClick(event, part.nodeId)}
             >
               <span>#{part.partIndex}</span>
-              <span>{assignmentLabel(assignments[part.partIndex], orders[part.partIndex])}</span>
+              <span>{assignmentLabel(assignments[part.nodeId], orders[part.nodeId])}</span>
             </button>
           </li>
         ))}

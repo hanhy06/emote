@@ -5,13 +5,15 @@ export interface Vector3Value {
 }
 
 export interface PlayerHeadPart {
+  nodeId: string;
   partIndex: number;
   matrix: readonly number[];
   anchor: Vector3Value;
 }
 
-export function createPlayerHeadPart(partIndex: number, matrix: readonly number[]): PlayerHeadPart {
+export function createPlayerHeadPart(nodeId: string, partIndex: number, matrix: readonly number[]): PlayerHeadPart {
   return {
+    nodeId,
     partIndex,
     matrix,
     anchor: {

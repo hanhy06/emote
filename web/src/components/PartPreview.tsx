@@ -8,15 +8,15 @@ import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 interface PartPreviewProps {
   parts: PlayerHeadPart[];
   assignments: PartAssignments;
-  selectedParts: ReadonlySet<number>;
-  onSelectPart: (partIndex: number, additive: boolean) => void;
+  selectedParts: ReadonlySet<string>;
+  onSelectPart: (nodeId: string, additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
 export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const materialsRef = useRef(new Map<number, THREE.MeshStandardMaterial>());
+  const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const [renderError, setRenderError] = useState("");
@@ -24,11 +24,11 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
   onSelectPartRef.current = onSelectPart;
 
   useEffect(() => {
-    for (const [partIndex, material] of materialsRef.current) {
-      const assignment = assignments[partIndex];
+    for (const [nodeId, material] of materialsRef.current) {
+      const assignment = assignments[nodeId];
       material.color.set(assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#777777");
-      material.emissive.set(selectedParts.has(partIndex) ? "#3d73b9" : "#000000");
-      material.emissiveIntensity = selectedParts.has(partIndex) ? 0.7 : 0;
+      material.emissive.set(selectedParts.has(nodeId) ? "#3d73b9" : "#000000");
+      material.emissiveIntensity = selectedParts.has(nodeId) ? 0.7 : 0;
     }
   }, [assignments, selectedParts]);
 
@@ -67,19 +67,19 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
 
     for (const part of parts) {
-      const assignment = assignments[part.partIndex];
+      const assignment = assignments[part.nodeId];
       const material = new THREE.MeshStandardMaterial({
         color: assignment ? ASSIGNMENT_COLORS.get(assignment) : "#777777",
-        emissive: selectedParts.has(part.partIndex) ? "#3d73b9" : "#000000",
-        emissiveIntensity: selectedParts.has(part.partIndex) ? 0.7 : 0,
+        emissive: selectedParts.has(part.nodeId) ? "#3d73b9" : "#000000",
+        emissiveIntensity: selectedParts.has(part.nodeId) ? 0.7 : 0,
         roughness: 0.8,
       });
-      materialsRef.current.set(part.partIndex, material);
+      materialsRef.current.set(part.nodeId, material);
 
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as MatrixValues);
-      mesh.userData.partIndex = part.partIndex;
+      mesh.userData.nodeId = part.nodeId;
       partGroup.add(mesh);
       clickableMeshes.push(mesh);
 
@@ -139,7 +139,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       pointer.y = -((event.clientY - rectangle.top) / rectangle.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
       const intersection = raycaster.intersectObjects(clickableMeshes, false)[0];
-      if (intersection) onSelectPartRef.current(intersection.object.userData.partIndex as number, event.ctrlKey || event.metaKey || event.shiftKey);
+      if (intersection) onSelectPartRef.current(intersection.object.userData.nodeId as string, event.ctrlKey || event.metaKey || event.shiftKey);
     };
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
