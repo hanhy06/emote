@@ -3,24 +3,18 @@ package io.github.hanhy06.emote.emote;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.Locale;
 
 import static io.github.hanhy06.emote.test.EmoteDefinitionFixture.create;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.*;
 
 class EmoteRegistryTest {
     @Test
-    void findDefinitionByCommandNameIgnoresTurkishLocaleCasing() {
-        Locale previousLocale = Locale.getDefault();
-        Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+    void findsDefinitionsByExactAnimationId() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replaceDefinitions(List.of(create("demo:idle", "Idle")));
 
-        try {
-            EmoteRegistry registry = new EmoteRegistry();
-            registry.replaceDefinitions(List.of(create("idle", "idle", "Idle")));
-
-            assertNotNull(registry.findDefinitionByCommandName("IDLE"));
-        } finally {
-            Locale.setDefault(previousLocale);
-        }
+        assertNotNull(registry.findDefinition("demo:idle"));
+        assertNull(registry.findDefinition("idle"));
+        assertNull(registry.findDefinition("DEMO:IDLE"));
     }
 }

@@ -22,8 +22,8 @@ public class PlayService {
         this.emoteStarter = emoteStarter;
     }
 
-    public PlayResult play(ServerPlayer player, String commandName) {
-        PlayableEmoteSelection selection = this.playableEmoteService.findSelection(player, commandName);
+    public PlayResult play(ServerPlayer player, String id) {
+        PlayableEmoteSelection selection = this.playableEmoteService.findSelection(player, id);
         if (!selection.isSuccess()) {
             return PlayResult.failure(selection.errorMessage());
         }

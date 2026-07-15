@@ -18,7 +18,7 @@ class PlayServiceTest {
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS
         );
 
-        PlayResult result = service.play(null, "wave");
+        PlayResult result = service.play(null, "minecraft:wave");
 
         assertTrue(result.isSuccess());
     }
@@ -30,7 +30,7 @@ class PlayServiceTest {
             (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Datapack not loaded. ")
         );
 
-        PlayResult result = service.play(null, "wave");
+        PlayResult result = service.play(null, "minecraft:wave");
 
         assertFalse(result.isSuccess());
         assertEquals("Datapack not loaded.", result.errorMessage());
@@ -38,7 +38,7 @@ class PlayServiceTest {
 
     private PlayableEmoteService createPlayableEmoteService() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replaceDefinitions(List.of(create("wave", "wave", "Wave")));
+        registry.replaceDefinitions(List.of(create("wave", "Wave")));
         return new PlayableEmoteService(registry, new PermissionService() {
             @Override
             public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace) {

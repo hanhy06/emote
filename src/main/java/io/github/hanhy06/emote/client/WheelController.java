@@ -19,14 +19,14 @@ public class WheelController {
     private static final String MENU_FALLBACK_COMMAND = "emote";
     private List<PlayableEmote> syncedEmotes = List.of();
     private boolean syncedFromServer;
-    private String lastSelectedCommandName = "";
+    private String lastSelectedId = "";
     private boolean bindingReleaseArmed;
     private boolean holdWasDown;
 
     public void clear() {
         this.syncedEmotes = List.of();
         this.syncedFromServer = false;
-        this.lastSelectedCommandName = "";
+        this.lastSelectedId = "";
         this.bindingReleaseArmed = false;
         this.holdWasDown = false;
     }
@@ -60,7 +60,7 @@ public class WheelController {
             return;
         }
 
-        this.lastSelectedCommandName = playableEmote.commandName();
+        this.lastSelectedId = playableEmote.id();
         player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
     }
 
@@ -100,12 +100,12 @@ public class WheelController {
     }
 
     private int findInitialPageIndex() {
-        if (this.lastSelectedCommandName.isEmpty() || this.syncedEmotes.isEmpty()) {
+        if (this.lastSelectedId.isEmpty() || this.syncedEmotes.isEmpty()) {
             return 0;
         }
 
         for (int index = 0; index < this.syncedEmotes.size(); index++) {
-            if (this.syncedEmotes.get(index).commandName().equals(this.lastSelectedCommandName)) {
+            if (this.syncedEmotes.get(index).id().equals(this.lastSelectedId)) {
                 return index / WheelScreen.SLOT_COUNT;
             }
         }

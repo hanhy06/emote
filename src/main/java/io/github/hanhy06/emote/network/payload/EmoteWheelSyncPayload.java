@@ -14,7 +14,7 @@ import java.util.List;
 public record EmoteWheelSyncPayload(List<PlayableEmote> emotes) implements CustomPacketPayload {
     private static final StreamCodec<RegistryFriendlyByteBuf, PlayableEmote> PLAYABLE_EMOTE_STREAM_CODEC = StreamCodec.composite(
         ByteBufCodecs.STRING_UTF8,
-        PlayableEmote::commandName,
+        PlayableEmote::id,
         ByteBufCodecs.STRING_UTF8,
         PlayableEmote::displayName,
         ByteBufCodecs.STRING_UTF8,

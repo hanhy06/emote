@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.jspecify.annotations.NonNull;
@@ -37,7 +36,7 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createDefinition());
+            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createSkinParts());
 
             assertTrue(result.isReady());
             assertNotNull(result.preparedSkin());
@@ -60,7 +59,7 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource("player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createDefinition());
+            PlayerSkinPreparationResult result = manager.preparePlayerSkin(null, createSkinParts());
 
             assertFalse(result.isReady());
             assertEquals("Player skin is being prepared. Try again shortly.", result.errorMessage());
@@ -88,18 +87,8 @@ class PlayerSkinManagerTest {
         return manager;
     }
 
-    private EmoteDefinition createDefinition() {
-        return new EmoteDefinition(
-            "wave",
-            "Wave",
-            "Friendly wave",
-            "wave",
-            "a/default/play_anim_loop",
-            true,
-            Path.of("wave-pack"),
-            1,
-            List.of(new EmoteSkinPart(1, PlayerSkinPart.HEAD, PlayerSkinSegment.FULL))
-        );
+    private List<JsonEmoteSkinPart> createSkinParts() {
+        return List.of(new JsonEmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

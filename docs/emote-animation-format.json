@@ -6,7 +6,6 @@
   "metadata": {
     "name": "Format Reference",
     "description": "Reference emote containing every runtime feature supported by the format draft.",
-    "command_name": "format_reference",
     "hide_player": true
   },
   "transform_space": {

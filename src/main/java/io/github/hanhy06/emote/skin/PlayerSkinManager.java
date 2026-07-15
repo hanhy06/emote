@@ -6,14 +6,11 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.emote.EmoteDatapackNames;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.JsonPlaybackNodes.NodeInstance;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -60,14 +57,6 @@ public class PlayerSkinManager implements ConfigListener {
     public void onConfigReload(Config newConfig) {
         this.mineSkinApiKey = newConfig.mineSkinApiKey();
         this.mineSkinApiClient.setJobPollIntervalSeconds(newConfig.mineSkinPollIntervalSeconds());
-    }
-
-    public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, EmoteDefinition definition) {
-        List<EmoteSkinPart> skinParts = definition.skinParts();
-        if (skinParts.isEmpty()) {
-            return PlayerSkinPreparationResult.ready(null);
-        }
-        return preparePlayerSkin(player, createTextureKeys(skinParts));
     }
 
     public PlayerSkinPreparationResult preparePlayerSkin(ServerPlayer player, List<JsonEmoteSkinPart> skinParts) {
@@ -126,88 +115,8 @@ public class PlayerSkinManager implements ConfigListener {
         }
     }
 
-    public void applySkinParts(
-        ServerPlayer player,
-        EmoteDefinition definition,
-        PreparedPlayerSkin preparedPlayerSkin,
-        UUID rootEntityUuid
-    ) {
-        if (preparedPlayerSkin == null || definition.skinParts().isEmpty()) {
-            return;
-        }
-        Set<String> requestedTags = new LinkedHashSet<>();
-        Map<String, EmoteSkinPart> skinPartByTag = new HashMap<>();
-        for (EmoteSkinPart skinPart : definition.skinParts()) {
-            String requestedTag = EmoteDatapackNames.partTag(definition.namespace(), skinPart.partIndex());
-            requestedTags.add(requestedTag);
-            skinPartByTag.put(requestedTag, skinPart);
-        }
-
-        Set<String> appliedTags = new HashSet<>();
-        Set<Integer> visitedEntityIds = new HashSet<>();
-        Entity rootEntity = player.level().getEntity(rootEntityUuid);
-        if (rootEntity == null) {
-            return;
-        }
-        applySkinPartsInTree(
-            rootEntity,
-            requestedTags,
-            skinPartByTag,
-            preparedPlayerSkin,
-            appliedTags,
-            visitedEntityIds
-        );
-        if (appliedTags.size() != requestedTags.size()) {
-            Emote.LOGGER.warn(
-                "Applied player skin to {}/{} parts for {}",
-                appliedTags.size(),
-                requestedTags.size(),
-                definition.namespace()
-            );
-        }
-    }
-
-    private void applySkinPartsInTree(
-        Entity entity,
-        Set<String> requestedTags,
-        Map<String, EmoteSkinPart> skinPartByTag,
-        PreparedPlayerSkin preparedPlayerSkin,
-        Set<String> appliedTags,
-        Set<Integer> visitedEntityIds
-    ) {
-        if (!visitedEntityIds.add(entity.getId())) {
-            return;
-        }
-        if (entity instanceof Display.ItemDisplay display) {
-            String tag = display.entityTags().stream().filter(requestedTags::contains).findFirst().orElse(null);
-            if (tag != null && !appliedTags.contains(tag)) {
-                EmoteSkinPart skinPart = skinPartByTag.get(tag);
-                if (skinPart != null && applyMineSkinProfile(display, skinPart, preparedPlayerSkin)) {
-                    appliedTags.add(tag);
-                }
-            }
-        }
-        if (appliedTags.size() == requestedTags.size()) {
-            return;
-        }
-        for (Entity passenger : entity.getPassengers()) {
-            applySkinPartsInTree(
-                passenger,
-                requestedTags,
-                skinPartByTag,
-                preparedPlayerSkin,
-                appliedTags,
-                visitedEntityIds
-            );
-        }
-    }
-
     public void cancelPendingBakes() {
         this.mineSkinBakeExecutor.cancelAll();
-    }
-
-    private boolean applyMineSkinProfile(Display.ItemDisplay display, EmoteSkinPart skinPart, PreparedPlayerSkin preparedSkin) {
-        return applyMineSkinProfile(display, skinPart.skinPart(), skinPart.skinSegment(), preparedSkin);
     }
 
     private boolean applyMineSkinProfile(
@@ -231,14 +140,6 @@ public class PlayerSkinManager implements ConfigListener {
         ItemStack profileStack = itemStack.copy();
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
         return itemSlot.set(profileStack);
-    }
-
-    private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
-        Set<PlayerSkinTextureKey> textureKeys = new LinkedHashSet<>(skinParts.size());
-        for (EmoteSkinPart skinPart : skinParts) {
-            textureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
-        }
-        return textureKeys;
     }
 
     private Set<PlayerSkinTextureKey> createJsonTextureKeys(List<JsonEmoteSkinPart> skinParts) {

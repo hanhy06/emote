@@ -214,9 +214,9 @@ public class DialogManager {
     }
 
     private String createActiveEmoteText(ActiveEmote activeEmote) {
-        EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.namespace());
+        EmoteDefinition definition = this.emoteRegistry.findDefinition(activeEmote.id());
         String displayName = definition == null
-            ? activeEmote.namespace()
+            ? activeEmote.id()
             : definition.name();
         return " Active: " + displayName;
     }

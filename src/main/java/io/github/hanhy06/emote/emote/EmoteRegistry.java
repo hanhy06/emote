@@ -6,55 +6,33 @@ public class EmoteRegistry {
     private volatile RegistryState state = RegistryState.empty();
 
     public void replaceDefinitions(Collection<EmoteDefinition> definitions) {
-        List<EmoteDefinition> sortedDefinitions = new java.util.ArrayList<>(definitions);
-        sortedDefinitions.sort(Comparator.comparing(EmoteDefinition::namespace));
+        List<EmoteDefinition> sorted = new ArrayList<>(definitions);
+        sorted.sort(Comparator.comparing(EmoteDefinition::id));
 
-        LinkedHashMap<String, EmoteDefinition> definitionMap = new LinkedHashMap<>();
-        LinkedHashMap<String, EmoteDefinition> commandDefinitionMap = new LinkedHashMap<>();
-        for (EmoteDefinition definition : sortedDefinitions) {
-            definitionMap.put(definition.namespace(), definition);
-            commandDefinitionMap.putIfAbsent(normalizeKey(definition.commandName()), definition);
+        LinkedHashMap<String, EmoteDefinition> byId = new LinkedHashMap<>();
+        for (EmoteDefinition definition : sorted) {
+            if (byId.putIfAbsent(definition.id(), definition) != null) {
+                throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
+            }
         }
-
-        this.state = new RegistryState(
-            Map.copyOf(definitionMap),
-            Map.copyOf(commandDefinitionMap),
-            List.copyOf(definitionMap.values())
-        );
+        this.state = new RegistryState(Map.copyOf(byId), List.copyOf(sorted));
     }
 
     public List<EmoteDefinition> getDefinitions() {
         return this.state.definitions();
     }
 
-    public EmoteDefinition findDefinition(String namespace) {
-        return this.state.definitionMap().get(namespace);
-    }
-
-    public EmoteDefinition findDefinitionByCommandName(String commandName) {
-        return this.state.commandDefinitionMap().get(normalizeKey(commandName));
-    }
-
-    public EmoteDefinition findDefinitionForPlay(String commandNameOrNamespace) {
-        EmoteDefinition definition = findDefinitionByCommandName(commandNameOrNamespace);
-        return definition != null ? definition : findDefinition(commandNameOrNamespace);
+    public EmoteDefinition findDefinition(String id) {
+        return this.state.byId().get(id);
     }
 
     public int size() {
-        return this.state.definitionMap().size();
+        return this.state.definitions().size();
     }
 
-    private String normalizeKey(String value) {
-        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
-    }
-
-    private record RegistryState(
-        Map<String, EmoteDefinition> definitionMap,
-        Map<String, EmoteDefinition> commandDefinitionMap,
-        List<EmoteDefinition> definitions
-    ) {
+    private record RegistryState(Map<String, EmoteDefinition> byId, List<EmoteDefinition> definitions) {
         private static RegistryState empty() {
-            return new RegistryState(Map.of(), Map.of(), List.of());
+            return new RegistryState(Map.of(), List.of());
         }
     }
 }

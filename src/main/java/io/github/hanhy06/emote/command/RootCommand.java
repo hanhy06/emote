@@ -18,6 +18,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -108,7 +109,7 @@ public final class RootCommand {
 
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
-            .then(Commands.argument("emote", StringArgumentType.word())
+            .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
                     getSuggestedPlayNames(context.getSource()),
                     builder
@@ -130,14 +131,14 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
             .requires(this.permissionService.requireGameMaster())
-            .then(Commands.argument("namespace", StringArgumentType.word())
+            .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    getDisabledNamespaces(),
+                    getDisabledIds(),
                     builder
                 ))
                 .executes(context -> setPackEnabled(
                     context.getSource(),
-                    StringArgumentType.getString(context, "namespace"),
+                    IdentifierArgument.getId(context, "id").toString(),
                     true
                 )));
     }
@@ -145,14 +146,14 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
             .requires(this.permissionService.requireGameMaster())
-            .then(Commands.argument("namespace", StringArgumentType.word())
+            .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::namespace),
+                    this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::id),
                     builder
                 ))
                 .executes(context -> setPackEnabled(
                     context.getSource(),
-                    StringArgumentType.getString(context, "namespace"),
+                    IdentifierArgument.getId(context, "id").toString(),
                     false
                 )));
     }
@@ -160,8 +161,8 @@ public final class RootCommand {
     private List<String> getSuggestedPlayNames(CommandSourceStack source) {
         ServerPlayer player = findPlayer(source);
         return player == null
-            ? this.playableEmoteService.getPlayNames()
-            : this.playableEmoteService.getPlayablePlayNames(player);
+            ? this.playableEmoteService.getPlayIds()
+            : this.playableEmoteService.getPlayablePlayIds(player);
     }
 
     private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
@@ -204,11 +205,10 @@ public final class RootCommand {
 
         for (EmoteDefinition definition : definitions) {
             source.sendSystemMessage(Component.literal(
-                "- " + definition.namespace()
-                    + " cmd=" + definition.commandName()
+                "- " + definition.id()
                     + " name=" + definition.name()
                     + " parts=" + definition.partCount()
-                    + " entrypoint=" + definition.entrypoint()
+                    + " source=" + definition.loadedAnimation().sourcePath().getFileName()
             ));
         }
 
@@ -227,7 +227,6 @@ public final class RootCommand {
                 "Reloading: cfg=" + result.configLoaded()
                     + ", packs=" + result.packConfigLoaded()
                     + ", emotes=" + result.emoteCount()
-                    + (result.resourceReload() ? " (resource reload)" : "")
             ),
             true
         );
@@ -248,7 +247,7 @@ public final class RootCommand {
         ServerPlayer player = source.getPlayerOrException();
         return applyPlayResult(
             source,
-            this.playService.play(player, StringArgumentType.getString(context, "emote"))
+            this.playService.play(player, IdentifierArgument.getId(context, "id").toString())
         );
     }
 
@@ -261,7 +260,7 @@ public final class RootCommand {
         }
 
         source.sendSuccess(
-            () -> Component.literal("Stop: " + activeEmote.namespace()),
+            () -> Component.literal("Stop: " + activeEmote.id()),
             false
         );
         return 1;
@@ -273,35 +272,35 @@ public final class RootCommand {
         return 1;
     }
 
-    private int setPackEnabled(CommandSourceStack source, String namespace, boolean enabled) {
+    private int setPackEnabled(CommandSourceStack source, String id, boolean enabled) {
         if (enabled) {
-            if (this.configManager.getPackConfig().isEnabled(namespace)) {
-                source.sendFailure(Component.literal("Emote is not disabled: " + namespace));
+            if (this.configManager.getPackConfig().isEnabled(id)) {
+                source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteRegistry.findDefinition(namespace) == null) {
-            source.sendFailure(Component.literal("Emote is not enabled: " + namespace));
+        } else if (this.emoteRegistry.findDefinition(id) == null) {
+            source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }
 
-        if (!this.configManager.setPackEnabled(namespace, enabled)) {
+        if (!this.configManager.setPackEnabled(id, enabled)) {
             source.sendFailure(Component.literal("Failed to save packs.json."));
             return 0;
         }
         if (!enabled) {
-            this.playbackManager.stopNamespace(namespace);
+            this.playbackManager.stopId(id);
         }
 
         EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
-            () -> Component.literal(action + " emote: " + namespace + " (emotes=" + reloadResult.emoteCount() + ")"),
+            () -> Component.literal(action + " emote: " + id + " (emotes=" + reloadResult.emoteCount() + ")"),
             true
         );
         return 1;
     }
 
-    private List<String> getDisabledNamespaces() {
+    private List<String> getDisabledIds() {
         return this.configManager.getPackConfig().disabled();
     }
 

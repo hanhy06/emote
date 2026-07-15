@@ -14,7 +14,7 @@ public class PlayableEmoteService {
     private final PlayPermissionChecker playPermissionChecker;
 
     public PlayableEmoteService(EmoteRegistry emoteRegistry, PermissionService permissionService) {
-        this(emoteRegistry, (player, definition) -> permissionService.canPlay(player, definition.namespace()));
+        this(emoteRegistry, (player, definition) -> permissionService.canPlay(player, definition.id()));
     }
 
     PlayableEmoteService(EmoteRegistry emoteRegistry, PlayPermissionChecker playPermissionChecker) {
@@ -25,8 +25,8 @@ public class PlayableEmoteService {
     public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
         return this.emoteRegistry.getDefinitions().stream()
             .filter(definition -> canPlay(player, definition))
-            .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::commandName))
-            .map(definition -> new PlayableEmote(definition.commandName(), definition.name(), definition.description()))
+            .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::id))
+            .map(definition -> new PlayableEmote(definition.id(), definition.name(), definition.description()))
             .toList();
     }
 
@@ -50,38 +50,37 @@ public class PlayableEmoteService {
 
     private static int searchRank(PlayableEmote emote, String query) {
         String displayName = emote.displayName().toLowerCase(Locale.ROOT);
-        String commandName = emote.commandName().toLowerCase(Locale.ROOT);
+        String id = emote.id().toLowerCase(Locale.ROOT);
         String description = emote.description().toLowerCase(Locale.ROOT);
         if (displayName.equals(query)) return 0;
         if (displayName.startsWith(query)) return 1;
-        if (commandName.startsWith(query)) return 2;
-        if (displayName.contains(query) || commandName.contains(query) || description.contains(query)) return 3;
+        if (id.startsWith(query)) return 2;
+        if (displayName.contains(query) || id.contains(query) || description.contains(query)) return 3;
         return Integer.MAX_VALUE;
     }
 
-    public List<String> getPlayNames() {
-        return collectPlayNames(ignored -> true);
+    public List<String> getPlayIds() {
+        return collectPlayIds(ignored -> true);
     }
 
-    public List<String> getPlayablePlayNames(ServerPlayer player) {
-        return collectPlayNames(definition -> canPlay(player, definition));
+    public List<String> getPlayablePlayIds(ServerPlayer player) {
+        return collectPlayIds(definition -> canPlay(player, definition));
     }
 
-    private List<String> collectPlayNames(Predicate<EmoteDefinition> definitionFilter) {
-        LinkedHashMap<String, String> names = new LinkedHashMap<>();
+    private List<String> collectPlayIds(Predicate<EmoteDefinition> definitionFilter) {
+        List<String> ids = new java.util.ArrayList<>();
         for (EmoteDefinition definition : this.emoteRegistry.getDefinitions()) {
             if (definitionFilter.test(definition)) {
-                names.putIfAbsent(definition.commandName(), definition.commandName());
-                names.putIfAbsent(definition.namespace(), definition.namespace());
+                ids.add(definition.id());
             }
         }
-        return List.copyOf(names.values());
+        return List.copyOf(ids);
     }
 
-    public PlayableEmoteSelection findSelection(ServerPlayer player, String commandName) {
-        EmoteDefinition definition = this.emoteRegistry.findDefinitionForPlay(commandName);
+    public PlayableEmoteSelection findSelection(ServerPlayer player, String id) {
+        EmoteDefinition definition = this.emoteRegistry.findDefinition(id);
         if (definition == null) {
-            return PlayableEmoteSelection.failure("Unknown: " + commandName);
+            return PlayableEmoteSelection.failure("Unknown: " + id);
         }
         if (!canPlay(player, definition)) {
             return PlayableEmoteSelection.failure("No emote permission.");
