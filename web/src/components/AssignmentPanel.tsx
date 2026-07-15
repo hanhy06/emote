@@ -1,4 +1,4 @@
-import { useRef, type ChangeEvent, type MouseEvent } from "react";
+import { useEffect, useRef, type ChangeEvent, type MouseEvent } from "react";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -37,6 +37,27 @@ export function AssignmentPanel({
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
     ? String(selectedOrders[0])
     : "";
+
+  useEffect(() => {
+    const list = partList.current;
+    const selectedItems = parts
+      .filter((part) => selectedParts.has(part.partIndex))
+      .map((part) => partItems.current.get(part.partIndex))
+      .filter((item): item is HTMLLIElement => item != null);
+    if (!list || selectedItems.length === 0) return;
+    const firstItem = selectedItems[0];
+    const lastItem = selectedItems[selectedItems.length - 1];
+    const visibleTop = list.scrollTop;
+    const visibleBottom = visibleTop + list.clientHeight;
+    if (firstItem.offsetTop < visibleTop) {
+      list.scrollTo({ top: firstItem.offsetTop, behavior: "smooth" });
+    } else if (lastItem.offsetTop + lastItem.offsetHeight > visibleBottom) {
+      list.scrollTo({
+        top: lastItem.offsetTop + lastItem.offsetHeight - list.clientHeight,
+        behavior: "smooth",
+      });
+    }
+  }, [parts, selectedParts]);
 
   function handlePartClick(event: MouseEvent<HTMLButtonElement>, partIndex: number) {
     onSelectPart(partIndex, event.ctrlKey || event.metaKey || event.shiftKey);
