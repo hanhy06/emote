@@ -18,10 +18,12 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
+  const selectedPartsRef = useRef(selectedParts);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const [renderError, setRenderError] = useState("");
 
   onSelectPartRef.current = onSelectPart;
+  selectedPartsRef.current = selectedParts;
 
   useEffect(() => {
     for (const [nodeId, material] of materialsRef.current) {
@@ -125,7 +127,6 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let pointerStart: { x: number; y: number } | null = null;
-    let clickCycle: { x: number; y: number; nodeIds: string[]; index: number } | null = null;
     const handlePointerDown = (event: PointerEvent) => {
       pointerStart = { x: event.clientX, y: event.clientY };
     };
@@ -141,17 +142,10 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       raycaster.setFromCamera(pointer, camera);
       const nodeIds = [...new Set(raycaster.intersectObjects(clickableMeshes, false)
         .map((intersection) => intersection.object.userData.nodeId as string))];
-      if (nodeIds.length === 0) {
-        clickCycle = null;
-        return;
-      }
-      const continuesCycle = clickCycle !== null
-        && Math.hypot(event.clientX - clickCycle.x, event.clientY - clickCycle.y) <= 8
-        && nodeIds.length === clickCycle.nodeIds.length
-        && nodeIds.every((nodeId, index) => nodeId === clickCycle!.nodeIds[index]);
-      const index = continuesCycle ? (clickCycle!.index + 1) % nodeIds.length : 0;
-      clickCycle = { x: event.clientX, y: event.clientY, nodeIds, index };
-      onSelectPartRef.current(nodeIds[index], event.ctrlKey || event.metaKey || event.shiftKey);
+      if (nodeIds.length === 0) return;
+      const selectedIndex = nodeIds.findIndex((nodeId) => selectedPartsRef.current.has(nodeId));
+      const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % nodeIds.length;
+      onSelectPartRef.current(nodeIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
     };
     renderer.domElement.addEventListener("pointerdown", handlePointerDown);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
