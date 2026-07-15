@@ -1,5 +1,6 @@
 import type { EmoteAnimation, EmoteEvent, Matrix16 } from "./emoteAnimation";
 import { isResourceLocation } from "./resourceLocation";
+import { TICKS_PER_SECOND } from "./time";
 
 export interface ValidationIssue {
   path: string;
@@ -9,7 +10,7 @@ export interface ValidationIssue {
 export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (animation.schema_version !== 1) add(issues, "schema_version", "must be 1");
-  if (animation.tick_rate !== 20) add(issues, "tick_rate", "must be 20");
+  if (animation.tick_rate !== TICKS_PER_SECOND) add(issues, "tick_rate", `must be ${TICKS_PER_SECOND}`);
   if (!animation.minecraft_version.trim()) add(issues, "minecraft_version", "must not be empty");
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");

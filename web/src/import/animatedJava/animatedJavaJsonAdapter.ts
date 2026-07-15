@@ -1,9 +1,9 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import { secondsToTicks } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
+import { secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 
@@ -179,9 +179,8 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
   if (animation.loop_mode.type === "hold") throw new Error(`Animated Java animation ${id} uses hold mode, which the emote format cannot represent.`);
   const blendWeight = numericExpression(animation.blend_weight ?? "1", `${id}.blend_weight`);
   if (blendWeight !== 1) throw new Error(`Animated Java animation ${id} must use blend_weight 1.`);
-  const startDelay = numericExpression(animation.start_delay ?? "0", `${id}.start_delay`);
-  secondsToTicks(startDelay, `${id}.start_delay`);
-  secondsToTicks(animation.length + startDelay, `${id}.length`);
+  const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
+  const durationTicks = secondsToTicks(animation.length, `${id}.length`) + startDelayTicks;
   const global = animation.global_keyframes;
   if (global && (Object.keys(global.texture ?? {}).length || Object.keys(global.event ?? {}).length)) {
     throw new Error(`Animated Java animation ${id} contains texture or API event keyframes that the emote format cannot preserve.`);
@@ -191,15 +190,15 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
   for (const [nodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
     const node = nodes[nodeId];
     if (!node) throw new Error(`Animated Java animation ${id} references unknown node ${nodeId}.`);
-    tracks[nodeId] = { transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelay), visibility: [] };
+    tracks[nodeId] = { transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelayTicks), visibility: [] };
   }
   return {
     id: sanitizeResourcePath(id, "default"),
     name: prettify(id),
-    durationSeconds: animation.length + startDelay,
+    durationTicks,
     loop: animation.loop_mode.type,
-    loopDelaySeconds: animation.loop_mode.type === "loop"
-      ? numericExpression(animation.loop_mode.loop_delay ?? "0", `${id}.loop_delay`)
+    loopDelayTicks: animation.loop_mode.type === "loop"
+      ? secondsToTicks(numericExpression(animation.loop_mode.loop_delay ?? "0", `${id}.loop_delay`), `${id}.loop_delay`)
       : 0,
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -211,7 +210,7 @@ function compileNodeChannels(
   nodeId: string,
   channels: AjNodeChannels,
   defaultMatrix: Matrix16,
-  startDelay: number,
+  startDelayTicks: number,
 ): ImportedTransformKeyframe[] {
   const matrix = new Matrix4().set(...defaultMatrix);
   const position = new Vector3();
@@ -228,7 +227,7 @@ function compileNodeChannels(
     for (const key of Object.keys(channel ?? {})) {
       const time = Number(key);
       if (!Number.isFinite(time) || time < 0) throw new Error(`${animationId}/${nodeId} has invalid keyframe time ${key}.`);
-      secondsToTicks(time + startDelay, `${animationId}/${nodeId} keyframe`);
+      secondsToTicks(time, `${animationId}/${nodeId} keyframe`);
       times.add(time);
     }
   }
@@ -240,7 +239,7 @@ function compileNodeChannels(
     if (scaleKeyframe) current.scale = readBakedVector(scaleKeyframe, `${animationId}/${nodeId}/scale/${time}`);
     const step = entries.filter(Boolean).some((entry) => interpolation(entry!, `${animationId}/${nodeId}/${time}`) === "step");
     return {
-      timeSeconds: time + startDelay,
+      tick: secondsToTicks(time, `${animationId}/${nodeId} keyframe`) + startDelayTicks,
       matrix: composeAjMatrix(current.position, current.rotation, current.scale),
       interpolation: step ? { type: "step" } : { type: "linear" },
     };

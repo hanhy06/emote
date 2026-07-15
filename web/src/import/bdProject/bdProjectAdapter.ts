@@ -3,11 +3,14 @@ import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
+import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { hasGzipHeader, readPrj2 } from "./prj2";
 
 const decoder = new TextDecoder();
+const BD_SAMPLES_PER_SECOND = 10;
+const TICKS_PER_BD_SAMPLE = TICKS_PER_SECOND / BD_SAMPLES_PER_SECOND;
 
 interface BdSceneNode {
   isCollection?: boolean;
@@ -83,7 +86,7 @@ export const bdProjectAdapter: ImportAdapter = {
     const nodes = Object.fromEntries(displays.map((entry) => [entry.id, createImportedNode(entry, frameTimes[0])]));
     const tracks = Object.fromEntries(displays.map((entry) => [entry.id, {
       transforms: frameTimes.map((time, index): ImportedTransformKeyframe => ({
-        timeSeconds: time / 10,
+        tick: time * TICKS_PER_BD_SAMPLE,
         matrix: evaluateDisplayMatrix(entry, time),
         interpolation: index === 0 ? { type: "step" } : { type: "linear" },
       })),
@@ -93,9 +96,9 @@ export const bdProjectAdapter: ImportAdapter = {
     const animation: ImportedAnimation = {
       id: sanitizeResourcePath(animationName, "default"),
       name: animationName,
-      durationSeconds: (frameTimes[frameTimes.length - 1] + 1) / 10,
+      durationTicks: (frameTimes[frameTimes.length - 1] + 1) * TICKS_PER_BD_SAMPLE,
       loop: "loop",
-      loopDelaySeconds: 0,
+      loopDelayTicks: 0,
       tracks,
       events: { start: [], timeline: [], loop: [], stop: [] },
     };

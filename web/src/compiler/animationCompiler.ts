@@ -7,6 +7,7 @@ import type {
 } from "../format/emoteAnimation";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { TICKS_PER_SECOND, requireTick } from "../format/time";
 
 export interface CompileOptions {
   minecraftVersion: string;
@@ -24,7 +25,7 @@ export function compileImportedProject(project: ImportedProject, options: Compil
   return project.animations.map((animation, index) => ({
     schema_version: 1,
     minecraft_version: options.minecraftVersion,
-    tick_rate: 20,
+    tick_rate: TICKS_PER_SECOND,
     id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: {
       ...baseMetadata,
@@ -61,21 +62,21 @@ function compileNodes(nodes: Record<string, ImportedNode>): Record<string, Emote
 }
 
 function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline"] {
-  const durationTicks = secondsToTicks(animation.durationSeconds, `${animation.id} duration`);
+  const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const keyframes = new Map<number, EmoteKeyframe>();
   for (const [nodeId, track] of Object.entries(animation.tracks)) {
     let previousTick = 0;
     for (const transform of track.transforms) {
-      const tick = secondsToTicks(transform.timeSeconds, `${animation.id}/${nodeId} transform`);
+      const tick = requireTick(transform.tick, `${animation.id}/${nodeId} transform`);
       const keyframe = keyframes.get(tick) ?? { tick };
       const explicitDuration = transform.interpolation.type === "linear"
-        ? transform.interpolation.durationSeconds
+        ? transform.interpolation.durationTicks
         : undefined;
       const duration = transform.interpolation.type === "step"
         ? 0
         : explicitDuration == null
           ? tick - previousTick
-          : secondsToTicks(explicitDuration, `${animation.id}/${nodeId} interpolation`);
+          : requireTick(explicitDuration, `${animation.id}/${nodeId} interpolation`);
       keyframe.node_transforms = {
         ...keyframe.node_transforms,
         [nodeId]: { matrix: transform.matrix, interpolation_duration_ticks: duration },
@@ -84,21 +85,21 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
       previousTick = tick;
     }
     for (const state of track.visibility) {
-      const tick = secondsToTicks(state.timeSeconds, `${animation.id}/${nodeId} visibility`);
+      const tick = requireTick(state.tick, `${animation.id}/${nodeId} visibility`);
       const keyframe = keyframes.get(tick) ?? { tick };
       keyframe.node_states = { ...keyframe.node_states, [nodeId]: { visible: state.visible } };
       keyframes.set(tick, keyframe);
     }
   }
 
-  const timelineEvents: EmoteTimelineEvent[] = animation.events.timeline.map(({ timeSeconds, ...event }) => ({
+  const timelineEvents: EmoteTimelineEvent[] = animation.events.timeline.map((event) => ({
     ...event,
-    tick: secondsToTicks(timeSeconds, `${animation.id} event`),
+    tick: requireTick(event.tick, `${animation.id} event`),
   }));
   return {
     duration_ticks: durationTicks,
     loop: animation.loop === "loop" ? "loop" : "once",
-    loop_delay_ticks: animation.loop === "loop" ? secondsToTicks(animation.loopDelaySeconds, `${animation.id} loop delay`) : 0,
+    loop_delay_ticks: animation.loop === "loop" ? requireTick(animation.loopDelayTicks, `${animation.id} loop delay`) : 0,
     keyframes: [...keyframes.values()].sort((first, second) => first.tick - second.tick),
     events: {
       ...(animation.events.start.length ? { start: animation.events.start } : {}),
@@ -107,13 +108,4 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
       ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
     },
   };
-}
-
-export function secondsToTicks(seconds: number, label: string): number {
-  const ticks = seconds * 20;
-  const rounded = Math.round(ticks);
-  if (!Number.isFinite(seconds) || seconds < 0 || Math.abs(ticks - rounded) > 1e-7) {
-    throw new Error(`${label} does not fall on a 20 TPS tick: ${seconds}`);
-  }
-  return rounded;
 }

@@ -25,9 +25,9 @@ describe("exportAnimation", () => {
       animations: [{
         id: "test",
         name: "Test",
-        durationSeconds: 0.05,
+        durationTicks: 1,
         loop: "once",
-        loopDelaySeconds: 0,
+        loopDelayTicks: 0,
         tracks: {},
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],

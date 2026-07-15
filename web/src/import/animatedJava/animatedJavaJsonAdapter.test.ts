@@ -41,6 +41,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(animation.timeline.duration_ticks).toBe(2);
     expect(animation.timeline.loop_delay_ticks).toBe(2);
     expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 1]);
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item.interpolation_duration_ticks)).toEqual([0, 1]);
     expect(animation.nodes.item.type === "item_display" && animation.nodes.item.item_stack_snbt).toContain('"minecraft:damage":3');
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });

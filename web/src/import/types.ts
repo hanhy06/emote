@@ -41,9 +41,9 @@ export interface ImportedSkinPart {
 export interface ImportedAnimation {
   id: string;
   name: string;
-  durationSeconds: number;
+  durationTicks: number;
   loop: "once" | "hold" | "loop";
-  loopDelaySeconds: number;
+  loopDelayTicks: number;
   tracks: Record<string, ImportedNodeTrack>;
   events: {
     start: EmoteEvent[];
@@ -59,23 +59,22 @@ export interface ImportedNodeTrack {
 }
 
 export interface ImportedTransformKeyframe {
-  timeSeconds: number;
+  tick: number;
   matrix: Matrix16;
   interpolation: ImportedInterpolation;
 }
 
 export type ImportedInterpolation =
   | { type: "step" }
-  | { type: "linear"; durationSeconds?: number }
-  | { type: "sampled_linear" };
+  | { type: "linear"; durationTicks?: number };
 
 export interface ImportedVisibilityKeyframe {
-  timeSeconds: number;
+  tick: number;
   visible: boolean;
 }
 
 export interface ImportedTimelineEvent extends EmoteEvent {
-  timeSeconds: number;
+  tick: number;
 }
 
 export interface ImportDiagnostic {

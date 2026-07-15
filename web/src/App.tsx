@@ -30,11 +30,11 @@ export function App() {
 
   const animation = project?.animations[animationIndex];
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
-  const previewTimes = useMemo(() => animationTimes(animation), [animation]);
-  const previewTime = previewTimes[Math.min(previewFrameIndex, previewTimes.length - 1)] ?? 0;
+  const previewTicks = useMemo(() => animationTicks(animation), [animation]);
+  const previewTick = previewTicks[Math.min(previewFrameIndex, previewTicks.length - 1)] ?? 0;
   const previewParts = useMemo(
-    () => createPreviewParts(skinCandidates, animation, previewTime),
-    [animation, previewTime, skinCandidates],
+    () => createPreviewParts(skinCandidates, animation, previewTick),
+    [animation, previewTick, skinCandidates],
   );
 
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
@@ -138,14 +138,14 @@ export function App() {
             <strong>{project.sourceName}</strong>
             <span>{adapterLabel}</span>
             <span>{Object.keys(project.nodes).length} nodes</span>
-            {previewTimes.length > 1 && skinCandidates.length > 0 && (
+            {previewTicks.length > 1 && skinCandidates.length > 0 && (
               <label className="frame-slider">
                 <span>Preview</span>
-                <input type="range" min="0" max={previewTimes.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                <input type="range" min="0" max={previewTicks.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
                   setPreviewFrameIndex(Number(event.target.value));
                   setSelectedParts(new Set());
                 }} />
-                <output>{Math.round(previewTime * 20)} tick</output>
+                <output>{previewTick} tick</output>
               </label>
             )}
             {project.animations.length > 1 && (
@@ -205,21 +205,21 @@ function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
   }).map((candidate, partIndex) => ({ ...candidate, partIndex }));
 }
 
-function animationTimes(animation: ImportedAnimation | undefined): number[] {
+function animationTicks(animation: ImportedAnimation | undefined): number[] {
   if (!animation) return [0];
-  const times = new Set<number>([0]);
-  Object.values(animation.tracks).forEach((track) => track.transforms.forEach((keyframe) => times.add(keyframe.timeSeconds)));
-  return [...times].sort((first, second) => first - second);
+  const ticks = new Set<number>([0]);
+  Object.values(animation.tracks).forEach((track) => track.transforms.forEach((keyframe) => ticks.add(keyframe.tick)));
+  return [...ticks].sort((first, second) => first - second);
 }
 
 function createPreviewParts(
   candidates: SkinCandidate[],
   animation: ImportedAnimation | undefined,
-  time: number,
+  tick: number,
 ): PlayerHeadPart[] {
   return candidates.map((candidate) => {
     const track = animation?.tracks[candidate.nodeId];
-    const matrix = track?.transforms.filter((keyframe) => keyframe.timeSeconds <= time).at(-1)?.matrix ?? candidate.node.defaultMatrix;
+    const matrix = track?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix ?? candidate.node.defaultMatrix;
     return createPlayerHeadPart(candidate.partIndex, matrix);
   });
 }

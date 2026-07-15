@@ -1,5 +1,6 @@
 import type { EmoteAnimation, EmoteEvent } from "../../format/emoteAnimation";
 import { asMatrix16 } from "../../format/matrix";
+import { TICKS_PER_SECOND } from "../../format/time";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
@@ -14,7 +15,7 @@ export const emoteJsonAdapter: ImportAdapter = {
   probe(input: ImportInput): ProbeResult {
     try {
       const value = JSON.parse(decoder.decode(input.bytes)) as Record<string, unknown>;
-      return value.schema_version === 1 && value.tick_rate === 20 && isRecord(value.nodes) && isRecord(value.timeline)
+      return value.schema_version === 1 && value.tick_rate === TICKS_PER_SECOND && isRecord(value.nodes) && isRecord(value.timeline)
         ? { confidence: 100, reason: "matches emote animation schema 1" }
         : { confidence: 0, reason: "does not match emote animation schema 1" };
     } catch {
@@ -77,15 +78,15 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
       const track = tracks[nodeId] ?? { transforms: [], visibility: [] };
       const durationTicks = transform.interpolation_duration_ticks ?? keyframe.interpolation_duration_ticks ?? 0;
       track.transforms.push({
-        timeSeconds: keyframe.tick / 20,
+        tick: keyframe.tick,
         matrix: asMatrix16(transform.matrix, `${id}/${nodeId}/${keyframe.tick}.matrix`),
-        interpolation: durationTicks === 0 ? { type: "step" } : { type: "linear", durationSeconds: durationTicks / 20 },
+        interpolation: durationTicks === 0 ? { type: "step" } : { type: "linear", durationTicks },
       });
       tracks[nodeId] = track;
     }
     for (const [nodeId, state] of Object.entries(keyframe.node_states ?? {})) {
       const track = tracks[nodeId] ?? { transforms: [], visibility: [] };
-      track.visibility.push({ timeSeconds: keyframe.tick / 20, visible: state.visible });
+      track.visibility.push({ tick: keyframe.tick, visible: state.visible });
       tracks[nodeId] = track;
     }
   }
@@ -93,13 +94,13 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   return {
     id,
     name: animation.metadata.name,
-    durationSeconds: animation.timeline.duration_ticks / 20,
+    durationTicks: animation.timeline.duration_ticks,
     loop: animation.timeline.loop,
-    loopDelaySeconds: animation.timeline.loop_delay_ticks / 20,
+    loopDelayTicks: animation.timeline.loop_delay_ticks,
     tracks,
     events: {
       start: copyEvents(events?.start),
-      timeline: (events?.timeline ?? []).map(({ tick, ...event }) => ({ ...copyEvent(event), timeSeconds: tick / 20 })),
+      timeline: (events?.timeline ?? []).map(({ tick, ...event }) => ({ ...copyEvent(event), tick })),
       loop: copyEvents(events?.loop),
       stop: copyEvents(events?.stop),
     },

@@ -8,6 +8,7 @@ import {
   readSnbtRawField,
   readSnbtStringField,
 } from "../../format/snbt";
+import { secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type {
   ImportDiagnostic,
@@ -163,15 +164,15 @@ function parseAnimations(
     let tick = 0;
     frames.forEach((frame, position) => {
       if (frame.index !== position) throw new Error(`BD keyframes for ${name} must be contiguous from frame 0.`);
-      parseFrame(frame.text, frame.path, namespace, tick / 20, tracks, timeline, diagnostics);
+      parseFrame(frame.text, frame.path, namespace, tick, tracks, timeline, diagnostics);
       tick += readFrameDelayTicks(frame.text, frame.path);
     });
     return {
       id: name,
       name,
-      durationSeconds: tick / 20,
+      durationTicks: tick,
       loop: entrypoint.includes(`${name}/play_anim_loop`) ? "loop" : "once",
-      loopDelaySeconds: 0,
+      loopDelayTicks: 0,
       tracks,
       events: { start: [], timeline, loop: [], stop: [] },
     };
@@ -182,7 +183,7 @@ function parseFrame(
   text: string,
   path: string,
   namespace: string,
-  timeSeconds: number,
+  tick: number,
   tracks: ImportedAnimation["tracks"],
   events: ImportedTimelineEvent[],
   diagnostics: ImportDiagnostic[],
@@ -196,21 +197,21 @@ function parseFrame(
       }
       const duration = Number.parseInt(/interpolation_duration:(\d+)/.exec(line)?.[1] ?? "0", 10);
       const keyframe: ImportedTransformKeyframe = {
-        timeSeconds,
+        tick,
         matrix: readMatrix(line, `${path}/${tag}`),
-        interpolation: duration === 0 ? { type: "step" } : { type: "linear" },
+        interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
       };
       tracks[tag].transforms.push(keyframe);
       continue;
     }
     if (STRUCTURAL_KEYFRAME_COMMAND.test(line)) continue;
-    const event = parseRootEvent(line, namespace, timeSeconds);
+    const event = parseRootEvent(line, namespace, tick);
     if (event) events.push(event);
     else diagnostics.push({ severity: "error", code: "unsupported_bd_command", message: `Unsupported BD keyframe command: ${line}`, sourcePath: path });
   }
 }
 
-function parseRootEvent(line: string, namespace: string, timeSeconds: number): ImportedTimelineEvent | null {
+function parseRootEvent(line: string, namespace: string, tick: number): ImportedTimelineEvent | null {
   const escaped = escapeRegExp(namespace);
   const match = new RegExp(`^execute as @e\\[tag=${escaped}_root,type=block_display\\] at @s positioned ~ ~(-?\\d+(?:\\.\\d+)?) ~ run (.+)$`).exec(line);
   if (!match) return null;
@@ -225,7 +226,7 @@ function parseRootEvent(line: string, namespace: string, timeSeconds: number): I
     return null;
   }
   return {
-    timeSeconds,
+    tick,
     source: { type: "server" },
     origin: { type: "root", offset: [0, verticalOffset, forwardOffset] },
     commands: [command],
@@ -236,7 +237,7 @@ function readFrameDelayTicks(text: string, path: string): number {
   const match = /^schedule function .+? (\d+(?:\.\d+)?)([st])$/m.exec(text);
   if (!match) throw new Error(`BD keyframe does not schedule its next step: ${path}`);
   const value = Number.parseFloat(match[1]);
-  const ticks = match[2] === "t" ? value : value * 20;
+  const ticks = match[2] === "t" ? value : secondsToTicks(value, `${path} schedule delay`);
   if (!Number.isInteger(ticks) || ticks < 1) throw new Error(`BD keyframe delay is not a positive whole tick: ${path}`);
   return ticks;
 }
