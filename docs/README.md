@@ -1,6 +1,6 @@
 # Emote
 
-![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/a6e8b74b404bb30dbc06e61a3456fb5b5349ee9d.gif)
+![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
 
 Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine and Animated Java.
 
@@ -8,7 +8,7 @@ The mod can be installed on the server only. Installing it on the client also ad
 
 The web converter exports BD Engine projects and Animated Java blueprints as Emote animation JSON files.
 
-> Don’t judge the mod by the demo—the developer is a programmer, not an animator. I’m looking forward to seeing the much better emotes you create!
+> Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
 
 - [Web converter](https://hanhy06.github.io/emote/)
 - [Modrinth](https://modrinth.com/mod/emote)
