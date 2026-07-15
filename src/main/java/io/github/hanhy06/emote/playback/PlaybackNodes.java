@@ -20,22 +20,17 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
         private final EmoteAnimation.Node node;
         private final Display entity;
         private DisplayContent displayContent;
-        private EmoteAnimation.Matrix currentMatrix;
-        private boolean visible;
 
         public NodeInstance(
             String id,
             EmoteAnimation.Node node,
             Display entity,
-            DisplayContent displayContent,
-            boolean visible
+            DisplayContent displayContent
         ) {
             this.id = Objects.requireNonNull(id, "id");
             this.node = Objects.requireNonNull(node, "node");
             this.entity = entity;
             this.displayContent = displayContent;
-            this.currentMatrix = node.defaultMatrix();
-            this.visible = visible;
         }
 
         public String id() {
@@ -59,22 +54,6 @@ public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> n
                 throw new IllegalStateException("Node is not an item display: " + this.id);
             }
             this.displayContent = new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
-        }
-
-        public EmoteAnimation.Matrix currentMatrix() {
-            return this.currentMatrix;
-        }
-
-        public void setCurrentMatrix(EmoteAnimation.Matrix currentMatrix) {
-            this.currentMatrix = Objects.requireNonNull(currentMatrix, "currentMatrix");
-        }
-
-        public boolean visible() {
-            return this.visible;
-        }
-
-        public void setVisible(boolean visible) {
-            this.visible = visible;
         }
 
         public boolean isAnchor() {

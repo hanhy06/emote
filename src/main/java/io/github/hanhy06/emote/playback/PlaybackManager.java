@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
 import net.minecraft.server.MinecraftServer;

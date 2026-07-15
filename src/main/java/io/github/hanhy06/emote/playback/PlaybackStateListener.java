@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.playback.data.ActiveEmote;
 import net.minecraft.server.level.ServerPlayer;
 
 public interface PlaybackStateListener {

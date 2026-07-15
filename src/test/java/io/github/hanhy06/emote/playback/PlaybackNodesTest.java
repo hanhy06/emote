@@ -29,8 +29,7 @@ class PlaybackNodesTest {
             "item",
             itemNode,
             null,
-            new PlaybackNodes.ItemContent(ItemStack.EMPTY),
-            true
+            new PlaybackNodes.ItemContent(ItemStack.EMPTY)
         );
 
         PlaybackNodes.DisplayContent originalContent = node.displayContent();

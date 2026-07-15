@@ -1,8 +1,5 @@
-package io.github.hanhy06.emote.playback.data;
+package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.playback.EventPlayer;
-import io.github.hanhy06.emote.playback.PlaybackNodes;
-import io.github.hanhy06.emote.playback.TimelinePlayer;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;

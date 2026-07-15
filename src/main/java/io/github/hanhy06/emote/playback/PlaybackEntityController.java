@@ -62,7 +62,6 @@ public final class PlaybackEntityController {
             data.store("text", ComponentSerialization.CODEC, registryOps, visible ? textContent.text() : Component.empty());
         }
         TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
-        node.setVisible(visible);
     }
 
     public void applyTransformation(
@@ -71,7 +70,6 @@ public final class PlaybackEntityController {
         EmoteAnimation.Matrix matrix,
         int interpolationDurationTicks
     ) {
-        node.setCurrentMatrix(matrix);
         if (node.isAnchor()) {
             return;
         }
@@ -100,7 +98,7 @@ public final class PlaybackEntityController {
         EmoteAnimation.Node node
     ) {
         if (node instanceof EmoteAnimation.AnchorNode) {
-            return new NodeInstance(nodeId, node, null, null, true);
+            return new NodeInstance(nodeId, node, null, null);
         }
 
         Display entity = createDisplay(level, node);
@@ -112,7 +110,7 @@ public final class PlaybackEntityController {
 
         DisplayContent content = applyRuntimeData(entity, root, node);
         boolean visible = initialVisibility(node);
-        NodeInstance instance = new NodeInstance(nodeId, node, entity, content, visible);
+        NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
         if (!visible) {
             setVisible(instance, false);
         }

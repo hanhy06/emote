@@ -10,7 +10,7 @@ import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.*;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.playback.data.ActiveEmote;
+import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.server.EmoteReloadService;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;

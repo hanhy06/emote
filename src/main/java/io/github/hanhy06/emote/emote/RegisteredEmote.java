@@ -45,10 +45,6 @@ public record RegisteredEmote(
         return this.source.sourcePath();
     }
 
-    public String fingerprint() {
-        return this.source.sha256();
-    }
-
     public int nodeCount() {
         return animation().nodes().size();
     }

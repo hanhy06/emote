@@ -91,10 +91,6 @@ public final class TimelinePlayer {
         return this.currentTick;
     }
 
-    public boolean isFinished() {
-        return this.finished;
-    }
-
     public Transformation currentTransformation(String nodeId) {
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {

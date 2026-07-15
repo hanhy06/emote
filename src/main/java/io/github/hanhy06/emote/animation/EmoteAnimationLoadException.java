@@ -19,10 +19,6 @@ public class EmoteAnimationLoadException extends Exception {
         this.fieldPath = Objects.requireNonNull(fieldPath, "fieldPath");
     }
 
-    public Path sourcePath() {
-        return this.sourcePath;
-    }
-
     public String fieldPath() {
         return this.fieldPath;
     }

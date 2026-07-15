@@ -99,7 +99,7 @@ public class PlayerSkinManager implements ConfigListener {
         this.mineSkinManager.cancelPendingBakes();
     }
 
-    private boolean applyMineSkinProfile(
+    private void applyMineSkinProfile(
         NodeInstance node,
         PlayerSkinPart skinPart,
         PlayerSkinSegment skinSegment,
@@ -107,23 +107,22 @@ public class PlayerSkinManager implements ConfigListener {
     ) {
         String textureUrl = preparedSkin.findTextureUrl(skinPart, skinSegment);
         if (textureUrl == null) {
-            return false;
+            return;
         }
         SlotAccess itemSlot = node.entity().getSlot(0);
         if (itemSlot == null) {
-            return false;
+            return;
         }
         ItemStack itemStack = itemSlot.get();
         if (!itemStack.is(Items.PLAYER_HEAD)) {
-            return false;
+            return;
         }
         ItemStack profileStack = itemStack.copy();
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
         if (!itemSlot.set(profileStack)) {
-            return false;
+            return;
         }
         node.setItemStack(profileStack);
-        return true;
     }
 
     private Set<PlayerSkinTextureKey> createTextureKeys(List<EmoteSkinPart> skinParts) {
