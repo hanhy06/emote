@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.mixin;
 
-import io.github.hanhy06.emote.playback.PlaybackEquipmentSyncCallback;
+import io.github.hanhy06.emote.mixin.bridge.PlaybackHooks;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -17,7 +17,7 @@ abstract class LivingEntityMixin {
     @Inject(method = "handleEquipmentChanges", at = @At("TAIL"))
     private void emote$afterEquipmentSync(Map<EquipmentSlot, ItemStack> changedItems, CallbackInfo callbackInfo) {
         if ((Object) this instanceof ServerPlayer player) {
-            PlaybackEquipmentSyncCallback.EVENT.invoker().afterEquipmentSync(player, changedItems);
+            PlaybackHooks.EQUIPMENT_SYNC.invoker().afterEquipmentSync(player, changedItems);
         }
     }
 }
