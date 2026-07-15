@@ -1,0 +1,442 @@
+import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { asMatrix16, secondsToTicks } from "../../compiler/animationCompiler";
+import type { Matrix16 } from "../../format/emoteAnimation";
+import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
+import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+
+const decoder = new TextDecoder();
+const encoder = new TextEncoder();
+const IDENTITY = asMatrix16([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], "identity");
+
+interface AjBlueprint {
+  format_version: number;
+  settings: { id: string };
+  textures?: Record<string, AjTexture>;
+  texture_palettes?: Record<string, { active_state: string; states: Record<string, { texture: string }> }>;
+  nodes?: Record<string, AjNode>;
+  animations?: Record<string, AjAnimation>;
+}
+
+type AjTexture =
+  | { type: "custom"; base64_string: string; mime_type?: string }
+  | { type: "reference"; resource_location: string };
+
+interface AjNode {
+  type: "bone" | "item_display" | "block_display" | "text_display" | "structure" | "camera" | "locator";
+  default_transformation?: { matrix?: number[] };
+  display_properties?: Record<string, unknown>;
+  elements?: AjElement[];
+}
+
+interface AjElement {
+  from: number[];
+  to: number[];
+  rotation: unknown;
+  shade?: boolean;
+  light_emission?: number;
+  faces: Record<string, {
+    uv: number[];
+    texture_provider: { type: "texture"; texture: string } | { type: "texture_palette"; texture_palette: string };
+    tintindex?: number;
+    rotation?: number;
+  }>;
+}
+
+interface AjAnimation {
+  loop_mode: { type: "once" | "hold" | "loop"; loop_delay?: string };
+  blend_weight?: string;
+  start_delay?: string;
+  length: number;
+  global_keyframes?: { texture?: Record<string, unknown>; event?: Record<string, unknown> };
+  node_keyframes?: Record<string, AjNodeChannels>;
+}
+
+interface AjNodeChannels {
+  position?: Record<string, AjKeyframe>;
+  rotation?: Record<string, AjKeyframe>;
+  scale?: Record<string, AjKeyframe>;
+}
+
+interface AjKeyframe {
+  value: string[];
+  post?: string[];
+  interpolation: { type: "linear"; easing: string } | { type: "step" } | { type: "bezier" | "catmullrom" };
+}
+
+export const animatedJavaJsonAdapter: ImportAdapter = {
+  id: "animated_java_json",
+  label: "Animated Java plugin blueprint",
+  extensions: ["json"],
+
+  probe(input: ImportInput): ProbeResult {
+    try {
+      const value = JSON.parse(decoder.decode(input.bytes)) as Partial<AjBlueprint>;
+      return value.format_version === 1 && typeof value.settings?.id === "string" && isRecord(value.nodes) && isRecord(value.animations)
+        ? { confidence: 100, reason: "matches Animated Java plugin blueprint format 1" }
+        : { confidence: 0, reason: "does not match Animated Java plugin blueprint format 1" };
+    } catch {
+      return { confidence: 0, reason: "not JSON" };
+    }
+  },
+
+  async import(input: ImportInput): Promise<ImportedProject> {
+    const blueprint = JSON.parse(decoder.decode(input.bytes)) as AjBlueprint;
+    validateRoot(blueprint);
+    const resource = parseResourceLocation(blueprint.settings.id, "settings.id");
+    const artifacts: ImportedArtifact[] = [];
+    const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, artifacts)]));
+    const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes));
+    if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
+    if (animations.length === 0) throw new Error("Animated Java blueprint does not contain animations.");
+    const name = prettify(resource.path.split("/").at(-1) ?? resource.path);
+    return {
+      source: "animated_java_json",
+      sourceName: input.name,
+      suggestedMetadata: { name, description: `${name} emote.`, command_name: sanitizeId(resource.path), hide_player: true },
+      nodes,
+      animations,
+      diagnostics: [],
+      artifacts,
+    };
+  },
+};
+
+function validateRoot(blueprint: AjBlueprint): void {
+  if (blueprint.format_version !== 1) throw new Error(`Unsupported Animated Java plugin blueprint version: ${blueprint.format_version}`);
+  parseResourceLocation(blueprint.settings?.id, "settings.id");
+}
+
+function importNode(
+  id: string,
+  node: AjNode,
+  resource: ResourceLocation,
+  blueprint: AjBlueprint,
+  artifacts: ImportedArtifact[],
+): ImportedNode {
+  const defaultMatrix = readDefaultMatrix(node, id);
+  if (node.type === "locator" || node.type === "structure" || node.type === "camera") {
+    return { id, parentId: null, type: "anchor", defaultMatrix };
+  }
+  const entityNbt = displayPropertiesToNbt(node.display_properties);
+  if (node.type === "bone") {
+    const modelPath = [resource.path, id].filter(Boolean).join("/");
+    writeBoneArtifacts(modelPath, id, node, resource, blueprint, artifacts);
+    return {
+      id,
+      parentId: null,
+      type: "item_display",
+      defaultMatrix,
+      visible: true,
+      ...(entityNbt ? { entityNbt } : {}),
+      itemDisplay: "none",
+      itemStackSnbt: `{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"${resource.namespace}:${modelPath}"}}`,
+    };
+  }
+  const properties = node.display_properties ?? {};
+  if (node.type === "item_display") {
+    return {
+      id,
+      parentId: null,
+      type: "item_display",
+      defaultMatrix,
+      visible: true,
+      ...(entityNbt ? { entityNbt } : {}),
+      itemDisplay: stringProperty(properties, "item_display", "none"),
+      itemStackSnbt: itemArgumentToSnbt(stringProperty(properties, "item", "minecraft:air")),
+    };
+  }
+  if (node.type === "block_display") {
+    return {
+      id,
+      parentId: null,
+      type: "block_display",
+      defaultMatrix,
+      visible: true,
+      ...(entityNbt ? { entityNbt } : {}),
+      blockStateSnbt: blockArgumentToSnbt(stringProperty(properties, "block_state", "minecraft:air")),
+    };
+  }
+  return {
+    id,
+    parentId: null,
+    type: "text_display",
+    defaultMatrix,
+    visible: true,
+    ...(entityNbt ? { entityNbt } : {}),
+    text: parseText(stringProperty(properties, "text", "")),
+  };
+}
+
+function importAnimation(id: string, animation: AjAnimation, nodes: Record<string, ImportedNode>): ImportedAnimation {
+  if (animation.loop_mode.type === "hold") throw new Error(`Animated Java animation ${id} uses hold mode, which the emote format cannot represent.`);
+  const blendWeight = numericExpression(animation.blend_weight ?? "1", `${id}.blend_weight`);
+  if (blendWeight !== 1) throw new Error(`Animated Java animation ${id} must use blend_weight 1.`);
+  const startDelay = numericExpression(animation.start_delay ?? "0", `${id}.start_delay`);
+  secondsToTicks(startDelay, `${id}.start_delay`);
+  secondsToTicks(animation.length + startDelay, `${id}.length`);
+  const global = animation.global_keyframes;
+  if (global && (Object.keys(global.texture ?? {}).length || Object.keys(global.event ?? {}).length)) {
+    throw new Error(`Animated Java animation ${id} contains texture or API event keyframes that the emote format cannot preserve.`);
+  }
+
+  const tracks: ImportedAnimation["tracks"] = {};
+  for (const [nodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
+    const node = nodes[nodeId];
+    if (!node) throw new Error(`Animated Java animation ${id} references unknown node ${nodeId}.`);
+    tracks[nodeId] = { transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelay), visibility: [] };
+  }
+  return {
+    id: sanitizeId(id),
+    name: prettify(id),
+    durationSeconds: animation.length + startDelay,
+    loop: animation.loop_mode.type,
+    loopDelaySeconds: animation.loop_mode.type === "loop"
+      ? numericExpression(animation.loop_mode.loop_delay ?? "0", `${id}.loop_delay`)
+      : 0,
+    tracks,
+    events: { start: [], timeline: [], loop: [], stop: [] },
+  };
+}
+
+function compileNodeChannels(
+  animationId: string,
+  nodeId: string,
+  channels: AjNodeChannels,
+  defaultMatrix: Matrix16,
+  startDelay: number,
+): ImportedTransformKeyframe[] {
+  const matrix = new Matrix4().set(...defaultMatrix);
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  const scale = new Vector3();
+  matrix.decompose(position, rotation, scale);
+  const current = {
+    position: position.toArray() as [number, number, number],
+    rotation: quaternionToAjRotation(rotation),
+    scale: scale.toArray() as [number, number, number],
+  };
+  const times = new Set<number>();
+  for (const channel of [channels.position, channels.rotation, channels.scale]) {
+    for (const key of Object.keys(channel ?? {})) {
+      const time = Number(key);
+      if (!Number.isFinite(time) || time < 0) throw new Error(`${animationId}/${nodeId} has invalid keyframe time ${key}.`);
+      secondsToTicks(time + startDelay, `${animationId}/${nodeId} keyframe`);
+      times.add(time);
+    }
+  }
+  return [...times].sort((first, second) => first - second).map((time) => {
+    const entries = [channels.position?.[String(time)] ?? channels.position?.[formatTimestamp(time)], channels.rotation?.[String(time)] ?? channels.rotation?.[formatTimestamp(time)], channels.scale?.[String(time)] ?? channels.scale?.[formatTimestamp(time)]];
+    const [positionKeyframe, rotationKeyframe, scaleKeyframe] = entries;
+    if (positionKeyframe) current.position = readBakedVector(positionKeyframe, `${animationId}/${nodeId}/position/${time}`);
+    if (rotationKeyframe) current.rotation = readBakedVector(rotationKeyframe, `${animationId}/${nodeId}/rotation/${time}`);
+    if (scaleKeyframe) current.scale = readBakedVector(scaleKeyframe, `${animationId}/${nodeId}/scale/${time}`);
+    const step = entries.filter(Boolean).some((entry) => interpolation(entry!, `${animationId}/${nodeId}/${time}`) === "step");
+    return {
+      timeSeconds: time + startDelay,
+      matrix: composeAjMatrix(current.position, current.rotation, current.scale),
+      interpolation: step ? { type: "step" } : { type: "linear" },
+    };
+  });
+}
+
+function readBakedVector(keyframe: AjKeyframe, path: string): [number, number, number] {
+  if (keyframe.post) throw new Error(`${path} contains a pre/post keyframe; enable baked animations in Animated Java.`);
+  interpolation(keyframe, path);
+  if (!Array.isArray(keyframe.value) || keyframe.value.length !== 3) throw new Error(`${path}.value must contain three values.`);
+  return keyframe.value.map((value, index) => numericExpression(value, `${path}.value[${index}]`)) as [number, number, number];
+}
+
+function interpolation(keyframe: AjKeyframe, path: string): "linear" | "step" {
+  if (keyframe.interpolation.type === "step") return "step";
+  if (keyframe.interpolation.type === "linear" && keyframe.interpolation.easing === "step") return "step";
+  if (keyframe.interpolation.type === "linear" && keyframe.interpolation.easing === "linear") return "linear";
+  throw new Error(`${path} uses non-baked interpolation; enable baked animations in Animated Java.`);
+}
+
+function composeAjMatrix(position: number[], rotation: number[], scale: number[]): Matrix16 {
+  const euler = new Euler(
+    MathUtils.degToRad(-rotation[0]),
+    MathUtils.degToRad(180 - rotation[1]),
+    MathUtils.degToRad(rotation[2]),
+    "YXZ",
+  );
+  const matrix = new Matrix4().compose(new Vector3(...position), new Quaternion().setFromEuler(euler), new Vector3(...scale));
+  return matrixToRowMajor(matrix);
+}
+
+function quaternionToAjRotation(quaternion: Quaternion): [number, number, number] {
+  const euler = new Euler().setFromQuaternion(quaternion, "YXZ");
+  return [-MathUtils.radToDeg(euler.x), 180 - MathUtils.radToDeg(euler.y), MathUtils.radToDeg(euler.z)];
+}
+
+function readDefaultMatrix(node: AjNode, id: string): Matrix16 {
+  const values = node.default_transformation?.matrix ?? IDENTITY;
+  if (values.length !== 16 || values.some((value) => !Number.isFinite(value))) throw new Error(`Animated Java node ${id} has an invalid default matrix.`);
+  return matrixToRowMajor(new Matrix4().fromArray(values));
+}
+
+function matrixToRowMajor(matrix: Matrix4): Matrix16 {
+  const value = matrix.elements;
+  return asMatrix16([
+    value[0], value[4], value[8], value[12],
+    value[1], value[5], value[9], value[13],
+    value[2], value[6], value[10], value[14],
+    value[3], value[7], value[11], value[15],
+  ], "Animated Java matrix");
+}
+
+function writeBoneArtifacts(
+  modelPath: string,
+  nodeId: string,
+  node: AjNode,
+  resource: ResourceLocation,
+  blueprint: AjBlueprint,
+  artifacts: ImportedArtifact[],
+): void {
+  const usedTextures = new Set<string>();
+  const elements = (node.elements ?? []).map((element) => ({
+    from: element.from,
+    to: element.to,
+    rotation: element.rotation,
+    ...(element.shade === undefined ? {} : { shade: element.shade }),
+    ...(element.light_emission === undefined ? {} : { light_emission: element.light_emission }),
+    faces: Object.fromEntries(Object.entries(element.faces).map(([direction, face]) => {
+      const texture = resolveTexture(face.texture_provider, blueprint);
+      usedTextures.add(texture);
+      return [direction, {
+        uv: face.uv,
+        texture: `#${texture}`,
+        ...(face.tintindex === undefined ? {} : { tintindex: face.tintindex }),
+        ...(face.rotation === undefined ? {} : { rotation: face.rotation }),
+      }];
+    })),
+  }));
+  const textures = Object.fromEntries([...usedTextures].map((texture) => {
+    const source = blueprint.textures?.[texture];
+    if (!source) throw new Error(`Animated Java bone ${nodeId} references unknown texture ${texture}.`);
+    if (source.type === "reference") return [texture, source.resource_location];
+    const texturePath = [resource.path, texture].filter(Boolean).join("/");
+    addArtifact(artifacts, `assets/${resource.namespace}/textures/item/${texturePath}.png`, decodeBase64(source.base64_string, texture));
+    return [texture, `${resource.namespace}:item/${texturePath}`];
+  }));
+  addArtifact(artifacts, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements }));
+  addArtifact(
+    artifacts,
+    `assets/${resource.namespace}/items/${modelPath}.json`,
+    jsonBytes({ model: { type: "minecraft:model", model: `${resource.namespace}:item/${modelPath}` } }),
+  );
+}
+
+function resolveTexture(provider: AjElement["faces"][string]["texture_provider"], blueprint: AjBlueprint): string {
+  if (provider.type === "texture") return provider.texture;
+  const palette = blueprint.texture_palettes?.[provider.texture_palette];
+  const texture = palette?.states?.[palette.active_state]?.texture;
+  if (!texture) throw new Error(`Animated Java texture palette ${provider.texture_palette} has no active texture.`);
+  return texture;
+}
+
+function displayPropertiesToNbt(properties: Record<string, unknown> | undefined): string | undefined {
+  if (!properties) return undefined;
+  const fields: string[] = [];
+  for (const key of ["billboard", "shadow_radius", "shadow_strength", "glow_color_override"] as const) {
+    const value = properties[key];
+    if (typeof value === "string") fields.push(`${key}:"${value}"`);
+    else if (typeof value === "number" && Number.isFinite(value)) fields.push(`${key}:${value}`);
+  }
+  if (properties.is_glowing === true) fields.push("glowing:1b");
+  if (properties.is_custom_brightness_enabled === true && isRecord(properties.custom_brightness)) {
+    const sky = numberProperty(properties.custom_brightness, "sky", 0);
+    const block = numberProperty(properties.custom_brightness, "block", 0);
+    fields.push(`brightness:{sky:${sky},block:${block}}`);
+  }
+  return fields.length ? `{${fields.join(",")}}` : undefined;
+}
+
+function itemArgumentToSnbt(value: string): string {
+  const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
+  const id = normalizeResourceId(match?.[1] ?? "air");
+  const components = match?.[2]?.split(",").flatMap((component) => {
+    const [key, raw] = component.split("=", 2);
+    if (!key || raw === undefined) return [];
+    return [`"${normalizeResourceId(key)}":${raw}`];
+  });
+  return components?.length ? `{id:"${id}",count:1,components:{${components.join(",")}}}` : `{id:"${id}",count:1}`;
+}
+
+function blockArgumentToSnbt(value: string): string {
+  const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
+  const id = normalizeResourceId(match?.[1] ?? "air");
+  const properties = match?.[2]?.split(",").flatMap((property) => {
+    const [key, raw] = property.split("=", 2);
+    return key && raw ? [`${key}:"${raw}"`] : [];
+  });
+  return properties?.length ? `{Name:"${id}",Properties:{${properties.join(",")}}}` : `{Name:"${id}"}`;
+}
+
+function parseText(value: string): unknown {
+  try { return JSON.parse(value); } catch { return { text: value }; }
+}
+
+function numericExpression(value: string, path: string): number {
+  if (typeof value !== "string" || !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(value.trim())) {
+    throw new Error(`${path} contains a dynamic Molang expression; enable baked animations in Animated Java.`);
+  }
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) throw new Error(`${path} is not finite.`);
+  return parsed;
+}
+
+function decodeBase64(value: string, texture: string): Uint8Array {
+  try {
+    const binary = atob(value);
+    return Uint8Array.from(binary, (character) => character.charCodeAt(0));
+  } catch {
+    throw new Error(`Animated Java texture ${texture} is not valid base64.`);
+  }
+}
+
+function jsonBytes(value: unknown): Uint8Array {
+  return encoder.encode(`${JSON.stringify(value, null, 2)}\n`);
+}
+
+function addArtifact(artifacts: ImportedArtifact[], path: string, data: Uint8Array): void {
+  if (!artifacts.some((artifact) => artifact.path === path)) artifacts.push({ path, data });
+}
+
+interface ResourceLocation { namespace: string; path: string }
+
+function parseResourceLocation(value: string | undefined, path: string): ResourceLocation {
+  const match = /^([a-z0-9_.-]+):([a-z0-9_./-]+)$/.exec(value ?? "");
+  if (!match) throw new Error(`Animated Java ${path} must be a resource location.`);
+  return { namespace: match[1], path: match[2] };
+}
+
+function normalizeResourceId(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  return trimmed.includes(":") ? trimmed : `minecraft:${trimmed}`;
+}
+
+function stringProperty(value: Record<string, unknown>, key: string, fallback: string): string {
+  return typeof value[key] === "string" ? value[key] : fallback;
+}
+
+function numberProperty(value: Record<string, unknown>, key: string, fallback: number): number {
+  return typeof value[key] === "number" && Number.isFinite(value[key]) ? value[key] : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function formatTimestamp(value: number): string {
+  return Number.isInteger(value) ? `${value}.0` : String(value);
+}
+
+function sanitizeId(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_./-]+/g, "_").replace(/^_+|_+$/g, "") || "default";
+}
+
+function prettify(value: string): string {
+  const result = value.replaceAll("_", " ").replaceAll("-", " ").trim();
+  return result ? result[0].toUpperCase() + result.slice(1) : "Emote";
+}
