@@ -52,7 +52,13 @@ public class EmoteLifecycle {
             (handler, ignoredSender, ignoredServer) -> this.wheelSyncService.syncPlayer(handler.player)
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
-            (handler, ignoredServer) -> this.playbackManager.stopEmote(handler.player)
+            (handler, server) -> {
+                if (server.isSameThread()) {
+                    this.playbackManager.stopEmote(handler.player);
+                } else {
+                    server.execute(() -> this.playbackManager.stopEmote(handler.player));
+                }
+            }
         );
     }
 
