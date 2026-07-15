@@ -217,9 +217,12 @@ final class MineSkinClient {
                 return responseBody;
             }
 
-            if (response.statusCode() == 429 && attempt < RATE_LIMIT_RETRY_LIMIT) {
-                Thread.sleep(readRetryDelayMillis(response, responseBody));
-                continue;
+            if (response.statusCode() == 429) {
+                if (attempt < RATE_LIMIT_RETRY_LIMIT) {
+                    Thread.sleep(readRetryDelayMillis(response, responseBody));
+                    continue;
+                }
+                throw new RateLimitException(readErrorMessage(responseBody, "MineSkin request rate limit exceeded"));
             }
 
             throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
@@ -389,6 +392,23 @@ final class MineSkinClient {
 
     static final class JobFailedException extends IOException {
         JobFailedException(String message) {
+            super(message);
+        }
+
+        boolean isRateLimited() {
+            String message = getMessage();
+            if (message == null) {
+                return false;
+            }
+            String normalized = message.toLowerCase(java.util.Locale.ROOT);
+            return normalized.contains("rate_limit")
+                || normalized.contains("rate limit")
+                || normalized.contains("too many requests");
+        }
+    }
+
+    static final class RateLimitException extends IOException {
+        RateLimitException(String message) {
             super(message);
         }
     }

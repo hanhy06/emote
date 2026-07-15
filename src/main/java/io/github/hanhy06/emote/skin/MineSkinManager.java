@@ -163,10 +163,28 @@ final class MineSkinManager {
                     jobId -> this.cache.savePendingJob(contentHash, jobId)
                 );
             }
+        } catch (MineSkinClient.RateLimitException exception) {
+            this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
+            Emote.LOGGER.warn(
+                "MineSkin generation rate limit reached for baked texture {}. "
+                    + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
+                contentHash,
+                exception.getMessage()
+            );
+            return null;
         } catch (MineSkinClient.JobFailedException exception) {
             this.cache.clearPendingJob(contentHash);
             this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
-            Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
+            if (exception.isRateLimited()) {
+                Emote.LOGGER.warn(
+                    "MineSkin generation rate limit reached for baked texture {}. "
+                        + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
+                    contentHash,
+                    exception.getMessage()
+                );
+            } else {
+                Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
+            }
             return null;
         }
 

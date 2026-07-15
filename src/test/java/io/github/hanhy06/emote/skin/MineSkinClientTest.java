@@ -68,6 +68,15 @@ class MineSkinClientTest {
         assertEquals(3_600_000L, delay);
     }
 
+    @Test
+    void jobFailureRecognizesRateLimitMessages() {
+        assertTrue(new MineSkinClient.JobFailedException(
+            "[proxy_rate_limited] All proxies have rate-limit queue backlog"
+        ).isRateLimited());
+        assertTrue(new MineSkinClient.JobFailedException("Too many requests").isRateLimited());
+        assertFalse(new MineSkinClient.JobFailedException("Invalid skin image").isRateLimited());
+    }
+
     private boolean contains(byte[] body, byte[] expected) {
         for (int offset = 0; offset <= body.length - expected.length; offset++) {
             boolean matches = true;
