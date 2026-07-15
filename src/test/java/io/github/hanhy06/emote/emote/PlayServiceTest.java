@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.permission.PermissionService;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,7 +11,8 @@ class PlayServiceTest {
     @Test
     void playReturnsSuccess() {
         PlayService service = new PlayService(
-            createPlayableEmoteService(),
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS
         );
 
@@ -24,7 +24,8 @@ class PlayServiceTest {
     @Test
     void playReturnsPlaybackFailure() {
         PlayService service = new PlayService(
-            createPlayableEmoteService(),
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Animation unavailable. ")
         );
 
@@ -34,14 +35,32 @@ class PlayServiceTest {
         assertEquals("Animation unavailable.", result.errorMessage());
     }
 
-    private PlayableEmoteService createPlayableEmoteService() {
+    @Test
+    void selectionRequiresTheExactId() {
+        PlayService service = new PlayService(
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> true,
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS
+        );
+
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+        assertEquals("Unknown: wave", service.play(null, "wave").errorMessage());
+    }
+
+    @Test
+    void rejectsBlockedEmote() {
+        PlayService service = new PlayService(
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> false,
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS
+        );
+
+        assertEquals("No emote permission.", service.play(null, "minecraft:wave").errorMessage());
+    }
+
+    private EmoteRegistry createRegistry() {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replace(List.of(create("wave", "Wave")));
-        return new PlayableEmoteService(registry, new PermissionService() {
-            @Override
-            public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String id) {
-                return true;
-            }
-        });
+        return registry;
     }
 }

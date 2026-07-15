@@ -76,17 +76,6 @@ public class PlayableEmoteService {
         return List.copyOf(ids);
     }
 
-    public PlayableEmoteSelection findSelection(ServerPlayer player, String id) {
-        RegisteredEmote emote = this.emoteRegistry.find(id);
-        if (emote == null) {
-            return PlayableEmoteSelection.failure("Unknown: " + id);
-        }
-        if (!canPlay(player, emote)) {
-            return PlayableEmoteSelection.failure("No emote permission.");
-        }
-        return PlayableEmoteSelection.success(emote);
-    }
-
     private boolean canPlay(ServerPlayer player, RegisteredEmote emote) {
         return this.playPermissionChecker.canPlay(player, emote);
     }

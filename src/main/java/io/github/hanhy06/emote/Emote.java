@@ -46,7 +46,8 @@ public class Emote implements ModInitializer {
         this.playbackManager
     );
     private final PlayService playService = new PlayService(
-        this.playableEmoteService,
+        this.emoteRegistry,
+        this.permissionService,
         this.playbackManager
     );
     private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);

@@ -42,24 +42,4 @@ class PlayableEmoteServiceTest {
         assertEquals(List.of("demo:wave"), service.getPlayablePlayIds(null));
     }
 
-    @Test
-    void selectionRequiresTheExactId() {
-        EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("demo:wave", "Wave")));
-        PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> true);
-
-        assertTrue(service.findSelection(null, "demo:wave").isSuccess());
-        assertFalse(service.findSelection(null, "wave").isSuccess());
-    }
-
-    @Test
-    void findSelectionRejectsBlockedEmote() {
-        EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("demo:wave", "Wave")));
-        PlayableEmoteService service = new PlayableEmoteService(registry, (ignoredPlayer, ignoredDefinition) -> false);
-
-        PlayableEmoteSelection result = service.findSelection(null, "demo:wave");
-        assertFalse(result.isSuccess());
-        assertEquals("No emote permission.", result.errorMessage());
-    }
 }
