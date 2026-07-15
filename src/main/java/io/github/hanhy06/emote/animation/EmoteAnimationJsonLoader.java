@@ -19,6 +19,7 @@ import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
 public final class EmoteAnimationJsonLoader {
     private static final int SCHEMA_VERSION = 1;
     private static final int TICK_RATE = 20;
+    private static final String TRANSFORM_SPACE_PATH = "$.transform_space";
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
         "thirdperson_lefthand",
@@ -87,9 +88,9 @@ public final class EmoteAnimationJsonLoader {
     }
 
     private void parseTransformSpace(JsonObject object, Path sourcePath) throws EmoteAnimationLoadException {
-        requireExactString(object, "coordinate_space", "$.transform_space", "root_local", sourcePath);
-        requireExactString(object, "matrix_layout", "$.transform_space", "row_major", sourcePath);
-        requireExactInt(object, "matrix_size", "$.transform_space", 16, sourcePath);
+        requireTransformSpaceString(object, "coordinate_space", "root_local", sourcePath);
+        requireTransformSpaceString(object, "matrix_layout", "row_major", sourcePath);
+        requireExactInt(object, "matrix_size", TRANSFORM_SPACE_PATH, 16, sourcePath);
     }
 
     private Map<String, Node> parseNodes(JsonObject object, Path sourcePath) throws EmoteAnimationLoadException {
@@ -121,8 +122,8 @@ public final class EmoteAnimationJsonLoader {
             return new AnchorNode(defaultMatrix);
         }
 
-        boolean visible = optionalBoolean(object, "visible", path, true, sourcePath);
-        CompoundTag entityNbt = optionalCompoundSnbt(object, "entity_nbt", path, sourcePath);
+        boolean visible = optionalVisible(object, path, sourcePath);
+        CompoundTag entityNbt = optionalEntityNbt(object, path, sourcePath);
         return switch (type) {
             case "item_display" -> new ItemNode(
                 visible,
@@ -205,8 +206,9 @@ public final class EmoteAnimationJsonLoader {
         return id;
     }
 
-    private CompoundTag optionalCompoundSnbt(JsonObject object, String key, String path, Path sourcePath)
+    private CompoundTag optionalEntityNbt(JsonObject object, String path, Path sourcePath)
         throws EmoteAnimationLoadException {
+        String key = "entity_nbt";
         if (!object.has(key) || object.get(key).isJsonNull()) {
             return new CompoundTag();
         }
@@ -285,16 +287,15 @@ public final class EmoteAnimationJsonLoader {
         return element.getAsString();
     }
 
-    private void requireExactString(
+    private void requireTransformSpaceString(
         JsonObject object,
         String key,
-        String path,
         String expected,
         Path sourcePath
     ) throws EmoteAnimationLoadException {
-        String value = requireString(object, key, path, sourcePath);
+        String value = requireString(object, key, TRANSFORM_SPACE_PATH, sourcePath);
         if (!value.equals(expected)) {
-            throw error(sourcePath, path + "." + key, "must equal " + expected);
+            throw error(sourcePath, TRANSFORM_SPACE_PATH + "." + key, "must equal " + expected);
         }
     }
 
@@ -307,12 +308,12 @@ public final class EmoteAnimationJsonLoader {
         return element.getAsBoolean();
     }
 
-    private boolean optionalBoolean(JsonObject object, String key, String path, boolean defaultValue, Path sourcePath)
+    private boolean optionalVisible(JsonObject object, String path, Path sourcePath)
         throws EmoteAnimationLoadException {
-        if (!object.has(key) || object.get(key).isJsonNull()) {
-            return defaultValue;
+        if (!object.has("visible") || object.get("visible").isJsonNull()) {
+            return true;
         }
-        return requireBoolean(object, key, path, sourcePath);
+        return requireBoolean(object, "visible", path, sourcePath);
     }
 
     static int requireInt(JsonObject object, String key, String path, Path sourcePath)
@@ -326,14 +327,6 @@ public final class EmoteAnimationJsonLoader {
         } catch (ArithmeticException exception) {
             throw error(sourcePath, path + "." + key, "must be a 32-bit integer");
         }
-    }
-
-    static int optionalInt(JsonObject object, String key, String path, int defaultValue, Path sourcePath)
-        throws EmoteAnimationLoadException {
-        if (!object.has(key) || object.get(key).isJsonNull()) {
-            return defaultValue;
-        }
-        return requireInt(object, key, path, sourcePath);
     }
 
     private void requireExactInt(JsonObject object, String key, String path, int expected, Path sourcePath)

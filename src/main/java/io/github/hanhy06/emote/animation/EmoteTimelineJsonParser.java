@@ -60,7 +60,7 @@ final class EmoteTimelineJsonParser {
                 throw error(sourcePath, path + ".tick", "keyframes must be strictly ordered by tick");
             }
             previousTick = tick;
-            int defaultInterpolation = optionalInt(object, "interpolation_duration_ticks", path, 0, sourcePath);
+            int defaultInterpolation = optionalInterpolationDuration(object, path, 0, sourcePath);
             if (defaultInterpolation < 0) {
                 throw error(sourcePath, path + ".interpolation_duration_ticks", "must not be negative");
             }
@@ -102,9 +102,8 @@ final class EmoteTimelineJsonParser {
             String path = keyframePath + ".node_transforms." + nodeId;
             requireNode(nodes, nodeId, path, sourcePath);
             JsonObject transform = requireObject(entry.getValue(), path, sourcePath);
-            int interpolation = optionalInt(
+            int interpolation = optionalInterpolationDuration(
                 transform,
-                "interpolation_duration_ticks",
                 path,
                 defaultInterpolation,
                 sourcePath
@@ -281,5 +280,18 @@ final class EmoteTimelineJsonParser {
             throw error(sourcePath, path, "references unknown node: " + nodeId);
         }
         return node;
+    }
+
+    private int optionalInterpolationDuration(
+        JsonObject object,
+        String path,
+        int defaultValue,
+        Path sourcePath
+    ) throws EmoteAnimationLoadException {
+        String key = "interpolation_duration_ticks";
+        if (!object.has(key) || object.get(key).isJsonNull()) {
+            return defaultValue;
+        }
+        return requireInt(object, key, path, sourcePath);
     }
 }
