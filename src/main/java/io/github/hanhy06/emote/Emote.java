@@ -79,7 +79,8 @@ public class Emote implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        registerConfigListeners();
+        this.configManager.addEmoteAccessListener(this.permissionService);
+        this.configManager.addListener(this.skinManager);
         this.configManager.readConfig();
         this.configManager.readEmoteAccessConfig();
 
@@ -91,10 +92,5 @@ public class Emote implements ModInitializer {
         this.rootCommand.register();
 
         LOGGER.info("{} ready", MOD_ID);
-    }
-
-    private void registerConfigListeners() {
-        this.configManager.addEmoteAccessListener(this.permissionService);
-        this.configManager.addListener(this.skinManager);
     }
 }

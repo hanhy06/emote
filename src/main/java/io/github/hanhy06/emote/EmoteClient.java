@@ -24,17 +24,13 @@ public class EmoteClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         this.networking.register();
-        registerConnectionCallbacks();
+        ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
+        ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
         EMOTE_WHEEL_CONTROLLER.registerBinding(EMOTE_WHEEL_KEY);
     }
 
     public static boolean isPlaybackActive() {
         return EMOTE_PERSPECTIVE_CONTROLLER.isPlaybackActive();
-    }
-
-    private void registerConnectionCallbacks() {
-        ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
-        ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
     }
 
     private static void clearClientState() {

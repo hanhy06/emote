@@ -33,22 +33,9 @@ public class EmoteLifecycle {
     }
 
     public void register() {
-        registerLifecycleCallbacks();
-        registerPlaybackCallbacks();
-        registerInterruptionCallbacks();
-        registerConnectionCallbacks();
-    }
-
-    private void registerLifecycleCallbacks() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
-    }
-
-    private void registerPlaybackCallbacks() {
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackManager.tick());
-    }
-
-    private void registerInterruptionCallbacks() {
         PlaybackHooks.INTERRUPTION.register(this.playbackManager::stopEmote);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
@@ -61,9 +48,6 @@ public class EmoteLifecycle {
             }
             return InteractionResult.PASS;
         });
-    }
-
-    private void registerConnectionCallbacks() {
         ServerPlayConnectionEvents.JOIN.register(
             (handler, ignoredSender, ignoredServer) -> this.wheelSyncService.syncPlayer(handler.player)
         );
