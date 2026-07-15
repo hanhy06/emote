@@ -106,7 +106,7 @@ public class WheelController {
 
         for (int index = 0; index < this.syncedEmotes.size(); index++) {
             if (this.syncedEmotes.get(index).id().equals(this.lastSelectedId)) {
-                return index / WheelScreen.SLOT_COUNT;
+                return index / WheelGeometry.SLOT_COUNT;
             }
         }
 

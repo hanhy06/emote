@@ -17,7 +17,6 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
-    static final int SLOT_COUNT = WheelGeometry.SLOT_COUNT;
     private static final int LEFT_MOUSE_BUTTON = 0;
     private static final int RIGHT_MOUSE_BUTTON = 1;
     private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
@@ -80,7 +79,7 @@ public class WheelScreen extends Screen {
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
 
-        for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
+        for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             SlotGeometry slot = WheelGeometry.createSlot(slotIndex, metrics);
             PlayableEmote playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
             boolean hovered = slotIndex == this.hoveredSlotIndex;
@@ -256,20 +255,20 @@ public class WheelScreen extends Screen {
             return null;
         }
 
-        int emoteIndex = this.pageIndex * SLOT_COUNT + slotIndex;
+        int emoteIndex = this.pageIndex * WheelGeometry.SLOT_COUNT + slotIndex;
         return emoteIndex >= 0 && emoteIndex < this.emotes.size()
             ? this.emotes.get(emoteIndex)
             : null;
     }
 
     private List<PlayableEmote> getCurrentPageEmotes() {
-        int startIndex = Math.min(this.pageIndex * SLOT_COUNT, this.emotes.size());
-        int endIndex = Math.min(startIndex + SLOT_COUNT, this.emotes.size());
+        int startIndex = Math.min(this.pageIndex * WheelGeometry.SLOT_COUNT, this.emotes.size());
+        int endIndex = Math.min(startIndex + WheelGeometry.SLOT_COUNT, this.emotes.size());
         return this.emotes.subList(startIndex, endIndex);
     }
 
     private int getPageCount() {
-        return Math.max(1, (this.emotes.size() + SLOT_COUNT - 1) / SLOT_COUNT);
+        return Math.max(1, (this.emotes.size() + WheelGeometry.SLOT_COUNT - 1) / WheelGeometry.SLOT_COUNT);
     }
 
     private int clampPageIndex(int pageIndex) {
@@ -280,7 +279,7 @@ public class WheelScreen extends Screen {
         WheelMetrics metrics = WheelGeometry.createMetrics(this.width, this.height);
         this.hoveredSlotIndex = -1;
 
-        for (int slotIndex = 0; slotIndex < SLOT_COUNT; slotIndex++) {
+        for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             if (getPlayableEmoteAt(slotIndex) == null) {
                 continue;
             }
