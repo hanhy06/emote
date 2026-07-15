@@ -65,6 +65,7 @@ public class PlaybackManager {
                 timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
                 timeline.startSynchronized(server.overworld().getGameTime());
                 this.entityController.add(player.level(), nodes);
+                timeline.resumeSynchronizedInterpolation();
             } else {
                 nodes = this.entityController.spawn(player, emote.animation());
                 timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);

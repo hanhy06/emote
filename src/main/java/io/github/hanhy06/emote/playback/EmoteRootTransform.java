@@ -6,6 +6,8 @@ import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 
 public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix) {
+    private static final float MODEL_FORWARD_YAW_OFFSET = 180.0F;
+
     public EmoteRootTransform {
         rotationMatrix = new Matrix4f(rotationMatrix);
     }
@@ -15,7 +17,7 @@ public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatr
     }
 
     public static EmoteRootTransform create(Vec3 position, float yaw) {
-        Matrix4f rotation = new Matrix4f().rotateY((float)Math.toRadians(-yaw));
+        Matrix4f rotation = new Matrix4f().rotateY((float)Math.toRadians(MODEL_FORWARD_YAW_OFFSET - yaw));
         return new EmoteRootTransform(position, yaw, rotation);
     }
 

@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.animation.EmoteAnimation;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -19,6 +21,22 @@ class EmoteRootTransformTest {
         assertEquals(4.0F, result.z, 0.0001F);
     }
 
+    @Test
+    void alignsModelForwardWithPlayerYaw() {
+        assertForward(0.0F, 0.0F, 1.0F);
+        assertForward(90.0F, -1.0F, 0.0F);
+        assertForward(180.0F, 0.0F, -1.0F);
+        assertForward(-90.0F, 1.0F, 0.0F);
+    }
+
+    private void assertForward(float yaw, float expectedX, float expectedZ) {
+        Vector3f result = EmoteRootTransform.create(Vec3.ZERO, yaw)
+            .displayMatrix(matrix(0.0D, 0.0D, 0.0D))
+            .transformDirection(new Vector3f(0.0F, 0.0F, -1.0F));
+        assertEquals(expectedX, result.x, 0.0001F);
+        assertEquals(expectedZ, result.z, 0.0001F);
+    }
+
     private EmoteAnimation.Matrix matrix(double x, double y, double z) {
         return new EmoteAnimation.Matrix(List.of(
             1.0D, 0.0D, 0.0D, x,
@@ -27,4 +45,5 @@ class EmoteRootTransformTest {
             0.0D, 0.0D, 0.0D, 1.0D
         ));
     }
+
 }
