@@ -6,7 +6,8 @@ import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTop
 import { secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+import { ConversionError } from "../errors";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 
 const encoder = new TextEncoder();
@@ -31,7 +32,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     const blueprint = requireAjBlueprint(parseInputJson(input));
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
-    const artifacts: ImportedArtifact[] = [];
+    const artifacts = new Map<string, Uint8Array>();
     const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, artifacts)]));
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes));
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
@@ -45,6 +46,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
       animations,
       diagnostics: [],
       artifacts,
+      ...(artifacts.size ? { artifactMinecraftVersion: "26.2" } : {}),
     };
   },
 };
@@ -59,11 +61,11 @@ function importNode(
   node: AjNode,
   resource: ResourceLocation,
   blueprint: AjBlueprint,
-  artifacts: ImportedArtifact[],
+  artifacts: Map<string, Uint8Array>,
 ): ImportedNode {
   const defaultMatrix = readDefaultMatrix(node, id);
   if (node.type === "locator" || node.type === "structure" || node.type === "camera") {
-    return { id, parentId: null, type: "anchor", defaultMatrix };
+    return { id, type: "anchor", defaultMatrix };
   }
   const entityNbt = displayPropertiesToNbt(node.display_properties);
   if (node.type === "bone") {
@@ -71,7 +73,6 @@ function importNode(
     writeBoneArtifacts(modelPath, id, node, resource, blueprint, artifacts);
     return {
       id,
-      parentId: null,
       type: "item_display",
       defaultMatrix,
       visible: true,
@@ -90,7 +91,6 @@ function importNode(
   if (node.type === "item_display") {
     return {
       id,
-      parentId: null,
       type: "item_display",
       defaultMatrix,
       visible: true,
@@ -102,7 +102,6 @@ function importNode(
   if (node.type === "block_display") {
     return {
       id,
-      parentId: null,
       type: "block_display",
       defaultMatrix,
       visible: true,
@@ -112,7 +111,6 @@ function importNode(
   }
   return {
     id,
-    parentId: null,
     type: "text_display",
     defaultMatrix,
     visible: true,
@@ -234,7 +232,7 @@ function writeBoneArtifacts(
   node: AjNode,
   resource: ResourceLocation,
   blueprint: AjBlueprint,
-  artifacts: ImportedArtifact[],
+  artifacts: Map<string, Uint8Array>,
 ): void {
   const usedTextures = new Set<string>();
   const elements = (node.elements ?? []).map((element) => ({
@@ -350,8 +348,12 @@ function jsonBytes(value: unknown): Uint8Array {
   return encoder.encode(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function addArtifact(artifacts: ImportedArtifact[], path: string, data: Uint8Array): void {
-  if (!artifacts.some((artifact) => artifact.path === path)) artifacts.push({ path, data });
+function addArtifact(artifacts: Map<string, Uint8Array>, path: string, data: Uint8Array): void {
+  const existing = artifacts.get(path);
+  if (existing && (existing.length !== data.length || existing.some((value, index) => value !== data[index]))) {
+    throw new ConversionError("artifact_path_collision", `Generated resources contain different files at the same path: ${path}`, path);
+  }
+  artifacts.set(path, data);
 }
 
 function stringProperty(value: Record<string, unknown>, key: string, fallback: string): string {

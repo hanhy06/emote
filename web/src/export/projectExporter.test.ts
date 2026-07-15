@@ -14,7 +14,6 @@ describe("exportAnimation", () => {
       nodes: {
         body: {
           id: "body",
-          parentId: null,
           type: "item_display",
           defaultMatrix: IDENTITY,
           visible: true,
@@ -32,7 +31,7 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: [],
+      artifacts: new Map(),
     };
     const result = exportAnimation(project, {
       minecraftVersion: "26.2",

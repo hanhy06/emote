@@ -63,7 +63,7 @@ describe("animatedJavaJsonAdapter", () => {
       animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
     });
     const project = await animatedJavaJsonAdapter.import(input);
-    expect(project.artifacts.map((artifact) => artifact.path)).toEqual([
+    expect([...project.artifacts.keys()]).toEqual([
       "assets/demo/textures/item/rig/skin.png",
       "assets/demo/models/item/rig/body.json",
       "assets/demo/items/rig/body.json",

@@ -12,12 +12,12 @@ export interface ImportedProject {
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
-  artifacts: ImportedArtifact[];
+  artifacts: Map<string, Uint8Array>;
+  artifactMinecraftVersion?: string;
 }
 
 export interface ImportedNodeBase {
   id: string;
-  parentId: string | null;
   defaultMatrix: Matrix16;
   visible: boolean;
   entityNbt?: string;
@@ -43,7 +43,7 @@ export interface ImportedAnimation {
   id: string;
   name: string;
   durationTicks: number;
-  loop: "once" | "hold" | "loop";
+  loop: "once" | "loop";
   loopDelayTicks: number;
   tracks: Record<string, ImportedNodeTrack>;
   events: {
@@ -79,8 +79,3 @@ export interface ImportedTimelineEvent extends EmoteEvent {
 }
 
 export type ImportDiagnostic = ConversionIssue;
-
-export interface ImportedArtifact {
-  path: string;
-  data: Uint8Array;
-}

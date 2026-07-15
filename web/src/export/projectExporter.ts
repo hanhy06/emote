@@ -1,4 +1,4 @@
-import { compileImportedProject } from "../compiler/animationCompiler";
+import { compileImportedAnimation } from "../compiler/animationCompiler";
 import type { EmoteMetadata } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
@@ -19,10 +19,10 @@ export function exportAnimation(
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
 ): ExportResult {
-  if (project.artifacts.length > 0 && options.minecraftVersion !== "26.2") {
-    throw new Error("Animated Java model resources currently support Minecraft 26.2 only.");
+  if (project.artifactMinecraftVersion && options.minecraftVersion !== project.artifactMinecraftVersion) {
+    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
   }
-  const animations = compileImportedProject(applySkinAssignments(project, skinAssignments), {
+  const animation = compileImportedAnimation(applySkinAssignments(project, skinAssignments), {
     minecraftVersion: options.minecraftVersion,
     namespace: options.namespace,
     metadata: {
@@ -31,9 +31,7 @@ export function exportAnimation(
       command_name: options.command_name,
       hide_player: options.hide_player,
     },
-  });
-  const animation = animations[animationIndex];
-  if (!animation) throw new Error(`Animation ${animationIndex + 1} does not exist.`);
+  }, animationIndex);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${sanitizeFileName(animation.metadata.command_name)}.json`,
@@ -41,15 +39,16 @@ export function exportAnimation(
 }
 
 export function exportResource(project: ImportedProject, minecraftVersion: string, resourceIndex: number): ExportResult {
-  if (minecraftVersion !== "26.2") {
-    throw new Error("Animated Java model resources currently support Minecraft 26.2 only.");
+  if (project.artifactMinecraftVersion && minecraftVersion !== project.artifactMinecraftVersion) {
+    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
   }
-  const resource = project.artifacts[resourceIndex];
+  const resource = [...project.artifacts.entries()][resourceIndex];
   if (!resource) throw new Error(`Resource ${resourceIndex + 1} does not exist.`);
-  const bytes = new Uint8Array(resource.data).buffer;
+  const [path, data] = resource;
+  const bytes = new Uint8Array(data).buffer;
   return {
-    blob: new Blob([bytes], { type: contentType(resource.path) }),
-    fileName: resource.path.split("/").at(-1) ?? "resource.bin",
+    blob: new Blob([bytes], { type: contentType(path) }),
+    fileName: path.split("/").at(-1) ?? "resource.bin",
   };
 }
 

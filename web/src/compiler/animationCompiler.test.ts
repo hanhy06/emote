@@ -1,17 +1,41 @@
 import { describe, expect, it } from "vitest";
 import type { Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../import/types";
-import { compileImportedProject } from "./animationCompiler";
+import { compileImportedAnimation, compileImportedProject } from "./animationCompiler";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 describe("compileImportedProject time handling", () => {
   it("writes interpolation duration on the current target keyframe", () => {
-    const project: ImportedProject = {
+    const project = importedProject();
+
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
+    const durations = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.anchor.interpolation_duration_ticks);
+
+    expect(durations).toEqual([0, 2, 3]);
+  });
+
+  it("compiles only the selected animation after validating project identifiers", () => {
+    const project = importedProject();
+    project.animations.push({ ...project.animations[0], id: "broken", durationTicks: -1 });
+
+    expect(compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "test" }, 0).timeline.duration_ticks).toBe(10);
+  });
+
+  it("rejects ids that collide after resource path normalization", () => {
+    const project = importedProject();
+    project.animations.push({ ...project.animations[0], id: "Test" });
+
+    expect(() => compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" })).toThrow("normalize to the same id");
+  });
+});
+
+function importedProject(): ImportedProject {
+  return {
       source: "emote_json",
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "Test emote.", command_name: "test", hide_player: true },
-      nodes: { anchor: { id: "anchor", parentId: null, type: "anchor", defaultMatrix: IDENTITY } },
+      nodes: { anchor: { id: "anchor", type: "anchor", defaultMatrix: IDENTITY } },
       animations: [{
         id: "test",
         name: "Test",
@@ -31,12 +55,6 @@ describe("compileImportedProject time handling", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: [],
-    };
-
-    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
-    const durations = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.anchor.interpolation_duration_ticks);
-
-    expect(durations).toEqual([0, 2, 3]);
-  });
-});
+      artifacts: new Map(),
+  };
+}

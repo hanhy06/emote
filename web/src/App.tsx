@@ -184,9 +184,9 @@ export function App() {
 
           <ExportPanel
             metadata={metadata}
-            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.length)}
+            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.size)}
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
-            resources={project.artifacts.map((item) => ({ label: item.path.split("/").at(-1) ?? item.path, detail: item.path }))}
+            resources={[...project.artifacts.keys()].map((path) => ({ label: path.split("/").at(-1) ?? path, detail: path }))}
             error={conversionError}
             onMetadataChange={setMetadata}
             onDownloadAnimation={handleAnimationDownload}

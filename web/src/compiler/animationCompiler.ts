@@ -17,31 +17,63 @@ export interface CompileOptions {
 }
 
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
+  const context = prepareCompile(project, options);
+  return project.animations.map((animation, index) => compileAnimation(project, animation, index, context));
+}
+
+export function compileImportedAnimation(project: ImportedProject, options: CompileOptions, animationIndex: number): EmoteAnimation {
+  const context = prepareCompile(project, options);
+  const animation = project.animations[animationIndex];
+  if (!animation) throw new ConversionError("unknown_animation", `Animation ${animationIndex + 1} does not exist.`);
+  return compileAnimation(project, animation, animationIndex, context);
+}
+
+interface CompileContext {
+  namespace: string;
+  baseMetadata: EmoteMetadata;
+  multiple: boolean;
+  minecraftVersion: string;
+}
+
+function prepareCompile(project: ImportedProject, options: CompileOptions): CompileContext {
   const importError = project.diagnostics.find((diagnostic) => diagnostic.severity === "error");
   if (importError) throw ConversionError.fromIssue(importError);
   const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.command_name ?? project.suggestedMetadata.command_name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
   const multiple = project.animations.length > 1;
+  const ids = new Set<string>();
+  for (const animation of project.animations) {
+    const id = `${namespace}:${sanitizeResourcePath(animation.id)}`;
+    if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
+    ids.add(id);
+  }
+  return { namespace, baseMetadata, multiple, minecraftVersion: options.minecraftVersion };
+}
 
-  return project.animations.map((animation, index) => ({
+function compileAnimation(
+  project: ImportedProject,
+  animation: ImportedAnimation,
+  index: number,
+  context: CompileContext,
+): EmoteAnimation {
+  return {
     schema_version: 1,
-    minecraft_version: options.minecraftVersion,
+    minecraft_version: context.minecraftVersion,
     tick_rate: TICKS_PER_SECOND,
-    id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
+    id: `${context.namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: {
-      ...baseMetadata,
-      name: multiple ? `${baseMetadata.name} ${animation.name}` : baseMetadata.name,
-      command_name: multiple ? `${sanitizeResourcePath(baseMetadata.command_name)}_${index + 1}` : sanitizeResourcePath(baseMetadata.command_name),
+      ...context.baseMetadata,
+      name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
+      command_name: context.multiple ? `${sanitizeResourcePath(context.baseMetadata.command_name)}_${index + 1}` : sanitizeResourcePath(context.baseMetadata.command_name),
     },
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: compileNodes(project.nodes),
     timeline: compileTimeline(animation),
-  }));
+  };
 }
 
 function compileNodes(nodes: Record<string, ImportedNode>): Record<string, EmoteNode> {
   return Object.fromEntries(Object.entries(nodes).map(([id, node]) => {
-    if (node.parentId) throw new Error(`Node hierarchy has not been flattened: ${id}`);
     if (node.type === "anchor") return [id, { type: "anchor", default_matrix: node.defaultMatrix }];
     const common = {
       ...(node.visible ? {} : { visible: false }),

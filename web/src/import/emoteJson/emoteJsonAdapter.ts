@@ -42,7 +42,7 @@ export const emoteJsonAdapter: ImportAdapter = {
       nodes: importNodes(animation),
       animations: [importTimeline(animation, animationId)],
       diagnostics: [],
-      artifacts: [],
+      artifacts: new Map(),
     };
   },
 };
@@ -50,10 +50,9 @@ export const emoteJsonAdapter: ImportAdapter = {
 function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
     const defaultMatrix = asMatrix16(node.default_matrix, `${id}.default_matrix`);
-    if (node.type === "anchor") return [id, { id, parentId: null, type: "anchor", defaultMatrix }];
+    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix }];
     const common = {
       id,
-      parentId: null,
       defaultMatrix,
       visible: node.visible ?? true,
       ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),

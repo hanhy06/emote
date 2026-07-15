@@ -88,7 +88,7 @@ export const bdProjectAdapter: ImportAdapter = {
       nodes,
       animations: [animation],
       diagnostics: [],
-      artifacts: [],
+      artifacts: new Map(),
     };
   },
 };
@@ -133,7 +133,6 @@ function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNod
     const item = parseItemName(node.name ?? "minecraft:air");
     return {
       id: entry.id,
-      parentId: null,
       type: "item_display",
       defaultMatrix,
       visible: true,
@@ -145,7 +144,6 @@ function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNod
   if (node.isBlockDisplay) {
     return {
       id: entry.id,
-      parentId: null,
       type: "block_display",
       defaultMatrix,
       visible: true,
@@ -155,7 +153,6 @@ function createImportedNode(entry: DisplayEntry, firstTime: number): ImportedNod
   }
   return {
     id: entry.id,
-    parentId: null,
     type: "text_display",
     defaultMatrix,
     visible: true,

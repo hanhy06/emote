@@ -1,4 +1,5 @@
 import type { ImportedProject } from "./types";
+import type { ImportSource } from "./types";
 
 export interface ImportInput {
   name: string;
@@ -11,7 +12,7 @@ export interface ProbeResult {
 }
 
 export interface ImportAdapter {
-  readonly id: string;
+  readonly id: ImportSource;
   readonly label: string;
   readonly extensions: readonly string[];
 

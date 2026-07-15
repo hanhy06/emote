@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ImportAdapter } from "./adapter";
+import type { ImportSource } from "./types";
 import { detectAdapter, importDetected } from "./adapterRegistry";
 import { ConversionError } from "./errors";
 
 function adapter(id: string, confidence: number, extensions: readonly string[] = []): ImportAdapter {
   return {
-    id,
+    id: id as ImportSource,
     label: id,
     extensions,
     probe: () => ({ confidence, reason: id }),

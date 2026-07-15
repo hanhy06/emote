@@ -50,7 +50,7 @@ export const bdDatapackAdapter: ImportAdapter = {
       .flatMap(([path, data]) => {
         const match = CREATE_PATH.exec(path);
         return match && decoder.decode(data).includes("created via BDEngine")
-          ? [{ namespace: match[1], functionFolder: match[2], createPath: path, createText: decoder.decode(data) }]
+          ? [{ namespace: match[1], createText: decoder.decode(data) }]
           : [];
       })
       .sort((first, second) => first.namespace.localeCompare(second.namespace));
@@ -75,7 +75,7 @@ export const bdDatapackAdapter: ImportAdapter = {
       nodes,
       animations,
       diagnostics,
-      artifacts: [],
+      artifacts: new Map(),
     };
   },
 };
@@ -94,7 +94,6 @@ function parseNodes(createText: string, namespace: string): Record<string, Impor
       const marker = /name\s*:\s*"emote:(head|body|left_arm|right_arm|left_leg|right_leg)(\d+)?"/.exec(itemStack);
       nodes[tag] = {
         id: tag,
-        parentId: null,
         type,
         defaultMatrix,
         visible: true,
@@ -106,10 +105,10 @@ function parseNodes(createText: string, namespace: string): Record<string, Impor
     } else if (type === "block_display") {
       const blockState = readSnbtCompoundField(compound, "block_state");
       if (!blockState) throw new Error(`Block display ${tag} does not contain block_state.`);
-      nodes[tag] = { id: tag, parentId: null, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), blockStateSnbt: blockState };
+      nodes[tag] = { id: tag, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), blockStateSnbt: blockState };
     } else {
       const text = readSnbtRawField(compound, "text");
-      nodes[tag] = { id: tag, parentId: null, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), text: parseTextComponent(text) };
+      nodes[tag] = { id: tag, type, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}), text: parseTextComponent(text) };
     }
   }
   if (Object.keys(nodes).length === 0) throw new Error("No BD Engine display nodes were found in create.mcfunction.");
