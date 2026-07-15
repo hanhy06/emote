@@ -1,4 +1,4 @@
-import { useRef, type MouseEvent } from "react";
+import { useRef, type ChangeEvent, type MouseEvent } from "react";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -30,6 +30,13 @@ export function AssignmentPanel({
 }: AssignmentPanelProps) {
   const hasSelection = selectedParts.size > 0;
   const partItems = useRef(new Map<number, HTMLLIElement>());
+  const partList = useRef<HTMLUListElement>(null);
+  const selectedOrders = [...selectedParts]
+    .filter((index) => assignments[index] != null && orders[index] != null)
+    .map((index) => orders[index]!);
+  const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
+    ? String(selectedOrders[0])
+    : "";
 
   function handlePartClick(event: MouseEvent<HTMLButtonElement>, partIndex: number) {
     onSelectPart(partIndex, event.ctrlKey || event.metaKey || event.shiftKey);
@@ -43,11 +50,23 @@ export function AssignmentPanel({
     );
     const nextPart = parts[lastSelectedPosition + 1];
     if (nextPart) {
-      requestAnimationFrame(() => partItems.current.get(nextPart.partIndex)?.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest",
-      }));
+      requestAnimationFrame(() => {
+        const list = partList.current;
+        const item = partItems.current.get(nextPart.partIndex);
+        if (!list || !item) return;
+        const itemBottom = item.offsetTop + item.offsetHeight;
+        if (itemBottom > list.scrollTop + list.clientHeight) {
+          list.scrollTo({ top: itemBottom - list.clientHeight, behavior: "smooth" });
+        } else if (item.offsetTop < list.scrollTop) {
+          list.scrollTo({ top: item.offsetTop, behavior: "smooth" });
+        }
+      });
     }
+  }
+
+  function handleOrderChange(event: ChangeEvent<HTMLSelectElement>) {
+    const order = Number(event.target.value);
+    if (Number.isInteger(order)) assignOrderAndScroll(order);
   }
 
   return (
@@ -62,12 +81,14 @@ export function AssignmentPanel({
         ))}
         <button type="button" disabled={!hasSelection} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
-      <p><strong>Skin order:</strong> Use 0 for the first piece and 1 for the second piece of the same body part.</p>
-      <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedAssignment} onClick={() => assignOrderAndScroll(0)}>Order 0</button>
-        <button type="button" disabled={!hasSelectedAssignment} onClick={() => assignOrderAndScroll(1)}>Order 1</button>
-      </div>
-      <ul className="part-list">
+      <label className="order-control">
+        <strong>Skin order</strong>
+        <select value={selectedOrder} disabled={!hasSelectedAssignment} onChange={handleOrderChange}>
+          <option value="" disabled>Select order</option>
+          {[0, 1, 2, 3, 4].map((order) => <option value={order} key={order}>{order}</option>)}
+        </select>
+      </label>
+      <ul className="part-list" ref={partList}>
         {parts.map((part) => (
           <li
             key={part.partIndex}
