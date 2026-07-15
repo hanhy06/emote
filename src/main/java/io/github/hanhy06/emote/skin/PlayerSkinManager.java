@@ -21,6 +21,8 @@ import java.util.*;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
+    private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
+    private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinTextureStore mineSkinTextureStore;
     private final MineSkinApiClient mineSkinApiClient;
@@ -193,19 +195,39 @@ public class PlayerSkinManager implements ConfigListener {
                 if (cachedResult != null) {
                     textureUrl = cachedResult.textureUrl();
                 } else {
-                    String pendingJobId = this.mineSkinTextureStore.loadPendingJob(contentHash);
-                    if (pendingJobId != null) {
-                        textureUrl = this.mineSkinApiClient.waitForSkinUrl(apiKey, pendingJobId);
-                    } else {
-                        textureUrl = this.mineSkinApiClient.generateSkinUrl(
-                            apiKey,
-                            bakedImage,
-                            source.slimModel(),
-                            jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
+                    long now = System.currentTimeMillis();
+                    if (this.mineSkinTextureStore.isRetryBlocked(contentHash, now)) {
+                        continue;
+                    }
+                    MineSkinTextureStore.MineSkinPendingJob pendingJob = this.mineSkinTextureStore.loadPendingJob(contentHash);
+                    if (pendingJob != null && now - pendingJob.submittedAtEpochMillis() > PENDING_JOB_MAX_AGE_MILLIS) {
+                        this.mineSkinTextureStore.clearPendingJob(contentHash);
+                        pendingJob = null;
+                    }
+                    try {
+                        if (pendingJob != null) {
+                            textureUrl = this.mineSkinApiClient.waitForSkinUrl(apiKey, pendingJob.jobId());
+                        } else {
+                            textureUrl = this.mineSkinApiClient.generateSkinUrl(
+                                apiKey,
+                                bakedImage,
+                                source.slimModel(),
+                                jobId -> this.mineSkinTextureStore.savePendingJob(contentHash, jobId)
+                            );
+                        }
+                    } catch (MineSkinJobFailedException exception) {
+                        this.mineSkinTextureStore.clearPendingJob(contentHash);
+                        this.mineSkinTextureStore.saveFailure(
+                            contentHash,
+                            exception.getMessage(),
+                            now + FAILED_JOB_RETRY_DELAY_MILLIS
                         );
+                        Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
+                        continue;
                     }
                     this.mineSkinTextureStore.saveContent(contentHash, new MineSkinTextureResult(textureUrl));
                     this.mineSkinTextureStore.clearPendingJob(contentHash);
+                    this.mineSkinTextureStore.clearFailure(contentHash);
                 }
                 saved.put(textureKey, textureUrl);
                 this.mineSkinTextureStore.save(source.textureHash(), source.slimModel(), saved);

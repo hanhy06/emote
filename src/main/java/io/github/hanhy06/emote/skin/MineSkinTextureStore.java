@@ -12,6 +12,7 @@ import java.util.*;
 
 final class MineSkinTextureStore {
     private static final int CONTENT_CACHE_VERSION = 1;
+    private static final int JOB_CACHE_VERSION = 1;
     private final Path skinDirPath;
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
@@ -121,7 +122,7 @@ final class MineSkinTextureStore {
         }
     }
 
-    String loadPendingJob(String contentHash) {
+    MineSkinPendingJob loadPendingJob(String contentHash) {
         Path filePath = resolvePendingFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -131,7 +132,16 @@ final class MineSkinTextureStore {
             if (object == null) {
                 return null;
             }
-            return contentHash.equals(readString(object, "content_hash")) ? readString(object, "job_id") : null;
+            Integer version = readInt(object, "version");
+            String storedHash = readString(object, "content_hash");
+            String jobId = readString(object, "job_id");
+            Long submittedAt = readLong(object, "submitted_at");
+            if (version == null || version != JOB_CACHE_VERSION || !contentHash.equals(storedHash)
+                || jobId == null || submittedAt == null || submittedAt <= 0L) {
+                clearPendingJob(contentHash);
+                return null;
+            }
+            return new MineSkinPendingJob(jobId, submittedAt);
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
             return null;
@@ -144,8 +154,10 @@ final class MineSkinTextureStore {
             return;
         }
         JsonObject object = new JsonObject();
+        object.addProperty("version", JOB_CACHE_VERSION);
         object.addProperty("content_hash", contentHash);
         object.addProperty("job_id", jobId);
+        object.addProperty("submitted_at", System.currentTimeMillis());
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
@@ -162,6 +174,54 @@ final class MineSkinTextureStore {
             Files.deleteIfExists(filePath);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to clear MineSkin pending job: {}", filePath, exception);
+        }
+    }
+
+    boolean isRetryBlocked(String contentHash, long nowEpochMillis) {
+        Path filePath = resolveFailureFilePath(contentHash);
+        if (filePath == null || !Files.isRegularFile(filePath)) {
+            return false;
+        }
+        try {
+            JsonObject object = JsonFileStore.readObject(filePath);
+            Long retryAfter = object == null ? null : readLong(object, "retry_after");
+            if (retryAfter == null || retryAfter <= nowEpochMillis) {
+                Files.deleteIfExists(filePath);
+                return false;
+            }
+            return true;
+        } catch (IOException | RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to read MineSkin failure state: {}", filePath, exception);
+            return false;
+        }
+    }
+
+    void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
+        Path filePath = resolveFailureFilePath(contentHash);
+        if (filePath == null) {
+            return;
+        }
+        JsonObject object = new JsonObject();
+        object.addProperty("version", JOB_CACHE_VERSION);
+        object.addProperty("content_hash", contentHash);
+        object.addProperty("retry_after", retryAfterEpochMillis);
+        object.addProperty("last_error", errorMessage);
+        try {
+            JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to write MineSkin failure state: {}", filePath, exception);
+        }
+    }
+
+    void clearFailure(String contentHash) {
+        Path filePath = resolveFailureFilePath(contentHash);
+        if (filePath == null) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(filePath);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to clear MineSkin failure state: {}", filePath, exception);
         }
     }
 
@@ -242,6 +302,14 @@ final class MineSkinTextureStore {
         return element.getAsInt();
     }
 
+    private Long readLong(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        return element.getAsLong();
+    }
+
     private Path resolveFilePath(String textureHash, boolean slimModel) {
         Path skinDirPath = resolveSkinDirPath();
         if (skinDirPath == null) {
@@ -265,6 +333,20 @@ final class MineSkinTextureStore {
         }
         Path skinDirPath = resolveSkinDirPath();
         return skinDirPath == null ? null : skinDirPath.resolve("pending").resolve(contentHash + ".json");
+    }
+
+    private Path resolveFailureFilePath(String contentHash) {
+        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+            return null;
+        }
+        Path skinDirPath = resolveSkinDirPath();
+        return skinDirPath == null ? null : skinDirPath.resolve("failures").resolve(contentHash + ".json");
+    }
+
+    record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {
+        MineSkinPendingJob {
+            Objects.requireNonNull(jobId, "jobId");
+        }
     }
 
     private Path resolveSkinDirPath() {

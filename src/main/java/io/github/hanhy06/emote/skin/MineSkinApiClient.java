@@ -200,7 +200,7 @@ final class MineSkinApiClient {
 
             String jobStatus = readJobStatus(jobResponse);
             if ("failed".equalsIgnoreCase(jobStatus)) {
-                throw new IOException(readErrorMessage(jobResponse, "MineSkin job failed"));
+                throw new MineSkinJobFailedException(readErrorMessage(jobResponse, "MineSkin job failed"));
             }
         }
 

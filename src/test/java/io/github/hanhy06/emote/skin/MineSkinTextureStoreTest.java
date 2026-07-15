@@ -9,6 +9,8 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MineSkinTextureStoreTest {
     @Test
@@ -55,9 +57,22 @@ class MineSkinTextureStoreTest {
         String contentHash = MineSkinContentKey.create(new byte[]{7, 8, 9}, true);
 
         store.savePendingJob(contentHash, "job-123");
-        assertEquals("job-123", store.loadPendingJob(contentHash));
+        MineSkinTextureStore.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
+        assertEquals("job-123", pendingJob.jobId());
+        assertTrue(pendingJob.submittedAtEpochMillis() > 0L);
 
         store.clearPendingJob(contentHash);
         assertNull(store.loadPendingJob(contentHash));
+    }
+
+    @Test
+    void failureBlocksRetryUntilCooldownExpires(@TempDir Path tempDir) {
+        MineSkinTextureStore store = new MineSkinTextureStore(tempDir);
+        String contentHash = MineSkinContentKey.create(new byte[]{10, 11, 12}, false);
+
+        store.saveFailure(contentHash, "failed", 2_000L);
+
+        assertTrue(store.isRetryBlocked(contentHash, 1_999L));
+        assertFalse(store.isRetryBlocked(contentHash, 2_000L));
     }
 }
