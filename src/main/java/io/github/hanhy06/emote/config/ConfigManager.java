@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.config;
 
-import com.google.gson.*;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
@@ -9,7 +11,9 @@ import io.github.hanhy06.emote.io.JsonFileStore;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.List;
 
 public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;

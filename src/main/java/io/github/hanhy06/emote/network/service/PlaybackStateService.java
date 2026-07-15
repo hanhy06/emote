@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.network.service;
 
 import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
-import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.ActiveEmote;
+import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 

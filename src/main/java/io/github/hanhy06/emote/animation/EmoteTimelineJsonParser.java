@@ -5,12 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.animation.EmoteAnimationJsonLoader.*;

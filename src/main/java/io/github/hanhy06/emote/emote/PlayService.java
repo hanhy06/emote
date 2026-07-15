@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.permission.PermissionService;
+import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlayService {
