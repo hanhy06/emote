@@ -1,92 +1,76 @@
 package io.github.hanhy06.emote.config;
 
-import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void createsMinimalPackConfig(@TempDir Path tempDir) throws IOException {
+    void createsJsonEmoteConfiguration(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
 
-        Path packsPath = tempDir.resolve("emote").resolve("packs.json");
-        assertTrue(Files.exists(packsPath));
-        assertTrue(Files.readString(packsPath).contains("\"disabled\""));
-        assertTrue(Files.readString(packsPath).contains("\"permissions\""));
-        assertTrue(Files.readString(packsPath).contains("\"emote.default\""));
-        assertTrue(Files.readString(packsPath).contains("\"*\""));
-        assertTrue(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("\"schema_version\": 1"));
-        assertFalse(Files.readString(tempDir.resolve("emote").resolve("config.json")).contains("emote_permission"));
+        Path accessPath = tempDir.resolve("emote").resolve("emotes.json");
+        assertTrue(Files.exists(accessPath));
+        String accessJson = Files.readString(accessPath);
+        assertTrue(accessJson.contains("\"disabled\""));
+        assertTrue(accessJson.contains("\"permissions\""));
+        assertTrue(accessJson.contains("\"emote.default\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
     }
 
     @Test
-    void readsDisabledNamespacesAndPermissionGroups(@TempDir Path tempDir) throws IOException {
+    void readsDisabledIdsAndPermissionGroups(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
-        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
-              "disabled": ["wave_pack"],
+              "disabled": ["demo:wave"],
               "permissions": {
-                "emote.default": ["wave_pack"],
-                "emote.pack.vip": ["*"]
+                "emote.default": ["demo:wave"],
+                "emote.vip": ["*"]
               }
             }
             """);
 
-        assertTrue(manager.readPackConfig());
-        assertFalse(manager.getPackConfig().isEnabled("wave_pack"));
-        assertTrue(manager.getPackConfig().isEnabled("unconfigured_pack"));
-        assertEquals(List.of("wave_pack"), manager.getPackConfig().permissions().get("emote.default"));
-        assertEquals(List.of("*"), manager.getPackConfig().permissions().get("emote.pack.vip"));
+        assertTrue(manager.readEmoteAccessConfig());
+        assertFalse(manager.getEmoteAccessConfig().isEnabled("demo:wave"));
+        assertTrue(manager.getEmoteAccessConfig().isEnabled("demo:bow"));
+        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().permissions().get("emote.default"));
     }
 
     @Test
-    void updatesDisabledNamespacesAndPreservesPermissionGroups(@TempDir Path tempDir) throws IOException {
+    void updatesDisabledIdsAndPreservesPermissions(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
-        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
-            {
-              "disabled": [],
-              "permissions":{"emote.pack.vip":["wave_pack"]}
-            }
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {"disabled":[],"permissions":{"emote.vip":["demo:wave"]}}
             """);
-        assertTrue(manager.readPackConfig());
+        assertTrue(manager.readEmoteAccessConfig());
 
-        assertTrue(manager.setPackEnabled("wave_pack", false));
+        assertTrue(manager.setEmoteEnabled("demo:wave", false));
+        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().disabled());
+        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().permissions().get("emote.vip"));
+        assertTrue(Files.readString(tempDir.resolve("emote").resolve("emotes.json")).contains("demo:wave"));
 
-        assertEquals(List.of("wave_pack"), manager.getPackConfig().disabled());
-        assertEquals(List.of("wave_pack"), manager.getPackConfig().permissions().get("emote.pack.vip"));
-        String savedConfig = Files.readString(tempDir.resolve("emote").resolve("packs.json"));
-        assertTrue(savedConfig.contains("\"disabled\""));
-        assertTrue(savedConfig.contains("\"emote.pack.vip\""));
-        assertTrue(savedConfig.contains("\"wave_pack\""));
-
-        assertTrue(manager.setPackEnabled("wave_pack", true));
-        assertTrue(manager.getPackConfig().disabled().isEmpty());
+        assertTrue(manager.setEmoteEnabled("demo:wave", true));
+        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
     }
 
     @Test
-    void rejectsBlankNamespace(@TempDir Path tempDir) throws IOException {
+    void rejectsBlankId(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
-        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {"disabled":["   "]}
             """);
 
-        assertFalse(manager.readPackConfig());
-        assertTrue(manager.getPackConfig().disabled().isEmpty());
+        assertFalse(manager.readEmoteAccessConfig());
+        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
     }
 
     @Test
@@ -102,14 +86,14 @@ class ConfigManagerTest {
     }
 
     @Test
-    void keepsCurrentPackConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
+    void keepsCurrentAccessConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
-        Files.writeString(tempDir.resolve("emote").resolve("packs.json"), """
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {"disabled":{"invalid":true}}
             """);
 
-        assertFalse(manager.readPackConfig());
-        assertTrue(manager.getPackConfig().disabled().isEmpty());
+        assertFalse(manager.readEmoteAccessConfig());
+        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
     }
 
     @Test
@@ -124,19 +108,19 @@ class ConfigManagerTest {
     }
 
     @Test
-    void packConfigCopiesAndProtectsValues() {
-        ArrayList<String> disabled = new ArrayList<>(List.of("wave"));
+    void accessConfigCopiesAndProtectsValues() {
+        ArrayList<String> disabled = new ArrayList<>(List.of("demo:wave"));
         LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
-        permissions.put("emote.default", List.of("wave"));
-        PackConfig config = new PackConfig(disabled, permissions);
+        permissions.put("emote.default", List.of("demo:wave"));
+        EmoteAccessConfig config = new EmoteAccessConfig(disabled, permissions);
 
         disabled.clear();
         permissions.clear();
 
-        assertFalse(config.isEnabled("wave"));
-        assertEquals(List.of("wave"), config.disabled());
-        assertEquals(Map.of("emote.default", List.of("wave")), config.permissions());
-        assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("bow"));
-        assertThrows(UnsupportedOperationException.class, () -> config.permissions().put("vip", List.of("bow")));
+        assertFalse(config.isEnabled("demo:wave"));
+        assertEquals(List.of("demo:wave"), config.disabled());
+        assertEquals(Map.of("emote.default", List.of("demo:wave")), config.permissions());
+        assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("demo:bow"));
+        assertThrows(UnsupportedOperationException.class, () -> config.permissions().put("vip", List.of("demo:bow")));
     }
 }

@@ -36,7 +36,7 @@ public final class EmoteReloadService {
 
     public void handleDataPackReloadStart() {
         this.configManager.readConfig();
-        this.configManager.readPackConfig();
+        this.configManager.readEmoteAccessConfig();
     }
 
     public void handleDataPackReloadEnd(boolean success) {
@@ -49,8 +49,8 @@ public final class EmoteReloadService {
 
     public EmoteReloadResult reloadFromCommand() {
         boolean configLoaded = this.configManager.readConfig();
-        boolean packConfigLoaded = this.configManager.readPackConfig();
-        return new EmoteReloadResult(configLoaded, packConfigLoaded, reloadLoadedConfig());
+        boolean emoteAccessConfigLoaded = this.configManager.readEmoteAccessConfig();
+        return new EmoteReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig());
     }
 
     private int reloadLoadedConfig() {

@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.PackConfigListener;
-import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.EmoteAccessConfigListener;
+import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,11 +11,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-public class PermissionService implements PackConfigListener {
+public class PermissionService implements EmoteAccessConfigListener {
     private static final String DEFAULT_PERMISSION = "emote.default";
-    private static final String ALL_NAMESPACES = "*";
+    private static final String ALL_IDS = "*";
     private final PermissionChecker permissionChecker;
-    private Map<String, List<String>> permissionNamespaces = Map.of();
+    private Map<String, List<String>> permissionIds = Map.of();
 
     public PermissionService() {
         this(Permissions::check);
@@ -26,8 +26,8 @@ public class PermissionService implements PackConfigListener {
     }
 
     @Override
-    public void onPackConfigReload(PackConfig newPackConfig) {
-        this.permissionNamespaces = newPackConfig.permissions();
+    public void onEmoteAccessConfigReload(EmoteAccessConfig newConfig) {
+        this.permissionIds = newConfig.permissions();
     }
 
     public boolean canReload(CommandSourceStack source) {
@@ -38,11 +38,11 @@ public class PermissionService implements PackConfigListener {
         return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
     }
 
-    public boolean canPlay(ServerPlayer player, String namespace) {
-        for (Map.Entry<String, List<String>> entry : this.permissionNamespaces.entrySet()) {
+    public boolean canPlay(ServerPlayer player, String id) {
+        for (Map.Entry<String, List<String>> entry : this.permissionIds.entrySet()) {
             String permission = entry.getKey();
             boolean grantedByDefault = permission.equals(DEFAULT_PERMISSION);
-            if (includesNamespace(entry.getValue(), namespace)
+            if (includesId(entry.getValue(), id)
                 && this.permissionChecker.test(player, permission, grantedByDefault)) {
                 return true;
             }
@@ -58,8 +58,8 @@ public class PermissionService implements PackConfigListener {
         return this::canManageEmotes;
     }
 
-    private boolean includesNamespace(List<String> namespaces, String namespace) {
-        return namespaces != null && (namespaces.contains(ALL_NAMESPACES) || namespaces.contains(namespace));
+    private boolean includesId(List<String> ids, String id) {
+        return ids != null && (ids.contains(ALL_IDS) || ids.contains(id));
     }
 
     @FunctionalInterface

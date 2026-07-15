@@ -26,7 +26,7 @@ public final class EmoteAnimationService {
     public int reload(MinecraftServer server) {
         var definitions = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
             .map(EmoteDefinition::create)
-            .filter(definition -> this.configManager.getPackConfig().isEnabled(definition.id()))
+            .filter(definition -> this.configManager.getEmoteAccessConfig().isEnabled(definition.id()))
             .toList();
         this.emoteRegistry.replaceDefinitions(definitions);
         return definitions.size();

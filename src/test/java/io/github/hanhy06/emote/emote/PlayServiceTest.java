@@ -41,7 +41,7 @@ class PlayServiceTest {
         registry.replaceDefinitions(List.of(create("wave", "Wave")));
         return new PlayableEmoteService(registry, new PermissionService() {
             @Override
-            public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String namespace) {
+            public boolean canPlay(net.minecraft.server.level.ServerPlayer player, String id) {
                 return true;
             }
         });

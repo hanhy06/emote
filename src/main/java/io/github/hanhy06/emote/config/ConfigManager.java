@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.config;
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.config.data.PackConfig;
+import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import io.github.hanhy06.emote.io.JsonFileStore;
 
 import java.io.IOException;
@@ -14,7 +14,7 @@ import java.util.*;
 public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
-    private static final String PACK_FILE_NAME = "packs.json";
+    private static final String EMOTE_ACCESS_FILE_NAME = "emotes.json";
     private static final String ANIMATION_DIRECTORY_NAME = "animations";
 
     private final Path configDirPath;
@@ -23,10 +23,10 @@ public class ConfigManager {
         .disableHtmlEscaping()
         .create();
     private final List<ConfigListener> listeners = new ArrayList<>();
-    private final List<PackConfigListener> packListeners = new ArrayList<>();
+    private final List<EmoteAccessConfigListener> emoteAccessListeners = new ArrayList<>();
 
     private Config config = Config.createDefault();
-    private PackConfig packConfig = PackConfig.createDefault();
+    private EmoteAccessConfig emoteAccessConfig = EmoteAccessConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
@@ -40,15 +40,15 @@ public class ConfigManager {
         }
 
         writeIfAbsent(CONFIG_FILE_NAME, createConfigJson(this.config));
-        writeIfAbsent(PACK_FILE_NAME, createPackConfigJson(this.packConfig));
+        writeIfAbsent(EMOTE_ACCESS_FILE_NAME, createEmoteAccessConfigJson(this.emoteAccessConfig));
     }
 
     public Config getConfig() {
         return this.config;
     }
 
-    public PackConfig getPackConfig() {
-        return this.packConfig;
+    public EmoteAccessConfig getEmoteAccessConfig() {
+        return this.emoteAccessConfig;
     }
 
     public Path getAnimationDirectory() {
@@ -77,26 +77,26 @@ public class ConfigManager {
         return true;
     }
 
-    public boolean readPackConfig() {
-        JsonObject configJson = readJsonFile(PACK_FILE_NAME);
-        PackConfig loadedPackConfig;
+    public boolean readEmoteAccessConfig() {
+        JsonObject configJson = readJsonFile(EMOTE_ACCESS_FILE_NAME);
+        EmoteAccessConfig loadedConfig;
         try {
-            loadedPackConfig = readPackConfig(configJson);
+            loadedConfig = readEmoteAccessConfig(configJson);
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Pack config contains invalid field values. Keeping current pack config.", exception);
-            broadcastPackConfig();
+            Emote.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
+            broadcastEmoteAccessConfig();
             return false;
         }
 
-        if (loadedPackConfig == null) {
-            Emote.LOGGER.warn("Pack config is empty or invalid. Keeping current pack config.");
-            broadcastPackConfig();
+        if (loadedConfig == null) {
+            Emote.LOGGER.warn("Emote access config is empty or invalid. Keeping current config.");
+            broadcastEmoteAccessConfig();
             return false;
         }
 
-        this.packConfig = loadedPackConfig;
-        broadcastPackConfig();
-        logLoaded(PACK_FILE_NAME);
+        this.emoteAccessConfig = loadedConfig;
+        broadcastEmoteAccessConfig();
+        logLoaded(EMOTE_ACCESS_FILE_NAME);
         return true;
     }
 
@@ -104,30 +104,33 @@ public class ConfigManager {
         this.listeners.add(listener);
     }
 
-    public void addPackListener(PackConfigListener listener) {
-        this.packListeners.add(listener);
+    public void addEmoteAccessListener(EmoteAccessConfigListener listener) {
+        this.emoteAccessListeners.add(listener);
     }
 
-    public boolean setPackEnabled(String namespace, boolean enabled) {
-        String normalizedNamespace = normalizeRequiredValue(namespace);
-        if (normalizedNamespace == null) {
-            throw new IllegalArgumentException("pack namespace must not be blank");
+    public boolean setEmoteEnabled(String id, boolean enabled) {
+        String normalizedId = normalizeRequiredValue(id);
+        if (normalizedId == null) {
+            throw new IllegalArgumentException("emote id must not be blank");
         }
 
-        LinkedHashSet<String> nextDisabled = new LinkedHashSet<>(this.packConfig.disabled());
+        LinkedHashSet<String> nextDisabled = new LinkedHashSet<>(this.emoteAccessConfig.disabled());
         if (enabled) {
-            nextDisabled.remove(normalizedNamespace);
+            nextDisabled.remove(normalizedId);
         } else {
-            nextDisabled.add(normalizedNamespace);
+            nextDisabled.add(normalizedId);
         }
-        PackConfig nextPackConfig = new PackConfig(List.copyOf(nextDisabled), this.packConfig.permissions());
+        EmoteAccessConfig nextConfig = new EmoteAccessConfig(
+            List.copyOf(nextDisabled),
+            this.emoteAccessConfig.permissions()
+        );
 
-        if (!writeJsonFile(PACK_FILE_NAME, createPackConfigJson(nextPackConfig))) {
+        if (!writeJsonFile(EMOTE_ACCESS_FILE_NAME, createEmoteAccessConfigJson(nextConfig))) {
             return false;
         }
 
-        this.packConfig = nextPackConfig;
-        broadcastPackConfig();
+        this.emoteAccessConfig = nextConfig;
+        broadcastEmoteAccessConfig();
         return true;
     }
 
@@ -137,9 +140,9 @@ public class ConfigManager {
         }
     }
 
-    private void broadcastPackConfig() {
-        for (PackConfigListener listener : this.packListeners) {
-            listener.onPackConfigReload(this.packConfig);
+    private void broadcastEmoteAccessConfig() {
+        for (EmoteAccessConfigListener listener : this.emoteAccessListeners) {
+            listener.onEmoteAccessConfigReload(this.emoteAccessConfig);
         }
     }
 
@@ -184,16 +187,16 @@ public class ConfigManager {
         return object;
     }
 
-    private JsonObject createPackConfigJson(PackConfig packConfig) {
+    private JsonObject createEmoteAccessConfigJson(EmoteAccessConfig config) {
         JsonObject object = new JsonObject();
         JsonArray disabledJson = new JsonArray();
-        packConfig.disabled().forEach(disabledJson::add);
+        config.disabled().forEach(disabledJson::add);
         object.add("disabled", disabledJson);
         JsonObject permissionsJson = new JsonObject();
-        for (Map.Entry<String, List<String>> entry : packConfig.permissions().entrySet()) {
-            JsonArray namespacesJson = new JsonArray();
-            entry.getValue().forEach(namespacesJson::add);
-            permissionsJson.add(entry.getKey(), namespacesJson);
+        for (Map.Entry<String, List<String>> entry : config.permissions().entrySet()) {
+            JsonArray idsJson = new JsonArray();
+            entry.getValue().forEach(idsJson::add);
+            permissionsJson.add(entry.getKey(), idsJson);
         }
         object.add("permissions", permissionsJson);
         return object;
@@ -213,7 +216,7 @@ public class ConfigManager {
         );
     }
 
-    private PackConfig readPackConfig(JsonObject object) {
+    private EmoteAccessConfig readEmoteAccessConfig(JsonObject object) {
         if (object == null) {
             return null;
         }
@@ -225,15 +228,15 @@ public class ConfigManager {
 
         List<String> disabled = new ArrayList<>();
         if (disabledElement != null && !disabledElement.isJsonNull()) {
-            for (JsonElement namespaceElement : disabledElement.getAsJsonArray()) {
-                if (!namespaceElement.isJsonPrimitive() || !namespaceElement.getAsJsonPrimitive().isString()) {
+            for (JsonElement idElement : disabledElement.getAsJsonArray()) {
+                if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
                     return null;
                 }
-                String namespace = normalizeRequiredValue(namespaceElement.getAsString());
-                if (namespace == null) {
+                String id = normalizeRequiredValue(idElement.getAsString());
+                if (id == null) {
                     return null;
                 }
-                disabled.add(namespace);
+                disabled.add(id);
             }
         }
 
@@ -250,22 +253,22 @@ public class ConfigManager {
                     return null;
                 }
 
-                List<String> namespaces = new ArrayList<>();
-                for (JsonElement namespaceElement : entry.getValue().getAsJsonArray()) {
-                    if (!namespaceElement.isJsonPrimitive() || !namespaceElement.getAsJsonPrimitive().isString()) {
+                List<String> ids = new ArrayList<>();
+                for (JsonElement idElement : entry.getValue().getAsJsonArray()) {
+                    if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
                         return null;
                     }
-                    String namespace = normalizeRequiredValue(namespaceElement.getAsString());
-                    if (namespace == null) {
+                    String id = normalizeRequiredValue(idElement.getAsString());
+                    if (id == null) {
                         return null;
                     }
-                    namespaces.add(namespace);
+                    ids.add(id);
                 }
-                permissions.put(permission, namespaces);
+                permissions.put(permission, ids);
             }
         }
 
-        return new PackConfig(disabled, permissions);
+        return new EmoteAccessConfig(disabled, permissions);
     }
 
     private String readMineSkinApiKey(JsonObject object, String defaultValue) {

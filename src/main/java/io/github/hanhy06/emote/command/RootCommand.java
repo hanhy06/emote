@@ -136,7 +136,7 @@ public final class RootCommand {
                     getDisabledIds(),
                     builder
                 ))
-                .executes(context -> setPackEnabled(
+                .executes(context -> setEmoteEnabled(
                     context.getSource(),
                     IdentifierArgument.getId(context, "id").toString(),
                     true
@@ -151,7 +151,7 @@ public final class RootCommand {
                     this.emoteRegistry.getDefinitions().stream().map(EmoteDefinition::id),
                     builder
                 ))
-                .executes(context -> setPackEnabled(
+                .executes(context -> setEmoteEnabled(
                     context.getSource(),
                     IdentifierArgument.getId(context, "id").toString(),
                     false
@@ -225,7 +225,7 @@ public final class RootCommand {
         source.sendSuccess(
             () -> Component.literal(
                 "Reloading: cfg=" + result.configLoaded()
-                    + ", packs=" + result.packConfigLoaded()
+                    + ", access=" + result.emoteAccessConfigLoaded()
                     + ", emotes=" + result.emoteCount()
             ),
             true
@@ -272,9 +272,9 @@ public final class RootCommand {
         return 1;
     }
 
-    private int setPackEnabled(CommandSourceStack source, String id, boolean enabled) {
+    private int setEmoteEnabled(CommandSourceStack source, String id, boolean enabled) {
         if (enabled) {
-            if (this.configManager.getPackConfig().isEnabled(id)) {
+            if (this.configManager.getEmoteAccessConfig().isEnabled(id)) {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
@@ -283,8 +283,8 @@ public final class RootCommand {
             return 0;
         }
 
-        if (!this.configManager.setPackEnabled(id, enabled)) {
-            source.sendFailure(Component.literal("Failed to save packs.json."));
+        if (!this.configManager.setEmoteEnabled(id, enabled)) {
+            source.sendFailure(Component.literal("Failed to save emotes.json."));
             return 0;
         }
         if (!enabled) {
@@ -301,7 +301,7 @@ public final class RootCommand {
     }
 
     private List<String> getDisabledIds() {
-        return this.configManager.getPackConfig().disabled();
+        return this.configManager.getEmoteAccessConfig().disabled();
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {
