@@ -17,7 +17,7 @@ export interface CompileOptions {
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
   const importError = project.diagnostics.find((diagnostic) => diagnostic.severity === "error");
   if (importError) throw new Error(`${importError.message}${importError.sourcePath ? ` (${importError.sourcePath})` : ""}`);
-  const namespace = sanitizeResourcePath(options.namespace ?? options.metadata?.command_name ?? project.suggestedMetadata.command_name);
+  const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.command_name ?? project.suggestedMetadata.command_name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
   const multiple = project.animations.length > 1;
 
@@ -120,4 +120,8 @@ export function asMatrix16(values: readonly number[], label: string): Matrix16 {
 
 function sanitizeResourcePath(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9_./-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
+}
+
+function sanitizeNamespace(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
 }

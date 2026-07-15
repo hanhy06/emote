@@ -1,79 +1,86 @@
-import { useCallback, useState, type ChangeEvent } from "react";
+import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
-import { convertDatapack, sanitizeCommandName, type ConversionOptions } from "./converter/converter";
-import { loadDatapack, type LoadedDatapack } from "./converter/packFileSystem";
-import { findEmoteModels, type ParsedEmoteModel } from "./converter/partParser";
+import { createPlayerHeadPart, type PlayerHeadPart } from "./converter/partParser";
 import { isLimbPart, type PartAssignments, type PartOrders, type SkinPartId } from "./converter/skinMapping";
+import { downloadExport, exportProject, type ExportOptions } from "./export/projectExporter";
+import { IMPORT_ADAPTERS } from "./import/adapters";
+import { detectAdapter } from "./import/adapterRegistry";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
+
+interface SkinCandidate {
+  nodeId: string;
+  partIndex: number;
+  node: Extract<ImportedNode, { type: "item_display" }>;
+}
 
 export function App() {
-  const [datapack, setDatapack] = useState<LoadedDatapack | null>(null);
-  const [models, setModels] = useState<ParsedEmoteModel[]>([]);
-  const [modelIndex, setModelIndex] = useState(0);
-  const [previewFrameIndexes, setPreviewFrameIndexes] = useState<Record<string, number>>({});
-  const [assignments, setAssignments] = useState<Record<string, PartAssignments>>({});
-  const [orders, setOrders] = useState<Record<string, PartOrders>>({});
+  const [project, setProject] = useState<ImportedProject | null>(null);
+  const [adapterLabel, setAdapterLabel] = useState("");
+  const [animationIndex, setAnimationIndex] = useState(0);
+  const [previewFrameIndex, setPreviewFrameIndex] = useState(0);
+  const [assignments, setAssignments] = useState<PartAssignments>({});
+  const [orders, setOrders] = useState<PartOrders>({});
   const [selectedParts, setSelectedParts] = useState<Set<number>>(new Set());
-  const [metadata, setMetadata] = useState<ConversionOptions>({ name: "", description: "", commandName: "", hidePlayer: true });
+  const [metadata, setMetadata] = useState<ExportOptions>(emptyOptions());
   const [error, setError] = useState("");
   const [conversionError, setConversionError] = useState("");
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
 
+  const animation = project?.animations[animationIndex];
+  const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
+  const previewTimes = useMemo(() => animationTimes(animation), [animation]);
+  const previewTime = previewTimes[Math.min(previewFrameIndex, previewTimes.length - 1)] ?? 0;
+  const previewParts = useMemo(
+    () => createPreviewParts(skinCandidates, animation, previewTime, assignments, orders),
+    [animation, assignments, orders, previewTime, skinCandidates],
+  );
+
   async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (!file) return;
-
     setLoading(true);
     setError("");
-    setDatapack(null);
-    setModels([]);
+    setConversionError("");
+    setProject(null);
     try {
-      const loadedDatapack = await loadDatapack(file);
-      const foundModels = findEmoteModels(loadedDatapack);
-      if (foundModels.length === 0) throw new Error("No player_head pieces were found in create.mcfunction.");
-
-      setDatapack(loadedDatapack);
-      setModels(foundModels);
-      setAssignments(Object.fromEntries(foundModels.map((model) => [
-        model.namespace,
-        Object.fromEntries(model.parts.map((part) => [part.partIndex, part.existingAssignment])),
-      ])));
-      setOrders(Object.fromEntries(foundModels.map((model) => [
-        model.namespace,
-        Object.fromEntries(model.parts.map((part) => [part.partIndex, part.existingOrder])),
-      ])));
-      setModelIndex(0);
-      setPreviewFrameIndexes({});
+      const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+      const detected = await detectAdapter(IMPORT_ADAPTERS, input);
+      const imported = await detected.adapter.import(input);
+      const candidates = findSkinCandidates(imported);
+      setProject(imported);
+      setAdapterLabel(detected.adapter.label);
+      setAnimationIndex(0);
+      setPreviewFrameIndex(0);
       setSelectedParts(new Set());
-
-      const defaultName = prettifyName(file.name.replace(/\.zip$/i, "").replace(/^emote\./i, ""));
+      setAssignments(Object.fromEntries(candidates.map((candidate) => [candidate.partIndex, candidate.node.skin?.part ?? null])));
+      setOrders(Object.fromEntries(candidates.map((candidate) => [candidate.partIndex, candidate.node.skin?.order ?? null])));
       setMetadata({
-        name: defaultName,
-        description: `${defaultName} emote.`,
-        commandName: foundModels.length === 1 ? foundModels[0].namespace : sanitizeCommandName(defaultName),
-        hidePlayer: true,
+        minecraftVersion: "26.2",
+        namespace: imported.suggestedMetadata.command_name,
+        ...imported.suggestedMetadata,
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not read the ZIP file.");
+      setError(reason instanceof Error ? reason.message : "Could not import the file.");
     } finally {
       setLoading(false);
+      event.target.value = "";
     }
   }
 
   async function handleConvert() {
-    if (!datapack) return;
+    if (!project) return;
     setConverting(true);
     setConversionError("");
     try {
-      const result = await convertDatapack(datapack, models, assignments, orders, metadata);
-      const url = URL.createObjectURL(result.blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = result.fileName;
-      anchor.click();
-      setTimeout(() => URL.revokeObjectURL(url), 0);
+      const skins: Record<string, ImportedSkinPart | null> = {};
+      for (const candidate of skinCandidates) {
+        const part = assignments[candidate.partIndex];
+        skins[candidate.nodeId] = part ? { part, order: orders[candidate.partIndex] ?? 0 } : null;
+      }
+      downloadExport(await exportProject(project, metadata, skins));
     } catch (reason) {
       setConversionError(reason instanceof Error ? reason.message : "Conversion failed.");
     } finally {
@@ -82,121 +89,100 @@ export function App() {
   }
 
   const handlePartSelect = useCallback((partIndex: number, additive: boolean) => {
-    const model = models[modelIndex];
-    const previewParts = model?.previewFrames[previewFrameIndexes[model.namespace] ?? 0]?.parts ?? model?.parts;
-    const selectedPart = previewParts?.find((part) => part.partIndex === partIndex);
-    if (!model || !selectedPart) return;
-
-    const groupedIndices = previewParts
-      .filter((part) => distance(part.anchor, selectedPart.anchor) <= 0.05)
-      .map((part) => part.partIndex);
-
+    const selectedPart = previewParts.find((part) => part.partIndex === partIndex);
+    if (!selectedPart) return;
+    const grouped = previewParts.filter((part) => distance(part.anchor, selectedPart.anchor) <= 0.05).map((part) => part.partIndex);
     setSelectedParts((current) => {
       const next = additive ? new Set(current) : new Set<number>();
-      const shouldRemove = additive && groupedIndices.every((index) => next.has(index));
-      groupedIndices.forEach((index) => shouldRemove ? next.delete(index) : next.add(index));
+      const remove = additive && grouped.every((index) => next.has(index));
+      grouped.forEach((index) => remove ? next.delete(index) : next.add(index));
       return next;
     });
-  }, [modelIndex, models, previewFrameIndexes]);
+  }, [previewParts]);
 
-  function assignSelected(skinPart: SkinPartId | null) {
-    const namespace = models[modelIndex]?.namespace;
-    if (!namespace || selectedParts.size === 0) return;
-    setAssignments((current) => ({
-      ...current,
-      [namespace]: {
-        ...current[namespace],
-        ...Object.fromEntries([...selectedParts].map((partIndex) => [partIndex, skinPart])),
-      },
-    }));
-    if (!skinPart || !isLimbPart(skinPart)) {
-      setOrders((current) => ({
-        ...current,
-        [namespace]: {
-          ...current[namespace],
-          ...Object.fromEntries([...selectedParts].map((partIndex) => [partIndex, null])),
-        },
-      }));
+  function assignSelected(part: SkinPartId | null) {
+    if (selectedParts.size === 0) return;
+    setAssignments((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, part])) }));
+    if (!part || !isLimbPart(part)) {
+      setOrders((current) => ({ ...current, ...Object.fromEntries([...selectedParts].map((index) => [index, null])) }));
     }
   }
 
   function assignOrder(order: number | null) {
-    const namespace = models[modelIndex]?.namespace;
-    if (!namespace || selectedParts.size === 0) return;
-    const limbIndices = [...selectedParts].filter((partIndex) => {
-      const assignment = assignments[namespace]?.[partIndex];
-      return assignment != null && isLimbPart(assignment);
+    const indices = [...selectedParts].filter((index) => {
+      const part = assignments[index];
+      return part != null && isLimbPart(part);
     });
-    if (limbIndices.length === 0) return;
-    setOrders((current) => ({
-      ...current,
-      [namespace]: {
-        ...current[namespace],
-        ...Object.fromEntries(limbIndices.map((partIndex) => [partIndex, order])),
-      },
-    }));
+    if (indices.length) setOrders((current) => ({ ...current, ...Object.fromEntries(indices.map((index) => [index, order])) }));
   }
 
-  const model = models[modelIndex];
-  const modelAssignments = model ? assignments[model.namespace] ?? {} : {};
-  const modelOrders = model ? orders[model.namespace] ?? {} : {};
-  const hasSelectedLimb = model ? [...selectedParts].some((partIndex) => {
-    const assignment = modelAssignments[partIndex];
-    return assignment != null && isLimbPart(assignment);
-  }) : false;
-  const previewFrameIndex = model ? previewFrameIndexes[model.namespace] ?? 0 : 0;
-  const previewFrame = model?.previewFrames[previewFrameIndex];
-  const previewParts = previewFrame?.parts ?? model?.parts ?? [];
+  const hasSelectedLimb = [...selectedParts].some((index) => {
+    const part = assignments[index];
+    return part != null && isLimbPart(part);
+  });
 
   return (
     <main className="app">
       <header>
-        <h1>Emote Converter</h1>
-        <label className="file-input">BD Engine ZIP<input type="file" accept=".zip,application/zip" onChange={handleFileChange} disabled={loading} /></label>
+        <h1>Emote JSON Converter</h1>
+        <label className="file-input">Animation file<input type="file" accept=".zip,.bdengine,.json,application/zip,application/json" onChange={handleFileChange} disabled={loading} /></label>
       </header>
 
       {loading && <p>Reading file…</p>}
       {error && <p className="error" role="alert">{error}</p>}
 
-      {datapack && model && (
+      {project && animation && (
         <>
           <div className="status">
-            <strong>{datapack.fileName}</strong>
-            <span>{model.parts.length} pieces</span>
-            {model.previewFrames.length > 0 && (
+            <strong>{project.sourceName}</strong>
+            <span>{adapterLabel}</span>
+            <span>{Object.keys(project.nodes).length} nodes</span>
+            {previewTimes.length > 1 && skinCandidates.length > 0 && (
               <label className="frame-slider">
-                <span>Preview frame</span>
-                <input type="range" min="0" max={model.previewFrames.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
-                  setPreviewFrameIndexes((current) => ({ ...current, [model.namespace]: Number(event.target.value) }));
+                <span>Preview</span>
+                <input type="range" min="0" max={previewTimes.length - 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                  setPreviewFrameIndex(Number(event.target.value));
                   setSelectedParts(new Set());
                 }} />
-                <output>{previewFrame?.animation} / frame {previewFrame?.frameIndex}</output>
+                <output>{Math.round(previewTime * 20)} tick</output>
               </label>
             )}
-            {models.length > 1 && (
-              <select value={modelIndex} onChange={(event) => { setModelIndex(Number(event.target.value)); setSelectedParts(new Set()); }}>
-                {models.map((item, index) => <option value={index} key={item.namespace}>{item.namespace}</option>)}
+            {project.animations.length > 1 && (
+              <select value={animationIndex} onChange={(event) => {
+                setAnimationIndex(Number(event.target.value));
+                setPreviewFrameIndex(0);
+                setSelectedParts(new Set());
+              }}>
+                {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
               </select>
             )}
           </div>
 
-          <section className="editor">
-            <PartPreview parts={previewParts} assignments={modelAssignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
-            <AssignmentPanel
-              parts={previewParts}
-              assignments={modelAssignments}
-              orders={modelOrders}
-              selectedParts={selectedParts}
-              hasSelectedLimb={hasSelectedLimb}
-              onAssignPart={assignSelected}
-              onAssignOrder={assignOrder}
-              onSelectPart={handlePartSelect}
-            />
-          </section>
+          {project.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").map((diagnostic) => (
+            <p className="warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
+          ))}
+
+          {skinCandidates.length > 0 ? (
+            <section className="editor">
+              <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+              <AssignmentPanel
+                parts={previewParts}
+                assignments={assignments}
+                orders={orders}
+                selectedParts={selectedParts}
+                hasSelectedLimb={hasSelectedLimb}
+                onAssignPart={assignSelected}
+                onAssignOrder={assignOrder}
+                onSelectPart={handlePartSelect}
+              />
+            </section>
+          ) : (
+            <section className="no-skin-parts">This input has no player_head pieces. It can be exported without skin mapping.</section>
+          )}
 
           <ExportPanel
             metadata={metadata}
-            assignmentSummary={assignmentSummary(models, assignments)}
+            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.length)}
             error={conversionError}
             converting={converting}
             onMetadataChange={setMetadata}
@@ -208,16 +194,51 @@ export function App() {
   );
 }
 
+function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
+  if (!project) return [];
+  return Object.entries(project.nodes).flatMap(([nodeId, node]) => {
+    if (node.type !== "item_display" || !/minecraft:player_head/.test(node.itemStackSnbt)) return [];
+    return [{ nodeId, partIndex: 0, node }];
+  }).map((candidate, partIndex) => ({ ...candidate, partIndex }));
+}
+
+function animationTimes(animation: ImportedAnimation | undefined): number[] {
+  if (!animation) return [0];
+  const times = new Set<number>([0]);
+  Object.values(animation.tracks).forEach((track) => track.transforms.forEach((keyframe) => times.add(keyframe.timeSeconds)));
+  return [...times].sort((first, second) => first - second);
+}
+
+function createPreviewParts(
+  candidates: SkinCandidate[],
+  animation: ImportedAnimation | undefined,
+  time: number,
+  assignments: PartAssignments,
+  orders: PartOrders,
+): PlayerHeadPart[] {
+  return candidates.map((candidate) => {
+    const track = animation?.tracks[candidate.nodeId];
+    const matrix = track?.transforms.filter((keyframe) => keyframe.timeSeconds <= time).at(-1)?.matrix ?? candidate.node.defaultMatrix;
+    return createPlayerHeadPart(
+      candidate.partIndex,
+      "preview",
+      matrix,
+      assignments[candidate.partIndex] ?? null,
+      orders[candidate.partIndex] ?? null,
+    );
+  });
+}
+
+function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignments, artifactCount: number): string {
+  const assigned = candidates.filter((candidate) => assignments[candidate.partIndex]).length;
+  const skin = candidates.length ? `${assigned}/${candidates.length} skin pieces assigned` : "No skin mapping needed";
+  return artifactCount ? `${skin} · ${artifactCount} resource files` : skin;
+}
+
+function emptyOptions(): ExportOptions {
+  return { minecraftVersion: "26.2", namespace: "emote", name: "", description: "", command_name: "", hide_player: true };
+}
+
 function distance(first: { x: number; y: number; z: number }, second: { x: number; y: number; z: number }): number {
   return Math.hypot(first.x - second.x, first.y - second.y, first.z - second.z);
-}
-
-function prettifyName(value: string): string {
-  return value.replaceAll("_", " ").replaceAll("-", " ").trim() || value;
-}
-
-function assignmentSummary(models: ParsedEmoteModel[], assignments: Record<string, PartAssignments>): string {
-  const assigned = models.reduce((total, item) => total + item.parts.filter((part) => assignments[item.namespace]?.[part.partIndex]).length, 0);
-  const total = models.reduce((sum, item) => sum + item.parts.length, 0);
-  return `${assigned}/${total} assigned`;
 }

@@ -16,6 +16,7 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .frame-slider input { width: 220px; }
 .frame-slider output { min-width: 130px; }
 .error { color: #b00020; }
+.warning { color: #7a5200; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) 250px; border: 1px solid #aaa; }
 .part-preview { position: relative; min-width: 0; height: 620px; overflow: hidden; background: #f4f4f4; cursor: grab; }
 .part-preview:active { cursor: grabbing; }
@@ -30,6 +31,7 @@ aside > p { margin: 0 0 12px; font-size: 13px; }
 .part-list button { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; }
 .part-list button.selected { border-color: #1467c8; background: #dcecff; }
 .export { margin-top: 16px; padding: 12px; border: 1px solid #aaa; }
+.no-skin-parts { padding: 24px; border: 1px solid #aaa; color: #555; text-align: center; }
 .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .fields label { display: grid; gap: 4px; font-size: 13px; }
 .fields .checkbox { display: flex; align-items: center; }

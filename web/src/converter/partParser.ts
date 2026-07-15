@@ -140,7 +140,7 @@ export function parsePlayerHeadParts(createFunctionText: string, namespace: stri
   return parts.sort((first, second) => first.partIndex - second.partIndex);
 }
 
-function createPlayerHeadPart(
+export function createPlayerHeadPart(
   partIndex: number,
   namespace: string,
   matrix: readonly number[],
