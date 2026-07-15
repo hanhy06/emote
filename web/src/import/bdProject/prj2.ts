@@ -1,4 +1,5 @@
 import type { ImportInput } from "../adapter";
+import { cachedInputPromise } from "../inputCache";
 
 const decoder = new TextDecoder();
 
@@ -12,6 +13,10 @@ export function hasGzipHeader(bytes: Uint8Array): boolean {
 }
 
 export async function readPrj2(input: ImportInput): Promise<Prj2Archive> {
+  return cachedInputPromise(input, "bd_project_prj2", () => readPrj2Uncached(input));
+}
+
+async function readPrj2Uncached(input: ImportInput): Promise<Prj2Archive> {
   if (!hasGzipHeader(input.bytes)) throw new Error("BD project is not gzip-compressed.");
   const compressed = input.bytes.slice().buffer;
   const stream = new Blob([compressed]).stream().pipeThrough(new DecompressionStream("gzip"));

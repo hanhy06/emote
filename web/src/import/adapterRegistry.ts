@@ -8,7 +8,10 @@ export interface DetectedAdapter {
 }
 
 export async function detectAdapter(adapters: readonly ImportAdapter[], input: ImportInput): Promise<DetectedAdapter> {
-  const matches = (await Promise.all(adapters.map(async (adapter) => ({
+  const extension = input.name.toLowerCase().split(".").at(-1);
+  const extensionMatches = extension ? adapters.filter((adapter) => adapter.extensions.includes(extension)) : [];
+  const candidates = extensionMatches.length > 0 ? extensionMatches : adapters;
+  const matches = (await Promise.all(candidates.map(async (adapter) => ({
     adapter,
     probe: await adapter.probe(input),
   }))))

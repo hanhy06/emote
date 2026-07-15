@@ -1,13 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ImportAdapter } from "./adapter";
 import { detectAdapter, importDetected } from "./adapterRegistry";
 import { ConversionError } from "./errors";
 
-function adapter(id: string, confidence: number): ImportAdapter {
+function adapter(id: string, confidence: number, extensions: readonly string[] = []): ImportAdapter {
   return {
     id,
     label: id,
-    extensions: [],
+    extensions,
     probe: () => ({ confidence, reason: id }),
     import: async () => { throw new Error("not used"); },
   };
@@ -35,5 +35,16 @@ describe("detectAdapter", () => {
       message: "broken payload",
       sourcePath: "input.bin",
     } satisfies Partial<ConversionError>);
+  });
+
+  it("probes only adapters matching a recognized extension", async () => {
+    const json = adapter("json", 100, ["json"]);
+    const zip = adapter("zip", 100, ["zip"]);
+    zip.probe = vi.fn(zip.probe);
+
+    const result = await detectAdapter([json, zip], { name: "input.json", bytes: new Uint8Array() });
+
+    expect(result.adapter.id).toBe("json");
+    expect(zip.probe).not.toHaveBeenCalled();
   });
 });

@@ -5,9 +5,8 @@ import { TICKS_PER_SECOND } from "../../format/time";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../errors";
+import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
-
-const decoder = new TextDecoder();
 
 export const emoteJsonAdapter: ImportAdapter = {
   id: "emote_json",
@@ -16,7 +15,7 @@ export const emoteJsonAdapter: ImportAdapter = {
 
   probe(input: ImportInput): ProbeResult {
     try {
-      const value = JSON.parse(decoder.decode(input.bytes)) as Record<string, unknown>;
+      const value = parseInputJson(input) as Record<string, unknown>;
       return value.schema_version === 1 && value.tick_rate === TICKS_PER_SECOND && isRecord(value.nodes) && isRecord(value.timeline)
         ? { confidence: 100, reason: "matches emote animation schema 1" }
         : { confidence: 0, reason: "does not match emote animation schema 1" };
@@ -26,7 +25,7 @@ export const emoteJsonAdapter: ImportAdapter = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const animation = requireEmoteAnimation(JSON.parse(decoder.decode(input.bytes)));
+    const animation = requireEmoteAnimation(parseInputJson(input));
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);

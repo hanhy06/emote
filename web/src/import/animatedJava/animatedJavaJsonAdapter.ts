@@ -5,10 +5,10 @@ import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath,
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
+import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 
-const decoder = new TextDecoder();
 const encoder = new TextEncoder();
 
 export const animatedJavaJsonAdapter: ImportAdapter = {
@@ -18,7 +18,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
 
   probe(input: ImportInput): ProbeResult {
     try {
-      const value = JSON.parse(decoder.decode(input.bytes)) as Partial<AjBlueprint>;
+      const value = parseInputJson(input) as Partial<AjBlueprint>;
       return value.format_version === 1 && typeof value.settings?.id === "string" && isRecord(value.nodes) && isRecord(value.animations)
         ? { confidence: 100, reason: "matches Animated Java plugin blueprint format 1" }
         : { confidence: 0, reason: "does not match Animated Java plugin blueprint format 1" };
@@ -28,7 +28,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const blueprint = requireAjBlueprint(JSON.parse(decoder.decode(input.bytes)));
+    const blueprint = requireAjBlueprint(parseInputJson(input));
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const artifacts: ImportedArtifact[] = [];
