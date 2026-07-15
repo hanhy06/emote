@@ -5,14 +5,12 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.*;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.data.ActiveEmote;
-import io.github.hanhy06.emote.server.EmoteReloadResult;
 import io.github.hanhy06.emote.server.EmoteReloadService;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
@@ -31,9 +29,7 @@ public final class RootCommand {
     private final DialogManager dialogManager;
     private final PlayableEmoteService playableEmoteService;
     private final PlayService playService;
-    private final PermissionService permissionService;
-    private final EmoteReloadService reloadService;
-    private final ConfigManager configManager;
+    private final EmoteAdminCommands adminCommands;
 
     public RootCommand(
         EmoteRegistry emoteRegistry,
@@ -50,9 +46,13 @@ public final class RootCommand {
         this.dialogManager = dialogManager;
         this.playableEmoteService = playableEmoteService;
         this.playService = playService;
-        this.permissionService = permissionService;
-        this.reloadService = reloadService;
-        this.configManager = configManager;
+        this.adminCommands = new EmoteAdminCommands(
+            emoteRegistry,
+            playbackManager,
+            permissionService,
+            reloadService,
+            configManager
+        );
     }
 
     public void register() {
@@ -71,12 +71,12 @@ public final class RootCommand {
                 )))
             .then(createSearchCommand())
             .then(createListCommand())
-            .then(createReloadCommand())
+            .then(this.adminCommands.createReloadCommand())
             .then(createPlayCommand())
             .then(createStopCommand())
-            .then(createStopAllCommand())
-            .then(createEnableCommand())
-            .then(createDisableCommand());
+            .then(this.adminCommands.createStopAllCommand())
+            .then(this.adminCommands.createEnableCommand())
+            .then(this.adminCommands.createDisableCommand());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createSearchCommand() {
@@ -101,12 +101,6 @@ public final class RootCommand {
             .executes(context -> listEmotes(context.getSource()));
     }
 
-    private LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
-        return Commands.literal("reload")
-            .requires(this.permissionService.requireReload())
-            .executes(context -> reloadEmotes(context.getSource()));
-    }
-
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
         return Commands.literal("play")
             .then(Commands.argument("id", IdentifierArgument.id())
@@ -120,42 +114,6 @@ public final class RootCommand {
     private LiteralArgumentBuilder<CommandSourceStack> createStopCommand() {
         return Commands.literal("stop")
             .executes(context -> stopEmote(context.getSource()));
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createStopAllCommand() {
-        return Commands.literal("stop-all")
-            .requires(this.permissionService.requireGameMaster())
-            .executes(context -> stopAllEmotes(context.getSource()));
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
-        return Commands.literal("enable")
-            .requires(this.permissionService.requireGameMaster())
-            .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    getDisabledIds(),
-                    builder
-                ))
-                .executes(context -> setEmoteEnabled(
-                    context.getSource(),
-                    IdentifierArgument.getId(context, "id").toString(),
-                    true
-                )));
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
-        return Commands.literal("disable")
-            .requires(this.permissionService.requireGameMaster())
-            .then(Commands.argument("id", IdentifierArgument.id())
-                .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getAll().stream().map(RegisteredEmote::id),
-                    builder
-                ))
-                .executes(context -> setEmoteEnabled(
-                    context.getSource(),
-                    IdentifierArgument.getId(context, "id").toString(),
-                    false
-                )));
     }
 
     private List<String> getSuggestedPlayNames(CommandSourceStack source) {
@@ -215,24 +173,6 @@ public final class RootCommand {
         return emotes.size();
     }
 
-    private int reloadEmotes(CommandSourceStack source) {
-        if (Emote.SERVER == null) {
-            source.sendFailure(Component.literal("Server unavailable."));
-            return 0;
-        }
-
-        EmoteReloadResult result = this.reloadService.reloadFromCommand();
-        source.sendSuccess(
-            () -> Component.literal(
-                "Reloading: cfg=" + result.configLoaded()
-                    + ", access=" + result.emoteAccessConfigLoaded()
-                    + ", emotes=" + result.emoteCount()
-            ),
-            true
-        );
-        return result.emoteCount();
-    }
-
     private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {
         if (!playResult.isSuccess()) {
             source.sendFailure(Component.literal(playResult.errorMessage()));
@@ -264,44 +204,6 @@ public final class RootCommand {
             false
         );
         return 1;
-    }
-
-    private int stopAllEmotes(CommandSourceStack source) {
-        this.playbackManager.stopAllEmotes();
-        source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
-        return 1;
-    }
-
-    private int setEmoteEnabled(CommandSourceStack source, String id, boolean enabled) {
-        if (enabled) {
-            if (this.configManager.getEmoteAccessConfig().isEnabled(id)) {
-                source.sendFailure(Component.literal("Emote is not disabled: " + id));
-                return 0;
-            }
-        } else if (this.emoteRegistry.find(id) == null) {
-            source.sendFailure(Component.literal("Emote is not enabled: " + id));
-            return 0;
-        }
-
-        if (!this.configManager.setEmoteEnabled(id, enabled)) {
-            source.sendFailure(Component.literal("Failed to save emotes.json."));
-            return 0;
-        }
-        if (!enabled) {
-            this.playbackManager.stopId(id);
-        }
-
-        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();
-        String action = enabled ? "Enabled" : "Disabled";
-        source.sendSuccess(
-            () -> Component.literal(action + " emote: " + id + " (emotes=" + reloadResult.emoteCount() + ")"),
-            true
-        );
-        return 1;
-    }
-
-    private List<String> getDisabledIds() {
-        return this.configManager.getEmoteAccessConfig().disabled();
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {
