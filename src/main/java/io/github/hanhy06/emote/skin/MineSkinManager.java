@@ -118,8 +118,8 @@ final class MineSkinManager {
                 this.cache.save(source.textureHash(), source.slimModel(), saved);
                 savedAny = true;
             }
-            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
             if (savedAny) {
+                Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
                 this.readyNotifier.accept(source.playerUuid());
             }
         } catch (InterruptedException exception) {
