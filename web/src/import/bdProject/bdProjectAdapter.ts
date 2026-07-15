@@ -1,6 +1,7 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
+import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { hasGzipHeader, readPrj2 } from "./prj2";
@@ -89,7 +90,7 @@ export const bdProjectAdapter: ImportAdapter = {
     }]));
     const animationName = root.listAnim?.[0]?.name?.trim() || "Default";
     const animation: ImportedAnimation = {
-      id: sanitizeId(animationName),
+      id: sanitizeResourcePath(animationName, "default"),
       name: animationName,
       durationSeconds: (frameTimes[frameTimes.length - 1] + 1) / 10,
       loop: "loop",
@@ -104,7 +105,7 @@ export const bdProjectAdapter: ImportAdapter = {
       suggestedMetadata: {
         name: sourceStem,
         description: `${sourceStem} emote.`,
-        command_name: sanitizeId(sourceStem),
+        command_name: sanitizeResourcePath(sourceStem, "default"),
         hide_player: true,
       },
       nodes,
@@ -237,7 +238,7 @@ function createEntityNbt(node: BdSceneNode): string | undefined {
 
 function parseItemName(name: string): { id: string; display: string } {
   const match = /^(.*?)(?:\[display=([^\]]+)\])?$/.exec(name.trim());
-  return { id: normalizeResourceId(match?.[1] || "air"), display: match?.[2] || "none" };
+  return { id: normalizeResourceLocation(match?.[1] || "air"), display: match?.[2] || "none" };
 }
 
 function createItemStack(id: string, texture: string | undefined): string {
@@ -249,7 +250,7 @@ function createItemStack(id: string, texture: string | undefined): string {
 
 function createBlockState(name: string): string {
   const match = /^([^\[]+)(?:\[([^\]]+)\])?$/.exec(name.trim());
-  const id = normalizeResourceId(match?.[1] || "air");
+  const id = normalizeResourceLocation(match?.[1] || "air");
   const properties = match?.[2]?.split(",").flatMap((entry) => {
     const [key, value] = entry.split("=", 2);
     return key && value ? [`${key}:"${value}"`] : [];
@@ -257,15 +258,6 @@ function createBlockState(name: string): string {
   return properties?.length ? `{Name:"${id}",Properties:{${properties.join(",")}}}` : `{Name:"${id}"}`;
 }
 
-function normalizeResourceId(value: string): string {
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.includes(":") ? trimmed : `minecraft:${trimmed}`;
-}
-
 function number(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) ? value! : fallback;
-}
-
-function sanitizeId(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_./-]+/g, "_").replace(/^_+|_+$/g, "") || "default";
 }

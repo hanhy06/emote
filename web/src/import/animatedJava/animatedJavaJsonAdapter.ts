@@ -2,6 +2,7 @@ import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { secondsToTicks } from "../../compiler/animationCompiler";
 import type { Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
+import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedArtifact, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 
@@ -82,7 +83,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
   async import(input: ImportInput): Promise<ImportedProject> {
     const blueprint = JSON.parse(decoder.decode(input.bytes)) as AjBlueprint;
     validateRoot(blueprint);
-    const resource = parseResourceLocation(blueprint.settings.id, "settings.id");
+    const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const artifacts: ImportedArtifact[] = [];
     const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, artifacts)]));
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes));
@@ -92,7 +93,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     return {
       source: "animated_java_json",
       sourceName: input.name,
-      suggestedMetadata: { name, description: `${name} emote.`, command_name: sanitizeId(resource.path), hide_player: true },
+      suggestedMetadata: { name, description: `${name} emote.`, command_name: sanitizeResourcePath(resource.path, "default"), hide_player: true },
       nodes,
       animations,
       diagnostics: [],
@@ -103,7 +104,7 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
 
 function validateRoot(blueprint: AjBlueprint): void {
   if (blueprint.format_version !== 1) throw new Error(`Unsupported Animated Java plugin blueprint version: ${blueprint.format_version}`);
-  parseResourceLocation(blueprint.settings?.id, "settings.id");
+  parseResourceLocation(blueprint.settings?.id, "Animated Java settings.id");
 }
 
 function importNode(
@@ -186,7 +187,7 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
     tracks[nodeId] = { transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelay), visibility: [] };
   }
   return {
-    id: sanitizeId(id),
+    id: sanitizeResourcePath(id, "default"),
     name: prettify(id),
     durationSeconds: animation.length + startDelay,
     loop: animation.loop_mode.type,
@@ -344,18 +345,18 @@ function displayPropertiesToNbt(properties: Record<string, unknown> | undefined)
 
 function itemArgumentToSnbt(value: string): string {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
-  const id = normalizeResourceId(match?.[1] ?? "air");
+  const id = normalizeResourceLocation(match?.[1] ?? "air");
   const components = match?.[2]?.split(",").flatMap((component) => {
     const [key, raw] = component.split("=", 2);
     if (!key || raw === undefined) return [];
-    return [`"${normalizeResourceId(key)}":${raw}`];
+    return [`"${normalizeResourceLocation(key)}":${raw}`];
   });
   return components?.length ? `{id:"${id}",count:1,components:{${components.join(",")}}}` : `{id:"${id}",count:1}`;
 }
 
 function blockArgumentToSnbt(value: string): string {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
-  const id = normalizeResourceId(match?.[1] ?? "air");
+  const id = normalizeResourceLocation(match?.[1] ?? "air");
   const properties = match?.[2]?.split(",").flatMap((property) => {
     const [key, raw] = property.split("=", 2);
     return key && raw ? [`${key}:"${raw}"`] : [];
@@ -393,19 +394,6 @@ function addArtifact(artifacts: ImportedArtifact[], path: string, data: Uint8Arr
   if (!artifacts.some((artifact) => artifact.path === path)) artifacts.push({ path, data });
 }
 
-interface ResourceLocation { namespace: string; path: string }
-
-function parseResourceLocation(value: string | undefined, path: string): ResourceLocation {
-  const match = /^([a-z0-9_.-]+):([a-z0-9_./-]+)$/.exec(value ?? "");
-  if (!match) throw new Error(`Animated Java ${path} must be a resource location.`);
-  return { namespace: match[1], path: match[2] };
-}
-
-function normalizeResourceId(value: string): string {
-  const trimmed = value.trim().toLowerCase();
-  return trimmed.includes(":") ? trimmed : `minecraft:${trimmed}`;
-}
-
 function stringProperty(value: Record<string, unknown>, key: string, fallback: string): string {
   return typeof value[key] === "string" ? value[key] : fallback;
 }
@@ -420,10 +408,6 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function formatTimestamp(value: number): string {
   return Number.isInteger(value) ? `${value}.0` : String(value);
-}
-
-function sanitizeId(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_./-]+/g, "_").replace(/^_+|_+$/g, "") || "default";
 }
 
 function prettify(value: string): string {

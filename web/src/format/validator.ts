@@ -1,6 +1,5 @@
 import type { EmoteAnimation, EmoteEvent, Matrix16 } from "./emoteAnimation";
-
-const RESOURCE_LOCATION = /^[a-z0-9_.-]+:[a-z0-9_./-]+$/;
+import { isResourceLocation } from "./resourceLocation";
 
 export interface ValidationIssue {
   path: string;
@@ -12,7 +11,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (animation.schema_version !== 1) add(issues, "schema_version", "must be 1");
   if (animation.tick_rate !== 20) add(issues, "tick_rate", "must be 20");
   if (!animation.minecraft_version.trim()) add(issues, "minecraft_version", "must not be empty");
-  if (!RESOURCE_LOCATION.test(animation.id)) add(issues, "id", "must be a Minecraft resource location");
+  if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
   if (!animation.metadata.description.trim()) add(issues, "metadata.description", "must not be empty");
   if (!animation.metadata.command_name.trim()) add(issues, "metadata.command_name", "must not be empty");

@@ -6,6 +6,7 @@ import type {
   EmoteTimelineEvent,
 } from "../format/emoteAnimation";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
+import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 
 export interface CompileOptions {
   minecraftVersion: string;
@@ -115,12 +116,4 @@ export function secondsToTicks(seconds: number, label: string): number {
     throw new Error(`${label} does not fall on a 20 TPS tick: ${seconds}`);
   }
   return rounded;
-}
-
-function sanitizeResourcePath(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_./-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
-}
-
-function sanitizeNamespace(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9_.-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
 }
