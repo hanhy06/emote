@@ -15,10 +15,10 @@ class PlayResultTest {
 
     @Test
     void failureTrimsErrorMessage() {
-        PlayResult result = PlayResult.failure(" Datapack not loaded. ");
+        PlayResult result = PlayResult.failure(" Animation unavailable. ");
 
         assertFalse(result.isSuccess());
-        assertEquals("Datapack not loaded.", result.errorMessage());
+        assertEquals("Animation unavailable.", result.errorMessage());
     }
 
     @Test

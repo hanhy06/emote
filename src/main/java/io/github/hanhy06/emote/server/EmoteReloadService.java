@@ -24,7 +24,7 @@ public final class EmoteReloadService {
         this.wheelSyncService = wheelSyncService;
     }
 
-    public void handleServerStarted() {
+    public void loadOnServerStart() {
         MinecraftServer server = Emote.SERVER;
         if (server == null) {
             return;
@@ -32,19 +32,6 @@ public final class EmoteReloadService {
         int emoteCount = this.animationService.reload(server);
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("emotes={}", emoteCount);
-    }
-
-    public void handleDataPackReloadStart() {
-        this.configManager.readConfig();
-        this.configManager.readEmoteAccessConfig();
-    }
-
-    public void handleDataPackReloadEnd(boolean success) {
-        if (!success) {
-            Emote.LOGGER.warn("Datapack reload failed; JSON emotes were not reloaded");
-            return;
-        }
-        reloadLoadedConfig();
     }
 
     public EmoteReloadResult reloadFromCommand() {

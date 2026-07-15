@@ -27,13 +27,13 @@ class PlayServiceTest {
     void playReturnsPlaybackFailure() {
         PlayService service = new PlayService(
             createPlayableEmoteService(),
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Datapack not loaded. ")
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Animation unavailable. ")
         );
 
         PlayResult result = service.play(null, "minecraft:wave");
 
         assertFalse(result.isSuccess());
-        assertEquals("Datapack not loaded.", result.errorMessage());
+        assertEquals("Animation unavailable.", result.errorMessage());
     }
 
     private PlayableEmoteService createPlayableEmoteService() {

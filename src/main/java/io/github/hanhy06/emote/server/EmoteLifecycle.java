@@ -41,12 +41,6 @@ public class EmoteLifecycle {
 
     private void registerLifecycleCallbacks() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
-        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register(
-            (ignoredServer, ignoredResourceManager) -> this.reloadService.handleDataPackReloadStart()
-        );
-        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register(
-            (ignoredServer, ignoredResourceManager, success) -> this.reloadService.handleDataPackReloadEnd(success)
-        );
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
     }
 
@@ -80,7 +74,7 @@ public class EmoteLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         Emote.SERVER = server;
-        this.reloadService.handleServerStarted();
+        this.reloadService.loadOnServerStart();
     }
 
     private void handleServerStopping(MinecraftServer server) {
