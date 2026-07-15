@@ -51,6 +51,10 @@ public class PlaybackManager {
             player,
             emote.skinParts()
         );
+        if (!emote.skinParts().isEmpty()
+            && (preparedSkin == null || !preparedSkin.containsAll(emote.skinParts()))) {
+            return PlayResult.failure("Player skin is not ready.");
+        }
 
         stopEmote(player);
         PlaybackNodes nodes = null;
