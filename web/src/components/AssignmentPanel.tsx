@@ -1,4 +1,4 @@
-import type { MouseEvent } from "react";
+import { useRef, type MouseEvent } from "react";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -29,9 +29,25 @@ export function AssignmentPanel({
   onSelectPart,
 }: AssignmentPanelProps) {
   const hasSelection = selectedParts.size > 0;
+  const partItems = useRef(new Map<number, HTMLLIElement>());
 
   function handlePartClick(event: MouseEvent<HTMLButtonElement>, partIndex: number) {
     onSelectPart(partIndex, event.ctrlKey || event.metaKey || event.shiftKey);
+  }
+
+  function assignOrderAndScroll(order: number) {
+    onAssignOrder(order);
+    const lastSelectedPosition = parts.reduce(
+      (last, part, index) => selectedParts.has(part.partIndex) ? index : last,
+      -1,
+    );
+    const nextPart = parts[lastSelectedPosition + 1];
+    if (nextPart) {
+      requestAnimationFrame(() => partItems.current.get(nextPart.partIndex)?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      }));
+    }
   }
 
   return (
@@ -48,12 +64,18 @@ export function AssignmentPanel({
       </div>
       <p><strong>Skin order:</strong> Use 0 for the first piece and 1 for the second piece of the same body part.</p>
       <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedAssignment} onClick={() => onAssignOrder(0)}>Order 0</button>
-        <button type="button" disabled={!hasSelectedAssignment} onClick={() => onAssignOrder(1)}>Order 1</button>
+        <button type="button" disabled={!hasSelectedAssignment} onClick={() => assignOrderAndScroll(0)}>Order 0</button>
+        <button type="button" disabled={!hasSelectedAssignment} onClick={() => assignOrderAndScroll(1)}>Order 1</button>
       </div>
       <ul className="part-list">
         {parts.map((part) => (
-          <li key={part.partIndex}>
+          <li
+            key={part.partIndex}
+            ref={(element) => {
+              if (element) partItems.current.set(part.partIndex, element);
+              else partItems.current.delete(part.partIndex);
+            }}
+          >
             <button
               type="button"
               className={selectedParts.has(part.partIndex) ? "selected" : ""}
