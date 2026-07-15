@@ -7,6 +7,7 @@ import net.fabricmc.loader.api.FabricLoader;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -15,8 +16,8 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 final class MineSkinApiClient {
@@ -91,17 +92,14 @@ final class MineSkinApiClient {
             throw new IOException("MineSkin API key is missing");
         }
 
-        JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("url", "data:image/png;base64," + Base64.getEncoder().encodeToString(pngBytes));
-        requestBody.addProperty("variant", slimModel ? "slim" : "classic");
-        requestBody.addProperty("visibility", "unlisted");
+        MultipartBody requestBody = createUploadBody(pngBytes, slimModel);
 
         JsonObject queueResponse = sendJsonRequest(HttpRequest.newBuilder(QUEUE_URI)
             .header("Authorization", "Bearer " + normalizedApiKey)
             .header("User-Agent", USER_AGENT)
-            .header("Content-Type", "application/json")
+            .header("Content-Type", requestBody.contentType())
             .timeout(Duration.ofSeconds(20))
-            .POST(HttpRequest.BodyPublishers.ofString(this.gson.toJson(requestBody), StandardCharsets.UTF_8))
+            .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody.bytes()))
             .build());
         String textureUrl = readTextureUrl(queueResponse);
         if (textureUrl != null) {
@@ -127,6 +125,57 @@ final class MineSkinApiClient {
 
     static boolean hasApiKey(String apiKey) {
         return normalizeApiKey(apiKey) != null;
+    }
+
+    static MultipartBody createUploadBody(byte[] pngBytes, boolean slimModel) {
+        Objects.requireNonNull(pngBytes, "pngBytes");
+        String boundary = "emote-" + UUID.randomUUID();
+        ByteArrayOutputStream body = new ByteArrayOutputStream();
+        writePartHeader(body, boundary, "file", "skin.png", "image/png");
+        body.writeBytes(pngBytes);
+        writeAscii(body, "\r\n");
+        writeTextPart(body, boundary, "variant", slimModel ? "slim" : "classic");
+        writeTextPart(body, boundary, "visibility", "unlisted");
+        writeAscii(body, "--" + boundary + "--\r\n");
+        return new MultipartBody(body.toByteArray(), "multipart/form-data; boundary=" + boundary);
+    }
+
+    private static void writeTextPart(ByteArrayOutputStream body, String boundary, String name, String value) {
+        writePartHeader(body, boundary, name, null, "text/plain; charset=UTF-8");
+        writeAscii(body, value + "\r\n");
+    }
+
+    private static void writePartHeader(
+        ByteArrayOutputStream body,
+        String boundary,
+        String name,
+        String fileName,
+        String contentType
+    ) {
+        writeAscii(body, "--" + boundary + "\r\n");
+        String disposition = "Content-Disposition: form-data; name=\"" + name + "\"";
+        if (fileName != null) {
+            disposition += "; filename=\"" + fileName + "\"";
+        }
+        writeAscii(body, disposition + "\r\n");
+        writeAscii(body, "Content-Type: " + contentType + "\r\n\r\n");
+    }
+
+    private static void writeAscii(ByteArrayOutputStream body, String value) {
+        body.writeBytes(value.getBytes(StandardCharsets.US_ASCII));
+    }
+
+    record MultipartBody(byte[] bytes, String contentType) {
+        MultipartBody {
+            Objects.requireNonNull(bytes, "bytes");
+            Objects.requireNonNull(contentType, "contentType");
+            bytes = bytes.clone();
+        }
+
+        @Override
+        public byte[] bytes() {
+            return this.bytes.clone();
+        }
     }
 
     private String waitForSkinUrlWithApiKey(String apiKey, String jobId) throws IOException, InterruptedException {
