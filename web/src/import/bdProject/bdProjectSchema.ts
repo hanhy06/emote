@@ -8,6 +8,7 @@ import {
   requireNumber,
   requireNumberArray,
   requireRecord,
+  requireString,
 } from "../../format/runtimeValue";
 
 export interface BdSceneNode {
@@ -37,8 +38,8 @@ export interface BdTransform {
 
 export interface BdAnimationSample extends BdTransform {
   time: number;
-  curve?: string;
-  curveFuncSave?: string;
+  curve?: string | null;
+  curveFuncSave?: string | null;
 }
 
 export type VectorLike = { x?: number; y?: number; z?: number } | number[];
@@ -59,8 +60,10 @@ export function requireBdSceneNode(value: unknown, path: string): BdSceneNode {
       const samplePath = `${path}.animation[${index}]`;
       const sample = requireRecord(sampleValue, samplePath);
       requireNumber(sample.time, `${samplePath}.time`);
-      optionalString(sample.curve, `${samplePath}.curve`);
-      optionalString(sample.curveFuncSave, `${samplePath}.curveFuncSave`);
+      if (sample.curve !== undefined && sample.curve !== null) requireString(sample.curve, `${samplePath}.curve`);
+      if (sample.curveFuncSave !== undefined && sample.curveFuncSave !== null) {
+        requireString(sample.curveFuncSave, `${samplePath}.curveFuncSave`);
+      }
       requireBdTransform(sample, samplePath);
     });
   }

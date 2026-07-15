@@ -32,6 +32,22 @@ describe("bdProjectAdapter", () => {
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
+  it("accepts null curve metadata saved by BD Engine", async () => {
+    const input = {
+      name: "Null curves.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        children: [{
+          isCollection: true,
+          animation: [{ time: 0, ...transform(0), curve: null, curveFuncSave: null }],
+          children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+        }],
+      }),
+    };
+
+    await expect(bdProjectAdapter.import(input)).resolves.toMatchObject({ source: "bd_project" });
+  });
+
   it("bakes sparse BD keyframes with their saved interpolation curve", async () => {
     const curveFuncSave = JSON.stringify([{ x: 0, y: 0 }, { x: 0.5, y: 0.25 }, { x: 1, y: 1 }]);
     const input = {
