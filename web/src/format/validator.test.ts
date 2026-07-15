@@ -30,7 +30,7 @@ describe("validateEmoteAnimation", () => {
   it("accepts and serializes a structurally valid animation", () => {
     const value = animation();
     expect(validateEmoteAnimation(value)).toEqual([]);
-    expect(serializeEmoteAnimation(value)).toContain('"schema_version": 1');
+    expect(serializeEmoteAnimation(value)).toContain('"schema_version":1');
   });
 
   it("rejects anchor command sources and out-of-range timeline events", () => {

@@ -7,5 +7,5 @@ export function serializeEmoteAnimation(animation: EmoteAnimation): string {
     const first = issues[0];
     throw new Error(`Invalid emote animation at ${first.path}: ${first.message}`);
   }
-  return `${JSON.stringify(animation, null, 2)}\n`;
+  return JSON.stringify(animation);
 }
