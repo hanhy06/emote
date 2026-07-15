@@ -12,7 +12,7 @@ export type PartAssignments = Record<string, SkinPartId | null>;
 export type PartOrders = Record<string, number | null>;
 
 export function selectPart(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
-  if (!additive) return new Set([nodeId]);
+  if (!additive) return current.has(nodeId) ? new Set() : new Set([nodeId]);
   const next = new Set(current);
   if (next.has(nodeId)) next.delete(nodeId);
   else next.add(nodeId);
