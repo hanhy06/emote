@@ -4,7 +4,8 @@ import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
 import { downloadExport, exportAnimation, exportResource, type ExportOptions } from "./export/projectExporter";
 import { IMPORT_ADAPTERS } from "./import/adapters";
-import { detectAdapter } from "./import/adapterRegistry";
+import { detectAdapter, importDetected } from "./import/adapterRegistry";
+import { conversionErrorMessage } from "./import/errors";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
 import { selectPart, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
@@ -47,7 +48,7 @@ export function App() {
     try {
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
       const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-      const imported = await detected.adapter.import(input);
+      const imported = await importDetected(detected, input);
       const candidates = findSkinCandidates(imported);
       setProject(imported);
       setAdapterLabel(detected.adapter.label);
@@ -62,7 +63,7 @@ export function App() {
         ...imported.suggestedMetadata,
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not import the file.");
+      setError(conversionErrorMessage(reason, "Could not import the file."));
     } finally {
       setLoading(false);
       event.target.value = "";
@@ -84,7 +85,7 @@ export function App() {
     try {
       downloadExport(exportAnimation(project, metadata, skinAssignments(), index));
     } catch (reason) {
-      setConversionError(reason instanceof Error ? reason.message : "Conversion failed.");
+      setConversionError(conversionErrorMessage(reason, "Conversion failed."));
     }
   }
 
@@ -94,7 +95,7 @@ export function App() {
     try {
       downloadExport(exportResource(project, metadata.minecraftVersion, index));
     } catch (reason) {
-      setConversionError(reason instanceof Error ? reason.message : "Resource export failed.");
+      setConversionError(conversionErrorMessage(reason, "Resource export failed."));
     }
   }
 

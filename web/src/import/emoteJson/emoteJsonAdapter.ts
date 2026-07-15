@@ -4,6 +4,7 @@ import { asMatrix16 } from "../../format/matrix";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
+import { ConversionError } from "../errors";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
 
 const decoder = new TextDecoder();
@@ -28,7 +29,7 @@ export const emoteJsonAdapter: ImportAdapter = {
     const animation = requireEmoteAnimation(JSON.parse(decoder.decode(input.bytes)));
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
-      throw new Error(`Invalid emote animation at ${issues[0].path}: ${issues[0].message}`);
+      throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
     }
     const separator = animation.id.indexOf(":");
     const namespace = animation.id.slice(0, separator);

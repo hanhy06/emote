@@ -1,27 +1,29 @@
+import { ConversionError } from "../import/errors";
+
 export type RuntimeRecord = Record<string, unknown>;
 
 export function requireRecord(value: unknown, path: string): RuntimeRecord {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new Error(`${path} must be an object.`);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw invalidInput(path, "must be an object");
   return value as RuntimeRecord;
 }
 
 export function requireArray(value: unknown, path: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`${path} must be an array.`);
+  if (!Array.isArray(value)) throw invalidInput(path, "must be an array");
   return value;
 }
 
 export function requireString(value: unknown, path: string): string {
-  if (typeof value !== "string") throw new Error(`${path} must be a string.`);
+  if (typeof value !== "string") throw invalidInput(path, "must be a string");
   return value;
 }
 
 export function requireNumber(value: unknown, path: string): number {
-  if (typeof value !== "number" || !Number.isFinite(value)) throw new Error(`${path} must be a finite number.`);
+  if (typeof value !== "number" || !Number.isFinite(value)) throw invalidInput(path, "must be a finite number");
   return value;
 }
 
 export function requireBoolean(value: unknown, path: string): boolean {
-  if (typeof value !== "boolean") throw new Error(`${path} must be a boolean.`);
+  if (typeof value !== "boolean") throw invalidInput(path, "must be a boolean");
   return value;
 }
 
@@ -47,7 +49,7 @@ export function optionalBoolean(value: unknown, path: string): boolean | undefin
 
 export function requireStringValue<const T extends string>(value: unknown, allowed: readonly T[], path: string): T {
   const string = requireString(value, path);
-  if (!allowed.includes(string as T)) throw new Error(`${path} must be one of: ${allowed.join(", ")}.`);
+  if (!allowed.includes(string as T)) throw invalidInput(path, `must be one of: ${allowed.join(", ")}`);
   return string as T;
 }
 
@@ -57,4 +59,8 @@ export function requireNumberArray(value: unknown, path: string): number[] {
 
 export function requireStringArray(value: unknown, path: string): string[] {
   return requireArray(value, path).map((entry, index) => requireString(entry, `${path}[${index}]`));
+}
+
+function invalidInput(path: string, message: string): ConversionError {
+  return new ConversionError("invalid_input", `${path} ${message}.`, path);
 }

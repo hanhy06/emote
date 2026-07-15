@@ -8,6 +8,7 @@ import type {
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { TICKS_PER_SECOND, requireTick } from "../format/time";
+import { ConversionError } from "../import/errors";
 
 export interface CompileOptions {
   minecraftVersion: string;
@@ -17,7 +18,7 @@ export interface CompileOptions {
 
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
   const importError = project.diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (importError) throw new Error(`${importError.message}${importError.sourcePath ? ` (${importError.sourcePath})` : ""}`);
+  if (importError) throw ConversionError.fromIssue(importError);
   const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.command_name ?? project.suggestedMetadata.command_name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
   const multiple = project.animations.length > 1;

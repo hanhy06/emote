@@ -1,4 +1,5 @@
 import type { EmoteEvent, EmoteMetadata, Matrix16 } from "../format/emoteAnimation";
+import type { ConversionIssue } from "./errors";
 
 export type ImportSource = "bd_datapack" | "bd_project" | "animated_java_json" | "emote_json";
 
@@ -77,12 +78,7 @@ export interface ImportedTimelineEvent extends EmoteEvent {
   tick: number;
 }
 
-export interface ImportDiagnostic {
-  severity: "warning" | "error";
-  code: string;
-  message: string;
-  sourcePath?: string;
-}
+export type ImportDiagnostic = ConversionIssue;
 
 export interface ImportedArtifact {
   path: string;
