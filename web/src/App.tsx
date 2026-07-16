@@ -35,6 +35,10 @@ const EMPTY_SELECTION = new Set<string>();
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
   .join(",");
+const IMPORT_FORMATS = IMPORT_ADAPTERS.map((adapter) => ({
+  label: adapter.label,
+  extensions: adapter.extensions.map((extension) => `.${extension}`).join(", "),
+}));
 
 export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
@@ -149,62 +153,116 @@ export function App() {
   }
 
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
+  const filePicker = (
+    <label className={`file-input${loading ? " disabled" : ""}`}>
+      <span>{session ? "Open another file" : "Choose animation file"}</span>
+      <input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={loading} />
+    </label>
+  );
 
   return (
     <main className="app">
-      <header>
-        <h1>Emote JSON Converter</h1>
-        <label className="file-input">Animation file<input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={loading} /></label>
+      <header className="app-header">
+        <div>
+          <span className="product-label">Emote tools</span>
+          <h1>Emote Converter</h1>
+          <p>Convert animation projects into server-ready Emote files.</p>
+        </div>
+        {session && filePicker}
       </header>
 
-      {loading && <p>Reading file…</p>}
-      {error && <p className="error" role="alert">{error}</p>}
+      {loading && <p className="message">Reading and validating the file…</p>}
+      {error && <p className="message error" role="alert"><strong>Could not open the file.</strong><span>{error}</span></p>}
+
+      {!session && (
+        <section className="start-panel" aria-labelledby="start-title">
+          <div className="start-copy">
+            <span className="step-label">Start a conversion</span>
+            <h2 id="start-title">Open an animation project</h2>
+            <p>Choose a supported project or an existing Emote JSON file. Files are processed locally in your browser.</p>
+            {filePicker}
+          </div>
+          <div className="start-details">
+            <h3>Supported files</h3>
+            <ul className="format-list">
+              {IMPORT_FORMATS.map((format) => (
+                <li key={format.label}><strong>{format.label}</strong><span>{format.extensions}</span></li>
+              ))}
+            </ul>
+            <h3>Workflow</h3>
+            <ol className="workflow-list">
+              <li><span>1</span><p><strong>Open a file</strong><small>The format is detected automatically.</small></p></li>
+              <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin pieces when the project contains them.</small></p></li>
+              <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
+            </ol>
+          </div>
+        </section>
+      )}
 
       {session && animation && (
         <>
-          <div className="status">
-            <strong>{project.sourceName}</strong>
-            <span>{session.adapterLabel}</span>
-            <span>{Object.keys(project.nodes).length} nodes</span>
-            {skinCandidates.length > 0 && (
-              <label className="frame-slider">
-                <span>Preview</span>
-                <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
-                  setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
-                }} />
-                <output>{previewTick === null ? "Create" : `${previewTick} tick`}</output>
-              </label>
-            )}
-            {project.animations.length > 1 && (
-              <select value={animationIndex} onChange={(event) => {
-                setSession((current) => current ? { ...current, animationIndex: Number(event.target.value), previewFrameIndex: 0, selectedParts: new Set() } : current);
-              }}>
-                {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
-              </select>
-            )}
-          </div>
+          <section className="project-summary" aria-label="Imported project">
+            <div className="project-file">
+              <span>Imported file</span>
+              <strong>{project.sourceName}</strong>
+            </div>
+            <dl>
+              <div><dt>Format</dt><dd>{session.adapterLabel}</dd></div>
+              <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
+              <div><dt>Animations</dt><dd>{project.animations.length}</dd></div>
+            </dl>
+          </section>
 
           {project.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").map((diagnostic) => (
-            <p className="warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
+            <p className="message warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
           ))}
 
-          {skinCandidates.length > 0 ? (
-            <section className="editor">
-              <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
-              <AssignmentPanel
-                parts={previewParts}
-                assignments={assignments}
-                orders={orders}
-                selectedParts={selectedParts}
-                hasSelectedAssignment={hasSelectedAssignment}
-                onAssignPart={assignSelected}
-                onAssignOrder={assignOrder}
-                onSelectPart={handlePartSelect}
-              />
-            </section>
-          ) : (
-            <section className="no-skin-parts">This input has no player_head pieces. It can be exported without skin mapping.</section>
-          )}
+          <section className="workspace" aria-labelledby="workspace-title">
+            <div className="section-heading">
+              <div>
+                <span className="step-label">Step 2</span>
+                <h2 id="workspace-title">{skinCandidates.length > 0 ? "Review player skin parts" : "Review imported animation"}</h2>
+                <p>{skinCandidates.length > 0
+                  ? "Select pieces in the preview, then assign each one to a player body part."
+                  : "This file does not contain player-head pieces, so no skin mapping is needed."}</p>
+              </div>
+              <div className="preview-controls">
+                {skinCandidates.length > 0 && (
+                  <label className="frame-slider">
+                    <span>Preview frame</span>
+                    <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
+                      setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
+                    }} />
+                    <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
+                  </label>
+                )}
+                {project.animations.length > 1 && (
+                  <label className="animation-select"><span>Animation</span><select value={animationIndex} onChange={(event) => {
+                    setSession((current) => current ? { ...current, animationIndex: Number(event.target.value), previewFrameIndex: 0, selectedParts: new Set() } : current);
+                  }}>
+                    {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
+                  </select></label>
+                )}
+              </div>
+            </div>
+            {skinCandidates.length > 0 ? (
+              <div className="editor">
+                <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+                <AssignmentPanel
+                  parts={previewParts}
+                  assignments={assignments}
+                  orders={orders}
+                  selectedParts={selectedParts}
+                  hasSelectedAssignment={hasSelectedAssignment}
+                  onAssignPart={assignSelected}
+                  onAssignOrder={assignOrder}
+                  onSelectPart={handlePartSelect}
+                />
+              </div>
+            ) : (
+              <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
+            )}
+          </section>
 
           <ExportPanel
             metadata={session.metadata}

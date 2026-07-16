@@ -28,7 +28,14 @@ export function ExportPanel({
 }: ExportPanelProps) {
   return (
     <section className="export">
-      <h2>Export</h2>
+      <div className="section-heading export-heading">
+        <div>
+          <span className="step-label">Final step</span>
+          <h2>Export files</h2>
+          <p>Review the output settings, then download the animation and generated resources.</p>
+        </div>
+        <span className="summary-badge">{assignmentSummary}</span>
+      </div>
       <div className="fields">
         <label>Minecraft version<input value={metadata.minecraftVersion} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.target.value })} /></label>
         <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.target.value })} /></label>
@@ -43,13 +50,12 @@ export function ExportPanel({
         <label className="checkbox"><input type="checkbox" checked={metadata.hide_player} onChange={(event) => onMetadataChange({ ...metadata, hide_player: event.target.checked })} />Hide original player</label>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
-      <p>{assignmentSummary}</p>
       <h3>Animations</h3>
       <ul className="download-list">
         {animations.map((animation, index) => (
           <li key={`${animation.detail}:${index}`}>
             <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
-            <button type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
+            <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
           </li>
         ))}
       </ul>
