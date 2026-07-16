@@ -21,6 +21,7 @@ final class MineSkinManager {
     private final MineSkinClient client;
     private final GenerationQueue generationQueue;
     private final Consumer<UUID> readyNotifier;
+    private final Map<String, BakeTask> bakeTasks = new HashMap<>();
 
     private volatile String apiKey = "";
 
@@ -83,27 +84,38 @@ final class MineSkinManager {
             return;
         }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-        Set<PlayerSkinTextureKey> requestedKeys = Set.copyOf(requiredKeys);
-        this.generationQueue.submit(pendingKey, () -> bakeAndSave(currentApiKey, source, requestedKeys));
+        BakeTask bakeTask;
+        boolean addedKeys;
+        synchronized (this.bakeTasks) {
+            bakeTask = this.bakeTasks.computeIfAbsent(pendingKey, ignored -> new BakeTask(source));
+            bakeTask.addSubscriber(source.playerUuid());
+            addedKeys = bakeTask.addRequiredKeys(requiredKeys);
+        }
+        if (addedKeys) {
+            this.generationQueue.submit(pendingKey, () -> bakeAndSave(currentApiKey, bakeTask));
+        }
     }
 
     private void bakeAndSave(
         String currentApiKey,
-        PlayerSkinManager.PlayerSkinSource source,
-        Set<PlayerSkinTextureKey> requiredKeys
+        BakeTask bakeTask
     ) {
+        PlayerSkinManager.PlayerSkinSource source = bakeTask.source();
         try {
             Map<PlayerSkinTextureKey, String> stored = this.cache.load(source.textureHash(), source.slimModel());
-            Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(requiredKeys);
+            Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(bakeTask.requiredKeys());
             missingKeys.removeAll(stored.keySet());
             if (missingKeys.isEmpty()) {
+                bakeTask.complete();
                 return;
             }
 
+            bakeTask.updateStage(BakeStage.DOWNLOADING_SKIN, null);
             BufferedImage sourceImage = this.client.downloadSkinImage(source.textureUrl());
             Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
             boolean savedAny = false;
             for (PlayerSkinTextureKey textureKey : missingKeys) {
+                bakeTask.updateStage(BakeStage.BAKING_PART, textureKey);
                 byte[] bakedImage = this.playerSkinBaker.bake(
                     sourceImage,
                     textureKey.skinPart(),
@@ -117,16 +129,22 @@ final class MineSkinManager {
                 }
                 saved.put(textureKey, textureUrl);
                 this.cache.save(source.textureHash(), source.slimModel(), saved);
+                bakeTask.markCompleted(textureKey);
                 savedAny = true;
             }
             if (savedAny) {
                 Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
-                this.readyNotifier.accept(source.playerUuid());
+                for (UUID playerUuid : bakeTask.subscribers()) {
+                    this.readyNotifier.accept(playerUuid);
+                }
             }
+            bakeTask.complete();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
+            bakeTask.cancel();
             Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
         } catch (IOException | IllegalArgumentException exception) {
+            bakeTask.fail(exception.getMessage());
             Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
         }
     }
@@ -198,7 +216,7 @@ final class MineSkinManager {
 
     static final class GenerationQueue {
         private final Supplier<ExecutorService> executorFactory;
-        private final Map<String, Object> pendingTasks = new HashMap<>();
+        private final Map<String, PendingTask> pendingTasks = new HashMap<>();
         private ExecutorService executor;
 
         GenerationQueue() {
@@ -210,22 +228,29 @@ final class MineSkinManager {
         }
 
         synchronized boolean submit(String key, Runnable task) {
-            if (this.pendingTasks.containsKey(key)) {
+            PendingTask pendingTask = this.pendingTasks.get(key);
+            if (pendingTask != null) {
+                pendingTask.requestRerun();
                 return false;
             }
-            Object taskToken = new Object();
-            this.pendingTasks.put(key, taskToken);
+            PendingTask newTask = new PendingTask(task);
+            this.pendingTasks.put(key, newTask);
             try {
                 executor().execute(() -> {
-                    try {
-                        task.run();
-                    } finally {
-                        removePendingTask(key, taskToken);
+                    while (true) {
+                        newTask.task().run();
+                        synchronized (GenerationQueue.this) {
+                            if (newTask.takeRerunRequest()) {
+                                continue;
+                            }
+                            pendingTasks.remove(key, newTask);
+                            return;
+                        }
                     }
                 });
                 return true;
             } catch (RejectedExecutionException exception) {
-                this.pendingTasks.remove(key, taskToken);
+                this.pendingTasks.remove(key, newTask);
                 throw exception;
             }
         }
@@ -246,16 +271,110 @@ final class MineSkinManager {
             return this.executor;
         }
 
-        private synchronized void removePendingTask(String key, Object taskToken) {
-            this.pendingTasks.remove(key, taskToken);
-        }
-
         private static ExecutorService createExecutor() {
             return Executors.newSingleThreadExecutor(task -> {
                 Thread thread = new Thread(task, "emote-mineskin");
                 thread.setDaemon(true);
                 return thread;
             });
+        }
+
+        private static final class PendingTask {
+            private final Runnable task;
+            private boolean rerunRequested;
+
+            private PendingTask(Runnable task) {
+                this.task = task;
+            }
+
+            private Runnable task() {
+                return this.task;
+            }
+
+            private void requestRerun() {
+                this.rerunRequested = true;
+            }
+
+            private boolean takeRerunRequest() {
+                boolean requested = this.rerunRequested;
+                this.rerunRequested = false;
+                return requested;
+            }
+        }
+    }
+
+    enum BakeStage {
+        QUEUED,
+        DOWNLOADING_SKIN,
+        BAKING_PART,
+        WAITING_FOR_MINESKIN,
+        RETRY_WAIT,
+        COMPLETE,
+        FAILED,
+        CANCELLED
+    }
+
+    private static final class BakeTask {
+        private final PlayerSkinManager.PlayerSkinSource source;
+        private final Set<UUID> subscribers = new LinkedHashSet<>();
+        private final Set<PlayerSkinTextureKey> requiredKeys = new LinkedHashSet<>();
+        private final Set<PlayerSkinTextureKey> completedKeys = new LinkedHashSet<>();
+        private BakeStage stage = BakeStage.QUEUED;
+        private PlayerSkinTextureKey currentKey;
+        private String errorMessage;
+
+        private BakeTask(PlayerSkinManager.PlayerSkinSource source) {
+            this.source = source;
+        }
+
+        private PlayerSkinManager.PlayerSkinSource source() {
+            return this.source;
+        }
+
+        private synchronized void addSubscriber(UUID playerUuid) {
+            this.subscribers.add(playerUuid);
+        }
+
+        private synchronized boolean addRequiredKeys(Set<PlayerSkinTextureKey> keys) {
+            boolean changed = this.requiredKeys.addAll(keys);
+            if (changed && (this.stage == BakeStage.COMPLETE || this.stage == BakeStage.FAILED)) {
+                this.stage = BakeStage.QUEUED;
+                this.errorMessage = null;
+            }
+            return changed;
+        }
+
+        private synchronized Set<PlayerSkinTextureKey> requiredKeys() {
+            return Set.copyOf(this.requiredKeys);
+        }
+
+        private synchronized Set<UUID> subscribers() {
+            return Set.copyOf(this.subscribers);
+        }
+
+        private synchronized void updateStage(BakeStage stage, PlayerSkinTextureKey currentKey) {
+            this.stage = stage;
+            this.currentKey = currentKey;
+        }
+
+        private synchronized void markCompleted(PlayerSkinTextureKey textureKey) {
+            this.completedKeys.add(textureKey);
+        }
+
+        private synchronized void complete() {
+            this.stage = BakeStage.COMPLETE;
+            this.currentKey = null;
+        }
+
+        private synchronized void fail(String errorMessage) {
+            this.stage = BakeStage.FAILED;
+            this.currentKey = null;
+            this.errorMessage = errorMessage;
+        }
+
+        private synchronized void cancel() {
+            this.stage = BakeStage.CANCELLED;
+            this.currentKey = null;
         }
     }
 }

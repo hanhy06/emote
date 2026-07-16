@@ -37,13 +37,16 @@ class MineSkinGenerationQueueTest {
     }
 
     @Test
-    void submitDeduplicatesPendingSkinKey() throws InterruptedException {
+    void submitRequestsOneRerunForPendingSkinKey() throws InterruptedException {
         MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch reran = new CountDownLatch(1);
         AtomicInteger runCount = new AtomicInteger();
         assertTrue(executor.submit("skin", () -> {
-            runCount.incrementAndGet();
+            if (runCount.incrementAndGet() == 2) {
+                reran.countDown();
+            }
             started.countDown();
             try {
                 release.await();
@@ -55,8 +58,9 @@ class MineSkinGenerationQueueTest {
         assertTrue(started.await(1, TimeUnit.SECONDS));
         assertFalse(executor.submit("skin", runCount::incrementAndGet));
         release.countDown();
+        assertTrue(reran.await(1, TimeUnit.SECONDS));
         executor.cancelAll();
 
-        assertEquals(1, runCount.get());
+        assertEquals(2, runCount.get());
     }
 }
