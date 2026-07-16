@@ -169,9 +169,7 @@ function createImportedNode(entry: DisplayEntry): ImportedNode {
 function evaluateDisplayDefaultMatrix(entry: DisplayEntry): Matrix16 {
   const matrix = new Matrix4();
   for (const ancestor of entry.ancestors) {
-    matrix.multiply(ancestor.defaultTransform
-      ? matrixFromTransform(ancestor.defaultTransform)
-      : matrixFromArray(ancestor.transforms, ancestor.name ?? "collection"));
+    matrix.multiply(matrixFromArray(ancestor.transforms, ancestor.name ?? "collection"));
   }
   const pivot = vector(entry.ancestors.at(-1)?.pivotCustom, [0, 0, 0]);
   matrix.multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));

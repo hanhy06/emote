@@ -48,6 +48,29 @@ describe("bdProjectAdapter", () => {
     await expect(bdProjectAdapter.import(input)).resolves.toMatchObject({ source: "bd_project" });
   });
 
+  it("keeps the create pose separate from the animation at tick zero", async () => {
+    const input = {
+      name: "Create pose.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        children: [{
+          isCollection: true,
+          name: "Animated parent",
+          transforms: translationMatrix(1),
+          defaultTransform: transform(2),
+          animation: [{ time: 0, ...transform(3) }],
+          children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+        }],
+      }),
+    };
+
+    const project = await bdProjectAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "poses" });
+
+    expect(animation.nodes.display_0.default_matrix[3]).toBeCloseTo(1);
+    expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
+  });
+
   it("bakes sparse BD keyframes with their saved interpolation curve", async () => {
     const curveFuncSave = JSON.stringify([{ x: 0, y: 0 }, { x: 0.5, y: 0.25 }, { x: 1, y: 1 }]);
     const input = {
@@ -94,6 +117,12 @@ function transform(x: number) {
     rotation: { x: 0, y: 0, z: 0 },
     scale: { x: 1, y: 1, z: 1 },
   };
+}
+
+function translationMatrix(x: number): number[] {
+  const matrix = [...IDENTITY_MATRIX];
+  matrix[3] = x;
+  return matrix;
 }
 
 function createProject(scene: unknown): Uint8Array {
