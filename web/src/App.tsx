@@ -247,7 +247,7 @@ export function App() {
             </div>
             {skinCandidates.length > 0 ? (
               <div className="editor">
-                <PartPreview parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+                <PartPreview key={project.sourceName} parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
                 <AssignmentPanel
                   parts={previewParts}
                   assignments={assignments}

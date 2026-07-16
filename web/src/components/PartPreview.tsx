@@ -101,7 +101,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       camera.position.copy(previousCamera.position);
     } else {
       controls.target.copy(center);
-      camera.position.copy(center).add(new THREE.Vector3(size * 2.4, size * 1.1, size * 2.8));
+      camera.position.copy(center).add(new THREE.Vector3(size * 3.6, size * 1.65, size * 4.2));
     }
     camera.near = Math.max(size / 100, 0.01);
     camera.far = Math.max(size * 20, 100);
