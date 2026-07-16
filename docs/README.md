@@ -40,7 +40,6 @@ Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playi
 
 Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
 
-
 ## Server Configuration
 
 The following files and directories are created in `config/emote` when the server starts for the first time:
