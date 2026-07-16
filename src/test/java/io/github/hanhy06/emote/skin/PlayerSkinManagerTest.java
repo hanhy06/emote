@@ -34,12 +34,13 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());
+            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertNotNull(result);
+            assertTrue(result.ready());
+            assertEquals(100, result.progressPercent());
             assertEquals(
                 "https://textures.example/head",
-                result.findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
+                result.preparedPlayerSkin().findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
             );
         }
     }
@@ -56,13 +57,47 @@ class PlayerSkinManagerTest {
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PreparedPlayerSkin result = manager.preparePlayerSkin(null, createSkinParts());
+            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertNull(result);
+            assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
+            assertEquals(0, result.progressPercent());
+            assertNull(result.preparedPlayerSkin());
             assertNotNull(executorService.command);
 
             manager.cancelPendingBakes();
             assertTrue(executorService.isShutdown());
+        }
+    }
+
+    @Test
+    void preparePlayerSkinReportsProgressForRequestedParts(@TempDir Path tempDir) {
+        MineSkinCache textureStore = new MineSkinCache(tempDir);
+        textureStore.save("skin-hash", false, Map.of(HEAD_TEXTURE_KEY, "https://textures.example/head"));
+        PlayerSkinTextureKey bodyTextureKey = new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
+
+        try (CapturingExecutorService executorService = new CapturingExecutorService();
+             HttpClient httpClient = MineSkinClient.createHttpClient()) {
+            PlayerSkinManager manager = createManager(
+                textureStore,
+                new MineSkinClient(httpClient),
+                new MineSkinManager.GenerationQueue(() -> executorService),
+                new PlayerSkinManager.PlayerSkinSource(
+                    UUID.randomUUID(),
+                    "player",
+                    "skin-hash",
+                    "https://textures.example/skin",
+                    false
+                )
+            );
+
+            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, List.of(
+                new EmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
+                new EmoteSkinPart("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
+            ));
+
+            assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
+            assertEquals(50, result.progressPercent());
+            manager.cancelPendingBakes();
         }
     }
 

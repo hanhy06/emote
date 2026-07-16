@@ -47,14 +47,21 @@ public class PlaybackManager {
             return PlayResult.failure("Cannot play an emote while riding.");
         }
 
-        PreparedPlayerSkin preparedSkin = this.playerSkinManager.preparePlayerSkin(
+        PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
         );
-        if (!emote.skinParts().isEmpty()
-            && (preparedSkin == null || !preparedSkin.containsAll(emote.skinParts()))) {
-            return PlayResult.failure("Player skin is not ready.");
+        if (!skinPreparation.ready()) {
+            return switch (skinPreparation.state()) {
+                case PREPARING -> PlayResult.failure(
+                    "Preparing player skin... " + skinPreparation.progressPercent() + "%"
+                );
+                case FAILED -> PlayResult.failure("Player skin preparation failed. Try again later.");
+                case UNAVAILABLE -> PlayResult.failure("Player skin preparation is unavailable.");
+                case READY -> throw new IllegalStateException("ready skin preparation reported as not ready");
+            };
         }
+        PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
 
         stopEmote(player);
         PlaybackNodes nodes = null;
@@ -121,8 +128,15 @@ public class PlaybackManager {
         if (player == null) {
             return;
         }
-        PreparedPlayerSkin preparedSkin = this.playerSkinManager.preparePlayerSkin(player, activeEmote.skinParts());
-        this.playerSkinManager.applySkinParts(activeEmote.nodes().nodes(), activeEmote.skinParts(), preparedSkin);
+        PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
+            player,
+            activeEmote.skinParts()
+        );
+        this.playerSkinManager.applySkinParts(
+            activeEmote.nodes().nodes(),
+            activeEmote.skinParts(),
+            preparation.preparedPlayerSkin()
+        );
     }
 
     public ActiveEmote stopEmote(ServerPlayer player) {

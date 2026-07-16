@@ -10,6 +10,7 @@ import io.github.hanhy06.emote.playback.PlaybackNodes.NodeInstance;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
@@ -48,7 +49,8 @@ public class PlayerSkinManager implements ConfigListener {
             Objects.requireNonNull(mineSkinCache, "mineSkinCache"),
             Objects.requireNonNull(mineSkinClient, "mineSkinClient"),
             Objects.requireNonNull(generationQueue, "generationQueue"),
-            this::notifySkinReady
+            this::notifySkinReady,
+            this::notifySkinFailed
         );
     }
 
@@ -57,9 +59,9 @@ public class PlayerSkinManager implements ConfigListener {
         this.mineSkinManager.configure(newConfig.mineSkinApiKey(), newConfig.mineSkinPollIntervalSeconds());
     }
 
-    public PreparedPlayerSkin preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
+    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
         if (skinParts.isEmpty()) {
-            return null;
+            return new SkinPreparation(null, SkinPreparationState.READY, 100);
         }
         Set<PlayerSkinTextureKey> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
         for (EmoteSkinPart skinPart : skinParts) {
@@ -67,9 +69,19 @@ public class PlayerSkinManager implements ConfigListener {
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
-            return null;
+            return new SkinPreparation(null, SkinPreparationState.UNAVAILABLE, 0);
         }
-        return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
+        MineSkinManager.Preparation preparation = this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
+        return new SkinPreparation(
+            preparation.preparedSkin(),
+            switch (preparation.state()) {
+                case READY -> SkinPreparationState.READY;
+                case PREPARING -> SkinPreparationState.PREPARING;
+                case FAILED -> SkinPreparationState.FAILED;
+                case UNAVAILABLE -> SkinPreparationState.UNAVAILABLE;
+            },
+            preparation.progressPercent()
+        );
     }
 
     public void applySkinParts(
@@ -124,14 +136,55 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void notifySkinReady(UUID playerUuid) {
         MinecraftServer server = Emote.SERVER;
-        if (server == null || this.readyListeners.isEmpty()) {
+        if (server == null) {
             return;
         }
         server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+            if (player != null) {
+                player.sendSystemMessage(Component.literal("Player skin is ready. Run the emote again."));
+            }
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
             }
         });
+    }
+
+    private void notifySkinFailed(UUID playerUuid) {
+        MinecraftServer server = Emote.SERVER;
+        if (server == null) {
+            return;
+        }
+        server.execute(() -> {
+            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+            if (player != null) {
+                player.sendSystemMessage(Component.literal("Player skin preparation failed. Try again later."));
+            }
+        });
+    }
+
+    public enum SkinPreparationState {
+        READY,
+        PREPARING,
+        FAILED,
+        UNAVAILABLE
+    }
+
+    public record SkinPreparation(
+        PreparedPlayerSkin preparedPlayerSkin,
+        SkinPreparationState state,
+        int progressPercent
+    ) {
+        public SkinPreparation {
+            Objects.requireNonNull(state, "state");
+            if (progressPercent < 0 || progressPercent > 100) {
+                throw new IllegalArgumentException("progressPercent must be between 0 and 100");
+            }
+        }
+
+        public boolean ready() {
+            return this.state == SkinPreparationState.READY;
+        }
     }
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
