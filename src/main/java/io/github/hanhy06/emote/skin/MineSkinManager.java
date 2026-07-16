@@ -108,6 +108,56 @@ final class MineSkinManager {
     private void fail(BakeTask bakeTask, String errorMessage) {
         if (bakeTask.fail(errorMessage)) {
             notifyFailed(bakeTask);
+            this.generationQueue.schedule(
+                cleanupKey(bakeTask),
+                () -> evictFailedTask(bakeTask),
+                FAILED_JOB_RETRY_DELAY_MILLIS
+            );
+        }
+    }
+
+    private void complete(BakeTask bakeTask) {
+        if (!bakeTask.complete()) {
+            return;
+        }
+        this.generationQueue.cancelScheduled(cleanupKey(bakeTask));
+        notifyCompleted(bakeTask);
+        synchronized (this.bakeTasks) {
+            if (this.bakeTasks.get(bakeTask.key()) == bakeTask && bakeTask.stage() == BakeStage.COMPLETE) {
+                this.bakeTasks.remove(bakeTask.key());
+            }
+        }
+    }
+
+    private void evictFailedTask(BakeTask bakeTask) {
+        long remainingMillis;
+        synchronized (this.bakeTasks) {
+            if (this.bakeTasks.get(bakeTask.key()) != bakeTask || bakeTask.stage() != BakeStage.FAILED) {
+                return;
+            }
+            remainingMillis = bakeTask.failedAtEpochMillis()
+                + FAILED_JOB_RETRY_DELAY_MILLIS
+                - System.currentTimeMillis();
+            if (remainingMillis <= 0L) {
+                this.bakeTasks.remove(bakeTask.key());
+            }
+        }
+        if (remainingMillis > 0L) {
+            this.generationQueue.schedule(
+                cleanupKey(bakeTask),
+                () -> evictFailedTask(bakeTask),
+                remainingMillis
+            );
+        }
+    }
+
+    private static String cleanupKey(BakeTask bakeTask) {
+        return "cleanup:" + bakeTask.key();
+    }
+
+    int trackedBakeTaskCount() {
+        synchronized (this.bakeTasks) {
+            return this.bakeTasks.size();
         }
     }
 
@@ -169,9 +219,7 @@ final class MineSkinManager {
             Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(bakeTask.requiredKeys());
             missingKeys.removeAll(stored.keySet());
             if (missingKeys.isEmpty()) {
-                if (bakeTask.complete()) {
-                    notifyCompleted(bakeTask);
-                }
+                complete(bakeTask);
                 return;
             }
 
@@ -231,8 +279,8 @@ final class MineSkinManager {
             if (savedAny) {
                 Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
             }
-            if (bakeTask.isSatisfiedBy(saved.keySet()) && bakeTask.complete()) {
-                notifyCompleted(bakeTask);
+            if (bakeTask.isSatisfiedBy(saved.keySet())) {
+                complete(bakeTask);
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -376,6 +424,11 @@ final class MineSkinManager {
             }, Math.max(1L, delayMillis), TimeUnit.MILLISECONDS);
             this.scheduledTasks.put(key, scheduledTask);
             return true;
+        }
+
+        synchronized boolean cancelScheduled(String key) {
+            ScheduledFuture<?> scheduledTask = this.scheduledTasks.remove(key);
+            return scheduledTask != null && scheduledTask.cancel(false);
         }
 
         private synchronized ExecutorService executor() {
@@ -529,6 +582,10 @@ final class MineSkinManager {
         private synchronized boolean canRestart(long nowEpochMillis, long retryDelayMillis) {
             return this.stage == BakeStage.FAILED
                 && nowEpochMillis - this.failedAtEpochMillis >= retryDelayMillis;
+        }
+
+        private synchronized long failedAtEpochMillis() {
+            return this.failedAtEpochMillis;
         }
 
         private synchronized void updateStage(BakeStage stage, PlayerSkinTextureKey currentKey) {
