@@ -8,6 +8,9 @@ import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
@@ -15,6 +18,7 @@ final class MineSkinManager {
     private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
+    private static final int RATE_LIMIT_RETRY_LIMIT = 3;
 
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinCache cache;
@@ -61,6 +65,12 @@ final class MineSkinManager {
 
     void cancelPendingBakes() {
         this.generationQueue.cancelAll();
+        synchronized (this.bakeTasks) {
+            for (BakeTask bakeTask : this.bakeTasks.values()) {
+                bakeTask.cancel();
+            }
+            this.bakeTasks.clear();
+        }
     }
 
     private Map<PlayerSkinTextureKey, String> loadTextureSet(
@@ -79,8 +89,7 @@ final class MineSkinManager {
     }
 
     private void scheduleBake(PlayerSkinManager.PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
-        String currentApiKey = this.apiKey;
-        if (!MineSkinClient.hasApiKey(currentApiKey)) {
+        if (!MineSkinClient.hasApiKey(this.apiKey)) {
             return;
         }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
@@ -92,14 +101,11 @@ final class MineSkinManager {
             addedKeys = bakeTask.addRequiredKeys(requiredKeys);
         }
         if (addedKeys) {
-            this.generationQueue.submit(pendingKey, () -> bakeAndSave(currentApiKey, bakeTask));
+            this.generationQueue.submit(pendingKey, () -> bakeAndSave(bakeTask));
         }
     }
 
-    private void bakeAndSave(
-        String currentApiKey,
-        BakeTask bakeTask
-    ) {
+    private void bakeAndSave(BakeTask bakeTask) {
         PlayerSkinManager.PlayerSkinSource source = bakeTask.source();
         try {
             Map<PlayerSkinTextureKey, String> stored = this.cache.load(source.textureHash(), source.slimModel());
@@ -123,11 +129,42 @@ final class MineSkinManager {
                     source.slimModel()
                 );
                 String contentHash = MineSkinCache.createContentKey(bakedImage, source.slimModel());
-                String textureUrl = resolveTextureUrl(currentApiKey, contentHash, bakedImage, source.slimModel());
-                if (textureUrl == null) {
-                    continue;
+                bakeTask.updateStage(BakeStage.WAITING_FOR_MINESKIN, textureKey);
+                TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, bakedImage, source.slimModel());
+                if (resolution.retryAtEpochMillis() > 0L) {
+                    int retryAttempt = bakeTask.recordRetry(textureKey);
+                    if (retryAttempt > RATE_LIMIT_RETRY_LIMIT) {
+                        bakeTask.fail(resolution.errorMessage());
+                        Emote.LOGGER.warn(
+                            "MineSkin bake exhausted retries for {} part {}: {}",
+                            source.playerName(),
+                            textureKey,
+                            resolution.errorMessage()
+                        );
+                        return;
+                    }
+                    bakeTask.waitForRetry(textureKey, resolution.retryAtEpochMillis());
+                    long retryDelayMillis = Math.max(1L, resolution.retryAtEpochMillis() - System.currentTimeMillis());
+                    this.generationQueue.schedule(
+                        bakeTask.key(),
+                        () -> bakeAndSave(bakeTask),
+                        retryDelayMillis
+                    );
+                    Emote.LOGGER.warn(
+                        "MineSkin bake rate limited for {} part {}. Retrying in {} ms ({}/{})",
+                        source.playerName(),
+                        textureKey,
+                        retryDelayMillis,
+                        retryAttempt,
+                        RATE_LIMIT_RETRY_LIMIT
+                    );
+                    return;
                 }
-                saved.put(textureKey, textureUrl);
+                if (resolution.textureUrl() == null) {
+                    bakeTask.fail(resolution.errorMessage());
+                    return;
+                }
+                saved.put(textureKey, resolution.textureUrl());
                 this.cache.save(source.textureHash(), source.slimModel(), saved);
                 bakeTask.markCompleted(textureKey);
                 savedAny = true;
@@ -149,7 +186,7 @@ final class MineSkinManager {
         }
     }
 
-    private String resolveTextureUrl(
+    private TextureResolution resolveTextureUrl(
         String currentApiKey,
         String contentHash,
         byte[] bakedImage,
@@ -157,12 +194,13 @@ final class MineSkinManager {
     ) throws IOException, InterruptedException {
         String cachedTextureUrl = this.cache.loadContent(contentHash);
         if (cachedTextureUrl != null) {
-            return cachedTextureUrl;
+            return TextureResolution.ready(cachedTextureUrl);
         }
 
         long now = System.currentTimeMillis();
-        if (this.cache.isRetryBlocked(contentHash, now)) {
-            return null;
+        MineSkinCache.MineSkinFailure failure = this.cache.loadFailure(contentHash, now);
+        if (failure != null) {
+            return TextureResolution.retry(failure.retryAfterEpochMillis(), failure.errorMessage());
         }
         MineSkinCache.MineSkinPendingJob pendingJob = this.cache.loadPendingJob(contentHash);
         if (pendingJob != null && now - pendingJob.submittedAtEpochMillis() > PENDING_JOB_MAX_AGE_MILLIS) {
@@ -183,41 +221,38 @@ final class MineSkinManager {
                 );
             }
         } catch (MineSkinClient.RateLimitException exception) {
-            this.cache.saveFailure(contentHash, exception.getMessage(), now + RATE_LIMIT_RETRY_DELAY_MILLIS);
-            Emote.LOGGER.warn(
-                "MineSkin generation rate limit reached for baked texture {}. "
-                    + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
-                contentHash,
-                exception.getMessage()
-            );
-            return null;
+            long retryAt = now + positiveOrFallback(exception.retryDelayMillis(), RATE_LIMIT_RETRY_DELAY_MILLIS);
+            this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
+            return TextureResolution.retry(retryAt, exception.getMessage());
         } catch (MineSkinClient.JobFailedException exception) {
             this.cache.clearPendingJob(contentHash);
             if (exception.isRateLimited()) {
-                this.cache.saveFailure(contentHash, exception.getMessage(), now + RATE_LIMIT_RETRY_DELAY_MILLIS);
-                Emote.LOGGER.warn(
-                    "MineSkin generation rate limit reached for baked texture {}. "
-                        + "Wait for capacity or upgrade the plan assigned to the configured API key: {}",
-                    contentHash,
-                    exception.getMessage()
-                );
+                long retryAt = now + positiveOrFallback(exception.retryDelayMillis(), RATE_LIMIT_RETRY_DELAY_MILLIS);
+                this.cache.saveFailure(contentHash, exception.getMessage(), retryAt);
+                return TextureResolution.retry(retryAt, exception.getMessage());
             } else {
                 this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
                 Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
+                return TextureResolution.failed(exception.getMessage());
             }
-            return null;
         }
 
         this.cache.saveContent(contentHash, textureUrl);
         this.cache.clearPendingJob(contentHash);
         this.cache.clearFailure(contentHash);
-        return textureUrl;
+        return TextureResolution.ready(textureUrl);
+    }
+
+    private static long positiveOrFallback(long value, long fallback) {
+        return value > 0L ? value : fallback;
     }
 
     static final class GenerationQueue {
         private final Supplier<ExecutorService> executorFactory;
         private final Map<String, PendingTask> pendingTasks = new HashMap<>();
+        private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
         private ExecutorService executor;
+        private ScheduledExecutorService scheduler;
 
         GenerationQueue() {
             this(GenerationQueue::createExecutor);
@@ -257,11 +292,32 @@ final class MineSkinManager {
 
         synchronized void cancelAll() {
             this.pendingTasks.clear();
-            if (this.executor == null) {
-                return;
+            for (ScheduledFuture<?> scheduledTask : this.scheduledTasks.values()) {
+                scheduledTask.cancel(true);
             }
-            this.executor.shutdownNow();
-            this.executor = null;
+            this.scheduledTasks.clear();
+            if (this.executor != null) {
+                this.executor.shutdownNow();
+                this.executor = null;
+            }
+            if (this.scheduler != null) {
+                this.scheduler.shutdownNow();
+                this.scheduler = null;
+            }
+        }
+
+        synchronized boolean schedule(String key, Runnable task, long delayMillis) {
+            if (this.scheduledTasks.containsKey(key)) {
+                return false;
+            }
+            ScheduledFuture<?> scheduledTask = scheduler().schedule(() -> {
+                synchronized (GenerationQueue.this) {
+                    scheduledTasks.remove(key);
+                }
+                submit(key, task);
+            }, Math.max(1L, delayMillis), TimeUnit.MILLISECONDS);
+            this.scheduledTasks.put(key, scheduledTask);
+            return true;
         }
 
         private synchronized ExecutorService executor() {
@@ -269,6 +325,17 @@ final class MineSkinManager {
                 this.executor = this.executorFactory.get();
             }
             return this.executor;
+        }
+
+        private synchronized ScheduledExecutorService scheduler() {
+            if (this.scheduler == null) {
+                this.scheduler = Executors.newSingleThreadScheduledExecutor(task -> {
+                    Thread thread = new Thread(task, "emote-mineskin-retry");
+                    thread.setDaemon(true);
+                    return thread;
+                });
+            }
+            return this.scheduler;
         }
 
         private static ExecutorService createExecutor() {
@@ -303,6 +370,20 @@ final class MineSkinManager {
         }
     }
 
+    private record TextureResolution(String textureUrl, long retryAtEpochMillis, String errorMessage) {
+        private static TextureResolution ready(String textureUrl) {
+            return new TextureResolution(Objects.requireNonNull(textureUrl, "textureUrl"), 0L, null);
+        }
+
+        private static TextureResolution retry(long retryAtEpochMillis, String errorMessage) {
+            return new TextureResolution(null, retryAtEpochMillis, Objects.requireNonNull(errorMessage, "errorMessage"));
+        }
+
+        private static TextureResolution failed(String errorMessage) {
+            return new TextureResolution(null, 0L, Objects.requireNonNull(errorMessage, "errorMessage"));
+        }
+    }
+
     enum BakeStage {
         QUEUED,
         DOWNLOADING_SKIN,
@@ -315,16 +396,23 @@ final class MineSkinManager {
     }
 
     private static final class BakeTask {
+        private final String key;
         private final PlayerSkinManager.PlayerSkinSource source;
         private final Set<UUID> subscribers = new LinkedHashSet<>();
         private final Set<PlayerSkinTextureKey> requiredKeys = new LinkedHashSet<>();
         private final Set<PlayerSkinTextureKey> completedKeys = new LinkedHashSet<>();
+        private final Map<PlayerSkinTextureKey, Integer> retryAttempts = new HashMap<>();
         private BakeStage stage = BakeStage.QUEUED;
         private PlayerSkinTextureKey currentKey;
         private String errorMessage;
 
         private BakeTask(PlayerSkinManager.PlayerSkinSource source) {
             this.source = source;
+            this.key = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
+        }
+
+        private String key() {
+            return this.key;
         }
 
         private PlayerSkinManager.PlayerSkinSource source() {
@@ -359,6 +447,16 @@ final class MineSkinManager {
 
         private synchronized void markCompleted(PlayerSkinTextureKey textureKey) {
             this.completedKeys.add(textureKey);
+            this.retryAttempts.remove(textureKey);
+        }
+
+        private synchronized int recordRetry(PlayerSkinTextureKey textureKey) {
+            return this.retryAttempts.merge(textureKey, 1, Integer::sum);
+        }
+
+        private synchronized void waitForRetry(PlayerSkinTextureKey textureKey, long retryAtEpochMillis) {
+            this.stage = BakeStage.RETRY_WAIT;
+            this.currentKey = textureKey;
         }
 
         private synchronized void complete() {

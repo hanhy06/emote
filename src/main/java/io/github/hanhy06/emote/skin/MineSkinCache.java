@@ -191,21 +191,27 @@ final class MineSkinCache {
     }
 
     boolean isRetryBlocked(String contentHash, long nowEpochMillis) {
+        MineSkinFailure failure = loadFailure(contentHash, nowEpochMillis);
+        return failure != null;
+    }
+
+    MineSkinFailure loadFailure(String contentHash, long nowEpochMillis) {
         Path filePath = resolveFailureFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
-            return false;
+            return null;
         }
         try {
             JsonObject object = JsonFileStore.readObject(filePath);
             Long retryAfter = object == null ? null : readLong(object, "retry_after");
             if (retryAfter == null || retryAfter <= nowEpochMillis) {
                 Files.deleteIfExists(filePath);
-                return false;
+                return null;
             }
-            return true;
+            String errorMessage = readString(object, "last_error");
+            return new MineSkinFailure(retryAfter, errorMessage == null ? "MineSkin request failed" : errorMessage);
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin failure state: {}", filePath, exception);
-            return false;
+            return null;
         }
     }
 
@@ -359,6 +365,12 @@ final class MineSkinCache {
     record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {
         MineSkinPendingJob {
             Objects.requireNonNull(jobId, "jobId");
+        }
+    }
+
+    record MineSkinFailure(long retryAfterEpochMillis, String errorMessage) {
+        MineSkinFailure {
+            Objects.requireNonNull(errorMessage, "errorMessage");
         }
     }
 

@@ -63,4 +63,18 @@ class MineSkinGenerationQueueTest {
 
         assertEquals(2, runCount.get());
     }
+
+    @Test
+    void scheduledRetryDoesNotOccupyWorker() throws InterruptedException {
+        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+        CountDownLatch workerRan = new CountDownLatch(1);
+        CountDownLatch retryRan = new CountDownLatch(1);
+
+        assertTrue(executor.schedule("retry", retryRan::countDown, 100L));
+        assertTrue(executor.submit("other", workerRan::countDown));
+
+        assertTrue(workerRan.await(1, TimeUnit.SECONDS));
+        assertTrue(retryRan.await(1, TimeUnit.SECONDS));
+        executor.cancelAll();
+    }
 }

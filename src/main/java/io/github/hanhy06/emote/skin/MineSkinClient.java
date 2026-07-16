@@ -28,7 +28,6 @@ final class MineSkinClient {
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
     private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
-    private static final int RATE_LIMIT_RETRY_LIMIT = 3;
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient;
@@ -202,7 +201,10 @@ final class MineSkinClient {
 
             String jobStatus = readJobStatus(jobResponse);
             if ("failed".equalsIgnoreCase(jobStatus)) {
-                throw new JobFailedException(readErrorMessage(jobResponse, "MineSkin job failed"));
+                throw new JobFailedException(
+                    readErrorMessage(jobResponse, "MineSkin job failed"),
+                    Math.max(this.jobPollIntervalMillis, readRelativeDelay(findObject(findObject(jobResponse, "rateLimit"), "next")))
+                );
             }
         }
 
@@ -210,23 +212,20 @@ final class MineSkinClient {
     }
 
     private JsonObject sendJsonRequest(HttpRequest request) throws IOException, InterruptedException {
-        for (int attempt = 0; ; attempt++) {
-            HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-            JsonObject responseBody = parseJsonObject(response.body());
-            if (response.statusCode() / 100 == 2) {
-                return responseBody;
-            }
-
-            if (response.statusCode() == 429) {
-                if (attempt < RATE_LIMIT_RETRY_LIMIT) {
-                    Thread.sleep(readRetryDelayMillis(response, responseBody));
-                    continue;
-                }
-                throw new RateLimitException(readErrorMessage(responseBody, "MineSkin request rate limit exceeded"));
-            }
-
-            throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
+        HttpResponse<String> response = this.httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        JsonObject responseBody = parseJsonObject(response.body());
+        if (response.statusCode() / 100 == 2) {
+            return responseBody;
         }
+
+        if (response.statusCode() == 429) {
+            throw new RateLimitException(
+                readErrorMessage(responseBody, "MineSkin request rate limit exceeded"),
+                readRetryDelayMillis(response, responseBody)
+            );
+        }
+
+        throw new IOException(readErrorMessage(responseBody, "MineSkin request failed: " + response.statusCode()));
     }
 
     long readRetryDelayMillis(HttpResponse<?> response, JsonObject responseBody) {
@@ -391,8 +390,15 @@ final class MineSkinClient {
     }
 
     static final class JobFailedException extends IOException {
+        private final long retryDelayMillis;
+
         JobFailedException(String message) {
+            this(message, 0L);
+        }
+
+        JobFailedException(String message, long retryDelayMillis) {
             super(message);
+            this.retryDelayMillis = Math.max(0L, retryDelayMillis);
         }
 
         boolean isRateLimited() {
@@ -405,11 +411,22 @@ final class MineSkinClient {
                 || normalized.contains("rate limit")
                 || normalized.contains("too many requests");
         }
+
+        long retryDelayMillis() {
+            return this.retryDelayMillis;
+        }
     }
 
     static final class RateLimitException extends IOException {
-        RateLimitException(String message) {
+        private final long retryDelayMillis;
+
+        RateLimitException(String message, long retryDelayMillis) {
             super(message);
+            this.retryDelayMillis = Math.max(0L, retryDelayMillis);
+        }
+
+        long retryDelayMillis() {
+            return this.retryDelayMillis;
         }
     }
 }
