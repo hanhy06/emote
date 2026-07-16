@@ -34,6 +34,13 @@ The web converter exports BD Engine projects and Animated Java blueprints as Emo
 | `/emote disable <id>` | Disables an emote and stops its active instances. |
 | `/emote reload` | Reloads configuration and animation JSON files. |
 
+## Player Skin Support
+
+Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playing player’s skin to compatible emotes.
+
+Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
+
+
 ## Server Configuration
 
 The following files and directories are created in `config/emote` when the server starts for the first time:
@@ -111,12 +118,6 @@ The file name is only used for storage. The root `id` field is the identifier us
 See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json) for details.
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
-
-## Player Skin Support
-
-Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playing player’s skin to compatible emotes.
-
-Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
 
 ## Troubleshooting
 
