@@ -3,6 +3,8 @@ package io.github.hanhy06.emote.skin;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -31,6 +33,36 @@ class MineSkinCacheTest {
         store.saveContent(contentHash, result);
 
         assertEquals(result, store.loadContent(contentHash));
+    }
+
+    @Test
+    void repeatedSkinLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
+        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        Map<PlayerSkinTextureKey, String> saved = Map.of(textureKey, "https://textures.example/head");
+        new MineSkinCache(tempDir).save("ABCDEF", false, saved);
+        MineSkinCache store = new MineSkinCache(tempDir);
+
+        assertEquals(saved, store.load("abcdef", false));
+        Files.delete(tempDir.resolve("abcdef-classic.json"));
+
+        assertEquals(saved, store.load("ABCDEF", false));
+        store.clearMemory();
+        assertTrue(store.load("abcdef", false).isEmpty());
+    }
+
+    @Test
+    void repeatedContentLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
+        String contentHash = MineSkinCache.createContentKey(new byte[]{4, 5, 6}, true);
+        String textureUrl = "https://textures.example/shared";
+        new MineSkinCache(tempDir).saveContent(contentHash, textureUrl);
+        MineSkinCache store = new MineSkinCache(tempDir);
+
+        assertEquals(textureUrl, store.loadContent(contentHash));
+        Files.delete(tempDir.resolve("content").resolve(contentHash + ".json"));
+
+        assertEquals(textureUrl, store.loadContent(contentHash));
+        store.clearMemory();
+        assertNull(store.loadContent(contentHash));
     }
 
     @Test

@@ -15,7 +15,13 @@ import java.util.*;
 final class MineSkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
+    private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
+    private static final int CONTENT_MEMORY_CACHE_MAX_ENTRIES = 8_192;
     private final Path skinDirPath;
+    private final BoundedCache<SkinCacheKey, Map<PlayerSkinTextureKey, String>> skinTextures =
+        new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
+    private final BoundedCache<String, String> contentTextureUrls =
+        new BoundedCache<>(CONTENT_MEMORY_CACHE_MAX_ENTRIES);
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -41,6 +47,12 @@ final class MineSkinCache {
     }
 
     Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {
+        SkinCacheKey cacheKey = new SkinCacheKey(textureHash, slimModel);
+        Map<PlayerSkinTextureKey, String> cached = this.skinTextures.get(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+
         Path filePath = resolveFilePath(textureHash, slimModel);
         if (filePath == null || !Files.exists(filePath)) {
             return Map.of();
@@ -68,7 +80,10 @@ final class MineSkinCache {
                 textureUrlMap.put(textureKey, textureUrl);
             }
 
-            return Map.copyOf(textureUrlMap);
+            if (textureUrlMap.isEmpty()) {
+                return Map.of();
+            }
+            return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
             return Map.of();
@@ -85,15 +100,22 @@ final class MineSkinCache {
             return;
         }
 
-        JsonObject skinJson = createSkinJson(textureHash, slimModel, textureUrlMap);
+        Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.copyOf(textureUrlMap);
+        JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
+            this.skinTextures.put(new SkinCacheKey(textureHash, slimModel), savedTextureUrls);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
         }
     }
 
     String loadContent(String contentHash) {
+        String cachedTextureUrl = this.contentTextureUrls.get(contentHash);
+        if (cachedTextureUrl != null) {
+            return cachedTextureUrl;
+        }
+
         Path filePath = resolveContentFilePath(contentHash);
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -111,7 +133,8 @@ final class MineSkinCache {
             if (version == null || version != CONTENT_CACHE_VERSION || !contentHash.equals(storedHash) || textureUrl == null) {
                 return null;
             }
-            return textureUrl;
+            String existingTextureUrl = this.contentTextureUrls.putIfAbsent(contentHash, textureUrl);
+            return existingTextureUrl == null ? textureUrl : existingTextureUrl;
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
             return null;
@@ -130,6 +153,7 @@ final class MineSkinCache {
         object.addProperty("texture_url", textureUrl);
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
+            this.contentTextureUrls.put(contentHash, textureUrl);
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
         }
@@ -242,6 +266,19 @@ final class MineSkinCache {
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to clear MineSkin failure state: {}", filePath, exception);
         }
+    }
+
+    void clearMemory() {
+        this.skinTextures.clear();
+        this.contentTextureUrls.clear();
+    }
+
+    private Map<PlayerSkinTextureKey, String> cacheSkinTextures(
+        SkinCacheKey cacheKey,
+        Map<PlayerSkinTextureKey, String> textureUrls
+    ) {
+        Map<PlayerSkinTextureKey, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
+        return existing == null ? textureUrls : existing;
     }
 
     private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
@@ -365,6 +402,50 @@ final class MineSkinCache {
     record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {
         MineSkinPendingJob {
             Objects.requireNonNull(jobId, "jobId");
+        }
+    }
+
+    private record SkinCacheKey(String textureHash, boolean slimModel) {
+        private SkinCacheKey {
+            textureHash = Objects.requireNonNull(textureHash, "textureHash").toLowerCase(Locale.ROOT);
+        }
+    }
+
+    private static final class BoundedCache<K, V> {
+        private final int maximumSize;
+        private final LinkedHashMap<K, V> values = new LinkedHashMap<>(16, 0.75F, true);
+
+        private BoundedCache(int maximumSize) {
+            this.maximumSize = maximumSize;
+        }
+
+        private synchronized V get(K key) {
+            return this.values.get(key);
+        }
+
+        private synchronized void put(K key, V value) {
+            this.values.put(key, value);
+            trimToMaximumSize();
+        }
+
+        private synchronized V putIfAbsent(K key, V value) {
+            V existing = this.values.get(key);
+            if (existing != null) {
+                return existing;
+            }
+            this.values.put(key, value);
+            trimToMaximumSize();
+            return null;
+        }
+
+        private synchronized void clear() {
+            this.values.clear();
+        }
+
+        private void trimToMaximumSize() {
+            while (this.values.size() > this.maximumSize) {
+                this.values.pollFirstEntry();
+            }
         }
     }
 

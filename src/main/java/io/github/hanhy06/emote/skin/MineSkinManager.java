@@ -180,6 +180,7 @@ final class MineSkinManager {
             }
             this.bakeTasks.clear();
         }
+        this.cache.clearMemory();
     }
 
     private Map<PlayerSkinTextureKey, String> loadTextureSet(
