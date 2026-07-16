@@ -18,3 +18,9 @@ export function selectPart(current: ReadonlySet<string>, nodeId: string, additiv
   else next.add(nodeId);
   return next;
 }
+
+export function selectParts(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
+  const next = additive ? new Set(current) : new Set<string>();
+  nodeIds.forEach((nodeId) => next.add(nodeId));
+  return next;
+}

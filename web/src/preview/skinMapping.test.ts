@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { selectPart } from "./skinMapping";
+import { selectPart, selectParts } from "./skinMapping";
 
 describe("selectPart", () => {
   it("selects only the clicked model without additive selection", () => {
@@ -9,5 +9,10 @@ describe("selectPart", () => {
   it("toggles only the clicked model during additive selection", () => {
     expect([...selectPart(new Set(["part_7"]), "part_10", true)]).toEqual(["part_7", "part_10"]);
     expect([...selectPart(new Set(["part_7", "part_10"]), "part_10", true)]).toEqual(["part_7"]);
+  });
+
+  it("adds every model inside a selection range", () => {
+    expect([...selectParts(new Set(["part_2"]), ["part_7", "part_10"], true)])
+      .toEqual(["part_2", "part_7", "part_10"]);
   });
 });

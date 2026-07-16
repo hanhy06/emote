@@ -8,7 +8,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
-import { selectPart, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
+import { selectPart, selectParts, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
 import { readSnbtStringField } from "./format/snbt";
 
 interface SkinCandidate {
@@ -132,6 +132,10 @@ export function App() {
     setSession((current) => current ? { ...current, selectedParts: selectPart(current.selectedParts, nodeId, additive) } : current);
   }, []);
 
+  const handlePartsSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
+    setSession((current) => current ? { ...current, selectedParts: selectParts(current.selectedParts, nodeIds, additive) } : current);
+  }, []);
+
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
     setSession((current) => current ? {
@@ -247,7 +251,14 @@ export function App() {
             </div>
             {skinCandidates.length > 0 ? (
               <div className="editor">
-                <PartPreview key={project.sourceName} parts={previewParts} assignments={assignments} selectedParts={selectedParts} onSelectPart={handlePartSelect} />
+                <PartPreview
+                  key={project.sourceName}
+                  parts={previewParts}
+                  assignments={assignments}
+                  selectedParts={selectedParts}
+                  onSelectPart={handlePartSelect}
+                  onSelectParts={handlePartsSelect}
+                />
                 <AssignmentPanel
                   parts={previewParts}
                   assignments={assignments}

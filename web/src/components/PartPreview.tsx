@@ -10,19 +10,22 @@ interface PartPreviewProps {
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
   onSelectPart: (nodeId: string, additive: boolean) => void;
+  onSelectParts: (nodeIds: readonly string[], additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export function PartPreview({ parts, assignments, selectedParts, onSelectPart }: PartPreviewProps) {
+export function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
+  const onSelectPartsRef = useRef(onSelectParts);
   const selectedPartsRef = useRef(selectedParts);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const [renderError, setRenderError] = useState("");
 
   onSelectPartRef.current = onSelectPart;
+  onSelectPartsRef.current = onSelectParts;
   selectedPartsRef.current = selectedParts;
 
   useEffect(() => {
@@ -127,10 +130,83 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
     let pointerStart: { x: number; y: number } | null = null;
+    let rangeSelection = false;
+    const selectionBox = document.createElement("div");
+    selectionBox.className = "selection-box";
+
+    const finishRangeSelection = (event: PointerEvent) => {
+      if (!pointerStart || !rangeSelection) return false;
+      const rectangle = renderer.domElement.getBoundingClientRect();
+      const left = Math.max(rectangle.left, Math.min(pointerStart.x, event.clientX));
+      const right = Math.min(rectangle.right, Math.max(pointerStart.x, event.clientX));
+      const top = Math.max(rectangle.top, Math.min(pointerStart.y, event.clientY));
+      const bottom = Math.min(rectangle.bottom, Math.max(pointerStart.y, event.clientY));
+      const nodeIds = clickableMeshes.flatMap((mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        const projectedMin = { x: Number.POSITIVE_INFINITY, y: Number.POSITIVE_INFINITY };
+        const projectedMax = { x: Number.NEGATIVE_INFINITY, y: Number.NEGATIVE_INFINITY };
+        let visible = false;
+        for (const x of [box.min.x, box.max.x]) {
+          for (const y of [box.min.y, box.max.y]) {
+            for (const z of [box.min.z, box.max.z]) {
+              const point = new THREE.Vector3(x, y, z).project(camera);
+              if (point.z >= -1 && point.z <= 1) visible = true;
+              projectedMin.x = Math.min(projectedMin.x, rectangle.left + (point.x + 1) * rectangle.width / 2);
+              projectedMin.y = Math.min(projectedMin.y, rectangle.top + (1 - point.y) * rectangle.height / 2);
+              projectedMax.x = Math.max(projectedMax.x, rectangle.left + (point.x + 1) * rectangle.width / 2);
+              projectedMax.y = Math.max(projectedMax.y, rectangle.top + (1 - point.y) * rectangle.height / 2);
+            }
+          }
+        }
+        const intersects = visible
+          && projectedMax.x >= left
+          && projectedMin.x <= right
+          && projectedMax.y >= top
+          && projectedMin.y <= bottom;
+        return intersects ? [mesh.userData.nodeId as string] : [];
+      });
+      onSelectPartsRef.current(nodeIds, true);
+      return true;
+    };
+
+    const clearRangeSelection = () => {
+      rangeSelection = false;
+      selectionBox.remove();
+      container.classList.remove("selection-active");
+      controls.enabled = true;
+    };
+
     const handlePointerDown = (event: PointerEvent) => {
       pointerStart = { x: event.clientX, y: event.clientY };
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      controls.enabled = false;
+      renderer.domElement.setPointerCapture(event.pointerId);
+    };
+    const handlePointerMove = (event: PointerEvent) => {
+      if (!pointerStart || !event.ctrlKey || Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) <= 5) return;
+      rangeSelection = true;
+      const rectangle = renderer.domElement.getBoundingClientRect();
+      const startX = Math.max(0, Math.min(rectangle.width, pointerStart.x - rectangle.left));
+      const startY = Math.max(0, Math.min(rectangle.height, pointerStart.y - rectangle.top));
+      const currentX = Math.max(0, Math.min(rectangle.width, event.clientX - rectangle.left));
+      const currentY = Math.max(0, Math.min(rectangle.height, event.clientY - rectangle.top));
+      selectionBox.style.left = `${Math.min(startX, currentX)}px`;
+      selectionBox.style.top = `${Math.min(startY, currentY)}px`;
+      selectionBox.style.width = `${Math.abs(currentX - startX)}px`;
+      selectionBox.style.height = `${Math.abs(currentY - startY)}px`;
+      if (!selectionBox.isConnected) {
+        container.append(selectionBox);
+        container.classList.add("selection-active");
+      }
     };
     const handlePointerUp = (event: PointerEvent) => {
+      if (finishRangeSelection(event)) {
+        pointerStart = null;
+        clearRangeSelection();
+        return;
+      }
+      clearRangeSelection();
       if (!pointerStart || Math.hypot(event.clientX - pointerStart.x, event.clientY - pointerStart.y) > 5) {
         pointerStart = null;
         return;
@@ -147,8 +223,14 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % nodeIds.length;
       onSelectPartRef.current(nodeIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
     };
-    renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+    const handlePointerCancel = () => {
+      pointerStart = null;
+      clearRangeSelection();
+    };
+    renderer.domElement.addEventListener("pointerdown", handlePointerDown, true);
+    renderer.domElement.addEventListener("pointermove", handlePointerMove, true);
     renderer.domElement.addEventListener("pointerup", handlePointerUp);
+    renderer.domElement.addEventListener("pointercancel", handlePointerCancel);
 
     let animationFrame = 0;
     const render = () => {
@@ -162,8 +244,11 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart }:
       cameraStateRef.current = { position: camera.position.clone(), target: controls.target.clone() };
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
-      renderer.domElement.removeEventListener("pointerdown", handlePointerDown);
+      renderer.domElement.removeEventListener("pointerdown", handlePointerDown, true);
+      renderer.domElement.removeEventListener("pointermove", handlePointerMove, true);
       renderer.domElement.removeEventListener("pointerup", handlePointerUp);
+      renderer.domElement.removeEventListener("pointercancel", handlePointerCancel);
+      selectionBox.remove();
       controls.dispose();
       geometry.dispose();
       edgeGeometry.dispose();
