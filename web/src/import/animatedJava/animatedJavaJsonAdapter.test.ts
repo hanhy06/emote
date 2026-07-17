@@ -70,15 +70,105 @@ describe("animatedJavaJsonAdapter", () => {
     ]);
   });
 
-  it("rejects raw nonlinear Animated Java tracks", async () => {
+  it("bakes a numeric blend weight into node transforms", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      blended: {
+        loop_mode: { type: "once" },
+        blend_weight: "0.5",
+        length: 0.05,
+        node_keyframes: {
+          item: {
+            position: { "0.0": baked(["2", "0", "0"]) },
+            rotation: { "0.0": baked(["0", "180", "0"]) },
+            scale: { "0.0": baked(["2", "2", "2"]) },
+          },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "blend" });
+    const matrix = animation.timeline.keyframes[0].node_transforms?.item.matrix;
+
+    expect(matrix?.[3]).toBeCloseTo(1);
+    expect(matrix?.[0]).toBeCloseTo(1.5);
+    expect(matrix?.[5]).toBeCloseTo(1.5);
+    expect(matrix?.[10]).toBeCloseTo(1.5);
+  });
+
+  it("bakes raw Animated Java easing at every tick", async () => {
     const input = blueprint({ item: { type: "item_display" } }, {
       raw: {
         loop_mode: { type: "once" },
-        length: 1,
-        node_keyframes: { item: { position: { "0.0": { value: ["0", "0", "0"], interpolation: { type: "linear", easing: "ease_in_quad" } } } } },
+        length: 0.1,
+        node_keyframes: { item: { position: {
+          "0.0": { value: ["0", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
+          "0.1": { value: ["2", "0", "0"], interpolation: { type: "linear", easing: "ease_in_quad" } },
+        } } },
       },
     });
-    await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow("baked animations");
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "easing" });
+
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 1, 2]);
+    expect(animation.timeline.keyframes[1].node_transforms?.item.matrix[3]).toBeCloseTo(0.5);
+  });
+
+  it("bakes pre/post keyframes and time-based Molang expressions", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      raw: {
+        loop_mode: { type: "once" },
+        length: 0.1,
+        node_keyframes: { item: { position: {
+          "0.0": {
+            value: ["query.anim_time * 20", "0", "0"],
+            post: ["2", "0", "0"],
+            interpolation: { type: "linear", easing: "linear" },
+          },
+          "0.1": { value: ["4", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
+        } } },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "molang" });
+    const positions = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item.matrix[3]);
+
+    expect(positions).toEqual([0, 3, 4]);
+  });
+
+  it("bakes bezier and catmull-rom interpolation", async () => {
+    const bezier = {
+      type: "bezier",
+      left_handle_time: [-0.03, -0.03, -0.03],
+      left_handle_value: [0, 0, 0],
+      right_handle_time: [0.03, 0.03, 0.03],
+      right_handle_value: [1, 0, 0],
+    };
+    const input = blueprint({ item: { type: "item_display" } }, {
+      curves: {
+        loop_mode: { type: "once" },
+        length: 0.2,
+        node_keyframes: { item: {
+          position: {
+            "0.0": { value: ["0", "0", "0"], interpolation: bezier },
+            "0.1": { value: ["2", "0", "0"], interpolation: { ...bezier, left_handle_value: [1, 0, 0] } },
+          },
+          scale: {
+            "0.0": { value: ["1", "1", "1"], interpolation: { type: "catmullrom" } },
+            "0.1": { value: ["2", "2", "2"], interpolation: { type: "catmullrom" } },
+            "0.2": { value: ["1", "1", "1"], interpolation: { type: "catmullrom" } },
+          },
+        } },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "curves" });
+
+    expect(animation.timeline.keyframes).toHaveLength(5);
+    expect(animation.timeline.keyframes.every((keyframe) => keyframe.node_transforms?.item.matrix.every(Number.isFinite))).toBe(true);
   });
 
   it("reports the path of malformed blueprint input", async () => {

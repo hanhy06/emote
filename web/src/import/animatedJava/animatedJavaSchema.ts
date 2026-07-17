@@ -62,7 +62,17 @@ export interface AjNodeChannels {
 export interface AjKeyframe {
   value: string[];
   post?: string[];
-  interpolation: { type: "linear"; easing: string } | { type: "step" } | { type: "bezier" | "catmullrom" };
+  interpolation:
+    | { type: "linear"; easing: string; easing_arguments?: number[] }
+    | { type: "step" }
+    | {
+      type: "bezier";
+      left_handle_time: number[];
+      left_handle_value: number[];
+      right_handle_time: number[];
+      right_handle_value: number[];
+    }
+    | { type: "catmullrom" };
 }
 
 export function requireAjBlueprint(value: unknown): AjBlueprint {
@@ -152,7 +162,15 @@ function requireAjAnimation(value: unknown, path: string): void {
         if (keyframe.post !== undefined) requireStringArray(keyframe.post, `${keyframePath}.post`);
         const interpolation = requireRecord(keyframe.interpolation, `${keyframePath}.interpolation`);
         const type = requireStringValue(interpolation.type, ["linear", "step", "bezier", "catmullrom"] as const, `${keyframePath}.interpolation.type`);
-        if (type === "linear") requireString(interpolation.easing, `${keyframePath}.interpolation.easing`);
+        if (type === "linear") {
+          requireString(interpolation.easing, `${keyframePath}.interpolation.easing`);
+          if (interpolation.easing_arguments !== undefined) requireNumberArray(interpolation.easing_arguments, `${keyframePath}.interpolation.easing_arguments`);
+        } else if (type === "bezier") {
+          requireNumberArray(interpolation.left_handle_time, `${keyframePath}.interpolation.left_handle_time`);
+          requireNumberArray(interpolation.left_handle_value, `${keyframePath}.interpolation.left_handle_value`);
+          requireNumberArray(interpolation.right_handle_time, `${keyframePath}.interpolation.right_handle_time`);
+          requireNumberArray(interpolation.right_handle_value, `${keyframePath}.interpolation.right_handle_value`);
+        }
       }
     }
   }

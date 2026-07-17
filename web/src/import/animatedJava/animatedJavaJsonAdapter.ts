@@ -8,6 +8,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import { ConversionError } from "../errors";
+import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 
 const encoder = new TextEncoder();
@@ -121,10 +122,10 @@ function importNode(
 
 function importAnimation(id: string, animation: AjAnimation, nodes: Record<string, ImportedNode>): ImportedAnimation {
   if (animation.loop_mode.type === "hold") throw new Error(`Animated Java animation ${id} uses hold mode, which the emote format cannot represent.`);
-  const blendWeight = numericExpression(animation.blend_weight ?? "1", `${id}.blend_weight`);
-  if (blendWeight !== 1) throw new Error(`Animated Java animation ${id} must use blend_weight 1.`);
+  const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
-  const durationTicks = secondsToTicks(animation.length, `${id}.length`) + startDelayTicks;
+  const animationDurationTicks = secondsToTicks(animation.length, `${id}.length`);
+  const durationTicks = animationDurationTicks + startDelayTicks;
   const global = animation.global_keyframes;
   if (global && (Object.keys(global.texture ?? {}).length || Object.keys(global.event ?? {}).length)) {
     throw new Error(`Animated Java animation ${id} contains texture or API event keyframes that the emote format cannot preserve.`);
@@ -134,7 +135,10 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
   for (const [nodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
     const node = nodes[nodeId];
     if (!node) throw new Error(`Animated Java animation ${id} references unknown node ${nodeId}.`);
-    tracks[nodeId] = { transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelayTicks), visibility: [] };
+    tracks[nodeId] = {
+      transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelayTicks, animationDurationTicks, blendWeight),
+      visibility: [],
+    };
   }
   return {
     id: sanitizeResourcePath(id, "default"),
@@ -155,17 +159,36 @@ function compileNodeChannels(
   channels: AjNodeChannels,
   defaultMatrix: Matrix16,
   startDelayTicks: number,
+  durationTicks: number,
+  blendWeight: string,
 ): ImportedTransformKeyframe[] {
   const matrix = new Matrix4().set(...defaultMatrix);
   const position = new Vector3();
   const rotation = new Quaternion();
   const scale = new Vector3();
   matrix.decompose(position, rotation, scale);
-  const current = {
+  const defaultTransform: AjTransformValues = {
     position: position.toArray() as [number, number, number],
     rotation: quaternionToAjRotation(rotation),
     scale: scale.toArray() as [number, number, number],
   };
+  const current = {
+    position: [...defaultTransform.position] as [number, number, number],
+    rotation: [...defaultTransform.rotation] as [number, number, number],
+    scale: [...defaultTransform.scale] as [number, number, number],
+  };
+  if (requiresAjBaking(channels, blendWeight)) {
+    return bakeAjNodeChannels(channels, defaultTransform, durationTicks, `${animationId}/${nodeId}`).map((frame) => ({
+      tick: frame.tick + startDelayTicks,
+      matrix: composeBlendedAjMatrix(
+        defaultTransform,
+        frame,
+        evaluateAjMolang(blendWeight, { animationTime: frame.time, keyframeLerpTime: 0 }, `${animationId}.blend_weight`),
+      ),
+      interpolation: frame.tick === 0 ? { type: "step" } : { type: "linear" },
+    }));
+  }
+  const numericBlendWeight = numericExpression(blendWeight, `${animationId}.blend_weight`);
   const times = new Set<number>();
   for (const channel of [channels.position, channels.rotation, channels.scale]) {
     for (const key of Object.keys(channel ?? {})) {
@@ -184,10 +207,21 @@ function compileNodeChannels(
     const step = entries.filter(Boolean).some((entry) => interpolation(entry!, `${animationId}/${nodeId}/${time}`) === "step");
     return {
       tick: secondsToTicks(time, `${animationId}/${nodeId} keyframe`) + startDelayTicks,
-      matrix: composeAjMatrix(current.position, current.rotation, current.scale),
+      matrix: composeBlendedAjMatrix(defaultTransform, current, numericBlendWeight),
       interpolation: step ? { type: "step" } : { type: "linear" },
     };
   });
+}
+
+function composeBlendedAjMatrix(
+  base: { position: number[]; rotation: number[]; scale: number[] },
+  target: { position: number[]; rotation: number[]; scale: number[] },
+  weight: number,
+): Matrix16 {
+  const position = base.position.map((value, index) => value + (target.position[index] - value) * weight);
+  const scale = base.scale.map((value, index) => value + (target.scale[index] - value) * weight);
+  const rotation = ajQuaternion(base.rotation).slerp(ajQuaternion(target.rotation), weight);
+  return matrix4ToRowMajor(new Matrix4().compose(new Vector3(...position), rotation, new Vector3(...scale)), "Animated Java blended matrix");
 }
 
 function readBakedVector(keyframe: AjKeyframe, path: string): [number, number, number] {
@@ -204,15 +238,14 @@ function interpolation(keyframe: AjKeyframe, path: string): "linear" | "step" {
   throw new Error(`${path} uses non-baked interpolation; enable baked animations in Animated Java.`);
 }
 
-function composeAjMatrix(position: number[], rotation: number[], scale: number[]): Matrix16 {
+function ajQuaternion(rotation: number[]): Quaternion {
   const euler = new Euler(
     MathUtils.degToRad(-rotation[0]),
     MathUtils.degToRad(180 - rotation[1]),
     MathUtils.degToRad(rotation[2]),
     "YXZ",
   );
-  const matrix = new Matrix4().compose(new Vector3(...position), new Quaternion().setFromEuler(euler), new Vector3(...scale));
-  return matrix4ToRowMajor(matrix, "Animated Java matrix");
+  return new Quaternion().setFromEuler(euler);
 }
 
 function quaternionToAjRotation(quaternion: Quaternion): [number, number, number] {
