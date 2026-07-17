@@ -34,12 +34,14 @@ export function ExportPanel({
   function selectZip(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) onMergeResourcePackZip(file);
+    event.currentTarget.closest("details")?.removeAttribute("open");
     event.target.value = "";
   }
 
   function selectFolder(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
     if (files.length) onMergeResourcePackFolder(files);
+    event.currentTarget.closest("details")?.removeAttribute("open");
     event.target.value = "";
   }
 
@@ -76,10 +78,13 @@ export function ExportPanel({
               <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
               {hasResources && <button type="button" onClick={() => onDownloadResourcePack(index)}>Download resource pack</button>}
               {hasResources && (
-                <>
-                  <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
-                  <label className="button-file-input">Merge into folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
-                </>
+                <details className="merge-menu">
+                  <summary>Merge into existing pack</summary>
+                  <div>
+                    <label className="button-file-input">Choose ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
+                    <label className="button-file-input">Choose folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
+                  </div>
+                </details>
               )}
             </div>
           </li>
