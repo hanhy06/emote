@@ -16,23 +16,21 @@ The web converter exports BD Engine projects, BD Engine datapacks, and Animated 
 
 ## User Commands
 
-| Command | Description |
-|---|---|
-| `/emote` | Opens the emote menu. |
-| `/emote search` | Opens the emote search dialog. |
-| `/emote list` | Lists registered emotes. |
-| `/emote play <id>` | Plays the emote with the exact `namespace:path` ID. |
-| `/emote stop` | Stops the currently playing emote. |
-| `V` | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
+| Command            | Description                                                                        |
+|--------------------|------------------------------------------------------------------------------------|
+| `/emote`           | Opens the emote menu.                                                              |
+| `/emote stop`      | Stops the currently playing emote.                                                 |
+| `V`                | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
 
 ## Admin Commands
 
-| Command | Description |
-|---|---|
-| `/emote stop-all` | Stops every active emote. |
-| `/emote enable <id>` | Enables an emote and reloads the emote list. |
+| Command               | Description                                       |
+|-----------------------|---------------------------------------------------|
+| `/emote list`         | Lists loaded emotes and their source information. |
+| `/emote stop-all`     | Stops every active emote.                         |
+| `/emote enable <id>`  | Enables an emote and reloads the emote list.      |
 | `/emote disable <id>` | Disables an emote and stops its active instances. |
-| `/emote reload` | Reloads configuration and animation JSON files. |
+| `/emote reload`       | Reloads configuration and animation JSON files.   |
 
 ## Player Skin Support
 
@@ -62,10 +60,10 @@ config/emote/
 }
 ```
 
-| Setting | Description |
-|---|---|
-| `menu_page_size` | Number of emotes displayed on each menu page. |
-| `mineskin_api_key` | MineSkin API key used to apply player skins to emotes. |
+| Setting                          | Description                                                                 |
+|----------------------------------|-----------------------------------------------------------------------------|
+| `menu_page_size`                 | Number of emotes displayed on each menu page.                               |
+| `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                      |
 | `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds. |
 
 ### `emotes.json`
