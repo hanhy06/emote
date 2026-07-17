@@ -10,6 +10,14 @@ import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransfor
 import { ConversionError } from "../errors";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
+import {
+  isAnimatedJavaProject,
+  requireAnimatedJavaProject,
+  type AjProject,
+  type AjProjectAnimation,
+  type AjProjectElement,
+  type AjProjectKeyframe,
+} from "./animatedJavaProjectSchema";
 
 const encoder = new TextEncoder();
 
@@ -20,7 +28,11 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
 
   probe(input: ImportInput): ProbeResult {
     try {
-      const value = parseInputJson(input) as Partial<AjBlueprint>;
+      const parsed = parseInputJson(input);
+      if (isAnimatedJavaProject(parsed)) {
+        return { confidence: 100, reason: "matches an Animated Java blueprint project" };
+      }
+      const value = parsed as Partial<AjBlueprint>;
       return value.format_version === 1 && typeof value.settings?.id === "string" && isRecord(value.nodes) && isRecord(value.animations)
         ? { confidence: 100, reason: "matches Animated Java plugin blueprint format 1" }
         : { confidence: 0, reason: "does not match Animated Java plugin blueprint format 1" };
@@ -30,7 +42,9 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const blueprint = requireAjBlueprint(parseInputJson(input));
+    const parsed = parseInputJson(input);
+    if (isAnimatedJavaProject(parsed)) return importAnimatedJavaProject(input, requireAnimatedJavaProject(parsed));
+    const blueprint = requireAjBlueprint(parsed);
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const artifacts = new Map<string, Uint8Array>();
@@ -51,6 +65,211 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     };
   },
 };
+
+function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
+  if (project.meta.format !== "animated-java:format/blueprint") {
+    throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
+  }
+  if (!project.meta.format_version.startsWith("1.")) {
+    throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
+  }
+  if (project.groups.length > 0 || project.elements.some((element) => !isDirectDisplay(element.type))) {
+    throw new ConversionError(
+      "unsupported_animated_java_project_nodes",
+      "This Animated Java project contains groups or model cubes. Export the plugin blueprint JSON until native group conversion is added.",
+      "elements",
+    );
+  }
+  if (project.elements.length === 0) throw new Error("Animated Java project does not contain display nodes.");
+  if (project.animations.length === 0) throw new Error("Animated Java project does not contain animations.");
+
+  const nodes = Object.fromEntries(project.elements.map((element) => [element.uuid, importProjectElement(element)]));
+  const animations = project.animations.map((animation, index) => importProjectAnimation(animation, index, project.elements));
+  const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || "Animated Java";
+  return {
+    source: "animated_java_json",
+    sourceName: input.name,
+    suggestedMetadata: { name: prettify(sourceStem), description: `${prettify(sourceStem)} emote.`, hide_player: true },
+    nodes,
+    animations,
+    diagnostics: [],
+    artifacts: new Map(),
+  };
+}
+
+function isDirectDisplay(type: string): boolean {
+  return [
+    "animated_java:vanilla_block_display",
+    "animated_java:vanilla_item_display",
+    "animated_java:vanilla_text_display",
+  ].includes(type);
+}
+
+function importProjectElement(element: AjProjectElement): ImportedNode {
+  ensureEmptyProjectConfigs(element);
+  const defaultMatrix = composeProjectMatrix(element.position, element.rotation, element.scale, `Animated Java node ${element.name}`);
+  if (element.type === "animated_java:vanilla_block_display") {
+    return {
+      id: element.uuid,
+      type: "block_display",
+      defaultMatrix,
+      visible: element.visibility,
+      blockStateSnbt: blockArgumentToSnbt(element.block ?? "minecraft:air"),
+    };
+  }
+  if (element.type === "animated_java:vanilla_item_display") {
+    return {
+      id: element.uuid,
+      type: "item_display",
+      defaultMatrix,
+      visible: element.visibility,
+      itemDisplay: "none",
+      itemStackSnbt: itemArgumentToSnbt(element.item ?? "minecraft:air"),
+    };
+  }
+  return {
+    id: element.uuid,
+    type: "text_display",
+    defaultMatrix,
+    visible: element.visibility,
+    text: element.text ?? { text: element.name },
+  };
+}
+
+function ensureEmptyProjectConfigs(element: AjProjectElement): void {
+  const defaults = Object.keys(element.configs?.default ?? {});
+  const variants = Object.keys(element.configs?.variants ?? {});
+  if (defaults.length || variants.length) {
+    throw new ConversionError(
+      "unsupported_animated_java_display_config",
+      `Animated Java node ${element.name} contains display configuration that cannot yet be preserved.`,
+      `elements.${element.uuid}.configs`,
+    );
+  }
+}
+
+function importProjectAnimation(
+  animation: AjProjectAnimation,
+  animationIndex: number,
+  elements: AjProjectElement[],
+): ImportedAnimation {
+  if (animation.loop === "hold") throw new Error(`Animated Java animation ${animation.name} uses hold mode, which the emote format cannot represent.`);
+  if (animation.loop !== "once" && animation.loop !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
+  const durationTicks = secondsToTicks(animation.length, `${animation.name}.length`);
+  const tracks: ImportedAnimation["tracks"] = {};
+  for (const element of elements) {
+    const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
+    validateProjectKeyframes(keyframes, animationIndex, element.uuid);
+    const transforms: ImportedTransformKeyframe[] = [];
+    for (let tick = 0; tick <= durationTicks; tick++) {
+      const time = tick / 20;
+      const positionOffset = evaluateProjectChannel(keyframes, "position", time, [0, 0, 0], animationIndex, element.uuid);
+      const rotationOffset = evaluateProjectChannel(keyframes, "rotation", time, [0, 0, 0], animationIndex, element.uuid);
+      const scaleMultiplier = evaluateProjectChannel(keyframes, "scale", time, [1, 1, 1], animationIndex, element.uuid);
+      const position = element.position.map((value, axis) => value + positionOffset[axis]);
+      const rotation = element.rotation.map((value, axis) => value + rotationOffset[axis]);
+      const scale = element.scale.map((value, axis) => value * scaleMultiplier[axis]);
+      transforms.push({
+        tick,
+        matrix: composeProjectMatrix(position, rotation, scale, `${animation.name}/${element.name}/${tick}`),
+        interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
+      });
+    }
+    tracks[element.uuid] = { transforms, visibility: [] };
+  }
+  return {
+    id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
+    name: prettify(animation.name),
+    durationTicks,
+    loop: animation.loop,
+    loopDelayTicks: animation.loop === "loop"
+      ? secondsToTicks(projectNumeric(animation.loop_delay || "0", `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
+      : 0,
+    tracks,
+    events: { start: [], timeline: [], loop: [], stop: [] },
+  };
+}
+
+function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex: number, animatorId: string): void {
+  for (const [index, keyframe] of keyframes.entries()) {
+    if (!["position", "rotation", "scale"].includes(keyframe.channel)) {
+      throw new ConversionError(
+        "unsupported_animated_java_channel",
+        `Animated Java project uses unsupported channel ${keyframe.channel}.`,
+        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
+      );
+    }
+    if (keyframe.interpolation !== "linear" && keyframe.interpolation !== "step") {
+      throw new ConversionError(
+        "unsupported_animated_java_interpolation",
+        `Animated Java project uses unsupported interpolation ${keyframe.interpolation}.`,
+        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
+      );
+    }
+    if (keyframe.easing && keyframe.easing !== "linear" && keyframe.easing !== "step") {
+      throw new ConversionError(
+        "unsupported_animated_java_interpolation",
+        `Animated Java project uses unsupported easing ${keyframe.easing}.`,
+        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
+      );
+    }
+  }
+}
+
+function evaluateProjectChannel(
+  keyframes: AjProjectKeyframe[],
+  channel: string,
+  time: number,
+  fallback: number[],
+  animationIndex: number,
+  animatorId: string,
+): number[] {
+  const frames = keyframes.filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
+  if (frames.length === 0) return [...fallback];
+  const nextIndex = frames.findIndex((frame) => frame.time > time);
+  if (nextIndex === 0) return [...fallback];
+  if (nextIndex < 0) return projectKeyframeVector(frames[frames.length - 1], animationIndex, animatorId);
+  const previous = frames[nextIndex - 1];
+  const next = frames[nextIndex];
+  const previousValue = projectKeyframeVector(previous, animationIndex, animatorId);
+  if (next.interpolation === "step" || next.easing === "step") return previousValue;
+  const nextValue = projectKeyframeVector(next, animationIndex, animatorId);
+  const progress = (time - previous.time) / (next.time - previous.time);
+  return previousValue.map((value, axis) => value + (nextValue[axis] - value) * progress);
+}
+
+function projectKeyframeVector(keyframe: AjProjectKeyframe, animationIndex: number, animatorId: string): number[] {
+  if (keyframe.data_points.length !== 1) {
+    throw new ConversionError(
+      "unsupported_animated_java_keyframe",
+      "Animated Java project pre/post keyframes are not yet supported.",
+      `animations[${animationIndex}].animators.${animatorId}`,
+    );
+  }
+  const point = keyframe.data_points[0];
+  return [point.x, point.y, point.z].map((value, axis) => projectNumeric(value, `animations[${animationIndex}].animators.${animatorId}.${keyframe.channel}[${axis}]`));
+}
+
+function composeProjectMatrix(position: number[], rotation: number[], scale: number[], label: string): Matrix16 {
+  return matrix4ToRowMajor(new Matrix4().compose(
+    new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
+    new Quaternion().setFromEuler(new Euler(
+      MathUtils.degToRad(rotation[0]),
+      MathUtils.degToRad(rotation[1]),
+      MathUtils.degToRad(rotation[2]),
+      "ZYX",
+    )),
+    new Vector3(scale[0], scale[1], scale[2]),
+  ), label);
+}
+
+function projectNumeric(value: string | number, path: string): number {
+  const parsed = typeof value === "number" ? value : Number(value.trim());
+  if (!Number.isFinite(parsed)) {
+    throw new ConversionError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);
+  }
+  return parsed;
+}
 
 function validateRoot(blueprint: AjBlueprint): void {
   if (blueprint.format_version !== 1) throw new Error(`Unsupported Animated Java plugin blueprint version: ${blueprint.format_version}`);
