@@ -48,6 +48,40 @@ describe("bdProjectAdapter", () => {
     await expect(bdProjectAdapter.import(input)).resolves.toMatchObject({ source: "bd_project" });
   });
 
+  it("exports the stored timeline when the project lists multiple animations", async () => {
+    const input = {
+      name: "Multiple animations.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        listAnim: [
+          { id: 1, name: "Default" },
+          { id: 2, name: "Opening" },
+          { id: 3, name: "Closing" },
+        ],
+        children: [{
+          isCollection: true,
+          animation: [{ time: 3, ...transform(4) }],
+          children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+        }],
+      }),
+    };
+
+    const project = await bdProjectAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "inventory" });
+
+    expect(project.animations).toHaveLength(1);
+    expect(project.diagnostics).toEqual([{
+      severity: "warning",
+      code: "bd_project_multiple_animations",
+      message: "BD Engine lists 3 animations, but the project file contains only one stored timeline. The stored timeline was imported.",
+      sourcePath: "scene.listAnim",
+    }]);
+    expect(animation.metadata.name).toBe("Multiple animations");
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 2, 4, 6]);
+    expect(animation.timeline.keyframes.at(-1)?.node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
+    expect(() => serializeEmoteAnimation(animation)).not.toThrow();
+  });
+
   it("converts the matching BD sound track into playsound timeline events", async () => {
     const input = {
       name: "Sound.bdengine",

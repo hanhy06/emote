@@ -54,7 +54,6 @@ export const bdProjectAdapter: ImportAdapter = {
       : requireBdSceneNode(parsedValue, "scene");
     const root = Array.isArray(parsed) ? parsed[0] : parsed;
     if (!root?.isCollection) throw new Error("BD project scene root is invalid.");
-    if ((root.listAnim?.length ?? 0) > 1) throw new Error("BD projects with multiple animations are not supported yet.");
     const displays = collectDisplays(root);
     if (displays.length === 0) throw new Error("BD project does not contain display nodes.");
     const sampleTimes = collectSampleTimes(root);
@@ -83,6 +82,14 @@ export const bdProjectAdapter: ImportAdapter = {
       events: { start: [], timeline: soundEvents, loop: [], stop: [] },
     };
     const sourceStem = input.name.replace(/\.bdengine$/i, "").trim() || "BD Project";
+    const diagnostics = (root.listAnim?.length ?? 0) > 1
+      ? [{
+          severity: "warning" as const,
+          code: "bd_project_multiple_animations",
+          message: `BD Engine lists ${root.listAnim?.length} animations, but the project file contains only one stored timeline. The stored timeline was imported.`,
+          sourcePath: "scene.listAnim",
+        }]
+      : [];
     return {
       source: "bd_project",
       sourceName: input.name,
@@ -93,7 +100,7 @@ export const bdProjectAdapter: ImportAdapter = {
       },
       nodes,
       animations: [animation],
-      diagnostics: [],
+      diagnostics,
       artifacts: new Map(),
     };
   },
