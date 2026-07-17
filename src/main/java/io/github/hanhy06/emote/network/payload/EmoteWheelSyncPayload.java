@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.network.payload;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -24,7 +25,7 @@ public record EmoteWheelSyncPayload(List<PlayableEmote> emotes) implements Custo
 
     public static final Type<EmoteWheelSyncPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Emote.MOD_ID, "wheel_sync"));
     public static final StreamCodec<RegistryFriendlyByteBuf, EmoteWheelSyncPayload> STREAM_CODEC = StreamCodec.composite(
-        PLAYABLE_EMOTE_STREAM_CODEC.apply(ByteBufCodecs.list(512)),
+        PLAYABLE_EMOTE_STREAM_CODEC.apply(ByteBufCodecs.list(EmoteRegistry.MAX_EMOTE_COUNT)),
         EmoteWheelSyncPayload::emotes,
         EmoteWheelSyncPayload::new
     );

@@ -3,19 +3,29 @@ package io.github.hanhy06.emote.emote;
 import java.util.*;
 
 public class EmoteRegistry {
+    public static final int MAX_EMOTE_COUNT = 512;
+
     private volatile RegistryState state = RegistryState.empty();
 
-    public void replace(Collection<RegisteredEmote> emotes) {
+    public int replace(Collection<RegisteredEmote> emotes) {
         List<RegisteredEmote> sorted = new ArrayList<>(emotes);
         sorted.sort(Comparator.comparing(RegisteredEmote::id));
 
-        LinkedHashMap<String, RegisteredEmote> byId = new LinkedHashMap<>();
+        Set<String> ids = new HashSet<>();
         for (RegisteredEmote emote : sorted) {
-            if (byId.putIfAbsent(emote.id(), emote) != null) {
+            if (!ids.add(emote.id())) {
                 throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
             }
         }
-        this.state = new RegistryState(Map.copyOf(byId), List.copyOf(sorted));
+
+        int acceptedCount = Math.min(sorted.size(), MAX_EMOTE_COUNT);
+        List<RegisteredEmote> accepted = List.copyOf(sorted.subList(0, acceptedCount));
+        LinkedHashMap<String, RegisteredEmote> byId = new LinkedHashMap<>();
+        for (RegisteredEmote emote : accepted) {
+            byId.put(emote.id(), emote);
+        }
+        this.state = new RegistryState(Map.copyOf(byId), accepted);
+        return sorted.size() - acceptedCount;
     }
 
     public List<RegisteredEmote> getAll() {

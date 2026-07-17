@@ -62,7 +62,14 @@ public final class EmoteReloadService {
             .map(RegisteredEmote::from)
             .filter(emote -> this.configManager.getEmoteAccessConfig().isEnabled(emote.id()))
             .toList();
-        this.emoteRegistry.replace(emotes);
-        return emotes.size();
+        int ignoredCount = this.emoteRegistry.replace(emotes);
+        if (ignoredCount > 0) {
+            Emote.LOGGER.warn(
+                "Ignoring {} enabled emotes above the registry limit of {}",
+                ignoredCount,
+                EmoteRegistry.MAX_EMOTE_COUNT
+            );
+        }
+        return this.emoteRegistry.size();
     }
 }
