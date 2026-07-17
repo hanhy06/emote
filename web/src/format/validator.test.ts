@@ -33,6 +33,21 @@ describe("validateEmoteAnimation", () => {
     expect(serializeEmoteAnimation(value)).toContain('"schema_version":1');
   });
 
+  it("allows an empty description and an event with no commands", () => {
+    const value = animation();
+    value.metadata.description = "";
+    value.timeline.events = {
+      start: [{
+        source: { type: "player" },
+        origin: { type: "root" },
+        commands: [],
+      }],
+    };
+
+    expect(validateEmoteAnimation(value)).toEqual([]);
+    expect(serializeEmoteAnimation(value)).toContain('"description":""');
+  });
+
   it("rejects anchor command sources and out-of-range timeline events", () => {
     const value = animation();
     value.timeline.events = {

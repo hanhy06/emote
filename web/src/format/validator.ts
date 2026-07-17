@@ -14,7 +14,6 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (!animation.minecraft_version.trim()) add(issues, "minecraft_version", "must not be empty");
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
-  if (!animation.metadata.description.trim()) add(issues, "metadata.description", "must not be empty");
   if (animation.transform_space.coordinate_space !== "root_local") add(issues, "transform_space.coordinate_space", "must be root_local");
   if (animation.transform_space.matrix_layout !== "row_major") add(issues, "transform_space.matrix_layout", "must be row_major");
   if (animation.transform_space.matrix_size !== 16) add(issues, "transform_space.matrix_size", "must be 16");
@@ -88,7 +87,6 @@ function validateEvent(event: EmoteEvent, path: string, animation: EmoteAnimatio
   if (event.origin.offset && (event.origin.offset.length !== 3 || event.origin.offset.some((value) => !Number.isFinite(value)))) {
     add(issues, `${path}.origin.offset`, "must contain three finite numbers");
   }
-  if (event.commands.length === 0) add(issues, `${path}.commands`, "must not be empty");
   event.commands.forEach((command, index) => {
     if (!command.trim() || command.startsWith("/")) add(issues, `${path}.commands[${index}]`, "must be non-empty and omit the leading slash");
   });
