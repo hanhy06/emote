@@ -94,22 +94,25 @@ export function ExportPanel({
               <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
               {hasResources && (
                 <div className="resource-pack-action">
-                  <button
-                    type="button"
-                    title="Right-click to merge into an existing resource pack"
-                    onClick={() => {
+                  <div className="resource-pack-button">
+                    <button type="button" onClick={() => {
                       setMergeMenuIndex(null);
                       onDownloadResourcePack(index);
-                    }}
-                    onContextMenu={(event) => {
-                      event.preventDefault();
-                      setMergeMenuIndex(index);
-                    }}
-                  >Download resource pack</button>
+                    }}>Download resource pack</button>
+                    <button
+                      className="split-menu-toggle"
+                      type="button"
+                      aria-label="Resource pack merge options"
+                      aria-haspopup="menu"
+                      aria-expanded={mergeMenuIndex === index}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={() => setMergeMenuIndex((current) => current === index ? null : index)}
+                    >▼</button>
+                  </div>
                   {mergeMenuIndex === index && (
                     <div className="merge-menu" role="menu" onPointerDown={(event) => event.stopPropagation()}>
-                      <label className="button-file-input">Choose ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
-                      <label className="button-file-input">Choose folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
+                      <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
+                      <label className="button-file-input">Merge into folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
                     </div>
                   )}
                 </div>
