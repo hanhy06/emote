@@ -70,7 +70,7 @@ public final class RootCommand {
                     IntegerArgumentType.getInteger(context, "page")
                 )))
             .then(createSearchCommand())
-            .then(createListCommand())
+            .then(this.adminCommands.createListCommand())
             .then(this.adminCommands.createReloadCommand())
             .then(createPlayCommand())
             .then(createStopCommand())
@@ -94,11 +94,6 @@ public final class RootCommand {
                         IntegerArgumentType.getInteger(context, "page"),
                         StringArgumentType.getString(context, "query")
                     ))));
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
-        return Commands.literal("list")
-            .executes(context -> listEmotes(context.getSource()));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createPlayCommand() {
@@ -150,27 +145,6 @@ public final class RootCommand {
         ServerPlayer player = source.getPlayerOrException();
         this.dialogManager.openDialog(player, pageNumber, query);
         return 1;
-    }
-
-    private int listEmotes(CommandSourceStack source) {
-        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
-        if (emotes.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No emotes."), false);
-            return 0;
-        }
-
-        source.sendSuccess(() -> Component.literal("Emotes: " + emotes.size()), false);
-
-        for (RegisteredEmote emote : emotes) {
-            source.sendSystemMessage(Component.literal(
-                "- " + emote.id()
-                    + " name=" + emote.name()
-                    + " nodes=" + emote.nodeCount()
-                    + " source=" + emote.sourcePath().getFileName()
-            ));
-        }
-
-        return emotes.size();
     }
 
     private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {

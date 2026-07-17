@@ -15,6 +15,8 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 
+import java.util.List;
+
 final class EmoteAdminCommands {
     private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
@@ -40,6 +42,12 @@ final class EmoteAdminCommands {
         return Commands.literal("reload")
             .requires(this.permissionService.requireReload())
             .executes(context -> reloadEmotes(context.getSource()));
+    }
+
+    LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
+        return Commands.literal("list")
+            .requires(this.permissionService.requireReload())
+            .executes(context -> listEmotes(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopAllCommand() {
@@ -93,6 +101,27 @@ final class EmoteAdminCommands {
             true
         );
         return result.emoteCount();
+    }
+
+    private int listEmotes(CommandSourceStack source) {
+        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
+        if (emotes.isEmpty()) {
+            source.sendSuccess(() -> Component.literal("No emotes."), false);
+            return 0;
+        }
+
+        source.sendSuccess(() -> Component.literal("Emotes: " + emotes.size()), false);
+
+        for (RegisteredEmote emote : emotes) {
+            source.sendSystemMessage(Component.literal(
+                "- " + emote.id()
+                    + " name=" + emote.name()
+                    + " nodes=" + emote.nodeCount()
+                    + " source=" + emote.sourcePath().getFileName()
+            ));
+        }
+
+        return emotes.size();
     }
 
     private int stopAllEmotes(CommandSourceStack source) {
