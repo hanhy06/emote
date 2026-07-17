@@ -360,6 +360,7 @@ final class MineSkinManager {
         private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
         private ExecutorService executor;
         private ScheduledExecutorService scheduler;
+        private long generation;
 
         GenerationQueue() {
             this(GenerationQueue::createExecutor);
@@ -376,12 +377,17 @@ final class MineSkinManager {
                 return false;
             }
             PendingTask newTask = new PendingTask(task);
+            long taskGeneration = this.generation;
             this.pendingTasks.put(key, newTask);
             try {
                 executor().execute(() -> {
                     while (true) {
                         newTask.task().run();
                         synchronized (GenerationQueue.this) {
+                            if (taskGeneration != generation) {
+                                pendingTasks.remove(key, newTask);
+                                return;
+                            }
                             if (newTask.takeRerunRequest()) {
                                 continue;
                             }
@@ -398,6 +404,7 @@ final class MineSkinManager {
         }
 
         synchronized void cancelAll() {
+            this.generation++;
             this.pendingTasks.clear();
             for (ScheduledFuture<?> scheduledTask : this.scheduledTasks.values()) {
                 scheduledTask.cancel(true);
@@ -417,11 +424,15 @@ final class MineSkinManager {
             if (this.scheduledTasks.containsKey(key)) {
                 return false;
             }
+            long scheduledGeneration = this.generation;
             ScheduledFuture<?> scheduledTask = scheduler().schedule(() -> {
                 synchronized (GenerationQueue.this) {
+                    if (scheduledGeneration != generation) {
+                        return;
+                    }
                     scheduledTasks.remove(key);
+                    submit(key, task);
                 }
-                submit(key, task);
             }, Math.max(1L, delayMillis), TimeUnit.MILLISECONDS);
             this.scheduledTasks.put(key, scheduledTask);
             return true;

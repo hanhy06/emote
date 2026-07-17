@@ -77,4 +77,31 @@ class MineSkinGenerationQueueTest {
         assertTrue(retryRan.await(1, TimeUnit.SECONDS));
         executor.cancelAll();
     }
+
+    @Test
+    void cancelAllDropsRequestedRerunForRunningTask() throws InterruptedException {
+        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch reran = new CountDownLatch(1);
+        AtomicInteger runCount = new AtomicInteger();
+        executor.submit("skin", () -> {
+            if (runCount.incrementAndGet() > 1) {
+                reran.countDown();
+            }
+            started.countDown();
+            try {
+                Thread.sleep(30_000L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+            }
+        });
+
+        assertTrue(started.await(1, TimeUnit.SECONDS));
+        assertFalse(executor.submit("skin", () -> {}));
+
+        executor.cancelAll();
+
+        assertFalse(reran.await(200, TimeUnit.MILLISECONDS));
+        assertEquals(1, runCount.get());
+    }
 }
