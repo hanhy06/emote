@@ -1,4 +1,4 @@
-import type { ChangeEvent } from "react";
+import { useEffect, useState, type ChangeEvent } from "react";
 import type { ExportOptions } from "../export/projectExporter";
 
 interface DownloadItem {
@@ -31,17 +31,33 @@ export function ExportPanel({
   onMergeResourcePackZip,
   onMergeResourcePackFolder,
 }: ExportPanelProps) {
+  const [mergeMenuIndex, setMergeMenuIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (mergeMenuIndex === null) return;
+    const closeMenu = () => setMergeMenuIndex(null);
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") closeMenu();
+    };
+    document.addEventListener("pointerdown", closeMenu);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("pointerdown", closeMenu);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [mergeMenuIndex]);
+
   function selectZip(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
     if (file) onMergeResourcePackZip(file);
-    event.currentTarget.closest("details")?.removeAttribute("open");
+    setMergeMenuIndex(null);
     event.target.value = "";
   }
 
   function selectFolder(event: ChangeEvent<HTMLInputElement>) {
     const files = [...(event.target.files ?? [])];
     if (files.length) onMergeResourcePackFolder(files);
-    event.currentTarget.closest("details")?.removeAttribute("open");
+    setMergeMenuIndex(null);
     event.target.value = "";
   }
 
@@ -76,15 +92,27 @@ export function ExportPanel({
             <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
             <div className="download-actions">
               <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
-              {hasResources && <button type="button" onClick={() => onDownloadResourcePack(index)}>Download resource pack</button>}
               {hasResources && (
-                <details className="merge-menu">
-                  <summary>Merge into existing pack</summary>
-                  <div>
-                    <label className="button-file-input">Choose ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
-                    <label className="button-file-input">Choose folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
-                  </div>
-                </details>
+                <div className="resource-pack-action">
+                  <button
+                    type="button"
+                    title="Right-click to merge into an existing resource pack"
+                    onClick={() => {
+                      setMergeMenuIndex(null);
+                      onDownloadResourcePack(index);
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      setMergeMenuIndex(index);
+                    }}
+                  >Download resource pack</button>
+                  {mergeMenuIndex === index && (
+                    <div className="merge-menu" role="menu" onPointerDown={(event) => event.stopPropagation()}>
+                      <label className="button-file-input">Choose ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
+                      <label className="button-file-input">Choose folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </li>
