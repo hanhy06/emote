@@ -9,22 +9,22 @@ interface ExportPanelProps {
   metadata: ExportOptions;
   assignmentSummary: string;
   animations: DownloadItem[];
-  resources: DownloadItem[];
+  hasResources: boolean;
   error: string;
   onMetadataChange: (metadata: ExportOptions) => void;
   onDownloadAnimation: (index: number) => void;
-  onDownloadResource: (index: number) => void;
+  onDownloadResourcePack: (index: number) => void;
 }
 
 export function ExportPanel({
   metadata,
   assignmentSummary,
   animations,
-  resources,
+  hasResources,
   error,
   onMetadataChange,
   onDownloadAnimation,
-  onDownloadResource,
+  onDownloadResourcePack,
 }: ExportPanelProps) {
   return (
     <section className="export">
@@ -32,7 +32,7 @@ export function ExportPanel({
         <div>
           <span className="step-label">Final step</span>
           <h2>Export files</h2>
-          <p>Review the output settings, then download the animation and generated resources.</p>
+          <p>Review the output settings, then download the animation and its generated resource pack.</p>
         </div>
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
@@ -55,24 +55,13 @@ export function ExportPanel({
         {animations.map((animation, index) => (
           <li key={`${animation.detail}:${index}`}>
             <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
-            <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
+            <div className="download-actions">
+              <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
+              {hasResources && <button type="button" onClick={() => onDownloadResourcePack(index)}>Download resource pack</button>}
+            </div>
           </li>
         ))}
       </ul>
-      {resources.length > 0 && (
-        <>
-          <h3>Animated Java model resources</h3>
-          <p className="resource-note">Download each file and place it at the displayed path in the server resource pack.</p>
-          <ul className="download-list resource-list">
-            {resources.map((resource, index) => (
-              <li key={resource.detail}>
-                <span><strong>{resource.label}</strong><small>{resource.detail}</small></span>
-                <button type="button" onClick={() => onDownloadResource(index)}>Download file</button>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
     </section>
   );
 }

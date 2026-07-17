@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
-import { downloadExport, exportAnimation, exportResource, type ExportOptions } from "./export/projectExporter";
+import { downloadExport, exportAnimation, exportResourcePack, type ExportOptions } from "./export/projectExporter";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
@@ -119,11 +119,11 @@ export function App() {
     }
   }
 
-  function handleResourceDownload(index: number) {
+  function handleResourcePackDownload(index: number) {
     if (!session) return;
     setSession((current) => current ? { ...current, conversionError: "" } : current);
     try {
-      downloadExport(exportResource(session.project, session.metadata.minecraftVersion, index));
+      downloadExport(exportResourcePack(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource export failed.");
       setSession((current) => current ? { ...current, conversionError: message } : current);
@@ -290,11 +290,11 @@ export function App() {
             metadata={session.metadata}
             assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.size)}
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
-            resources={[...project.artifacts.keys()].map((path) => ({ label: path.split("/").at(-1) ?? path, detail: path }))}
+            hasResources={project.artifacts.size > 0}
             error={session.conversionError}
             onMetadataChange={(metadata) => setSession((current) => current ? { ...current, metadata } : current)}
             onDownloadAnimation={handleAnimationDownload}
-            onDownloadResource={handleResourceDownload}
+            onDownloadResourcePack={handleResourcePackDownload}
           />
         </>
       )}

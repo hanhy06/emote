@@ -1,3 +1,4 @@
+import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
 import type { EmoteAnimation, EmoteMetadata } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
@@ -20,36 +21,44 @@ export function exportAnimation(
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
 ): ExportResult {
-  if (project.artifactMinecraftVersion && options.minecraftVersion !== project.artifactMinecraftVersion) {
-    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
-  }
-  const animation = compileImportedAnimation(applySkinAssignments(project, skinAssignments), {
-    minecraftVersion: options.minecraftVersion,
-    namespace: options.namespace,
-    ...(options.playbackMode === "source" ? {} : { loop: options.playbackMode }),
-    metadata: {
-      name: options.name,
-      description: options.description,
-      hide_player: options.hide_player,
-    },
-  }, animationIndex);
+  validateArtifactVersion(project, options.minecraftVersion);
+  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${sanitizeFileName(animation.metadata.name)}.json`,
   };
 }
 
-export function exportResource(project: ImportedProject, minecraftVersion: string, resourceIndex: number): ExportResult {
-  if (project.artifactMinecraftVersion && minecraftVersion !== project.artifactMinecraftVersion) {
-    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
+export function exportResourcePack(
+  project: ImportedProject,
+  options: ExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  animationIndex: number,
+): ExportResult {
+  if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
+  validateArtifactVersion(project, options.minecraftVersion);
+  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
+  const packFormat = resourcePackFormat(project.artifactMinecraftVersion ?? options.minecraftVersion);
+  const files: Record<string, Uint8Array> = {
+    "pack.mcmeta": strToU8(`${JSON.stringify({
+      pack: {
+        description: `${animation.metadata.name} emote resources`,
+        min_format: packFormat,
+        max_format: packFormat,
+      },
+    }, null, 2)}\n`),
+  };
+  for (const [path, data] of project.artifacts) {
+    if (path.startsWith("/") || path.split("/").includes("..") || path.includes("\\")) {
+      throw new Error(`Generated resource has an invalid pack path: ${path}`);
+    }
+    if (files[path]) throw new Error(`Generated resource pack contains a duplicate path: ${path}`);
+    files[path] = data;
   }
-  const resource = [...project.artifacts.entries()][resourceIndex];
-  if (!resource) throw new Error(`Resource ${resourceIndex + 1} does not exist.`);
-  const [path, data] = resource;
-  const bytes = new Uint8Array(data).buffer;
+  const bytes = zipSync(files, { level: 9 });
   return {
-    blob: new Blob([bytes], { type: contentType(path) }),
-    fileName: path.split("/").at(-1) ?? "resource.bin",
+    blob: new Blob([bytes], { type: "application/zip" }),
+    fileName: `emote.${sanitizeFileName(animation.metadata.name)}.zip`,
   };
 }
 
@@ -77,10 +86,33 @@ function applySkinAssignments(
   };
 }
 
-function contentType(path: string): string {
-  if (path.endsWith(".json")) return "application/json";
-  if (path.endsWith(".png")) return "image/png";
-  return "application/octet-stream";
+function compileExportAnimation(
+  project: ImportedProject,
+  options: ExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  animationIndex: number,
+): EmoteAnimation {
+  return compileImportedAnimation(applySkinAssignments(project, skinAssignments), {
+    minecraftVersion: options.minecraftVersion,
+    namespace: options.namespace,
+    ...(options.playbackMode === "source" ? {} : { loop: options.playbackMode }),
+    metadata: {
+      name: options.name,
+      description: options.description,
+      hide_player: options.hide_player,
+    },
+  }, animationIndex);
+}
+
+function validateArtifactVersion(project: ImportedProject, minecraftVersion: string): void {
+  if (project.artifactMinecraftVersion && minecraftVersion !== project.artifactMinecraftVersion) {
+    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
+  }
+}
+
+function resourcePackFormat(minecraftVersion: string): [number, number] {
+  if (minecraftVersion === "26.2") return [88, 0];
+  throw new Error(`Resource pack metadata is not configured for Minecraft ${minecraftVersion}.`);
 }
 
 function sanitizeFileName(value: string): string {
