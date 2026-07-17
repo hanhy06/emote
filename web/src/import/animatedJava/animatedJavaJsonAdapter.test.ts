@@ -6,6 +6,10 @@ import { animatedJavaJsonAdapter } from "./animatedJavaJsonAdapter";
 const encoder = new TextEncoder();
 
 describe("animatedJavaJsonAdapter", () => {
+  it("accepts the native Animated Java blueprint extension", () => {
+    expect(animatedJavaJsonAdapter.extensions).toContain("ajblueprint");
+  });
+
   it("imports baked display tracks and locator anchors", async () => {
     const input = blueprint({
       item: {

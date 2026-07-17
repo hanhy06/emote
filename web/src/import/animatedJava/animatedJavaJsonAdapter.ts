@@ -16,7 +16,7 @@ const encoder = new TextEncoder();
 export const animatedJavaJsonAdapter: ImportAdapter = {
   id: "animated_java_json",
   label: "Animated Java plugin blueprint",
-  extensions: ["json"],
+  extensions: ["ajblueprint", "json"],
 
   probe(input: ImportInput): ProbeResult {
     try {
