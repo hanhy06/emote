@@ -6,6 +6,7 @@ import { downloadExport, exportAnimation, exportResource, type ExportOptions } f
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
+import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
 import { selectPart, selectParts, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
@@ -52,6 +53,7 @@ export function App() {
   const orders = session?.orders ?? EMPTY_ORDERS;
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex];
+  const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTicks = useMemo(() => animationTicks(animation), [animation]);
   const previewTick = previewFrameIndex === 0
@@ -220,6 +222,15 @@ export function App() {
           {project.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").map((diagnostic) => (
             <p className="message warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
           ))}
+
+          {importedCommandCount > 0 && (
+            <p className="message warning" role="alert">
+              <strong>Review event commands before installing this animation.</strong>
+              <span>
+                This project contains {importedCommandCount} {importedCommandCount === 1 ? "command" : "commands"} that will run with server operator permission. Only install animations from sources you trust.
+              </span>
+            </p>
+          )}
 
           <section className="workspace" aria-labelledby="workspace-title">
             <div className="section-heading">
