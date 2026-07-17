@@ -23,7 +23,6 @@ public final class EventPlayer {
         }
         this.started = true;
         execute(this.events.start());
-        timelineTick(0);
     }
 
     public void timelineTick(int tick) {

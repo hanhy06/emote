@@ -101,7 +101,7 @@ public class PlaybackManager {
                 emote.skinParts(),
                 preparedSkin
             );
-            events.start();
+            startEvents(timeline, events);
             for (PlaybackStateListener stateListener : this.stateListeners) {
                 stateListener.onEmoteStarted(player, activeEmote);
             }
@@ -172,18 +172,8 @@ public class PlaybackManager {
             }
 
             try {
-                int previousTick = activeEmote.timeline().currentTick();
-                TimelinePlayer.AdvanceResult result = activeEmote.timeline().advance();
-                if (activeEmote.timeline().currentTick() != previousTick) {
-                    activeEmote.events().timelineTick(activeEmote.timeline().currentTick());
-                }
-                if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
-                    activeEmote.events().loop();
-                    result = activeEmote.timeline().continueAfterLoopEvent();
-                }
-                if (result == TimelinePlayer.AdvanceResult.RESTARTED) {
-                    activeEmote.events().timelineTick(0);
-                } else if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
+                if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                     playerUuidListToStop.add(activeEmote.playerUuid());
                     continue;
                 }
@@ -197,6 +187,29 @@ public class PlaybackManager {
         for (UUID playerUuid : playerUuidListToStop) {
             stopEmote(playerUuid);
         }
+    }
+
+    static void startEvents(TimelinePlayer timeline, EventPlayer events) {
+        events.start();
+        if (timeline.currentTick() == 0) {
+            events.timelineTick(0);
+        }
+    }
+
+    static TimelinePlayer.AdvanceResult advanceTimeline(TimelinePlayer timeline, EventPlayer events) {
+        int previousTick = timeline.currentTick();
+        TimelinePlayer.AdvanceResult result = timeline.advance();
+        if (result != TimelinePlayer.AdvanceResult.RESTARTED && timeline.currentTick() != previousTick) {
+            events.timelineTick(timeline.currentTick());
+        }
+        if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
+            events.loop();
+            result = timeline.continueAfterLoopEvent();
+        }
+        if (result == TimelinePlayer.AdvanceResult.RESTARTED) {
+            events.timelineTick(0);
+        }
+        return result;
     }
 
     public void stopAllEmotes() {

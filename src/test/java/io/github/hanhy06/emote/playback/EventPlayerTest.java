@@ -17,6 +17,7 @@ class EventPlayerTest {
         EventPlayer player = new EventPlayer(animation(), event -> executed.addAll(event.commands()));
 
         player.start();
+        player.timelineTick(0);
         player.timelineTick(1);
         player.loop();
         player.stop();
