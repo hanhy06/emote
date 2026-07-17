@@ -2,17 +2,17 @@
 
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
 
+> Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
+
 Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine and Animated Java.
 
 The mod can be installed on the server only. Installing it on the client also adds an emote wheel and automatic third-person view while an emote is playing.
 
-The web converter exports BD Engine projects, BD Engine datapacks, and Animated Java blueprints as Emote animation JSON files.
+Compatible emotes can use the playing player’s skin. The web converter exports BD Engine projects, BD Engine datapacks, and Animated Java blueprints as Emote animation JSON files.
 
-> Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
-
-- [Web converter](https://hanhy06.github.io/emote/)
-- [Modrinth](https://modrinth.com/mod/emote)
-- [GitHub](https://github.com/hanhy06/emote)
+[![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/)
+[![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 
 ## User Commands
 
@@ -27,16 +27,10 @@ The web converter exports BD Engine projects, BD Engine datapacks, and Animated 
 | Command               | Description                                       |
 |-----------------------|---------------------------------------------------|
 | `/emote list`         | Lists loaded emotes and their source information. |
-| `/emote stop-all`     | Stops every active emote.                         |
+| `/emote reload`       | Reloads configuration and animation JSON files.   |
 | `/emote enable <id>`  | Enables an emote and reloads the emote list.      |
 | `/emote disable <id>` | Disables an emote and stops its active instances. |
-| `/emote reload`       | Reloads configuration and animation JSON files.   |
-
-## Player Skin Support
-
-Configure a [MineSkin](https://account.mineskin.org/) API key to apply the playing player’s skin to compatible emotes.
-
-Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
+| `/emote stop-all`     | Stops every active emote.                         |
 
 ## Server Configuration
 
@@ -65,6 +59,12 @@ config/emote/
 | `menu_page_size`                 | Number of emotes displayed on each menu page.                               |
 | `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                      |
 | `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds. |
+
+#### Player Skin Support
+
+To apply the playing player’s skin to compatible emotes, set `mineskin_api_key` in `config/emote/config.json` to an API key from [MineSkin](https://account.mineskin.org/).
+
+Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
 
 ### `emotes.json`
 
