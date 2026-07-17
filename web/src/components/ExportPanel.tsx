@@ -1,3 +1,4 @@
+import type { ChangeEvent } from "react";
 import type { ExportOptions } from "../export/projectExporter";
 
 interface DownloadItem {
@@ -14,6 +15,8 @@ interface ExportPanelProps {
   onMetadataChange: (metadata: ExportOptions) => void;
   onDownloadAnimation: (index: number) => void;
   onDownloadResourcePack: (index: number) => void;
+  onMergeResourcePackZip: (file: File) => void;
+  onMergeResourcePackFolder: (files: File[]) => void;
 }
 
 export function ExportPanel({
@@ -25,7 +28,21 @@ export function ExportPanel({
   onMetadataChange,
   onDownloadAnimation,
   onDownloadResourcePack,
+  onMergeResourcePackZip,
+  onMergeResourcePackFolder,
 }: ExportPanelProps) {
+  function selectZip(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) onMergeResourcePackZip(file);
+    event.target.value = "";
+  }
+
+  function selectFolder(event: ChangeEvent<HTMLInputElement>) {
+    const files = [...(event.target.files ?? [])];
+    if (files.length) onMergeResourcePackFolder(files);
+    event.target.value = "";
+  }
+
   return (
     <section className="export">
       <div className="section-heading export-heading">
@@ -58,6 +75,12 @@ export function ExportPanel({
             <div className="download-actions">
               <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
               {hasResources && <button type="button" onClick={() => onDownloadResourcePack(index)}>Download resource pack</button>}
+              {hasResources && (
+                <>
+                  <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
+                  <label className="button-file-input">Merge into folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
+                </>
+              )}
             </div>
           </li>
         ))}

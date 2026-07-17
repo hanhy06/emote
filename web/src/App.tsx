@@ -3,6 +3,7 @@ import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { PartPreview } from "./components/PartPreview";
 import { downloadExport, exportAnimation, exportResourcePack, type ExportOptions } from "./export/projectExporter";
+import { mergeResourcePackFolder, mergeResourcePackZip } from "./export/resourcePackMerger";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
@@ -126,6 +127,28 @@ export function App() {
       downloadExport(exportResourcePack(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource export failed.");
+      setSession((current) => current ? { ...current, conversionError: message } : current);
+    }
+  }
+
+  async function handleResourcePackZipMerge(file: File) {
+    if (!session) return;
+    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    try {
+      downloadExport(await mergeResourcePackZip(session.project, session.metadata, file));
+    } catch (reason) {
+      const message = conversionErrorMessage(reason, "Resource pack merge failed.");
+      setSession((current) => current ? { ...current, conversionError: message } : current);
+    }
+  }
+
+  async function handleResourcePackFolderMerge(files: File[]) {
+    if (!session) return;
+    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    try {
+      downloadExport(await mergeResourcePackFolder(session.project, session.metadata, files));
+    } catch (reason) {
+      const message = conversionErrorMessage(reason, "Resource pack merge failed.");
       setSession((current) => current ? { ...current, conversionError: message } : current);
     }
   }
@@ -295,6 +318,8 @@ export function App() {
             onMetadataChange={(metadata) => setSession((current) => current ? { ...current, metadata } : current)}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadResourcePack={handleResourcePackDownload}
+            onMergeResourcePackZip={handleResourcePackZipMerge}
+            onMergeResourcePackFolder={handleResourcePackFolderMerge}
           />
         </>
       )}

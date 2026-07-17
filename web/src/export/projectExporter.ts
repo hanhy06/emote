@@ -36,7 +36,7 @@ export function exportResourcePack(
   animationIndex: number,
 ): ExportResult {
   if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
-  validateArtifactVersion(project, options.minecraftVersion);
+  const generatedResources = generatedResourceFiles(project, options.minecraftVersion);
   const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
   const packFormat = resourcePackFormat(project.artifactMinecraftVersion ?? options.minecraftVersion);
   const files: Record<string, Uint8Array> = {
@@ -48,11 +48,7 @@ export function exportResourcePack(
       },
     }, null, 2)}\n`),
   };
-  for (const [path, data] of project.artifacts) {
-    if (path.startsWith("/") || path.split("/").includes("..") || path.includes("\\")) {
-      throw new Error(`Generated resource has an invalid pack path: ${path}`);
-    }
-    if (files[path]) throw new Error(`Generated resource pack contains a duplicate path: ${path}`);
+  for (const [path, data] of generatedResources) {
     files[path] = data;
   }
   const bytes = zipSync(files, { level: 9 });
@@ -60,6 +56,18 @@ export function exportResourcePack(
     blob: new Blob([bytes], { type: "application/zip" }),
     fileName: `emote.${sanitizeFileName(animation.metadata.name)}.zip`,
   };
+}
+
+export function generatedResourceFiles(project: ImportedProject, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
+  if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
+  validateArtifactVersion(project, minecraftVersion);
+  for (const path of project.artifacts.keys()) {
+    if (path.startsWith("/") || path.split("/").includes("..") || path.includes("\\")) {
+      throw new Error(`Generated resource has an invalid pack path: ${path}`);
+    }
+    if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
+  }
+  return project.artifacts;
 }
 
 export function downloadExport(result: ExportResult): void {
