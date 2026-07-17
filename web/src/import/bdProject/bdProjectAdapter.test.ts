@@ -48,6 +48,46 @@ describe("bdProjectAdapter", () => {
     await expect(bdProjectAdapter.import(input)).resolves.toMatchObject({ source: "bd_project" });
   });
 
+  it("converts the matching BD sound track into playsound timeline events", async () => {
+    const input = {
+      name: "Sound.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        listAnim: [{ id: 2, name: "Default" }],
+        listSound: [{
+          id: 2,
+          name: "Default",
+          tick: 3,
+          tracks: [
+            { id: "minecraft:block.note_block.harp", piano: [{ time: 0, pitch: 1.12345, volume: 0.876 }] },
+            { id: "minecraft:entity.player.levelup", piano: [{ time: 2, pitch: 1, volume: 1 }] },
+          ],
+        }],
+        children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+      }),
+    };
+
+    const project = await bdProjectAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "sound" });
+
+    expect(animation.timeline.duration_ticks).toBe(9);
+    expect(animation.timeline.events?.timeline).toEqual([
+      {
+        tick: 0,
+        source: { type: "server" },
+        origin: { type: "root" },
+        commands: ["playsound minecraft:block.note_block.harp block @a ~ ~ ~ 0.88 1.123"],
+      },
+      {
+        tick: 8,
+        source: { type: "server" },
+        origin: { type: "root" },
+        commands: ["playsound minecraft:entity.player.levelup block @a ~ ~ ~ 1 1"],
+      },
+    ]);
+    expect(() => serializeEmoteAnimation(animation)).not.toThrow();
+  });
+
   it("keeps the create pose separate from the animation at tick zero", async () => {
     const input = {
       name: "Create pose.bdengine",

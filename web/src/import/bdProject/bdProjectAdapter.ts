@@ -5,8 +5,8 @@ import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/re
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
-import { requireBdSceneNode, type BdAnimationSample, type BdSceneNode, type BdTransform, type VectorLike } from "./bdProjectSchema";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe } from "../types";
+import { requireBdSceneNode, type BdAnimationSample, type BdSceneNode, type BdSound, type BdTransform, type VectorLike } from "./bdProjectSchema";
 import { hasGzipHeader, readPrj2 } from "./prj2";
 
 const decoder = new TextDecoder();
@@ -55,15 +55,15 @@ export const bdProjectAdapter: ImportAdapter = {
     const root = Array.isArray(parsed) ? parsed[0] : parsed;
     if (!root?.isCollection) throw new Error("BD project scene root is invalid.");
     if ((root.listAnim?.length ?? 0) > 1) throw new Error("BD projects with multiple animations are not supported yet.");
-    if (root.listSound?.some((sound) => (sound.tracks?.length ?? 0) > 0)) {
-      throw new Error("BD project sound tracks are not supported yet; export the project as a datapack to preserve them.");
-    }
-
     const displays = collectDisplays(root);
     if (displays.length === 0) throw new Error("BD project does not contain display nodes.");
     const sampleTimes = collectSampleTimes(root);
     const frameTimes = sampleTimes.length > 0 ? sampleTimes : [0];
     const nodes = Object.fromEntries(displays.map((entry) => [entry.id, createImportedNode(entry)]));
+    const sound = root.listSound?.find((entry) => entry.id === root.listAnim?.[0]?.id) ?? root.listSound?.[0];
+    const soundEvents = compileSoundEvents(sound);
+    const animationDurationTicks = (frameTimes[frameTimes.length - 1] + 1) * TICKS_PER_BD_SAMPLE;
+    const soundDurationTicks = soundEvents.length > 0 ? soundEvents[soundEvents.length - 1].tick + 1 : 0;
     const tracks = Object.fromEntries(displays.map((entry) => [entry.id, {
       transforms: frameTimes.map((time, index): ImportedTransformKeyframe => ({
         tick: time * TICKS_PER_BD_SAMPLE,
@@ -76,11 +76,11 @@ export const bdProjectAdapter: ImportAdapter = {
     const animation: ImportedAnimation = {
       id: sanitizeResourcePath(animationName, "default"),
       name: animationName,
-      durationTicks: (frameTimes[frameTimes.length - 1] + 1) * TICKS_PER_BD_SAMPLE,
+      durationTicks: Math.max(animationDurationTicks, soundDurationTicks),
       loop: "loop",
       loopDelayTicks: 0,
       tracks,
-      events: { start: [], timeline: [], loop: [], stop: [] },
+      events: { start: [], timeline: soundEvents, loop: [], stop: [] },
     };
     const sourceStem = input.name.replace(/\.bdengine$/i, "").trim() || "BD Project";
     return {
@@ -98,6 +98,36 @@ export const bdProjectAdapter: ImportAdapter = {
     };
   },
 };
+
+function compileSoundEvents(sound: BdSound | undefined): ImportedTimelineEvent[] {
+  if (!sound) return [];
+  const stepTicks = sound.tick === 1 ? 1 : sound.tick === 3 ? 4 : 2;
+  const commandsByTick = new Map<number, string[]>();
+  for (const track of sound.tracks) {
+    for (const note of track.piano) {
+      if (!Number.isInteger(note.time) || note.time < 0) {
+        throw new Error(`BD sound ${sound.name} contains an invalid note time: ${note.time}`);
+      }
+      const tick = note.time * stepTicks;
+      const commands = commandsByTick.get(tick) ?? [];
+      commands.push(`playsound ${track.id} block @a ~ ~ ~ ${round(note.volume, 2)} ${round(note.pitch, 3)}`);
+      commandsByTick.set(tick, commands);
+    }
+  }
+  return [...commandsByTick.entries()]
+    .sort(([first], [second]) => first - second)
+    .map(([tick, commands]) => ({
+      tick,
+      source: { type: "server" },
+      origin: { type: "root" },
+      commands,
+    }));
+}
+
+function round(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
 
 function collectDisplays(root: BdSceneNode): DisplayEntry[] {
   const displays: DisplayEntry[] = [];

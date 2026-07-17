@@ -27,7 +27,25 @@ export interface BdSceneNode {
   emissiveIntensity?: number;
   tagHead?: { Value?: string };
   listAnim?: { id?: number; name?: string }[];
-  listSound?: { tracks?: unknown[] }[];
+  listSound?: BdSound[];
+}
+
+export interface BdSound {
+  id: number;
+  name: string;
+  tick: number;
+  tracks: BdSoundTrack[];
+}
+
+export interface BdSoundTrack {
+  id: string;
+  piano: BdSoundNote[];
+}
+
+export interface BdSoundNote {
+  time: number;
+  pitch: number;
+  volume: number;
 }
 
 export interface BdTransform {
@@ -82,7 +100,21 @@ export function requireBdSceneNode(value: unknown, path: string): BdSceneNode {
   }
   for (const [index, soundValue] of (optionalArray(node.listSound, `${path}.listSound`) ?? []).entries()) {
     const sound = requireRecord(soundValue, `${path}.listSound[${index}]`);
-    optionalArray(sound.tracks, `${path}.listSound[${index}].tracks`);
+    requireNumber(sound.id, `${path}.listSound[${index}].id`);
+    requireString(sound.name, `${path}.listSound[${index}].name`);
+    requireNumber(sound.tick, `${path}.listSound[${index}].tick`);
+    requireArray(sound.tracks, `${path}.listSound[${index}].tracks`).forEach((trackValue, trackIndex) => {
+      const trackPath = `${path}.listSound[${index}].tracks[${trackIndex}]`;
+      const track = requireRecord(trackValue, trackPath);
+      requireString(track.id, `${trackPath}.id`);
+      requireArray(track.piano, `${trackPath}.piano`).forEach((noteValue, noteIndex) => {
+        const notePath = `${trackPath}.piano[${noteIndex}]`;
+        const note = requireRecord(noteValue, notePath);
+        requireNumber(note.time, `${notePath}.time`);
+        requireNumber(note.pitch, `${notePath}.pitch`);
+        requireNumber(note.volume, `${notePath}.volume`);
+      });
+    });
   }
   const children = optionalArray(node.children, `${path}.children`) ?? [];
   node.children = children.map((child, index) => requireBdSceneNode(child, `${path}.children[${index}]`));
