@@ -5,13 +5,32 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 
+import java.util.Objects;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+
 @Environment(EnvType.CLIENT)
 public class PerspectiveController {
+    private final Supplier<CameraType> cameraTypeSupplier;
+    private final Consumer<CameraType> cameraTypeSetter;
     private CameraType previousCameraType = CameraType.FIRST_PERSON;
     private boolean restoreCameraOnStop;
     private boolean playbackActive;
 
+    public PerspectiveController() {
+        this(
+            () -> Minecraft.getInstance().options.getCameraType(),
+            cameraType -> Minecraft.getInstance().options.setCameraType(cameraType)
+        );
+    }
+
+    PerspectiveController(Supplier<CameraType> cameraTypeSupplier, Consumer<CameraType> cameraTypeSetter) {
+        this.cameraTypeSupplier = Objects.requireNonNull(cameraTypeSupplier, "cameraTypeSupplier");
+        this.cameraTypeSetter = Objects.requireNonNull(cameraTypeSetter, "cameraTypeSetter");
+    }
+
     public void clear() {
+        restorePerspectiveIfNeeded();
         this.previousCameraType = CameraType.FIRST_PERSON;
         this.restoreCameraOnStop = false;
         this.playbackActive = false;
@@ -32,8 +51,7 @@ public class PerspectiveController {
     }
 
     private void switchToThirdPersonIfNeeded() {
-        Minecraft client = Minecraft.getInstance();
-        CameraType currentCameraType = client.options.getCameraType();
+        CameraType currentCameraType = this.cameraTypeSupplier.get();
         if (!currentCameraType.isFirstPerson()) {
             this.restoreCameraOnStop = false;
             return;
@@ -41,7 +59,7 @@ public class PerspectiveController {
 
         this.previousCameraType = currentCameraType;
         this.restoreCameraOnStop = true;
-        client.options.setCameraType(CameraType.THIRD_PERSON_BACK);
+        this.cameraTypeSetter.accept(CameraType.THIRD_PERSON_BACK);
     }
 
     private void restorePerspectiveIfNeeded() {
@@ -49,7 +67,7 @@ public class PerspectiveController {
             return;
         }
 
-        Minecraft.getInstance().options.setCameraType(this.previousCameraType);
+        this.cameraTypeSetter.accept(this.previousCameraType);
         this.restoreCameraOnStop = false;
     }
 }
