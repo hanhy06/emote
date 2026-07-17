@@ -59,12 +59,13 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
     const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
     const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
     const artifacts = new Map<string, Uint8Array>();
-    const texture = requireEmbeddedTexture(project.textures);
-    const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-    artifacts.set(texturePath, decodeTexture(texture));
-
     const bones = buildBoneEntries(project);
     if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
+    if (bones.some((bone) => bone.cubes.length > 0)) {
+      const texture = requireEmbeddedTexture(project.textures);
+      const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
+      artifacts.set(texturePath, decodeTexture(texture));
+    }
     const nodes: Record<string, ImportedNode> = {};
     for (const bone of bones) {
       const defaultMatrix = boneWorldMatrix(bone, new Map());
@@ -101,7 +102,7 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
       animations,
       diagnostics: [],
       artifacts,
-      artifactMinecraftVersion: "26.2",
+      ...(artifacts.size ? { artifactMinecraftVersion: "26.2" } : {}),
     };
   },
 };

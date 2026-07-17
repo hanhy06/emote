@@ -63,6 +63,20 @@ describe("geckoLibBbmodelAdapter", () => {
 
     await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("must be embedded");
   });
+
+  it("imports textureless animation-only bone projects", async () => {
+    const value = project();
+    value.elements = [];
+    value.textures = [];
+    value.outliner[0].children = [];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.nodes.root.type).toBe("anchor");
+    expect(imported.artifacts.size).toBe(0);
+    expect(imported.artifactMinecraftVersion).toBeUndefined();
+    expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
+  });
 });
 
 function project() {
