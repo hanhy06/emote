@@ -6,7 +6,7 @@ Emote is a server-side emote player that uses Minecraft display entities to play
 
 The mod can be installed on the server only. Installing it on the client also adds an emote wheel and automatic third-person view while an emote is playing.
 
-The web converter exports BD Engine projects and Animated Java blueprints as Emote animation JSON files.
+The web converter exports BD Engine projects, BD Engine datapacks, and Animated Java blueprints as Emote animation JSON files.
 
 > Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
 
