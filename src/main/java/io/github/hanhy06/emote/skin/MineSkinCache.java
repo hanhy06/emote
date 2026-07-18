@@ -54,8 +54,11 @@ final class MineSkinCache {
         }
 
         Path filePath = resolveFilePath(textureHash, slimModel);
-        if (filePath == null || !Files.exists(filePath)) {
+        if (filePath == null) {
             return Map.of();
+        }
+        if (!Files.exists(filePath)) {
+            return cacheSkinTextures(cacheKey, Map.of());
         }
 
         try {

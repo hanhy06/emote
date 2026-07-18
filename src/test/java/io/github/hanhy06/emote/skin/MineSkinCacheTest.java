@@ -51,6 +51,20 @@ class MineSkinCacheTest {
     }
 
     @Test
+    void repeatedMissingSkinLoadUsesMemoryCache(@TempDir Path tempDir) {
+        MineSkinCache store = new MineSkinCache(tempDir);
+        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        Map<PlayerSkinTextureKey, String> saved = Map.of(textureKey, "https://textures.example/head");
+
+        assertTrue(store.load("abcdef", false).isEmpty());
+        new MineSkinCache(tempDir).save("abcdef", false, saved);
+
+        assertTrue(store.load("abcdef", false).isEmpty());
+        store.clearMemory();
+        assertEquals(saved, store.load("abcdef", false));
+    }
+
+    @Test
     void repeatedContentLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
         String contentHash = MineSkinCache.createContentKey(new byte[]{4, 5, 6}, true);
         String textureUrl = "https://textures.example/shared";
