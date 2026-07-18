@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import io.github.hanhy06.emote.io.JsonFileStore;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -14,12 +15,15 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.stream.Stream;
 
 public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String EMOTE_ACCESS_FILE_NAME = "emotes.json";
     private static final String ANIMATION_DIRECTORY_NAME = "animations";
+    private static final String BUNDLED_ANIMATION_DIRECTORY_NAME = "default-emote-animations";
 
     private final Path configDirPath;
     private final Gson gson = new GsonBuilder()
@@ -34,7 +38,12 @@ public class ConfigManager {
     private EmoteAccessConfig emoteAccessConfig = EmoteAccessConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
+        this(configBasePath, findBundledAnimationDirectory());
+    }
+
+    ConfigManager(Path configBasePath, Optional<Path> bundledAnimationDirectory) {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
+        boolean installBundledAnimations = Files.notExists(this.configDirPath);
 
         try {
             Files.createDirectories(this.configDirPath);
@@ -44,8 +53,41 @@ public class ConfigManager {
             return;
         }
 
+        if (installBundledAnimations) {
+            try {
+                installBundledAnimations(bundledAnimationDirectory);
+            } catch (IOException exception) {
+                Emote.LOGGER.warn("Failed to install bundled emote animations.", exception);
+            }
+        }
+
         writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(this.config));
         writeIfAbsent(EMOTE_ACCESS_FILE_NAME, this.jsonCodec.writeEmoteAccessConfig(this.emoteAccessConfig));
+    }
+
+    private static Optional<Path> findBundledAnimationDirectory() {
+        return FabricLoader.getInstance()
+            .getModContainer(Emote.MOD_ID)
+            .flatMap(container -> container.findPath(BUNDLED_ANIMATION_DIRECTORY_NAME));
+    }
+
+    private void installBundledAnimations(Optional<Path> bundledAnimationDirectory) throws IOException {
+        if (bundledAnimationDirectory.isEmpty()) {
+            Emote.LOGGER.warn("Bundled emote animations were not found.");
+            return;
+        }
+
+        Path sourceDirectory = bundledAnimationDirectory.get();
+        try (Stream<Path> paths = Files.walk(sourceDirectory)) {
+            for (Path sourcePath : paths.filter(Files::isRegularFile).toList()) {
+                Path relativePath = sourceDirectory.relativize(sourcePath);
+                Path targetPath = getAnimationDirectory().resolve(relativePath.toString());
+                Files.createDirectories(targetPath.getParent());
+                Files.copy(sourcePath, targetPath);
+            }
+        }
+
+        Emote.LOGGER.info("Installed bundled emote animations");
     }
 
     public Config getConfig() {

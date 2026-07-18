@@ -42,6 +42,11 @@ processResources {
     filesMatching("fabric.mod.json") {
         expand "version": inputs.properties.version
     }
+
+    from("docs/example") {
+        include "*.json"
+        into "default-emote-animations"
+    }
 }
 
 tasks.register("prodClient", ClientProductionRunTask)

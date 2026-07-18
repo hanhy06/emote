@@ -11,10 +11,40 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
+    @Test
+    void installsBundledAnimationsWhenEmoteDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
+        Path bundledDirectory = tempDir.resolve("bundled");
+        Files.createDirectories(bundledDirectory.resolve("nested"));
+        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
+        Files.writeString(bundledDirectory.resolve("nested").resolve("bow.json"), "bow");
+
+        ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+
+        assertEquals("wave", Files.readString(manager.getAnimationDirectory().resolve("wave.json")));
+        assertEquals(
+            "bow",
+            Files.readString(manager.getAnimationDirectory().resolve("nested").resolve("bow.json"))
+        );
+    }
+
+    @Test
+    void doesNotInstallBundledAnimationsWhenEmoteDirectoryAlreadyExists(@TempDir Path tempDir) throws IOException {
+        Path bundledDirectory = tempDir.resolve("bundled");
+        Files.createDirectories(bundledDirectory);
+        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
+        Files.createDirectories(tempDir.resolve("emote"));
+
+        ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+
+        assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
+        assertFalse(Files.exists(manager.getAnimationDirectory().resolve("wave.json")));
+    }
+
     @Test
     void createsJsonEmoteConfiguration(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
