@@ -163,29 +163,35 @@ public class PlaybackManager {
             return;
         }
 
-        List<UUID> playerUuidListToStop = new ArrayList<>();
+        List<UUID> playerUuidListToStop = null;
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
             ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-            if (!canKeepPlaying(player, activeEmote) || hasMovedDuringPlayback(player, activeEmote)) {
-                playerUuidListToStop.add(activeEmote.playerUuid());
-                continue;
-            }
-
-            try {
-                TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
-                if (result == TimelinePlayer.AdvanceResult.FINISHED) {
-                    playerUuidListToStop.add(activeEmote.playerUuid());
-                    continue;
+            boolean shouldStop = !canKeepPlaying(player, activeEmote)
+                || hasMovedDuringPlayback(player, activeEmote);
+            if (!shouldStop) {
+                try {
+                    TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
+                    shouldStop = result == TimelinePlayer.AdvanceResult.FINISHED;
+                    if (!shouldStop) {
+                        this.playerVisibilityService.tick(player, activeEmote);
+                    }
+                } catch (RuntimeException exception) {
+                    Emote.LOGGER.warn("Failed while playing emote {}", activeEmote.id(), exception);
+                    shouldStop = true;
                 }
-                this.playerVisibilityService.tick(player, activeEmote);
-            } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("Failed while playing emote {}", activeEmote.id(), exception);
+            }
+            if (shouldStop) {
+                if (playerUuidListToStop == null) {
+                    playerUuidListToStop = new ArrayList<>();
+                }
                 playerUuidListToStop.add(activeEmote.playerUuid());
             }
         }
 
-        for (UUID playerUuid : playerUuidListToStop) {
-            stopEmote(playerUuid);
+        if (playerUuidListToStop != null) {
+            for (UUID playerUuid : playerUuidListToStop) {
+                stopEmote(playerUuid);
+            }
         }
     }
 
