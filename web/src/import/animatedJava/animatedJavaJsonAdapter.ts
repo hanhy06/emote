@@ -160,12 +160,13 @@ function importProjectAnimation(
   for (const element of elements) {
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     validateProjectKeyframes(keyframes, animationIndex, element.uuid);
+    const channels = indexProjectChannels(keyframes);
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
       const time = tick / 20;
-      const positionOffset = evaluateProjectChannel(keyframes, "position", time, [0, 0, 0], animationIndex, element.uuid);
-      const rotationOffset = evaluateProjectChannel(keyframes, "rotation", time, [0, 0, 0], animationIndex, element.uuid);
-      const scaleMultiplier = evaluateProjectChannel(keyframes, "scale", time, [1, 1, 1], animationIndex, element.uuid);
+      const positionOffset = evaluateProjectChannel(channels.position, time, [0, 0, 0], animationIndex, element.uuid);
+      const rotationOffset = evaluateProjectChannel(channels.rotation, time, [0, 0, 0], animationIndex, element.uuid);
+      const scaleMultiplier = evaluateProjectChannel(channels.scale, time, [1, 1, 1], animationIndex, element.uuid);
       const position = element.position.map((value, axis) => value + positionOffset[axis]);
       const rotation = element.rotation.map((value, axis) => value + rotationOffset[axis]);
       const scale = element.scale.map((value, axis) => value * scaleMultiplier[axis]);
@@ -216,15 +217,30 @@ function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex
   }
 }
 
+function indexProjectChannels(keyframes: AjProjectKeyframe[]): Record<"position" | "rotation" | "scale", AjProjectKeyframe[]> {
+  const channels = {
+    position: [] as AjProjectKeyframe[],
+    rotation: [] as AjProjectKeyframe[],
+    scale: [] as AjProjectKeyframe[],
+  };
+  for (const keyframe of keyframes) {
+    if (keyframe.channel === "position") channels.position.push(keyframe);
+    else if (keyframe.channel === "rotation") channels.rotation.push(keyframe);
+    else if (keyframe.channel === "scale") channels.scale.push(keyframe);
+  }
+  for (const frames of Object.values(channels)) {
+    frames.sort((first, second) => first.time - second.time);
+  }
+  return channels;
+}
+
 function evaluateProjectChannel(
-  keyframes: AjProjectKeyframe[],
-  channel: string,
+  frames: AjProjectKeyframe[],
   time: number,
   fallback: number[],
   animationIndex: number,
   animatorId: string,
 ): number[] {
-  const frames = keyframes.filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (frames.length === 0) return [...fallback];
   const nextIndex = frames.findIndex((frame) => frame.time > time);
   if (nextIndex === 0) return [...fallback];
