@@ -1,48 +1,49 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
-import com.mojang.serialization.JsonOps;
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.mixin.BlockDisplayAccessor;
+import io.github.hanhy06.emote.mixin.DisplayAccessor;
+import io.github.hanhy06.emote.mixin.ItemDisplayAccessor;
+import io.github.hanhy06.emote.mixin.TextDisplayAccessor;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentSerialization;
+import net.minecraft.network.chat.ComponentUtils;
+import net.minecraft.network.chat.ResolutionContext;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
     private static final String RUNTIME_TAG = "emote.runtime";
-    private static final Map<String, ItemDisplayContext> ITEM_DISPLAY_CONTEXTS = Arrays.stream(ItemDisplayContext.values())
-        .collect(Collectors.toUnmodifiableMap(ItemDisplayContext::getSerializedName, context -> context));
 
-    public PlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
-        PlaybackNodes nodes = create(player, animation);
+    public PlaybackNodes spawn(ServerPlayer player, RegisteredEmote emote) {
+        PlaybackNodes nodes = create(player, emote);
         add(player.level(), nodes);
         return nodes;
     }
 
-    public PlaybackNodes create(ServerPlayer player, EmoteAnimation animation) {
+    public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
         ServerLevel level = player.level();
         EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
-        for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
-            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue());
+        for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
+            EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
+            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData);
             instances.put(entry.getKey(), instance);
         }
         return new PlaybackNodes(root, instances);
@@ -69,16 +70,15 @@ public final class PlaybackEntityController {
         if (node.isAnchor()) {
             return;
         }
-        CompoundTag data = new CompoundTag();
-        var registryOps = node.entity().registryAccess().createSerializationContext(NbtOps.INSTANCE);
         if (node.displayContent() instanceof ItemContent itemContent) {
-            data.store("item", ItemStack.CODEC, registryOps, visible ? itemContent.itemStack() : ItemStack.EMPTY);
+            ((ItemDisplayAccessor)node.entity()).emote$setItemStack(visible ? itemContent.itemStack() : ItemStack.EMPTY);
         } else if (node.displayContent() instanceof BlockContent blockContent) {
-            data.store("block_state", BlockState.CODEC, registryOps, visible ? blockContent.blockState() : Blocks.AIR.defaultBlockState());
+            ((BlockDisplayAccessor)node.entity()).emote$setBlockState(
+                visible ? blockContent.blockState() : Blocks.AIR.defaultBlockState()
+            );
         } else if (node.displayContent() instanceof TextContent textContent) {
-            data.store("text", ComponentSerialization.CODEC, registryOps, visible ? textContent.text() : Component.empty());
+            ((TextDisplayAccessor)node.entity()).emote$setText(visible ? textContent.text() : Component.empty());
         }
-        TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
     }
 
     public void applyTransformation(
@@ -102,11 +102,7 @@ public final class PlaybackEntityController {
         if (node.isAnchor()) {
             return;
         }
-        CompoundTag data = new CompoundTag();
-        data.store("transformation", Transformation.EXTENDED_CODEC, transformation);
-        data.putInt("interpolation_duration", interpolationDurationTicks);
-        data.putInt("start_interpolation", 0);
-        TypedEntityData.of(node.entity().getType(), data).loadInto(node.entity());
+        applyTransformation(node.entity(), transformation, interpolationDurationTicks);
     }
 
     public void resetNode(PlaybackNodes playbackNodes, NodeInstance node) {
@@ -120,7 +116,8 @@ public final class PlaybackEntityController {
         ServerLevel level,
         EmoteRootTransform root,
         String nodeId,
-        EmoteAnimation.Node node
+        EmoteAnimation.Node node,
+        EmoteAnimation.PreparedDisplayData preparedData
     ) {
         if (node instanceof EmoteAnimation.AnchorNode) {
             return new NodeInstance(nodeId, node, null, null);
@@ -129,11 +126,12 @@ public final class PlaybackEntityController {
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), entityNbt(node)).loadInto(entity);
         entity.setPos(root.position());
+        entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
         entity.setXRot(0.0F);
         entity.addTag(RUNTIME_TAG);
 
-        DisplayContent content = applyRuntimeData(entity, root, node);
+        DisplayContent content = applyRuntimeData(entity, root, node, requirePreparedData(nodeId, preparedData));
         boolean visible = initialVisibility(node);
         NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
         if (!visible) {
@@ -159,37 +157,59 @@ public final class PlaybackEntityController {
         return display;
     }
 
-    private DisplayContent applyRuntimeData(Display entity, EmoteRootTransform root, EmoteAnimation.Node node) {
-        var registryOps = entity.registryAccess().createSerializationContext(NbtOps.INSTANCE);
-        CompoundTag data = new CompoundTag();
-        data.store("transformation", Transformation.EXTENDED_CODEC, new Transformation(root.displayMatrix(node.defaultMatrix())));
-        data.putInt("interpolation_duration", 0);
-        data.putInt("start_interpolation", 0);
-
+    private DisplayContent applyRuntimeData(
+        Display entity,
+        EmoteRootTransform root,
+        EmoteAnimation.Node node,
+        EmoteAnimation.PreparedDisplayData preparedData
+    ) {
+        applyTransformation(entity, new Transformation(root.displayMatrix(node.defaultMatrix())), 0);
         DisplayContent content;
-        if (node instanceof EmoteAnimation.ItemNode itemNode) {
-            ItemStack itemStack = ItemStack.CODEC.parse(registryOps, itemNode.itemStackNbt()).getOrThrow();
-            ItemDisplayContext context = ITEM_DISPLAY_CONTEXTS.get(itemNode.itemDisplay());
-            if (context == null) {
-                throw new IllegalArgumentException("Unsupported item display context: " + itemNode.itemDisplay());
-            }
-            data.store("item", ItemStack.CODEC, registryOps, itemStack);
-            data.store("item_display", ItemDisplayContext.CODEC, context);
+        if (preparedData instanceof EmoteAnimation.PreparedItemData itemData) {
+            ItemStack itemStack = itemData.itemStack();
+            ItemDisplayAccessor accessor = (ItemDisplayAccessor)entity;
+            accessor.emote$setItemStack(itemStack);
+            accessor.emote$setItemTransform(itemData.itemDisplay());
             content = new ItemContent(itemStack);
-        } else if (node instanceof EmoteAnimation.BlockNode blockNode) {
-            BlockState blockState = BlockState.CODEC.parse(registryOps, blockNode.blockStateNbt()).getOrThrow();
-            data.store("block_state", BlockState.CODEC, registryOps, blockState);
-            content = new BlockContent(blockState);
-        } else if (node instanceof EmoteAnimation.TextNode textNode) {
-            var jsonOps = entity.registryAccess().createSerializationContext(JsonOps.INSTANCE);
-            Component text = ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
-            data.store("text", ComponentSerialization.CODEC, registryOps, text);
+        } else if (preparedData instanceof EmoteAnimation.PreparedBlockData blockData) {
+            ((BlockDisplayAccessor)entity).emote$setBlockState(blockData.blockState());
+            content = new BlockContent(blockData.blockState());
+        } else if (preparedData instanceof EmoteAnimation.PreparedTextData textData) {
+            Component text = resolveText((Display.TextDisplay)entity, textData.text());
+            ((TextDisplayAccessor)entity).emote$setText(text);
             content = new TextContent(text);
         } else {
             throw new IllegalArgumentException("Unsupported display node: " + node.getClass().getName());
         }
-        TypedEntityData.of(entity.getType(), data).loadInto(entity);
         return content;
+    }
+
+    private void applyTransformation(Display entity, Transformation transformation, int interpolationDurationTicks) {
+        DisplayAccessor accessor = (DisplayAccessor)entity;
+        accessor.emote$setTransformation(transformation);
+        accessor.emote$setTransformationInterpolationDuration(interpolationDurationTicks);
+        accessor.emote$setTransformationInterpolationDelay(0);
+    }
+
+    private EmoteAnimation.PreparedDisplayData requirePreparedData(
+        String nodeId,
+        EmoteAnimation.PreparedDisplayData preparedData
+    ) {
+        if (preparedData == null) {
+            throw new IllegalStateException("Display node was not prepared during reload: " + nodeId);
+        }
+        return preparedData;
+    }
+
+    private Component resolveText(Display.TextDisplay entity, Component text) {
+        try {
+            var source = entity.createCommandSourceStackForNameResolution((ServerLevel)entity.level())
+                .withPermission(LevelBasedPermissionSet.GAMEMASTER);
+            return ComponentUtils.resolve(ResolutionContext.create(source), text);
+        } catch (Exception exception) {
+            Emote.LOGGER.warn("Failed to resolve display entity text {}", text, exception);
+            return Component.empty();
+        }
     }
 
     private CompoundTag entityNbt(EmoteAnimation.Node node) {

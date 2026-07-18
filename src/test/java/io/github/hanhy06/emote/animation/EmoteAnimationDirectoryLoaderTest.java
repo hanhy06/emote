@@ -23,7 +23,7 @@ class EmoteAnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", ignored -> { });
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", animation -> animation);
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -36,7 +36,7 @@ class EmoteAnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("second.json"), "same:wave");
         writeAnimation(tempDir.resolve("valid.json"), "other:wave");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", ignored -> { });
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", animation -> animation);
 
         assertEquals(List.of("other:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -48,7 +48,7 @@ class EmoteAnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("valid.json"), "valid:wave");
         Files.writeString(tempDir.resolve("broken.json"), "{");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", ignored -> { });
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", animation -> animation);
 
         assertEquals(1, loaded.size());
         assertEquals("valid:wave", loaded.getFirst().animation().id().toString());
@@ -58,7 +58,7 @@ class EmoteAnimationDirectoryLoaderTest {
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        assertTrue(this.loader.load(directory, "26.2", ignored -> { }).isEmpty());
+        assertTrue(this.loader.load(directory, "26.2", animation -> animation).isEmpty());
         assertTrue(Files.isDirectory(directory));
     }
 

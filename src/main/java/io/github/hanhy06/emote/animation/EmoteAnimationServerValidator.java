@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.animation;
 
+import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.commands.CommandSourceStack;
@@ -8,10 +9,12 @@ import net.minecraft.nbt.NbtOps;
 import net.minecraft.network.chat.ComponentSerialization;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.nio.file.Path;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -19,22 +22,30 @@ import java.util.Objects;
 import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
 
 public final class EmoteAnimationServerValidator {
-    public void validate(Loaded loaded, MinecraftServer server) throws EmoteAnimationLoadException {
+    public Loaded prepare(Loaded loaded, MinecraftServer server) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
         Objects.requireNonNull(server, "server");
         Path sourcePath = loaded.sourcePath();
 
         var nbtOps = server.registryAccess().createSerializationContext(NbtOps.INSTANCE);
         var jsonOps = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
+        Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (Map.Entry<String, Node> entry : loaded.animation().nodes().entrySet()) {
             String path = "$.nodes." + entry.getKey();
             try {
                 if (entry.getValue() instanceof ItemNode itemNode) {
-                    ItemStack.CODEC.parse(nbtOps, itemNode.itemStackNbt()).getOrThrow();
+                    ItemStack itemStack = ItemStack.CODEC.parse(nbtOps, itemNode.itemStackNbt()).getOrThrow();
+                    ItemDisplayContext itemDisplay = ItemDisplayContext.CODEC.parse(
+                        JsonOps.INSTANCE,
+                        new JsonPrimitive(itemNode.itemDisplay())
+                    ).getOrThrow();
+                    preparedDisplayData.put(entry.getKey(), new PreparedItemData(itemStack, itemDisplay));
                 } else if (entry.getValue() instanceof BlockNode blockNode) {
-                    BlockState.CODEC.parse(nbtOps, blockNode.blockStateNbt()).getOrThrow();
+                    BlockState blockState = BlockState.CODEC.parse(nbtOps, blockNode.blockStateNbt()).getOrThrow();
+                    preparedDisplayData.put(entry.getKey(), new PreparedBlockData(blockState));
                 } else if (entry.getValue() instanceof TextNode textNode) {
-                    ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
+                    var text = ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
+                    preparedDisplayData.put(entry.getKey(), new PreparedTextData(text));
                 }
             } catch (RuntimeException exception) {
                 String field = entry.getValue() instanceof ItemNode
@@ -57,6 +68,7 @@ public final class EmoteAnimationServerValidator {
         validateTimelineEvents(events.timeline(), validationSource, server, sourcePath);
         validateEvents(events.loop(), "$.timeline.events.loop", validationSource, server, sourcePath);
         validateEvents(events.stop(), "$.timeline.events.stop", validationSource, server, sourcePath);
+        return new Loaded(loaded.sourcePath(), loaded.sha256(), loaded.animation(), preparedDisplayData);
     }
 
     private void validateEvents(

@@ -124,6 +124,8 @@ SNBT, 아이템 컴포넌트, 엔티티 태그, 커맨드 문법이 Minecraft �
 
 따라서 `entity_nbt`에 이 필드가 들어 있어도 런타임이 계산한 값으로 덮어쓴다. 그 밖의 유효한 NBT는 가능한 한 원형대로 적용한다. 동적 NBT 변경은 이벤트의 원본 커맨드로 수행한다.
 
+런타임은 `entity_nbt`를 Display 엔티티 생성 시 한 번만 병합한다. 이후 transformation, interpolation과 노드별 표시 데이터는 Display의 동기화 데이터를 직접 갱신하며, 키프레임마다 엔티티 전체 NBT를 다시 저장하거나 불러오지 않는다. 아이템 스택, 블록 상태와 텍스트 컴포넌트는 애니메이션을 서버에 등록할 때 Minecraft 타입으로 검증하고 준비한다.
+
 ### `item_display`
 
 Item Display 엔티티를 생성한다.

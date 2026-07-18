@@ -28,7 +28,7 @@ public final class EmoteAnimationDirectoryLoader {
     }
 
     public List<Loaded> load(Path directory, MinecraftServer server) {
-        return load(directory, server.getServerVersion(), loaded -> this.serverValidator.validate(loaded, server));
+        return load(directory, server.getServerVersion(), loaded -> this.serverValidator.prepare(loaded, server));
     }
 
     List<Loaded> load(Path directory, String minecraftVersion, LoadedValidator validator) {
@@ -36,8 +36,7 @@ public final class EmoteAnimationDirectoryLoader {
         for (Path path : findJsonFiles(directory)) {
             try {
                 Loaded loaded = this.jsonLoader.load(path, minecraftVersion);
-                validator.validate(loaded);
-                candidates.add(loaded);
+                candidates.add(validator.validate(loaded));
             } catch (EmoteAnimationLoadException exception) {
                 Emote.LOGGER.warn("Ignoring invalid emote animation: {}", exception.getMessage());
             }
@@ -89,6 +88,6 @@ public final class EmoteAnimationDirectoryLoader {
 
     @FunctionalInterface
     interface LoadedValidator {
-        void validate(Loaded loaded) throws EmoteAnimationLoadException;
+        Loaded validate(Loaded loaded) throws EmoteAnimationLoadException;
     }
 }
