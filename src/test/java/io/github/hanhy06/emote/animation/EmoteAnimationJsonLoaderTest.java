@@ -49,7 +49,7 @@ class EmoteAnimationJsonLoaderTest {
             examplePaths = paths.filter(path -> path.getFileName().toString().endsWith(".json")).sorted().toList();
         }
 
-        assertEquals(4, examplePaths.size());
+        assertEquals(5, examplePaths.size());
         for (Path examplePath : examplePaths) {
             EmoteAnimation.Loaded loaded = this.loader.load(examplePath, "26.2");
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
