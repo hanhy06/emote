@@ -22,11 +22,14 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
     private static final String RUNTIME_TAG = "emote.runtime";
+    private static final Map<String, ItemDisplayContext> ITEM_DISPLAY_CONTEXTS = Arrays.stream(ItemDisplayContext.values())
+        .collect(Collectors.toUnmodifiableMap(ItemDisplayContext::getSerializedName, context -> context));
 
     public PlaybackNodes spawn(ServerPlayer player, EmoteAnimation animation) {
         PlaybackNodes nodes = create(player, animation);
@@ -166,10 +169,10 @@ public final class PlaybackEntityController {
         DisplayContent content;
         if (node instanceof EmoteAnimation.ItemNode itemNode) {
             ItemStack itemStack = ItemStack.CODEC.parse(registryOps, itemNode.itemStackNbt()).getOrThrow();
-            ItemDisplayContext context = Arrays.stream(ItemDisplayContext.values())
-                .filter(value -> value.getSerializedName().equals(itemNode.itemDisplay()))
-                .findFirst()
-                .orElseThrow();
+            ItemDisplayContext context = ITEM_DISPLAY_CONTEXTS.get(itemNode.itemDisplay());
+            if (context == null) {
+                throw new IllegalArgumentException("Unsupported item display context: " + itemNode.itemDisplay());
+            }
             data.store("item", ItemStack.CODEC, registryOps, itemStack);
             data.store("item_display", ItemDisplayContext.CODEC, context);
             content = new ItemContent(itemStack);
