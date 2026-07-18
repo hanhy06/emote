@@ -27,7 +27,6 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 
 public final class RootCommand {
-    private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
     private final DialogManager dialogManager;
     private final PlayableEmoteService playableEmoteService;
@@ -44,7 +43,6 @@ public final class RootCommand {
         EmoteReloadService reloadService,
         ConfigManager configManager
     ) {
-        this.emoteRegistry = emoteRegistry;
         this.playbackManager = playbackManager;
         this.dialogManager = dialogManager;
         this.playableEmoteService = playableEmoteService;
