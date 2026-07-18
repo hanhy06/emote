@@ -56,6 +56,46 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(1);
   });
 
+  it("interpolates unsorted native project keyframes across ticks", async () => {
+    const element = {
+      name: "block_display",
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      visibility: true,
+      block: "minecraft:stone",
+      configs: { default: {}, variants: {} },
+      uuid: "block",
+      type: "animated_java:vanilla_block_display",
+    };
+    const input = nativeProject({
+      elements: [element],
+      outliner: ["block"],
+      animations: [{
+        name: "animation",
+        loop: "once",
+        length: 0.15,
+        loop_delay: "0",
+        animators: {
+          block: {
+            name: element.name,
+            type: element.type,
+            keyframes: [
+              projectFrame("position", 0.15, ["12", "0", "0"]),
+              projectFrame("position", 0, ["0", "0", "0"]),
+              projectFrame("position", 0.1, ["8", "0", "0"]),
+            ],
+          },
+        },
+      }],
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const translations = project.animations[0].tracks.block.transforms.map((frame) => frame.matrix[3]);
+
+    expect(translations).toEqual([0, 0.25, 0.5, 0.75]);
+  });
+
   it("imports baked display tracks and locator anchors", async () => {
     const input = blueprint({
       item: {

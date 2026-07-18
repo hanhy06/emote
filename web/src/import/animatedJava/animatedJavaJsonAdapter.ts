@@ -217,34 +217,43 @@ function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex
   }
 }
 
-function indexProjectChannels(keyframes: AjProjectKeyframe[]): Record<"position" | "rotation" | "scale", AjProjectKeyframe[]> {
+interface ProjectChannelCursor {
+  frames: AjProjectKeyframe[];
+  nextIndex: number;
+}
+
+function indexProjectChannels(keyframes: AjProjectKeyframe[]): Record<"position" | "rotation" | "scale", ProjectChannelCursor> {
   const channels = {
-    position: [] as AjProjectKeyframe[],
-    rotation: [] as AjProjectKeyframe[],
-    scale: [] as AjProjectKeyframe[],
+    position: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
+    rotation: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
+    scale: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
   };
   for (const keyframe of keyframes) {
-    if (keyframe.channel === "position") channels.position.push(keyframe);
-    else if (keyframe.channel === "rotation") channels.rotation.push(keyframe);
-    else if (keyframe.channel === "scale") channels.scale.push(keyframe);
+    if (keyframe.channel === "position") channels.position.frames.push(keyframe);
+    else if (keyframe.channel === "rotation") channels.rotation.frames.push(keyframe);
+    else if (keyframe.channel === "scale") channels.scale.frames.push(keyframe);
   }
-  for (const frames of Object.values(channels)) {
-    frames.sort((first, second) => first.time - second.time);
+  for (const cursor of Object.values(channels)) {
+    cursor.frames.sort((first, second) => first.time - second.time);
   }
   return channels;
 }
 
 function evaluateProjectChannel(
-  frames: AjProjectKeyframe[],
+  cursor: ProjectChannelCursor,
   time: number,
   fallback: number[],
   animationIndex: number,
   animatorId: string,
 ): number[] {
+  const frames = cursor.frames;
   if (frames.length === 0) return [...fallback];
-  const nextIndex = frames.findIndex((frame) => frame.time > time);
+  while (cursor.nextIndex < frames.length && frames[cursor.nextIndex].time <= time) {
+    cursor.nextIndex++;
+  }
+  const nextIndex = cursor.nextIndex;
   if (nextIndex === 0) return [...fallback];
-  if (nextIndex < 0) return projectKeyframeVector(frames[frames.length - 1], animationIndex, animatorId);
+  if (nextIndex === frames.length) return projectKeyframeVector(frames[frames.length - 1], animationIndex, animatorId);
   const previous = frames[nextIndex - 1];
   const next = frames[nextIndex];
   const previousValue = projectKeyframeVector(previous, animationIndex, animatorId);
