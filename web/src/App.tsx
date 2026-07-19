@@ -37,10 +37,23 @@ const EMPTY_SELECTION = new Set<string>();
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
   .join(",");
-const IMPORT_FORMATS = IMPORT_ADAPTERS.map((adapter) => ({
-  label: adapter.label,
-  extensions: adapter.extensions.map((extension) => `.${extension}`).join(", "),
-}));
+const IMPORT_FORMATS = [
+  {
+    label: "BD Engine",
+    extensions: ".bdengine, .zip",
+    description: "The format that works best with the Emote mod. Set the display order and assign each piece to the player skin.",
+  },
+  {
+    label: "Animated Java",
+    extensions: ".ajblueprint, .json",
+    description: "Imports Animated Java animations and generated resources. Player skin assignment is available only for parts that use player heads.",
+  },
+  {
+    label: "GeckoLib",
+    extensions: ".bbmodel",
+    description: "Imports GeckoLib cube models, animations, and embedded textures, then generates the required resource files.",
+  },
+] as const;
 
 export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
@@ -215,7 +228,10 @@ export function App() {
             <h3>Supported files</h3>
             <ul className="format-list">
               {IMPORT_FORMATS.map((format) => (
-                <li key={format.label}><strong>{format.label}</strong><span>{format.extensions}</span></li>
+                <li key={format.label}>
+                  <div className="format-heading"><strong>{format.label}</strong><span>{format.extensions}</span></div>
+                  <p>{format.description}</p>
+                </li>
               ))}
             </ul>
             <h3>Workflow</h3>

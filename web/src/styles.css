@@ -25,8 +25,10 @@ h3 { margin: 24px 0 10px; font-size: 15px; font-weight: 600; }
 .start-details { padding: 30px 34px; border-left: 1px solid #e0e0e0; background: #fafafa; }
 .start-details h3:first-child { margin-top: 0; }
 .format-list, .workflow-list { margin: 0; padding: 0; list-style: none; }
-.format-list li { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; padding: 9px 0; border-bottom: 1px solid #e5e5e5; }
-.format-list span { color: #666; font-size: 13px; }
+.format-list li { padding: 11px 0 12px; border-bottom: 1px solid #e5e5e5; }
+.format-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.format-heading span { flex: 0 0 auto; color: #777; font-size: 13px; }
+.format-list p { margin: 9px 0 0; color: #666; font-size: 12px; line-height: 1.45; }
 .workflow-list { display: grid; gap: 12px; }
 .workflow-list li { display: flex; align-items: flex-start; gap: 12px; }
 .workflow-list li > span { display: grid; flex: 0 0 26px; width: 26px; height: 26px; place-items: center; color: #fff; background: #0067c0; font-size: 12px; }
