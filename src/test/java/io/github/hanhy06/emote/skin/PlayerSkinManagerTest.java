@@ -36,13 +36,37 @@ class PlayerSkinManagerTest {
 
             PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertTrue(result.ready());
+            assertFalse(result.preparing());
             assertEquals(100, result.progressPercent());
             assertEquals(
                 "https://textures.example/head",
                 result.preparedPlayerSkin().findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
             );
         }
+    }
+
+    @Test
+    void onlyPreparingStateWaitsForSkinPreparation() {
+        assertTrue(new PlayerSkinManager.SkinPreparation(
+            null,
+            PlayerSkinManager.SkinPreparationState.PREPARING,
+            0
+        ).preparing());
+        assertFalse(new PlayerSkinManager.SkinPreparation(
+            null,
+            PlayerSkinManager.SkinPreparationState.READY,
+            100
+        ).preparing());
+        assertFalse(new PlayerSkinManager.SkinPreparation(
+            null,
+            PlayerSkinManager.SkinPreparationState.FAILED,
+            0
+        ).preparing());
+        assertFalse(new PlayerSkinManager.SkinPreparation(
+            null,
+            PlayerSkinManager.SkinPreparationState.UNAVAILABLE,
+            0
+        ).preparing());
     }
 
     @Test

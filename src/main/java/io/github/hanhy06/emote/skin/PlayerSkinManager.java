@@ -182,8 +182,8 @@ public class PlayerSkinManager implements ConfigListener {
             }
         }
 
-        public boolean ready() {
-            return this.state == SkinPreparationState.READY;
+        public boolean preparing() {
+            return this.state == SkinPreparationState.PREPARING;
         }
     }
 

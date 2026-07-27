@@ -51,15 +51,10 @@ public class PlaybackManager {
             player,
             emote.skinParts()
         );
-        if (!skinPreparation.ready()) {
-            return switch (skinPreparation.state()) {
-                case PREPARING -> PlayResult.failure(
-                    "Preparing player skin... " + skinPreparation.progressPercent() + "%"
-                );
-                case FAILED -> PlayResult.failure("Player skin preparation failed. Try again later.");
-                case UNAVAILABLE -> PlayResult.failure("Player skin preparation is unavailable.");
-                case READY -> throw new IllegalStateException("ready skin preparation reported as not ready");
-            };
+        if (skinPreparation.preparing()) {
+            return PlayResult.failure(
+                "Preparing player skin... " + skinPreparation.progressPercent() + "%"
+            );
         }
         PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
 
