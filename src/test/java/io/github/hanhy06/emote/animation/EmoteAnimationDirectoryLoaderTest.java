@@ -59,7 +59,7 @@ class EmoteAnimationDirectoryLoaderTest {
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        assertTrue(this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation).isEmpty());
+        assertTrue(this.loader.load(directory, MINECRAFT_VERSION, animation -> animation).isEmpty());
         assertTrue(Files.isDirectory(directory));
     }
 
