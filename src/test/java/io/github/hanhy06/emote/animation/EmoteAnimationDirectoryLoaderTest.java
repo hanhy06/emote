@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EmoteAnimationDirectoryLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
+    private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
     private final EmoteAnimationDirectoryLoader loader = new EmoteAnimationDirectoryLoader();
 
     @Test
@@ -23,7 +24,7 @@ class EmoteAnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, "26.2", animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation);
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -63,8 +64,13 @@ class EmoteAnimationDirectoryLoaderTest {
     }
 
     private void writeAnimation(Path path, String id) throws IOException {
-        JsonObject root = JsonParser.parseString(Files.readString(REFERENCE_PATH)).getAsJsonObject();
+        JsonObject root = JsonParser
+            .parseString(Files.readString(REFERENCE_PATH))
+            .getAsJsonObject();
+
+        root.addProperty("minecraft_version", MINECRAFT_VERSION);
         root.addProperty("id", id);
+
         Files.writeString(path, root.toString());
     }
 }

@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class EmoteAnimationJsonLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
+    private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
     private final EmoteAnimationJsonLoader loader = new EmoteAnimationJsonLoader();
 
     @Test
@@ -51,7 +52,7 @@ class EmoteAnimationJsonLoaderTest {
 
         assertEquals(5, examplePaths.size());
         for (Path examplePath : examplePaths) {
-            EmoteAnimation.Loaded loaded = this.loader.load(examplePath, "26.2");
+            EmoteAnimation.Loaded loaded = this.loader.load(examplePath, MINECRAFT_VERSION);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().metadata().hidePlayer(), examplePath.toString());
         }
@@ -114,24 +115,32 @@ class EmoteAnimationJsonLoaderTest {
     }
 
     @Test
-    void rejectsMinecraftVersionMismatch() throws Exception {
+    void rejectsMinecraftVersionMismatch() {
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> this.loader.load(REFERENCE_PATH, "26.1")
+            () -> this.loader.load(
+                REFERENCE_PATH,
+                MINECRAFT_VERSION + "-mismatch"
+            )
         );
 
         assertEquals("$.minecraft_version", exception.fieldPath());
     }
 
     private JsonObject readReference() throws IOException {
-        return JsonParser.parseString(Files.readString(REFERENCE_PATH)).getAsJsonObject();
+        JsonObject root = JsonParser
+            .parseString(Files.readString(REFERENCE_PATH))
+            .getAsJsonObject();
+
+        root.addProperty("minecraft_version", MINECRAFT_VERSION);
+        return root;
     }
 
     private EmoteAnimation.Loaded parse(JsonObject root) throws EmoteAnimationLoadException {
         return this.loader.parse(
             REFERENCE_PATH,
             root.toString().getBytes(StandardCharsets.UTF_8),
-            "26.2"
+            MINECRAFT_VERSION
         );
     }
 }

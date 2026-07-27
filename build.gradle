@@ -67,8 +67,9 @@ java {
 
 test {
     useJUnitPlatform()
-}
 
+    systemProperty "emote.minecraftVersion", project.minecraft_version.toString()
+}
 jar {
     inputs.property "archivesName", project.base.archivesName
 
