@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.io;
+package io.github.hanhy06.emote.config;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;

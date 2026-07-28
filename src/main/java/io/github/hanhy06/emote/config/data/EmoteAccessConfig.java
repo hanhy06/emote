@@ -47,7 +47,7 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
                 throw new IllegalArgumentException("permission emote id must not be blank");
             }
             emotes = copiedEmotes.stream().map(String::trim).distinct().toList();
-            idle = Objects.requireNonNull(idle, "idle");
+            Objects.requireNonNull(idle, "idle");
         }
     }
 

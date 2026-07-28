@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
-import io.github.hanhy06.emote.io.JsonFileStore;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;

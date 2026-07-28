@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.skin;
 
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.io.JsonFileStore;
+import io.github.hanhy06.emote.config.JsonFileStore;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;

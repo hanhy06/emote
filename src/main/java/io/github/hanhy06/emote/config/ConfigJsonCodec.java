@@ -72,18 +72,11 @@ final class ConfigJsonCodec {
             return null;
         }
 
-        List<String> disabled = new ArrayList<>();
-        if (disabledElement != null && !disabledElement.isJsonNull()) {
-            for (JsonElement idElement : disabledElement.getAsJsonArray()) {
-                if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
-                    return null;
-                }
-                String id = normalizeRequiredValue(idElement.getAsString());
-                if (id == null) {
-                    return null;
-                }
-                disabled.add(id);
-            }
+        List<String> disabled = disabledElement == null || disabledElement.isJsonNull()
+            ? List.of()
+            : readRequiredStringList(disabledElement);
+        if (disabled == null) {
+            return null;
         }
 
         JsonElement permissionsElement = object.get("permissions");
@@ -97,27 +90,20 @@ final class ConfigJsonCodec {
                     return null;
                 }
                 JsonObject entryJson = entryElement.getAsJsonObject();
-                String permission = readRequiredString(entryJson, "permission");
-                JsonElement emotesElement = entryJson.get("emotes");
-                if (permission == null || emotesElement == null || !emotesElement.isJsonArray()) {
+                String permission = readRequiredString(entryJson.get("permission"));
+                List<String> ids = readRequiredStringList(entryJson.get("emotes"));
+                if (permission == null || ids == null) {
                     return null;
                 }
 
-                List<String> ids = new ArrayList<>();
-                for (JsonElement idElement : emotesElement.getAsJsonArray()) {
-                    if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
+                Optional<EmoteAccessConfig.IdleEmote> idle = Optional.empty();
+                JsonElement idleElement = entryJson.get("idle");
+                if (idleElement != null && !idleElement.isJsonNull()) {
+                    EmoteAccessConfig.IdleEmote parsedIdle = readIdleEmote(idleElement);
+                    if (parsedIdle == null) {
                         return null;
                     }
-                    String id = normalizeRequiredValue(idElement.getAsString());
-                    if (id == null) {
-                        return null;
-                    }
-                    ids.add(id);
-                }
-
-                Optional<EmoteAccessConfig.IdleEmote> idle = readIdleEmote(entryJson.get("idle"));
-                if (idle == null) {
-                    return null;
+                    idle = Optional.of(parsedIdle);
                 }
                 permissions.add(new EmoteAccessConfig.PermissionEntry(permission, ids, idle));
             }
@@ -130,10 +116,7 @@ final class ConfigJsonCodec {
         return element == null || element.isJsonNull() ? defaultValue : element.getAsInt();
     }
 
-    private Optional<EmoteAccessConfig.IdleEmote> readIdleEmote(JsonElement element) {
-        if (element == null || element.isJsonNull()) {
-            return Optional.empty();
-        }
+    private EmoteAccessConfig.IdleEmote readIdleEmote(JsonElement element) {
         if (!element.isJsonObject()) {
             return null;
         }
@@ -147,22 +130,29 @@ final class ConfigJsonCodec {
             return null;
         }
 
-        List<String> emotes = new ArrayList<>();
-        for (JsonElement idElement : emoteElement.getAsJsonArray()) {
-            if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
-                return null;
-            }
-            String id = normalizeRequiredValue(idElement.getAsString());
-            if (id == null) {
-                return null;
-            }
-            emotes.add(id);
+        List<String> emotes = readRequiredStringList(emoteElement);
+        if (emotes == null) {
+            return null;
         }
-        return Optional.of(new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emotes));
+        return new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emotes);
     }
 
-    private String readRequiredString(JsonObject object, String key) {
-        JsonElement element = object.get(key);
+    private List<String> readRequiredStringList(JsonElement element) {
+        if (element == null || !element.isJsonArray()) {
+            return null;
+        }
+        List<String> values = new ArrayList<>();
+        for (JsonElement valueElement : element.getAsJsonArray()) {
+            String value = readRequiredString(valueElement);
+            if (value == null) {
+                return null;
+            }
+            values.add(value);
+        }
+        return List.copyOf(values);
+    }
+
+    private String readRequiredString(JsonElement element) {
         if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
             return null;
         }
