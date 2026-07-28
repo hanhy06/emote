@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.network;
 
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
@@ -16,7 +17,7 @@ public class PlaybackStateService implements PlaybackStateListener {
     }
 
     @Override
-    public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote) {
+    public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote, PlaybackStopReason reason) {
         sync(player, INACTIVE_PAYLOAD);
     }
 

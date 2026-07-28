@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
@@ -43,10 +44,6 @@ public class PlaybackManager {
         if (server == null) {
             return PlayResult.failure("Server unavailable.");
         }
-        if (player.isPassenger()) {
-            return PlayResult.failure("Cannot play an emote while riding.");
-        }
-
         PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
@@ -58,7 +55,7 @@ public class PlaybackManager {
         }
         PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
 
-        stopEmote(player);
+        stopEmote(player, PlaybackStopReason.REPLACED);
         PlaybackNodes nodes = null;
         try {
             TimelinePlayer timeline;
@@ -135,16 +132,20 @@ public class PlaybackManager {
     }
 
     public ActiveEmote stopEmote(ServerPlayer player) {
-        return stopEmote(player.getUUID());
+        return stopEmote(player, PlaybackStopReason.MANUAL);
     }
 
-    private ActiveEmote stopEmote(UUID playerUuid) {
+    public ActiveEmote stopEmote(ServerPlayer player, PlaybackStopReason reason) {
+        return stopEmote(player.getUUID(), reason);
+    }
+
+    private ActiveEmote stopEmote(UUID playerUuid, PlaybackStopReason reason) {
         ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
         MinecraftServer server = Emote.SERVER;
         if (activeEmote == null || server == null) {
             return activeEmote;
         }
-        cleanupActiveEmote(server, activeEmote, true);
+        cleanupActiveEmote(server, activeEmote, true, reason);
         return activeEmote;
     }
 
@@ -158,34 +159,38 @@ public class PlaybackManager {
             return;
         }
 
-        List<UUID> playerUuidListToStop = null;
+        List<StopRequest> stopRequests = null;
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
             ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
-            boolean shouldStop = !canKeepPlaying(player, activeEmote)
-                || hasMovedDuringPlayback(player, activeEmote);
-            if (!shouldStop) {
+            PlaybackStopReason stopReason = null;
+            if (!canKeepPlaying(player, activeEmote)) {
+                stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
+            } else if (hasMovedDuringPlayback(player, activeEmote)) {
+                stopReason = PlaybackStopReason.MOVED;
+            } else {
                 try {
                     TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
-                    shouldStop = result == TimelinePlayer.AdvanceResult.FINISHED;
-                    if (!shouldStop) {
+                    if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                        stopReason = PlaybackStopReason.FINISHED;
+                    } else {
                         this.playerVisibilityService.tick(player, activeEmote);
                     }
                 } catch (RuntimeException exception) {
                     Emote.LOGGER.warn("Failed while playing emote {}", activeEmote.id(), exception);
-                    shouldStop = true;
+                    stopReason = PlaybackStopReason.ERROR;
                 }
             }
-            if (shouldStop) {
-                if (playerUuidListToStop == null) {
-                    playerUuidListToStop = new ArrayList<>();
+            if (stopReason != null) {
+                if (stopRequests == null) {
+                    stopRequests = new ArrayList<>();
                 }
-                playerUuidListToStop.add(activeEmote.playerUuid());
+                stopRequests.add(new StopRequest(activeEmote.playerUuid(), stopReason));
             }
         }
 
-        if (playerUuidListToStop != null) {
-            for (UUID playerUuid : playerUuidListToStop) {
-                stopEmote(playerUuid);
+        if (stopRequests != null) {
+            for (StopRequest request : stopRequests) {
+                stopEmote(request.playerUuid(), request.reason());
             }
         }
     }
@@ -214,22 +219,43 @@ public class PlaybackManager {
     }
 
     public void stopAllEmotes() {
+        stopAllEmotes(PlaybackStopReason.MANUAL);
+    }
+
+    public void stopAllEmotes(PlaybackStopReason reason) {
         for (UUID playerUuid : List.copyOf(this.activeEmoteMap.keySet())) {
-            stopEmote(playerUuid);
+            stopEmote(playerUuid, reason);
         }
     }
 
     public void stopId(String id) {
+        stopId(id, PlaybackStopReason.EMOTE_REMOVED);
+    }
+
+    public void stopId(String id, PlaybackStopReason reason) {
         List<UUID> playerUuidList = this.activeEmoteMap.entrySet().stream()
             .filter(entry -> entry.getValue().id().equals(id))
             .map(Map.Entry::getKey)
             .toList();
         for (UUID playerUuid : playerUuidList) {
-            stopEmote(playerUuid);
+            stopEmote(playerUuid, reason);
         }
     }
 
-    private void cleanupActiveEmote(MinecraftServer server, ActiveEmote activeEmote, boolean notifyListeners) {
+    private void cleanupActiveEmote(
+        MinecraftServer server,
+        ActiveEmote activeEmote,
+        boolean notifyListeners
+    ) {
+        cleanupActiveEmote(server, activeEmote, notifyListeners, PlaybackStopReason.ERROR);
+    }
+
+    private void cleanupActiveEmote(
+        MinecraftServer server,
+        ActiveEmote activeEmote,
+        boolean notifyListeners,
+        PlaybackStopReason reason
+    ) {
         try {
             activeEmote.events().stop();
         } catch (RuntimeException exception) {
@@ -244,7 +270,7 @@ public class PlaybackManager {
                 this.playerVisibilityService.stop(player, activeEmote);
                 if (notifyListeners) {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
-                        stateListener.onEmoteStopped(player, activeEmote);
+                        stateListener.onEmoteStopped(player, activeEmote, reason);
                     }
                 }
             }
@@ -254,7 +280,6 @@ public class PlaybackManager {
     private boolean canKeepPlaying(ServerPlayer player, ActiveEmote activeEmote) {
         return player != null
             && player.isAlive()
-            && !player.isPassenger()
             && player.level().dimension().equals(activeEmote.levelKey());
     }
 
@@ -267,5 +292,8 @@ public class PlaybackManager {
         double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
         return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED
             || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+    }
+
+    private record StopRequest(UUID playerUuid, PlaybackStopReason reason) {
     }
 }

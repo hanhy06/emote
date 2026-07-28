@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
@@ -53,7 +54,7 @@ public final class EmoteReloadService {
         if (server == null) {
             return 0;
         }
-        this.playbackManager.stopAllEmotes();
+        this.playbackManager.stopAllEmotes(PlaybackStopReason.RELOAD);
         int emoteCount = reloadRegistry(server);
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);

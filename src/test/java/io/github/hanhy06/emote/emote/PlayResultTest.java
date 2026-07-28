@@ -15,7 +15,7 @@ class PlayResultTest {
         PlayResult result = PlayResult.failure(" Animation unavailable. ");
 
         assertFalse(result.isSuccess());
-        assertEquals("Animation unavailable.", result.errorMessage());
+        assertEquals("Animation unavailable.", result.errorMessage().getString());
     }
 
     @Test

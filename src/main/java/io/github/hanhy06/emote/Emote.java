@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
+import io.github.hanhy06.emote.api.EmoteApiEvents;
+import io.github.hanhy06.emote.api.EmoteApiImpl;
 import io.github.hanhy06.emote.command.RootCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
@@ -39,6 +41,7 @@ public class Emote implements ModInitializer {
 
     private final PlaybackManager playbackManager = new PlaybackManager(this.skinManager);
     private final PlaybackStateService playbackStateService = new PlaybackStateService();
+    private final EmoteApiEvents apiEvents = new EmoteApiEvents();
 
     private final DialogManager dialogManager = new DialogManager(
         this.configManager,
@@ -49,7 +52,15 @@ public class Emote implements ModInitializer {
     private final PlayService playService = new PlayService(
         this.emoteRegistry,
         this.permissionService,
-        this.playbackManager
+        this.playbackManager,
+        this.apiEvents
+    );
+    @SuppressWarnings("unused")
+    private final EmoteApiImpl api = new EmoteApiImpl(
+        this.emoteRegistry,
+        this.playService,
+        this.playbackManager,
+        this.apiEvents
     );
     private final IdleEmoteService idleEmoteService = new IdleEmoteService(
         this.permissionService,
@@ -90,6 +101,7 @@ public class Emote implements ModInitializer {
         this.configManager.addListener(this.skinManager);
 
         this.playbackManager.addStateListener(this.playbackStateService);
+        this.playbackManager.addStateListener(this.apiEvents);
         this.playbackManager.registerVisibilityService();
 
         this.networking.register();

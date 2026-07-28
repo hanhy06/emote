@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.server;
 
+import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.EmoteAccessConfig;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.PlayService;
@@ -32,7 +33,7 @@ public final class IdleEmoteService {
     ) {
         this(
             permissionService::findIdleEmote,
-            playService::play,
+            (player, id) -> playService.play(player, id, PlaySource.IDLE),
             player -> playbackManager.findActiveEmote(player.getUUID()) != null,
             Util::getMillis,
             RandomGenerator.getDefault()

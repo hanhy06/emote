@@ -7,6 +7,7 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
+import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.PlayService;
@@ -150,7 +151,7 @@ public final class RootCommand {
 
     private static int applyPlayResult(CommandSourceStack source, PlayResult playResult) {
         if (!playResult.isSuccess()) {
-            source.sendFailure(Component.literal(playResult.errorMessage()));
+            source.sendFailure(playResult.errorMessage());
             return 0;
         }
 
@@ -162,7 +163,7 @@ public final class RootCommand {
         ServerPlayer player = source.getPlayerOrException();
         return applyPlayResult(
             source,
-            this.playService.play(player, IdentifierArgument.getId(context, "id").toString())
+            this.playService.play(player, IdentifierArgument.getId(context, "id").toString(), PlaySource.COMMAND)
         );
     }
 
