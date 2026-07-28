@@ -13,7 +13,7 @@ class MineSkinGenerationQueueTest {
     @Test
     void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+            MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
             CountDownLatch started = new CountDownLatch(1);
             CountDownLatch interrupted = new CountDownLatch(1);
             executor.submit("skin", () -> {
@@ -38,7 +38,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void submitRequestsOneRerunForPendingSkinKey() throws InterruptedException {
-        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch reran = new CountDownLatch(1);
@@ -66,7 +66,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void scheduledRetryDoesNotOccupyWorker() throws InterruptedException {
-        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
         CountDownLatch workerRan = new CountDownLatch(1);
         CountDownLatch retryRan = new CountDownLatch(1);
 
@@ -80,7 +80,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void cancelAllDropsRequestedRerunForRunningTask() throws InterruptedException {
-        MineSkinManager.GenerationQueue executor = new MineSkinManager.GenerationQueue();
+        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch reran = new CountDownLatch(1);
         AtomicInteger runCount = new AtomicInteger();

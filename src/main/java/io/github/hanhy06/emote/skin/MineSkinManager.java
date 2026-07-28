@@ -5,9 +5,7 @@ import io.github.hanhy06.emote.Emote;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 final class MineSkinManager {
     private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
@@ -18,7 +16,7 @@ final class MineSkinManager {
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinCache cache;
     private final MineSkinClient client;
-    private final GenerationQueue generationQueue;
+    private final MineSkinGenerationQueue generationQueue;
     private final Consumer<UUID> readyNotifier;
     private final Consumer<UUID> failureNotifier;
     private final Map<String, BakeTask> bakeTasks = new HashMap<>();
@@ -29,7 +27,7 @@ final class MineSkinManager {
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache cache,
         MineSkinClient client,
-        GenerationQueue generationQueue,
+        MineSkinGenerationQueue generationQueue,
         Consumer<UUID> readyNotifier,
         Consumer<UUID> failureNotifier
     ) {
@@ -348,147 +346,6 @@ final class MineSkinManager {
 
     private static long positiveOrRateLimitFallback(long value) {
         return value > 0L ? value : RATE_LIMIT_RETRY_DELAY_MILLIS;
-    }
-
-    static final class GenerationQueue {
-        private final Supplier<ExecutorService> executorFactory;
-        private final Map<String, PendingTask> pendingTasks = new HashMap<>();
-        private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
-        private ExecutorService executor;
-        private ScheduledExecutorService scheduler;
-        private long generation;
-
-        GenerationQueue() {
-            this(GenerationQueue::createExecutor);
-        }
-
-        GenerationQueue(Supplier<ExecutorService> executorFactory) {
-            this.executorFactory = executorFactory;
-        }
-
-        synchronized boolean submit(String key, Runnable task) {
-            PendingTask pendingTask = this.pendingTasks.get(key);
-            if (pendingTask != null) {
-                pendingTask.requestRerun();
-                return false;
-            }
-            PendingTask newTask = new PendingTask(task);
-            long taskGeneration = this.generation;
-            this.pendingTasks.put(key, newTask);
-            try {
-                executor().execute(() -> {
-                    while (true) {
-                        newTask.task().run();
-                        synchronized (GenerationQueue.this) {
-                            if (taskGeneration != generation) {
-                                pendingTasks.remove(key, newTask);
-                                return;
-                            }
-                            if (newTask.takeRerunRequest()) {
-                                continue;
-                            }
-                            pendingTasks.remove(key, newTask);
-                            return;
-                        }
-                    }
-                });
-                return true;
-            } catch (RejectedExecutionException exception) {
-                this.pendingTasks.remove(key, newTask);
-                throw exception;
-            }
-        }
-
-        synchronized void cancelAll() {
-            this.generation++;
-            this.pendingTasks.clear();
-            for (ScheduledFuture<?> scheduledTask : this.scheduledTasks.values()) {
-                scheduledTask.cancel(true);
-            }
-            this.scheduledTasks.clear();
-            if (this.executor != null) {
-                this.executor.shutdownNow();
-                this.executor = null;
-            }
-            if (this.scheduler != null) {
-                this.scheduler.shutdownNow();
-                this.scheduler = null;
-            }
-        }
-
-        synchronized boolean schedule(String key, Runnable task, long delayMillis) {
-            if (this.scheduledTasks.containsKey(key)) {
-                return false;
-            }
-            long scheduledGeneration = this.generation;
-            ScheduledFuture<?> scheduledTask = scheduler().schedule(() -> {
-                synchronized (GenerationQueue.this) {
-                    if (scheduledGeneration != generation) {
-                        return;
-                    }
-                    scheduledTasks.remove(key);
-                    submit(key, task);
-                }
-            }, Math.max(1L, delayMillis), TimeUnit.MILLISECONDS);
-            this.scheduledTasks.put(key, scheduledTask);
-            return true;
-        }
-
-        synchronized void cancelScheduled(String key) {
-            ScheduledFuture<?> scheduledTask = this.scheduledTasks.remove(key);
-            if (scheduledTask != null) {
-                scheduledTask.cancel(false);
-            }
-        }
-
-        private synchronized ExecutorService executor() {
-            if (this.executor == null) {
-                this.executor = this.executorFactory.get();
-            }
-            return this.executor;
-        }
-
-        private synchronized ScheduledExecutorService scheduler() {
-            if (this.scheduler == null) {
-                this.scheduler = Executors.newSingleThreadScheduledExecutor(task -> {
-                    Thread thread = new Thread(task, "emote-mineskin-retry");
-                    thread.setDaemon(true);
-                    return thread;
-                });
-            }
-            return this.scheduler;
-        }
-
-        private static ExecutorService createExecutor() {
-            return Executors.newSingleThreadExecutor(task -> {
-                Thread thread = new Thread(task, "emote-mineskin");
-                thread.setDaemon(true);
-                return thread;
-            });
-        }
-
-        private static final class PendingTask {
-            private final Runnable task;
-            private boolean rerunRequested;
-
-            private PendingTask(Runnable task) {
-                this.task = task;
-            }
-
-            private Runnable task() {
-                return this.task;
-            }
-
-            private void requestRerun() {
-                this.rerunRequested = true;
-            }
-
-            private boolean takeRerunRequest() {
-                boolean requested = this.rerunRequested;
-                this.rerunRequested = false;
-                return requested;
-            }
-        }
     }
 
     private record TextureResolution(String textureUrl, long retryAtEpochMillis, String errorMessage) {

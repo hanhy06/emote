@@ -24,7 +24,7 @@ class MineSkinManagerTest {
 
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            MineSkinManager.GenerationQueue queue = new MineSkinManager.GenerationQueue(() -> executorService);
+            MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
             MineSkinManager manager = new MineSkinManager(
                 new PlayerSkinBaker(),
                 cache,

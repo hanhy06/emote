@@ -31,7 +31,7 @@ public class PlayerSkinManager implements ConfigListener {
             new PlayerSkinBaker(),
             new MineSkinCache(),
             new MineSkinClient(),
-            new MineSkinManager.GenerationQueue(),
+            new MineSkinGenerationQueue(),
             PlayerSkinManager::readPlayerSkinSource
         );
     }
@@ -40,7 +40,7 @@ public class PlayerSkinManager implements ConfigListener {
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache mineSkinCache,
         MineSkinClient mineSkinClient,
-        MineSkinManager.GenerationQueue generationQueue,
+        MineSkinGenerationQueue generationQueue,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");

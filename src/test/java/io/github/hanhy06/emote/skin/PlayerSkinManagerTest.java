@@ -30,7 +30,7 @@ class PlayerSkinManagerTest {
             PlayerSkinManager manager = createManager(
                 textureStore,
                 new MineSkinClient(httpClient),
-                new MineSkinManager.GenerationQueue(),
+                new MineSkinGenerationQueue(),
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
@@ -73,7 +73,7 @@ class PlayerSkinManagerTest {
     void preparePlayerSkinSchedulesMissingTextures(@TempDir Path tempDir) {
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            MineSkinManager.GenerationQueue bakeExecutor = new MineSkinManager.GenerationQueue(() -> executorService);
+            MineSkinGenerationQueue bakeExecutor = new MineSkinGenerationQueue(() -> executorService);
             PlayerSkinManager manager = createManager(
                 new MineSkinCache(tempDir),
                 new MineSkinClient(httpClient),
@@ -104,7 +104,7 @@ class PlayerSkinManagerTest {
             PlayerSkinManager manager = createManager(
                 textureStore,
                 new MineSkinClient(httpClient),
-                new MineSkinManager.GenerationQueue(() -> executorService),
+                new MineSkinGenerationQueue(() -> executorService),
                 new PlayerSkinManager.PlayerSkinSource(
                     UUID.randomUUID(),
                     "player",
@@ -128,7 +128,7 @@ class PlayerSkinManagerTest {
     private PlayerSkinManager createManager(
         MineSkinCache textureStore,
         MineSkinClient apiClient,
-        MineSkinManager.GenerationQueue bakeExecutor,
+        MineSkinGenerationQueue bakeExecutor,
         PlayerSkinManager.PlayerSkinSource skinSource
     ) {
         PlayerSkinManager manager = new PlayerSkinManager(
