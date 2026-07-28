@@ -76,7 +76,7 @@ final class EmoteAdminCommands {
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getAll().stream().map(RegisteredEmote::id),
+                    this.emoteRegistry.getFileEmotes().stream().map(RegisteredEmote::id),
                     builder
                 ))
                 .executes(context -> setEmoteEnabled(
@@ -136,7 +136,7 @@ final class EmoteAdminCommands {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteRegistry.find(id) == null) {
+        } else if (this.emoteRegistry.findFile(id) == null) {
             source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }

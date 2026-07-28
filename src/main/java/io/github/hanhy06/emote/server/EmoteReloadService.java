@@ -69,7 +69,7 @@ public final class EmoteReloadService {
         int ignoredCount = this.emoteRegistry.replace(emotes);
         if (ignoredCount > 0) {
             Emote.LOGGER.warn(
-                "Ignoring {} enabled emotes above the registry limit of {}",
+                "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
                 ignoredCount,
                 EmoteRegistry.MAX_EMOTE_COUNT
             );

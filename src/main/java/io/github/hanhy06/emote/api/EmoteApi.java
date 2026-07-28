@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.api;
 
+import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.emote.PlayResult;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,6 +32,8 @@ public abstract class EmoteApi {
     public abstract PlayResult play(ServerPlayer player, Identifier emoteId);
 
     public abstract boolean stop(ServerPlayer player);
+
+    public abstract EmoteRegistration register(EmoteAnimation animation) throws EmoteAnimationLoadException;
 
     public abstract Optional<EmoteInfo> find(Identifier emoteId);
 

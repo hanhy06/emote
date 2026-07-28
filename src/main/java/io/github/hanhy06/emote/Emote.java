@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
+import io.github.hanhy06.emote.animation.EmoteAnimationServerValidator;
 import io.github.hanhy06.emote.api.EmoteApiEvents;
 import io.github.hanhy06.emote.api.EmoteApiImpl;
 import io.github.hanhy06.emote.command.RootCommand;
@@ -55,19 +56,21 @@ public class Emote implements ModInitializer {
         this.playbackManager,
         this.apiEvents
     );
-    @SuppressWarnings("unused")
-    private final EmoteApiImpl api = new EmoteApiImpl(
-        this.emoteRegistry,
-        this.playService,
-        this.playbackManager,
-        this.apiEvents
-    );
     private final IdleEmoteService idleEmoteService = new IdleEmoteService(
         this.permissionService,
         this.playService,
         this.playbackManager
     );
     private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
+    @SuppressWarnings("unused")
+    private final EmoteApiImpl api = new EmoteApiImpl(
+        this.emoteRegistry,
+        this.playService,
+        this.playbackManager,
+        this.apiEvents,
+        this.wheelSyncService,
+        new EmoteAnimationServerValidator()
+    );
     private final EmoteReloadService reloadService = new EmoteReloadService(
         this.configManager,
         this.emoteRegistry,
