@@ -116,6 +116,16 @@ See [the animation format](./emote-animation-format.md) and [reference JSON](./e
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
+## Mod API
+
+Emote provides a server-side API under `io.github.hanhy06.emote.api`.
+
+Access it through `EmoteApi.getInstance()`.
+
+The API supports playback control, runtime emote registration, state queries, cancellable play listeners, and playback lifecycle listeners.
+
+API mutations must run on the server thread. Runtime registrations survive `/emote reload` and are automatically removed when the server stops.
+
 ## Troubleshooting
 
 ### An emote does not appear
