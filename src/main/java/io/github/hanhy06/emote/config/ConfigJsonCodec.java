@@ -7,9 +7,8 @@ import io.github.hanhy06.emote.config.data.Config;
 import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 
 final class ConfigJsonCodec {
     JsonObject writeConfig(Config config) {
@@ -26,11 +25,20 @@ final class ConfigJsonCodec {
         JsonArray disabledJson = new JsonArray();
         config.disabled().forEach(disabledJson::add);
         object.add("disabled", disabledJson);
-        JsonObject permissionsJson = new JsonObject();
-        for (Map.Entry<String, List<String>> entry : config.permissions().entrySet()) {
+        JsonArray permissionsJson = new JsonArray();
+        for (EmoteAccessConfig.PermissionEntry entry : config.permissions()) {
+            JsonObject entryJson = new JsonObject();
+            entryJson.addProperty("permission", entry.permission());
             JsonArray idsJson = new JsonArray();
-            entry.getValue().forEach(idsJson::add);
-            permissionsJson.add(entry.getKey(), idsJson);
+            entry.emotes().forEach(idsJson::add);
+            entryJson.add("emotes", idsJson);
+            entry.idle().ifPresent(idle -> {
+                JsonObject idleJson = new JsonObject();
+                idleJson.addProperty("delay_seconds", idle.delaySeconds());
+                idleJson.addProperty("emote", idle.emote());
+                entryJson.add("idle", idleJson);
+            });
+            permissionsJson.add(entryJson);
         }
         object.add("permissions", permissionsJson);
         return object;
@@ -77,18 +85,24 @@ final class ConfigJsonCodec {
         }
 
         JsonElement permissionsElement = object.get("permissions");
-        if (permissionsElement != null && !permissionsElement.isJsonNull() && !permissionsElement.isJsonObject()) {
+        if (permissionsElement != null && !permissionsElement.isJsonNull() && !permissionsElement.isJsonArray()) {
             return null;
         }
-        LinkedHashMap<String, List<String>> permissions = new LinkedHashMap<>();
+        List<EmoteAccessConfig.PermissionEntry> permissions = new ArrayList<>();
         if (permissionsElement != null && !permissionsElement.isJsonNull()) {
-            for (Map.Entry<String, JsonElement> entry : permissionsElement.getAsJsonObject().entrySet()) {
-                String permission = normalizeRequiredValue(entry.getKey());
-                if (permission == null || permissions.containsKey(permission) || !entry.getValue().isJsonArray()) {
+            for (JsonElement entryElement : permissionsElement.getAsJsonArray()) {
+                if (!entryElement.isJsonObject()) {
                     return null;
                 }
+                JsonObject entryJson = entryElement.getAsJsonObject();
+                String permission = readRequiredString(entryJson, "permission");
+                JsonElement emotesElement = entryJson.get("emotes");
+                if (permission == null || emotesElement == null || !emotesElement.isJsonArray()) {
+                    return null;
+                }
+
                 List<String> ids = new ArrayList<>();
-                for (JsonElement idElement : entry.getValue().getAsJsonArray()) {
+                for (JsonElement idElement : emotesElement.getAsJsonArray()) {
                     if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
                         return null;
                     }
@@ -98,7 +112,12 @@ final class ConfigJsonCodec {
                     }
                     ids.add(id);
                 }
-                permissions.put(permission, ids);
+
+                Optional<EmoteAccessConfig.IdleEmote> idle = readIdleEmote(entryJson.get("idle"));
+                if (idle == null) {
+                    return null;
+                }
+                permissions.add(new EmoteAccessConfig.PermissionEntry(permission, ids, idle));
             }
         }
         return new EmoteAccessConfig(disabled, permissions);
@@ -107,6 +126,32 @@ final class ConfigJsonCodec {
     private int readInt(JsonObject object, String key, int defaultValue) {
         JsonElement element = object.get(key);
         return element == null || element.isJsonNull() ? defaultValue : element.getAsInt();
+    }
+
+    private Optional<EmoteAccessConfig.IdleEmote> readIdleEmote(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return Optional.empty();
+        }
+        if (!element.isJsonObject()) {
+            return null;
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        JsonElement delayElement = object.get("delay_seconds");
+        String emote = readRequiredString(object, "emote");
+        if (delayElement == null || !delayElement.isJsonPrimitive()
+            || !delayElement.getAsJsonPrimitive().isNumber() || emote == null) {
+            return null;
+        }
+        return Optional.of(new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emote));
+    }
+
+    private String readRequiredString(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        if (element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            return null;
+        }
+        return normalizeRequiredValue(element.getAsString());
     }
 
     private String normalizeRequiredValue(String value) {

@@ -1,8 +1,12 @@
 package io.github.hanhy06.emote.config.data;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
 
-public record EmoteAccessConfig(List<String> disabled, Map<String, List<String>> permissions) {
+public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public EmoteAccessConfig {
         List<String> copiedDisabled = List.copyOf(Objects.requireNonNull(disabled, "disabled"));
         if (copiedDisabled.stream().anyMatch(id -> id == null || id.isBlank())) {
@@ -10,26 +14,52 @@ public record EmoteAccessConfig(List<String> disabled, Map<String, List<String>>
         }
         disabled = copiedDisabled.stream().map(String::trim).distinct().toList();
 
-        LinkedHashMap<String, List<String>> copiedPermissions = new LinkedHashMap<>();
-        for (Map.Entry<String, List<String>> entry : Objects.requireNonNull(permissions, "permissions").entrySet()) {
-            String permission = entry.getKey();
-            if (permission == null || permission.isBlank()) {
-                throw new IllegalArgumentException("permission must not be blank");
+        permissions = List.copyOf(Objects.requireNonNull(permissions, "permissions"));
+        Set<String> seenPermissions = new HashSet<>();
+        for (PermissionEntry entry : permissions) {
+            Objects.requireNonNull(entry, "permission entry");
+            if (!seenPermissions.add(entry.permission())) {
+                throw new IllegalArgumentException("duplicate permission: " + entry.permission());
             }
-            List<String> ids = List.copyOf(Objects.requireNonNull(entry.getValue(), "permission emote ids"));
-            if (ids.stream().anyMatch(id -> id == null || id.isBlank())) {
-                throw new IllegalArgumentException("permission emote id must not be blank");
-            }
-            copiedPermissions.put(permission.trim(), ids.stream().map(String::trim).distinct().toList());
         }
-        permissions = Collections.unmodifiableMap(copiedPermissions);
     }
 
     public static EmoteAccessConfig createDefault() {
-        return new EmoteAccessConfig(List.of(), Map.of("emote.default", List.of("*")));
+        return new EmoteAccessConfig(
+            List.of(),
+            List.of(new PermissionEntry("emote.default", List.of("*"), Optional.empty()))
+        );
     }
 
     public boolean isEnabled(String id) {
         return !disabled.contains(id);
+    }
+
+    public record PermissionEntry(String permission, List<String> emotes, Optional<IdleEmote> idle) {
+        public PermissionEntry {
+            if (permission == null || permission.isBlank()) {
+                throw new IllegalArgumentException("permission must not be blank");
+            }
+            permission = permission.trim();
+
+            List<String> copiedEmotes = List.copyOf(Objects.requireNonNull(emotes, "permission emotes"));
+            if (copiedEmotes.stream().anyMatch(id -> id == null || id.isBlank())) {
+                throw new IllegalArgumentException("permission emote id must not be blank");
+            }
+            emotes = copiedEmotes.stream().map(String::trim).distinct().toList();
+            idle = Objects.requireNonNull(idle, "idle");
+        }
+    }
+
+    public record IdleEmote(int delaySeconds, String emote) {
+        public IdleEmote {
+            if (delaySeconds < 1) {
+                throw new IllegalArgumentException("idle delay_seconds must be at least 1");
+            }
+            if (emote == null || emote.isBlank()) {
+                throw new IllegalArgumentException("idle emote must not be blank");
+            }
+            emote = emote.trim();
+        }
     }
 }
