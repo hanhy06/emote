@@ -1,16 +1,12 @@
 package io.github.hanhy06.emote.client;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 
@@ -20,15 +16,11 @@ public class WheelController {
     private List<PlayableEmote> syncedEmotes = List.of();
     private boolean syncedFromServer;
     private String lastSelectedId = "";
-    private boolean bindingReleaseArmed;
-    private boolean holdWasDown;
 
     public void clear() {
         this.syncedEmotes = List.of();
         this.syncedFromServer = false;
         this.lastSelectedId = "";
-        this.bindingReleaseArmed = false;
-        this.holdWasDown = false;
     }
 
     public void updateEmotes(List<PlayableEmote> emotes) {
@@ -40,7 +32,7 @@ public class WheelController {
         ClientTickEvents.END_CLIENT_TICK.register(client -> tickBinding(client, keyMapping));
     }
 
-    public void openWheel(Component bindingLabel) {
+    private void openWheel(KeyMapping keyMapping) {
         Minecraft client = Minecraft.getInstance();
         if (client.player == null || client.gui.screen() != null) {
             return;
@@ -51,7 +43,7 @@ public class WheelController {
             return;
         }
 
-        client.gui.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), bindingLabel));
+        client.gui.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), keyMapping));
     }
 
     public void playEmote(PlayableEmote playableEmote) {
@@ -65,34 +57,13 @@ public class WheelController {
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
-        boolean holdDown = isBindingDown(client, keyMapping);
-
-        if (client.gui.screen() instanceof WheelScreen wheelScreen) {
-            if (holdDown) {
-                this.bindingReleaseArmed = true;
-            } else if (this.bindingReleaseArmed) {
-                this.bindingReleaseArmed = false;
-                wheelScreen.handleBindingReleased();
-            }
-            this.holdWasDown = holdDown;
-            return;
-        }
-
-        this.bindingReleaseArmed = false;
         if (client.gui.screen() != null || client.player == null) {
-            this.holdWasDown = holdDown;
             return;
         }
 
-        if (holdDown && !this.holdWasDown) {
-            if (keyMapping.same(client.options.keyPickItem)) {
-                drainClicks(client.options.keyPickItem);
-            }
-            openWheel(keyMapping.getTranslatedKeyMessage());
-            this.bindingReleaseArmed = true;
+        if (keyMapping.consumeClick()) {
+            openWheel(keyMapping);
         }
-
-        this.holdWasDown = holdDown;
     }
 
     private int findInitialPageIndex() {
@@ -107,20 +78,5 @@ public class WheelController {
         }
 
         return 0;
-    }
-
-    private static void drainClicks(KeyMapping keyMapping) {
-        //noinspection StatementWithEmptyBody
-        while (keyMapping.consumeClick()) {
-        }
-    }
-
-    private static boolean isBindingDown(Minecraft client, KeyMapping keyMapping) {
-        InputConstants.Key boundKey = KeyMappingHelper.getBoundKeyOf(keyMapping);
-        return switch (boundKey.getType()) {
-            case KEYSYM -> InputConstants.isKeyDown(client.getWindow(), boundKey.getValue());
-            case MOUSE -> GLFW.glfwGetMouseButton(client.getWindow().handle(), boundKey.getValue()) == GLFW.GLFW_PRESS;
-            case SCANCODE -> keyMapping.isDown();
-        };
     }
 }

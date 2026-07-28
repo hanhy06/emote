@@ -5,8 +5,10 @@ import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
+import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
@@ -32,18 +34,20 @@ public class WheelScreen extends Screen {
     private static final int MUTED_COLOR = 0xFF9DB0BC;
     private final WheelController controller;
     private final List<PlayableEmote> emotes;
+    private final KeyMapping keyMapping;
     private final Component bindingLabel;
     private int pageIndex;
     private double lastMouseX;
     private double lastMouseY;
     private int hoveredSlotIndex = -1;
 
-    public WheelScreen(WheelController controller, List<PlayableEmote> emotes, int pageIndex, Component bindingLabel) {
+    public WheelScreen(WheelController controller, List<PlayableEmote> emotes, int pageIndex, KeyMapping keyMapping) {
         super(Component.translatable("screen.emote.wheel.title"));
         this.controller = controller;
         this.emotes = List.copyOf(emotes);
         this.pageIndex = Math.clamp(pageIndex, 0, getPageCount() - 1);
-        this.bindingLabel = bindingLabel;
+        this.keyMapping = keyMapping;
+        this.bindingLabel = keyMapping.getTranslatedKeyMessage();
     }
 
     @Override
@@ -121,7 +125,20 @@ public class WheelScreen extends Screen {
         this.lastMouseX = event.x();
         this.lastMouseY = event.y();
         updateHoveredSlot(event.x(), event.y());
+        if (this.keyMapping.matchesMouse(event)) {
+            handleBindingReleased();
+            return true;
+        }
         return event.button() == LEFT_MOUSE_BUTTON || event.button() == RIGHT_MOUSE_BUTTON;
+    }
+
+    @Override
+    public boolean keyReleased(KeyEvent event) {
+        if (this.keyMapping.matches(event)) {
+            handleBindingReleased();
+            return true;
+        }
+        return super.keyReleased(event);
     }
 
     @Override
