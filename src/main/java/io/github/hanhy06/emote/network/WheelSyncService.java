@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.network.service;
+package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;

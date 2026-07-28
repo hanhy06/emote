@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.config.data;
+package io.github.hanhy06.emote.config;
 
 import java.util.Objects;
 

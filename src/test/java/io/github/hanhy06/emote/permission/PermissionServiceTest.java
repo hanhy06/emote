@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
+import io.github.hanhy06.emote.config.EmoteAccessConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;

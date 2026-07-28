@@ -5,7 +5,7 @@ import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.config.data.Config;
+import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.playback.PlaybackNodes.NodeInstance;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;

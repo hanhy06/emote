@@ -3,9 +3,6 @@ package io.github.hanhy06.emote.config;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;

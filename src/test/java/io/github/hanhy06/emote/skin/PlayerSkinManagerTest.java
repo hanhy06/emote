@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.config.data.Config;
+import io.github.hanhy06.emote.config.Config;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;

@@ -4,8 +4,6 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.config.data.Config;
-import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;

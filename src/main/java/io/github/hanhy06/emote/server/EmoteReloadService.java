@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.network.service.WheelSyncService;
+import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.server.MinecraftServer;
 

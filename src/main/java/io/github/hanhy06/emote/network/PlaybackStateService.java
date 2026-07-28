@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.network.service;
+package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
 import io.github.hanhy06.emote.playback.ActiveEmote;

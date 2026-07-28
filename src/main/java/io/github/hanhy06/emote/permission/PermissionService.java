@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.permission;
 
 import io.github.hanhy06.emote.config.EmoteAccessConfigListener;
-import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
+import io.github.hanhy06.emote.config.EmoteAccessConfig;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
