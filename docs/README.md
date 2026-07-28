@@ -75,26 +75,44 @@ Controls emote availability and play permissions.
   "disabled": [
     "example:disabled"
   ],
-  "permissions": {
-    "emote.default": [
-      "example:hello",
-      "example:yes",
-      "example:no"
-    ],
-    "emote.vip": [
-      "example:dance",
-      "example:cry"
-    ],
-    "emote.admin": [
-      "*"
-    ]
-  }
+  "permissions": [
+    {
+      "permission": "emote.vip",
+      "emotes": [
+        "example:dance",
+        "example:cry"
+      ],
+      "idle": {
+        "delay_seconds": 600,
+        "emote": [
+          "example:dance",
+          "example:cry"
+        ]
+      }
+    },
+    {
+      "permission": "emote.default",
+      "emotes": [
+        "example:hello",
+        "example:yes",
+        "example:no"
+      ]
+    },
+    {
+      "permission": "emote.admin",
+      "emotes": [
+        "*"
+      ]
+    }
+  ]
 }
 ```
 
 - `disabled` contains the exact IDs of emotes that should not be loaded.
-- `emote.default` contains emotes available to every player.
-- Other keys are permission nodes that grant access to additional emotes.
+- `permissions` preserves the listed order, which determines idle emote selection.
+- `permission` is the permission node for the entry. `emote.default` is granted to every player by default.
+- `emotes` contains the emotes granted by the permission.
+- `idle` is optional. The first matching permission entry with `idle` plays one randomly selected `emote` after `delay_seconds` of inactivity.
 - `*` grants access to every enabled emote.
 
 Run `/emote reload` after editing the file manually.
