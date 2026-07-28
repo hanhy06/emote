@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.animation.EmoteAnimation.Matrix;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation.Matrix;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;

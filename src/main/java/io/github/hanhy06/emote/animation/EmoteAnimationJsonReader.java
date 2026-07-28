@@ -3,6 +3,8 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

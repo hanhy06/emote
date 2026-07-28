@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.nbt.NbtOps;
@@ -19,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class EmoteAnimationServerValidator {
     public Loaded prepare(Loaded loaded, MinecraftServer server) throws EmoteAnimationLoadException {

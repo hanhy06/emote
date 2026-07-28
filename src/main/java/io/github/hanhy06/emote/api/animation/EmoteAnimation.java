@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.api.animation;
 
 import com.google.gson.JsonElement;
 import net.minecraft.nbt.CompoundTag;

@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;

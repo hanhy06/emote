@@ -1,8 +1,7 @@
 package io.github.hanhy06.emote.api;
 
-import io.github.hanhy06.emote.animation.EmoteAnimation;
-import io.github.hanhy06.emote.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.emote.PlayResult;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.api;
 
 import net.minecraft.network.chat.Component;
 

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.api.animation;
 
 import java.nio.file.Path;
 import java.util.Objects;

@@ -3,10 +3,11 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 
 import java.util.*;
 
-import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 final class EmoteTimelineJsonParser {
     Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteAnimationJsonReader reader)

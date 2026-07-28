@@ -1,11 +1,10 @@
 package io.github.hanhy06.emote.api;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.animation.EmoteAnimation;
-import io.github.hanhy06.emote.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.animation.EmoteAnimationServerValidator;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayResult;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.network.WheelSyncService;

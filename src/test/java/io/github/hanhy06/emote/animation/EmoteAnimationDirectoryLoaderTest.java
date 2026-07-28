@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.animation;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

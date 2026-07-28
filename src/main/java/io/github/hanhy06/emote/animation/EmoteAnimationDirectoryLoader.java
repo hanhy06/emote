@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
 
-import static io.github.hanhy06.emote.animation.EmoteAnimation.Loaded;
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.Loaded;
 
 public final class EmoteAnimationDirectoryLoader {
     private final EmoteAnimationJsonLoader jsonLoader;

@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.api;
 
-import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
 import java.util.Objects;

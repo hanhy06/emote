@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.EmoteApiEvents;
+import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;

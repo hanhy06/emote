@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
@@ -17,7 +19,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class EmoteAnimationJsonLoader {
     private static final int SCHEMA_VERSION = 1;

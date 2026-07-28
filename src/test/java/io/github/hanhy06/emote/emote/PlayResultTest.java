@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.PlayResult;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

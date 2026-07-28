@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.mixin.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.DisplayAccessor;

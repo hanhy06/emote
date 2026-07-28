@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import org.junit.jupiter.api.Test;

@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
