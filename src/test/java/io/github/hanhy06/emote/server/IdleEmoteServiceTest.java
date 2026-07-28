@@ -4,16 +4,23 @@ import io.github.hanhy06.emote.config.data.EmoteAccessConfig;
 import io.github.hanhy06.emote.emote.PlayResult;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.random.RandomGenerator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class IdleEmoteServiceTest {
     private static final UUID PLAYER_UUID = UUID.fromString("c50d1f70-28d0-4e46-8f8a-334036755c36");
-    private static final EmoteAccessConfig.IdleEmote IDLE = new EmoteAccessConfig.IdleEmote(10, "demo:sit");
+    private static final EmoteAccessConfig.IdleEmote IDLE = new EmoteAccessConfig.IdleEmote(
+        10,
+        List.of("demo:sit")
+    );
 
     @Test
     void playsOnceAfterConfiguredIdleDelay() {
@@ -26,7 +33,8 @@ class IdleEmoteServiceTest {
                 return PlayResult.SUCCESS;
             },
             ignoredPlayer -> false,
-            clock::get
+            clock::get,
+            RandomGenerator.getDefault()
         );
 
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
@@ -64,7 +72,8 @@ class IdleEmoteServiceTest {
                 return attempt == 1 ? PlayResult.failure("Preparing player skin.") : PlayResult.SUCCESS;
             },
             ignoredPlayer -> false,
-            clock::get
+            clock::get,
+            RandomGenerator.getDefault()
         );
 
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
@@ -74,6 +83,33 @@ class IdleEmoteServiceTest {
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
 
         assertEquals(2, playCount.get());
+    }
+
+    @Test
+    void avoidsRepeatingTheLastSuccessfulEmote() {
+        EmoteAccessConfig.IdleEmote randomIdle = new EmoteAccessConfig.IdleEmote(
+            10,
+            List.of("demo:sit", "demo:sleep")
+        );
+        AtomicLong clock = new AtomicLong(15_000L);
+        List<String> playedIds = new ArrayList<>();
+        IdleEmoteService service = new IdleEmoteService(
+            ignoredPlayer -> Optional.of(randomIdle),
+            (ignoredPlayer, id) -> {
+                playedIds.add(id);
+                return PlayResult.SUCCESS;
+            },
+            ignoredPlayer -> false,
+            clock::get,
+            RandomGenerator.getDefault()
+        );
+
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(26_000L);
+        service.tickPlayer(PLAYER_UUID, 16_000L, null);
+
+        assertEquals(2, playedIds.size());
+        assertNotEquals(playedIds.getFirst(), playedIds.getLast());
     }
 
     @Test
@@ -90,7 +126,8 @@ class IdleEmoteServiceTest {
                 return PlayResult.SUCCESS;
             },
             ignoredPlayer -> false,
-            clock::get
+            clock::get,
+            RandomGenerator.getDefault()
         );
 
         service.tickPlayer(PLAYER_UUID, 10_000L, null);
@@ -110,7 +147,8 @@ class IdleEmoteServiceTest {
                 return PlayResult.SUCCESS;
             },
             ignoredPlayer -> false,
-            clock::get
+            clock::get,
+            RandomGenerator.getDefault()
         );
     }
 }

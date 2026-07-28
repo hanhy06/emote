@@ -70,7 +70,7 @@ class ConfigManagerTest {
                 {
                   "permission":"emote.vip",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":600,"emote":"demo:wave"}
+                  "idle":{"delay_seconds":600,"emote":["demo:wave","demo:sit"]}
                 }
               ]
             }
@@ -84,7 +84,7 @@ class ConfigManagerTest {
         assertTrue(manager.getEmoteAccessConfig().permissions().getFirst().idle().isEmpty());
         EmoteAccessConfig.IdleEmote idle = manager.getEmoteAccessConfig().permissions().get(1).idle().orElseThrow();
         assertEquals(600, idle.delaySeconds());
-        assertEquals("demo:wave", idle.emote());
+        assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
     }
 
     @Test
@@ -98,7 +98,7 @@ class ConfigManagerTest {
                 {
                   "permission":"emote.vip",
                   "emotes":["demo:wave"],
-                  "idle":{"delay_seconds":300,"emote":"demo:wave"}
+                  "idle":{"delay_seconds":300,"emote":["demo:wave"]}
                 }
               ]
             }
@@ -204,7 +204,7 @@ class ConfigManagerTest {
                 {
                   "permission":"emote.default",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":0,"emote":"demo:wave"}
+                  "idle":{"delay_seconds":0,"emote":["demo:wave"]}
                 }
               ]
             }

@@ -51,15 +51,19 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
         }
     }
 
-    public record IdleEmote(int delaySeconds, String emote) {
+    public record IdleEmote(int delaySeconds, List<String> emote) {
         public IdleEmote {
             if (delaySeconds < 1) {
                 throw new IllegalArgumentException("idle delay_seconds must be at least 1");
             }
-            if (emote == null || emote.isBlank()) {
-                throw new IllegalArgumentException("idle emote must not be blank");
+            List<String> copiedEmotes = List.copyOf(Objects.requireNonNull(emote, "idle emote"));
+            if (copiedEmotes.isEmpty()) {
+                throw new IllegalArgumentException("idle emote must not be empty");
             }
-            emote = emote.trim();
+            if (copiedEmotes.stream().anyMatch(id -> id == null || id.isBlank())) {
+                throw new IllegalArgumentException("idle emote id must not be blank");
+            }
+            emote = copiedEmotes.stream().map(String::trim).distinct().toList();
         }
     }
 }

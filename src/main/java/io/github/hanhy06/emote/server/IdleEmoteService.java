@@ -10,12 +10,14 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
+import java.util.random.RandomGenerator;
 
 public final class IdleEmoteService {
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
@@ -24,7 +26,9 @@ public final class IdleEmoteService {
     private final EmotePlayer emotePlayer;
     private final ActiveEmoteChecker activeEmoteChecker;
     private final LongSupplier clock;
+    private final RandomGenerator random;
     private final Map<UUID, IdleState> playerStates = new HashMap<>();
+    private final Map<UUID, String> lastPlayedEmotes = new HashMap<>();
 
     public IdleEmoteService(
         PermissionService permissionService,
@@ -35,7 +39,8 @@ public final class IdleEmoteService {
             permissionService::findIdleEmote,
             playService::play,
             player -> playbackManager.findActiveEmote(player.getUUID()) != null,
-            Util::getMillis
+            Util::getMillis,
+            RandomGenerator.getDefault()
         );
     }
 
@@ -43,12 +48,14 @@ public final class IdleEmoteService {
         IdleEmoteResolver idleEmoteResolver,
         EmotePlayer emotePlayer,
         ActiveEmoteChecker activeEmoteChecker,
-        LongSupplier clock
+        LongSupplier clock,
+        RandomGenerator random
     ) {
         this.idleEmoteResolver = Objects.requireNonNull(idleEmoteResolver, "idle emote resolver");
         this.emotePlayer = Objects.requireNonNull(emotePlayer, "emote player");
         this.activeEmoteChecker = Objects.requireNonNull(activeEmoteChecker, "active emote checker");
         this.clock = Objects.requireNonNull(clock, "clock");
+        this.random = Objects.requireNonNull(random, "random");
     }
 
     public void tick(MinecraftServer server) {
@@ -68,7 +75,8 @@ public final class IdleEmoteService {
         IdleState state = this.playerStates.get(playerUuid);
         if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
             long firstAttemptTime = lastActionTime + TimeUnit.SECONDS.toMillis(idle.delaySeconds());
-            state = new IdleState(lastActionTime, idle, firstAttemptTime, false);
+            String selectedEmote = selectEmote(playerUuid, idle.emote());
+            state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime, false);
             this.playerStates.put(playerUuid, state);
         }
 
@@ -77,30 +85,59 @@ public final class IdleEmoteService {
             return;
         }
 
-        PlayResult result = this.emotePlayer.play(player, idle.emote());
+        PlayResult result = this.emotePlayer.play(player, state.selectedEmote());
         if (result.isSuccess()) {
-            this.playerStates.put(playerUuid, new IdleState(lastActionTime, idle, state.nextAttemptTime(), true));
+            this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
+            this.playerStates.put(playerUuid, new IdleState(
+                lastActionTime,
+                idle,
+                state.selectedEmote(),
+                state.nextAttemptTime(),
+                true
+            ));
         } else {
             this.playerStates.put(playerUuid, new IdleState(
                 lastActionTime,
                 idle,
+                state.selectedEmote(),
                 now + RETRY_INTERVAL_MILLIS,
                 false
             ));
         }
     }
 
+    private String selectEmote(UUID playerUuid, List<String> emotes) {
+        if (emotes.size() == 1) {
+            return emotes.getFirst();
+        }
+
+        int previousIndex = emotes.indexOf(this.lastPlayedEmotes.get(playerUuid));
+        if (previousIndex < 0) {
+            return emotes.get(this.random.nextInt(emotes.size()));
+        }
+
+        int selectedIndex = this.random.nextInt(emotes.size() - 1);
+        if (selectedIndex >= previousIndex) {
+            selectedIndex++;
+        }
+        return emotes.get(selectedIndex);
+    }
+
     public void removePlayer(ServerPlayer player) {
-        this.playerStates.remove(player.getUUID());
+        UUID playerUuid = player.getUUID();
+        this.playerStates.remove(playerUuid);
+        this.lastPlayedEmotes.remove(playerUuid);
     }
 
     public void clear() {
         this.playerStates.clear();
+        this.lastPlayedEmotes.clear();
     }
 
     private record IdleState(
         long lastActionTime,
         EmoteAccessConfig.IdleEmote idle,
+        String selectedEmote,
         long nextAttemptTime,
         boolean played
     ) {

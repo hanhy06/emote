@@ -57,12 +57,12 @@ class PermissionServiceTest {
                 new EmoteAccessConfig.PermissionEntry(
                     "emote.vip",
                     List.of("demo:vip"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(300, "demo:vip"))
+                    Optional.of(new EmoteAccessConfig.IdleEmote(300, List.of("demo:vip", "demo:dance")))
                 ),
                 new EmoteAccessConfig.PermissionEntry(
                     "emote.default",
                     List.of("*"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(600, "demo:sit"))
+                    Optional.of(new EmoteAccessConfig.IdleEmote(600, List.of("demo:sit")))
                 )
             )
         ));
@@ -70,7 +70,7 @@ class PermissionServiceTest {
         EmoteAccessConfig.IdleEmote idle = service.findIdleEmote(null).orElseThrow();
 
         assertEquals(300, idle.delaySeconds());
-        assertEquals("demo:vip", idle.emote());
+        assertEquals(List.of("demo:vip", "demo:dance"), idle.emote());
     }
 
     @Test
@@ -86,12 +86,12 @@ class PermissionServiceTest {
                 new EmoteAccessConfig.PermissionEntry(
                     "emote.default",
                     List.of("*"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(600, "demo:sit"))
+                    Optional.of(new EmoteAccessConfig.IdleEmote(600, List.of("demo:sit")))
                 )
             )
         ));
 
-        assertEquals("demo:sit", service.findIdleEmote(null).orElseThrow().emote());
+        assertEquals(List.of("demo:sit"), service.findIdleEmote(null).orElseThrow().emote());
     }
 
     @Test

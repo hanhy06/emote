@@ -35,7 +35,9 @@ final class ConfigJsonCodec {
             entry.idle().ifPresent(idle -> {
                 JsonObject idleJson = new JsonObject();
                 idleJson.addProperty("delay_seconds", idle.delaySeconds());
-                idleJson.addProperty("emote", idle.emote());
+                JsonArray idleEmotesJson = new JsonArray();
+                idle.emote().forEach(idleEmotesJson::add);
+                idleJson.add("emote", idleEmotesJson);
                 entryJson.add("idle", idleJson);
             });
             permissionsJson.add(entryJson);
@@ -138,12 +140,25 @@ final class ConfigJsonCodec {
 
         JsonObject object = element.getAsJsonObject();
         JsonElement delayElement = object.get("delay_seconds");
-        String emote = readRequiredString(object, "emote");
+        JsonElement emoteElement = object.get("emote");
         if (delayElement == null || !delayElement.isJsonPrimitive()
-            || !delayElement.getAsJsonPrimitive().isNumber() || emote == null) {
+            || !delayElement.getAsJsonPrimitive().isNumber()
+            || emoteElement == null || !emoteElement.isJsonArray()) {
             return null;
         }
-        return Optional.of(new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emote));
+
+        List<String> emotes = new ArrayList<>();
+        for (JsonElement idElement : emoteElement.getAsJsonArray()) {
+            if (!idElement.isJsonPrimitive() || !idElement.getAsJsonPrimitive().isString()) {
+                return null;
+            }
+            String id = normalizeRequiredValue(idElement.getAsString());
+            if (id == null) {
+                return null;
+            }
+            emotes.add(id);
+        }
+        return Optional.of(new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emotes));
     }
 
     private String readRequiredString(JsonObject object, String key) {
