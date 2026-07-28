@@ -20,6 +20,7 @@ class ConfigManagerTest {
         Files.writeString(bundledDirectory.resolve("nested").resolve("bow.json"), "bow");
 
         ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+        manager.configure();
 
         assertEquals("wave", Files.readString(manager.getAnimationDirectory().resolve("wave.json")));
         assertEquals(
@@ -36,6 +37,7 @@ class ConfigManagerTest {
         Files.createDirectories(tempDir.resolve("emote"));
 
         ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+        manager.configure();
 
         assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
         assertFalse(Files.exists(manager.getAnimationDirectory().resolve("wave.json")));
@@ -44,6 +46,7 @@ class ConfigManagerTest {
     @Test
     void createsJsonEmoteConfiguration(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
 
         Path accessPath = tempDir.resolve("emote").resolve("emotes.json");
         assertTrue(Files.exists(accessPath));
@@ -58,6 +61,7 @@ class ConfigManagerTest {
     @Test
     void readsDisabledIdsAndPermissionGroups(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
               "disabled": ["demo:wave"],
@@ -77,6 +81,7 @@ class ConfigManagerTest {
     @Test
     void updatesDisabledIdsAndPreservesPermissions(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {"disabled":[],"permissions":{"emote.vip":["demo:wave"]}}
             """);
@@ -94,6 +99,7 @@ class ConfigManagerTest {
     @Test
     void rejectsBlankId(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {"disabled":["   "]}
             """);
@@ -105,6 +111,7 @@ class ConfigManagerTest {
     @Test
     void keepsCurrentConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         int currentPageSize = manager.getConfig().menuPageSize();
         Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
             {"menu_page_size":{"invalid":true}}
@@ -117,6 +124,7 @@ class ConfigManagerTest {
     @Test
     void keepsCurrentAccessConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {"disabled":{"invalid":true}}
             """);
@@ -128,12 +136,20 @@ class ConfigManagerTest {
     @Test
     void rejectsUnsupportedConfigSchema(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
             {"schema_version":2}
             """);
 
         assertFalse(manager.readConfig());
         assertEquals(1, manager.getConfig().schemaVersion());
+    }
+
+    @Test
+    void doesNotConfigureFilesDuringConstruction(@TempDir Path tempDir) {
+        new ConfigManager(tempDir);
+
+        assertFalse(Files.exists(tempDir.resolve("emote")));
     }
 
     @Test

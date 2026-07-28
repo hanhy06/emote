@@ -26,6 +26,7 @@ public class ConfigManager {
     private static final String BUNDLED_ANIMATION_DIRECTORY_NAME = "default-emote-animations";
 
     private final Path configDirPath;
+    private final Optional<Path> bundledAnimationDirectory;
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -43,6 +44,10 @@ public class ConfigManager {
 
     ConfigManager(Path configBasePath, Optional<Path> bundledAnimationDirectory) {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
+        this.bundledAnimationDirectory = bundledAnimationDirectory;
+    }
+
+    public void configure() {
         boolean installBundledAnimations = Files.notExists(this.configDirPath);
 
         try {
@@ -55,7 +60,7 @@ public class ConfigManager {
 
         if (installBundledAnimations) {
             try {
-                installBundledAnimations(bundledAnimationDirectory);
+                installBundledAnimations(this.bundledAnimationDirectory);
             } catch (IOException exception) {
                 Emote.LOGGER.warn("Failed to install bundled emote animations.", exception);
             }

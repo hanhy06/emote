@@ -35,6 +35,9 @@ public final class EmoteReloadService {
         if (server == null) {
             return;
         }
+        this.configManager.configure();
+        this.configManager.readConfig();
+        this.configManager.readEmoteAccessConfig();
         int emoteCount = reloadRegistry(server);
         Emote.LOGGER.info("emotes={}", emoteCount);
     }
