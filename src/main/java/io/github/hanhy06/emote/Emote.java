@@ -13,6 +13,7 @@ import io.github.hanhy06.emote.network.service.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.EmoteLifecycle;
+import io.github.hanhy06.emote.server.IdleEmoteService;
 import io.github.hanhy06.emote.server.EmoteReloadService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
@@ -50,6 +51,11 @@ public class Emote implements ModInitializer {
         this.permissionService,
         this.playbackManager
     );
+    private final IdleEmoteService idleEmoteService = new IdleEmoteService(
+        this.permissionService,
+        this.playService,
+        this.playbackManager
+    );
     private final WheelSyncService wheelSyncService = new WheelSyncService(this.playableEmoteService);
     private final EmoteReloadService reloadService = new EmoteReloadService(
         this.configManager,
@@ -64,7 +70,8 @@ public class Emote implements ModInitializer {
         this.skinManager,
         this.playbackManager,
         this.reloadService,
-        this.wheelSyncService
+        this.wheelSyncService,
+        this.idleEmoteService
     );
     private final RootCommand rootCommand = new RootCommand(
         this.emoteRegistry,

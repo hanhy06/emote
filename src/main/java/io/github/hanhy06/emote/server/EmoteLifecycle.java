@@ -19,23 +19,29 @@ public class EmoteLifecycle {
     private final PlaybackManager playbackManager;
     private final EmoteReloadService reloadService;
     private final WheelSyncService wheelSyncService;
+    private final IdleEmoteService idleEmoteService;
 
     public EmoteLifecycle(
         PlayerSkinManager skinManager,
         PlaybackManager playbackManager,
         EmoteReloadService reloadService,
-        WheelSyncService wheelSyncService
+        WheelSyncService wheelSyncService,
+        IdleEmoteService idleEmoteService
     ) {
         this.skinManager = skinManager;
         this.playbackManager = playbackManager;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
+        this.idleEmoteService = idleEmoteService;
     }
 
     public void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
-        ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> this.playbackManager.tick());
+        ServerTickEvents.END_SERVER_TICK.register(server -> {
+            this.playbackManager.tick();
+            this.idleEmoteService.tick(server);
+        });
         PlaybackHooks.INTERRUPTION.register(this.playbackManager::stopEmote);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
@@ -55,8 +61,12 @@ public class EmoteLifecycle {
             (handler, server) -> {
                 if (server.isSameThread()) {
                     this.playbackManager.stopEmote(handler.player);
+                    this.idleEmoteService.removePlayer(handler.player);
                 } else {
-                    server.execute(() -> this.playbackManager.stopEmote(handler.player));
+                    server.execute(() -> {
+                        this.playbackManager.stopEmote(handler.player);
+                        this.idleEmoteService.removePlayer(handler.player);
+                    });
                 }
             }
         );
@@ -70,6 +80,7 @@ public class EmoteLifecycle {
     private void handleServerStopping(MinecraftServer server) {
         Emote.SERVER = server;
         this.playbackManager.stopAllEmotes();
+        this.idleEmoteService.clear();
         this.skinManager.cancelPendingBakes();
         Emote.SERVER = null;
         Emote.LOGGER.info("stop emotes");
