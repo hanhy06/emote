@@ -1,10 +1,6 @@
 package io.github.hanhy06.emote.config.data;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 
 public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public EmoteAccessConfig {
