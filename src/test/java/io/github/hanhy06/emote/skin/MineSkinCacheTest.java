@@ -100,6 +100,7 @@ class MineSkinCacheTest {
 
         store.savePendingJob(contentHash, "job-123");
         MineSkinCache.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
+        assertNotNull(pendingJob);
         assertEquals("job-123", pendingJob.jobId());
         assertTrue(pendingJob.submittedAtEpochMillis() > 0L);
 
@@ -115,8 +116,10 @@ class MineSkinCacheTest {
         store.saveFailure(contentHash, "failed", 2_000L);
 
         assertTrue(store.isRetryBlocked(contentHash, 1_999L));
-        assertEquals(2_000L, store.loadFailure(contentHash, 1_999L).retryAfterEpochMillis());
-        assertEquals("failed", store.loadFailure(contentHash, 1_999L).errorMessage());
+        MineSkinCache.MineSkinFailure failure = store.loadFailure(contentHash, 1_999L);
+        assertNotNull(failure);
+        assertEquals(2_000L, failure.retryAfterEpochMillis());
+        assertEquals("failed", failure.errorMessage());
         assertFalse(store.isRetryBlocked(contentHash, 2_000L));
     }
 }

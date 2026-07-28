@@ -70,14 +70,17 @@ public final class PlaybackEntityController {
         if (node.isAnchor()) {
             return;
         }
-        if (node.displayContent() instanceof ItemContent itemContent) {
-            ((ItemDisplayAccessor)node.entity()).emote$setItemStack(visible ? itemContent.itemStack() : ItemStack.EMPTY);
-        } else if (node.displayContent() instanceof BlockContent blockContent) {
-            ((BlockDisplayAccessor)node.entity()).emote$setBlockState(
-                visible ? blockContent.blockState() : Blocks.AIR.defaultBlockState()
-            );
-        } else if (node.displayContent() instanceof TextContent textContent) {
-            ((TextDisplayAccessor)node.entity()).emote$setText(visible ? textContent.text() : Component.empty());
+        switch (node.displayContent()) {
+            case ItemContent(ItemStack itemStack) ->
+                ((ItemDisplayAccessor)node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
+            case BlockContent(var blockState) ->
+                ((BlockDisplayAccessor)node.entity()).emote$setBlockState(
+                    visible ? blockState : Blocks.AIR.defaultBlockState()
+                );
+            case TextContent(Component text) ->
+                ((TextDisplayAccessor)node.entity()).emote$setText(visible ? text : Component.empty());
+            case null -> {
+            }
         }
     }
 
@@ -141,16 +144,16 @@ public final class PlaybackEntityController {
     }
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
-        Display display;
-        if (node instanceof EmoteAnimation.ItemNode) {
-            display = EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-        } else if (node instanceof EmoteAnimation.BlockNode) {
-            display = EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-        } else if (node instanceof EmoteAnimation.TextNode) {
-            display = EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-        } else {
-            throw new IllegalArgumentException("Unsupported display node: " + node.getClass().getName());
-        }
+        Display display = switch (node) {
+            case EmoteAnimation.ItemNode ignored ->
+                EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.BlockNode ignored ->
+                EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.TextNode ignored ->
+                EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.AnchorNode ignored ->
+                throw new IllegalArgumentException("Anchor nodes do not have display entities");
+        };
         if (display == null) {
             throw new IllegalStateException("Failed to create display entity");
         }
@@ -164,24 +167,23 @@ public final class PlaybackEntityController {
         EmoteAnimation.PreparedDisplayData preparedData
     ) {
         applyTransformation(entity, new Transformation(root.displayMatrix(node.defaultMatrix())), 0);
-        DisplayContent content;
-        if (preparedData instanceof EmoteAnimation.PreparedItemData itemData) {
-            ItemStack itemStack = itemData.itemStack();
-            ItemDisplayAccessor accessor = (ItemDisplayAccessor)entity;
-            accessor.emote$setItemStack(itemStack);
-            accessor.emote$setItemTransform(itemData.itemDisplay());
-            content = new ItemContent(itemStack);
-        } else if (preparedData instanceof EmoteAnimation.PreparedBlockData blockData) {
-            ((BlockDisplayAccessor)entity).emote$setBlockState(blockData.blockState());
-            content = new BlockContent(blockData.blockState());
-        } else if (preparedData instanceof EmoteAnimation.PreparedTextData textData) {
-            Component text = resolveText((Display.TextDisplay)entity, textData.text());
-            ((TextDisplayAccessor)entity).emote$setText(text);
-            content = new TextContent(text);
-        } else {
-            throw new IllegalArgumentException("Unsupported display node: " + node.getClass().getName());
-        }
-        return content;
+        return switch (preparedData) {
+            case EmoteAnimation.PreparedItemData(ItemStack itemStack, var itemDisplay) -> {
+                ItemDisplayAccessor accessor = (ItemDisplayAccessor)entity;
+                accessor.emote$setItemStack(itemStack);
+                accessor.emote$setItemTransform(itemDisplay);
+                yield new ItemContent(itemStack);
+            }
+            case EmoteAnimation.PreparedBlockData(var blockState) -> {
+                ((BlockDisplayAccessor)entity).emote$setBlockState(blockState);
+                yield new BlockContent(blockState);
+            }
+            case EmoteAnimation.PreparedTextData(Component unresolvedText) -> {
+                Component text = resolveText((Display.TextDisplay)entity, unresolvedText);
+                ((TextDisplayAccessor)entity).emote$setText(text);
+                yield new TextContent(text);
+            }
+        };
     }
 
     private void applyTransformation(Display entity, Transformation transformation, int interpolationDurationTicks) {

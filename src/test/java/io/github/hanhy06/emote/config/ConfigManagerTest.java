@@ -20,7 +20,7 @@ class ConfigManagerTest {
         Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
         Files.writeString(bundledDirectory.resolve("nested").resolve("bow.json"), "bow");
 
-        ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configure();
 
         assertEquals("wave", Files.readString(manager.getAnimationDirectory().resolve("wave.json")));
@@ -37,7 +37,7 @@ class ConfigManagerTest {
         Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
         Files.createDirectories(tempDir.resolve("emote"));
 
-        ConfigManager manager = new ConfigManager(tempDir, Optional.of(bundledDirectory));
+        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configure();
 
         assertTrue(Files.isDirectory(manager.getAnimationDirectory()));

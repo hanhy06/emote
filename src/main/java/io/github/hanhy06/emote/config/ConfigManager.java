@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.Emote;
 import net.fabricmc.loader.api.FabricLoader;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -23,7 +24,7 @@ public class ConfigManager {
     private static final String BUNDLED_ANIMATION_DIRECTORY_NAME = "default-emote-animations";
 
     private final Path configDirPath;
-    private final Optional<Path> bundledAnimationDirectory;
+    private final @Nullable Path bundledAnimationDirectory;
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -36,10 +37,10 @@ public class ConfigManager {
     private EmoteAccessConfig emoteAccessConfig = EmoteAccessConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
-        this(configBasePath, findBundledAnimationDirectory());
+        this(configBasePath, findBundledAnimationDirectory().orElse(null));
     }
 
-    ConfigManager(Path configBasePath, Optional<Path> bundledAnimationDirectory) {
+    ConfigManager(Path configBasePath, @Nullable Path bundledAnimationDirectory) {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
         this.bundledAnimationDirectory = bundledAnimationDirectory;
     }
@@ -73,16 +74,15 @@ public class ConfigManager {
             .flatMap(container -> container.findPath(BUNDLED_ANIMATION_DIRECTORY_NAME));
     }
 
-    private void installBundledAnimations(Optional<Path> bundledAnimationDirectory) throws IOException {
-        if (bundledAnimationDirectory.isEmpty()) {
+    private void installBundledAnimations(@Nullable Path bundledAnimationDirectory) throws IOException {
+        if (bundledAnimationDirectory == null) {
             Emote.LOGGER.warn("Bundled emote animations were not found.");
             return;
         }
 
-        Path sourceDirectory = bundledAnimationDirectory.get();
-        try (Stream<Path> paths = Files.walk(sourceDirectory)) {
+        try (Stream<Path> paths = Files.walk(bundledAnimationDirectory)) {
             for (Path sourcePath : paths.filter(Files::isRegularFile).toList()) {
-                Path relativePath = sourceDirectory.relativize(sourcePath);
+                Path relativePath = bundledAnimationDirectory.relativize(sourcePath);
                 Path targetPath = getAnimationDirectory().resolve(relativePath.toString());
                 Files.createDirectories(targetPath.getParent());
                 Files.copy(sourcePath, targetPath);
@@ -122,7 +122,7 @@ public class ConfigManager {
 
         this.config = loadedConfig;
         broadcastConfig();
-        Emote.LOGGER.info("Loaded {}", CONFIG_FILE_NAME);
+        Emote.LOGGER.info("Loaded main config from {}", CONFIG_FILE_NAME);
         return true;
     }
 
@@ -145,7 +145,7 @@ public class ConfigManager {
 
         this.emoteAccessConfig = loadedConfig;
         broadcastEmoteAccessConfig();
-        Emote.LOGGER.info("Loaded {}", EMOTE_ACCESS_FILE_NAME);
+        Emote.LOGGER.info("Loaded emote access rules from {}", EMOTE_ACCESS_FILE_NAME);
         return true;
     }
 
