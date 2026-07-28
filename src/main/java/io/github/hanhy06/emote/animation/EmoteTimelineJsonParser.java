@@ -4,40 +4,43 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
-import java.nio.file.Path;
 import java.util.*;
 
 import static io.github.hanhy06.emote.animation.EmoteAnimation.*;
-import static io.github.hanhy06.emote.animation.EmoteAnimationJsonLoader.*;
 
 final class EmoteTimelineJsonParser {
-    Timeline parse(JsonObject object, Map<String, Node> nodes, Path sourcePath)
+    Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteAnimationJsonReader reader)
         throws EmoteAnimationLoadException {
-        int durationTicks = requireInt(object, "duration_ticks", "$.timeline", sourcePath);
+        int durationTicks = reader.requireInt(object, "duration_ticks", "$.timeline");
         if (durationTicks <= 0) {
-            throw error(sourcePath, "$.timeline.duration_ticks", "must be greater than zero");
+            throw reader.error("$.timeline.duration_ticks", "must be greater than zero");
         }
-        String loopText = requireString(object, "loop", "$.timeline", sourcePath);
+        String loopText = reader.requireString(object, "loop", "$.timeline");
         LoopMode loop = switch (loopText) {
             case "once" -> LoopMode.ONCE;
             case "loop" -> LoopMode.LOOP;
             case "server_sync" -> LoopMode.SERVER_SYNC;
-            default -> throw error(sourcePath, "$.timeline.loop", "unsupported loop mode: " + loopText);
+            default -> throw reader.error("$.timeline.loop", "unsupported loop mode: " + loopText);
         };
-        int loopDelayTicks = requireInt(object, "loop_delay_ticks", "$.timeline", sourcePath);
+        int loopDelayTicks = reader.requireInt(object, "loop_delay_ticks", "$.timeline");
         if (loopDelayTicks < 0) {
-            throw error(sourcePath, "$.timeline.loop_delay_ticks", "must not be negative");
+            throw reader.error("$.timeline.loop_delay_ticks", "must not be negative");
         }
         if (loop == LoopMode.ONCE && loopDelayTicks != 0) {
-            throw error(sourcePath, "$.timeline.loop_delay_ticks", "must be zero when loop is once");
+            throw reader.error("$.timeline.loop_delay_ticks", "must be zero when loop is once");
         }
         List<Keyframe> keyframes = parseKeyframes(
-            requireArray(object, "keyframes", "$.timeline", sourcePath),
+            reader.requireArray(object, "keyframes", "$.timeline"),
             durationTicks,
             nodes,
-            sourcePath
+            reader
         );
-        Events events = parseEvents(optionalObject(object, "events", "$.timeline", sourcePath), durationTicks, nodes, sourcePath);
+        Events events = parseEvents(
+            reader.optionalObject(object, "events", "$.timeline"),
+            durationTicks,
+            nodes,
+            reader
+        );
         return new Timeline(durationTicks, loop, loopDelayTicks, keyframes, events);
     }
 
@@ -45,40 +48,40 @@ final class EmoteTimelineJsonParser {
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        Path sourcePath
+        EmoteAnimationJsonReader reader
     ) throws EmoteAnimationLoadException {
         List<Keyframe> keyframes = new ArrayList<>();
         Map<String, Integer> previousTransformTicks = new HashMap<>();
         int previousTick = -1;
         for (int index = 0; index < array.size(); index++) {
             String path = "$.timeline.keyframes[" + index + "]";
-            JsonObject object = requireObject(array.get(index), path, sourcePath);
-            int tick = requireInt(object, "tick", path, sourcePath);
+            JsonObject object = reader.requireObject(array.get(index), path);
+            int tick = reader.requireInt(object, "tick", path);
             if (tick < 0 || tick > durationTicks) {
-                throw error(sourcePath, path + ".tick", "must be between 0 and duration_ticks");
+                throw reader.error(path + ".tick", "must be between 0 and duration_ticks");
             }
             if (tick <= previousTick) {
-                throw error(sourcePath, path + ".tick", "keyframes must be strictly ordered by tick");
+                throw reader.error(path + ".tick", "keyframes must be strictly ordered by tick");
             }
             previousTick = tick;
-            int defaultInterpolation = optionalInterpolationDuration(object, path, 0, sourcePath);
+            int defaultInterpolation = optionalInterpolationDuration(object, path, 0, reader);
             if (defaultInterpolation < 0) {
-                throw error(sourcePath, path + ".interpolation_duration_ticks", "must not be negative");
+                throw reader.error(path + ".interpolation_duration_ticks", "must not be negative");
             }
             Map<String, NodeTransform> transforms = parseNodeTransforms(
-                optionalObject(object, "node_transforms", path, sourcePath),
+                reader.optionalObject(object, "node_transforms", path),
                 path,
                 tick,
                 defaultInterpolation,
                 previousTransformTicks,
                 nodes,
-                sourcePath
+                reader
             );
             Map<String, NodeState> states = parseNodeStates(
-                optionalObject(object, "node_states", path, sourcePath),
+                reader.optionalObject(object, "node_states", path),
                 path,
                 nodes,
-                sourcePath
+                reader
             );
             keyframes.add(new Keyframe(tick, transforms, states));
         }
@@ -92,7 +95,7 @@ final class EmoteTimelineJsonParser {
         int defaultInterpolation,
         Map<String, Integer> previousTransformTicks,
         Map<String, Node> nodes,
-        Path sourcePath
+        EmoteAnimationJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (object == null) {
             return Map.of();
@@ -101,24 +104,23 @@ final class EmoteTimelineJsonParser {
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             String nodeId = entry.getKey();
             String path = keyframePath + ".node_transforms." + nodeId;
-            requireNode(nodes, nodeId, path, sourcePath);
-            JsonObject transform = requireObject(entry.getValue(), path, sourcePath);
+            requireNode(nodes, nodeId, path, reader);
+            JsonObject transform = reader.requireObject(entry.getValue(), path);
             int interpolation = optionalInterpolationDuration(
                 transform,
                 path,
                 defaultInterpolation,
-                sourcePath
+                reader
             );
             int previousTransformTick = previousTransformTicks.getOrDefault(nodeId, 0);
             if (interpolation < 0 || interpolation > tick - previousTransformTick) {
-                throw error(
-                    sourcePath,
+                throw reader.error(
                     path + ".interpolation_duration_ticks",
                     "must fit between the previous transform tick and the current tick"
                 );
             }
             transforms.put(nodeId, new NodeTransform(
-                parseMatrix(requireArray(transform, "matrix", path, sourcePath), path + ".matrix", sourcePath),
+                reader.requireMatrix(transform, "matrix", path),
                 interpolation
             ));
             previousTransformTicks.put(nodeId, tick);
@@ -130,7 +132,7 @@ final class EmoteTimelineJsonParser {
         JsonObject object,
         String keyframePath,
         Map<String, Node> nodes,
-        Path sourcePath
+        EmoteAnimationJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (object == null) {
             return Map.of();
@@ -139,30 +141,60 @@ final class EmoteTimelineJsonParser {
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             String nodeId = entry.getKey();
             String path = keyframePath + ".node_states." + nodeId;
-            Node node = requireNode(nodes, nodeId, path, sourcePath);
+            Node node = requireNode(nodes, nodeId, path, reader);
             if (node instanceof AnchorNode) {
-                throw error(sourcePath, path, "anchor nodes do not support visible state");
+                throw reader.error(path, "anchor nodes do not support visible state");
             }
-            JsonObject state = requireObject(entry.getValue(), path, sourcePath);
-            states.put(nodeId, new NodeState(requireBoolean(state, "visible", path, sourcePath)));
+            JsonObject state = reader.requireObject(entry.getValue(), path);
+            states.put(nodeId, new NodeState(reader.requireBoolean(state, "visible", path)));
         }
         return Collections.unmodifiableMap(states);
     }
 
-    private Events parseEvents(JsonObject object, int durationTicks, Map<String, Node> nodes, Path sourcePath)
+    private Events parseEvents(
+        JsonObject object,
+        int durationTicks,
+        Map<String, Node> nodes,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
         if (object == null) {
             return Events.empty();
         }
         return new Events(
-            parseEventArray(optionalArray(object, "start", "$.timeline.events", sourcePath), "$.timeline.events.start", nodes, sourcePath),
-            parseTimelineEventArray(optionalArray(object, "timeline", "$.timeline.events", sourcePath), durationTicks, nodes, sourcePath),
-            parseEventArray(optionalArray(object, "loop", "$.timeline.events", sourcePath), "$.timeline.events.loop", nodes, sourcePath),
-            parseEventArray(optionalArray(object, "stop", "$.timeline.events", sourcePath), "$.timeline.events.stop", nodes, sourcePath)
+            parseEventArray(
+                reader.optionalArray(object, "start", "$.timeline.events"),
+                "$.timeline.events.start",
+                nodes,
+                reader
+            ),
+            parseTimelineEventArray(
+                reader.optionalArray(object, "timeline", "$.timeline.events"),
+                durationTicks,
+                nodes,
+                reader
+            ),
+            parseEventArray(
+                reader.optionalArray(object, "loop", "$.timeline.events"),
+                "$.timeline.events.loop",
+                nodes,
+                reader
+            ),
+            parseEventArray(
+                reader.optionalArray(object, "stop", "$.timeline.events"),
+                "$.timeline.events.stop",
+                nodes,
+                reader
+            )
         );
     }
 
-    private List<Event> parseEventArray(JsonArray array, String path, Map<String, Node> nodes, Path sourcePath)
+    private List<Event> parseEventArray(
+        JsonArray array,
+        String path,
+        Map<String, Node> nodes,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -170,7 +202,7 @@ final class EmoteTimelineJsonParser {
         List<Event> events = new ArrayList<>();
         for (int index = 0; index < array.size(); index++) {
             String eventPath = path + "[" + index + "]";
-            events.add(parseEvent(requireObject(array.get(index), eventPath, sourcePath), eventPath, nodes, sourcePath));
+            events.add(parseEvent(reader.requireObject(array.get(index), eventPath), eventPath, nodes, reader));
         }
         return List.copyOf(events);
     }
@@ -179,7 +211,7 @@ final class EmoteTimelineJsonParser {
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        Path sourcePath
+        EmoteAnimationJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -188,97 +220,128 @@ final class EmoteTimelineJsonParser {
         int previousTick = -1;
         for (int index = 0; index < array.size(); index++) {
             String path = "$.timeline.events.timeline[" + index + "]";
-            JsonObject object = requireObject(array.get(index), path, sourcePath);
-            int tick = requireInt(object, "tick", path, sourcePath);
+            JsonObject object = reader.requireObject(array.get(index), path);
+            int tick = reader.requireInt(object, "tick", path);
             if (tick < 0 || tick >= durationTicks) {
-                throw error(sourcePath, path + ".tick", "must be between 0 and duration_ticks - 1");
+                throw reader.error(path + ".tick", "must be between 0 and duration_ticks - 1");
             }
             if (tick < previousTick) {
-                throw error(sourcePath, path + ".tick", "timeline events must be ordered by tick");
+                throw reader.error(path + ".tick", "timeline events must be ordered by tick");
             }
             previousTick = tick;
-            Event event = parseEvent(object, path, nodes, sourcePath);
+            Event event = parseEvent(object, path, nodes, reader);
             events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands()));
         }
         return List.copyOf(events);
     }
 
-    private Event parseEvent(JsonObject object, String path, Map<String, Node> nodes, Path sourcePath)
+    private Event parseEvent(
+        JsonObject object,
+        String path,
+        Map<String, Node> nodes,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
-        CommandSource source = parseCommandSource(requireObject(object, "source", path, sourcePath), path + ".source", nodes, sourcePath);
-        CommandOrigin origin = parseCommandOrigin(requireObject(object, "origin", path, sourcePath), path + ".origin", nodes, sourcePath);
-        JsonArray commandArray = requireArray(object, "commands", path, sourcePath);
+        CommandSource source = parseCommandSource(
+            reader.requireObject(object, "source", path),
+            path + ".source",
+            nodes,
+            reader
+        );
+        CommandOrigin origin = parseCommandOrigin(
+            reader.requireObject(object, "origin", path),
+            path + ".origin",
+            nodes,
+            reader
+        );
+        JsonArray commandArray = reader.requireArray(object, "commands", path);
         List<String> commands = new ArrayList<>();
         for (int index = 0; index < commandArray.size(); index++) {
             String commandPath = path + ".commands[" + index + "]";
             JsonElement element = commandArray.get(index);
-            if (!isString(element)) {
-                throw error(sourcePath, commandPath, "must be a string");
+            if (reader.isNotString(element)) {
+                throw reader.error(commandPath, "must be a string");
             }
             String command = element.getAsString();
             if (command.isBlank()) {
-                throw error(sourcePath, commandPath, "must not be blank");
+                throw reader.error(commandPath, "must not be blank");
             }
             if (command.startsWith("/")) {
-                throw error(sourcePath, commandPath, "must not start with /");
+                throw reader.error(commandPath, "must not start with /");
             }
             commands.add(command);
         }
         return new Event(source, origin, commands);
     }
 
-    private CommandSource parseCommandSource(JsonObject object, String path, Map<String, Node> nodes, Path sourcePath)
+    private CommandSource parseCommandSource(
+        JsonObject object,
+        String path,
+        Map<String, Node> nodes,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
-        String type = requireString(object, "type", path, sourcePath);
+        String type = reader.requireString(object, "type", path);
         return switch (type) {
             case "player" -> new CommandSource(SourceType.PLAYER, null);
             case "server" -> new CommandSource(SourceType.SERVER, null);
             case "node" -> {
-                String nodeId = requireString(object, "node", path, sourcePath);
-                Node node = requireNode(nodes, nodeId, path + ".node", sourcePath);
+                String nodeId = reader.requireString(object, "node", path);
+                Node node = requireNode(nodes, nodeId, path + ".node", reader);
                 if (node instanceof AnchorNode) {
-                    throw error(sourcePath, path + ".node", "anchor nodes cannot be command sources");
+                    throw reader.error(path + ".node", "anchor nodes cannot be command sources");
                 }
                 yield new CommandSource(SourceType.NODE, nodeId);
             }
-            default -> throw error(sourcePath, path + ".type", "unsupported source type: " + type);
+            default -> throw reader.error(path + ".type", "unsupported source type: " + type);
         };
     }
 
-    private CommandOrigin parseCommandOrigin(JsonObject object, String path, Map<String, Node> nodes, Path sourcePath)
+    private CommandOrigin parseCommandOrigin(
+        JsonObject object,
+        String path,
+        Map<String, Node> nodes,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
-        String type = requireString(object, "type", path, sourcePath);
-        Vec3 offset = parseOffset(optionalArray(object, "offset", path, sourcePath), path + ".offset", sourcePath);
+        String type = reader.requireString(object, "type", path);
+        Vec3 offset = parseOffset(reader.optionalArray(object, "offset", path), path + ".offset", reader);
         return switch (type) {
             case "root" -> new CommandOrigin(OriginType.ROOT, null, offset);
             case "node" -> {
-                String nodeId = requireString(object, "node", path, sourcePath);
-                requireNode(nodes, nodeId, path + ".node", sourcePath);
+                String nodeId = reader.requireString(object, "node", path);
+                requireNode(nodes, nodeId, path + ".node", reader);
                 yield new CommandOrigin(OriginType.NODE, nodeId, offset);
             }
-            default -> throw error(sourcePath, path + ".type", "unsupported origin type: " + type);
+            default -> throw reader.error(path + ".type", "unsupported origin type: " + type);
         };
     }
 
-    private Vec3 parseOffset(JsonArray array, String path, Path sourcePath) throws EmoteAnimationLoadException {
+    private Vec3 parseOffset(JsonArray array, String path, EmoteAnimationJsonReader reader)
+        throws EmoteAnimationLoadException {
         if (array == null) {
             return Vec3.ZERO;
         }
         if (array.size() != 3) {
-            throw error(sourcePath, path, "must contain 3 values");
+            throw reader.error(path, "must contain 3 values");
         }
         return new Vec3(
-            requireFiniteDouble(array.get(0), path + "[0]", sourcePath),
-            requireFiniteDouble(array.get(1), path + "[1]", sourcePath),
-            requireFiniteDouble(array.get(2), path + "[2]", sourcePath)
+            reader.requireFiniteDouble(array.get(0), path + "[0]"),
+            reader.requireFiniteDouble(array.get(1), path + "[1]"),
+            reader.requireFiniteDouble(array.get(2), path + "[2]")
         );
     }
 
-    private Node requireNode(Map<String, Node> nodes, String nodeId, String path, Path sourcePath)
+    private Node requireNode(
+        Map<String, Node> nodes,
+        String nodeId,
+        String path,
+        EmoteAnimationJsonReader reader
+    )
         throws EmoteAnimationLoadException {
         Node node = nodes.get(nodeId);
         if (node == null) {
-            throw error(sourcePath, path, "references unknown node: " + nodeId);
+            throw reader.error(path, "references unknown node: " + nodeId);
         }
         return node;
     }
@@ -287,12 +350,12 @@ final class EmoteTimelineJsonParser {
         JsonObject object,
         String path,
         int defaultValue,
-        Path sourcePath
+        EmoteAnimationJsonReader reader
     ) throws EmoteAnimationLoadException {
         String key = "interpolation_duration_ticks";
         if (!object.has(key) || object.get(key).isJsonNull()) {
             return defaultValue;
         }
-        return requireInt(object, key, path, sourcePath);
+        return reader.requireInt(object, key, path);
     }
 }
