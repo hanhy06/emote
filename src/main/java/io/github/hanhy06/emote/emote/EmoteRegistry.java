@@ -57,6 +57,16 @@ public class EmoteRegistry {
         return entry != null && entry.registrationId().equals(registrationId);
     }
 
+    public synchronized int clearApiRegistrations() {
+        int removedCount = this.apiEmotes.size();
+        if (removedCount == 0) {
+            return 0;
+        }
+        this.apiEmotes.clear();
+        rebuildState();
+        return removedCount;
+    }
+
     public List<RegisteredEmote> getAll() {
         return this.state.emotes();
     }

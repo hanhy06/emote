@@ -99,4 +99,22 @@ class EmoteRegistryTest {
 
         assertNotNull(registry.find("file:0511"));
     }
+
+    @Test
+    void clearingApiRegistrationsKeepsFileEmotesAndInvalidatesRegistrationIds() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replace(List.of(create("file:dance", "Dance")));
+        UUID firstRegistrationId = registry.registerApi(create("api:wave", "Wave"));
+        UUID secondRegistrationId = registry.registerApi(create("api:clap", "Clap"));
+
+        int removedCount = registry.clearApiRegistrations();
+
+        assertEquals(2, removedCount);
+        assertFalse(registry.isApiRegistrationActive("api:wave", firstRegistrationId));
+        assertFalse(registry.isApiRegistrationActive("api:clap", secondRegistrationId));
+        assertNull(registry.find("api:wave"));
+        assertNull(registry.find("api:clap"));
+        assertNotNull(registry.find("file:dance"));
+        assertEquals(1, registry.size());
+    }
 }

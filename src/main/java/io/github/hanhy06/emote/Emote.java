@@ -82,6 +82,7 @@ public class Emote implements ModInitializer {
     private final EmoteNetworking networking = new EmoteNetworking();
     private final EmoteLifecycle lifecycle = new EmoteLifecycle(
         this.skinManager,
+        this.emoteRegistry,
         this.playbackManager,
         this.reloadService,
         this.wheelSyncService,

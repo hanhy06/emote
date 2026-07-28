@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlaybackManager;
@@ -17,6 +18,7 @@ import net.minecraft.world.InteractionResult;
 
 public class EmoteLifecycle {
     private final PlayerSkinManager skinManager;
+    private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
     private final EmoteReloadService reloadService;
     private final WheelSyncService wheelSyncService;
@@ -24,12 +26,14 @@ public class EmoteLifecycle {
 
     public EmoteLifecycle(
         PlayerSkinManager skinManager,
+        EmoteRegistry emoteRegistry,
         PlaybackManager playbackManager,
         EmoteReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdleEmoteService idleEmoteService
     ) {
         this.skinManager = skinManager;
+        this.emoteRegistry = emoteRegistry;
         this.playbackManager = playbackManager;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
@@ -81,9 +85,10 @@ public class EmoteLifecycle {
     private void handleServerStopping(MinecraftServer server) {
         Emote.SERVER = server;
         this.playbackManager.stopAllEmotes(PlaybackStopReason.SERVER_STOPPING);
+        int removedApiEmotes = this.emoteRegistry.clearApiRegistrations();
         this.idleEmoteService.clear();
         this.skinManager.cancelPendingBakes();
         Emote.SERVER = null;
-        Emote.LOGGER.info("stop emotes");
+        Emote.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
     }
 }
