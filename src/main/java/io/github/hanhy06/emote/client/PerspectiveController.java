@@ -59,7 +59,7 @@ public class PerspectiveController {
 
         this.previousCameraType = currentCameraType;
         this.restoreCameraOnStop = true;
-        this.cameraTypeSetter.accept(CameraType.THIRD_PERSON_BACK);
+        this.cameraTypeSetter.accept(CameraType.THIRD_PERSON_FRONT);
     }
 
     private void restorePerspectiveIfNeeded() {

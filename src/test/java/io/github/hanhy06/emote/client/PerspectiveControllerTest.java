@@ -15,7 +15,7 @@ class PerspectiveControllerTest {
 
         controller.handlePlaybackState(true);
 
-        assertEquals(CameraType.THIRD_PERSON_BACK, cameraType.get());
+        assertEquals(CameraType.THIRD_PERSON_FRONT, cameraType.get());
         assertTrue(controller.isPlaybackActive());
 
         controller.clear();
