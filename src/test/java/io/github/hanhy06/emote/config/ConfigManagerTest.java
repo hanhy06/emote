@@ -55,6 +55,11 @@ class ConfigManagerTest {
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
         assertTrue(accessJson.contains("\"emote.default\""));
+        EmoteAccessConfig.IdleEmote idle = manager.getEmoteAccessConfig()
+            .permissions().getFirst().idle().orElseThrow();
+        assertEquals(300, idle.delaySeconds());
+        assertEquals(List.of("drink:default"), idle.emote());
+        assertTrue(accessJson.contains("\"drink:default\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
     }
@@ -212,6 +217,9 @@ class ConfigManagerTest {
             """);
 
         assertFalse(manager.readEmoteAccessConfig());
-        assertTrue(manager.getEmoteAccessConfig().permissions().getFirst().idle().isEmpty());
+        assertEquals(
+            List.of("drink:default"),
+            manager.getEmoteAccessConfig().permissions().getFirst().idle().orElseThrow().emote()
+        );
     }
 }

@@ -23,7 +23,11 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
     public static EmoteAccessConfig createDefault() {
         return new EmoteAccessConfig(
             List.of(),
-            List.of(new PermissionEntry("emote.default", List.of("*"), Optional.empty()))
+            List.of(new PermissionEntry(
+                "emote.default",
+                List.of("*"),
+                Optional.of(new IdleEmote(300, List.of("drink:default")))
+            ))
         );
     }
 

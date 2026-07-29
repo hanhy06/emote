@@ -52,7 +52,7 @@ class EmoteAnimationJsonLoaderTest {
             examplePaths = paths.filter(path -> path.getFileName().toString().endsWith(".json")).sorted().toList();
         }
 
-        assertEquals(5, examplePaths.size());
+        assertEquals(6, examplePaths.size());
         for (Path examplePath : examplePaths) {
             EmoteAnimation.Loaded loaded = this.loader.load(examplePath, MINECRAFT_VERSION);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
