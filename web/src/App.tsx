@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState, type ChangeEvent } from "react";
+import { lazy, Suspense, useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
-import { PartPreview } from "./components/PartPreview";
 import { downloadExport, exportAnimation, exportResourcePack, type ExportOptions } from "./export/projectExporter";
 import { mergeResourcePackFolder, mergeResourcePackZip } from "./export/resourcePackMerger";
 import { IMPORT_ADAPTERS } from "./import/adapters";
@@ -34,6 +33,8 @@ interface ConverterSession {
 const EMPTY_ASSIGNMENTS: PartAssignments = {};
 const EMPTY_ORDERS: PartOrders = {};
 const EMPTY_SELECTION = new Set<string>();
+const PartPreview = lazy(() => import("./components/PartPreview")
+  .then((module) => ({ default: module.PartPreview })));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
   .join(",");
@@ -301,14 +302,16 @@ export function App() {
             </div>
             {skinCandidates.length > 0 ? (
               <div className="editor">
-                <PartPreview
-                  key={project.sourceName}
-                  parts={previewParts}
-                  assignments={assignments}
-                  selectedParts={selectedParts}
-                  onSelectPart={handlePartSelect}
-                  onSelectParts={handlePartsSelect}
-                />
+                <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
+                  <PartPreview
+                    key={project.sourceName}
+                    parts={previewParts}
+                    assignments={assignments}
+                    selectedParts={selectedParts}
+                    onSelectPart={handlePartSelect}
+                    onSelectParts={handlePartsSelect}
+                  />
+                </Suspense>
                 <AssignmentPanel
                   parts={previewParts}
                   assignments={assignments}

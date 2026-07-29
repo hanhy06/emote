@@ -61,6 +61,7 @@ h3 { margin: 24px 0 10px; font-size: 15px; font-weight: 600; }
 .part-preview.selection-active { cursor: crosshair; }
 .part-preview canvas { position: absolute; inset: 0; display: block; width: 100% !important; height: 100% !important; }
 .selection-box { position: absolute; z-index: 1; border: 1px solid #0067c0; background: rgb(0 103 192 / 14%); pointer-events: none; }
+.preview-loading { display: grid; height: 620px; place-items: center; color: #666; background: #f4f4f4; }
 .preview-error { height: 620px; margin: 0; padding: 16px; color: #b00020; }
 aside { display: flex; flex-direction: column; height: 620px; padding: 16px; overflow: hidden; border-left: 1px solid #aaa; background: #fff; }
 aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
@@ -110,6 +111,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .preview-controls { align-items: stretch; flex-direction: column; }
   .editor { grid-template-columns: 1fr; }
   .part-preview { height: 420px; }
+  .preview-loading { height: 420px; }
   .preview-error { height: 420px; }
   aside { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
   .fields { grid-template-columns: 1fr; }
