@@ -1,5 +1,18 @@
 import { describe, expect, it } from "vitest";
-import { selectPart, selectParts } from "./skinMapping";
+import { isPlayerHeadItemStack, selectPart, selectParts } from "./skinMapping";
+
+describe("isPlayerHeadItemStack", () => {
+  it("recognizes quoted and bare player heads with the default namespace", () => {
+    expect(isPlayerHeadItemStack('{id:"minecraft:player_head",count:1}')).toBe(true);
+    expect(isPlayerHeadItemStack('{id:"player_head",count:1}')).toBe(true);
+    expect(isPlayerHeadItemStack("{id:player_head,count:1}")).toBe(true);
+  });
+
+  it("does not treat other or malformed item ids as player heads", () => {
+    expect(isPlayerHeadItemStack("{id:stone,count:1}")).toBe(false);
+    expect(isPlayerHeadItemStack("{id:{nested:player_head},count:1}")).toBe(false);
+  });
+});
 
 describe("selectPart", () => {
   it("selects only the clicked model without additive selection", () => {

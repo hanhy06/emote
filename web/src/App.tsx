@@ -9,8 +9,14 @@ import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
-import { selectPart, selectParts, type PartAssignments, type PartOrders, type SkinPartId } from "./preview/skinMapping";
-import { readSnbtStringField } from "./format/snbt";
+import {
+  isPlayerHeadItemStack,
+  selectPart,
+  selectParts,
+  type PartAssignments,
+  type PartOrders,
+  type SkinPartId,
+} from "./preview/skinMapping";
 
 interface SkinCandidate {
   nodeId: string;
@@ -351,7 +357,7 @@ function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
   return Object.entries(project.nodes).flatMap(([nodeId, node]) => {
     if (node.type !== "item_display") return [];
     try {
-      if (readSnbtStringField(node.itemStackSnbt, "id") !== "minecraft:player_head") return [];
+      if (!isPlayerHeadItemStack(node.itemStackSnbt)) return [];
     } catch {
       return [];
     }
