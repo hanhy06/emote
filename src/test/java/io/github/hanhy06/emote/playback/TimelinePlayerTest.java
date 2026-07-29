@@ -89,6 +89,35 @@ class TimelinePlayerTest {
     }
 
     @Test
+    void doesNotRestartInterpolationForRepeatedTransformMatrix() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(
+                6,
+                EmoteAnimation.LoopMode.ONCE,
+                0,
+                List.of(
+                    keyframe(0, 0.0D, 0),
+                    keyframe(2, 2.0D, 2),
+                    keyframe(4, 2.0D, 2),
+                    keyframe(6, 2.0D, 2)
+                )
+            ),
+            target
+        );
+
+        player.start();
+        for (int tick = 1; tick <= 6; tick++) {
+            player.advance();
+        }
+
+        assertEquals(
+            List.of(new AppliedTransform(0.0D, 0), new AppliedTransform(2.0D, 2)),
+            target.transforms
+        );
+    }
+
+    @Test
     void startsServerSynchronizedLoopAtServerPhaseAndResumesInterpolation() {
         FakeTarget target = new FakeTarget();
         TimelinePlayer player = new TimelinePlayer(

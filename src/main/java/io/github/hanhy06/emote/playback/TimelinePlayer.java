@@ -11,6 +11,7 @@ public final class TimelinePlayer {
     private final Map<Integer, List<TransformActivation>> transformActivations;
     private final Map<Integer, List<StateActivation>> stateActivations;
     private final Map<String, TransformState> transformStates = new HashMap<>();
+    private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
     private List<TransformActivation> pendingInterpolations = List.of();
 
     private int currentTick;
@@ -139,6 +140,7 @@ public final class TimelinePlayer {
     private void resetToTickZero() {
         this.target.resetAll();
         this.transformStates.clear();
+        this.appliedMatrices.clear();
         this.currentTick = 0;
         this.remainingLoopDelay = 0;
         applyTick(0);
@@ -169,15 +171,20 @@ public final class TimelinePlayer {
 
     private void applyTick(int tick) {
         for (TransformActivation activation : this.transformActivations.getOrDefault(tick, List.of())) {
+            EmoteAnimation.Matrix matrix = activation.transform().matrix();
+            if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
+                continue;
+            }
             Transformation previous = currentTransformation(activation.nodeId());
-            Transformation next = this.target.createTransformation(activation.transform().matrix());
+            Transformation next = this.target.createTransformation(matrix);
             this.transformStates.put(
                 activation.nodeId(),
                 new TransformState(previous, next, tick, activation.transform().interpolationDurationTicks())
             );
+            this.appliedMatrices.put(activation.nodeId(), matrix);
             this.target.applyTransform(
                 activation.nodeId(),
-                activation.transform().matrix(),
+                matrix,
                 activation.transform().interpolationDurationTicks()
             );
         }
