@@ -62,4 +62,56 @@ describe("validateEmoteAnimation", () => {
     expect(paths).toContain("timeline.events.timeline[0].tick");
     expect(paths).toContain("timeline.events.timeline[0].source.node");
   });
+
+  it("rejects node values that the mod loader cannot represent", () => {
+    const value = animation();
+    value.nodes[""] = {
+      type: "item_display",
+      item_stack_snbt: "{id:\"minecraft:stone\",count:1}",
+      item_display: "invalid",
+      skin: { part: "head", order: 2_147_483_648 },
+      default_matrix: IDENTITY,
+    };
+    value.timeline.keyframes[0].node_states = { effect: { visible: true } };
+
+    const paths = validateEmoteAnimation(value).map((issue) => issue.path);
+
+    expect(paths).toContain("nodes");
+    expect(paths).toContain("nodes..item_display");
+    expect(paths).toContain("nodes..skin.order");
+    expect(paths).toContain("timeline.keyframes[0].node_states.effect");
+  });
+
+  it("rejects Java integer overflow and descending timeline events", () => {
+    const value = animation();
+    value.timeline.duration_ticks = 2_147_483_648;
+    value.timeline.loop = "loop";
+    value.timeline.loop_delay_ticks = 2_147_483_648;
+    value.timeline.keyframes[0].interpolation_duration_ticks = 2_147_483_648;
+    value.timeline.events = {
+      timeline: [
+        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: [] },
+        { tick: 0, source: { type: "player" }, origin: { type: "root" }, commands: [] },
+      ],
+    };
+
+    const paths = validateEmoteAnimation(value).map((issue) => issue.path);
+
+    expect(paths).toContain("timeline.duration_ticks");
+    expect(paths).toContain("timeline.loop_delay_ticks");
+    expect(paths).toContain("timeline.keyframes[0].interpolation_duration_ticks");
+    expect(paths).toContain("timeline.events.timeline[1].tick");
+  });
+
+  it("allows timeline events with the same tick in source order", () => {
+    const value = animation();
+    value.timeline.events = {
+      timeline: [
+        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: ["say first"] },
+        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: ["say second"] },
+      ],
+    };
+
+    expect(validateEmoteAnimation(value)).toEqual([]);
+  });
 });
