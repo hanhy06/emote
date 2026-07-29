@@ -33,6 +33,10 @@ public class EmoteClient implements ClientModInitializer {
         return EMOTE_PERSPECTIVE_CONTROLLER.isPlaybackActive();
     }
 
+    public static boolean shouldHideLocalPlayerEquipment() {
+        return EMOTE_PERSPECTIVE_CONTROLLER.shouldHideLocalPlayerEquipment();
+    }
+
     private static void clearClientState() {
         EMOTE_PERSPECTIVE_CONTROLLER.clear();
         EMOTE_WHEEL_CONTROLLER.clear();

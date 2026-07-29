@@ -40,10 +40,11 @@ final class PlayerVisibilityService {
     }
 
     void start(ServerPlayer player, ActiveEmote activeEmote) {
-        if (activeEmote.playerVisibilityManaged()) {
-            player.setInvisible(true);
-            syncPlayerVisibility(player);
+        if (!activeEmote.playerVisibilityManaged()) {
+            return;
         }
+        player.setInvisible(true);
+        syncPlayerVisibility(player);
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
@@ -56,15 +57,19 @@ final class PlayerVisibilityService {
     }
 
     void stop(ServerPlayer player, ActiveEmote activeEmote) {
-        if (activeEmote.playerVisibilityManaged()) {
-            player.setInvisible(activeEmote.wasInvisible());
+        if (!activeEmote.playerVisibilityManaged()) {
+            return;
         }
+        player.setInvisible(activeEmote.wasInvisible());
         sendToTrackingPlayers(player, createVisibleEquipment(player));
     }
 
     private void handleStartTracking(Entity entity, ServerPlayer trackingPlayer) {
-        if (entity instanceof ServerPlayer emotePlayer
-            && this.playbackManager.findActiveEmote(emotePlayer.getUUID()) != null) {
+        if (!(entity instanceof ServerPlayer emotePlayer)) {
+            return;
+        }
+        ActiveEmote activeEmote = this.playbackManager.findActiveEmote(emotePlayer.getUUID());
+        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -73,7 +78,8 @@ final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        if (this.playbackManager.findActiveEmote(player.getUUID()) != null) {
+        ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
+        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }

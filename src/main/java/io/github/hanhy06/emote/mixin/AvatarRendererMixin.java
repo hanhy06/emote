@@ -25,7 +25,7 @@ abstract class AvatarRendererMixin {
         CallbackInfo callbackInfo
     ) {
         LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null || entity != player || !EmoteClient.isPlaybackActive()) {
+        if (player == null || entity != player || !EmoteClient.shouldHideLocalPlayerEquipment()) {
             return;
         }
 

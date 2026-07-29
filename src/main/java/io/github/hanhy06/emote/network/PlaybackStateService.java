@@ -8,12 +8,11 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlaybackStateService implements PlaybackStateListener {
-    private static final EmotePlaybackStatePayload ACTIVE_PAYLOAD = new EmotePlaybackStatePayload(true);
-    private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false);
+    private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false, false);
 
     @Override
     public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-        sync(player, ACTIVE_PAYLOAD);
+        sync(player, new EmotePlaybackStatePayload(true, activeEmote.playerVisibilityManaged()));
     }
 
     @Override

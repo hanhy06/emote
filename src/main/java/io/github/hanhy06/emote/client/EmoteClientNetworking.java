@@ -22,7 +22,9 @@ public class EmoteClientNetworking {
 
     public void register() {
         ClientPlayNetworking.registerGlobalReceiver(EmotePlaybackStatePayload.TYPE, (payload, ignoredContext) ->
-            Minecraft.getInstance().execute(() -> this.perspectiveController.handlePlaybackState(payload.active()))
+            Minecraft.getInstance().execute(() ->
+                this.perspectiveController.handlePlaybackState(payload.active(), payload.hidePlayer())
+            )
         );
         ClientPlayNetworking.registerGlobalReceiver(EmoteWheelSyncPayload.TYPE, (payload, ignoredContext) ->
             Minecraft.getInstance().execute(() -> this.wheelController.updateEmotes(payload.emotes()))
