@@ -132,6 +132,7 @@ public final class EmoteAnimationJsonLoader {
             return new AnchorNode(defaultMatrix);
         }
 
+        defaultMatrix = EmoteMatrixNormalizer.stabilize(defaultMatrix);
         boolean visible = optionalVisible(object, path, reader);
         CompoundTag entityNbt = optionalEntityNbt(object, path, reader);
         return switch (type) {

@@ -32,6 +32,44 @@ describe("bdProjectAdapter", () => {
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
+  it("removes shear introduced by non-uniform parent scale and child rotation", async () => {
+    const angle = Math.PI / 4;
+    const input = {
+      name: "Sheared hierarchy.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        children: [{
+          isCollection: true,
+          transforms: [
+            2, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0,
+            0, 0, 0, 1,
+          ],
+          children: [{
+            isCollection: true,
+            transforms: [
+              Math.cos(angle), -Math.sin(angle), 0, 0,
+              Math.sin(angle), Math.cos(angle), 0, 0,
+              0, 0, 1, 0,
+              0, 0, 0, 1,
+            ],
+            children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+          }],
+        }],
+      }),
+    };
+
+    const project = await bdProjectAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "stable" });
+    const defaultMatrix = animation.nodes.display_0.default_matrix;
+    const animatedMatrix = animation.timeline.keyframes[0].node_transforms?.display_0?.matrix;
+
+    expect(animatedMatrix).toBeDefined();
+    expect(normalizedMatrixColumnDot(defaultMatrix, 0, 1)).toBeCloseTo(0, 8);
+    expect(normalizedMatrixColumnDot(animatedMatrix!, 0, 1)).toBeCloseTo(0, 8);
+  });
+
   it("accepts null curve metadata saved by BD Engine", async () => {
     const input = {
       name: "Null curves.bdengine",
@@ -197,6 +235,20 @@ function translationMatrix(x: number): number[] {
   const matrix = [...IDENTITY_MATRIX];
   matrix[3] = x;
   return matrix;
+}
+
+function normalizedMatrixColumnDot(matrix: readonly number[], first: number, second: number): number {
+  let dot = 0;
+  let firstLengthSquared = 0;
+  let secondLengthSquared = 0;
+  for (let row = 0; row < 3; row++) {
+    const firstValue = matrix[row * 4 + first];
+    const secondValue = matrix[row * 4 + second];
+    dot += firstValue * secondValue;
+    firstLengthSquared += firstValue * firstValue;
+    secondLengthSquared += secondValue * secondValue;
+  }
+  return dot / Math.sqrt(firstLengthSquared * secondLengthSquared);
 }
 
 function createProject(scene: unknown): Uint8Array {

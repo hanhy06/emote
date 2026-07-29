@@ -1,6 +1,6 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "../../format/emoteAnimation";
-import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor } from "../../format/matrix";
+import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor, stabilizeDisplayMatrix } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { TICKS_PER_SECOND } from "../../format/time";
@@ -211,7 +211,7 @@ function evaluateDisplayDefaultMatrix(entry: DisplayEntry): Matrix16 {
   const pivot = vector(entry.ancestors.at(-1)?.pivotCustom, [0, 0, 0]);
   matrix.multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
   matrix.multiply(matrixFromArray(entry.node.transforms, entry.node.name ?? entry.id));
-  return matrix4ToRowMajor(matrix, "BD default composed matrix");
+  return stabilizeDisplayMatrix(matrix4ToRowMajor(matrix, "BD default composed matrix"), "BD default composed matrix");
 }
 
 function evaluateDisplayMatrix(entry: DisplayEntry, time: number): Matrix16 {
@@ -220,7 +220,7 @@ function evaluateDisplayMatrix(entry: DisplayEntry, time: number): Matrix16 {
   const pivot = vector(entry.ancestors.at(-1)?.pivotCustom, [0, 0, 0]);
   matrix.multiply(new Matrix4().makeTranslation(-pivot[0], -pivot[1], -pivot[2]));
   matrix.multiply(matrixFromArray(entry.node.transforms, entry.node.name ?? entry.id));
-  return matrix4ToRowMajor(matrix, "BD composed matrix");
+  return stabilizeDisplayMatrix(matrix4ToRowMajor(matrix, "BD composed matrix"), "BD composed matrix");
 }
 
 function evaluateCollection(node: BdSceneNode, time: number): Matrix4 {

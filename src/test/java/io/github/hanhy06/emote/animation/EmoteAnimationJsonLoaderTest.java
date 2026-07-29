@@ -77,6 +77,33 @@ class EmoteAnimationJsonLoaderTest {
     }
 
     @Test
+    void stabilizesDisplayMatricesWithoutChangingAnchorMatrices() throws Exception {
+        JsonObject root = readReference();
+        JsonArray shearedMatrix = JsonParser.parseString("""
+            [1,0.25,0,4,0,1,0.2,5,0,0,0.5,6,0,0,0,1]
+            """).getAsJsonArray();
+        root.getAsJsonObject("nodes").getAsJsonObject("player_head")
+            .add("default_matrix", shearedMatrix.deepCopy());
+        root.getAsJsonObject("nodes").getAsJsonObject("effect_anchor")
+            .add("default_matrix", shearedMatrix.deepCopy());
+        root.getAsJsonObject("timeline").getAsJsonArray("keyframes")
+            .get(0).getAsJsonObject()
+            .getAsJsonObject("node_transforms")
+            .getAsJsonObject("player_head")
+            .add("matrix", shearedMatrix.deepCopy());
+
+        EmoteAnimation animation = parse(root).animation();
+        EmoteAnimation.Matrix displayDefault = animation.nodes().get("player_head").defaultMatrix();
+        EmoteAnimation.Matrix anchorDefault = animation.nodes().get("effect_anchor").defaultMatrix();
+        EmoteAnimation.Matrix displayKeyframe = animation.timeline().keyframes().getFirst()
+            .nodeTransforms().get("player_head").matrix();
+
+        assertEquals(0.0D, normalizedColumnDot(displayDefault, 0, 1), 1.0E-8D);
+        assertEquals(0.0D, normalizedColumnDot(displayKeyframe, 0, 1), 1.0E-8D);
+        assertNotEquals(0.0D, normalizedColumnDot(anchorDefault, 0, 1), 1.0E-8D);
+    }
+
+    @Test
     void rejectsAnchorAsCommandSource() throws Exception {
         JsonObject root = readReference();
         JsonObject source = root.getAsJsonObject("timeline")
@@ -144,5 +171,19 @@ class EmoteAnimationJsonLoaderTest {
             root.toString().getBytes(StandardCharsets.UTF_8),
             MINECRAFT_VERSION
         );
+    }
+
+    private double normalizedColumnDot(EmoteAnimation.Matrix matrix, int first, int second) {
+        double dot = 0.0D;
+        double firstLengthSquared = 0.0D;
+        double secondLengthSquared = 0.0D;
+        for (int row = 0; row < 3; row++) {
+            double firstValue = matrix.value(row * 4 + first);
+            double secondValue = matrix.value(row * 4 + second);
+            dot += firstValue * secondValue;
+            firstLengthSquared += firstValue * firstValue;
+            secondLengthSquared += secondValue * secondValue;
+        }
+        return dot / Math.sqrt(firstLengthSquared * secondLengthSquared);
     }
 }

@@ -120,10 +120,11 @@ final class EmoteTimelineJsonParser {
                     "must fit between the previous transform tick and the current tick"
                 );
             }
-            transforms.put(nodeId, new NodeTransform(
-                reader.requireMatrix(transform, "matrix", path),
-                interpolation
-            ));
+            Matrix matrix = reader.requireMatrix(transform, "matrix", path);
+            if (!(nodes.get(nodeId) instanceof AnchorNode)) {
+                matrix = EmoteMatrixNormalizer.stabilize(matrix);
+            }
+            transforms.put(nodeId, new NodeTransform(matrix, interpolation));
             previousTransformTicks.put(nodeId, tick);
         }
         return Collections.unmodifiableMap(transforms);
