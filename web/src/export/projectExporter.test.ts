@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import type { Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../import/types";
-import { exportAnimation, exportResourcePack } from "./projectExporter";
+import { exportAnimation, exportResourcePack, generatedResourceFiles } from "./projectExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
@@ -89,5 +89,43 @@ describe("exportAnimation", () => {
         max_format: [88, 0],
       },
     });
+  });
+
+  it.each([
+    "textures/entity/test.png",
+    "assets/Test/textures/entity/test.png",
+    "assets/test/textures/entity/Test.png",
+    "assets/test/../test.png",
+    "assets/test//test.png",
+  ])("rejects invalid generated resource path %s", (path) => {
+    const project: ImportedProject = {
+      source: "animated_java_json",
+      sourceName: "test.ajblueprint",
+      suggestedMetadata: { name: "Test", description: "", hide_player: false },
+      artifactMinecraftVersion: "26.2",
+      nodes: {},
+      animations: [],
+      diagnostics: [],
+      artifacts: new Map([[path, new Uint8Array([1])]]),
+    };
+
+    expect(() => generatedResourceFiles(project, "26.2"))
+      .toThrow(`Generated resource has an invalid pack path: ${path}`);
+  });
+
+  it("does not allow generated resources to replace pack metadata", () => {
+    const project: ImportedProject = {
+      source: "animated_java_json",
+      sourceName: "test.ajblueprint",
+      suggestedMetadata: { name: "Test", description: "", hide_player: false },
+      artifactMinecraftVersion: "26.2",
+      nodes: {},
+      animations: [],
+      diagnostics: [],
+      artifacts: new Map([["pack.mcmeta", new Uint8Array([1])]]),
+    };
+
+    expect(() => generatedResourceFiles(project, "26.2"))
+      .toThrow("Generated resources cannot replace pack.mcmeta.");
   });
 });

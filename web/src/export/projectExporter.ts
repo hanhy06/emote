@@ -4,6 +4,8 @@ import type { EmoteAnimation, EmoteMetadata } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
 
+const GENERATED_RESOURCE_PATH_PATTERN = /^assets\/[a-z0-9_.-]+\/[a-z0-9_./-]+$/;
+
 export interface ExportOptions extends EmoteMetadata {
   minecraftVersion: string;
   namespace: string;
@@ -62,10 +64,15 @@ export function generatedResourceFiles(project: ImportedProject, minecraftVersio
   if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
   validateArtifactVersion(project, minecraftVersion);
   for (const path of project.artifacts.keys()) {
-    if (path.startsWith("/") || path.split("/").includes("..") || path.includes("\\")) {
+    if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
+    const segments = path.split("/");
+    if (
+      !GENERATED_RESOURCE_PATH_PATTERN.test(path)
+      || path.includes("\\")
+      || segments.some((segment) => !segment || segment === "." || segment === "..")
+    ) {
       throw new Error(`Generated resource has an invalid pack path: ${path}`);
     }
-    if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
   }
   return project.artifacts;
 }
