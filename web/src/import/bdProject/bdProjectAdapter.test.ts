@@ -160,7 +160,7 @@ describe("bdProjectAdapter", () => {
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
-  it("keeps the create pose separate from the animation at tick zero", async () => {
+  it("uses the animation at tick zero as the generated create pose", async () => {
     const input = {
       name: "Create pose.bdengine",
       bytes: createProject({
@@ -179,7 +179,7 @@ describe("bdProjectAdapter", () => {
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "poses" });
 
-    expect(animation.nodes.display_0.default_matrix[3]).toBeCloseTo(1);
+    expect(animation.nodes.display_0.default_matrix[3]).toBeCloseTo(3);
     expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
   });
 

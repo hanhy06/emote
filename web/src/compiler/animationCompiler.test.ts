@@ -15,6 +15,20 @@ describe("compileImportedProject time handling", () => {
     expect(durations).toEqual([0, 2, 3]);
   });
 
+  it("uses the animation's tick-zero pose as the node default", () => {
+    const project = importedProject();
+    const initialPose: Matrix16 = [1, 0, 0, 4, 0, 1, 0, 5, 0, 0, 1, 6, 0, 0, 0, 1];
+    project.animations[0].tracks.anchor.transforms.unshift({
+      tick: 0,
+      matrix: initialPose,
+      interpolation: { type: "step" },
+    });
+
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
+
+    expect(animation.nodes.anchor.default_matrix).toEqual(initialPose);
+  });
+
   it("compiles only the selected animation after validating project identifiers", () => {
     const project = importedProject();
     project.animations.push({ ...project.animations[0], id: "broken", durationTicks: -1 });

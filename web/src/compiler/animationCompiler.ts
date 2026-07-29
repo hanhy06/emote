@@ -67,17 +67,19 @@ function compileAnimation(
       name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
     },
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
-    nodes: compileNodes(project.nodes),
+    nodes: compileNodes(project.nodes, animation),
     timeline: compileTimeline(animation, context.loop),
   };
 }
 
-function compileNodes(nodes: Record<string, ImportedNode>): Record<string, EmoteNode> {
+function compileNodes(nodes: Record<string, ImportedNode>, animation: ImportedAnimation): Record<string, EmoteNode> {
   return Object.fromEntries(Object.entries(nodes).map(([id, node]) => {
-    if (node.type === "anchor") return [id, { type: "anchor", default_matrix: node.defaultMatrix }];
+    const defaultMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix
+      ?? node.defaultMatrix;
+    if (node.type === "anchor") return [id, { type: "anchor", default_matrix: defaultMatrix }];
     const common = {
       ...(node.visible ? {} : { visible: false }),
-      default_matrix: node.defaultMatrix,
+      default_matrix: defaultMatrix,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
     };
     if (node.type === "item_display") {
