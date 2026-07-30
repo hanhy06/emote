@@ -11,6 +11,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -136,16 +137,24 @@ public class PlaybackManager {
     }
 
     public ActiveEmote stopEmote(ServerPlayer player, PlaybackStopReason reason) {
-        return stopEmote(player.getUUID(), reason);
+        return stopEmote(player.getUUID(), reason, player);
     }
 
     private ActiveEmote stopEmote(UUID playerUuid, PlaybackStopReason reason) {
+        return stopEmote(playerUuid, reason, null);
+    }
+
+    private ActiveEmote stopEmote(
+        UUID playerUuid,
+        PlaybackStopReason reason,
+        @Nullable ServerPlayer knownPlayer
+    ) {
         ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
         MinecraftServer server = Emote.SERVER;
         if (activeEmote == null || server == null) {
             return activeEmote;
         }
-        cleanupActiveEmote(server, activeEmote, true, reason);
+        cleanupActiveEmote(server, activeEmote, true, reason, knownPlayer);
         return activeEmote;
     }
 
@@ -256,6 +265,16 @@ public class PlaybackManager {
         boolean notifyListeners,
         PlaybackStopReason reason
     ) {
+        cleanupActiveEmote(server, activeEmote, notifyListeners, reason, null);
+    }
+
+    private void cleanupActiveEmote(
+        MinecraftServer server,
+        ActiveEmote activeEmote,
+        boolean notifyListeners,
+        PlaybackStopReason reason,
+        @Nullable ServerPlayer knownPlayer
+    ) {
         try {
             activeEmote.events().stop();
         } catch (RuntimeException exception) {
@@ -265,7 +284,9 @@ public class PlaybackManager {
             if (level != null) {
                 this.entityController.remove(level, activeEmote.nodes());
             }
-            ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
+            ServerPlayer player = knownPlayer != null
+                ? knownPlayer
+                : server.getPlayerList().getPlayer(activeEmote.playerUuid());
             if (player != null) {
                 this.playerVisibilityService.stop(player, activeEmote);
                 if (notifyListeners) {
