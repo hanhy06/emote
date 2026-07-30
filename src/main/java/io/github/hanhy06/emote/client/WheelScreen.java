@@ -15,6 +15,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.NonNull;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -37,6 +38,10 @@ public class WheelScreen extends Screen {
     private final List<PlayableEmote> emotes;
     private final KeyMapping keyMapping;
     private final Component bindingLabel;
+    private WheelMetrics metrics;
+    private List<SlotGeometry> slotGeometries = List.of();
+    private int[] centerXPoints = new int[0];
+    private int[] centerYPoints = new int[0];
     private int pageIndex;
     private double lastMouseX;
     private double lastMouseY;
@@ -53,6 +58,20 @@ public class WheelScreen extends Screen {
 
     @Override
     protected void init() {
+        this.metrics = WheelGeometry.createMetrics(this.width, this.height);
+        List<SlotGeometry> slots = new ArrayList<>(WheelGeometry.SLOT_COUNT);
+        for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
+            slots.add(WheelGeometry.createSlot(slotIndex, this.metrics));
+        }
+        this.slotGeometries = List.copyOf(slots);
+        this.centerXPoints = WheelGeometry.createHexagonXPoints(
+            this.metrics.centerX(),
+            this.metrics.centerRadius()
+        );
+        this.centerYPoints = WheelGeometry.createHexagonYPoints(
+            this.metrics.centerY(),
+            this.metrics.centerRadius()
+        );
         this.lastMouseX = this.width / 2.0D;
         this.lastMouseY = this.height / 2.0D;
         updateHoveredSlot(this.lastMouseX, this.lastMouseY);
@@ -79,13 +98,13 @@ public class WheelScreen extends Screen {
         this.lastMouseY = mouseY;
         updateHoveredSlot(mouseX, mouseY);
 
-        WheelMetrics metrics = WheelGeometry.createMetrics(this.width, this.height);
+        WheelMetrics metrics = this.metrics;
         List<PlayableEmote> pageEmotes = getCurrentPageEmotes();
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
-            SlotGeometry slot = WheelGeometry.createSlot(slotIndex, metrics);
+            SlotGeometry slot = this.slotGeometries.get(slotIndex);
             PlayableEmote playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
             boolean hovered = slotIndex == this.hoveredSlotIndex;
             drawSlot(graphics, slot, playableEmote, hovered);
@@ -204,9 +223,7 @@ public class WheelScreen extends Screen {
     }
 
     private void drawCenterHex(GuiGraphicsExtractor graphics, WheelMetrics metrics) {
-        int[] xPoints = WheelGeometry.createHexagonXPoints(metrics.centerX(), metrics.centerRadius());
-        int[] yPoints = WheelGeometry.createHexagonYPoints(metrics.centerY(), metrics.centerRadius());
-        drawHex(graphics, xPoints, yPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
+        drawHex(graphics, this.centerXPoints, this.centerYPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
 
         if (this.emotes.isEmpty()) {
             graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_usable"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
@@ -290,7 +307,6 @@ public class WheelScreen extends Screen {
     }
 
     private void updateHoveredSlot(double mouseX, double mouseY) {
-        WheelMetrics metrics = WheelGeometry.createMetrics(this.width, this.height);
         this.hoveredSlotIndex = -1;
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
@@ -298,7 +314,7 @@ public class WheelScreen extends Screen {
                 continue;
             }
 
-            SlotGeometry slot = WheelGeometry.createSlot(slotIndex, metrics);
+            SlotGeometry slot = this.slotGeometries.get(slotIndex);
             if (WheelGeometry.containsPoint(slot.xPoints(), slot.yPoints(), mouseX, mouseY)) {
                 this.hoveredSlotIndex = slotIndex;
                 return;
