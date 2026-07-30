@@ -49,7 +49,7 @@ final class PlayerVisibilityService {
     }
 
     void tick(ServerPlayer player, ActiveEmote activeEmote) {
-        if (!activeEmote.playerVisibilityManaged()) {
+        if (!activeEmote.playerVisibilityManaged() || player.isInvisible()) {
             return;
         }
         player.setInvisible(true);
