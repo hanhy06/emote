@@ -64,8 +64,7 @@ final class MineSkinManager {
             );
         }
 
-        scheduleBake(source, requiredTextureKeys);
-        BakeStage stage = findBakeStage(source);
+        BakeStage stage = scheduleBake(source, requiredTextureKeys);
         PreparationState preparationState = stage == BakeStage.FAILED
             ? PreparationState.FAILED
             : PreparationState.PREPARING;
@@ -81,14 +80,6 @@ final class MineSkinManager {
             return 100;
         }
         return Math.min(100, completedParts * 100 / totalParts);
-    }
-
-    private BakeStage findBakeStage(PlayerSkinManager.PlayerSkinSource source) {
-        String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-        synchronized (this.bakeTasks) {
-            BakeTask bakeTask = this.bakeTasks.get(pendingKey);
-            return bakeTask == null ? BakeStage.QUEUED : bakeTask.stage();
-        }
     }
 
     private void notifyCompleted(BakeTask bakeTask) {
@@ -196,9 +187,12 @@ final class MineSkinManager {
         return Map.copyOf(result);
     }
 
-    private void scheduleBake(PlayerSkinManager.PlayerSkinSource source, Set<PlayerSkinTextureKey> requiredKeys) {
+    private BakeStage scheduleBake(
+        PlayerSkinManager.PlayerSkinSource source,
+        Set<PlayerSkinTextureKey> requiredKeys
+    ) {
         if (!MineSkinClient.hasApiKey(this.apiKey)) {
-            return;
+            return BakeStage.QUEUED;
         }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
         BakeTask bakeTask;
@@ -209,6 +203,7 @@ final class MineSkinManager {
             addedKeys = bakeTask.addRequiredKeys(requiredKeys);
         }
         scheduleIfNeeded(pendingKey, bakeTask, addedKeys);
+        return bakeTask.stage();
     }
 
     private void bakeAndSave(BakeTask bakeTask) {
@@ -224,14 +219,17 @@ final class MineSkinManager {
 
             bakeTask.updateStage(BakeStage.DOWNLOADING_SKIN);
             BufferedImage sourceImage = this.client.downloadSkinImage(source.textureUrl());
+            PlayerSkinBaker.PreparedSkin preparedSkin = this.playerSkinBaker.prepare(
+                sourceImage,
+                source.slimModel()
+            );
             Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
             for (PlayerSkinTextureKey textureKey : missingKeys) {
                 bakeTask.updateStage(BakeStage.BAKING_PART);
                 byte[] bakedImage = this.playerSkinBaker.bake(
-                    sourceImage,
+                    preparedSkin,
                     textureKey.skinPart(),
-                    textureKey.skinSegment(),
-                    source.slimModel()
+                    textureKey.skinSegment()
                 );
                 String contentHash = MineSkinCache.createContentKey(bakedImage, source.slimModel());
                 bakeTask.updateStage(BakeStage.WAITING_FOR_MINESKIN);

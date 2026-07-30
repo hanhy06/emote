@@ -5,6 +5,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.EnumMap;
 import java.util.Map;
 
 final class PlayerSkinBaker {
@@ -60,12 +61,27 @@ final class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_LEFT = new FaceTarget(48, 8, 8, 8);
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
-    byte[] bake(BufferedImage sourceImage, PlayerSkinPart skinPart, PlayerSkinSegment skinSegment, boolean slimModel) throws IOException {
+    byte[] bake(
+        BufferedImage sourceImage,
+        PlayerSkinPart skinPart,
+        PlayerSkinSegment skinSegment,
+        boolean slimModel
+    ) throws IOException {
+        return bake(prepare(sourceImage, slimModel), skinPart, skinSegment);
+    }
+
+    PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
+        return new PreparedSkin(normalizedImage, effectiveSlimModel);
+    }
 
-        boolean useWideSlimArmAtlas = usesWideSlimArmAtlas(skinPart, effectiveSlimModel);
-        BufferedImage bakingImage = useWideSlimArmAtlas ? expandSlimArmToWideAtlas(normalizedImage, skinPart) : normalizedImage;
+    byte[] bake(
+        PreparedSkin preparedSkin,
+        PlayerSkinPart skinPart,
+        PlayerSkinSegment skinSegment
+    ) throws IOException {
+        BufferedImage bakingImage = preparedSkin.imageFor(skinPart);
         BufferedImage outputImage = new BufferedImage(64, 64, BufferedImage.TYPE_INT_ARGB);
         FaceMap baseFaces = baseFaces(skinPart);
         FaceMap overlayFaces = overlayFaces(skinPart);
@@ -313,6 +329,27 @@ final class PlayerSkinBaker {
     }
 
     private record PartAtlas(FaceMap base, FaceMap overlay, FaceMap slimBase, FaceMap slimOverlay) {
+    }
+
+    final class PreparedSkin {
+        private final BufferedImage normalizedImage;
+        private final boolean slimModel;
+        private final Map<PlayerSkinPart, BufferedImage> expandedArmImages = new EnumMap<>(PlayerSkinPart.class);
+
+        private PreparedSkin(BufferedImage normalizedImage, boolean slimModel) {
+            this.normalizedImage = normalizedImage;
+            this.slimModel = slimModel;
+        }
+
+        private BufferedImage imageFor(PlayerSkinPart skinPart) {
+            if (!usesWideSlimArmAtlas(skinPart, this.slimModel)) {
+                return this.normalizedImage;
+            }
+            return this.expandedArmImages.computeIfAbsent(
+                skinPart,
+                part -> expandSlimArmToWideAtlas(this.normalizedImage, part)
+            );
+        }
     }
 
 }

@@ -95,8 +95,7 @@ public class PlayerSkinManager implements ConfigListener {
         }
         for (EmoteSkinPart skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
-            if (node != null && node.entity() instanceof Display.ItemDisplay
-                && node.displayContent() instanceof ItemContent) {
+            if (node != null) {
                 applyMineSkinProfile(node, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);
             }
         }
@@ -120,7 +119,8 @@ public class PlayerSkinManager implements ConfigListener {
         if (textureUrl == null) {
             return;
         }
-        if (!(node.displayContent() instanceof ItemContent(ItemStack itemStack))
+        if (!(node.entity() instanceof Display.ItemDisplay itemDisplay)
+            || !(node.displayContent() instanceof ItemContent(ItemStack itemStack))
             || !itemStack.is(Items.PLAYER_HEAD)) {
             return;
         }
@@ -128,10 +128,7 @@ public class PlayerSkinManager implements ConfigListener {
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
         node.setItemStack(profileStack);
 
-        SlotAccess itemSlot = node.entity().getSlot(0);
-        if (itemSlot == null) {
-            return;
-        }
+        SlotAccess itemSlot = itemDisplay.getSlot(0);
         if (itemSlot.get().isEmpty()) {
             return;
         }
