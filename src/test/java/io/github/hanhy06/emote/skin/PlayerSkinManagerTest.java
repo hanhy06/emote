@@ -138,7 +138,14 @@ class PlayerSkinManagerTest {
             bakeExecutor,
             ignoredPlayer -> skinSource
         );
-        manager.onConfigReload(new Config(Config.CURRENT_SCHEMA_VERSION, 6, "api-key", 3));
+        manager.onConfigReload(new Config(
+            Config.CURRENT_SCHEMA_VERSION,
+            6,
+            "api-key",
+            3,
+            Config.DEFAULT_MINESKIN_CACHE_RETENTION_DAYS,
+            Config.DEFAULT_MINESKIN_CACHE_MAX_MIB
+        ));
         return manager;
     }
 

@@ -50,15 +50,19 @@ config/emote/
   "schema_version": 1,
   "menu_page_size": 6,
   "mineskin_api_key": "",
-  "mineskin_poll_interval_seconds": 3
+  "mineskin_poll_interval_seconds": 3,
+  "mineskin_cache_retention_days": 30,
+  "mineskin_cache_max_mib": 256
 }
 ```
 
-| Setting                          | Description                                                                 |
-|----------------------------------|-----------------------------------------------------------------------------|
-| `menu_page_size`                 | Number of emotes displayed on each menu page.                               |
-| `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                      |
-| `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds. |
+| Setting                          | Description                                                                            |
+|----------------------------------|----------------------------------------------------------------------------------------|
+| `menu_page_size`                 | Number of emotes displayed on each menu page.                                          |
+| `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                                 |
+| `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds.            |
+| `mineskin_cache_retention_days`  | Removes MineSkin cache files unused for this many days. Defaults to `30`.              |
+| `mineskin_cache_max_mib`         | Maximum MineSkin disk cache size before the oldest files are removed. Defaults to `256`. |
 
 #### Player Skin Support
 

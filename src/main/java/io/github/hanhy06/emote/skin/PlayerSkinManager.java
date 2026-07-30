@@ -57,7 +57,12 @@ public class PlayerSkinManager implements ConfigListener {
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.mineSkinManager.configure(newConfig.mineSkinApiKey(), newConfig.mineSkinPollIntervalSeconds());
+        this.mineSkinManager.configure(
+            newConfig.mineSkinApiKey(),
+            newConfig.mineSkinPollIntervalSeconds(),
+            newConfig.mineSkinCacheRetentionDays(),
+            newConfig.mineSkinCacheMaxMiB()
+        );
     }
 
     public SkinPreparation preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
@@ -202,7 +207,8 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl, boolean slimModel) {
+    record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl,
+                            boolean slimModel) {
         PlayerSkinSource {
             Objects.requireNonNull(playerUuid, "playerUuid");
             Objects.requireNonNull(playerName, "playerName");

@@ -5,13 +5,16 @@ import io.github.hanhy06.emote.Emote;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 final class MineSkinManager {
-    private static final long PENDING_JOB_MAX_AGE_MILLIS = 35L * 60L * 1000L;
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
+    private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
+    private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
+    private static final String CACHE_CLEANUP_KEY = "cache-cleanup";
 
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinCache cache;
@@ -22,6 +25,8 @@ final class MineSkinManager {
     private final Map<String, BakeTask> bakeTasks = new HashMap<>();
 
     private volatile String apiKey = "";
+    private volatile int cacheRetentionDays;
+    private volatile int cacheMaxMiB;
 
     MineSkinManager(
         PlayerSkinBaker playerSkinBaker,
@@ -39,9 +44,17 @@ final class MineSkinManager {
         this.failureNotifier = failureNotifier;
     }
 
-    void configure(String apiKey, int pollIntervalSeconds) {
+    void configure(
+        String apiKey,
+        int pollIntervalSeconds,
+        int cacheRetentionDays,
+        int cacheMaxMiB
+    ) {
         this.apiKey = apiKey;
         this.client.setJobPollIntervalSeconds(pollIntervalSeconds);
+        this.cacheRetentionDays = cacheRetentionDays;
+        this.cacheMaxMiB = cacheMaxMiB;
+        this.generationQueue.submit(CACHE_CLEANUP_KEY, this::cleanupCache);
     }
 
     PlayerSkinManager.SkinPreparation prepare(
@@ -170,6 +183,33 @@ final class MineSkinManager {
             this.bakeTasks.clear();
         }
         this.cache.clearMemory();
+    }
+
+    private void cleanupCache() {
+        try {
+            MineSkinCache.CleanupResult result = this.cache.cleanup(
+                TimeUnit.DAYS.toMillis(this.cacheRetentionDays),
+                this.cacheMaxMiB * MEBIBYTE_BYTES,
+                System.currentTimeMillis()
+            );
+            if (result.totalFilesDeleted() > 0) {
+                Emote.LOGGER.info(
+                    "Cleaned MineSkin cache: expired={}, capacity={}, transient={}, retained={} bytes",
+                    result.expiredFilesDeleted(),
+                    result.capacityFilesDeleted(),
+                    result.transientFilesDeleted(),
+                    result.retainedBytes()
+                );
+            }
+        } catch (RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to clean MineSkin cache", exception);
+        } finally {
+            this.generationQueue.schedule(
+                CACHE_CLEANUP_KEY,
+                this::cleanupCache,
+                CACHE_CLEANUP_INTERVAL_MILLIS
+            );
+        }
     }
 
     private Map<PlayerSkinTextureKey, String> loadTextureSet(
@@ -302,7 +342,8 @@ final class MineSkinManager {
             return TextureResolution.retry(failure.retryAfterEpochMillis(), failure.errorMessage());
         }
         MineSkinCache.MineSkinPendingJob pendingJob = this.cache.loadPendingJob(contentHash);
-        if (pendingJob != null && now - pendingJob.submittedAtEpochMillis() > PENDING_JOB_MAX_AGE_MILLIS) {
+        if (pendingJob != null
+            && now - pendingJob.submittedAtEpochMillis() > MineSkinCache.PENDING_JOB_MAX_AGE_MILLIS) {
             this.cache.clearPendingJob(contentHash);
             pendingJob = null;
         }

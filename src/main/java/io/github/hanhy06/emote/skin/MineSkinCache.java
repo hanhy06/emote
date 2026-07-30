@@ -8,9 +8,12 @@ import net.fabricmc.loader.api.FabricLoader;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import java.util.regex.Pattern;
 
 final class MineSkinCache {
@@ -18,12 +21,16 @@ final class MineSkinCache {
     private static final int JOB_CACHE_VERSION = 1;
     private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
     private static final int CONTENT_MEMORY_CACHE_MAX_ENTRIES = 8_192;
+    static final long PENDING_JOB_MAX_AGE_MILLIS = TimeUnit.MINUTES.toMillis(35);
+    private static final long LAST_ACCESS_REFRESH_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
     private final Path skinDirPath;
     private final BoundedCache<SkinCacheKey, Map<PlayerSkinTextureKey, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
     private final BoundedCache<String, String> contentTextureUrls =
         new BoundedCache<>(CONTENT_MEMORY_CACHE_MAX_ENTRIES);
+    private final BoundedCache<Path, Long> refreshedAccessTimes =
+        new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES + CONTENT_MEMORY_CACHE_MAX_ENTRIES);
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -40,7 +47,7 @@ final class MineSkinCache {
     static String createContentKey(byte[] pngBytes, boolean slimModel) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            digest.update((byte)(slimModel ? 1 : 0));
+            digest.update((byte) (slimModel ? 1 : 0));
             digest.update(pngBytes);
             return HexFormat.of().formatHex(digest.digest());
         } catch (NoSuchAlgorithmException exception) {
@@ -50,12 +57,13 @@ final class MineSkinCache {
 
     Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {
         SkinCacheKey cacheKey = new SkinCacheKey(textureHash, slimModel);
+        Path filePath = resolveFilePath(textureHash, slimModel);
         Map<PlayerSkinTextureKey, String> cached = this.skinTextures.get(cacheKey);
         if (cached != null) {
+            refreshLastUsed(filePath);
             return cached;
         }
 
-        Path filePath = resolveFilePath(textureHash, slimModel);
         if (filePath == null) {
             return cacheSkinTextures(cacheKey, Map.of());
         }
@@ -88,6 +96,7 @@ final class MineSkinCache {
             if (textureUrlMap.isEmpty()) {
                 return cacheSkinTextures(cacheKey, Map.of());
             }
+            refreshLastUsed(filePath);
             return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
@@ -110,18 +119,20 @@ final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
             this.skinTextures.put(new SkinCacheKey(textureHash, slimModel), savedTextureUrls);
+            this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
         }
     }
 
     String loadContent(String contentHash) {
+        Path filePath = resolveCacheFilePath(contentHash, "content");
         String cachedTextureUrl = this.contentTextureUrls.get(contentHash);
         if (cachedTextureUrl != null) {
+            refreshLastUsed(filePath);
             return cachedTextureUrl;
         }
 
-        Path filePath = resolveCacheFilePath(contentHash, "content");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
         }
@@ -139,6 +150,7 @@ final class MineSkinCache {
                 return null;
             }
             String existingTextureUrl = this.contentTextureUrls.putIfAbsent(contentHash, textureUrl);
+            refreshLastUsed(filePath);
             return existingTextureUrl == null ? textureUrl : existingTextureUrl;
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
@@ -159,6 +171,7 @@ final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
             this.contentTextureUrls.put(contentHash, textureUrl);
+            this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
         }
@@ -267,6 +280,58 @@ final class MineSkinCache {
     void clearMemory() {
         this.skinTextures.clear();
         this.contentTextureUrls.clear();
+        this.refreshedAccessTimes.clear();
+    }
+
+    CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
+        if (retentionMillis < 1L) {
+            throw new IllegalArgumentException("retentionMillis must be positive");
+        }
+        if (maximumBytes < 1L) {
+            throw new IllegalArgumentException("maximumBytes must be positive");
+        }
+        if (this.skinDirPath == null || !Files.isDirectory(this.skinDirPath)) {
+            return new CleanupResult(0, 0, 0, 0L);
+        }
+
+        int transientFilesDeleted = cleanupTransientFiles(nowEpochMillis);
+        List<CacheFile> cacheFiles = listCacheFiles();
+        long retentionCutoff = nowEpochMillis - retentionMillis;
+        int expiredFilesDeleted = 0;
+        long retainedBytes = 0L;
+        List<CacheFile> retainedFiles = new ArrayList<>(cacheFiles.size());
+        for (CacheFile cacheFile : cacheFiles) {
+            if (cacheFile.lastModifiedMillis() < retentionCutoff && deleteFile(cacheFile.path())) {
+                expiredFilesDeleted++;
+                continue;
+            }
+            retainedFiles.add(cacheFile);
+            retainedBytes += cacheFile.sizeBytes();
+        }
+
+        int capacityFilesDeleted = 0;
+        if (retainedBytes > maximumBytes) {
+            retainedFiles.sort(Comparator.comparingLong(CacheFile::lastModifiedMillis));
+            for (CacheFile cacheFile : retainedFiles) {
+                if (retainedBytes <= maximumBytes) {
+                    break;
+                }
+                if (deleteFile(cacheFile.path())) {
+                    retainedBytes -= cacheFile.sizeBytes();
+                    capacityFilesDeleted++;
+                }
+            }
+        }
+
+        if (expiredFilesDeleted > 0 || capacityFilesDeleted > 0) {
+            clearMemory();
+        }
+        return new CleanupResult(
+            expiredFilesDeleted,
+            capacityFilesDeleted,
+            transientFilesDeleted,
+            Math.max(0L, retainedBytes)
+        );
     }
 
     private Map<PlayerSkinTextureKey, String> cacheSkinTextures(
@@ -275,6 +340,109 @@ final class MineSkinCache {
     ) {
         Map<PlayerSkinTextureKey, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
         return existing == null ? textureUrls : existing;
+    }
+
+    private void refreshLastUsed(Path filePath) {
+        if (filePath == null) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        Long refreshedAt = this.refreshedAccessTimes.get(filePath);
+        if (refreshedAt != null && now - refreshedAt < LAST_ACCESS_REFRESH_MILLIS) {
+            return;
+        }
+        try {
+            FileTime lastModified = Files.getLastModifiedTime(filePath);
+            if (now - lastModified.toMillis() >= LAST_ACCESS_REFRESH_MILLIS) {
+                Files.setLastModifiedTime(filePath, FileTime.fromMillis(now));
+            }
+            this.refreshedAccessTimes.put(filePath, now);
+        } catch (IOException ignored) {
+        }
+    }
+
+    private int cleanupTransientFiles(long nowEpochMillis) {
+        int deleted = 0;
+        Path pendingDirectory = this.skinDirPath.resolve("pending");
+        for (Path filePath : listJsonFiles(pendingDirectory)) {
+            Long submittedAt = readLongFromFile(filePath, "submitted_at");
+            if ((submittedAt == null || nowEpochMillis - submittedAt > PENDING_JOB_MAX_AGE_MILLIS)
+                && deleteFile(filePath)) {
+                deleted++;
+            }
+        }
+
+        Path failureDirectory = this.skinDirPath.resolve("failures");
+        for (Path filePath : listJsonFiles(failureDirectory)) {
+            Long retryAfter = readLongFromFile(filePath, "retry_after");
+            if ((retryAfter == null || retryAfter <= nowEpochMillis) && deleteFile(filePath)) {
+                deleted++;
+            }
+        }
+        return deleted;
+    }
+
+    private List<CacheFile> listCacheFiles() {
+        List<CacheFile> result = new ArrayList<>();
+        for (Path filePath : listJsonFiles(this.skinDirPath)) {
+            String fileName = filePath.getFileName().toString();
+            if (fileName.endsWith("-classic.json") || fileName.endsWith("-slim.json")) {
+                addCacheFile(result, filePath);
+            }
+        }
+        for (Path filePath : listJsonFiles(this.skinDirPath.resolve("content"))) {
+            String fileName = filePath.getFileName().toString();
+            String contentHash = fileName.substring(0, fileName.length() - ".json".length());
+            if (isContentHash(contentHash)) {
+                addCacheFile(result, filePath);
+            }
+        }
+        return result;
+    }
+
+    private void addCacheFile(List<CacheFile> result, Path filePath) {
+        try {
+            result.add(new CacheFile(
+                filePath,
+                Files.size(filePath),
+                Files.getLastModifiedTime(filePath).toMillis()
+            ));
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to inspect MineSkin cache file: {}", filePath, exception);
+        }
+    }
+
+    private List<Path> listJsonFiles(Path directory) {
+        if (!Files.isDirectory(directory)) {
+            return List.of();
+        }
+        try (Stream<Path> paths = Files.list(directory)) {
+            return paths
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().endsWith(".json"))
+                .toList();
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to list MineSkin cache directory: {}", directory, exception);
+            return List.of();
+        }
+    }
+
+    private Long readLongFromFile(Path filePath, String fieldName) {
+        try {
+            JsonObject object = JsonFileStore.readObject(filePath);
+            return object == null ? null : readLong(object, fieldName);
+        } catch (IOException | RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private boolean deleteFile(Path filePath) {
+        try {
+            return Files.deleteIfExists(filePath);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to delete MineSkin cache file: {}", filePath, exception);
+            return false;
+        }
     }
 
     private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
@@ -433,6 +601,20 @@ final class MineSkinCache {
         MineSkinFailure {
             Objects.requireNonNull(errorMessage, "errorMessage");
         }
+    }
+
+    record CleanupResult(
+        int expiredFilesDeleted,
+        int capacityFilesDeleted,
+        int transientFilesDeleted,
+        long retainedBytes
+    ) {
+        int totalFilesDeleted() {
+            return this.expiredFilesDeleted + this.capacityFilesDeleted + this.transientFilesDeleted;
+        }
+    }
+
+    private record CacheFile(Path path, long sizeBytes, long lastModifiedMillis) {
     }
 
     private static boolean isContentHash(String contentHash) {

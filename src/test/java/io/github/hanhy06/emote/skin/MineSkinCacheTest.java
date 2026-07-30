@@ -6,7 +6,9 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -120,5 +122,90 @@ class MineSkinCacheTest {
         assertEquals(2_000L, failure.retryAfterEpochMillis());
         assertEquals("failed", failure.errorMessage());
         assertNull(store.loadFailure(contentHash, 2_000L));
+    }
+
+    @Test
+    void cleanupRemovesExpiredCacheAndRetainsRecentlyUsedEntry(@TempDir Path tempDir) throws IOException {
+        MineSkinCache store = new MineSkinCache(tempDir);
+        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        Path expiredPath = tempDir.resolve("expired-classic.json");
+        store.save("expired", false, Map.of(textureKey, "https://textures.example/expired"));
+
+        String usedContentHash = MineSkinCache.createContentKey(new byte[]{13, 14, 15}, false);
+        Path usedContentPath = tempDir.resolve("content").resolve(usedContentHash + ".json");
+        store.saveContent(usedContentHash, "https://textures.example/used");
+
+        long now = System.currentTimeMillis();
+        FileTime oldTime = FileTime.fromMillis(now - TimeUnit.DAYS.toMillis(31));
+        Files.setLastModifiedTime(expiredPath, oldTime);
+        Files.setLastModifiedTime(usedContentPath, oldTime);
+        store.clearMemory();
+
+        assertEquals("https://textures.example/used", store.loadContent(usedContentHash));
+        MineSkinCache.CleanupResult result = store.cleanup(
+            TimeUnit.DAYS.toMillis(30),
+            256L * 1_024L * 1_024L,
+            System.currentTimeMillis()
+        );
+
+        assertEquals(1, result.expiredFilesDeleted());
+        assertFalse(Files.exists(expiredPath));
+        assertTrue(Files.exists(usedContentPath));
+    }
+
+    @Test
+    void cleanupEvictsOldestFilesUntilUnderCapacity(@TempDir Path tempDir) throws IOException {
+        MineSkinCache store = new MineSkinCache(tempDir);
+        String oldestHash = MineSkinCache.createContentKey(new byte[]{16}, false);
+        String newestHash = MineSkinCache.createContentKey(new byte[]{17}, false);
+        Path oldestPath = tempDir.resolve("content").resolve(oldestHash + ".json");
+        Path newestPath = tempDir.resolve("content").resolve(newestHash + ".json");
+        store.saveContent(oldestHash, "https://textures.example/oldest");
+        store.saveContent(newestHash, "https://textures.example/newest");
+
+        long now = System.currentTimeMillis();
+        Files.setLastModifiedTime(oldestPath, FileTime.fromMillis(now - TimeUnit.DAYS.toMillis(2)));
+        Files.setLastModifiedTime(newestPath, FileTime.fromMillis(now - TimeUnit.DAYS.toMillis(1)));
+        long maximumBytes = Files.size(newestPath);
+
+        MineSkinCache.CleanupResult result = store.cleanup(
+            TimeUnit.DAYS.toMillis(30),
+            maximumBytes,
+            now
+        );
+
+        assertEquals(1, result.capacityFilesDeleted());
+        assertFalse(Files.exists(oldestPath));
+        assertTrue(Files.exists(newestPath));
+        assertTrue(result.retainedBytes() <= maximumBytes);
+    }
+
+    @Test
+    void cleanupRemovesAbandonedPendingAndExpiredFailureFiles(@TempDir Path tempDir) throws IOException {
+        MineSkinCache store = new MineSkinCache(tempDir);
+        String pendingHash = MineSkinCache.createContentKey(new byte[]{18}, false);
+        String failureHash = MineSkinCache.createContentKey(new byte[]{19}, false);
+        store.savePendingJob(pendingHash, "job-abandoned");
+        store.saveFailure(failureHash, "retry later", 1_000L);
+
+        Path pendingPath = tempDir.resolve("pending").resolve(pendingHash + ".json");
+        Files.writeString(pendingPath, """
+            {
+              "version": 1,
+              "content_hash": "%s",
+              "job_id": "job-abandoned",
+              "submitted_at": 1
+            }
+            """.formatted(pendingHash));
+
+        MineSkinCache.CleanupResult result = store.cleanup(
+            TimeUnit.DAYS.toMillis(30),
+            256L * 1_024L * 1_024L,
+            MineSkinCache.PENDING_JOB_MAX_AGE_MILLIS + 2_000L
+        );
+
+        assertEquals(2, result.transientFilesDeleted());
+        assertFalse(Files.exists(pendingPath));
+        assertFalse(Files.exists(tempDir.resolve("failures").resolve(failureHash + ".json")));
     }
 }

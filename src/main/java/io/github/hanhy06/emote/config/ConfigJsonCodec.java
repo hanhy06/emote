@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.config;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +15,8 @@ final class ConfigJsonCodec {
         object.addProperty("menu_page_size", config.menuPageSize());
         object.addProperty("mineskin_api_key", config.mineSkinApiKey());
         object.addProperty("mineskin_poll_interval_seconds", config.mineSkinPollIntervalSeconds());
+        object.addProperty("mineskin_cache_retention_days", config.mineSkinCacheRetentionDays());
+        object.addProperty("mineskin_cache_max_mib", config.mineSkinCacheMaxMiB());
         return object;
     }
 
@@ -56,7 +59,9 @@ final class ConfigJsonCodec {
             readInt(object, "schema_version", Config.CURRENT_SCHEMA_VERSION),
             readInt(object, "menu_page_size", defaultConfig.menuPageSize()),
             mineSkinApiKey,
-            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds())
+            readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds()),
+            readInt(object, "mineskin_cache_retention_days", defaultConfig.mineSkinCacheRetentionDays()),
+            readInt(object, "mineskin_cache_max_mib", defaultConfig.mineSkinCacheMaxMiB())
         );
     }
 

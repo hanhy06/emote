@@ -6,9 +6,13 @@ public record Config(
     int schemaVersion,
     int menuPageSize,
     String mineSkinApiKey,
-    int mineSkinPollIntervalSeconds
+    int mineSkinPollIntervalSeconds,
+    int mineSkinCacheRetentionDays,
+    int mineSkinCacheMaxMiB
 ) {
     public static final int CURRENT_SCHEMA_VERSION = 1;
+    public static final int DEFAULT_MINESKIN_CACHE_RETENTION_DAYS = 30;
+    public static final int DEFAULT_MINESKIN_CACHE_MAX_MIB = 256;
 
     public Config {
         if (schemaVersion != CURRENT_SCHEMA_VERSION) {
@@ -20,6 +24,12 @@ public record Config(
         if (mineSkinPollIntervalSeconds < 1 || mineSkinPollIntervalSeconds > 60) {
             throw new IllegalArgumentException("mineskin_poll_interval_seconds must be between 1 and 60");
         }
+        if (mineSkinCacheRetentionDays < 1 || mineSkinCacheRetentionDays > 3_650) {
+            throw new IllegalArgumentException("mineskin_cache_retention_days must be between 1 and 3650");
+        }
+        if (mineSkinCacheMaxMiB < 1 || mineSkinCacheMaxMiB > 1_048_576) {
+            throw new IllegalArgumentException("mineskin_cache_max_mib must be between 1 and 1048576");
+        }
         Objects.requireNonNull(mineSkinApiKey, "mineSkinApiKey");
     }
 
@@ -28,7 +38,9 @@ public record Config(
             CURRENT_SCHEMA_VERSION,
             6,
             "",
-            3
+            3,
+            DEFAULT_MINESKIN_CACHE_RETENTION_DAYS,
+            DEFAULT_MINESKIN_CACHE_MAX_MIB
         );
     }
 }

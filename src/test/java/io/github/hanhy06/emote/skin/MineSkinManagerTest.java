@@ -30,10 +30,12 @@ class MineSkinManagerTest {
                 cache,
                 new MineSkinClient(httpClient),
                 queue,
-                ignored -> {},
-                ignored -> {}
+                ignored -> {
+                },
+                ignored -> {
+                }
             );
-            manager.configure("api-key", 3);
+            manager.configure("api-key", 3, 30, 256);
             PlayerSkinManager.PlayerSkinSource source = new PlayerSkinManager.PlayerSkinSource(
                 UUID.randomUUID(),
                 "player",
