@@ -8,7 +8,6 @@ import io.github.hanhy06.emote.mixin.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.DisplayAccessor;
 import io.github.hanhy06.emote.mixin.ItemDisplayAccessor;
 import io.github.hanhy06.emote.mixin.TextDisplayAccessor;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
@@ -105,7 +104,7 @@ public final class PlaybackEntityController {
     public void resetNode(PlaybackNodes playbackNodes, NodeInstance node) {
         applyTransformation(playbackNodes, node, node.node().defaultMatrix(), 0);
         if (!node.isAnchor()) {
-            setVisible(node, initialVisibility(node.node()));
+            setVisible(node, node.node().visible());
         }
     }
 
@@ -121,7 +120,7 @@ public final class PlaybackEntityController {
         }
 
         Display entity = createDisplay(level, node);
-        TypedEntityData.of(entity.getType(), entityNbt(node)).loadInto(entity);
+        TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
@@ -198,32 +197,6 @@ public final class PlaybackEntityController {
             Emote.LOGGER.warn("Failed to resolve display entity text {}", text, exception);
             return Component.empty();
         }
-    }
-
-    private CompoundTag entityNbt(EmoteAnimation.Node node) {
-        if (node instanceof EmoteAnimation.ItemNode itemNode) {
-            return itemNode.entityNbt();
-        }
-        if (node instanceof EmoteAnimation.BlockNode blockNode) {
-            return blockNode.entityNbt();
-        }
-        if (node instanceof EmoteAnimation.TextNode textNode) {
-            return textNode.entityNbt();
-        }
-        return new CompoundTag();
-    }
-
-    private boolean initialVisibility(EmoteAnimation.Node node) {
-        if (node instanceof EmoteAnimation.ItemNode itemNode) {
-            return itemNode.visible();
-        }
-        if (node instanceof EmoteAnimation.BlockNode blockNode) {
-            return blockNode.visible();
-        }
-        if (node instanceof EmoteAnimation.TextNode textNode) {
-            return textNode.visible();
-        }
-        return true;
     }
 
     private void removeEntities(ServerLevel level, Collection<NodeInstance> nodes) {

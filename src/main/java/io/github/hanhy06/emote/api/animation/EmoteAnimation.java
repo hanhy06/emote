@@ -48,6 +48,14 @@ public record EmoteAnimation(
 
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
         Matrix defaultMatrix();
+
+        default boolean visible() {
+            return true;
+        }
+
+        default CompoundTag entityNbt() {
+            return new CompoundTag();
+        }
     }
 
     public record ItemNode(
