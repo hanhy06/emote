@@ -69,7 +69,7 @@ public final class EmoteAnimationJsonLoader {
         JsonObject root = rootElement.getAsJsonObject();
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         String minecraftVersion = reader.requireString(root, "minecraft_version", "$");
-        if (!minecraftVersion.equals(expectedMinecraftVersion)) {
+        if (!minecraftVersion.equals("*") && !minecraftVersion.equals(expectedMinecraftVersion)) {
             throw reader.error("$.minecraft_version", "must equal server version " + expectedMinecraftVersion);
         }
         reader.requireExactInt(root, "tick_rate", "$", TICK_RATE);

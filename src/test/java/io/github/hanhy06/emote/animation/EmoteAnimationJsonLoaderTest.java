@@ -46,6 +46,16 @@ class EmoteAnimationJsonLoaderTest {
     }
 
     @Test
+    void acceptsWildcardMinecraftVersion() throws Exception {
+        JsonObject root = readReference();
+        root.addProperty("minecraft_version", "*");
+
+        EmoteAnimation.Loaded loaded = parse(root);
+
+        assertEquals("emote:format_reference", loaded.animation().id().toString());
+    }
+
+    @Test
     void loadsAllRepositoryExamplesWhileIgnoringUnknownMetadata() throws Exception {
         List<Path> examplePaths;
         try (var paths = Files.list(Path.of("docs/example"))) {
