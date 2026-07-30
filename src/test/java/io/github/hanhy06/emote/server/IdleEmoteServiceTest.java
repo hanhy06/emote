@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.server;
 
-import io.github.hanhy06.emote.config.EmoteAccessConfig;
 import io.github.hanhy06.emote.api.PlayResult;
+import io.github.hanhy06.emote.config.EmoteAccessConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;

@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;

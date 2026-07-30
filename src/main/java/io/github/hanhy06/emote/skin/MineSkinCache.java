@@ -13,8 +13,8 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Stream;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 final class MineSkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
