@@ -43,8 +43,6 @@ public class WheelScreen extends Screen {
     private int[] centerXPoints = new int[0];
     private int[] centerYPoints = new int[0];
     private int pageIndex;
-    private double lastMouseX;
-    private double lastMouseY;
     private int hoveredSlotIndex = -1;
 
     public WheelScreen(WheelController controller, List<PlayableEmote> emotes, int pageIndex, KeyMapping keyMapping) {
@@ -72,9 +70,7 @@ public class WheelScreen extends Screen {
             this.metrics.centerY(),
             this.metrics.centerRadius()
         );
-        this.lastMouseX = this.width / 2.0D;
-        this.lastMouseY = this.height / 2.0D;
-        updateHoveredSlot(this.lastMouseX, this.lastMouseY);
+        updateHoveredSlot(this.width / 2.0D, this.height / 2.0D);
     }
 
     @Override
@@ -94,8 +90,6 @@ public class WheelScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
-        this.lastMouseX = mouseX;
-        this.lastMouseY = mouseY;
         updateHoveredSlot(mouseX, mouseY);
 
         WheelMetrics metrics = this.metrics;
@@ -116,15 +110,11 @@ public class WheelScreen extends Screen {
 
     @Override
     public void mouseMoved(double x, double y) {
-        this.lastMouseX = x;
-        this.lastMouseY = y;
         updateHoveredSlot(x, y);
     }
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        this.lastMouseX = event.x();
-        this.lastMouseY = event.y();
         updateHoveredSlot(event.x(), event.y());
 
         if (event.button() == LEFT_MOUSE_BUTTON) {
@@ -142,8 +132,6 @@ public class WheelScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
-        this.lastMouseX = event.x();
-        this.lastMouseY = event.y();
         updateHoveredSlot(event.x(), event.y());
         if (this.keyMapping.matchesMouse(event)) {
             handleBindingReleased();
@@ -176,8 +164,7 @@ public class WheelScreen extends Screen {
             return false;
         }
 
-        this.pageIndex = Math.floorMod(this.pageIndex + direction, getPageCount());
-        updateHoveredSlot(x, y);
+        changePage(direction, x, y);
         return true;
     }
 

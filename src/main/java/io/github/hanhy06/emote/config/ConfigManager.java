@@ -157,7 +157,7 @@ public class ConfigManager {
     }
 
     public boolean setEmoteEnabled(String id, boolean enabled) {
-        String normalizedId = normalizeRequiredValue(id);
+        String normalizedId = ConfigJsonCodec.normalizeRequiredValue(id);
         if (normalizedId == null) {
             throw new IllegalArgumentException("emote id must not be blank");
         }
@@ -225,14 +225,4 @@ public class ConfigManager {
             return false;
         }
     }
-
-    private String normalizeRequiredValue(String value) {
-        if (value == null) {
-            return null;
-        }
-
-        String normalizedValue = value.trim();
-        return normalizedValue.isEmpty() ? null : normalizedValue;
-    }
-
 }

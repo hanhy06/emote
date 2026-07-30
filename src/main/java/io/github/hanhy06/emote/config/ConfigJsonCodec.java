@@ -156,7 +156,7 @@ final class ConfigJsonCodec {
         return normalizeRequiredValue(element.getAsString());
     }
 
-    private String normalizeRequiredValue(String value) {
+    static String normalizeRequiredValue(String value) {
         if (value == null) {
             return null;
         }

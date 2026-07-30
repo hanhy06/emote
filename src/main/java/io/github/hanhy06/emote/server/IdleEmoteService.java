@@ -95,24 +95,18 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         }
 
         PlayResult result = this.emotePlayer.play(player, state.selectedEmote());
-        if (result.isSuccess()) {
+        boolean played = result.isSuccess();
+        if (played) {
             this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
-            this.playerStates.put(playerUuid, new IdleState(
-                lastActionTime,
-                idle,
-                state.selectedEmote(),
-                state.nextAttemptTime(),
-                true
-            ));
-        } else {
-            this.playerStates.put(playerUuid, new IdleState(
-                lastActionTime,
-                idle,
-                state.selectedEmote(),
-                now + RETRY_INTERVAL_MILLIS,
-                false
-            ));
         }
+        long nextAttemptTime = played ? state.nextAttemptTime() : now + RETRY_INTERVAL_MILLIS;
+        this.playerStates.put(playerUuid, new IdleState(
+            lastActionTime,
+            idle,
+            state.selectedEmote(),
+            nextAttemptTime,
+            played
+        ));
     }
 
     @Override
