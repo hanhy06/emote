@@ -72,17 +72,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinSource == null) {
             return new SkinPreparation(null, SkinPreparationState.UNAVAILABLE, 0);
         }
-        MineSkinManager.Preparation preparation = this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
-        return new SkinPreparation(
-            preparation.preparedSkin(),
-            switch (preparation.state()) {
-                case READY -> SkinPreparationState.READY;
-                case PREPARING -> SkinPreparationState.PREPARING;
-                case FAILED -> SkinPreparationState.FAILED;
-                case UNAVAILABLE -> SkinPreparationState.UNAVAILABLE;
-            },
-            preparation.progressPercent()
-        );
+        return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
     }
 
     public void applySkinParts(

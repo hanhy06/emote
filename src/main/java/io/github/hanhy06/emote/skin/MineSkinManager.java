@@ -44,31 +44,31 @@ final class MineSkinManager {
         this.client.setJobPollIntervalSeconds(pollIntervalSeconds);
     }
 
-    Preparation prepare(
+    PlayerSkinManager.SkinPreparation prepare(
         PlayerSkinManager.PlayerSkinSource source,
         Set<PlayerSkinTextureKey> requiredTextureKeys
     ) {
         Map<PlayerSkinTextureKey, String> savedTextureUrls = loadTextureSet(source, requiredTextureKeys);
         if (savedTextureUrls.size() == requiredTextureKeys.size()) {
-            return new Preparation(
+            return new PlayerSkinManager.SkinPreparation(
                 new PreparedPlayerSkin(savedTextureUrls),
-                PreparationState.READY,
+                PlayerSkinManager.SkinPreparationState.READY,
                 100
             );
         }
         if (!MineSkinClient.hasApiKey(this.apiKey)) {
-            return new Preparation(
+            return new PlayerSkinManager.SkinPreparation(
                 savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls),
-                PreparationState.UNAVAILABLE,
+                PlayerSkinManager.SkinPreparationState.UNAVAILABLE,
                 progressPercent(savedTextureUrls.size(), requiredTextureKeys.size())
             );
         }
 
         BakeStage stage = scheduleBake(source, requiredTextureKeys);
-        PreparationState preparationState = stage == BakeStage.FAILED
-            ? PreparationState.FAILED
-            : PreparationState.PREPARING;
-        return new Preparation(
+        PlayerSkinManager.SkinPreparationState preparationState = stage == BakeStage.FAILED
+            ? PlayerSkinManager.SkinPreparationState.FAILED
+            : PlayerSkinManager.SkinPreparationState.PREPARING;
+        return new PlayerSkinManager.SkinPreparation(
             savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls),
             preparationState,
             progressPercent(savedTextureUrls.size(), requiredTextureKeys.size())
@@ -369,22 +369,6 @@ final class MineSkinManager {
         COMPLETE,
         FAILED,
         CANCELLED
-    }
-
-    enum PreparationState {
-        READY,
-        PREPARING,
-        FAILED,
-        UNAVAILABLE
-    }
-
-    record Preparation(PreparedPlayerSkin preparedSkin, PreparationState state, int progressPercent) {
-        Preparation {
-            Objects.requireNonNull(state, "state");
-            if (progressPercent < 0 || progressPercent > 100) {
-                throw new IllegalArgumentException("progressPercent must be between 0 and 100");
-            }
-        }
     }
 
     private static final class BakeTask {

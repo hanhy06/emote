@@ -159,7 +159,10 @@ class PlayerSkinBakerTest {
     }
 
     private BufferedImage bake(BufferedImage sourceImage, PlayerSkinPart skinPart, boolean slimModel) throws IOException {
-        return ImageIO.read(new ByteArrayInputStream(this.playerSkinBaker.bake(sourceImage, skinPart, PlayerSkinSegment.FULL, slimModel)));
+        PlayerSkinBaker.PreparedSkin preparedSkin = this.playerSkinBaker.prepare(sourceImage, slimModel);
+        return ImageIO.read(new ByteArrayInputStream(
+            this.playerSkinBaker.bake(preparedSkin, skinPart, PlayerSkinSegment.FULL)
+        ));
     }
 
     private void assertFaceColors(

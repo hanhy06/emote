@@ -61,15 +61,6 @@ final class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_LEFT = new FaceTarget(48, 8, 8, 8);
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
-    byte[] bake(
-        BufferedImage sourceImage,
-        PlayerSkinPart skinPart,
-        PlayerSkinSegment skinSegment,
-        boolean slimModel
-    ) throws IOException {
-        return bake(prepare(sourceImage, slimModel), skinPart, skinSegment);
-    }
-
     PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
