@@ -12,13 +12,15 @@ public record RegisteredEmote(
     EmoteAnimation.Loaded source,
     List<EmoteSkinPart> skinParts
 ) {
+    private static final EmoteSkinPartFactory SKIN_PART_FACTORY = new EmoteSkinPartFactory();
+
     public RegisteredEmote {
         Objects.requireNonNull(source, "source");
         skinParts = List.copyOf(skinParts);
     }
 
     public static RegisteredEmote from(EmoteAnimation.Loaded source) {
-        return new RegisteredEmote(source, new EmoteSkinPartFactory().create(source.animation()));
+        return new RegisteredEmote(source, SKIN_PART_FACTORY.create(source.animation()));
     }
 
     public EmoteAnimation animation() {

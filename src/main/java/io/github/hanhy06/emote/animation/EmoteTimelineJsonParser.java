@@ -127,7 +127,7 @@ final class EmoteTimelineJsonParser {
             transforms.put(nodeId, new NodeTransform(matrix, interpolation));
             previousTransformTicks.put(nodeId, tick);
         }
-        return Collections.unmodifiableMap(transforms);
+        return Map.copyOf(transforms);
     }
 
     private Map<String, NodeState> parseNodeStates(
@@ -150,7 +150,7 @@ final class EmoteTimelineJsonParser {
             JsonObject state = reader.requireObject(entry.getValue(), path);
             states.put(nodeId, new NodeState(reader.requireBoolean(state, "visible", path)));
         }
-        return Collections.unmodifiableMap(states);
+        return Map.copyOf(states);
     }
 
     private Events parseEvents(

@@ -4,13 +4,9 @@ import java.util.*;
 
 public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public EmoteAccessConfig {
-        List<String> copiedDisabled = List.copyOf(Objects.requireNonNull(disabled, "disabled"));
-        if (copiedDisabled.stream().anyMatch(id -> id == null || id.isBlank())) {
-            throw new IllegalArgumentException("disabled emote id must not be blank");
-        }
-        disabled = copiedDisabled.stream().map(String::trim).distinct().toList();
+        disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank", false);
 
-        permissions = List.copyOf(Objects.requireNonNull(permissions, "permissions"));
+        Objects.requireNonNull(permissions, "permissions");
         Set<String> seenPermissions = new HashSet<>();
         for (PermissionEntry entry : permissions) {
             Objects.requireNonNull(entry, "permission entry");
@@ -18,6 +14,7 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
                 throw new IllegalArgumentException("duplicate permission: " + entry.permission());
             }
         }
+        permissions = List.copyOf(permissions);
     }
 
     public static EmoteAccessConfig createDefault() {
@@ -42,11 +39,12 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
             }
             permission = permission.trim();
 
-            List<String> copiedEmotes = List.copyOf(Objects.requireNonNull(emotes, "permission emotes"));
-            if (copiedEmotes.stream().anyMatch(id -> id == null || id.isBlank())) {
-                throw new IllegalArgumentException("permission emote id must not be blank");
-            }
-            emotes = copiedEmotes.stream().map(String::trim).distinct().toList();
+            emotes = normalizeIds(
+                emotes,
+                "permission emotes",
+                "permission emote id must not be blank",
+                false
+            );
             Objects.requireNonNull(idle, "idle");
         }
     }
@@ -56,14 +54,28 @@ public record EmoteAccessConfig(List<String> disabled, List<PermissionEntry> per
             if (delaySeconds < 1) {
                 throw new IllegalArgumentException("idle delay_seconds must be at least 1");
             }
-            List<String> copiedEmotes = List.copyOf(Objects.requireNonNull(emote, "idle emote"));
-            if (copiedEmotes.isEmpty()) {
-                throw new IllegalArgumentException("idle emote must not be empty");
-            }
-            if (copiedEmotes.stream().anyMatch(id -> id == null || id.isBlank())) {
-                throw new IllegalArgumentException("idle emote id must not be blank");
-            }
-            emote = copiedEmotes.stream().map(String::trim).distinct().toList();
+            emote = normalizeIds(emote, "idle emote", "idle emote id must not be blank", true);
         }
+    }
+
+    private static List<String> normalizeIds(
+        List<String> ids,
+        String fieldName,
+        String invalidIdMessage,
+        boolean requireNonEmpty
+    ) {
+        Objects.requireNonNull(ids, fieldName);
+        if (requireNonEmpty && ids.isEmpty()) {
+            throw new IllegalArgumentException(fieldName + " must not be empty");
+        }
+        return ids.stream()
+            .map(id -> {
+                if (id == null || id.isBlank()) {
+                    throw new IllegalArgumentException(invalidIdMessage);
+                }
+                return id.trim();
+            })
+            .distinct()
+            .toList();
     }
 }

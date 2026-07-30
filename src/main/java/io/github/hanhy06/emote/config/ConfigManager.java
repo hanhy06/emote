@@ -11,7 +11,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Stream;
@@ -163,14 +162,14 @@ public class ConfigManager {
             throw new IllegalArgumentException("emote id must not be blank");
         }
 
-        LinkedHashSet<String> nextDisabled = new LinkedHashSet<>(this.emoteAccessConfig.disabled());
+        List<String> nextDisabled = new ArrayList<>(this.emoteAccessConfig.disabled());
         if (enabled) {
             nextDisabled.remove(normalizedId);
-        } else {
+        } else if (!nextDisabled.contains(normalizedId)) {
             nextDisabled.add(normalizedId);
         }
         EmoteAccessConfig nextConfig = new EmoteAccessConfig(
-            List.copyOf(nextDisabled),
+            nextDisabled,
             this.emoteAccessConfig.permissions()
         );
 

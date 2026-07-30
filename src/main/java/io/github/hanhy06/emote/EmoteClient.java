@@ -29,10 +29,6 @@ public class EmoteClient implements ClientModInitializer {
         EMOTE_WHEEL_CONTROLLER.registerBinding(EMOTE_WHEEL_KEY);
     }
 
-    public static boolean isPlaybackActive() {
-        return EMOTE_PERSPECTIVE_CONTROLLER.isPlaybackActive();
-    }
-
     public static boolean shouldHideLocalPlayerEquipment() {
         return EMOTE_PERSPECTIVE_CONTROLLER.shouldHideLocalPlayerEquipment();
     }

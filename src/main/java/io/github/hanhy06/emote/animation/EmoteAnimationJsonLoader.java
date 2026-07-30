@@ -115,7 +115,7 @@ public final class EmoteAnimationJsonLoader {
             }
             nodes.put(nodeId, parseNode(entry.getValue().getAsJsonObject(), path, reader));
         }
-        return Collections.unmodifiableMap(nodes);
+        return Map.copyOf(nodes);
     }
 
     private Node parseNode(JsonObject object, String path, EmoteAnimationJsonReader reader)
