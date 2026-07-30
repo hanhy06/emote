@@ -59,17 +59,16 @@ public class PlaybackManager {
         stopEmote(player, PlaybackStopReason.REPLACED);
         PlaybackNodes nodes = null;
         try {
-            TimelinePlayer timeline;
+            nodes = this.entityController.create(player, emote);
+            TimelinePlayer timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                nodes = this.entityController.create(player, emote);
-                timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
                 timeline.startSynchronized(server.overworld().getGameTime());
-                this.entityController.add(player.level(), nodes);
-                timeline.resumeSynchronizedInterpolation();
             } else {
-                nodes = this.entityController.spawn(player, emote);
-                timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
                 timeline.start();
+            }
+            this.entityController.add(player.level(), nodes);
+            if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                timeline.resumeSynchronizedInterpolation();
             }
             EventPlayer events = new EventPlayer(
                 emote.animation(),

@@ -6,10 +6,13 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import java.util.*;
 
 public final class TimelinePlayer {
+    private static final Map<EmoteAnimation, ActivationSchedule> ACTIVATION_SCHEDULE_CACHE = new WeakHashMap<>();
+
     private final EmoteAnimation animation;
     private final TimelineTarget target;
     private final Map<Integer, List<TransformActivation>> transformActivations;
     private final Map<Integer, List<StateActivation>> stateActivations;
+    private final int[] activationTicks;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
     private List<TransformActivation> pendingInterpolations = List.of();
@@ -31,8 +34,10 @@ public final class TimelinePlayer {
     TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
         this.animation = Objects.requireNonNull(animation, "animation");
         this.target = Objects.requireNonNull(target, "target");
-        this.transformActivations = createTransformActivations(animation.timeline().keyframes());
-        this.stateActivations = createStateActivations(animation.timeline().keyframes());
+        ActivationSchedule schedule = activationSchedule(animation);
+        this.transformActivations = schedule.transformActivations();
+        this.stateActivations = schedule.stateActivations();
+        this.activationTicks = schedule.activationTicks();
     }
 
     public void start() {
@@ -57,10 +62,17 @@ public final class TimelinePlayer {
         long cycleLength = (long)duration + this.animation.timeline().loopDelayTicks();
         long phase = Math.floorMod(serverTick, cycleLength);
         int timelineTick = (int)Math.min(phase, duration);
-        for (int tick = 1; tick <= timelineTick; tick++) {
+        for (int tick : this.activationTicks) {
+            if (tick <= 0) {
+                continue;
+            }
+            if (tick > timelineTick) {
+                break;
+            }
             this.currentTick = tick;
             applyTick(tick);
         }
+        this.currentTick = timelineTick;
         if (phase >= duration) {
             this.remainingLoopDelay = (int)(cycleLength - phase);
         } else {
@@ -193,7 +205,28 @@ public final class TimelinePlayer {
         }
     }
 
-    private Map<Integer, List<TransformActivation>> createTransformActivations(List<EmoteAnimation.Keyframe> keyframes) {
+    private static ActivationSchedule activationSchedule(EmoteAnimation animation) {
+        synchronized (ACTIVATION_SCHEDULE_CACHE) {
+            return ACTIVATION_SCHEDULE_CACHE.computeIfAbsent(animation, TimelinePlayer::createActivationSchedule);
+        }
+    }
+
+    private static ActivationSchedule createActivationSchedule(EmoteAnimation animation) {
+        List<EmoteAnimation.Keyframe> keyframes = animation.timeline().keyframes();
+        Map<Integer, List<TransformActivation>> transformActivations = createTransformActivations(keyframes);
+        Map<Integer, List<StateActivation>> stateActivations = createStateActivations(keyframes);
+        TreeSet<Integer> ticks = new TreeSet<>(transformActivations.keySet());
+        ticks.addAll(stateActivations.keySet());
+        return new ActivationSchedule(
+            transformActivations,
+            stateActivations,
+            ticks.stream().mapToInt(Integer::intValue).toArray()
+        );
+    }
+
+    private static Map<Integer, List<TransformActivation>> createTransformActivations(
+        List<EmoteAnimation.Keyframe> keyframes
+    ) {
         Map<Integer, List<TransformActivation>> activations = new HashMap<>();
         for (EmoteAnimation.Keyframe keyframe : keyframes) {
             for (Map.Entry<String, EmoteAnimation.NodeTransform> entry : keyframe.nodeTransforms().entrySet()) {
@@ -206,7 +239,9 @@ public final class TimelinePlayer {
         return copyActivationMap(activations);
     }
 
-    private Map<Integer, List<StateActivation>> createStateActivations(List<EmoteAnimation.Keyframe> keyframes) {
+    private static Map<Integer, List<StateActivation>> createStateActivations(
+        List<EmoteAnimation.Keyframe> keyframes
+    ) {
         Map<Integer, List<StateActivation>> activations = new HashMap<>();
         for (EmoteAnimation.Keyframe keyframe : keyframes) {
             for (Map.Entry<String, EmoteAnimation.NodeState> entry : keyframe.nodeStates().entrySet()) {
@@ -217,7 +252,7 @@ public final class TimelinePlayer {
         return copyActivationMap(activations);
     }
 
-    private <T> Map<Integer, List<T>> copyActivationMap(Map<Integer, List<T>> source) {
+    private static <T> Map<Integer, List<T>> copyActivationMap(Map<Integer, List<T>> source) {
         Map<Integer, List<T>> copied = new HashMap<>();
         source.forEach((tick, values) -> copied.put(tick, List.copyOf(values)));
         return Map.copyOf(copied);
@@ -250,6 +285,13 @@ public final class TimelinePlayer {
     }
 
     private record StateActivation(String nodeId, EmoteAnimation.NodeState state) {
+    }
+
+    private record ActivationSchedule(
+        Map<Integer, List<TransformActivation>> transformActivations,
+        Map<Integer, List<StateActivation>> stateActivations,
+        int[] activationTicks
+    ) {
     }
 
     private record TransformState(

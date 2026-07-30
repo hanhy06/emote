@@ -31,12 +31,6 @@ import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 public final class PlaybackEntityController {
     public static final String RUNTIME_TAG = "emote.runtime";
 
-    public PlaybackNodes spawn(ServerPlayer player, RegisteredEmote emote) {
-        PlaybackNodes nodes = create(player, emote);
-        add(player.level(), nodes);
-        return nodes;
-    }
-
     public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
         ServerLevel level = player.level();
         EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
@@ -134,13 +128,8 @@ public final class PlaybackEntityController {
         entity.setXRot(0.0F);
         entity.addTag(RUNTIME_TAG);
 
-        DisplayContent content = applyRuntimeData(entity, root, node, requirePreparedData(nodeId, preparedData));
-        boolean visible = initialVisibility(node);
-        NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
-        if (!visible) {
-            setVisible(instance, false);
-        }
-        return instance;
+        DisplayContent content = applyRuntimeData(entity, requirePreparedData(nodeId, preparedData));
+        return new NodeInstance(nodeId, node, entity, content);
     }
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
@@ -162,11 +151,8 @@ public final class PlaybackEntityController {
 
     private DisplayContent applyRuntimeData(
         Display entity,
-        EmoteRootTransform root,
-        EmoteAnimation.Node node,
         EmoteAnimation.PreparedDisplayData preparedData
     ) {
-        applyTransformation(entity, new Transformation(root.displayMatrix(node.defaultMatrix())), 0);
         return switch (preparedData) {
             case EmoteAnimation.PreparedItemData(ItemStack itemStack, var itemDisplay) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor)entity;

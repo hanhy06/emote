@@ -5,6 +5,9 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import java.util.*;
 
 public final class EventPlayer {
+    private static final Map<EmoteAnimation, Map<Integer, List<EmoteAnimation.Event>>> TIMELINE_EVENT_CACHE =
+        new WeakHashMap<>();
+
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
     private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
@@ -14,7 +17,7 @@ public final class EventPlayer {
     public EventPlayer(EmoteAnimation animation, EventExecutor executor) {
         this.events = animation.timeline().events();
         this.executor = Objects.requireNonNull(executor, "executor");
-        this.timelineEvents = indexTimelineEvents(this.events.timeline());
+        this.timelineEvents = indexedTimelineEvents(animation);
     }
 
     public void start() {
@@ -53,7 +56,18 @@ public final class EventPlayer {
         }
     }
 
-    private Map<Integer, List<EmoteAnimation.Event>> indexTimelineEvents(List<EmoteAnimation.TimelineEvent> events) {
+    private static Map<Integer, List<EmoteAnimation.Event>> indexedTimelineEvents(EmoteAnimation animation) {
+        synchronized (TIMELINE_EVENT_CACHE) {
+            return TIMELINE_EVENT_CACHE.computeIfAbsent(
+                animation,
+                ignored -> indexTimelineEvents(animation.timeline().events().timeline())
+            );
+        }
+    }
+
+    private static Map<Integer, List<EmoteAnimation.Event>> indexTimelineEvents(
+        List<EmoteAnimation.TimelineEvent> events
+    ) {
         Map<Integer, List<EmoteAnimation.Event>> byTick = new LinkedHashMap<>();
         for (EmoteAnimation.TimelineEvent event : events) {
             byTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(event.event());
