@@ -33,18 +33,18 @@ final class MineSkinGenerationQueue {
         try {
             ensureExecutor();
             this.executor.execute(() -> {
-                while (true) {
-                    newTask.task().run();
+                try {
+                    while (true) {
+                        newTask.task().run();
+                        synchronized (MineSkinGenerationQueue.this) {
+                            if (taskGeneration != generation || !newTask.takeRerunRequest()) {
+                                return;
+                            }
+                        }
+                    }
+                } finally {
                     synchronized (MineSkinGenerationQueue.this) {
-                        if (taskGeneration != generation) {
-                            pendingTasks.remove(key, newTask);
-                            return;
-                        }
-                        if (newTask.takeRerunRequest()) {
-                            continue;
-                        }
                         pendingTasks.remove(key, newTask);
-                        return;
                     }
                 }
             });

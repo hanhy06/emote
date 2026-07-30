@@ -281,7 +281,7 @@ final class MineSkinManager {
             Thread.currentThread().interrupt();
             bakeTask.cancel();
             Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
-        } catch (IOException | IllegalArgumentException exception) {
+        } catch (IOException | RuntimeException exception) {
             fail(bakeTask);
             Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
         }

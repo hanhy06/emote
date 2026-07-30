@@ -4,12 +4,35 @@ import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MineSkinGenerationQueueTest {
+    @Test
+    void failedTaskReleasesPendingKey() throws InterruptedException {
+        CountDownLatch failureObserved = new CountDownLatch(1);
+        ExecutorService executorService = Executors.newSingleThreadExecutor(task -> {
+            Thread thread = new Thread(task);
+            thread.setUncaughtExceptionHandler((ignoredThread, ignoredException) -> failureObserved.countDown());
+            return thread;
+        });
+        MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
+
+        assertTrue(queue.submit("skin", () -> {
+            throw new IllegalStateException("failed");
+        }));
+        assertTrue(failureObserved.await(1, TimeUnit.SECONDS));
+
+        CountDownLatch restarted = new CountDownLatch(1);
+        assertTrue(queue.submit("skin", restarted::countDown));
+        assertTrue(restarted.await(1, TimeUnit.SECONDS));
+        queue.cancelAll();
+    }
+
     @Test
     void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
