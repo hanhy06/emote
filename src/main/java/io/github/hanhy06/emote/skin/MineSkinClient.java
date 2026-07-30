@@ -100,7 +100,7 @@ final class MineSkinClient {
             .header("User-Agent", USER_AGENT)
             .header("Content-Type", requestBody.contentType())
             .timeout(Duration.ofSeconds(20))
-            .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody.bytes()))
+            .POST(HttpRequest.BodyPublishers.ofByteArray(requestBody.bytesForUpload()))
             .build());
         String textureUrl = readTextureUrl(queueResponse);
         if (textureUrl != null) {
@@ -170,12 +170,15 @@ final class MineSkinClient {
         MultipartBody {
             Objects.requireNonNull(bytes, "bytes");
             Objects.requireNonNull(contentType, "contentType");
-            bytes = bytes.clone();
         }
 
         @Override
         public byte[] bytes() {
             return this.bytes.clone();
+        }
+
+        private byte[] bytesForUpload() {
+            return this.bytes;
         }
     }
 

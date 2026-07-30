@@ -11,12 +11,14 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.regex.Pattern;
 
 final class MineSkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
     private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
     private static final int CONTENT_MEMORY_CACHE_MAX_ENTRIES = 8_192;
+    private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
     private final Path skinDirPath;
     private final BoundedCache<SkinCacheKey, Map<PlayerSkinTextureKey, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
@@ -28,7 +30,7 @@ final class MineSkinCache {
         .create();
 
     MineSkinCache() {
-        this(null);
+        this(resolveDefaultSkinDirPath());
     }
 
     MineSkinCache(Path skinDirPath) {
@@ -55,7 +57,7 @@ final class MineSkinCache {
 
         Path filePath = resolveFilePath(textureHash, slimModel);
         if (filePath == null) {
-            return Map.of();
+            return cacheSkinTextures(cacheKey, Map.of());
         }
         if (!Files.exists(filePath)) {
             return cacheSkinTextures(cacheKey, Map.of());
@@ -64,12 +66,12 @@ final class MineSkinCache {
         try {
             JsonObject skinJson = JsonFileStore.readObject(filePath);
             if (skinJson == null) {
-                return Map.of();
+                return cacheSkinTextures(cacheKey, Map.of());
             }
 
             JsonArray textures = readTextures(skinJson);
             if (textures == null) {
-                return Map.of();
+                return cacheSkinTextures(cacheKey, Map.of());
             }
 
             Map<PlayerSkinTextureKey, String> textureUrlMap = new HashMap<>();
@@ -84,12 +86,12 @@ final class MineSkinCache {
             }
 
             if (textureUrlMap.isEmpty()) {
-                return Map.of();
+                return cacheSkinTextures(cacheKey, Map.of());
             }
             return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
-            return Map.of();
+            return cacheSkinTextures(cacheKey, Map.of());
         }
     }
 
@@ -370,7 +372,7 @@ final class MineSkinCache {
     }
 
     private Path resolveFilePath(String textureHash, boolean slimModel) {
-        Path skinDirPath = resolveSkinDirPath();
+        Path skinDirPath = this.skinDirPath;
         if (skinDirPath == null) {
             return null;
         }
@@ -379,26 +381,26 @@ final class MineSkinCache {
     }
 
     private Path resolveContentFilePath(String contentHash) {
-        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+        if (!isContentHash(contentHash)) {
             return null;
         }
-        Path skinDirPath = resolveSkinDirPath();
+        Path skinDirPath = this.skinDirPath;
         return skinDirPath == null ? null : skinDirPath.resolve("content").resolve(contentHash + ".json");
     }
 
     private Path resolvePendingFilePath(String contentHash) {
-        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+        if (!isContentHash(contentHash)) {
             return null;
         }
-        Path skinDirPath = resolveSkinDirPath();
+        Path skinDirPath = this.skinDirPath;
         return skinDirPath == null ? null : skinDirPath.resolve("pending").resolve(contentHash + ".json");
     }
 
     private Path resolveFailureFilePath(String contentHash) {
-        if (contentHash == null || !contentHash.matches("[0-9a-f]{64}")) {
+        if (!isContentHash(contentHash)) {
             return null;
         }
-        Path skinDirPath = resolveSkinDirPath();
+        Path skinDirPath = this.skinDirPath;
         return skinDirPath == null ? null : skinDirPath.resolve("failures").resolve(contentHash + ".json");
     }
 
@@ -458,11 +460,11 @@ final class MineSkinCache {
         }
     }
 
-    private Path resolveSkinDirPath() {
-        if (this.skinDirPath != null) {
-            return this.skinDirPath;
-        }
+    private static boolean isContentHash(String contentHash) {
+        return contentHash != null && CONTENT_HASH_PATTERN.matcher(contentHash).matches();
+    }
 
+    private static Path resolveDefaultSkinDirPath() {
         try {
             Path configDirPath = FabricLoader.getInstance().getConfigDir();
             if (configDirPath == null) {
