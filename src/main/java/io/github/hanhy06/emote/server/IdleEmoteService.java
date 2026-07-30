@@ -71,10 +71,6 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         }
 
         IdleState state = this.playerStates.get(playerUuid);
-        if (state != null && state.lastActionTime() == lastActionTime && state.played()) {
-            return;
-        }
-
         long now = this.clock.getAsLong();
         Optional<EmoteAccessConfig.IdleEmote> resolvedIdle = resolveIdle(playerUuid, player, now);
         if (resolvedIdle.isEmpty()) {
@@ -86,26 +82,31 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
             long firstAttemptTime = lastActionTime + TimeUnit.SECONDS.toMillis(idle.delaySeconds());
             String selectedEmote = selectEmote(playerUuid, idle.emote());
-            state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime, false);
+            state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime);
             this.playerStates.put(playerUuid, state);
         }
 
-        if (state.played() || now < state.nextAttemptTime() || this.activeEmoteChecker.isActive(player)) {
+        if (now < state.nextAttemptTime() || this.activeEmoteChecker.isActive(player)) {
             return;
         }
 
         PlayResult result = this.emotePlayer.play(player, state.selectedEmote());
-        boolean played = result.isSuccess();
-        if (played) {
+        String selectedEmote = state.selectedEmote();
+        long nextAttemptTime;
+        if (result.isSuccess()) {
             this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
+            selectedEmote = selectEmote(playerUuid, idle.emote());
+            long intervalMillis = TimeUnit.SECONDS.toMillis(idle.delaySeconds());
+            long elapsedIntervals = (now - state.nextAttemptTime()) / intervalMillis + 1L;
+            nextAttemptTime = state.nextAttemptTime() + elapsedIntervals * intervalMillis;
+        } else {
+            nextAttemptTime = now + RETRY_INTERVAL_MILLIS;
         }
-        long nextAttemptTime = played ? state.nextAttemptTime() : now + RETRY_INTERVAL_MILLIS;
         this.playerStates.put(playerUuid, new IdleState(
             lastActionTime,
             idle,
-            state.selectedEmote(),
-            nextAttemptTime,
-            played
+            selectedEmote,
+            nextAttemptTime
         ));
     }
 
@@ -162,8 +163,7 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         long lastActionTime,
         EmoteAccessConfig.IdleEmote idle,
         String selectedEmote,
-        long nextAttemptTime,
-        boolean played
+        long nextAttemptTime
     ) {
     }
 

@@ -23,7 +23,7 @@ class IdleEmoteServiceTest {
     );
 
     @Test
-    void playsOnceAfterConfiguredIdleDelay() {
+    void playsAtEveryConfiguredIdleInterval() {
         AtomicLong clock = new AtomicLong(10_000L);
         AtomicInteger playCount = new AtomicInteger();
         IdleEmoteService service = new IdleEmoteService(
@@ -41,8 +41,14 @@ class IdleEmoteServiceTest {
         clock.set(15_000L);
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(24_999L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(25_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(35_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
 
-        assertEquals(1, playCount.get());
+        assertEquals(3, playCount.get());
     }
 
     @Test
@@ -105,8 +111,8 @@ class IdleEmoteServiceTest {
         );
 
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
-        clock.set(26_000L);
-        service.tickPlayer(PLAYER_UUID, 16_000L, null);
+        clock.set(25_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
 
         assertEquals(2, playedIds.size());
         assertNotEquals(playedIds.getFirst(), playedIds.getLast());
