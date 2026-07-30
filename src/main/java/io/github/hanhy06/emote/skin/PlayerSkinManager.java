@@ -6,6 +6,7 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.config.Config;
+import io.github.hanhy06.emote.playback.PlaybackNodes.ItemContent;
 import io.github.hanhy06.emote.playback.PlaybackNodes.NodeInstance;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
@@ -94,7 +95,8 @@ public class PlayerSkinManager implements ConfigListener {
         }
         for (EmoteSkinPart skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
-            if (node != null && node.entity() instanceof Display.ItemDisplay) {
+            if (node != null && node.entity() instanceof Display.ItemDisplay
+                && node.displayContent() instanceof ItemContent) {
                 applyMineSkinProfile(node, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);
             }
         }
@@ -118,20 +120,22 @@ public class PlayerSkinManager implements ConfigListener {
         if (textureUrl == null) {
             return;
         }
-        SlotAccess itemSlot = node.entity().getSlot(0);
-        if (itemSlot == null) {
-            return;
-        }
-        ItemStack itemStack = itemSlot.get();
-        if (!itemStack.is(Items.PLAYER_HEAD)) {
+        if (!(node.displayContent() instanceof ItemContent(ItemStack itemStack))
+            || !itemStack.is(Items.PLAYER_HEAD)) {
             return;
         }
         ItemStack profileStack = itemStack.copy();
         profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
-        if (!itemSlot.set(profileStack)) {
+        node.setItemStack(profileStack);
+
+        SlotAccess itemSlot = node.entity().getSlot(0);
+        if (itemSlot == null) {
             return;
         }
-        node.setItemStack(profileStack);
+        if (itemSlot.get().isEmpty()) {
+            return;
+        }
+        itemSlot.set(profileStack);
     }
 
     private void notifySkinReady(UUID playerUuid) {
