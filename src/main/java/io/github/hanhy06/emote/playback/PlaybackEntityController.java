@@ -29,7 +29,7 @@ import java.util.Map;
 import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
-    private static final String RUNTIME_TAG = "emote.runtime";
+    public static final String RUNTIME_TAG = "emote.runtime";
 
     public PlaybackNodes spawn(ServerPlayer player, RegisteredEmote emote) {
         PlaybackNodes nodes = create(player, emote);
