@@ -121,7 +121,7 @@ final class MineSkinCache {
             return cachedTextureUrl;
         }
 
-        Path filePath = resolveContentFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "content");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
         }
@@ -147,7 +147,7 @@ final class MineSkinCache {
     }
 
     void saveContent(String contentHash, String textureUrl) {
-        Path filePath = resolveContentFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "content");
         if (filePath == null) {
             return;
         }
@@ -165,7 +165,7 @@ final class MineSkinCache {
     }
 
     MineSkinPendingJob loadPendingJob(String contentHash) {
-        Path filePath = resolvePendingFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
         }
@@ -191,7 +191,7 @@ final class MineSkinCache {
     }
 
     void savePendingJob(String contentHash, String jobId) {
-        Path filePath = resolvePendingFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || jobId == null || jobId.isBlank()) {
             return;
         }
@@ -208,24 +208,11 @@ final class MineSkinCache {
     }
 
     void clearPendingJob(String contentHash) {
-        Path filePath = resolvePendingFilePath(contentHash);
-        if (filePath == null) {
-            return;
-        }
-        try {
-            Files.deleteIfExists(filePath);
-        } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to clear MineSkin pending job: {}", filePath, exception);
-        }
-    }
-
-    boolean isRetryBlocked(String contentHash, long nowEpochMillis) {
-        MineSkinFailure failure = loadFailure(contentHash, nowEpochMillis);
-        return failure != null;
+        deleteCacheFile(contentHash, "pending", "pending job");
     }
 
     MineSkinFailure loadFailure(String contentHash, long nowEpochMillis) {
-        Path filePath = resolveFailureFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
         }
@@ -245,7 +232,7 @@ final class MineSkinCache {
     }
 
     void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
-        Path filePath = resolveFailureFilePath(contentHash);
+        Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null) {
             return;
         }
@@ -262,14 +249,18 @@ final class MineSkinCache {
     }
 
     void clearFailure(String contentHash) {
-        Path filePath = resolveFailureFilePath(contentHash);
+        deleteCacheFile(contentHash, "failures", "failure state");
+    }
+
+    private void deleteCacheFile(String contentHash, String directoryName, String description) {
+        Path filePath = resolveCacheFilePath(contentHash, directoryName);
         if (filePath == null) {
             return;
         }
         try {
             Files.deleteIfExists(filePath);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to clear MineSkin failure state: {}", filePath, exception);
+            Emote.LOGGER.warn("Failed to clear MineSkin {}: {}", description, filePath, exception);
         }
     }
 
@@ -380,28 +371,12 @@ final class MineSkinCache {
         return skinDirPath.resolve(textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "classic") + ".json");
     }
 
-    private Path resolveContentFilePath(String contentHash) {
+    private Path resolveCacheFilePath(String contentHash, String directoryName) {
         if (!isContentHash(contentHash)) {
             return null;
         }
         Path skinDirPath = this.skinDirPath;
-        return skinDirPath == null ? null : skinDirPath.resolve("content").resolve(contentHash + ".json");
-    }
-
-    private Path resolvePendingFilePath(String contentHash) {
-        if (!isContentHash(contentHash)) {
-            return null;
-        }
-        Path skinDirPath = this.skinDirPath;
-        return skinDirPath == null ? null : skinDirPath.resolve("pending").resolve(contentHash + ".json");
-    }
-
-    private Path resolveFailureFilePath(String contentHash) {
-        if (!isContentHash(contentHash)) {
-            return null;
-        }
-        Path skinDirPath = this.skinDirPath;
-        return skinDirPath == null ? null : skinDirPath.resolve("failures").resolve(contentHash + ".json");
+        return skinDirPath == null ? null : skinDirPath.resolve(directoryName).resolve(contentHash + ".json");
     }
 
     record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {

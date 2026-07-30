@@ -19,6 +19,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -28,6 +29,7 @@ final class MineSkinClient {
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
     private static final long JOB_TIMEOUT_MILLIS = Duration.ofMinutes(30).toMillis();
+    private static final List<String> ERROR_MESSAGE_FIELDS = List.of("errors", "messages");
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient;
@@ -282,28 +284,15 @@ final class MineSkinClient {
     }
 
     private String readErrorMessage(JsonObject responseBody, String fallbackMessage) {
-        JsonArray errors = findArray(responseBody, "errors");
-        if (errors != null) {
-            for (JsonElement errorElement : errors) {
-                if (!errorElement.isJsonObject()) {
-                    continue;
-                }
-
-                String message = readString(errorElement.getAsJsonObject(), "message");
-                if (message != null) {
-                    return message;
-                }
+        for (String field : ERROR_MESSAGE_FIELDS) {
+            JsonArray entries = findArray(responseBody, field);
+            if (entries == null) {
+                continue;
             }
-        }
-
-        JsonArray messages = findArray(responseBody, "messages");
-        if (messages != null) {
-            for (JsonElement messageElement : messages) {
-                if (!messageElement.isJsonObject()) {
-                    continue;
-                }
-
-                String message = readString(messageElement.getAsJsonObject(), "message");
+            for (JsonElement entry : entries) {
+                String message = entry.isJsonObject()
+                    ? readString(entry.getAsJsonObject(), "message")
+                    : null;
                 if (message != null) {
                     return message;
                 }

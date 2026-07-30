@@ -115,11 +115,10 @@ class MineSkinCacheTest {
 
         store.saveFailure(contentHash, "failed", 2_000L);
 
-        assertTrue(store.isRetryBlocked(contentHash, 1_999L));
         MineSkinCache.MineSkinFailure failure = store.loadFailure(contentHash, 1_999L);
         assertNotNull(failure);
         assertEquals(2_000L, failure.retryAfterEpochMillis());
         assertEquals("failed", failure.errorMessage());
-        assertFalse(store.isRetryBlocked(contentHash, 2_000L));
+        assertNull(store.loadFailure(contentHash, 2_000L));
     }
 }
