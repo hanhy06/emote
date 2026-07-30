@@ -112,7 +112,7 @@ Controls emote availability and play permissions.
 - `permissions` preserves the listed order, which determines idle emote selection.
 - `permission` is the permission node for the entry. `emote.default` is granted to every player by default.
 - `emotes` contains the emotes granted by the permission.
-- `idle` is optional. The first matching permission entry with `idle` plays one randomly selected `emote` after `delay_seconds` of inactivity.
+- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay_seconds` of inactivity, then repeats at the same interval while the player remains idle. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available.
 - `*` grants access to every enabled emote.
 
 Run `/emote reload` after editing the file manually.
