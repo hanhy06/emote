@@ -41,10 +41,7 @@ public class PlaybackManager {
     }
 
     public PlayResult startEmote(ServerPlayer player, RegisteredEmote emote) {
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return PlayResult.failure("Server unavailable.");
-        }
+        MinecraftServer server = player.level().getServer();
         PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
@@ -102,7 +99,7 @@ public class PlaybackManager {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             ActiveEmote activeEmote = this.activeEmoteMap.remove(player.getUUID());
             if (activeEmote != null) {
-                cleanupActiveEmote(server, activeEmote, false);
+                cleanupActiveEmote(server, activeEmote, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -139,8 +136,8 @@ public class PlaybackManager {
         return stopEmote(player.getUUID(), reason, player);
     }
 
-    private ActiveEmote stopEmote(UUID playerUuid, PlaybackStopReason reason) {
-        return stopEmote(playerUuid, reason, null);
+    private void stopEmote(UUID playerUuid, PlaybackStopReason reason) {
+        stopEmote(playerUuid, reason, null);
     }
 
     private ActiveEmote stopEmote(
@@ -248,23 +245,6 @@ public class PlaybackManager {
         for (UUID playerUuid : playerUuidList) {
             stopEmote(playerUuid, reason);
         }
-    }
-
-    private void cleanupActiveEmote(
-        MinecraftServer server,
-        ActiveEmote activeEmote,
-        boolean notifyListeners
-    ) {
-        cleanupActiveEmote(server, activeEmote, notifyListeners, PlaybackStopReason.ERROR);
-    }
-
-    private void cleanupActiveEmote(
-        MinecraftServer server,
-        ActiveEmote activeEmote,
-        boolean notifyListeners,
-        PlaybackStopReason reason
-    ) {
-        cleanupActiveEmote(server, activeEmote, notifyListeners, reason, null);
     }
 
     private void cleanupActiveEmote(

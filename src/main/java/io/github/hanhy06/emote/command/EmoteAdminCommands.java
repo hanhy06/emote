@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
@@ -87,11 +86,7 @@ final class EmoteAdminCommands {
     }
 
     private int reloadEmotes(CommandSourceStack source) {
-        if (Emote.SERVER == null) {
-            source.sendFailure(Component.literal("Server unavailable."));
-            return 0;
-        }
-        EmoteReloadResult result = this.reloadService.reloadFromCommand();
+        EmoteReloadResult result = this.reloadService.reloadFromCommand(source.getServer());
         source.sendSuccess(
             () -> Component.literal(
                 "Reloading: cfg=" + result.configLoaded()
@@ -149,7 +144,7 @@ final class EmoteAdminCommands {
             this.playbackManager.stopId(id);
         }
 
-        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();
+        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand(source.getServer());
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
             () -> Component.literal(action + " emote: " + id + " (emotes=" + reloadResult.emoteCount() + ")"),

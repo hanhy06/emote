@@ -61,6 +61,11 @@ public final class IdleEmoteService {
     }
 
     void tickPlayer(UUID playerUuid, long lastActionTime, ServerPlayer player) {
+        IdleState state = this.playerStates.get(playerUuid);
+        if (state != null && state.lastActionTime() == lastActionTime && state.played()) {
+            return;
+        }
+
         Optional<EmoteAccessConfig.IdleEmote> resolvedIdle = this.idleEmoteResolver.find(player);
         if (lastActionTime <= 0L || resolvedIdle.isEmpty()) {
             this.playerStates.remove(playerUuid);
@@ -68,7 +73,6 @@ public final class IdleEmoteService {
         }
 
         EmoteAccessConfig.IdleEmote idle = resolvedIdle.get();
-        IdleState state = this.playerStates.get(playerUuid);
         if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
             long firstAttemptTime = lastActionTime + TimeUnit.SECONDS.toMillis(idle.delaySeconds());
             String selectedEmote = selectEmote(playerUuid, idle.emote());

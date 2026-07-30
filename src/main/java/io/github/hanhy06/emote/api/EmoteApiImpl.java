@@ -62,7 +62,7 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public EmoteRegistration register(EmoteAnimation animation) throws EmoteAnimationLoadException {
         Objects.requireNonNull(animation, "animation");
-        MinecraftServer server = getServerOnCurrentThread();
+        MinecraftServer server = requireServerThread();
         Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
         EmoteAnimation.Loaded loaded = new EmoteAnimation.Loaded(
             sourcePath,
@@ -71,7 +71,7 @@ public final class EmoteApiImpl extends EmoteApi {
         );
         RegisteredEmote emote = RegisteredEmote.from(this.animationValidator.prepare(loaded, server));
         UUID registrationId = this.emoteRegistry.registerApi(emote);
-        this.wheelSyncService.syncAll();
+        this.wheelSyncService.syncAll(server);
         return new ApiRegistration(animation.id(), registrationId);
     }
 
@@ -106,21 +106,13 @@ public final class EmoteApiImpl extends EmoteApi {
         return this.events.addPlaybackListener(listener);
     }
 
-    private void requireServerThread() {
+    private MinecraftServer requireServerThread() {
         MinecraftServer server = Emote.SERVER;
         if (server == null) {
             throw new IllegalStateException("The server is not running.");
         }
         if (!server.isSameThread()) {
             throw new IllegalStateException("Emote API mutations must run on the server thread.");
-        }
-    }
-
-    private MinecraftServer getServerOnCurrentThread() {
-        requireServerThread();
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            throw new IllegalStateException("The server is not running.");
         }
         return server;
     }
@@ -149,7 +141,7 @@ public final class EmoteApiImpl extends EmoteApi {
 
         @Override
         public boolean unregister() {
-            requireServerThread();
+            MinecraftServer server = requireServerThread();
             if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
@@ -157,7 +149,7 @@ public final class EmoteApiImpl extends EmoteApi {
                 this.id.toString(),
                 PlaybackStopReason.EMOTE_REMOVED
             );
-            EmoteApiImpl.this.wheelSyncService.syncAll();
+            EmoteApiImpl.this.wheelSyncService.syncAll(server);
             return true;
         }
     }

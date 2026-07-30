@@ -79,7 +79,7 @@ public class EmoteLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         Emote.SERVER = server;
-        this.reloadService.loadOnServerStart();
+        this.reloadService.loadOnServerStart(server);
     }
 
     private void handleServerStopping(MinecraftServer server) {

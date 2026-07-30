@@ -30,6 +30,9 @@ public class DialogManager {
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
     static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
+    private static final ParsedTemplate SEARCH_COMMAND = ParsedTemplate.CODEC
+        .parse(JsonOps.INSTANCE, new JsonPrimitive(SEARCH_COMMAND_TEMPLATE))
+        .getOrThrow();
 
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
@@ -141,10 +144,7 @@ public class DialogManager {
             Optional.of(Component.literal("Show matching emotes")),
             WIDE_BUTTON_WIDTH
         );
-        ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
-            .parse(JsonOps.INSTANCE, new JsonPrimitive(SEARCH_COMMAND_TEMPLATE))
-            .getOrThrow();
-        return new ActionButton(buttonData, Optional.of(new CommandTemplate(parsedTemplate)));
+        return new ActionButton(buttonData, Optional.of(new CommandTemplate(SEARCH_COMMAND)));
     }
 
     private ActionButton createStaticButton(String label, String tooltip) {

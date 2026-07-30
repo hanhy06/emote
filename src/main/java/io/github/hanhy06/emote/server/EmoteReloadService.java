@@ -31,11 +31,7 @@ public final class EmoteReloadService {
         this.wheelSyncService = wheelSyncService;
     }
 
-    public void loadOnServerStart() {
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return;
-        }
+    public void loadOnServerStart(MinecraftServer server) {
         this.configManager.configure();
         this.configManager.readConfig();
         this.configManager.readEmoteAccessConfig();
@@ -43,28 +39,25 @@ public final class EmoteReloadService {
         Emote.LOGGER.info("emotes={}", emoteCount);
     }
 
-    public EmoteReloadResult reloadFromCommand() {
+    public EmoteReloadResult reloadFromCommand(MinecraftServer server) {
         boolean configLoaded = this.configManager.readConfig();
         boolean emoteAccessConfigLoaded = this.configManager.readEmoteAccessConfig();
-        return new EmoteReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig());
+        return new EmoteReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig(server));
     }
 
-    private int reloadLoadedConfig() {
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return 0;
-        }
+    private int reloadLoadedConfig(MinecraftServer server) {
         this.playbackManager.stopAllEmotes(PlaybackStopReason.RELOAD);
         int emoteCount = reloadRegistry(server);
-        this.wheelSyncService.syncAll();
+        this.wheelSyncService.syncAll(server);
         Emote.LOGGER.info("reload emotes={}", emoteCount);
         return emoteCount;
     }
 
     private int reloadRegistry(MinecraftServer server) {
+        var emoteAccessConfig = this.configManager.getEmoteAccessConfig();
         var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
             .map(RegisteredEmote::from)
-            .filter(emote -> this.configManager.getEmoteAccessConfig().isEnabled(emote.id()))
+            .filter(emote -> emoteAccessConfig.isEnabled(emote.id()))
             .toList();
         int ignoredCount = this.emoteRegistry.replace(emotes);
         if (ignoredCount > 0) {
