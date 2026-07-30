@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.server;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.config.EmoteAccessConfig;
+import io.github.hanhy06.emote.config.EmoteAccessConfigListener;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
@@ -15,8 +16,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
-public final class IdleEmoteService {
+public final class IdleEmoteService implements EmoteAccessConfigListener {
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
+    private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
     private final IdleEmoteResolver idleEmoteResolver;
     private final EmotePlayer emotePlayer;
@@ -25,6 +27,7 @@ public final class IdleEmoteService {
     private final RandomGenerator random;
     private final Map<UUID, IdleState> playerStates = new HashMap<>();
     private final Map<UUID, String> lastPlayedEmotes = new HashMap<>();
+    private final Map<UUID, IdleResolution> idleResolutions = new HashMap<>();
 
     public IdleEmoteService(
         PermissionService permissionService,
@@ -61,13 +64,20 @@ public final class IdleEmoteService {
     }
 
     void tickPlayer(UUID playerUuid, long lastActionTime, ServerPlayer player) {
+        if (lastActionTime <= 0L) {
+            this.playerStates.remove(playerUuid);
+            this.idleResolutions.remove(playerUuid);
+            return;
+        }
+
         IdleState state = this.playerStates.get(playerUuid);
         if (state != null && state.lastActionTime() == lastActionTime && state.played()) {
             return;
         }
 
-        Optional<EmoteAccessConfig.IdleEmote> resolvedIdle = this.idleEmoteResolver.find(player);
-        if (lastActionTime <= 0L || resolvedIdle.isEmpty()) {
+        long now = this.clock.getAsLong();
+        Optional<EmoteAccessConfig.IdleEmote> resolvedIdle = resolveIdle(playerUuid, player, now);
+        if (resolvedIdle.isEmpty()) {
             this.playerStates.remove(playerUuid);
             return;
         }
@@ -80,7 +90,6 @@ public final class IdleEmoteService {
             this.playerStates.put(playerUuid, state);
         }
 
-        long now = this.clock.getAsLong();
         if (state.played() || now < state.nextAttemptTime() || this.activeEmoteChecker.isActive(player)) {
             return;
         }
@@ -106,6 +115,25 @@ public final class IdleEmoteService {
         }
     }
 
+    @Override
+    public void onEmoteAccessConfigReload(EmoteAccessConfig newConfig) {
+        this.idleResolutions.clear();
+    }
+
+    private Optional<EmoteAccessConfig.IdleEmote> resolveIdle(
+        UUID playerUuid,
+        ServerPlayer player,
+        long now
+    ) {
+        IdleResolution resolution = this.idleResolutions.get(playerUuid);
+        if (resolution != null && now < resolution.expiresAt()) {
+            return resolution.idle();
+        }
+        Optional<EmoteAccessConfig.IdleEmote> idle = this.idleEmoteResolver.find(player);
+        this.idleResolutions.put(playerUuid, new IdleResolution(idle, now + RESOLUTION_CACHE_MILLIS));
+        return idle;
+    }
+
     private String selectEmote(UUID playerUuid, List<String> emotes) {
         if (emotes.size() == 1) {
             return emotes.getFirst();
@@ -127,11 +155,13 @@ public final class IdleEmoteService {
         UUID playerUuid = player.getUUID();
         this.playerStates.remove(playerUuid);
         this.lastPlayedEmotes.remove(playerUuid);
+        this.idleResolutions.remove(playerUuid);
     }
 
     public void clear() {
         this.playerStates.clear();
         this.lastPlayedEmotes.clear();
+        this.idleResolutions.clear();
     }
 
     private record IdleState(
@@ -141,6 +171,9 @@ public final class IdleEmoteService {
         long nextAttemptTime,
         boolean played
     ) {
+    }
+
+    private record IdleResolution(Optional<EmoteAccessConfig.IdleEmote> idle, long expiresAt) {
     }
 
     @FunctionalInterface

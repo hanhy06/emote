@@ -102,6 +102,7 @@ public class Emote implements ModInitializer {
     @Override
     public void onInitialize() {
         this.configManager.addEmoteAccessListener(this.permissionService);
+        this.configManager.addEmoteAccessListener(this.idleEmoteService);
         this.configManager.addListener(this.skinManager);
 
         this.playbackManager.addStateListener(this.playbackStateService);

@@ -132,11 +132,37 @@ class IdleEmoteServiceTest {
 
         service.tickPlayer(PLAYER_UUID, 10_000L, null);
         resolver[0] = ignoredPlayer -> Optional.empty();
+        service.onEmoteAccessConfigReload(EmoteAccessConfig.createDefault());
         service.tickPlayer(PLAYER_UUID, 10_000L, null);
         resolver[0] = ignoredPlayer -> Optional.of(IDLE);
+        service.onEmoteAccessConfigReload(EmoteAccessConfig.createDefault());
         service.tickPlayer(PLAYER_UUID, 10_000L, null);
 
         assertEquals(0, playCount.get());
+    }
+
+    @Test
+    void cachesIdlePermissionResolutionForOneSecond() {
+        AtomicLong clock = new AtomicLong(10_000L);
+        AtomicInteger resolveCount = new AtomicInteger();
+        IdleEmoteService service = new IdleEmoteService(
+            ignoredPlayer -> {
+                resolveCount.incrementAndGet();
+                return Optional.of(IDLE);
+            },
+            (ignoredPlayer, ignoredId) -> PlayResult.SUCCESS,
+            ignoredPlayer -> false,
+            clock::get,
+            RandomGenerator.getDefault()
+        );
+
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(10_999L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(11_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+
+        assertEquals(2, resolveCount.get());
     }
 
     private IdleEmoteService successfulService(AtomicLong clock, AtomicInteger playCount) {
