@@ -6,6 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class DialogManagerTest {
     @Test
+    void searchTemplateQuotesMultiwordQuery() {
+        assertEquals("/emote search \"$(query)\"", DialogManager.SEARCH_COMMAND_TEMPLATE);
+    }
+
+    @Test
     void searchButtonFillsRemainingColumnForOddButtonCount() {
         assertEquals(150, DialogManager.searchButtonWidth(5));
         assertEquals(310, DialogManager.searchButtonWidth(4));

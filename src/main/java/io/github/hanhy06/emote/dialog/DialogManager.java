@@ -29,6 +29,7 @@ import java.util.Optional;
 public class DialogManager {
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
+    static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
 
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
@@ -141,7 +142,7 @@ public class DialogManager {
             WIDE_BUTTON_WIDTH
         );
         ParsedTemplate parsedTemplate = ParsedTemplate.CODEC
-            .parse(JsonOps.INSTANCE, new JsonPrimitive("/emote search $(query)"))
+            .parse(JsonOps.INSTANCE, new JsonPrimitive(SEARCH_COMMAND_TEMPLATE))
             .getOrThrow();
         return new ActionButton(buttonData, Optional.of(new CommandTemplate(parsedTemplate)));
     }
