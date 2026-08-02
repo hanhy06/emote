@@ -30,6 +30,7 @@ import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 public final class PlaybackEntityController {
     public static final String RUNTIME_TAG = "emote.runtime";
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
+    private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;
 
     public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
         ServerLevel level = player.level();
@@ -61,7 +62,8 @@ public final class PlaybackEntityController {
     }
 
     public void updateViewRotation(PlaybackNodes nodes, float currentYaw) {
-        float relativeYaw = nodes.root().relativeYaw(currentYaw);
+        float viewYaw = nodes.updateViewYaw(currentYaw, VIEW_ROTATION_THRESHOLD_DEGREES);
+        float relativeYaw = nodes.root().relativeYaw(viewYaw);
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
                 node.entity().setYRot(relativeYaw);

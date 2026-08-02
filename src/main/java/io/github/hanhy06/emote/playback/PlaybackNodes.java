@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
@@ -9,10 +10,37 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.Map;
 import java.util.Objects;
 
-public record PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
-    public PlaybackNodes {
-        Objects.requireNonNull(root, "root");
-        nodes = Map.copyOf(nodes);
+public final class PlaybackNodes {
+    private final EmoteRootTransform root;
+    private final Map<String, NodeInstance> nodes;
+    private float viewYaw;
+
+    public PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
+        this.root = Objects.requireNonNull(root, "root");
+        this.nodes = Map.copyOf(nodes);
+        this.viewYaw = root.yaw();
+    }
+
+    public EmoteRootTransform root() {
+        return this.root;
+    }
+
+    public Map<String, NodeInstance> nodes() {
+        return this.nodes;
+    }
+
+    public float viewYaw() {
+        return this.viewYaw;
+    }
+
+    public float updateViewYaw(float playerYaw, float maxDifference) {
+        float difference = Mth.wrapDegrees(playerYaw - this.viewYaw);
+        if (Math.abs(difference) > maxDifference) {
+            this.viewYaw = Mth.wrapDegrees(
+                this.viewYaw + difference - Math.copySign(maxDifference, difference)
+            );
+        }
+        return this.viewYaw;
     }
 
     public static final class NodeInstance {
