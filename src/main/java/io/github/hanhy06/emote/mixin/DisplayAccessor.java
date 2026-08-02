@@ -15,4 +15,7 @@ public interface DisplayAccessor {
 
     @Invoker("setTransformationInterpolationDelay")
     void emote$setTransformationInterpolationDelay(int ticks);
+
+    @Invoker("setPosRotInterpolationDuration")
+    void emote$setPosRotInterpolationDuration(int duration);
 }

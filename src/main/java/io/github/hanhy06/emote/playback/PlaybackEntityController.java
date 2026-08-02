@@ -29,6 +29,7 @@ import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
     public static final String RUNTIME_TAG = "emote.runtime";
+    private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
     public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
         ServerLevel level = player.level();
@@ -130,6 +131,7 @@ public final class PlaybackEntityController {
 
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
+        ((DisplayAccessor)entity).emote$setPosRotInterpolationDuration(VIEW_ROTATION_INTERPOLATION_TICKS);
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
