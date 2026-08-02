@@ -14,6 +14,8 @@ Compatible emotes can use the playing player’s skin. The web converter exports
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 
+Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSebW) and share them with the community!
+
 ## User Commands
 
 | Command            | Description                                                                        |
