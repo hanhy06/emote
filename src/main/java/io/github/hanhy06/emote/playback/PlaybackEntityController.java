@@ -59,6 +59,15 @@ public final class PlaybackEntityController {
         removeEntities(level, nodes.nodes().values());
     }
 
+    public void updateViewRotation(PlaybackNodes nodes, float currentYaw) {
+        float relativeYaw = nodes.root().relativeYaw(currentYaw);
+        for (NodeInstance node : nodes.nodes().values()) {
+            if (!node.isAnchor()) {
+                node.entity().setYRot(relativeYaw);
+            }
+        }
+    }
+
     public void setVisible(NodeInstance node, boolean visible) {
         if (node.isAnchor()) {
             return;

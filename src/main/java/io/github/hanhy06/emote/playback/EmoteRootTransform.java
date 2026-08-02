@@ -2,8 +2,10 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Matrix;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 
 public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix) {
     private static final float MODEL_FORWARD_YAW_OFFSET = 180.0F;
@@ -23,6 +25,16 @@ public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatr
 
     public Matrix4f displayMatrix(Matrix nodeMatrix) {
         return new Matrix4f(this.rotationMatrix).mul(toJoml(nodeMatrix));
+    }
+
+    public float relativeYaw(float currentYaw) {
+        return Mth.wrapDegrees(currentYaw - this.yaw);
+    }
+
+    public Matrix4f worldMatrix(float currentYaw, Matrix4fc displayMatrix) {
+        return new Matrix4f()
+            .rotateY((float)Math.toRadians(-relativeYaw(currentYaw)))
+            .mul(displayMatrix);
     }
 
     static Matrix4f toJoml(Matrix matrix) {

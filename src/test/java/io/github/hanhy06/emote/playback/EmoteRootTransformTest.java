@@ -29,6 +29,23 @@ class EmoteRootTransformTest {
         assertForward(-90.0F, 1.0F, 0.0F);
     }
 
+    @Test
+    void calculatesWrappedYawRelativeToPlaybackStart() {
+        EmoteRootTransform root = EmoteRootTransform.create(Vec3.ZERO, 170.0F);
+
+        assertEquals(20.0F, root.relativeYaw(-170.0F), 0.0001F);
+    }
+
+    @Test
+    void rotatesDisplayMatrixToCurrentPlayerYaw() {
+        EmoteRootTransform root = EmoteRootTransform.create(Vec3.ZERO, 0.0F);
+        Vector3f result = root.worldMatrix(90.0F, root.displayMatrix(matrix(0.0D, 0.0D, 0.0D)))
+            .transformDirection(new Vector3f(0.0F, 0.0F, -1.0F));
+
+        assertEquals(-1.0F, result.x, 0.0001F);
+        assertEquals(0.0F, result.z, 0.0001F);
+    }
+
     private void assertForward(float yaw, float expectedX, float expectedZ) {
         Vector3f result = EmoteRootTransform.create(Vec3.ZERO, yaw)
             .displayMatrix(matrix(0.0D, 0.0D, 0.0D))

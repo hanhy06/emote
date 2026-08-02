@@ -174,6 +174,7 @@ public class PlaybackManager {
                 stopReason = PlaybackStopReason.MOVED;
             } else {
                 try {
+                    this.entityController.updateViewRotation(activeEmote.nodes(), player.getYRot());
                     TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
                     if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                         stopReason = PlaybackStopReason.FINISHED;
