@@ -95,7 +95,7 @@ public final class PlaybackEntityController {
         }
     }
 
-    public void applyTransformation(
+    void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
         PlaybackPlan.PreparedTransform transform,
