@@ -12,6 +12,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.nio.file.Path;
@@ -39,6 +40,7 @@ public final class EmoteAnimationServerValidator {
             try {
                 if (entry.getValue() instanceof ItemNode itemNode) {
                     ItemStack itemStack = ItemStack.CODEC.parse(nbtOps, itemNode.itemStackNbt()).getOrThrow();
+                    validateSkinTarget(sourcePath, path, itemNode, itemStack);
                     ItemDisplayContext itemDisplay = ItemDisplayContext.CODEC.parse(
                         JsonOps.INSTANCE,
                         new JsonPrimitive(itemNode.itemDisplay())
@@ -73,6 +75,17 @@ public final class EmoteAnimationServerValidator {
         validateEvents(events.loop(), "$.timeline.events.loop", validationSource, server, sourcePath);
         validateEvents(events.stop(), "$.timeline.events.stop", validationSource, server, sourcePath);
         return new Loaded(loaded.sourcePath(), loaded.sha256(), loaded.animation(), preparedDisplayData);
+    }
+
+    static void validateSkinTarget(Path sourcePath, String nodePath, ItemNode itemNode, ItemStack itemStack)
+        throws EmoteAnimationLoadException {
+        if (itemNode.skin() != null && !itemStack.is(Items.PLAYER_HEAD)) {
+            throw new EmoteAnimationLoadException(
+                sourcePath,
+                nodePath + ".skin",
+                "requires item_stack_snbt to contain a player head"
+            );
+        }
     }
 
     private void validateEvents(
