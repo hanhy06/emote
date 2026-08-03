@@ -84,6 +84,7 @@ public class EmoteLifecycle {
 
     private void handleServerStopping(MinecraftServer server) {
         Emote.SERVER = server;
+        this.playbackManager.stopAllEmotes(PlaybackStopReason.SERVER_STOPPING);
         int removedApiEmotes = this.emoteRegistry.clearApiRegistrations();
         this.idleEmoteService.clear();
         this.skinManager.cancelPendingBakes();
