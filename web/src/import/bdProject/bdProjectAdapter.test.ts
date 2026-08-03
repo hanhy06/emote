@@ -221,6 +221,20 @@ describe("bdProjectAdapter", () => {
     expect(animation.timeline.keyframes[5].node_transforms?.display_0?.matrix[3]).toBeCloseTo(13);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
+
+  it("rejects sparse timelines before allocating an excessive transform array", async () => {
+    const input = {
+      name: "Oversized.bdengine",
+      bytes: createProject({
+        isCollection: true,
+        animation: [{ time: 200_000, ...transform(1) }],
+        children: [{ isItemDisplay: true, name: "minecraft:stone", transforms: IDENTITY_MATRIX }],
+      }),
+    };
+
+    await expect(bdProjectAdapter.import(input)).rejects
+      .toThrow("more than 200000 transform samples");
+  });
 });
 
 function transform(x: number) {

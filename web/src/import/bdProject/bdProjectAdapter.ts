@@ -12,6 +12,7 @@ import { hasGzipHeader, readPrj2 } from "./prj2";
 const decoder = new TextDecoder();
 const BD_SAMPLES_PER_SECOND = 10;
 const TICKS_PER_BD_SAMPLE = TICKS_PER_SECOND / BD_SAMPLES_PER_SECOND;
+const MAX_GENERATED_TRANSFORM_SAMPLES = 200_000;
 
 interface DisplayEntry {
   id: string;
@@ -56,18 +57,17 @@ export const bdProjectAdapter: ImportAdapter = {
     if (!root?.isCollection) throw new Error("BD project scene root is invalid.");
     const displays = collectDisplays(root);
     if (displays.length === 0) throw new Error("BD project does not contain display nodes.");
-    const sampleTimes = collectSampleTimes(root);
-    const frameTimes = sampleTimes.length > 0 ? sampleTimes : [0];
+    const frameCount = collectFrameCount(root, displays.length);
     const nodes = Object.fromEntries(displays.map((entry) => [entry.id, createImportedNode(entry)]));
     const sound = root.listSound?.find((entry) => entry.id === root.listAnim?.[0]?.id) ?? root.listSound?.[0];
     const soundEvents = compileSoundEvents(sound);
-    const animationDurationTicks = (frameTimes[frameTimes.length - 1] + 1) * TICKS_PER_BD_SAMPLE;
+    const animationDurationTicks = frameCount * TICKS_PER_BD_SAMPLE;
     const soundDurationTicks = soundEvents.length > 0 ? soundEvents[soundEvents.length - 1].tick + 1 : 0;
     const tracks = Object.fromEntries(displays.map((entry) => [entry.id, {
-      transforms: frameTimes.map((time, index): ImportedTransformKeyframe => ({
+      transforms: Array.from({ length: frameCount }, (_, time): ImportedTransformKeyframe => ({
         tick: time * TICKS_PER_BD_SAMPLE,
         matrix: evaluateDisplayMatrix(entry, time),
-        interpolation: index === 0 ? { type: "step" } : { type: "linear" },
+        interpolation: time === 0 ? { type: "step" } : { type: "linear" },
       })),
       visibility: [],
     }]));
@@ -151,20 +151,22 @@ function collectDisplays(root: BdSceneNode): DisplayEntry[] {
   return displays;
 }
 
-function collectSampleTimes(root: BdSceneNode): number[] {
-  const times = new Set<number>();
+function collectFrameCount(root: BdSceneNode, displayCount: number): number {
+  let maximumTime = -1;
   const visit = (node: BdSceneNode) => {
     for (const sample of node.animation ?? []) {
       if (!Number.isInteger(sample.time) || sample.time < 0) throw new Error(`BD animation contains an invalid sample time: ${sample.time}`);
-      times.add(sample.time);
+      maximumTime = Math.max(maximumTime, sample.time);
     }
     for (const child of node.children ?? []) visit(child);
   };
   visit(root);
-  const sorted = [...times].sort((first, second) => first - second);
-  return sorted.length > 0
-    ? Array.from({ length: sorted[sorted.length - 1] + 1 }, (_, time) => time)
-    : [];
+  const frameCount = maximumTime + 1;
+  const maximumFramesPerDisplay = Math.floor(MAX_GENERATED_TRANSFORM_SAMPLES / displayCount);
+  if (!Number.isSafeInteger(frameCount) || frameCount > maximumFramesPerDisplay) {
+    throw new Error(`BD animation would generate more than ${MAX_GENERATED_TRANSFORM_SAMPLES} transform samples.`);
+  }
+  return Math.max(frameCount, 1);
 }
 
 function createImportedNode(entry: DisplayEntry): ImportedNode {
