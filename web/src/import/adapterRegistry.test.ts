@@ -48,4 +48,15 @@ describe("detectAdapter", () => {
     expect(result.adapter.id).toBe("json");
     expect(zip.probe).not.toHaveBeenCalled();
   });
+
+  it("falls back to content detection when extension matches fail", async () => {
+    const json = adapter("json", 0, ["json"]);
+    const model = adapter("model", 100, ["bbmodel"]);
+    model.probe = vi.fn(model.probe);
+
+    const result = await detectAdapter([json, model], { name: "renamed.json", bytes: new Uint8Array() });
+
+    expect(result.adapter.id).toBe("model");
+    expect(model.probe).toHaveBeenCalledOnce();
+  });
 });
