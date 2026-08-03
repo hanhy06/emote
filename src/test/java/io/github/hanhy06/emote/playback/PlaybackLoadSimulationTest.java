@@ -17,12 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlaybackLoadSimulationTest {
     private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
-    private static final int INSTANCE_COUNT = 50;
-    private static final int START_WINDOW_TICKS = 5;
+    private static final int INSTANCE_COUNT = 100;
+    private static final int MIN_START_TICK = 80;
+    private static final int MAX_START_TICK = 175;
     private static final long START_TICK_RANDOM_SEED = 0xE607EL;
 
     @Test
-    void keepsFiftyStaggeredPlayersOnTheSameServerPhase() throws Exception {
+    void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
         EmoteAnimation animation = new EmoteAnimationJsonLoader()
             .load(Path.of("docs/example/emote.dance.json"), MINECRAFT_VERSION)
             .animation();
@@ -30,8 +31,9 @@ class PlaybackLoadSimulationTest {
         int durationTicks = animation.timeline().durationTicks();
         int[] startTicks = randomizedStartTicks();
         List<SimulatedPlayback> activePlaybacks = new ArrayList<>(INSTANCE_COUNT);
+        long simulationStartedAt = System.nanoTime();
 
-        for (int serverTick = 0; serverTick < durationTicks + START_WINDOW_TICKS; serverTick++) {
+        for (int serverTick = 0; serverTick <= MAX_START_TICK + durationTicks; serverTick++) {
             for (SimulatedPlayback playback : activePlaybacks) {
                 advancePastLoopBoundary(playback.player());
             }
@@ -60,16 +62,26 @@ class PlaybackLoadSimulationTest {
             activePlaybacks.stream().mapToInt(playback -> playback.target().snapshotCount).sum()
         );
         assertTrue(activePlaybacks.stream().mapToInt(playback -> playback.target().transformCount).sum() > 0);
+        assertTrue(activePlaybacks.stream().allMatch(playback -> playback.target().lastTransformation != null));
+        long elapsedNanos = System.nanoTime() - simulationStartedAt;
+        int transformCount = activePlaybacks.stream().mapToInt(playback -> playback.target().transformCount).sum();
+        System.out.printf(
+            "playback-load: instances=%d, startTicks=%d..%d, transforms=%d, elapsedNanos=%d%n",
+            INSTANCE_COUNT,
+            MIN_START_TICK,
+            MAX_START_TICK,
+            transformCount,
+            elapsedNanos
+        );
     }
 
     private int[] randomizedStartTicks() {
         Random random = new Random(START_TICK_RANDOM_SEED);
         int[] startTicks = new int[INSTANCE_COUNT];
-        for (int index = 0; index < START_WINDOW_TICKS; index++) {
-            startTicks[index] = index;
-        }
-        for (int index = START_WINDOW_TICKS; index < startTicks.length; index++) {
-            startTicks[index] = random.nextInt(START_WINDOW_TICKS);
+        startTicks[0] = MIN_START_TICK;
+        startTicks[1] = MAX_START_TICK;
+        for (int index = 2; index < startTicks.length; index++) {
+            startTicks[index] = random.nextInt(MIN_START_TICK, MAX_START_TICK + 1);
         }
         return startTicks;
     }
@@ -89,6 +101,7 @@ class PlaybackLoadSimulationTest {
         private final EmoteRootTransform rootTransform = EmoteRootTransform.create(Vec3.ZERO, 0.0F);
         private int transformCount;
         private int snapshotCount;
+        private Transformation lastTransformation;
 
         @Override
         public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
@@ -101,7 +114,7 @@ class PlaybackLoadSimulationTest {
             PlaybackPlan.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
-            this.rootTransform.displayTransformation(transform);
+            this.lastTransformation = this.rootTransform.displayTransformation(transform);
             this.transformCount++;
         }
 
