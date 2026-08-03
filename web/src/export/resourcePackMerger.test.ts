@@ -67,6 +67,23 @@ describe("resource pack merger", () => {
     await expect(mergeResourcePackFolder(project, options, [folderFile("folder/readme.txt", "no pack")]))
       .rejects.toThrow("Could not find pack.mcmeta");
   });
+
+  it("rejects drive-qualified paths instead of copying them into the merged ZIP", async () => {
+    const source = zipSync({
+      "pack.mcmeta": strToU8("metadata"),
+      "C:/escape.txt": strToU8("unsafe"),
+    });
+
+    await expect(mergeResourcePackZip(project, options, new File([Uint8Array.from(source)], "unsafe.zip")))
+      .rejects.toThrow("unsafe path: C:/escape.txt");
+  });
+
+  it("rejects entries whose declared expanded size exceeds the limit", async () => {
+    const source = declareFirstEntrySize(zipSync({ "pack.mcmeta": strToU8("metadata") }), 0x7fff_ffff);
+
+    await expect(mergeResourcePackZip(project, options, new File([Uint8Array.from(source)], "oversized.zip")))
+      .rejects.toThrow("entry is too large");
+  });
 });
 
 function folderFile(path: string, contents: string) {
@@ -77,4 +94,15 @@ function folderFile(path: string, contents: string) {
       return strToU8(contents).buffer as ArrayBuffer;
     },
   };
+}
+
+function declareFirstEntrySize(source: Uint8Array, size: number): Uint8Array {
+  const patched = source.slice();
+  const view = new DataView(patched.buffer, patched.byteOffset, patched.byteLength);
+  for (let index = 0; index <= patched.length - 4; index++) {
+    if (view.getUint32(index, true) !== 0x0201_4b50) continue;
+    view.setUint32(index + 24, size, true);
+    return patched;
+  }
+  throw new Error("ZIP central directory was not found.");
 }

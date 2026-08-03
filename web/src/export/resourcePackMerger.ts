@@ -1,4 +1,4 @@
-import { unzipSync, zipSync } from "fflate";
+import { unzip, zip } from "fflate";
 import type { ImportedProject } from "../import/types";
 import type { ExportOptions, ExportResult } from "./projectExporter";
 import { generatedResourceFiles } from "./projectExporter";
@@ -9,17 +9,37 @@ interface FolderFile {
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
+const MAX_COMPRESSED_BYTES = 256 * 1024 * 1024;
+const MAX_ENTRY_COUNT = 65_536;
+const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
+const MAX_EXPANDED_BYTES = 256 * 1024 * 1024;
+
+class ResourcePackBudget {
+  private entryCount = 0;
+  private expandedBytes = 0;
+
+  add(path: string, size: number): void {
+    this.entryCount++;
+    if (this.entryCount > MAX_ENTRY_COUNT) {
+      throw new Error(`The resource pack contains more than ${MAX_ENTRY_COUNT} entries.`);
+    }
+    if (!Number.isSafeInteger(size) || size < 0 || size > MAX_ENTRY_BYTES) {
+      throw new Error(`The resource pack entry is too large: ${path}`);
+    }
+    this.expandedBytes += size;
+    if (this.expandedBytes > MAX_EXPANDED_BYTES) {
+      throw new Error("The resource pack expands beyond the supported size limit.");
+    }
+  }
+}
+
 export async function mergeResourcePackZip(
   project: ImportedProject,
   options: ExportOptions,
   file: File,
 ): Promise<ExportResult> {
-  let entries: Record<string, Uint8Array>;
-  try {
-    entries = unzipSync(new Uint8Array(await file.arrayBuffer()));
-  } catch {
-    throw new Error("The selected file is not a readable ZIP resource pack.");
-  }
+  if (file.size > MAX_COMPRESSED_BYTES) throw new Error("The selected ZIP exceeds the supported size limit.");
+  const entries = await unzipResourcePack(new Uint8Array(await file.arrayBuffer()));
   return mergeEntries(project, options, entries, stripZipExtension(file.name));
 }
 
@@ -29,21 +49,24 @@ export async function mergeResourcePackFolder(
   selectedFiles: readonly FolderFile[],
 ): Promise<ExportResult> {
   if (selectedFiles.length === 0) throw new Error("The selected resource pack folder is empty.");
+  const budget = new ResourcePackBudget();
   const entries: Record<string, Uint8Array> = {};
   for (const file of selectedFiles) {
     const path = normalizePath(file.webkitRelativePath || file.name);
-    entries[path] = new Uint8Array(await file.arrayBuffer());
+    const data = new Uint8Array(await file.arrayBuffer());
+    budget.add(path, data.byteLength);
+    entries[path] = data;
   }
   const folderName = normalizePath(selectedFiles[0].webkitRelativePath || selectedFiles[0].name).split("/")[0];
   return mergeEntries(project, options, entries, folderName);
 }
 
-function mergeEntries(
+async function mergeEntries(
   project: ImportedProject,
   options: ExportOptions,
   sourceEntries: Readonly<Record<string, Uint8Array>>,
   sourceName: string,
-): ExportResult {
+): Promise<ExportResult> {
   const normalizedEntries = new Map<string, Uint8Array>();
   for (const [rawPath, data] of Object.entries(sourceEntries)) {
     const path = normalizePath(rawPath);
@@ -64,9 +87,41 @@ function mergeEntries(
   }
 
   return {
-    blob: new Blob([zipSync(files, { level: 9 })], { type: "application/zip" }),
+    blob: new Blob([Uint8Array.from(await zipResourcePack(files))], { type: "application/zip" }),
     fileName: `${sanitizeFileName(sourceName)}.emote-merged.zip`,
   };
+}
+
+function unzipResourcePack(bytes: Uint8Array): Promise<Record<string, Uint8Array>> {
+  return new Promise((resolve, reject) => {
+    const budget = new ResourcePackBudget();
+    let limitError: Error | null = null;
+    unzip(bytes, {
+      filter: (entry) => {
+        if (limitError) return false;
+        try {
+          budget.add(entry.name, entry.originalSize);
+          return true;
+        } catch (reason) {
+          limitError = reason instanceof Error ? reason : new Error("The resource pack exceeds the supported limits.");
+          return false;
+        }
+      },
+    }, (error, entries) => {
+      if (limitError) reject(limitError);
+      else if (error) reject(new Error("The selected file is not a readable ZIP resource pack.", { cause: error }));
+      else resolve(entries);
+    });
+  });
+}
+
+function zipResourcePack(files: Record<string, Uint8Array>): Promise<Uint8Array> {
+  return new Promise((resolve, reject) => {
+    zip(files, { level: 9 }, (error, data) => {
+      if (error) reject(new Error("The merged resource pack could not be compressed.", { cause: error }));
+      else resolve(data);
+    });
+  });
 }
 
 function findPackRoot(paths: readonly string[]): string {
@@ -85,7 +140,13 @@ function normalizePath(path: string): string {
 }
 
 function validateInputPath(path: string): void {
-  if (path.startsWith("/") || path.split("/").includes("..")) {
+  const segments = path.split("/");
+  if (
+    path.startsWith("/")
+    || /^[A-Za-z]:/.test(path)
+    || path.includes("\0")
+    || segments.some((segment) => segment === "." || segment === "..")
+  ) {
     throw new Error(`The resource pack contains an unsafe path: ${path}`);
   }
 }
