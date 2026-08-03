@@ -11,7 +11,6 @@ interface FolderFile {
 
 const MAX_COMPRESSED_BYTES = 256 * 1024 * 1024;
 const MAX_ENTRY_COUNT = 65_536;
-const MAX_ENTRY_BYTES = 64 * 1024 * 1024;
 const MAX_EXPANDED_BYTES = 256 * 1024 * 1024;
 
 class ResourcePackBudget {
@@ -23,8 +22,8 @@ class ResourcePackBudget {
     if (this.entryCount > MAX_ENTRY_COUNT) {
       throw new Error(`The resource pack contains more than ${MAX_ENTRY_COUNT} entries.`);
     }
-    if (!Number.isSafeInteger(size) || size < 0 || size > MAX_ENTRY_BYTES) {
-      throw new Error(`The resource pack entry is too large: ${path}`);
+    if (!Number.isSafeInteger(size) || size < 0) {
+      throw new Error(`The resource pack entry has an invalid size: ${path}`);
     }
     this.expandedBytes += size;
     if (this.expandedBytes > MAX_EXPANDED_BYTES) {
@@ -87,7 +86,7 @@ async function mergeEntries(
   }
 
   return {
-    blob: new Blob([Uint8Array.from(await zipResourcePack(files))], { type: "application/zip" }),
+    blob: new Blob([await zipResourcePack(files)], { type: "application/zip" }),
     fileName: `${sanitizeFileName(sourceName)}.emote-merged.zip`,
   };
 }
@@ -115,11 +114,11 @@ function unzipResourcePack(bytes: Uint8Array): Promise<Record<string, Uint8Array
   });
 }
 
-function zipResourcePack(files: Record<string, Uint8Array>): Promise<Uint8Array> {
+function zipResourcePack(files: Record<string, Uint8Array>): Promise<Uint8Array<ArrayBuffer>> {
   return new Promise((resolve, reject) => {
     zip(files, { level: 9 }, (error, data) => {
       if (error) reject(new Error("The merged resource pack could not be compressed.", { cause: error }));
-      else resolve(data);
+      else resolve(data as Uint8Array<ArrayBuffer>);
     });
   });
 }

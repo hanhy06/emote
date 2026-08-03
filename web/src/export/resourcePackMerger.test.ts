@@ -78,11 +78,11 @@ describe("resource pack merger", () => {
       .rejects.toThrow("unsafe path: C:/escape.txt");
   });
 
-  it("rejects entries whose declared expanded size exceeds the limit", async () => {
+  it("rejects packs whose declared expanded size exceeds the total limit", async () => {
     const source = declareFirstEntrySize(zipSync({ "pack.mcmeta": strToU8("metadata") }), 0x7fff_ffff);
 
     await expect(mergeResourcePackZip(project, options, new File([Uint8Array.from(source)], "oversized.zip")))
-      .rejects.toThrow("entry is too large");
+      .rejects.toThrow("expands beyond the supported size limit");
   });
 });
 
