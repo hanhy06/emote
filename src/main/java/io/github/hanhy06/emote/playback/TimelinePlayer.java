@@ -24,7 +24,7 @@ public final class TimelinePlayer {
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
-        this(playbackPlan, new EntityTimelineTarget(nodes, entityController));
+        this(playbackPlan, new EntityTimelineTarget(playbackPlan, nodes, entityController));
     }
 
     TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
@@ -127,7 +127,7 @@ public final class TimelinePlayer {
     public Transformation currentTransformation(String nodeId) {
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {
-            return this.target.createTransformation(this.animation.nodes().get(nodeId).defaultMatrix());
+            return this.target.createTransformation(this.playbackPlan.defaultTransform(nodeId));
         }
         return state.at(this.currentTick);
     }
@@ -154,20 +154,20 @@ public final class TimelinePlayer {
             PlaybackPlan.TransformActivation activation = this.playbackPlan.activeTransform(nodeId, tick);
             Transformation currentTransformation;
             if (activation == null) {
-                currentTransformation = this.target.createTransformation(node.defaultMatrix());
+                currentTransformation = this.target.createTransformation(this.playbackPlan.defaultTransform(nodeId));
             } else {
-                Transformation previous = this.target.createTransformation(activation.previousMatrix());
-                Transformation targetTransformation = this.target.createTransformation(activation.transform().matrix());
+                Transformation previous = this.target.createTransformation(activation.previousTransform());
+                Transformation targetTransformation = this.target.createTransformation(activation.transform());
                 TransformState state = new TransformState(
                     previous,
                     targetTransformation,
                     activation.activationTick(),
-                    activation.transform().interpolationDurationTicks()
+                    activation.interpolationDurationTicks()
                 );
                 this.transformStates.put(nodeId, state);
                 this.appliedMatrices.put(nodeId, activation.transform().matrix());
                 currentTransformation = state.at(tick);
-                if (activation.transform().interpolationDurationTicks() > 0 && tick < activation.targetTick()) {
+                if (activation.interpolationDurationTicks() > 0 && tick < activation.targetTick()) {
                     activeInterpolations.add(activation);
                 }
             }
@@ -184,7 +184,7 @@ public final class TimelinePlayer {
         for (PlaybackPlan.TransformActivation activation : this.pendingInterpolations) {
             this.target.applyTransform(
                 activation.nodeId(),
-                activation.transform().matrix(),
+                activation.transform(),
                 Math.max(0, activation.targetTick() - this.currentTick)
             );
         }
@@ -198,16 +198,16 @@ public final class TimelinePlayer {
                 continue;
             }
             Transformation previous = currentTransformation(activation.nodeId());
-            Transformation next = this.target.createTransformation(matrix);
+            Transformation next = this.target.createTransformation(activation.transform());
             this.transformStates.put(
                 activation.nodeId(),
-                new TransformState(previous, next, tick, activation.transform().interpolationDurationTicks())
+                new TransformState(previous, next, tick, activation.interpolationDurationTicks())
             );
             this.appliedMatrices.put(activation.nodeId(), matrix);
             this.target.applyTransform(
                 activation.nodeId(),
-                matrix,
-                activation.transform().interpolationDurationTicks()
+                activation.transform(),
+                activation.interpolationDurationTicks()
             );
         }
         for (PlaybackPlan.StateActivation activation : this.playbackPlan.stateActivations(tick)) {
@@ -223,9 +223,13 @@ public final class TimelinePlayer {
     }
 
     interface TimelineTarget {
-        Transformation createTransformation(EmoteAnimation.Matrix matrix);
+        Transformation createTransformation(PlaybackPlan.PreparedTransform transform);
 
-        void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks);
+        void applyTransform(
+            String nodeId,
+            PlaybackPlan.PreparedTransform transform,
+            int interpolationDurationTicks
+        );
 
         void setTransformation(String nodeId, Transformation transformation);
 
@@ -250,20 +254,25 @@ public final class TimelinePlayer {
     }
 
     private record EntityTimelineTarget(
+        PlaybackPlan playbackPlan,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
-        public Transformation createTransformation(EmoteAnimation.Matrix matrix) {
-            return new Transformation(this.nodes.root().displayMatrix(matrix));
+        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
+            return this.nodes.root().displayTransformation(transform);
         }
 
         @Override
-        public void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks) {
+        public void applyTransform(
+            String nodeId,
+            PlaybackPlan.PreparedTransform transform,
+            int interpolationDurationTicks
+        ) {
             this.entityController.applyTransformation(
                 this.nodes,
                 requiredNode(nodeId),
-                matrix,
+                transform,
                 interpolationDurationTicks
             );
         }
@@ -280,7 +289,15 @@ public final class TimelinePlayer {
 
         @Override
         public void resetAll() {
-            this.nodes.nodes().values().forEach(node -> this.entityController.resetNode(this.nodes, node));
+            this.nodes.nodes().forEach((nodeId, node) -> {
+                this.entityController.applyTransformation(
+                    this.nodes,
+                    node,
+                    this.playbackPlan.defaultTransform(nodeId),
+                    0
+                );
+                this.entityController.setVisible(node, node.node().visible());
+            });
         }
 
         private PlaybackNodes.NodeInstance requiredNode(String nodeId) {

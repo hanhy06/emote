@@ -97,12 +97,16 @@ class PlaybackManagerEventDispatchTest {
 
     private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(EmoteAnimation.Matrix matrix) {
+        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks) {
+        public void applyTransform(
+            String nodeId,
+            PlaybackPlan.PreparedTransform transform,
+            int interpolationDurationTicks
+        ) {
             throw new UnsupportedOperationException();
         }
 

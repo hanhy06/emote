@@ -226,13 +226,17 @@ class TimelinePlayerTest {
         private int resetCount;
 
         @Override
-        public Transformation createTransformation(EmoteAnimation.Matrix matrix) {
-            return new Transformation(EmoteRootTransform.toJoml(matrix));
+        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
+            return new Transformation(EmoteRootTransform.toJoml(transform.matrix()));
         }
 
         @Override
-        public void applyTransform(String nodeId, EmoteAnimation.Matrix matrix, int interpolationDurationTicks) {
-            this.transforms.add(new AppliedTransform(matrix.value(3), interpolationDurationTicks));
+        public void applyTransform(
+            String nodeId,
+            PlaybackPlan.PreparedTransform transform,
+            int interpolationDurationTicks
+        ) {
+            this.transforms.add(new AppliedTransform(transform.matrix().value(3), interpolationDurationTicks));
         }
 
         @Override

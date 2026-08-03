@@ -92,12 +92,15 @@ public final class PlaybackEntityController {
     public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
-        EmoteAnimation.Matrix matrix,
+        PlaybackPlan.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
+        if (node.isAnchor()) {
+            return;
+        }
         applyTransformation(
             node,
-            new Transformation(playbackNodes.root().displayMatrix(matrix)),
+            playbackNodes.root().displayTransformation(transform),
             interpolationDurationTicks
         );
     }
@@ -111,13 +114,6 @@ public final class PlaybackEntityController {
             return;
         }
         applyTransformation(node.entity(), transformation, interpolationDurationTicks);
-    }
-
-    public void resetNode(PlaybackNodes playbackNodes, NodeInstance node) {
-        applyTransformation(playbackNodes, node, node.node().defaultMatrix(), 0);
-        if (!node.isAnchor()) {
-            setVisible(node, node.node().visible());
-        }
     }
 
     private NodeInstance createNode(

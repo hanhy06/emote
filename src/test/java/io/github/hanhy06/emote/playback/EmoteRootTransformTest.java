@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
+import org.joml.Matrix4fc;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -44,6 +45,28 @@ class EmoteRootTransformTest {
 
         assertEquals(-1.0F, result.x, 0.0001F);
         assertEquals(0.0F, result.z, 0.0001F);
+    }
+
+    @Test
+    void preparedDisplayTransformationMatchesMatrixComposition() {
+        EmoteAnimation.Matrix matrix = new EmoteAnimation.Matrix(List.of(
+            0.0D, -2.0D, 0.0D, 2.0D,
+            1.0D, 0.0D, 0.0D, 3.0D,
+            0.0D, 0.0D, 0.5D, 4.0D,
+            0.0D, 0.0D, 0.0D, 1.0D
+        ));
+        EmoteRootTransform root = EmoteRootTransform.create(Vec3.ZERO, 37.0F);
+
+        Matrix4fc expected = root.displayMatrix(matrix);
+        Matrix4fc actual = root.displayTransformation(
+            PlaybackPlan.PreparedTransform.create(matrix, false)
+        ).getMatrix();
+
+        for (int column = 0; column < 4; column++) {
+            for (int row = 0; row < 4; row++) {
+                assertEquals(expected.get(column, row), actual.get(column, row), 0.0001F);
+            }
+        }
     }
 
     private void assertForward(float yaw, float expectedX, float expectedZ) {
