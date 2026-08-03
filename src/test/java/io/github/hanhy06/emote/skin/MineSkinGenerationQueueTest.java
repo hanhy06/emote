@@ -93,7 +93,7 @@ class MineSkinGenerationQueueTest {
         CountDownLatch workerRan = new CountDownLatch(1);
         CountDownLatch retryRan = new CountDownLatch(1);
 
-        assertTrue(executor.schedule("retry", retryRan::countDown, 100L));
+        assertTrue(executor.schedule("retry", retryRan::countDown, 100L, executor.currentGeneration()));
         assertTrue(executor.submit("other", workerRan::countDown));
 
         assertTrue(workerRan.await(1, TimeUnit.SECONDS));
@@ -126,5 +126,16 @@ class MineSkinGenerationQueueTest {
 
         assertFalse(reran.await(200, TimeUnit.MILLISECONDS));
         assertEquals(1, runCount.get());
+    }
+
+    @Test
+    void cancelledGenerationCannotScheduleNewTask() throws InterruptedException {
+        MineSkinGenerationQueue queue = new MineSkinGenerationQueue();
+        long cancelledGeneration = queue.currentGeneration();
+        queue.cancelAll();
+        CountDownLatch ran = new CountDownLatch(1);
+
+        assertFalse(queue.schedule("cleanup", ran::countDown, 1L, cancelledGeneration));
+        assertFalse(ran.await(100, TimeUnit.MILLISECONDS));
     }
 }

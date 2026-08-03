@@ -54,7 +54,8 @@ final class MineSkinManager {
         this.client.setJobPollIntervalSeconds(pollIntervalSeconds);
         this.cacheRetentionDays = cacheRetentionDays;
         this.cacheMaxMiB = cacheMaxMiB;
-        this.generationQueue.submit(CACHE_CLEANUP_KEY, this::cleanupCache);
+        long queueGeneration = this.generationQueue.currentGeneration();
+        this.generationQueue.submit(CACHE_CLEANUP_KEY, () -> cleanupCache(queueGeneration));
     }
 
     PlayerSkinManager.SkinPreparation prepare(
@@ -113,7 +114,8 @@ final class MineSkinManager {
             this.generationQueue.schedule(
                 cleanupKey(bakeTask),
                 () -> evictFailedTask(bakeTask),
-                FAILED_JOB_RETRY_DELAY_MILLIS
+                FAILED_JOB_RETRY_DELAY_MILLIS,
+                bakeTask.queueGeneration()
             );
         }
     }
@@ -148,7 +150,8 @@ final class MineSkinManager {
             this.generationQueue.schedule(
                 cleanupKey(bakeTask),
                 () -> evictFailedTask(bakeTask),
-                remainingMillis
+                remainingMillis,
+                bakeTask.queueGeneration()
             );
         }
     }
@@ -185,7 +188,7 @@ final class MineSkinManager {
         this.cache.clearMemory();
     }
 
-    private void cleanupCache() {
+    private void cleanupCache(long queueGeneration) {
         try {
             MineSkinCache.CleanupResult result = this.cache.cleanup(
                 TimeUnit.DAYS.toMillis(this.cacheRetentionDays),
@@ -206,8 +209,9 @@ final class MineSkinManager {
         } finally {
             this.generationQueue.schedule(
                 CACHE_CLEANUP_KEY,
-                this::cleanupCache,
-                CACHE_CLEANUP_INTERVAL_MILLIS
+                () -> cleanupCache(queueGeneration),
+                CACHE_CLEANUP_INTERVAL_MILLIS,
+                queueGeneration
             );
         }
     }
@@ -238,7 +242,10 @@ final class MineSkinManager {
         BakeTask bakeTask;
         boolean addedKeys;
         synchronized (this.bakeTasks) {
-            bakeTask = this.bakeTasks.computeIfAbsent(pendingKey, ignored -> new BakeTask(source));
+            bakeTask = this.bakeTasks.computeIfAbsent(
+                pendingKey,
+                ignored -> new BakeTask(source, this.generationQueue.currentGeneration())
+            );
             bakeTask.addSubscriber(source.playerUuid());
             addedKeys = bakeTask.addRequiredKeys(requiredKeys);
         }
@@ -291,7 +298,8 @@ final class MineSkinManager {
                     this.generationQueue.schedule(
                         bakeTask.key(),
                         () -> bakeAndSave(bakeTask),
-                        retryDelayMillis
+                        retryDelayMillis,
+                        bakeTask.queueGeneration()
                     );
                     Emote.LOGGER.warn(
                         "MineSkin bake rate limited for {} part {}. Retrying in {} ms ({}/{})",
@@ -415,6 +423,7 @@ final class MineSkinManager {
     private static final class BakeTask {
         private final String key;
         private final PlayerSkinManager.PlayerSkinSource source;
+        private final long queueGeneration;
         private final Set<UUID> subscribers = new LinkedHashSet<>();
         private final Set<PlayerSkinTextureKey> requiredKeys = new LinkedHashSet<>();
         private final Map<PlayerSkinTextureKey, Integer> retryAttempts = new HashMap<>();
@@ -422,9 +431,10 @@ final class MineSkinManager {
         private BakeStage stage = BakeStage.QUEUED;
         private long failedAtEpochMillis;
 
-        private BakeTask(PlayerSkinManager.PlayerSkinSource source) {
+        private BakeTask(PlayerSkinManager.PlayerSkinSource source, long queueGeneration) {
             this.source = source;
             this.key = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
+            this.queueGeneration = queueGeneration;
         }
 
         private String key() {
@@ -433,6 +443,10 @@ final class MineSkinManager {
 
         private PlayerSkinManager.PlayerSkinSource source() {
             return this.source;
+        }
+
+        private long queueGeneration() {
+            return this.queueGeneration;
         }
 
         private synchronized void addSubscriber(UUID playerUuid) {

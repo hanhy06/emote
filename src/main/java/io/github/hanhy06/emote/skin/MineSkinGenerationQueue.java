@@ -72,7 +72,14 @@ final class MineSkinGenerationQueue {
         }
     }
 
-    synchronized boolean schedule(String key, Runnable task, long delayMillis) {
+    synchronized long currentGeneration() {
+        return this.generation;
+    }
+
+    synchronized boolean schedule(String key, Runnable task, long delayMillis, long expectedGeneration) {
+        if (expectedGeneration != this.generation) {
+            return false;
+        }
         if (this.scheduledTasks.containsKey(key)) {
             return false;
         }
