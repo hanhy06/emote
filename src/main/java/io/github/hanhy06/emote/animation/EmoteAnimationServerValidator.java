@@ -23,10 +23,13 @@ import java.util.Objects;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class EmoteAnimationServerValidator {
+    private final EmoteAnimationComplexityValidator complexityValidator = new EmoteAnimationComplexityValidator();
+
     public Loaded prepare(Loaded loaded, MinecraftServer server) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
         Objects.requireNonNull(server, "server");
         Path sourcePath = loaded.sourcePath();
+        this.complexityValidator.validate(loaded);
 
         var nbtOps = server.registryAccess().createSerializationContext(NbtOps.INSTANCE);
         var jsonOps = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);

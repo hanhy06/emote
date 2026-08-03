@@ -166,6 +166,18 @@ class EmoteAnimationJsonLoaderTest {
         assertEquals("$.minecraft_version", exception.fieldPath());
     }
 
+    @Test
+    void rejectsOversizedAnimationBeforeParsingJson() {
+        byte[] bytes = new byte[EmoteAnimationJsonLoader.MAX_JSON_BYTES + 1];
+
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> this.loader.parse(REFERENCE_PATH, bytes, MINECRAFT_VERSION)
+        );
+
+        assertEquals("$", exception.fieldPath());
+    }
+
     private JsonObject readReference() throws IOException {
         JsonObject root = JsonParser
             .parseString(Files.readString(REFERENCE_PATH))

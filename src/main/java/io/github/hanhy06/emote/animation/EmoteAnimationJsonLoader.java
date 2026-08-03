@@ -24,6 +24,7 @@ import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 public final class EmoteAnimationJsonLoader {
     private static final int SCHEMA_VERSION = 1;
     private static final int TICK_RATE = 20;
+    static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
     private static final String TRANSFORM_SPACE_PATH = "$.transform_space";
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
@@ -42,7 +43,17 @@ public final class EmoteAnimationJsonLoader {
     public Loaded load(Path sourcePath, String expectedMinecraftVersion) throws EmoteAnimationLoadException {
         byte[] bytes;
         try {
+            long fileSize = Files.size(sourcePath);
+            if (fileSize > MAX_JSON_BYTES) {
+                throw new EmoteAnimationLoadException(
+                    sourcePath,
+                    "$",
+                    "file must not exceed " + MAX_JSON_BYTES + " bytes"
+                );
+            }
             bytes = Files.readAllBytes(sourcePath);
+        } catch (EmoteAnimationLoadException exception) {
+            throw exception;
         } catch (IOException exception) {
             throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
         }
@@ -54,6 +65,13 @@ public final class EmoteAnimationJsonLoader {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Objects.requireNonNull(bytes, "bytes");
         Objects.requireNonNull(expectedMinecraftVersion, "expectedMinecraftVersion");
+        if (bytes.length > MAX_JSON_BYTES) {
+            throw new EmoteAnimationLoadException(
+                sourcePath,
+                "$",
+                "file must not exceed " + MAX_JSON_BYTES + " bytes"
+            );
+        }
 
         EmoteAnimationJsonReader reader = new EmoteAnimationJsonReader(sourcePath);
         JsonElement rootElement;
