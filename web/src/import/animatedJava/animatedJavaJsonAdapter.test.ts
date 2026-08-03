@@ -186,6 +186,48 @@ describe("animatedJavaJsonAdapter", () => {
     expect(matrix?.[10]).toBeCloseTo(1.5);
   });
 
+  it("preserves non-canonical decimal timestamps after a start delay", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      delayed: {
+        loop_mode: { type: "once" },
+        start_delay: "0.1",
+        length: 0.1,
+        node_keyframes: {
+          item: { position: { "0.050": baked(["2", "0", "0"]) } },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "delayed" });
+    const transforms = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item);
+
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([2, 3]);
+    expect(transforms.map((transform) => transform?.interpolation_duration_ticks)).toEqual([0, 1]);
+    expect(transforms.map((transform) => transform?.matrix[3])).toEqual([0, 2]);
+  });
+
+  it("applies a time-zero keyframe only after the start delay", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      delayed: {
+        loop_mode: { type: "once" },
+        start_delay: "0.1",
+        length: 0.1,
+        node_keyframes: {
+          item: { position: { "0.0": baked(["2", "0", "0"]) } },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "delayed" });
+    const [keyframe] = animation.timeline.keyframes;
+
+    expect(keyframe.tick).toBe(2);
+    expect(keyframe.node_transforms?.item.interpolation_duration_ticks).toBe(0);
+    expect(keyframe.node_transforms?.item.matrix[3]).toBeCloseTo(2);
+  });
+
   it("bakes raw Animated Java easing at every tick", async () => {
     const input = blueprint({ item: { type: "item_display" } }, {
       raw: {

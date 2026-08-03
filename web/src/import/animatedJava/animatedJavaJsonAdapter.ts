@@ -222,6 +222,13 @@ interface ProjectChannelCursor {
   nextIndex: number;
 }
 
+interface IndexedAjKeyframes {
+  time: number;
+  position?: AjKeyframe;
+  rotation?: AjKeyframe;
+  scale?: AjKeyframe;
+}
+
 function indexProjectChannels(keyframes: AjProjectKeyframe[]): Record<"position" | "rotation" | "scale", ProjectChannelCursor> {
   const channels = {
     position: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
@@ -433,17 +440,8 @@ function compileNodeChannels(
     }));
   }
   const numericBlendWeight = numericExpression(blendWeight, `${animationId}.blend_weight`);
-  const times = new Set<number>();
-  for (const channel of [channels.position, channels.rotation, channels.scale]) {
-    for (const key of Object.keys(channel ?? {})) {
-      const time = Number(key);
-      if (!Number.isFinite(time) || time < 0) throw new Error(`${animationId}/${nodeId} has invalid keyframe time ${key}.`);
-      secondsToTicks(time, `${animationId}/${nodeId} keyframe`);
-      times.add(time);
-    }
-  }
-  return [...times].sort((first, second) => first - second).map((time) => {
-    const entries = [channels.position?.[String(time)] ?? channels.position?.[formatTimestamp(time)], channels.rotation?.[String(time)] ?? channels.rotation?.[formatTimestamp(time)], channels.scale?.[String(time)] ?? channels.scale?.[formatTimestamp(time)]];
+  const transforms = indexAjKeyframes(animationId, nodeId, channels).map(({ time, position, rotation, scale }): ImportedTransformKeyframe => {
+    const entries = [position, rotation, scale];
     const [positionKeyframe, rotationKeyframe, scaleKeyframe] = entries;
     if (positionKeyframe) current.position = readBakedVector(positionKeyframe, `${animationId}/${nodeId}/position/${time}`);
     if (rotationKeyframe) current.rotation = readBakedVector(rotationKeyframe, `${animationId}/${nodeId}/rotation/${time}`);
@@ -455,6 +453,37 @@ function compileNodeChannels(
       interpolation: step ? { type: "step" } : { type: "linear" },
     };
   });
+  if (startDelayTicks > 0 && transforms.length > 0) {
+    if (transforms[0].tick === startDelayTicks) {
+      transforms[0] = { ...transforms[0], interpolation: { type: "step" } };
+    } else {
+      transforms.unshift({ tick: startDelayTicks, matrix: defaultMatrix, interpolation: { type: "step" } });
+    }
+  }
+  return transforms;
+}
+
+function indexAjKeyframes(animationId: string, nodeId: string, channels: AjNodeChannels): IndexedAjKeyframes[] {
+  const indexed = new Map<number, IndexedAjKeyframes>();
+  const channelEntries = [
+    ["position", channels.position],
+    ["rotation", channels.rotation],
+    ["scale", channels.scale],
+  ] as const;
+  for (const [channelName, channel] of channelEntries) {
+    for (const [key, keyframe] of Object.entries(channel ?? {})) {
+      const time = Number(key);
+      if (!Number.isFinite(time) || time < 0) throw new Error(`${animationId}/${nodeId} has invalid keyframe time ${key}.`);
+      secondsToTicks(time, `${animationId}/${nodeId} keyframe`);
+      const entry = indexed.get(time) ?? { time };
+      if (entry[channelName]) {
+        throw new Error(`${animationId}/${nodeId}/${channelName} contains duplicate keyframe time ${time}.`);
+      }
+      entry[channelName] = keyframe;
+      indexed.set(time, entry);
+    }
+  }
+  return [...indexed.values()].sort((first, second) => first.time - second.time);
 }
 
 function composeBlendedAjMatrix(
@@ -643,10 +672,6 @@ function numberProperty(value: Record<string, unknown>, key: string, fallback: n
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function formatTimestamp(value: number): string {
-  return Number.isInteger(value) ? `${value}.0` : String(value);
 }
 
 function prettify(value: string): string {
