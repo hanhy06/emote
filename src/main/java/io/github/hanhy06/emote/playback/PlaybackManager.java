@@ -57,7 +57,7 @@ public class PlaybackManager {
         PlaybackNodes nodes = null;
         try {
             nodes = this.entityController.create(player, emote);
-            TimelinePlayer timeline = new TimelinePlayer(emote.animation(), nodes, this.entityController);
+            TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(server.overworld().getGameTime());
             } else {
@@ -68,7 +68,7 @@ public class PlaybackManager {
                 timeline.resumeSynchronizedInterpolation();
             }
             EventPlayer events = new EventPlayer(
-                emote.animation(),
+                emote.playbackPlan(),
                 new EventCommandExecutor(server, player, nodes, timeline)
             );
             ActiveEmote activeEmote = new ActiveEmote(

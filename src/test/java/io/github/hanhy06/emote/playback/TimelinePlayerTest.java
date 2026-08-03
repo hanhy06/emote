@@ -135,6 +135,7 @@ class TimelinePlayerTest {
         assertEquals(5, player.currentTick());
         assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
         assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
+        assertEquals(List.of(), target.transforms);
 
         player.resumeSynchronizedInterpolation();
         assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
@@ -161,6 +162,30 @@ class TimelinePlayerTest {
         assertEquals(2.0F, target.snapshots.getLast(), 0.0001F);
         assertEquals(TimelinePlayer.AdvanceResult.RESTARTED, player.advance());
         assertEquals(0, player.currentTick());
+    }
+
+    @Test
+    void synchronizedStartIgnoresRepeatedTransformMatrices() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(
+                6,
+                EmoteAnimation.LoopMode.SERVER_SYNC,
+                0,
+                List.of(
+                    keyframe(0, 0.0D, 0),
+                    keyframe(2, 2.0D, 2),
+                    keyframe(6, 2.0D, 2)
+                )
+            ),
+            target
+        );
+
+        player.startSynchronized(5L);
+
+        assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
+        player.resumeSynchronizedInterpolation();
+        assertEquals(List.of(), target.transforms);
     }
 
     private EmoteAnimation animation(

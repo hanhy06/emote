@@ -2,22 +2,24 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
-import java.util.*;
+import java.util.List;
+import java.util.Objects;
 
 public final class EventPlayer {
-    private static final Map<EmoteAnimation, Map<Integer, List<EmoteAnimation.Event>>> TIMELINE_EVENT_CACHE =
-        new WeakHashMap<>();
-
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
-    private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
+    private final PlaybackPlan playbackPlan;
     private boolean started;
     private boolean stopped;
 
     public EventPlayer(EmoteAnimation animation, EventExecutor executor) {
-        this.events = animation.timeline().events();
+        this(PlaybackPlan.compile(animation), executor);
+    }
+
+    public EventPlayer(PlaybackPlan playbackPlan, EventExecutor executor) {
+        this.playbackPlan = Objects.requireNonNull(playbackPlan, "playbackPlan");
+        this.events = playbackPlan.animation().timeline().events();
         this.executor = Objects.requireNonNull(executor, "executor");
-        this.timelineEvents = indexedTimelineEvents(animation);
     }
 
     public void start() {
@@ -32,7 +34,7 @@ public final class EventPlayer {
         if (!this.started) {
             throw new IllegalStateException("Events have not started");
         }
-        execute(this.timelineEvents.getOrDefault(tick, List.of()));
+        execute(this.playbackPlan.timelineEvents(tick));
     }
 
     public void loop() {
@@ -54,27 +56,6 @@ public final class EventPlayer {
         for (EmoteAnimation.Event event : eventList) {
             this.executor.execute(event);
         }
-    }
-
-    private static Map<Integer, List<EmoteAnimation.Event>> indexedTimelineEvents(EmoteAnimation animation) {
-        synchronized (TIMELINE_EVENT_CACHE) {
-            return TIMELINE_EVENT_CACHE.computeIfAbsent(
-                animation,
-                ignored -> indexTimelineEvents(animation.timeline().events().timeline())
-            );
-        }
-    }
-
-    private static Map<Integer, List<EmoteAnimation.Event>> indexTimelineEvents(
-        List<EmoteAnimation.TimelineEvent> events
-    ) {
-        Map<Integer, List<EmoteAnimation.Event>> byTick = new LinkedHashMap<>();
-        for (EmoteAnimation.TimelineEvent event : events) {
-            byTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(event.event());
-        }
-        Map<Integer, List<EmoteAnimation.Event>> copied = new LinkedHashMap<>();
-        byTick.forEach((tick, values) -> copied.put(tick, List.copyOf(values)));
-        return Map.copyOf(copied);
     }
 
     @FunctionalInterface
