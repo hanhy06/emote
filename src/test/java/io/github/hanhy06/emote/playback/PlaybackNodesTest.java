@@ -11,6 +11,8 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlaybackNodesTest {
     @Test
@@ -34,6 +36,19 @@ class PlaybackNodesTest {
 
         assertEquals(170.0F, nodes.updateViewYaw(-170.0F, 50.0F), 0.0001F);
         assertEquals(-150.0F, nodes.updateViewYaw(-100.0F, 50.0F), 0.0001F);
+    }
+
+    @Test
+    void updatesDisplayRotationOnlyWhenPackedYawChanges() {
+        PlaybackNodes nodes = new PlaybackNodes(
+            EmoteRootTransform.create(Vec3.ZERO, 0.0F),
+            Map.of()
+        );
+        PlaybackEntityController controller = new PlaybackEntityController();
+
+        assertFalse(controller.updateViewRotation(nodes, 40.0F));
+        assertTrue(controller.updateViewRotation(nodes, 60.0F));
+        assertFalse(controller.updateViewRotation(nodes, 60.5F));
     }
 
     @Test

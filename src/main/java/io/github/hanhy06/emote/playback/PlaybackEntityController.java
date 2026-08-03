@@ -20,6 +20,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.util.Mth;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -61,14 +62,19 @@ public final class PlaybackEntityController {
         removeEntities(level, nodes.nodes().values());
     }
 
-    public void updateViewRotation(PlaybackNodes nodes, float currentYaw) {
+    public boolean updateViewRotation(PlaybackNodes nodes, float currentYaw) {
+        float previousRelativeYaw = nodes.root().relativeYaw(nodes.viewYaw());
         float viewYaw = nodes.updateViewYaw(currentYaw, VIEW_ROTATION_THRESHOLD_DEGREES);
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
+        if (Mth.packDegrees(previousRelativeYaw) == Mth.packDegrees(relativeYaw)) {
+            return false;
+        }
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
                 node.entity().setYRot(relativeYaw);
             }
         }
+        return true;
     }
 
     public void setVisible(NodeInstance node, boolean visible) {
