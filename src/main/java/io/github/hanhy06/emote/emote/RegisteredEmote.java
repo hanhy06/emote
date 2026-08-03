@@ -1,9 +1,9 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.playback.PlaybackPlan;
 import io.github.hanhy06.emote.skin.EmoteSkinPart;
 import io.github.hanhy06.emote.skin.EmoteSkinPartFactory;
-import io.github.hanhy06.emote.playback.PlaybackPlan;
 
 import java.nio.file.Path;
 import java.util.List;

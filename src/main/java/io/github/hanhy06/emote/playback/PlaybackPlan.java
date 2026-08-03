@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
