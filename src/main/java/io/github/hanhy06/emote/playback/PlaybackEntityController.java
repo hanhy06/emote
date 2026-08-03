@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.mixin.BlockDisplayAccessor;
@@ -208,9 +208,8 @@ public final class PlaybackEntityController {
             var source = entity.createCommandSourceStackForNameResolution((ServerLevel)entity.level())
                 .withPermission(LevelBasedPermissionSet.GAMEMASTER);
             return ComponentUtils.resolve(ResolutionContext.create(source), text);
-        } catch (Exception exception) {
-            Emote.LOGGER.warn("Failed to resolve display entity text {}", text, exception);
-            return Component.empty();
+        } catch (CommandSyntaxException exception) {
+            throw new IllegalStateException("Failed to resolve display entity text", exception);
         }
     }
 
