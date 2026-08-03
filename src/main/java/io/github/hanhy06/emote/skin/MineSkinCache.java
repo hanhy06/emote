@@ -41,7 +41,7 @@ final class MineSkinCache {
     }
 
     MineSkinCache(Path skinDirPath) {
-        this.skinDirPath = skinDirPath;
+        this.skinDirPath = Objects.requireNonNull(skinDirPath, "skinDirPath");
     }
 
     static String createContentKey(byte[] pngBytes, boolean slimModel) {
@@ -64,9 +64,6 @@ final class MineSkinCache {
             return cached;
         }
 
-        if (filePath == null) {
-            return cacheSkinTextures(cacheKey, Map.of());
-        }
         if (!Files.exists(filePath)) {
             return cacheSkinTextures(cacheKey, Map.of());
         }
@@ -110,10 +107,6 @@ final class MineSkinCache {
         }
 
         Path filePath = resolveFilePath(textureHash, slimModel);
-        if (filePath == null) {
-            return;
-        }
-
         Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.copyOf(textureUrlMap);
         JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
@@ -290,7 +283,7 @@ final class MineSkinCache {
         if (maximumBytes < 1L) {
             throw new IllegalArgumentException("maximumBytes must be positive");
         }
-        if (this.skinDirPath == null || !Files.isDirectory(this.skinDirPath)) {
+        if (!Files.isDirectory(this.skinDirPath)) {
             return new CleanupResult(0, 0, 0, 0L);
         }
 
@@ -343,9 +336,6 @@ final class MineSkinCache {
     }
 
     private void refreshLastUsed(Path filePath) {
-        if (filePath == null) {
-            return;
-        }
         long now = System.currentTimeMillis();
         Long refreshedAt = this.refreshedAccessTimes.get(filePath);
         if (refreshedAt != null && now - refreshedAt < LAST_ACCESS_REFRESH_MILLIS) {
@@ -531,20 +521,16 @@ final class MineSkinCache {
     }
 
     private Path resolveFilePath(String textureHash, boolean slimModel) {
-        Path skinDirPath = this.skinDirPath;
-        if (skinDirPath == null) {
-            return null;
-        }
-
-        return skinDirPath.resolve(textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "classic") + ".json");
+        return this.skinDirPath.resolve(
+            textureHash.toLowerCase(Locale.ROOT) + "-" + (slimModel ? "slim" : "classic") + ".json"
+        );
     }
 
     private Path resolveCacheFilePath(String contentHash, String directoryName) {
         if (!isContentHash(contentHash)) {
             return null;
         }
-        Path skinDirPath = this.skinDirPath;
-        return skinDirPath == null ? null : skinDirPath.resolve(directoryName).resolve(contentHash + ".json");
+        return this.skinDirPath.resolve(directoryName).resolve(contentHash + ".json");
     }
 
     record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {
@@ -622,15 +608,6 @@ final class MineSkinCache {
     }
 
     private static Path resolveDefaultSkinDirPath() {
-        try {
-            Path configDirPath = FabricLoader.getInstance().getConfigDir();
-            if (configDirPath == null) {
-                return null;
-            }
-
-            return configDirPath.resolve(Emote.MOD_ID).resolve("skin").resolve("mineskin");
-        } catch (RuntimeException exception) {
-            return null;
-        }
+        return FabricLoader.getInstance().getConfigDir().resolve(Emote.MOD_ID).resolve("skin").resolve("mineskin");
     }
 }

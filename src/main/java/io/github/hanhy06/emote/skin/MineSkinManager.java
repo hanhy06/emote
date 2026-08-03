@@ -90,9 +90,6 @@ final class MineSkinManager {
     }
 
     private static int progressPercent(int completedParts, int totalParts) {
-        if (totalParts <= 0) {
-            return 100;
-        }
         return Math.min(100, completedParts * 100 / totalParts);
     }
 
@@ -235,9 +232,6 @@ final class MineSkinManager {
         PlayerSkinManager.PlayerSkinSource source,
         Set<PlayerSkinTextureKey> requiredKeys
     ) {
-        if (!MineSkinClient.hasApiKey(this.apiKey)) {
-            return BakeStage.QUEUED;
-        }
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
         BakeTask bakeTask;
         boolean addedKeys;
