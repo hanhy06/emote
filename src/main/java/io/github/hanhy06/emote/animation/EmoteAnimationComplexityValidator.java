@@ -7,11 +7,11 @@ import java.nio.file.Path;
 import java.util.List;
 
 final class EmoteAnimationComplexityValidator {
-    static final int MAX_NODE_COUNT = 32;
-    static final int MAX_DISPLAY_NODE_COUNT = 24;
+    static final int MAX_NODE_COUNT = 48;
+    static final int MAX_DISPLAY_NODE_COUNT = 32;
     static final int MAX_DURATION_TICKS = 20 * 60 * 10;
-    static final int MAX_TRANSFORMS_PER_TICK = 12;
-    static final int MAX_STATE_CHANGES_PER_TICK = 4;
+    static final int MAX_TRANSFORMS_PER_TICK = 24;
+    static final int MAX_STATE_CHANGES_PER_TICK = 8;
     static final int MAX_COMMANDS_PER_TICK = 16;
     static final int MAX_TOTAL_COMMANDS = 4_096;
 
