@@ -139,10 +139,7 @@ public final class EmoteApiImpl extends EmoteApi {
             if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            EmoteApiImpl.this.playbackManager.stopId(
-                this.id.toString(),
-                PlaybackStopReason.EMOTE_REMOVED
-            );
+            EmoteApiImpl.this.playbackManager.stopId(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             EmoteApiImpl.this.wheelSyncService.syncAll();
             return true;
         }

@@ -63,9 +63,9 @@ public final class EventCommandExecutor implements EventPlayer.EventExecutor {
         }
         Matrix4fc matrix = this.nodes.root().worldMatrix(this.nodes.viewYaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
-            (float)origin.offset().x(),
-            (float)origin.offset().y(),
-            (float)origin.offset().z()
+            (float) origin.offset().x(),
+            (float) origin.offset().y(),
+            (float) origin.offset().z()
         ), new Vector3f());
         return this.nodes.root().position().add(position.x, position.y, position.z);
     }

@@ -17,6 +17,7 @@ import java.util.stream.Stream;
 
 public class ConfigManager {
     public static ConfigManager INSTANCE;
+
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String EMOTE_ACCESS_FILE_NAME = "emotes.json";
@@ -42,6 +43,7 @@ public class ConfigManager {
 
     ConfigManager(Path configBasePath, @Nullable Path bundledAnimationDirectory) {
         INSTANCE = this;
+
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
         this.bundledAnimationDirectory = bundledAnimationDirectory;
     }

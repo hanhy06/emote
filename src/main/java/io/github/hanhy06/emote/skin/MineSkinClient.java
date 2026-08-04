@@ -33,6 +33,7 @@ final class MineSkinClient {
     private static final String USER_AGENT = createUserAgent();
 
     private final HttpClient httpClient;
+
     private volatile long jobPollIntervalMillis = 3000L;
 
     MineSkinClient() {
@@ -208,7 +209,10 @@ final class MineSkinClient {
             if ("failed".equalsIgnoreCase(jobStatus)) {
                 throw new JobFailedException(
                     readErrorMessage(jobResponse, "MineSkin job failed"),
-                    Math.max(this.jobPollIntervalMillis, readRelativeDelay(findObject(findObject(jobResponse, "rateLimit"), "next")))
+                    Math.max(
+                        this.jobPollIntervalMillis,
+                        readRelativeDelay(findObject(findObject(jobResponse, "rateLimit"), "next"))
+                    )
                 );
             }
         }

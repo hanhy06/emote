@@ -90,13 +90,12 @@ public final class PlaybackEntityController {
         }
         switch (node.displayContent()) {
             case ItemContent(ItemStack itemStack) ->
-                ((ItemDisplayAccessor)node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
-            case BlockContent(var blockState) ->
-                ((BlockDisplayAccessor)node.entity()).emote$setBlockState(
-                    visible ? blockState : Blocks.AIR.defaultBlockState()
-                );
+                ((ItemDisplayAccessor) node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
+            case BlockContent(var blockState) -> ((BlockDisplayAccessor) node.entity()).emote$setBlockState(
+                visible ? blockState : Blocks.AIR.defaultBlockState()
+            );
             case TextContent(Component text) ->
-                ((TextDisplayAccessor)node.entity()).emote$setText(visible ? text : Component.empty());
+                ((TextDisplayAccessor) node.entity()).emote$setText(visible ? text : Component.empty());
             case null -> {
             }
         }
@@ -142,7 +141,7 @@ public final class PlaybackEntityController {
 
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
-        ((DisplayAccessor)entity).emote$setPosRotInterpolationDuration(VIEW_ROTATION_INTERPOLATION_TICKS);
+        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(VIEW_ROTATION_INTERPOLATION_TICKS);
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
@@ -155,12 +154,9 @@ public final class PlaybackEntityController {
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
         Display display = switch (node) {
-            case EmoteAnimation.ItemNode ignored ->
-                EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.BlockNode ignored ->
-                EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.TextNode ignored ->
-                EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.ItemNode ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.BlockNode ignored -> EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.TextNode ignored -> EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             case EmoteAnimation.AnchorNode ignored ->
                 throw new IllegalArgumentException("Anchor nodes do not have display entities");
         };
@@ -176,25 +172,25 @@ public final class PlaybackEntityController {
     ) {
         return switch (preparedData) {
             case EmoteAnimation.PreparedItemData(ItemStack itemStack, var itemDisplay) -> {
-                ItemDisplayAccessor accessor = (ItemDisplayAccessor)entity;
+                ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
                 accessor.emote$setItemStack(itemStack);
                 accessor.emote$setItemTransform(itemDisplay);
                 yield new ItemContent(itemStack);
             }
             case EmoteAnimation.PreparedBlockData(var blockState) -> {
-                ((BlockDisplayAccessor)entity).emote$setBlockState(blockState);
+                ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);
                 yield new BlockContent(blockState);
             }
             case EmoteAnimation.PreparedTextData(Component unresolvedText) -> {
-                Component text = resolveText((Display.TextDisplay)entity, unresolvedText);
-                ((TextDisplayAccessor)entity).emote$setText(text);
+                Component text = resolveText((Display.TextDisplay) entity, unresolvedText);
+                ((TextDisplayAccessor) entity).emote$setText(text);
                 yield new TextContent(text);
             }
         };
     }
 
     private void applyTransformation(Display entity, Transformation transformation, int interpolationDurationTicks) {
-        DisplayAccessor accessor = (DisplayAccessor)entity;
+        DisplayAccessor accessor = (DisplayAccessor) entity;
         accessor.emote$setTransformation(transformation);
         accessor.emote$setTransformationInterpolationDuration(interpolationDurationTicks);
         accessor.emote$setTransformationInterpolationDelay(0);
@@ -212,7 +208,7 @@ public final class PlaybackEntityController {
 
     private Component resolveText(Display.TextDisplay entity, Component text) {
         try {
-            var source = entity.createCommandSourceStackForNameResolution((ServerLevel)entity.level())
+            var source = entity.createCommandSourceStackForNameResolution((ServerLevel) entity.level())
                 .withPermission(LevelBasedPermissionSet.GAMEMASTER);
             return ComponentUtils.resolve(ResolutionContext.create(source), text);
         } catch (CommandSyntaxException exception) {

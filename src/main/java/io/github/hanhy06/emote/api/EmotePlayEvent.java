@@ -9,6 +9,7 @@ public final class EmotePlayEvent {
     private final ServerPlayer player;
     private final EmoteInfo emote;
     private final PlaySource source;
+
     private Component cancellationMessage;
 
     public EmotePlayEvent(ServerPlayer player, EmoteInfo emote, PlaySource source) {

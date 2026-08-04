@@ -18,7 +18,8 @@ class MineSkinCacheTest {
         MineSkinCache store = new MineSkinCache(tempDir);
         Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.of(
             new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL), "https://textures.minecraft.net/texture/head",
-            new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)), "https://textures.minecraft.net/texture/left_arm"
+            new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)),
+            "https://textures.minecraft.net/texture/left_arm"
         );
 
         store.save("ABCDEF", true, savedTextureUrls);
@@ -29,7 +30,7 @@ class MineSkinCacheTest {
     @Test
     void contentCacheRoundTrip(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[]{1, 2, 3}, false);
+        String contentHash = MineSkinCache.createContentKey(new byte[] {1, 2, 3}, false);
         String result = "https://textures.minecraft.net/texture/shared";
 
         store.saveContent(contentHash, result);
@@ -68,7 +69,7 @@ class MineSkinCacheTest {
 
     @Test
     void repeatedContentLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
-        String contentHash = MineSkinCache.createContentKey(new byte[]{4, 5, 6}, true);
+        String contentHash = MineSkinCache.createContentKey(new byte[] {4, 5, 6}, true);
         String textureUrl = "https://textures.example/shared";
         new MineSkinCache(tempDir).saveContent(contentHash, textureUrl);
         MineSkinCache store = new MineSkinCache(tempDir);
@@ -83,7 +84,7 @@ class MineSkinCacheTest {
 
     @Test
     void contentKeyIncludesModelVariant() {
-        byte[] image = new byte[]{4, 5, 6};
+        byte[] image = new byte[] {4, 5, 6};
 
         assertNotEquals(MineSkinCache.createContentKey(image, false), MineSkinCache.createContentKey(image, true));
     }
@@ -98,7 +99,7 @@ class MineSkinCacheTest {
     @Test
     void pendingJobRoundTrip(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[]{7, 8, 9}, true);
+        String contentHash = MineSkinCache.createContentKey(new byte[] {7, 8, 9}, true);
 
         store.savePendingJob(contentHash, "job-123");
         MineSkinCache.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
@@ -113,7 +114,7 @@ class MineSkinCacheTest {
     @Test
     void failureBlocksRetryUntilCooldownExpires(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[]{10, 11, 12}, false);
+        String contentHash = MineSkinCache.createContentKey(new byte[] {10, 11, 12}, false);
 
         store.saveFailure(contentHash, "failed", 2_000L);
 
@@ -131,7 +132,7 @@ class MineSkinCacheTest {
         Path expiredPath = tempDir.resolve("expired-classic.json");
         store.save("expired", false, Map.of(textureKey, "https://textures.example/expired"));
 
-        String usedContentHash = MineSkinCache.createContentKey(new byte[]{13, 14, 15}, false);
+        String usedContentHash = MineSkinCache.createContentKey(new byte[] {13, 14, 15}, false);
         Path usedContentPath = tempDir.resolve("content").resolve(usedContentHash + ".json");
         store.saveContent(usedContentHash, "https://textures.example/used");
 
@@ -156,8 +157,8 @@ class MineSkinCacheTest {
     @Test
     void cleanupEvictsOldestFilesUntilUnderCapacity(@TempDir Path tempDir) throws IOException {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String oldestHash = MineSkinCache.createContentKey(new byte[]{16}, false);
-        String newestHash = MineSkinCache.createContentKey(new byte[]{17}, false);
+        String oldestHash = MineSkinCache.createContentKey(new byte[] {16}, false);
+        String newestHash = MineSkinCache.createContentKey(new byte[] {17}, false);
         Path oldestPath = tempDir.resolve("content").resolve(oldestHash + ".json");
         Path newestPath = tempDir.resolve("content").resolve(newestHash + ".json");
         store.saveContent(oldestHash, "https://textures.example/oldest");
@@ -183,8 +184,8 @@ class MineSkinCacheTest {
     @Test
     void cleanupRemovesAbandonedPendingAndExpiredFailureFiles(@TempDir Path tempDir) throws IOException {
         MineSkinCache store = new MineSkinCache(tempDir);
-        String pendingHash = MineSkinCache.createContentKey(new byte[]{18}, false);
-        String failureHash = MineSkinCache.createContentKey(new byte[]{19}, false);
+        String pendingHash = MineSkinCache.createContentKey(new byte[] {18}, false);
+        String failureHash = MineSkinCache.createContentKey(new byte[] {19}, false);
         store.savePendingJob(pendingHash, "job-abandoned");
         store.saveFailure(failureHash, "retry later", 1_000L);
 

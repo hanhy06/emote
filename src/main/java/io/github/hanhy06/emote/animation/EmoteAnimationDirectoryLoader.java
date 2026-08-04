@@ -28,11 +28,7 @@ public final class EmoteAnimationDirectoryLoader {
     }
 
     public List<Loaded> load(Path directory) {
-        return load(
-            directory,
-            Emote.SERVER.getServerVersion(),
-            this.serverValidator::prepare
-        );
+        return load(directory, Emote.SERVER.getServerVersion(), this.serverValidator::prepare);
     }
 
     List<Loaded> load(Path directory, String minecraftVersion, LoadedValidator validator) {

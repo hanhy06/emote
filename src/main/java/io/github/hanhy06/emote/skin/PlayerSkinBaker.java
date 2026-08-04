@@ -204,7 +204,11 @@ final class PlayerSkinBaker {
     }
 
     private BufferedImage copyImage(BufferedImage sourceImage) {
-        BufferedImage copiedImage = new BufferedImage(sourceImage.getWidth(), sourceImage.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        BufferedImage copiedImage = new BufferedImage(
+            sourceImage.getWidth(),
+            sourceImage.getHeight(),
+            BufferedImage.TYPE_INT_ARGB
+        );
         Graphics2D graphics = copiedImage.createGraphics();
         graphics.drawImage(sourceImage, 0, 0, null);
         graphics.dispose();
@@ -221,7 +225,12 @@ final class PlayerSkinBaker {
     }
 
     private void copyFace(BufferedImage targetImage, BufferedImage sourceImage, FaceRect sourceRect, FaceRect targetRect) {
-        drawFace(targetImage, sourceImage, sourceRect, new FaceTarget(targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height()));
+        drawFace(
+            targetImage,
+            sourceImage,
+            sourceRect,
+            new FaceTarget(targetRect.x(), targetRect.y(), targetRect.width(), targetRect.height())
+        );
     }
 
     private static FaceMap baseFaces(PlayerSkinPart part) {
@@ -316,7 +325,8 @@ final class PlayerSkinBaker {
         RIGHT
     }
 
-    private record FaceMap(FaceRect top, FaceRect bottom, FaceRect right, FaceRect front, FaceRect left, FaceRect back) {
+    private record FaceMap(FaceRect top, FaceRect bottom, FaceRect right, FaceRect front, FaceRect left,
+                           FaceRect back) {
     }
 
     private record PartAtlas(FaceMap base, FaceMap overlay, FaceMap slimBase, FaceMap slimOverlay) {
@@ -342,5 +352,4 @@ final class PlayerSkinBaker {
             );
         }
     }
-
 }

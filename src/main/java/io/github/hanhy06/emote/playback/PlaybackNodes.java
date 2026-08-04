@@ -13,6 +13,7 @@ import java.util.Objects;
 public final class PlaybackNodes {
     private final EmoteRootTransform root;
     private final Map<String, NodeInstance> nodes;
+
     private float viewYaw;
 
     public PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
@@ -47,6 +48,7 @@ public final class PlaybackNodes {
         private final String id;
         private final EmoteAnimation.Node node;
         private final Display entity;
+
         private DisplayContent displayContent;
 
         public NodeInstance(

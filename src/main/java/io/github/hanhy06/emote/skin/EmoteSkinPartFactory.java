@@ -57,7 +57,7 @@ public final class EmoteSkinPartFactory {
             int remaining = parts.size() - index - 1;
             int minimumEnd = segmentStart + 1;
             int maximumEnd = Math.max(minimumEnd, PlayerSkinSegment.SIDE_FACE_HEIGHT - remaining);
-            int suggestedEnd = (int)Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
+            int suggestedEnd = (int) Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
             result.add(new EmoteSkinPart(
                 part.nodeId(),

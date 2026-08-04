@@ -9,6 +9,7 @@ public final class EventPlayer {
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
     private final PlaybackPlan playbackPlan;
+
     private boolean started;
     private boolean stopped;
 

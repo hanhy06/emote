@@ -9,6 +9,7 @@ final class MineSkinGenerationQueue {
     private final Supplier<ExecutorService> executorFactory;
     private final Map<String, PendingTask> pendingTasks = new HashMap<>();
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
+
     private ExecutorService executor;
     private ScheduledExecutorService scheduler;
     private long generation;
@@ -131,6 +132,7 @@ final class MineSkinGenerationQueue {
 
     private static final class PendingTask {
         private final Runnable task;
+
         private boolean rerunRequested;
 
         private PendingTask(Runnable task) {

@@ -25,6 +25,7 @@ public class PlaybackManager {
 
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
+
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackLoadTest loadTest = new PlaybackLoadTest(this.entityController);
@@ -32,6 +33,7 @@ public class PlaybackManager {
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         INSTANCE = this;
+
         this.playerSkinManager = playerSkinManager;
         this.playerVisibilityService = new PlayerVisibilityService(this);
         this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
@@ -51,9 +53,7 @@ public class PlaybackManager {
             emote.skinParts()
         );
         if (skinPreparation.preparing()) {
-            return PlayResult.failure(
-                "Preparing player skin... " + skinPreparation.progressPercent() + "%"
-            );
+            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
         }
         PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
 

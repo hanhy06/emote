@@ -47,6 +47,7 @@ public final class RootCommand {
         ConfigManager configManager
     ) {
         INSTANCE = this;
+
         this.playbackManager = playbackManager;
         this.dialogManager = dialogManager;
         this.playableEmoteService = playableEmoteService;
@@ -179,10 +180,7 @@ public final class RootCommand {
             return 0;
         }
 
-        source.sendSuccess(
-            () -> Component.literal("Stop: " + activeEmote.id()),
-            false
-        );
+        source.sendSuccess(() -> Component.literal("Stop: " + activeEmote.id()), false);
         return 1;
     }
 

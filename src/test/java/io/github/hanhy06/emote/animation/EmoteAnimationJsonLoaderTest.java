@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class EmoteAnimationJsonLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
     private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
+
     private final EmoteAnimationJsonLoader loader = new EmoteAnimationJsonLoader();
 
     @Test

@@ -47,6 +47,7 @@ public class PlayerSkinManager implements ConfigListener {
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
         INSTANCE = this;
+
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
         this.mineSkinManager = new MineSkinManager(
             Objects.requireNonNull(playerSkinBaker, "playerSkinBaker"),

@@ -50,6 +50,7 @@ final class ConfigJsonCodec {
         if (object == null) {
             return null;
         }
+
         Config defaultConfig = Config.createDefault();
         JsonElement mineSkinApiKeyElement = object.get("mineskin_api_key");
         String mineSkinApiKey = mineSkinApiKeyElement == null || mineSkinApiKeyElement.isJsonNull()
@@ -69,6 +70,7 @@ final class ConfigJsonCodec {
         if (object == null) {
             return null;
         }
+
         JsonElement disabledElement = object.get("disabled");
         if (disabledElement != null && !disabledElement.isJsonNull() && !disabledElement.isJsonArray()) {
             return null;

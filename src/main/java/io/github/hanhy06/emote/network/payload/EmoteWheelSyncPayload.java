@@ -23,7 +23,9 @@ public record EmoteWheelSyncPayload(List<PlayableEmote> emotes) implements Custo
         PlayableEmote::new
     );
 
-    public static final Type<EmoteWheelSyncPayload> TYPE = new Type<>(Identifier.fromNamespaceAndPath(Emote.MOD_ID, "wheel_sync"));
+    public static final Type<EmoteWheelSyncPayload> TYPE = new Type<>(
+        Identifier.fromNamespaceAndPath(Emote.MOD_ID, "wheel_sync")
+    );
     public static final StreamCodec<RegistryFriendlyByteBuf, EmoteWheelSyncPayload> STREAM_CODEC = StreamCodec.composite(
         PLAYABLE_EMOTE_STREAM_CODEC.apply(ByteBufCodecs.list(EmoteRegistry.MAX_EMOTE_COUNT)),
         EmoteWheelSyncPayload::emotes,

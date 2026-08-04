@@ -31,7 +31,13 @@ class PlayerSkinManagerTest {
                 textureStore,
                 new MineSkinClient(httpClient),
                 new MineSkinGenerationQueue(),
-                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinManager.PlayerSkinSource(
+                    UUID.randomUUID(),
+                    "player",
+                    "skin-hash",
+                    "https://textures.example/skin",
+                    false
+                )
             );
 
             PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
@@ -78,7 +84,13 @@ class PlayerSkinManagerTest {
                 new MineSkinCache(tempDir),
                 new MineSkinClient(httpClient),
                 bakeExecutor,
-                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinManager.PlayerSkinSource(
+                    UUID.randomUUID(),
+                    "player",
+                    "skin-hash",
+                    "https://textures.example/skin",
+                    false
+                )
             );
 
             PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());

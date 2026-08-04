@@ -89,7 +89,7 @@ final class EmoteMatrixNormalizer {
         if (Math.abs(determinant) <= SINGULAR_EPSILON) {
             return null;
         }
-        return new double[]{
+        return new double[] {
             (e * i - f * h) / determinant,
             (f * g - d * i) / determinant,
             (d * h - e * g) / determinant,

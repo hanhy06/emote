@@ -22,6 +22,7 @@ final class EmoteAnimationComplexityValidator {
         if (nodeCount > MAX_NODE_COUNT) {
             throw error(sourcePath, "$.nodes", "must contain at most " + MAX_NODE_COUNT + " nodes");
         }
+
         long displayNodeCount = animation.nodes().values().stream()
             .filter(node -> !(node instanceof EmoteAnimation.AnchorNode))
             .count();
@@ -48,7 +49,8 @@ final class EmoteAnimationComplexityValidator {
             transformCount += keyframe.nodeTransforms().size();
             stateChangeCount += keyframe.nodeStates().size();
         }
-        long transformBudget = displayNodeCount + (long)timeline.durationTicks() * MAX_TRANSFORMS_PER_TICK;
+
+        long transformBudget = displayNodeCount + (long) timeline.durationTicks() * MAX_TRANSFORMS_PER_TICK;
         if (transformCount > transformBudget) {
             throw error(
                 sourcePath,
@@ -56,7 +58,8 @@ final class EmoteAnimationComplexityValidator {
                 "contains " + transformCount + " transforms; maximum for this duration is " + transformBudget
             );
         }
-        long stateChangeBudget = displayNodeCount + (long)timeline.durationTicks() * MAX_STATE_CHANGES_PER_TICK;
+
+        long stateChangeBudget = displayNodeCount + (long) timeline.durationTicks() * MAX_STATE_CHANGES_PER_TICK;
         if (stateChangeCount > stateChangeBudget) {
             throw error(
                 sourcePath,
@@ -91,6 +94,7 @@ final class EmoteAnimationComplexityValidator {
                 );
             }
         }
+
         if (totalCommands > MAX_TOTAL_COMMANDS) {
             throw error(
                 sourcePath,

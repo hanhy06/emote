@@ -41,5 +41,4 @@ class PlayableEmoteServiceTest {
         assertEquals(List.of("Wave"), service.getPlayableEmotes(null).stream().map(PlayableEmote::displayName).toList());
         assertEquals(List.of("demo:wave"), service.getPlayablePlayIds(null));
     }
-
 }

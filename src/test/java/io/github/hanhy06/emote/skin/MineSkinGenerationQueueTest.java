@@ -120,7 +120,8 @@ class MineSkinGenerationQueueTest {
         });
 
         assertTrue(started.await(1, TimeUnit.SECONDS));
-        assertFalse(executor.submit("skin", () -> {}));
+        assertFalse(executor.submit("skin", () -> {
+        }));
 
         executor.cancelAll();
 

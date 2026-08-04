@@ -15,6 +15,7 @@ public class PerspectiveController {
 
     private final Supplier<CameraType> cameraTypeSupplier;
     private final Consumer<CameraType> cameraTypeSetter;
+
     private CameraType previousCameraType = CameraType.FIRST_PERSON;
     private boolean restoreCameraOnStop;
     private boolean playbackActive;
@@ -29,6 +30,7 @@ public class PerspectiveController {
 
     PerspectiveController(Supplier<CameraType> cameraTypeSupplier, Consumer<CameraType> cameraTypeSetter) {
         INSTANCE = this;
+
         this.cameraTypeSupplier = Objects.requireNonNull(cameraTypeSupplier, "cameraTypeSupplier");
         this.cameraTypeSetter = Objects.requireNonNull(cameraTypeSetter, "cameraTypeSetter");
     }

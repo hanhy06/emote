@@ -245,6 +245,7 @@ class TimelinePlayerTest {
         private final List<AppliedTransform> transforms = new ArrayList<>();
         private final List<Float> snapshots = new ArrayList<>();
         private final List<Boolean> visibility = new ArrayList<>();
+
         private int resetCount;
 
         @Override

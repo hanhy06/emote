@@ -97,6 +97,7 @@ class PlaybackLoadSimulationTest {
 
     private static final class CountingTarget implements TimelinePlayer.TimelineTarget {
         private final EmoteRootTransform rootTransform = EmoteRootTransform.create(Vec3.ZERO, 0.0F);
+
         private int transformCount;
         private int snapshotCount;
         private Transformation lastTransformation;

@@ -19,6 +19,7 @@ public class EmoteClientNetworking {
         WheelController wheelController
     ) {
         INSTANCE = this;
+
         this.perspectiveController = perspectiveController;
         this.wheelController = wheelController;
     }

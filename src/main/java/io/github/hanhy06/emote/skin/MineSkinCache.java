@@ -24,6 +24,7 @@ final class MineSkinCache {
     static final long PENDING_JOB_MAX_AGE_MILLIS = TimeUnit.MINUTES.toMillis(35);
     private static final long LAST_ACCESS_REFRESH_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
+
     private final Path skinDirPath;
     private final BoundedCache<SkinCacheKey, Map<PlayerSkinTextureKey, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);

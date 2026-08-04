@@ -22,6 +22,7 @@ final class PlaybackLoadTest {
     private static final long RANDOM_SEED = 0xE607EL;
 
     private final PlaybackEntityController entityController;
+
     private @Nullable Session session;
 
     PlaybackLoadTest(PlaybackEntityController entityController) {
@@ -64,7 +65,7 @@ final class PlaybackLoadTest {
                 try {
                     timeline.resumeInitialInterpolation();
                     instances.add(new LoadTestInstance(emote, nodes, timeline));
-                    displayEntityCount += (int)nodes.nodes().values().stream()
+                    displayEntityCount += (int) nodes.nodes().values().stream()
                         .filter(node -> !node.isAnchor())
                         .count();
                 } catch (RuntimeException exception) {
@@ -156,7 +157,7 @@ final class PlaybackLoadTest {
     }
 
     static int gridSize(int instanceCount) {
-        return (int)Math.ceil(Math.sqrt(instanceCount));
+        return (int) Math.ceil(Math.sqrt(instanceCount));
     }
 
     static Vec3 gridPosition(Vec3 origin, int index, int instanceCount) {
@@ -233,6 +234,7 @@ final class PlaybackLoadTest {
         private final long baselineTickNanos;
         private final float targetTps;
         private final long creationNanos;
+
         private int lastSampledServerTick = Integer.MIN_VALUE;
         private int failedInstances;
         private int serverTickSamples;
@@ -338,6 +340,7 @@ final class PlaybackLoadTest {
     private static final class LoadTestInstance {
         private final RegisteredEmote emote;
         private final PlaybackNodes nodes;
+
         private TimelinePlayer timeline;
 
         private LoadTestInstance(RegisteredEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {

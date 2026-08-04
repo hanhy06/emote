@@ -85,5 +85,4 @@ class EmoteRootTransformTest {
             0.0D, 0.0D, 0.0D, 1.0D
         ));
     }
-
 }

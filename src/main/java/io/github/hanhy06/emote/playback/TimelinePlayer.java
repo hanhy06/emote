@@ -11,6 +11,7 @@ public final class TimelinePlayer {
     private final TimelineTarget target;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
+
     private List<PlaybackPlan.TransformActivation> pendingInterpolations = List.of();
 
     private int currentTick;
@@ -67,13 +68,13 @@ public final class TimelinePlayer {
         this.started = true;
         clearState();
         int duration = this.animation.timeline().durationTicks();
-        long cycleLength = (long)duration + this.animation.timeline().loopDelayTicks();
+        long cycleLength = (long) duration + this.animation.timeline().loopDelayTicks();
         long phase = Math.floorMod(cycleTick, cycleLength);
-        int timelineTick = (int)Math.min(phase, duration);
+        int timelineTick = (int) Math.min(phase, duration);
         this.currentTick = timelineTick;
         applySynchronizedSnapshot(timelineTick);
         if (phase >= duration) {
-            this.remainingLoopDelay = (int)(cycleLength - phase);
+            this.remainingLoopDelay = (int) (cycleLength - phase);
         }
     }
 
@@ -101,6 +102,7 @@ public final class TimelinePlayer {
         if (this.awaitingLoopContinuation) {
             throw new IllegalStateException("Loop boundary must be continued before advancing");
         }
+
         if (this.remainingLoopDelay > 0) {
             this.remainingLoopDelay--;
             if (this.remainingLoopDelay == 0) {
@@ -266,7 +268,7 @@ public final class TimelinePlayer {
             if (this.durationTicks == 0) {
                 return this.target;
             }
-            float progress = Math.clamp((float)(tick - this.startTick) / this.durationTicks, 0.0F, 1.0F);
+            float progress = Math.clamp((float) (tick - this.startTick) / this.durationTicks, 0.0F, 1.0F);
             return this.previous.slerp(this.target, progress);
         }
     }

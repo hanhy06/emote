@@ -40,7 +40,7 @@ class MineSkinClientTest {
 
     @Test
     void uploadBodyUsesMultipartFileInsteadOfDataUrl() {
-        byte[] pngBytes = new byte[]{0, 1, 2, (byte)255};
+        byte[] pngBytes = new byte[] {0, 1, 2, (byte) 255};
 
         MineSkinClient.MultipartBody body = MineSkinClient.createUploadBody(pngBytes, true);
         String bodyText = new String(body.bytes(), StandardCharsets.ISO_8859_1);

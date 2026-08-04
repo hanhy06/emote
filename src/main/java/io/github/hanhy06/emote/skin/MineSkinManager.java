@@ -422,6 +422,7 @@ final class MineSkinManager {
         private final Set<PlayerSkinTextureKey> requiredKeys = new LinkedHashSet<>();
         private final Map<PlayerSkinTextureKey, Integer> retryAttempts = new HashMap<>();
         private final Map<PlayerSkinTextureKey, Long> retryTimes = new HashMap<>();
+
         private BakeStage stage = BakeStage.QUEUED;
         private long failedAtEpochMillis;
 

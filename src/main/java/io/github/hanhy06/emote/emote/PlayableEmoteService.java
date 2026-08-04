@@ -20,6 +20,7 @@ public class PlayableEmoteService {
 
     PlayableEmoteService(EmoteRegistry emoteRegistry, PlayPermissionChecker playPermissionChecker) {
         INSTANCE = this;
+
         this.emoteRegistry = emoteRegistry;
         this.playPermissionChecker = playPermissionChecker;
     }

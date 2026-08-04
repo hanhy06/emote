@@ -13,6 +13,7 @@ public class WheelSyncService {
 
     public WheelSyncService(PlayableEmoteService playableEmoteService) {
         INSTANCE = this;
+
         this.playableEmoteService = playableEmoteService;
     }
 

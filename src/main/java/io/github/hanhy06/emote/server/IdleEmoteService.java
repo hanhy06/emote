@@ -53,6 +53,7 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         RandomGenerator random
     ) {
         INSTANCE = this;
+
         this.idleEmoteResolver = Objects.requireNonNull(idleEmoteResolver, "idle emote resolver");
         this.emotePlayer = Objects.requireNonNull(emotePlayer, "emote player");
         this.activeEmoteChecker = Objects.requireNonNull(activeEmoteChecker, "active emote checker");

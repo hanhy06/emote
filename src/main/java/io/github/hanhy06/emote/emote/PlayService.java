@@ -37,6 +37,7 @@ public class PlayService {
         PlayEventDispatcher eventDispatcher
     ) {
         INSTANCE = this;
+
         this.emoteRegistry = emoteRegistry;
         this.playPermissionChecker = playPermissionChecker;
         this.emoteStarter = emoteStarter;

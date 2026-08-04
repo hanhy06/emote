@@ -26,6 +26,7 @@ public final class EmoteReloadService {
         WheelSyncService wheelSyncService
     ) {
         INSTANCE = this;
+
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.directoryLoader = directoryLoader;

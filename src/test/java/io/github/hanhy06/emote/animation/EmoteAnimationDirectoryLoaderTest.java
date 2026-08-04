@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class EmoteAnimationDirectoryLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
     private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
+
     private final EmoteAnimationDirectoryLoader loader = new EmoteAnimationDirectoryLoader();
 
     @Test

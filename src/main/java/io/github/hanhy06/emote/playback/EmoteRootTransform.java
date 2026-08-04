@@ -23,7 +23,7 @@ public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatr
     }
 
     public static EmoteRootTransform create(Vec3 position, float yaw) {
-        float rotationRadians = (float)Math.toRadians(MODEL_FORWARD_YAW_OFFSET - yaw);
+        float rotationRadians = (float) Math.toRadians(MODEL_FORWARD_YAW_OFFSET - yaw);
         return new EmoteRootTransform(
             position,
             yaw,
@@ -54,16 +54,16 @@ public record EmoteRootTransform(Vec3 position, float yaw, Matrix4f rotationMatr
 
     public Matrix4f worldMatrix(float currentYaw, Matrix4fc displayMatrix) {
         return new Matrix4f()
-            .rotateY((float)Math.toRadians(-relativeYaw(currentYaw)))
+            .rotateY((float) Math.toRadians(-relativeYaw(currentYaw)))
             .mul(displayMatrix);
     }
 
     static Matrix4f toJoml(Matrix matrix) {
         return new Matrix4f(
-            (float)matrix.value(0), (float)matrix.value(4), (float)matrix.value(8), (float)matrix.value(12),
-            (float)matrix.value(1), (float)matrix.value(5), (float)matrix.value(9), (float)matrix.value(13),
-            (float)matrix.value(2), (float)matrix.value(6), (float)matrix.value(10), (float)matrix.value(14),
-            (float)matrix.value(3), (float)matrix.value(7), (float)matrix.value(11), (float)matrix.value(15)
+            (float) matrix.value(0), (float) matrix.value(4), (float) matrix.value(8), (float) matrix.value(12),
+            (float) matrix.value(1), (float) matrix.value(5), (float) matrix.value(9), (float) matrix.value(13),
+            (float) matrix.value(2), (float) matrix.value(6), (float) matrix.value(10), (float) matrix.value(14),
+            (float) matrix.value(3), (float) matrix.value(7), (float) matrix.value(11), (float) matrix.value(15)
         );
     }
 }
