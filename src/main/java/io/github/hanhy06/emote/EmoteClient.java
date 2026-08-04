@@ -10,15 +10,9 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 
 public class EmoteClient implements ClientModInitializer {
-    public static EmoteClient INSTANCE;
-
     private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
         new KeyMapping("key.emote.wheel", InputConstants.KEY_V, KeyMapping.Category.MISC)
     );
-
-    public EmoteClient() {
-        INSTANCE = this;
-    }
 
     @Override
     public void onInitializeClient() {

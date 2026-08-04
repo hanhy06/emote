@@ -26,15 +26,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class Emote implements ModInitializer {
-    public static Emote INSTANCE;
-
     public static final String MOD_ID = "emote";
     public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
     public static MinecraftServer SERVER;
-
-    public Emote() {
-        INSTANCE = this;
-    }
 
     @Override
     public void onInitialize() {
