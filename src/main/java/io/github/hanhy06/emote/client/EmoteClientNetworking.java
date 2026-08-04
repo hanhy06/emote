@@ -9,6 +9,8 @@ import net.minecraft.client.Minecraft;
 
 @Environment(EnvType.CLIENT)
 public class EmoteClientNetworking {
+    public static EmoteClientNetworking INSTANCE;
+
     private final PerspectiveController perspectiveController;
     private final WheelController wheelController;
 
@@ -16,6 +18,7 @@ public class EmoteClientNetworking {
         PerspectiveController perspectiveController,
         WheelController wheelController
     ) {
+        INSTANCE = this;
         this.perspectiveController = perspectiveController;
         this.wheelController = wheelController;
     }

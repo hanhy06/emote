@@ -28,6 +28,8 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 
 public final class RootCommand {
+    public static RootCommand INSTANCE;
+
     private final PlaybackManager playbackManager;
     private final DialogManager dialogManager;
     private final PlayableEmoteService playableEmoteService;
@@ -44,6 +46,7 @@ public final class RootCommand {
         EmoteReloadService reloadService,
         ConfigManager configManager
     ) {
+        INSTANCE = this;
         this.playbackManager = playbackManager;
         this.dialogManager = dialogManager;
         this.playableEmoteService = playableEmoteService;

@@ -12,6 +12,8 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 public class PermissionService implements EmoteAccessConfigListener {
+    public static PermissionService INSTANCE;
+
     private static final String DEFAULT_PERMISSION = "emote.default";
     private static final String ALL_IDS = "*";
     private final PermissionChecker permissionChecker;
@@ -22,6 +24,7 @@ public class PermissionService implements EmoteAccessConfigListener {
     }
 
     PermissionService(PermissionChecker permissionChecker) {
+        INSTANCE = this;
         this.permissionChecker = Objects.requireNonNull(permissionChecker, "permission checker");
     }
 

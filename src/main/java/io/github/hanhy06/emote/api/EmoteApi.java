@@ -9,19 +9,19 @@ import java.util.List;
 import java.util.Optional;
 
 public abstract class EmoteApi {
-    private static volatile EmoteApi instance;
+    public static volatile EmoteApi INSTANCE;
 
     protected EmoteApi() {
         synchronized (EmoteApi.class) {
-            if (instance != null) {
+            if (INSTANCE != null) {
                 throw new IllegalStateException("The emote API is already initialized.");
             }
-            instance = this;
+            INSTANCE = this;
         }
     }
 
     public static EmoteApi getInstance() {
-        EmoteApi currentInstance = instance;
+        EmoteApi currentInstance = INSTANCE;
         if (currentInstance == null) {
             throw new IllegalStateException("The emote API is not initialized.");
         }

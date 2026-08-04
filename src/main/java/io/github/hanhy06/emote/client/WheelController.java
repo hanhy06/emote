@@ -12,10 +12,16 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelController {
+    public static WheelController INSTANCE;
+
     private static final String MENU_FALLBACK_COMMAND = "emote";
     private List<PlayableEmote> syncedEmotes = List.of();
     private boolean syncedFromServer;
     private String lastSelectedId = "";
+
+    public WheelController() {
+        INSTANCE = this;
+    }
 
     public void clear() {
         this.syncedEmotes = List.of();

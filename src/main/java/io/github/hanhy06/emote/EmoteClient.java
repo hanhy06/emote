@@ -10,31 +10,34 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.minecraft.client.KeyMapping;
 
 public class EmoteClient implements ClientModInitializer {
-    private static final PerspectiveController EMOTE_PERSPECTIVE_CONTROLLER = new PerspectiveController();
-    private static final WheelController EMOTE_WHEEL_CONTROLLER = new WheelController();
+    public static EmoteClient INSTANCE;
+
     private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
         new KeyMapping("key.emote.wheel", InputConstants.KEY_V, KeyMapping.Category.MISC)
     );
 
-    private final EmoteClientNetworking networking = new EmoteClientNetworking(
-        EMOTE_PERSPECTIVE_CONTROLLER,
-        EMOTE_WHEEL_CONTROLLER
-    );
+    public EmoteClient() {
+        INSTANCE = this;
+    }
 
     @Override
     public void onInitializeClient() {
-        this.networking.register();
+        new PerspectiveController();
+        new WheelController();
+        new EmoteClientNetworking(PerspectiveController.INSTANCE, WheelController.INSTANCE);
+
+        EmoteClientNetworking.INSTANCE.register();
         ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
         ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
-        EMOTE_WHEEL_CONTROLLER.registerBinding(EMOTE_WHEEL_KEY);
+        WheelController.INSTANCE.registerBinding(EMOTE_WHEEL_KEY);
     }
 
     public static boolean shouldHideLocalPlayerEquipment() {
-        return EMOTE_PERSPECTIVE_CONTROLLER.shouldHideLocalPlayerEquipment();
+        return PerspectiveController.INSTANCE.shouldHideLocalPlayerEquipment();
     }
 
     private static void clearClientState() {
-        EMOTE_PERSPECTIVE_CONTROLLER.clear();
-        EMOTE_WHEEL_CONTROLLER.clear();
+        PerspectiveController.INSTANCE.clear();
+        WheelController.INSTANCE.clear();
     }
 }

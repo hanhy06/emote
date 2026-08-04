@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.Optional;
 
 public class DialogManager {
+    public static DialogManager INSTANCE;
+
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
     static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
@@ -45,6 +47,7 @@ public class DialogManager {
         PlayableEmoteService playableEmoteService,
         PlaybackManager playbackManager
     ) {
+        INSTANCE = this;
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.playableEmoteService = playableEmoteService;

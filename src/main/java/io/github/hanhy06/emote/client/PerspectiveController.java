@@ -11,6 +11,8 @@ import java.util.function.Supplier;
 
 @Environment(EnvType.CLIENT)
 public class PerspectiveController {
+    public static PerspectiveController INSTANCE;
+
     private final Supplier<CameraType> cameraTypeSupplier;
     private final Consumer<CameraType> cameraTypeSetter;
     private CameraType previousCameraType = CameraType.FIRST_PERSON;
@@ -26,6 +28,7 @@ public class PerspectiveController {
     }
 
     PerspectiveController(Supplier<CameraType> cameraTypeSupplier, Consumer<CameraType> cameraTypeSetter) {
+        INSTANCE = this;
         this.cameraTypeSupplier = Objects.requireNonNull(cameraTypeSupplier, "cameraTypeSupplier");
         this.cameraTypeSetter = Objects.requireNonNull(cameraTypeSetter, "cameraTypeSetter");
     }
