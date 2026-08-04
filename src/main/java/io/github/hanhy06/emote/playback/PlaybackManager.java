@@ -24,6 +24,7 @@ public class PlaybackManager {
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
+    private final PlaybackLoadTest loadTest = new PlaybackLoadTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
@@ -160,7 +161,11 @@ public class PlaybackManager {
 
     public void tick() {
         MinecraftServer server = Emote.SERVER;
-        if (server == null || this.activeEmoteMap.isEmpty()) {
+        if (server == null) {
+            return;
+        }
+        this.loadTest.tick();
+        if (this.activeEmoteMap.isEmpty()) {
             return;
         }
 
@@ -229,9 +234,18 @@ public class PlaybackManager {
     }
 
     public void stopAllEmotes(PlaybackStopReason reason) {
+        this.loadTest.stop();
         for (UUID playerUuid : List.copyOf(this.activeEmoteMap.keySet())) {
             stopEmote(playerUuid, reason);
         }
+    }
+
+    public int startLoadTest(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes) {
+        return this.loadTest.start(level, origin, yaw, emotes);
+    }
+
+    public int stopLoadTest() {
+        return this.loadTest.stop();
     }
 
     public void stopId(String id) {
@@ -239,6 +253,7 @@ public class PlaybackManager {
     }
 
     public void stopId(String id, PlaybackStopReason reason) {
+        this.loadTest.stopId(id);
         List<UUID> playerUuidList = this.activeEmoteMap.entrySet().stream()
             .filter(entry -> entry.getValue().id().equals(id))
             .map(Map.Entry::getKey)

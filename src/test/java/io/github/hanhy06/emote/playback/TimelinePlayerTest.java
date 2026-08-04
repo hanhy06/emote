@@ -144,6 +144,28 @@ class TimelinePlayerTest {
     }
 
     @Test
+    void startsNonSynchronizedTimelineAtExplicitCyclePhase() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(
+                10,
+                EmoteAnimation.LoopMode.ONCE,
+                0,
+                List.of(keyframe(0, 0.0D, 0), keyframe(10, 10.0D, 10))
+            ),
+            target
+        );
+
+        player.startAtCyclePhase(5L);
+
+        assertEquals(5, player.currentTick());
+        assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
+        assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
+        player.resumeInitialInterpolation();
+        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
+    }
+
+    @Test
     void startsServerSynchronizedLoopInsideLoopDelay() {
         FakeTarget target = new FakeTarget();
         TimelinePlayer player = new TimelinePlayer(

@@ -77,6 +77,7 @@ public final class RootCommand {
             .then(createPlayCommand())
             .then(createStopCommand())
             .then(this.adminCommands.createStopAllCommand())
+            .then(this.adminCommands.createLoadTestCommand())
             .then(this.adminCommands.createEnableCommand())
             .then(this.adminCommands.createDisableCommand());
     }

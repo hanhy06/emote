@@ -53,11 +53,22 @@ public final class TimelinePlayer {
             throw new IllegalStateException("Timeline is not server synchronized");
         }
 
+        startAtCyclePhaseUnchecked(serverTick);
+    }
+
+    void startAtCyclePhase(long cycleTick) {
+        if (this.started) {
+            throw new IllegalStateException("Timeline already started");
+        }
+        startAtCyclePhaseUnchecked(cycleTick);
+    }
+
+    private void startAtCyclePhaseUnchecked(long cycleTick) {
         this.started = true;
         clearState();
         int duration = this.animation.timeline().durationTicks();
         long cycleLength = (long)duration + this.animation.timeline().loopDelayTicks();
-        long phase = Math.floorMod(serverTick, cycleLength);
+        long phase = Math.floorMod(cycleTick, cycleLength);
         int timelineTick = (int)Math.min(phase, duration);
         this.currentTick = timelineTick;
         applySynchronizedSnapshot(timelineTick);
@@ -69,6 +80,13 @@ public final class TimelinePlayer {
     public void resumeSynchronizedInterpolation() {
         if (!this.started || this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
             throw new IllegalStateException("Synchronized timeline has not started");
+        }
+        resumeInitialInterpolation();
+    }
+
+    void resumeInitialInterpolation() {
+        if (!this.started) {
+            throw new IllegalStateException("Timeline has not started");
         }
         resumePendingInterpolations();
     }

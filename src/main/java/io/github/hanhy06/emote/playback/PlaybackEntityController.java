@@ -21,6 +21,7 @@ import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
 import java.util.LinkedHashMap;
@@ -34,8 +35,14 @@ public final class PlaybackEntityController {
     private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;
 
     public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
-        ServerLevel level = player.level();
-        EmoteRootTransform root = EmoteRootTransform.fromPlayer(player);
+        return create(player.level(), EmoteRootTransform.fromPlayer(player), emote);
+    }
+
+    PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, RegisteredEmote emote) {
+        return create(level, EmoteRootTransform.create(position, yaw), emote);
+    }
+
+    private PlaybackNodes create(ServerLevel level, EmoteRootTransform root, RegisteredEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());

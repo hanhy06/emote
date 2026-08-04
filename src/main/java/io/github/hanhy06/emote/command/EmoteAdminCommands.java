@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
@@ -53,6 +54,16 @@ final class EmoteAdminCommands {
         return Commands.literal("stop-all")
             .requires(this.permissionService.requireGameMaster())
             .executes(context -> stopAllEmotes(context.getSource()));
+    }
+
+    LiteralArgumentBuilder<CommandSourceStack> createLoadTestCommand() {
+        return Commands.literal("load-test")
+            .requires(this.permissionService.requireGameMaster())
+            .executes(context -> startLoadTest(context.getSource()))
+            .then(Commands.literal("start")
+                .executes(context -> startLoadTest(context.getSource())))
+            .then(Commands.literal("stop")
+                .executes(context -> stopLoadTest(context.getSource())));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
@@ -123,6 +134,51 @@ final class EmoteAdminCommands {
         this.playbackManager.stopAllEmotes();
         source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
         return 1;
+    }
+
+    private int startLoadTest(CommandSourceStack source) {
+        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
+        if (emotes.isEmpty()) {
+            source.sendFailure(Component.literal("No emotes are registered."));
+            return 0;
+        }
+
+        int instanceCount;
+        try {
+            instanceCount = this.playbackManager.startLoadTest(
+                source.getLevel(),
+                source.getPosition(),
+                source.getRotation().y,
+                emotes
+            );
+        } catch (RuntimeException exception) {
+            Emote.LOGGER.warn("Failed to start emote load test", exception);
+            source.sendFailure(Component.literal("Failed to start emote load test."));
+            return 0;
+        }
+        source.sendSuccess(
+            () -> Component.literal(
+                "Started load test: instances=" + instanceCount
+                    + ", grid=10x10, emotes=" + emotes.size()
+                    + ", initialTicks=80..175"
+            ),
+            true
+        );
+        return instanceCount;
+    }
+
+    private int stopLoadTest(CommandSourceStack source) {
+        int stoppedCount = this.playbackManager.stopLoadTest();
+        if (stoppedCount == 0) {
+            source.sendFailure(Component.literal("No emote load test is running."));
+            return 0;
+        }
+
+        source.sendSuccess(
+            () -> Component.literal("Stopped load test: instances=" + stoppedCount),
+            true
+        );
+        return stoppedCount;
     }
 
     private int setEmoteEnabled(CommandSourceStack source, String id, boolean enabled) {
