@@ -9,6 +9,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 public class PlaybackStateService implements PlaybackStateListener {
     public static PlaybackStateService INSTANCE;
+
     private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false, false);
 
     public PlaybackStateService() {
