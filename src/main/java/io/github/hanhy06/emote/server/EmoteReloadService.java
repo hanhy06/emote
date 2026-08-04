@@ -8,7 +8,6 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import net.minecraft.server.MinecraftServer;
 
 public final class EmoteReloadService {
     private final ConfigManager configManager;
@@ -31,31 +30,31 @@ public final class EmoteReloadService {
         this.wheelSyncService = wheelSyncService;
     }
 
-    public void loadOnServerStart(MinecraftServer server) {
+    public void loadOnServerStart() {
         this.configManager.configure();
         this.configManager.readConfig();
         this.configManager.readEmoteAccessConfig();
-        int emoteCount = reloadRegistry(server);
+        int emoteCount = reloadRegistry();
         Emote.LOGGER.info("emotes={}", emoteCount);
     }
 
-    public EmoteReloadResult reloadFromCommand(MinecraftServer server) {
+    public EmoteReloadResult reloadFromCommand() {
         boolean configLoaded = this.configManager.readConfig();
         boolean emoteAccessConfigLoaded = this.configManager.readEmoteAccessConfig();
-        return new EmoteReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig(server));
+        return new EmoteReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig());
     }
 
-    private int reloadLoadedConfig(MinecraftServer server) {
+    private int reloadLoadedConfig() {
         this.playbackManager.stopAllEmotes(PlaybackStopReason.RELOAD);
-        int emoteCount = reloadRegistry(server);
-        this.wheelSyncService.syncAll(server);
+        int emoteCount = reloadRegistry();
+        this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);
         return emoteCount;
     }
 
-    private int reloadRegistry(MinecraftServer server) {
+    private int reloadRegistry() {
         var emoteAccessConfig = this.configManager.getEmoteAccessConfig();
-        var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory(), server).stream()
+        var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory()).stream()
             .map(RegisteredEmote::from)
             .filter(emote -> emoteAccessConfig.isEnabled(emote.id()))
             .toList();

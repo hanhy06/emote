@@ -11,7 +11,6 @@ import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.ActiveEmote;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.resources.Identifier;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.nio.file.Path;
@@ -62,16 +61,16 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public EmoteRegistration register(EmoteAnimation animation) throws EmoteAnimationLoadException {
         Objects.requireNonNull(animation, "animation");
-        MinecraftServer server = requireServerThread();
+        requireServerThread();
         Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
         EmoteAnimation.Loaded loaded = new EmoteAnimation.Loaded(
             sourcePath,
             "api:" + animation.id(),
             animation
         );
-        RegisteredEmote emote = RegisteredEmote.from(this.animationValidator.prepare(loaded, server));
+        RegisteredEmote emote = RegisteredEmote.from(this.animationValidator.prepare(loaded));
         UUID registrationId = this.emoteRegistry.registerApi(emote);
-        this.wheelSyncService.syncAll(server);
+        this.wheelSyncService.syncAll();
         return new ApiRegistration(animation.id(), registrationId);
     }
 
@@ -106,15 +105,10 @@ public final class EmoteApiImpl extends EmoteApi {
         return this.events.addPlaybackListener(listener);
     }
 
-    private MinecraftServer requireServerThread() {
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            throw new IllegalStateException("The server is not running.");
-        }
-        if (!server.isSameThread()) {
+    private void requireServerThread() {
+        if (!Emote.SERVER.isSameThread()) {
             throw new IllegalStateException("Emote API mutations must run on the server thread.");
         }
-        return server;
     }
 
     private final class ApiRegistration implements EmoteRegistration {
@@ -141,7 +135,7 @@ public final class EmoteApiImpl extends EmoteApi {
 
         @Override
         public boolean unregister() {
-            MinecraftServer server = requireServerThread();
+            requireServerThread();
             if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
@@ -149,7 +143,7 @@ public final class EmoteApiImpl extends EmoteApi {
                 this.id.toString(),
                 PlaybackStopReason.EMOTE_REMOVED
             );
-            EmoteApiImpl.this.wheelSyncService.syncAll(server);
+            EmoteApiImpl.this.wheelSyncService.syncAll();
             return true;
         }
     }

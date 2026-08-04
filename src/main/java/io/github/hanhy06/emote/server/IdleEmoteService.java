@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.server;
 
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.EmoteAccessConfig;
@@ -7,7 +8,6 @@ import io.github.hanhy06.emote.config.EmoteAccessConfigListener;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
 
@@ -57,8 +57,8 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         this.random = Objects.requireNonNull(random, "random");
     }
 
-    public void tick(MinecraftServer server) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+    public void tick() {
+        for (ServerPlayer player : Emote.SERVER.getPlayerList().getPlayers()) {
             tickPlayer(player.getUUID(), player.getLastActionTime(), player);
         }
     }

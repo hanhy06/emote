@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -26,9 +27,9 @@ import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 public final class EmoteAnimationServerValidator {
     private final EmoteAnimationComplexityValidator complexityValidator = new EmoteAnimationComplexityValidator();
 
-    public Loaded prepare(Loaded loaded, MinecraftServer server) throws EmoteAnimationLoadException {
+    public Loaded prepare(Loaded loaded) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
-        Objects.requireNonNull(server, "server");
+        MinecraftServer server = Emote.SERVER;
         Path sourcePath = loaded.sourcePath();
         this.complexityValidator.validate(loaded);
 

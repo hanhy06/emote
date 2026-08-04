@@ -132,9 +132,6 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void notifySkinReady(UUID playerUuid) {
         MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return;
-        }
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
@@ -148,9 +145,6 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void notifySkinFailed(UUID playerUuid) {
         MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return;
-        }
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
@@ -185,9 +179,6 @@ public class PlayerSkinManager implements ConfigListener {
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
         MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return null;
-        }
         Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
         if (packedTextures == null) {
             return null;

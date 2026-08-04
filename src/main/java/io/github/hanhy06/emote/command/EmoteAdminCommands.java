@@ -97,7 +97,7 @@ final class EmoteAdminCommands {
     }
 
     private int reloadEmotes(CommandSourceStack source) {
-        EmoteReloadResult result = this.reloadService.reloadFromCommand(source.getServer());
+        EmoteReloadResult result = this.reloadService.reloadFromCommand();
         source.sendSuccess(
             () -> Component.literal(
                 "Reloading: cfg=" + result.configLoaded()
@@ -200,7 +200,7 @@ final class EmoteAdminCommands {
             this.playbackManager.stopId(id);
         }
 
-        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand(source.getServer());
+        EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
             () -> Component.literal(action + " emote: " + id + " (emotes=" + reloadResult.emoteCount() + ")"),

@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -42,7 +41,6 @@ public class PlaybackManager {
     }
 
     public PlayResult startEmote(ServerPlayer player, RegisteredEmote emote) {
-        MinecraftServer server = player.level().getServer();
         PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
@@ -60,7 +58,7 @@ public class PlaybackManager {
             nodes = this.entityController.create(player, emote);
             TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                timeline.startSynchronized(server.overworld().getGameTime());
+                timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
             } else {
                 timeline.start();
             }
@@ -70,7 +68,7 @@ public class PlaybackManager {
             }
             EventPlayer events = new EventPlayer(
                 emote.playbackPlan(),
-                new EventCommandExecutor(server, player, nodes, timeline)
+                new EventCommandExecutor(player, nodes, timeline)
             );
             ActiveEmote activeEmote = new ActiveEmote(
                 player.getUUID(),
@@ -100,7 +98,7 @@ public class PlaybackManager {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             ActiveEmote activeEmote = this.activeEmoteMap.remove(player.getUUID());
             if (activeEmote != null) {
-                cleanupActiveEmote(server, activeEmote, false, PlaybackStopReason.ERROR, null);
+                cleanupActiveEmote(activeEmote, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -109,12 +107,11 @@ public class PlaybackManager {
     }
 
     private void refreshPlayerSkin(UUID playerUuid) {
-        MinecraftServer server = Emote.SERVER;
         ActiveEmote activeEmote = this.activeEmoteMap.get(playerUuid);
-        if (server == null || activeEmote == null) {
+        if (activeEmote == null) {
             return;
         }
-        ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
+        ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(playerUuid);
         if (player == null) {
             return;
         }
@@ -147,11 +144,10 @@ public class PlaybackManager {
         @Nullable ServerPlayer knownPlayer
     ) {
         ActiveEmote activeEmote = this.activeEmoteMap.remove(playerUuid);
-        MinecraftServer server = Emote.SERVER;
-        if (activeEmote == null || server == null) {
+        if (activeEmote == null) {
             return activeEmote;
         }
-        cleanupActiveEmote(server, activeEmote, true, reason, knownPlayer);
+        cleanupActiveEmote(activeEmote, true, reason, knownPlayer);
         return activeEmote;
     }
 
@@ -160,10 +156,6 @@ public class PlaybackManager {
     }
 
     public void tick() {
-        MinecraftServer server = Emote.SERVER;
-        if (server == null) {
-            return;
-        }
         this.loadTest.tick();
         if (this.activeEmoteMap.isEmpty()) {
             return;
@@ -171,7 +163,7 @@ public class PlaybackManager {
 
         List<StopRequest> stopRequests = null;
         for (ActiveEmote activeEmote : this.activeEmoteMap.values()) {
-            ServerPlayer player = server.getPlayerList().getPlayer(activeEmote.playerUuid());
+            ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
             PlaybackStopReason stopReason = null;
             if (!canKeepPlaying(player, activeEmote)) {
                 stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
@@ -264,7 +256,6 @@ public class PlaybackManager {
     }
 
     private void cleanupActiveEmote(
-        MinecraftServer server,
         ActiveEmote activeEmote,
         boolean notifyListeners,
         PlaybackStopReason reason,
@@ -275,13 +266,13 @@ public class PlaybackManager {
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Failed to run stop events for emote {}", activeEmote.id(), exception);
         } finally {
-            ServerLevel level = server.getLevel(activeEmote.levelKey());
+            ServerLevel level = Emote.SERVER.getLevel(activeEmote.levelKey());
             if (level != null) {
                 this.entityController.remove(level, activeEmote.nodes());
             }
             ServerPlayer player = knownPlayer != null
                 ? knownPlayer
-                : server.getPlayerList().getPlayer(activeEmote.playerUuid());
+                : Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
             if (player != null) {
                 this.playerVisibilityService.stop(player, activeEmote);
                 if (notifyListeners) {

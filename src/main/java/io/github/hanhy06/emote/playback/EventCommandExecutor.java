@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.entity.Entity;
@@ -13,18 +13,15 @@ import org.joml.Vector3f;
 import java.util.Objects;
 
 public final class EventCommandExecutor implements EventPlayer.EventExecutor {
-    private final MinecraftServer server;
     private final ServerPlayer player;
     private final PlaybackNodes nodes;
     private final TimelinePlayer timeline;
 
     public EventCommandExecutor(
-        MinecraftServer server,
         ServerPlayer player,
         PlaybackNodes nodes,
         TimelinePlayer timeline
     ) {
-        this.server = Objects.requireNonNull(server, "server");
         this.player = Objects.requireNonNull(player, "player");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.timeline = Objects.requireNonNull(timeline, "timeline");
@@ -38,17 +35,17 @@ public final class EventCommandExecutor implements EventPlayer.EventExecutor {
             .withPermission(LevelBasedPermissionSet.OWNER)
             .withSuppressedOutput();
         for (String command : event.commands()) {
-            this.server.getCommands().performPrefixedCommand(source, command);
+            Emote.SERVER.getCommands().performPrefixedCommand(source, command);
         }
     }
 
     private CommandSourceStack createSource(EmoteAnimation.CommandSource source) {
         return switch (source.type()) {
             case PLAYER -> this.player.createCommandSourceStack();
-            case SERVER -> this.server.createCommandSourceStack().withLevel(this.player.level());
+            case SERVER -> Emote.SERVER.createCommandSourceStack().withLevel(this.player.level());
             case NODE -> {
                 Entity entity = requiredEntity(source.node());
-                yield this.server.createCommandSourceStack()
+                yield Emote.SERVER.createCommandSourceStack()
                     .withLevel(this.player.level())
                     .withEntity(entity)
                     .withPosition(entity.position());

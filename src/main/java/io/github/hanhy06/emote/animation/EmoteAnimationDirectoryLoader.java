@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.animation;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import net.minecraft.server.MinecraftServer;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,8 +27,12 @@ public final class EmoteAnimationDirectoryLoader {
         this.serverValidator = serverValidator;
     }
 
-    public List<Loaded> load(Path directory, MinecraftServer server) {
-        return load(directory, server.getServerVersion(), loaded -> this.serverValidator.prepare(loaded, server));
+    public List<Loaded> load(Path directory) {
+        return load(
+            directory,
+            Emote.SERVER.getServerVersion(),
+            this.serverValidator::prepare
+        );
     }
 
     List<Loaded> load(Path directory, String minecraftVersion, LoadedValidator validator) {
