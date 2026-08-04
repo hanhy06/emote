@@ -190,7 +190,7 @@ final class EmoteAdminCommands {
             return 0;
         }
 
-        var message = Component.literal("-- Emote Load Test Result --")
+        var message = Component.literal("\n\n\n\n\n-- Emote Load Test Result --")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))
