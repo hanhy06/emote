@@ -33,19 +33,15 @@ public class Emote implements ModInitializer {
     @Override
     public void onInitialize() {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
-        PlayerSkinManager skinManager = new PlayerSkinManager();
         EmoteRegistry emoteRegistry = new EmoteRegistry();
         PermissionService permissionService = new PermissionService();
-        PlayableEmoteService playableEmoteService = new PlayableEmoteService(emoteRegistry, permissionService);
+
+        PlayerSkinManager skinManager = new PlayerSkinManager();
         PlaybackManager playbackManager = new PlaybackManager(skinManager);
         PlaybackStateService playbackStateService = new PlaybackStateService();
         EmoteApiEvents apiEvents = new EmoteApiEvents();
-        DialogManager dialogManager = new DialogManager(
-            configManager,
-            emoteRegistry,
-            playableEmoteService,
-            playbackManager
-        );
+
+        PlayableEmoteService playableEmoteService = new PlayableEmoteService(emoteRegistry, permissionService);
         PlayService playService = new PlayService(
             emoteRegistry,
             permissionService,
@@ -53,7 +49,15 @@ public class Emote implements ModInitializer {
             apiEvents
         );
         IdleEmoteService idleEmoteService = new IdleEmoteService(permissionService, playService, playbackManager);
+
+        DialogManager dialogManager = new DialogManager(
+            configManager,
+            emoteRegistry,
+            playableEmoteService,
+            playbackManager
+        );
         WheelSyncService wheelSyncService = new WheelSyncService(playableEmoteService);
+
         new EmoteApiImpl(
             emoteRegistry,
             playService,
@@ -69,6 +73,7 @@ public class Emote implements ModInitializer {
             playbackManager,
             wheelSyncService
         );
+
         EmoteNetworking networking = new EmoteNetworking();
         EmoteLifecycle lifecycle = new EmoteLifecycle(
             skinManager,

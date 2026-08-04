@@ -18,6 +18,7 @@ public class EmoteClient implements ClientModInitializer {
     public void onInitializeClient() {
         PerspectiveController perspectiveController = new PerspectiveController();
         WheelController wheelController = new WheelController();
+
         EmoteClientNetworking networking = new EmoteClientNetworking(perspectiveController, wheelController);
 
         networking.register();
