@@ -137,11 +137,7 @@ public class DialogManager {
     }
 
     private ActionButton createRunCommandButton(String label, String tooltip, String command, int width) {
-        CommonButtonData buttonData = new CommonButtonData(
-            Component.literal(label),
-            Optional.of(Component.literal(tooltip)),
-            width
-        );
+        CommonButtonData buttonData = new CommonButtonData(Component.literal(label), Optional.of(Component.literal(tooltip)), width);
         Action action = new StaticAction(new ClickEvent.RunCommand(command));
         return new ActionButton(buttonData, Optional.of(action));
     }
@@ -178,18 +174,10 @@ public class DialogManager {
         }
 
         actionButtons.add(dialogPage.pageNumber() > 1
-            ? createRunCommandButton(
-                "Prev",
-                "Open the previous emote page",
-                createPageCommand(dialogPage.pageNumber() - 1, query)
-            )
+            ? createRunCommandButton("Prev", "Open the previous emote page", createPageCommand(dialogPage.pageNumber() - 1, query))
             : createStaticButton("Prev", "No previous page"));
         actionButtons.add(dialogPage.pageNumber() < dialogPage.totalPageCount()
-            ? createRunCommandButton(
-                "Next",
-                "Open the next emote page",
-                createPageCommand(dialogPage.pageNumber() + 1, query)
-            )
+            ? createRunCommandButton("Next", "Open the next emote page", createPageCommand(dialogPage.pageNumber() + 1, query))
             : createStaticButton("Next", "No next page"));
     }
 

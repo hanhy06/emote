@@ -23,15 +23,7 @@ final class WheelGeometry {
         int ringRadius = Math.clamp(preferredRingRadius, minimumRingRadius, maximumRingRadius);
         int centerRadius = Math.max(20, slotRadius - 12);
         int descriptionWidth = Math.min(280, width - 48);
-        return new WheelMetrics(
-            centerX,
-            centerY,
-            slotRadius,
-            ringRadius,
-            centerRadius,
-            Math.max(52, slotRadius + 24),
-            descriptionWidth
-        );
+        return new WheelMetrics(centerX, centerY, slotRadius, ringRadius, centerRadius, Math.max(52, slotRadius + 24), descriptionWidth);
     }
 
     static SlotGeometry createSlot(int slotIndex, WheelMetrics metrics) {
@@ -70,11 +62,7 @@ final class WheelGeometry {
 
     static boolean containsPoint(int[] xPoints, int[] yPoints, double pointX, double pointY) {
         boolean inside = false;
-        for (
-            int currentIndex = 0, previousIndex = xPoints.length - 1;
-            currentIndex < xPoints.length;
-            previousIndex = currentIndex++
-        ) {
+        for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
             boolean intersects = (yPoints[currentIndex] > pointY) != (yPoints[previousIndex] > pointY)
                 && pointX < (double) (xPoints[previousIndex] - xPoints[currentIndex]) * (pointY - yPoints[currentIndex])
                 / (double) (yPoints[previousIndex] - yPoints[currentIndex]) + xPoints[currentIndex];

@@ -52,13 +52,7 @@ public class EmoteLifecycle {
             this.idleEmoteService.tick();
         });
         PlaybackHooks.INTERRUPTION.register(this.playbackManager::stopEmote);
-        ServerLivingEntityEvents.AFTER_DAMAGE.register((
-            entity,
-            ignoredSource,
-            ignoredBaseDamage,
-            damageTaken,
-            ignoredBlocked
-        ) -> {
+        ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
                 this.playbackManager.stopEmote(player, PlaybackStopReason.DAMAGED);
             }

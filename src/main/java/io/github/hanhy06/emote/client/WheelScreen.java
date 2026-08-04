@@ -215,44 +215,14 @@ public class WheelScreen extends Screen {
         drawHex(graphics, this.centerXPoints, this.centerYPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
 
         if (this.emotes.isEmpty()) {
-            graphics.centeredText(
-                this.font,
-                Component.translatable("screen.emote.wheel.center.no_usable"),
-                metrics.centerX(),
-                metrics.centerY() - 10,
-                TITLE_COLOR
-            );
-            graphics.centeredText(
-                this.font,
-                Component.translatable("screen.emote.wheel.center.emotes"),
-                metrics.centerX(),
-                metrics.centerY() + 2,
-                TITLE_COLOR
-            );
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_usable"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.emotes"), metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
             return;
         }
 
-        graphics.centeredText(
-            this.font,
-            (this.pageIndex + 1) + "/" + getPageCount(),
-            metrics.centerX(),
-            metrics.centerY() - 10,
-            TITLE_COLOR
-        );
-        graphics.centeredText(
-            this.font,
-            Component.translatable("screen.emote.wheel.center.release"),
-            metrics.centerX(),
-            metrics.centerY() + 2,
-            BODY_COLOR
-        );
-        graphics.centeredText(
-            this.font,
-            Component.translatable("screen.emote.wheel.center.to_play"),
-            metrics.centerX(),
-            metrics.centerY() + 12,
-            BODY_COLOR
-        );
+        graphics.centeredText(this.font, (this.pageIndex + 1) + "/" + getPageCount(), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
+        graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.release"), metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
+        graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<PlayableEmote> pageEmotes) {
@@ -262,13 +232,7 @@ public class WheelScreen extends Screen {
             : null;
 
         if (hoveredEmote != null) {
-            graphics.centeredText(
-                this.font,
-                Component.literal(hoveredEmote.displayName()),
-                metrics.centerX(),
-                footerTop,
-                TITLE_COLOR
-            );
+            graphics.centeredText(this.font, Component.literal(hoveredEmote.displayName()), metrics.centerX(), footerTop, TITLE_COLOR);
             graphics.textWithWordWrap(
                 this.font,
                 Component.literal(hoveredEmote.description()),
@@ -282,13 +246,7 @@ public class WheelScreen extends Screen {
         }
 
         if (this.emotes.isEmpty()) {
-            graphics.centeredText(
-                this.font,
-                Component.translatable("screen.emote.wheel.footer.no_usable"),
-                metrics.centerX(),
-                footerTop + 8,
-                BODY_COLOR
-            );
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.no_usable"), metrics.centerX(), footerTop + 8, BODY_COLOR);
             return;
         }
 
@@ -299,21 +257,9 @@ public class WheelScreen extends Screen {
             footerTop,
             BODY_COLOR
         );
-        graphics.centeredText(
-            this.font,
-            Component.translatable("screen.emote.wheel.footer.close"),
-            metrics.centerX(),
-            footerTop + 14,
-            MUTED_COLOR
-        );
+        graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.close"), metrics.centerX(), footerTop + 14, MUTED_COLOR);
         if (getPageCount() > 1) {
-        graphics.centeredText(
-            this.font,
-            Component.translatable("screen.emote.wheel.footer.page_click"),
-            metrics.centerX(),
-            footerTop + 28,
-            MUTED_COLOR
-        );
+        graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.page_click"), metrics.centerX(), footerTop + 28, MUTED_COLOR);
         }
     }
 
@@ -401,11 +347,7 @@ public class WheelScreen extends Screen {
             int intersectionCount = 0;
             double scanY = y + 0.5D;
 
-            for (
-                int currentIndex = 0, previousIndex = xPoints.length - 1;
-                currentIndex < xPoints.length;
-                previousIndex = currentIndex++
-            ) {
+            for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
                 int currentY = yPoints[currentIndex];
                 int previousY = yPoints[previousIndex];
                 if (currentY == previousY) {
@@ -420,8 +362,7 @@ public class WheelScreen extends Screen {
 
                 int currentX = xPoints[currentIndex];
                 int previousX = xPoints[previousIndex];
-                intersections[intersectionCount++] = currentX
-                    + (scanY - currentY) * (previousX - currentX) / (previousY - currentY);
+                intersections[intersectionCount++] = currentX + (scanY - currentY) * (previousX - currentX) / (previousY - currentY);
             }
 
             Arrays.sort(intersections, 0, intersectionCount);

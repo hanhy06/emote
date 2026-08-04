@@ -209,10 +209,7 @@ final class MineSkinClient {
             if ("failed".equalsIgnoreCase(jobStatus)) {
                 throw new JobFailedException(
                     readErrorMessage(jobResponse, "MineSkin job failed"),
-                    Math.max(
-                        this.jobPollIntervalMillis,
-                        readRelativeDelay(findObject(findObject(jobResponse, "rateLimit"), "next"))
-                    )
+                    Math.max(this.jobPollIntervalMillis, readRelativeDelay(findObject(findObject(jobResponse, "rateLimit"), "next")))
                 );
             }
         }
