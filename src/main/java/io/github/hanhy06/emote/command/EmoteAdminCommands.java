@@ -74,16 +74,6 @@ final class EmoteAdminCommands {
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "count")
                 )))
-            .then(Commands.literal("start")
-                .executes(context -> startLoadTest(context.getSource(), DEFAULT_LOAD_TEST_INSTANCE_COUNT))
-                .then(Commands.argument(
-                        "count",
-                        IntegerArgumentType.integer(1, MAX_LOAD_TEST_INSTANCE_COUNT)
-                    )
-                    .executes(context -> startLoadTest(
-                        context.getSource(),
-                        IntegerArgumentType.getInteger(context, "count")
-                    ))))
             .then(Commands.literal("stop")
                 .executes(context -> stopLoadTest(context.getSource())));
     }
