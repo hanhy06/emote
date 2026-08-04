@@ -191,17 +191,17 @@ final class EmoteAdminCommands {
         }
 
         var message = Component.literal("-- Emote Load Test Result --")
-            .withStyle(ChatFormatting.GRAY, ChatFormatting.BOLD)
-            .append(Component.literal("\n- Instances: ").withStyle(ChatFormatting.YELLOW))
+            .withStyle(ChatFormatting.GRAY)
+            .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n- Displays: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n• Displays: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(Integer.toString(report.peakDisplayEntities())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Failed: ").withStyle(ChatFormatting.RED))
             .append(Component.literal(Integer.toString(report.failedInstances())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.1fs", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\n-- Server Performance --").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n- TPS: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
                 "%.2f -> %.2f  (min %.2f, drop %.2f)",
@@ -210,7 +210,7 @@ final class EmoteAdminCommands {
                 report.minimumTps(),
                 report.tpsDrop()
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n- MSPT: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal("\n• MSPT: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
                 "%.2f -> %.2f  (max %.2f)",
@@ -219,7 +219,7 @@ final class EmoteAdminCommands {
                 report.maximumMspt()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\n-- Emote Processing --").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n- Create: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal("\n• Create: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.creationMillis())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
@@ -228,7 +228,7 @@ final class EmoteAdminCommands {
                 report.averageManagerCpuMillis(),
                 report.maximumManagerCpuMillis()
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n- Cleanup: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal("\n• Cleanup: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Samples: ").withStyle(ChatFormatting.LIGHT_PURPLE))
             .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE));
