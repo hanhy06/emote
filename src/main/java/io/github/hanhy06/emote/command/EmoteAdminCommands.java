@@ -1,11 +1,13 @@
 package io.github.hanhy06.emote.command;
 
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
+import io.github.hanhy06.emote.playback.PlaybackLoadTestReport;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.EmoteReloadResult;
 import io.github.hanhy06.emote.server.EmoteReloadService;
@@ -16,6 +18,10 @@ import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
+import java.util.Locale;
+
+import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_LOAD_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_LOAD_TEST_INSTANCE_COUNT;
 
 final class EmoteAdminCommands {
     private final EmoteRegistry emoteRegistry;
@@ -59,9 +65,25 @@ final class EmoteAdminCommands {
     LiteralArgumentBuilder<CommandSourceStack> createLoadTestCommand() {
         return Commands.literal("load-test")
             .requires(this.permissionService.requireGameMaster())
-            .executes(context -> startLoadTest(context.getSource()))
+            .executes(context -> startLoadTest(context.getSource(), DEFAULT_LOAD_TEST_INSTANCE_COUNT))
+            .then(Commands.argument(
+                    "count",
+                    IntegerArgumentType.integer(1, MAX_LOAD_TEST_INSTANCE_COUNT)
+                )
+                .executes(context -> startLoadTest(
+                    context.getSource(),
+                    IntegerArgumentType.getInteger(context, "count")
+                )))
             .then(Commands.literal("start")
-                .executes(context -> startLoadTest(context.getSource())))
+                .executes(context -> startLoadTest(context.getSource(), DEFAULT_LOAD_TEST_INSTANCE_COUNT))
+                .then(Commands.argument(
+                        "count",
+                        IntegerArgumentType.integer(1, MAX_LOAD_TEST_INSTANCE_COUNT)
+                    )
+                    .executes(context -> startLoadTest(
+                        context.getSource(),
+                        IntegerArgumentType.getInteger(context, "count")
+                    ))))
             .then(Commands.literal("stop")
                 .executes(context -> stopLoadTest(context.getSource())));
     }
@@ -136,7 +158,7 @@ final class EmoteAdminCommands {
         return 1;
     }
 
-    private int startLoadTest(CommandSourceStack source) {
+    private int startLoadTest(CommandSourceStack source, int requestedInstanceCount) {
         List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -149,17 +171,20 @@ final class EmoteAdminCommands {
                 source.getLevel(),
                 source.getPosition(),
                 source.getRotation().y,
-                emotes
+                emotes,
+                requestedInstanceCount
             );
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Failed to start emote load test", exception);
             source.sendFailure(Component.literal("Failed to start emote load test."));
             return 0;
         }
+        int gridSize = (int)Math.ceil(Math.sqrt(instanceCount));
         source.sendSuccess(
             () -> Component.literal(
                 "Started load test: instances=" + instanceCount
-                    + ", grid=10x10, emotes=" + emotes.size()
+                    + ", grid=" + gridSize + "x" + gridSize
+                    + ", emotes=" + emotes.size()
                     + ", initialTicks=80..175"
             ),
             true
@@ -168,17 +193,45 @@ final class EmoteAdminCommands {
     }
 
     private int stopLoadTest(CommandSourceStack source) {
-        int stoppedCount = this.playbackManager.stopLoadTest();
-        if (stoppedCount == 0) {
+        PlaybackLoadTestReport report = this.playbackManager.stopLoadTest();
+        if (report == null) {
             source.sendFailure(Component.literal("No emote load test is running."));
             return 0;
         }
 
         source.sendSuccess(
-            () -> Component.literal("Stopped load test: instances=" + stoppedCount),
+            () -> Component.literal(String.format(
+                Locale.ROOT,
+                "Stopped load test: requested=%d, active=%d, displays=%d, failed=%d, duration=%.1fs",
+                report.requestedInstances(),
+                report.activeInstances(),
+                report.peakDisplayEntities(),
+                report.failedInstances(),
+                report.elapsedSeconds()
+            )),
             true
         );
-        return stoppedCount;
+        source.sendSystemMessage(Component.literal(String.format(
+            Locale.ROOT,
+            "TPS: baseline=%.2f, average=%.2f, minimum=%.2f, drop=%.2f | MSPT: baseline=%.2f, average=%.2f, max=%.2f",
+            report.baselineTps(),
+            report.averageTps(),
+            report.minimumTps(),
+            report.tpsDrop(),
+            report.baselineMspt(),
+            report.averageMspt(),
+            report.maximumMspt()
+        )));
+        source.sendSystemMessage(Component.literal(String.format(
+            Locale.ROOT,
+            "Load CPU: create=%.2fms, tick average=%.3fms, tick max=%.3fms, cleanup=%.2fms, samples=%d",
+            report.creationMillis(),
+            report.averageManagerCpuMillis(),
+            report.maximumManagerCpuMillis(),
+            report.cleanupMillis(),
+            report.measuredServerTicks()
+        )));
+        return report.activeInstances();
     }
 
     private int setEmoteEnabled(CommandSourceStack source, String id, boolean enabled) {

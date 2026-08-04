@@ -16,6 +16,8 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlaybackManager {
+    public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
+    public static final int MAX_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.MAX_INSTANCE_COUNT;
     private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
     private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
 
@@ -232,11 +234,17 @@ public class PlaybackManager {
         }
     }
 
-    public int startLoadTest(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes) {
-        return this.loadTest.start(level, origin, yaw, emotes);
+    public int startLoadTest(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<RegisteredEmote> emotes,
+        int instanceCount
+    ) {
+        return this.loadTest.start(level, origin, yaw, emotes, instanceCount);
     }
 
-    public int stopLoadTest() {
+    public @Nullable PlaybackLoadTestReport stopLoadTest() {
         return this.loadTest.stop();
     }
 

@@ -15,8 +15,8 @@ import java.util.Objects;
 import java.util.Random;
 
 final class PlaybackLoadTest {
-    static final int INSTANCE_COUNT = 100;
-    static final int GRID_SIZE = 10;
+    static final int DEFAULT_INSTANCE_COUNT = 100;
+    static final int MAX_INSTANCE_COUNT = 1_000;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
@@ -28,19 +28,32 @@ final class PlaybackLoadTest {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
-    int start(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes) {
+    int start(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes, int instanceCount) {
         if (emotes.isEmpty()) {
             throw new IllegalArgumentException("At least one emote is required for a load test");
         }
+        if (instanceCount < 1 || instanceCount > MAX_INSTANCE_COUNT) {
+            throw new IllegalArgumentException("Load-test instance count is out of range: " + instanceCount);
+        }
 
         stop();
+        long startedNanos = System.nanoTime();
+        int startedServerTick = Emote.SERVER.getTickCount();
+        long baselineTickNanos = Emote.SERVER.getAverageTickTimeNanos();
+        float targetTps = Emote.SERVER.tickRateManager().tickrate();
         Random random = new Random(RANDOM_SEED);
-        List<RegisteredEmote> selection = createRandomizedSelection(emotes, random);
-        List<LoadTestInstance> instances = new ArrayList<>(INSTANCE_COUNT);
+        List<RegisteredEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
+        List<LoadTestInstance> instances = new ArrayList<>(instanceCount);
+        int displayEntityCount = 0;
         try {
-            for (int index = 0; index < INSTANCE_COUNT; index++) {
+            for (int index = 0; index < instanceCount; index++) {
                 RegisteredEmote emote = selection.get(index);
-                PlaybackNodes nodes = this.entityController.create(level, gridPosition(origin, index), yaw, emote);
+                PlaybackNodes nodes = this.entityController.create(
+                    level,
+                    gridPosition(origin, index, instanceCount),
+                    yaw,
+                    emote
+                );
                 TimelinePlayer timeline = new TimelinePlayer(
                     emote.playbackPlan(),
                     nodes,
@@ -51,6 +64,9 @@ final class PlaybackLoadTest {
                 try {
                     timeline.resumeInitialInterpolation();
                     instances.add(new LoadTestInstance(emote, nodes, timeline));
+                    displayEntityCount += (int)nodes.nodes().values().stream()
+                        .filter(node -> !node.isAnchor())
+                        .count();
                 } catch (RuntimeException exception) {
                     this.entityController.remove(level, nodes);
                     throw exception;
@@ -61,19 +77,33 @@ final class PlaybackLoadTest {
             throw exception;
         }
 
-        this.session = new Session(level, instances);
+        long creationNanos = System.nanoTime() - startedNanos;
+        this.session = new Session(
+            level,
+            instances,
+            instanceCount,
+            displayEntityCount,
+            startedNanos,
+            startedServerTick,
+            baselineTickNanos,
+            targetTps,
+            creationNanos
+        );
         return instances.size();
     }
 
-    int stop() {
+    @Nullable PlaybackLoadTestReport stop() {
         Session current = this.session;
         if (current == null) {
-            return 0;
+            return null;
         }
 
         this.session = null;
+        current.recordCompletedServerTick();
+        long cleanupStartedNanos = System.nanoTime();
         removeInstances(current.level(), current.instances());
-        return current.instances().size();
+        long cleanupNanos = System.nanoTime() - cleanupStartedNanos;
+        return current.createReport(cleanupNanos, System.nanoTime());
     }
 
     void stopId(String id) {
@@ -89,9 +119,6 @@ final class PlaybackLoadTest {
             this.entityController.remove(current.level(), instance.nodes);
             return true;
         });
-        if (current.instances().isEmpty()) {
-            this.session = null;
-        }
     }
 
     void tick() {
@@ -100,47 +127,56 @@ final class PlaybackLoadTest {
             return;
         }
 
-        Iterator<LoadTestInstance> iterator = current.instances().iterator();
-        while (iterator.hasNext()) {
-            LoadTestInstance instance = iterator.next();
-            try {
-                TimelinePlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                if (result == TimelinePlayer.AdvanceResult.FINISHED) {
-                    instance.timeline = new TimelinePlayer(
-                        instance.emote.playbackPlan(),
-                        instance.nodes,
-                        this.entityController
-                    );
-                    instance.timeline.start();
+        long managerStartedNanos = System.nanoTime();
+        try {
+            Iterator<LoadTestInstance> iterator = current.instances().iterator();
+            while (iterator.hasNext()) {
+                LoadTestInstance instance = iterator.next();
+                try {
+                    TimelinePlayer.AdvanceResult result = advanceTimeline(instance.timeline);
+                    if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                        instance.timeline = new TimelinePlayer(
+                            instance.emote.playbackPlan(),
+                            instance.nodes,
+                            this.entityController
+                        );
+                        instance.timeline.start();
+                    }
+                } catch (RuntimeException exception) {
+                    Emote.LOGGER.warn("Failed while running load-test emote {}", instance.emote.id(), exception);
+                    this.entityController.remove(current.level(), instance.nodes);
+                    iterator.remove();
+                    current.failedInstances++;
                 }
-            } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("Failed while running load-test emote {}", instance.emote.id(), exception);
-                this.entityController.remove(current.level(), instance.nodes);
-                iterator.remove();
             }
+        } finally {
+            current.recordManagerCpu(System.nanoTime() - managerStartedNanos);
         }
-        if (current.instances().isEmpty()) {
-            this.session = null;
-        }
+        current.recordCompletedServerTick();
     }
 
-    static Vec3 gridPosition(Vec3 origin, int index) {
-        int column = index % GRID_SIZE;
-        int row = index / GRID_SIZE;
-        double halfSpan = (GRID_SIZE - 1) / 2.0D;
+    static int gridSize(int instanceCount) {
+        return (int)Math.ceil(Math.sqrt(instanceCount));
+    }
+
+    static Vec3 gridPosition(Vec3 origin, int index, int instanceCount) {
+        int gridSize = gridSize(instanceCount);
+        int column = index % gridSize;
+        int row = index / gridSize;
+        double halfSpan = (gridSize - 1) / 2.0D;
         return origin.add(column - halfSpan, 0.0D, row - halfSpan);
     }
 
-    static <T> List<T> createRandomizedSelection(List<T> values, Random random) {
+    static <T> List<T> createRandomizedSelection(List<T> values, Random random, int instanceCount) {
         if (values.isEmpty()) {
             throw new IllegalArgumentException("Cannot select from an empty list");
         }
 
         List<T> deck = new ArrayList<>(values);
-        List<T> selection = new ArrayList<>(INSTANCE_COUNT);
-        while (selection.size() < INSTANCE_COUNT) {
+        List<T> selection = new ArrayList<>(instanceCount);
+        while (selection.size() < instanceCount) {
             Collections.shuffle(deck, random);
-            int copyCount = Math.min(deck.size(), INSTANCE_COUNT - selection.size());
+            int copyCount = Math.min(deck.size(), instanceCount - selection.size());
             selection.addAll(deck.subList(0, copyCount));
         }
         return List.copyOf(selection);
@@ -180,7 +216,123 @@ final class PlaybackLoadTest {
         }
     }
 
-    private record Session(ServerLevel level, List<LoadTestInstance> instances) {
+    static double estimatedTps(double mspt, double targetTps) {
+        if (mspt <= 0.0D) {
+            return targetTps;
+        }
+        return Math.min(targetTps, 1_000.0D / mspt);
+    }
+
+    private static final class Session {
+        private final ServerLevel level;
+        private final List<LoadTestInstance> instances;
+        private final int requestedInstances;
+        private final int peakDisplayEntities;
+        private final long startedNanos;
+        private final int startedServerTick;
+        private final long baselineTickNanos;
+        private final float targetTps;
+        private final long creationNanos;
+        private int lastSampledServerTick = Integer.MIN_VALUE;
+        private int failedInstances;
+        private int serverTickSamples;
+        private long serverTickNanos;
+        private long maximumServerTickNanos;
+        private int managerCpuSamples;
+        private long managerCpuNanos;
+        private long maximumManagerCpuNanos;
+
+        private Session(
+            ServerLevel level,
+            List<LoadTestInstance> instances,
+            int requestedInstances,
+            int peakDisplayEntities,
+            long startedNanos,
+            int startedServerTick,
+            long baselineTickNanos,
+            float targetTps,
+            long creationNanos
+        ) {
+            this.level = level;
+            this.instances = instances;
+            this.requestedInstances = requestedInstances;
+            this.peakDisplayEntities = peakDisplayEntities;
+            this.startedNanos = startedNanos;
+            this.startedServerTick = startedServerTick;
+            this.baselineTickNanos = baselineTickNanos;
+            this.targetTps = targetTps;
+            this.creationNanos = creationNanos;
+        }
+
+        private ServerLevel level() {
+            return this.level;
+        }
+
+        private List<LoadTestInstance> instances() {
+            return this.instances;
+        }
+
+        private void recordManagerCpu(long elapsedNanos) {
+            this.managerCpuSamples++;
+            this.managerCpuNanos += elapsedNanos;
+            this.maximumManagerCpuNanos = Math.max(this.maximumManagerCpuNanos, elapsedNanos);
+        }
+
+        private void recordCompletedServerTick() {
+            int completedTick = Emote.SERVER.getTickCount() - 1;
+            if (completedTick < this.startedServerTick || completedTick == this.lastSampledServerTick) {
+                return;
+            }
+
+            long[] tickTimesNanos = Emote.SERVER.getTickTimesNanos();
+            long elapsedNanos = tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)];
+            this.lastSampledServerTick = completedTick;
+            if (elapsedNanos <= 0L) {
+                return;
+            }
+            this.serverTickSamples++;
+            this.serverTickNanos += elapsedNanos;
+            this.maximumServerTickNanos = Math.max(this.maximumServerTickNanos, elapsedNanos);
+        }
+
+        private PlaybackLoadTestReport createReport(long cleanupNanos, long stoppedNanos) {
+            double baselineMspt = nanosToMillis(this.baselineTickNanos);
+            double averageMspt = this.serverTickSamples == 0
+                ? baselineMspt
+                : nanosToMillis(this.serverTickNanos) / this.serverTickSamples;
+            double maximumMspt = this.serverTickSamples == 0
+                ? baselineMspt
+                : nanosToMillis(this.maximumServerTickNanos);
+            double baselineTps = estimatedTps(baselineMspt, this.targetTps);
+            double averageTps = estimatedTps(averageMspt, this.targetTps);
+            double minimumTps = estimatedTps(maximumMspt, this.targetTps);
+            double averageManagerCpuMillis = this.managerCpuSamples == 0
+                ? 0.0D
+                : nanosToMillis(this.managerCpuNanos) / this.managerCpuSamples;
+            return new PlaybackLoadTestReport(
+                this.requestedInstances,
+                this.instances.size(),
+                this.peakDisplayEntities,
+                this.failedInstances,
+                this.serverTickSamples,
+                (stoppedNanos - this.startedNanos) / 1_000_000_000.0D,
+                nanosToMillis(this.creationNanos),
+                nanosToMillis(cleanupNanos),
+                baselineMspt,
+                averageMspt,
+                maximumMspt,
+                baselineTps,
+                averageTps,
+                minimumTps,
+                Math.max(0.0D, baselineTps - averageTps),
+                averageManagerCpuMillis,
+                nanosToMillis(this.maximumManagerCpuNanos)
+            );
+        }
+
+        private static double nanosToMillis(long nanos) {
+            return nanos / 1_000_000.0D;
+        }
     }
 
     private static final class LoadTestInstance {
