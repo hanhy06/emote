@@ -11,6 +11,7 @@ import io.github.hanhy06.emote.playback.PlaybackLoadTestReport;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.EmoteReloadResult;
 import io.github.hanhy06.emote.server.EmoteReloadService;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -189,38 +190,49 @@ final class EmoteAdminCommands {
             return 0;
         }
 
-        source.sendSuccess(
-            () -> Component.literal(String.format(
+        var message = Component.literal("-- Emote Load Test Result --")
+            .withStyle(ChatFormatting.GRAY, ChatFormatting.BOLD)
+            .append(Component.literal("\n- Instances: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n- Displays: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(Integer.toString(report.peakDisplayEntities())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Failed: ").withStyle(ChatFormatting.RED))
+            .append(Component.literal(Integer.toString(report.failedInstances())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1fs", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n\n-- Server Performance --").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n- TPS: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(
                 Locale.ROOT,
-                "Stopped load test: requested=%d, active=%d, displays=%d, failed=%d, duration=%.1fs",
-                report.requestedInstances(),
-                report.activeInstances(),
-                report.peakDisplayEntities(),
-                report.failedInstances(),
-                report.elapsedSeconds()
-            )),
-            true
-        );
-        source.sendSystemMessage(Component.literal(String.format(
-            Locale.ROOT,
-            "TPS: baseline=%.2f, average=%.2f, minimum=%.2f, drop=%.2f | MSPT: baseline=%.2f, average=%.2f, max=%.2f",
-            report.baselineTps(),
-            report.averageTps(),
-            report.minimumTps(),
-            report.tpsDrop(),
-            report.baselineMspt(),
-            report.averageMspt(),
-            report.maximumMspt()
-        )));
-        source.sendSystemMessage(Component.literal(String.format(
-            Locale.ROOT,
-            "Load CPU: create=%.2fms, tick average=%.3fms, tick max=%.3fms, cleanup=%.2fms, samples=%d",
-            report.creationMillis(),
-            report.averageManagerCpuMillis(),
-            report.maximumManagerCpuMillis(),
-            report.cleanupMillis(),
-            report.measuredServerTicks()
-        )));
+                "%.2f -> %.2f  (min %.2f, drop %.2f)",
+                report.baselineTps(),
+                report.averageTps(),
+                report.minimumTps(),
+                report.tpsDrop()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n- MSPT: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "%.2f -> %.2f  (max %.2f)",
+                report.baselineMspt(),
+                report.averageMspt(),
+                report.maximumMspt()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n\n-- Emote Processing --").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n- Create: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.creationMillis())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "%.3fms avg / %.3fms max",
+                report.averageManagerCpuMillis(),
+                report.maximumManagerCpuMillis()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n- Cleanup: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Samples: ").withStyle(ChatFormatting.LIGHT_PURPLE))
+            .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE));
+        source.sendSuccess(() -> message, true);
         return report.activeInstances();
     }
 
