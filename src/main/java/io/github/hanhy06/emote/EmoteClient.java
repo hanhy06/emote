@@ -16,14 +16,14 @@ public class EmoteClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        new PerspectiveController();
-        new WheelController();
-        new EmoteClientNetworking(PerspectiveController.INSTANCE, WheelController.INSTANCE);
+        PerspectiveController perspectiveController = new PerspectiveController();
+        WheelController wheelController = new WheelController();
+        EmoteClientNetworking networking = new EmoteClientNetworking(perspectiveController, wheelController);
 
-        EmoteClientNetworking.INSTANCE.register();
+        networking.register();
         ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
         ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
-        WheelController.INSTANCE.registerBinding(EMOTE_WHEEL_KEY);
+        wheelController.registerBinding(EMOTE_WHEEL_KEY);
     }
 
     public static boolean shouldHideLocalPlayerEquipment() {

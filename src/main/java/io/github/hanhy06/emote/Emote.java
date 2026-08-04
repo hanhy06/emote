@@ -32,79 +32,75 @@ public class Emote implements ModInitializer {
 
     @Override
     public void onInitialize() {
-        initializeInstances();
-
-        ConfigManager.INSTANCE.addEmoteAccessListener(PermissionService.INSTANCE);
-        ConfigManager.INSTANCE.addEmoteAccessListener(IdleEmoteService.INSTANCE);
-        ConfigManager.INSTANCE.addListener(PlayerSkinManager.INSTANCE);
-
-        PlaybackManager.INSTANCE.addStateListener(PlaybackStateService.INSTANCE);
-        PlaybackManager.INSTANCE.addStateListener(EmoteApiEvents.INSTANCE);
-        PlaybackManager.INSTANCE.registerVisibilityService();
-
-        EmoteNetworking.INSTANCE.register();
-        EmoteLifecycle.INSTANCE.register();
-        RootCommand.INSTANCE.register();
-
-        LOGGER.info("{} ready", MOD_ID);
-    }
-
-    private void initializeInstances() {
-        new ConfigManager(FabricLoader.getInstance().getConfigDir());
-        new PlayerSkinManager();
-        new EmoteRegistry();
-        new PermissionService();
-        new PlayableEmoteService(EmoteRegistry.INSTANCE, PermissionService.INSTANCE);
-        new PlaybackManager(PlayerSkinManager.INSTANCE);
-        new PlaybackStateService();
-        new EmoteApiEvents();
-        new DialogManager(
-            ConfigManager.INSTANCE,
-            EmoteRegistry.INSTANCE,
-            PlayableEmoteService.INSTANCE,
-            PlaybackManager.INSTANCE
+        ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
+        PlayerSkinManager skinManager = new PlayerSkinManager();
+        EmoteRegistry emoteRegistry = new EmoteRegistry();
+        PermissionService permissionService = new PermissionService();
+        PlayableEmoteService playableEmoteService = new PlayableEmoteService(emoteRegistry, permissionService);
+        PlaybackManager playbackManager = new PlaybackManager(skinManager);
+        PlaybackStateService playbackStateService = new PlaybackStateService();
+        EmoteApiEvents apiEvents = new EmoteApiEvents();
+        DialogManager dialogManager = new DialogManager(
+            configManager,
+            emoteRegistry,
+            playableEmoteService,
+            playbackManager
         );
-        new PlayService(
-            EmoteRegistry.INSTANCE,
-            PermissionService.INSTANCE,
-            PlaybackManager.INSTANCE,
-            EmoteApiEvents.INSTANCE
+        PlayService playService = new PlayService(
+            emoteRegistry,
+            permissionService,
+            playbackManager,
+            apiEvents
         );
-        new IdleEmoteService(PermissionService.INSTANCE, PlayService.INSTANCE, PlaybackManager.INSTANCE);
-        new WheelSyncService(PlayableEmoteService.INSTANCE);
+        IdleEmoteService idleEmoteService = new IdleEmoteService(permissionService, playService, playbackManager);
+        WheelSyncService wheelSyncService = new WheelSyncService(playableEmoteService);
         new EmoteApiImpl(
-            EmoteRegistry.INSTANCE,
-            PlayService.INSTANCE,
-            PlaybackManager.INSTANCE,
-            EmoteApiEvents.INSTANCE,
-            WheelSyncService.INSTANCE,
+            emoteRegistry,
+            playService,
+            playbackManager,
+            apiEvents,
+            wheelSyncService,
             new EmoteAnimationServerValidator()
         );
-        new EmoteReloadService(
-            ConfigManager.INSTANCE,
-            EmoteRegistry.INSTANCE,
+        EmoteReloadService reloadService = new EmoteReloadService(
+            configManager,
+            emoteRegistry,
             new EmoteAnimationDirectoryLoader(),
-            PlaybackManager.INSTANCE,
-            WheelSyncService.INSTANCE
+            playbackManager,
+            wheelSyncService
         );
-        new EmoteNetworking();
-        new EmoteLifecycle(
-            PlayerSkinManager.INSTANCE,
-            EmoteRegistry.INSTANCE,
-            PlaybackManager.INSTANCE,
-            EmoteReloadService.INSTANCE,
-            WheelSyncService.INSTANCE,
-            IdleEmoteService.INSTANCE
+        EmoteNetworking networking = new EmoteNetworking();
+        EmoteLifecycle lifecycle = new EmoteLifecycle(
+            skinManager,
+            emoteRegistry,
+            playbackManager,
+            reloadService,
+            wheelSyncService,
+            idleEmoteService
         );
-        new RootCommand(
-            EmoteRegistry.INSTANCE,
-            PlaybackManager.INSTANCE,
-            DialogManager.INSTANCE,
-            PlayableEmoteService.INSTANCE,
-            PlayService.INSTANCE,
-            PermissionService.INSTANCE,
-            EmoteReloadService.INSTANCE,
-            ConfigManager.INSTANCE
+        RootCommand rootCommand = new RootCommand(
+            emoteRegistry,
+            playbackManager,
+            dialogManager,
+            playableEmoteService,
+            playService,
+            permissionService,
+            reloadService,
+            configManager
         );
+
+        configManager.addEmoteAccessListener(permissionService);
+        configManager.addEmoteAccessListener(idleEmoteService);
+        configManager.addListener(skinManager);
+
+        playbackManager.addStateListener(playbackStateService);
+        playbackManager.addStateListener(apiEvents);
+        playbackManager.registerVisibilityService();
+
+        networking.register();
+        lifecycle.register();
+        rootCommand.register();
+
+        LOGGER.info("{} ready", MOD_ID);
     }
 }
