@@ -26,13 +26,14 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 
 ## Admin Commands
 
-| Command               | Description                                       |
-|-----------------------|---------------------------------------------------|
-| `/emote list`         | Lists loaded emotes and their source information. |
-| `/emote reload`       | Reloads configuration and animation JSON files.   |
-| `/emote enable <id>`  | Enables an emote and reloads the emote list.      |
-| `/emote disable <id>` | Disables an emote and stops its active instances. |
-| `/emote stop-all`     | Stops every active emote.                         |
+| Command                    | Description                                               |
+|----------------------------|-----------------------------------------------------------|
+| `/emote list`              | Lists loaded emotes and their source information.         |
+| `/emote reload`            | Reloads configuration and animation JSON files.           |
+| `/emote enable <id>`       | Enables an emote and reloads the emote list.              |
+| `/emote disable <id>`      | Disables an emote and stops its active instances.         |
+| `/emote stop-all`          | Stops every active emote.                                 |
+| `/emote load-test <count>` | Runs an emote load test and reports server performance.   |
 
 ## Server Configuration
 
