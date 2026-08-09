@@ -86,9 +86,9 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .fields label small { color: #666; font-size: 11px; line-height: 1.4; }
 .playback-behavior { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
 .playback-behavior > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
-.playback-behavior-primary { grid-template-columns: repeat(2, 1fr); }
-.playback-behavior-options { margin-top: 8px; }
-.playback-behavior-options .checkbox { align-self: center; }
+.playback-behavior-primary { grid-template-columns: minmax(260px, 420px) minmax(160px, 240px); justify-content: start; gap: 16px; }
+.playback-behavior-options { grid-template-columns: repeat(4, max-content); margin-top: 12px; column-gap: 48px; row-gap: 8px; }
+.playback-behavior-options .checkbox { align-self: center; min-height: 28px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
 .additional-metadata > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
 .additional-metadata dl { display: grid; gap: 8px; margin: 0; }
@@ -114,6 +114,9 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .button-file-input input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .primary-button { color: #fff; border-color: #005a9e; background: #0067c0; }
 .primary-button:hover:not(:disabled) { color: #fff; border-color: #004f8a; background: #005a9e; }
+@media (max-width: 1000px) {
+  .playback-behavior-options { grid-template-columns: repeat(2, max-content); }
+}
 @media (max-width: 700px) {
   .app { padding: 22px 16px 36px; }
   .app-header, .section-heading, .project-summary, .export-row { align-items: stretch; flex-direction: column; }
