@@ -90,21 +90,23 @@ export function ExportPanel({
         <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.target.value })} /></label>
         <label>Display name<input value={metadata.name} onChange={(event) => onMetadataChange({ ...metadata, name: event.target.value })} /></label>
         <label>Description<input value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.target.value })} /></label>
-        <label>Playback mode<select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
-          <option value="source">Source setting</option>
-          <option value="once">Play once</option>
-          <option value="loop">Loop</option>
-          <option value="server_sync">Server-synchronized loop</option>
-        </select></label>
       </div>
-      <section className="player-behavior" aria-labelledby="player-behavior-heading">
-        <h3 id="player-behavior-heading">Player behavior</h3>
-        <p>Choose how the original player is displayed and which actions stop playback.</p>
-        <div className="fields player-behavior-fields">
+      <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
+        <h3 id="playback-behavior-heading">Playback behavior</h3>
+        <p>Choose the playback mode, player visibility, and which actions stop the emote.</p>
+        <div className="fields playback-behavior-primary">
+          <label>Playback mode<select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
+            <option value="source">Source setting</option>
+            <option value="once">Play once</option>
+            <option value="loop">Loop</option>
+            <option value="server_sync">Server-synchronized loop</option>
+          </select></label>
           <label>Movement distance
             <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.target.value))} />
             <small>Horizontal blocks from the starting point. Set to 0 to allow movement.</small>
           </label>
+        </div>
+        <div className="fields playback-behavior-options">
           <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.target.checked } })} />Hide original player</label>
           <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.jump} onChange={(event) => updatePlayerStopCondition("jump", event.target.checked)} />Stop on jump</label>
           <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.submerge} onChange={(event) => updatePlayerStopCondition("submerge", event.target.checked)} />Stop when submerged</label>
