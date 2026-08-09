@@ -27,7 +27,7 @@ export function exportAnimation(
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
 ): ExportResult {
-  validateArtifactVersion(project, options.minecraftVersion);
+  validateResourceVersion(project, options.minecraftVersion);
   const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
@@ -41,10 +41,10 @@ export function exportResourcePack(
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
 ): ExportResult {
-  if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
+  if (project.resources.size === 0) throw new Error("This emote does not contain generated resources.");
   const generatedResources = generatedResourceFiles(project, options.minecraftVersion);
   const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
-  const packFormat = resourcePackFormat(project.artifactMinecraftVersion ?? options.minecraftVersion);
+  const packFormat = resourcePackFormat(project.resourceMinecraftVersion ?? options.minecraftVersion);
   const files: Record<string, Uint8Array> = {
     "pack.mcmeta": strToU8(`${JSON.stringify({
       pack: {
@@ -65,9 +65,9 @@ export function exportResourcePack(
 }
 
 export function generatedResourceFiles(project: ImportedProject, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
-  if (project.artifacts.size === 0) throw new Error("This emote does not contain generated resources.");
-  validateArtifactVersion(project, minecraftVersion);
-  for (const path of project.artifacts.keys()) {
+  if (project.resources.size === 0) throw new Error("This emote does not contain generated resources.");
+  validateResourceVersion(project, minecraftVersion);
+  for (const path of project.resources.keys()) {
     if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
     const segments = path.split("/");
     if (
@@ -78,7 +78,7 @@ export function generatedResourceFiles(project: ImportedProject, minecraftVersio
       throw new Error(`Generated resource has an invalid pack path: ${path}`);
     }
   }
-  return project.artifacts;
+  return project.resources;
 }
 
 export function downloadExport(result: ExportResult): void {
@@ -124,9 +124,9 @@ function compileExportAnimation(
   }, animationIndex);
 }
 
-function validateArtifactVersion(project: ImportedProject, minecraftVersion: string): void {
-  if (project.artifactMinecraftVersion && minecraftVersion !== project.artifactMinecraftVersion) {
-    throw new Error(`Generated resources require Minecraft ${project.artifactMinecraftVersion}.`);
+function validateResourceVersion(project: ImportedProject, minecraftVersion: string): void {
+  if (project.resourceMinecraftVersion && minecraftVersion !== project.resourceMinecraftVersion) {
+    throw new Error(`Generated resources require Minecraft ${project.resourceMinecraftVersion}.`);
   }
 }
 

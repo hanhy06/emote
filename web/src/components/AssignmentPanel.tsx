@@ -5,7 +5,7 @@ import {
   type PartAssignments,
   type PartOrders,
   type SkinPartId,
-} from "../preview/skinMapping";
+} from "../preview/skinAssignment";
 
 interface AssignmentPanelProps {
   parts: PlayerHeadPart[];

@@ -44,7 +44,7 @@ export const emoteJsonAdapter: ImportAdapter = {
       nodes: importNodes(animation),
       animations: [importTimeline(animation, animationId)],
       diagnostics: [],
-      artifacts: new Map(),
+      resources: new Map(),
     };
   },
 };

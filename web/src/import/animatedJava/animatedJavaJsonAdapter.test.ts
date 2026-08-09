@@ -136,7 +136,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
-  it("creates resource-pack artifacts for bone models", async () => {
+  it("creates resource-pack files for bone models", async () => {
     const input = rawBlueprint({
       format_version: 1,
       settings: { id: "demo:rig" },
@@ -153,7 +153,7 @@ describe("animatedJavaJsonAdapter", () => {
       animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
     });
     const project = await animatedJavaJsonAdapter.import(input);
-    expect([...project.artifacts.keys()]).toEqual([
+    expect([...project.resources.keys()]).toEqual([
       "assets/demo/textures/item/rig/skin.png",
       "assets/demo/models/item/rig/body.json",
       "assets/demo/items/rig/body.json",

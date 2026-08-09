@@ -16,7 +16,7 @@ import {
   type PartAssignments,
   type PartOrders,
   type SkinPartId,
-} from "./preview/skinMapping";
+} from "./preview/skinAssignment";
 
 interface SkinCandidate {
   nodeId: string;
@@ -48,7 +48,7 @@ const IMPORT_FORMATS = [
   {
     label: "BD Engine",
     extensions: ".bdengine, .zip",
-    description: "The format that works best with the Emote mod. Set the display order and assign each piece to the player skin.",
+    description: "The format that works best with the Emote mod. Set the display order and assign each part to the player skin.",
   },
   {
     label: "Animated Java",
@@ -254,7 +254,7 @@ export function App() {
             <h3>Workflow</h3>
             <ol className="workflow-list">
               <li><span>1</span><p><strong>Open a file</strong><small>The format is detected automatically.</small></p></li>
-              <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin pieces when the project contains them.</small></p></li>
+              <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin parts when the project contains them.</small></p></li>
               <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
             </ol>
           </div>
@@ -294,8 +294,8 @@ export function App() {
                 <span className="step-label">Step 2</span>
                 <h2 id="workspace-title">{skinCandidates.length > 0 ? "Review player skin parts" : "Review imported animation"}</h2>
                 <p>{skinCandidates.length > 0
-                  ? "Select pieces in the preview, then assign each one to a player body part."
-                  : "This file does not contain player-head pieces, so no skin mapping is needed."}</p>
+                  ? "Select parts in the preview, then assign each one to a player body part."
+                  : "This file does not contain player-head parts, so no skin assignment is needed."}</p>
               </div>
               <div className="preview-controls">
                 {skinCandidates.length > 0 && (
@@ -346,9 +346,9 @@ export function App() {
 
           <ExportPanel
             metadata={session.metadata}
-            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.artifacts.size)}
+            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.resources.size)}
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
-            hasResources={project.artifacts.size > 0}
+            hasResources={project.resources.size > 0}
             error={session.conversionError}
             onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
             onDownloadAnimation={handleAnimationDownload}
@@ -395,8 +395,8 @@ function createPreviewParts(
   });
 }
 
-function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignments, artifactCount: number): string {
+function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignments, resourceCount: number): string {
   const assigned = candidates.filter((candidate) => assignments[candidate.nodeId]).length;
-  const skin = candidates.length ? `${assigned}/${candidates.length} skin pieces assigned` : "No skin mapping needed";
-  return artifactCount ? `${skin} · ${artifactCount} resource files` : skin;
+  const skin = candidates.length ? `${assigned}/${candidates.length} skin parts assigned` : "No skin assignment needed";
+  return resourceCount ? `${skin} · ${resourceCount} resource files` : skin;
 }

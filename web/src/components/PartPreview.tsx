@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
-import { SKIN_PARTS, type PartAssignments } from "../preview/skinMapping";
+import { SKIN_PARTS, type PartAssignments } from "../preview/skinAssignment";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {
@@ -265,7 +265,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
   }, [parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
-  return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote pieces" />;
+  return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote parts" />;
 }
 
 type MatrixValues = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];

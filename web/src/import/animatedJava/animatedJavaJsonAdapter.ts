@@ -48,8 +48,8 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     const blueprint = requireAjBlueprint(parsed);
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
-    const artifacts = new Map<string, Uint8Array>();
-    const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, artifacts)]));
+    const resources = new Map<string, Uint8Array>();
+    const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, resources)]));
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes));
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
     if (animations.length === 0) throw new Error("Animated Java blueprint does not contain animations.");
@@ -62,8 +62,8 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
       nodes,
       animations,
       diagnostics: [],
-      artifacts,
-      ...(artifacts.size ? { artifactMinecraftVersion: "26.2" } : {}),
+      resources,
+      ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
     };
   },
 };
@@ -96,7 +96,7 @@ function importAnimatedJavaProject(input: ImportInput, project: AjProject): Impo
     nodes,
     animations,
     diagnostics: [],
-    artifacts: new Map(),
+    resources: new Map(),
   };
 }
 
@@ -316,7 +316,7 @@ function importNode(
   node: AjNode,
   resource: ResourceLocation,
   blueprint: AjBlueprint,
-  artifacts: Map<string, Uint8Array>,
+  resources: Map<string, Uint8Array>,
 ): ImportedNode {
   const defaultMatrix = readDefaultMatrix(node, id);
   if (node.type === "locator" || node.type === "structure" || node.type === "camera") {
@@ -325,7 +325,7 @@ function importNode(
   const entityNbt = displayPropertiesToNbt(node.display_properties);
   if (node.type === "bone") {
     const modelPath = [resource.path, id].filter(Boolean).join("/");
-    writeBoneArtifacts(modelPath, id, node, resource, blueprint, artifacts);
+    writeBoneResources(modelPath, id, node, resource, blueprint, resources);
     return {
       id,
       type: "item_display",
@@ -535,13 +535,13 @@ function readDefaultMatrix(node: AjNode, id: string): Matrix16 {
   return matrix4ToRowMajor(new Matrix4().fromArray(values), `Animated Java node ${id} default matrix`);
 }
 
-function writeBoneArtifacts(
+function writeBoneResources(
   modelPath: string,
   nodeId: string,
   node: AjNode,
   resource: ResourceLocation,
   blueprint: AjBlueprint,
-  artifacts: Map<string, Uint8Array>,
+  resources: Map<string, Uint8Array>,
 ): void {
   const usedTextures = new Set<string>();
   const elements = (node.elements ?? []).map((element) => ({
@@ -566,12 +566,12 @@ function writeBoneArtifacts(
     if (!source) throw new Error(`Animated Java bone ${nodeId} references unknown texture ${texture}.`);
     if (source.type === "reference") return [texture, source.resource_location];
     const texturePath = [resource.path, texture].filter(Boolean).join("/");
-    addArtifact(artifacts, `assets/${resource.namespace}/textures/item/${texturePath}.png`, decodeBase64(source.base64_string, texture));
+    addResource(resources, `assets/${resource.namespace}/textures/item/${texturePath}.png`, decodeBase64(source.base64_string, texture));
     return [texture, `${resource.namespace}:item/${texturePath}`];
   }));
-  addArtifact(artifacts, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements }));
-  addArtifact(
-    artifacts,
+  addResource(resources, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements }));
+  addResource(
+    resources,
     `assets/${resource.namespace}/items/${modelPath}.json`,
     jsonBytes({ model: { type: "minecraft:model", model: `${resource.namespace}:item/${modelPath}` } }),
   );
@@ -657,12 +657,12 @@ function jsonBytes(value: unknown): Uint8Array {
   return encoder.encode(`${JSON.stringify(value, null, 2)}\n`);
 }
 
-function addArtifact(artifacts: Map<string, Uint8Array>, path: string, data: Uint8Array): void {
-  const existing = artifacts.get(path);
+function addResource(resources: Map<string, Uint8Array>, path: string, data: Uint8Array): void {
+  const existing = resources.get(path);
   if (existing && (existing.length !== data.length || existing.some((value, index) => value !== data[index]))) {
-    throw new ConversionError("artifact_path_collision", `Generated resources contain different files at the same path: ${path}`, path);
+    throw new ConversionError("resource_path_collision", `Generated resources contain different files at the same path: ${path}`, path);
   }
-  artifacts.set(path, data);
+  resources.set(path, data);
 }
 
 function stringProperty(value: Record<string, unknown>, key: string, fallback: string): string {

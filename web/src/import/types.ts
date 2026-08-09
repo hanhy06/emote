@@ -13,8 +13,8 @@ export interface ImportedProject {
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
-  artifacts: Map<string, Uint8Array>;
-  artifactMinecraftVersion?: string;
+  resources: Map<string, Uint8Array>;
+  resourceMinecraftVersion?: string;
 }
 
 export interface ImportedNodeBase {

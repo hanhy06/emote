@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isPlayerHeadItemStack, selectPart, selectParts } from "./skinMapping";
+import { isPlayerHeadItemStack, selectPart, selectParts } from "./skinAssignment";
 
 describe("isPlayerHeadItemStack", () => {
   it("recognizes quoted and bare player heads with the default namespace", () => {

@@ -25,13 +25,13 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(Object.keys(imported.nodes)).toEqual(["root", "child"]);
     expect(imported.nodes.root.type).toBe("item_display");
     expect(imported.nodes.child.type).toBe("anchor");
-    expect([...imported.artifacts.keys()]).toEqual([
+    expect([...imported.resources.keys()]).toEqual([
       "assets/demo/textures/item/test_model/texture.png",
       "assets/demo/models/item/test_model/root.json",
       "assets/demo/items/test_model/root.json",
     ]);
 
-    const model = JSON.parse(new TextDecoder().decode(imported.artifacts.get("assets/demo/models/item/test_model/root.json"))) as {
+    const model = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/models/item/test_model/root.json"))) as {
       elements: { from: number[]; to: number[] }[];
     };
     expect(model.elements[0].from).toEqual([8, 8, 8]);
@@ -73,8 +73,8 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(imported.nodes.root.type).toBe("anchor");
-    expect(imported.artifacts.size).toBe(0);
-    expect(imported.artifactMinecraftVersion).toBeUndefined();
+    expect(imported.resources.size).toBe(0);
+    expect(imported.resourceMinecraftVersion).toBeUndefined();
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
 });

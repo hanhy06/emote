@@ -58,13 +58,13 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
     const sourceStem = input.name.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
     const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
     const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
-    const artifacts = new Map<string, Uint8Array>();
+    const resources = new Map<string, Uint8Array>();
     const bones = buildBoneEntries(project);
     if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
     if (bones.some((bone) => bone.cubes.length > 0)) {
       const texture = requireEmbeddedTexture(project.textures);
       const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-      artifacts.set(texturePath, decodeTexture(texture));
+      resources.set(texturePath, decodeTexture(texture));
     }
     const nodes: Record<string, ImportedNode> = {};
     for (const bone of bones) {
@@ -74,7 +74,7 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
         continue;
       }
       const modelPath = `${projectPath}/${bone.id}`;
-      writeBoneArtifacts(project, bone, namespace, modelPath, artifacts);
+      writeBoneResources(project, bone, namespace, modelPath, resources);
       nodes[bone.id] = {
         id: bone.id,
         type: "item_display",
@@ -102,8 +102,8 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
       nodes,
       animations,
       diagnostics: [],
-      artifacts,
-      ...(artifacts.size ? { artifactMinecraftVersion: "26.2" } : {}),
+      resources,
+      ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
     };
   },
 };
@@ -300,20 +300,20 @@ function composeTransform(position: number[], rotation: number[], scale: number[
   );
 }
 
-function writeBoneArtifacts(
+function writeBoneResources(
   project: BbmodelProject,
   bone: BoneEntry,
   namespace: string,
   modelPath: string,
-  artifacts: Map<string, Uint8Array>,
+  resources: Map<string, Uint8Array>,
 ): void {
   const elements = bone.cubes.map((cube) => cubeModelElement(cube, bone.group.origin, project.resolution));
   const model = {
     textures: { layer0: `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/texture` },
     elements,
   };
-  artifacts.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
-  artifacts.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
+  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
+  resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
 }
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {

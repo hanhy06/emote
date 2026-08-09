@@ -10,11 +10,11 @@ const project = {
   sourceName: "emote.ajblueprint",
   suggestedMetadata: { name: "Emote", description: "" },
   suggestedPlayer: createDefaultPlayerBehavior(),
-  artifactMinecraftVersion: "26.2",
+  resourceMinecraftVersion: "26.2",
   nodes: {},
   animations: [],
   diagnostics: [],
-  artifacts: new Map([
+  resources: new Map([
     ["assets/emote/models/item/model.json", strToU8("new model")],
     ["assets/emote/textures/item/texture.png", new Uint8Array([1, 2, 3])],
   ]),

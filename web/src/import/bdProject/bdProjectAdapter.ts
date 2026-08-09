@@ -101,7 +101,7 @@ export const bdProjectAdapter: ImportAdapter = {
       nodes,
       animations: [animation],
       diagnostics,
-      artifacts: new Map(),
+      resources: new Map(),
     };
   },
 };

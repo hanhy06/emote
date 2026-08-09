@@ -70,6 +70,6 @@ function importedProject(): ImportedProject {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: new Map(),
+      resources: new Map(),
   };
 }

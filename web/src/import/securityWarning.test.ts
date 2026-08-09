@@ -31,7 +31,7 @@ function projectWithCommands(...commands: string[][]): ImportedProject {
     nodes: {},
     animations,
     diagnostics: [],
-    artifacts: new Map(),
+    resources: new Map(),
   };
 }
 

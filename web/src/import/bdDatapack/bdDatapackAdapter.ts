@@ -71,7 +71,7 @@ export const bdDatapackAdapter: ImportAdapter = {
       nodes: displays.nodes,
       animations,
       diagnostics,
-      artifacts: new Map(),
+      resources: new Map(),
     };
   },
 };

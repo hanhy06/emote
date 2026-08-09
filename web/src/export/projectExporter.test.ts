@@ -33,7 +33,7 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: new Map(),
+      resources: new Map(),
     };
     const result = exportAnimation(project, {
       minecraftVersion: "26.2",
@@ -71,7 +71,7 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: new Map(),
+      resources: new Map(),
     };
     const result = exportAnimation(project, {
       minecraftVersion: "26.2",
@@ -99,7 +99,7 @@ describe("exportAnimation", () => {
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
-      artifactMinecraftVersion: "26.2",
+      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [{
         id: "test",
@@ -111,7 +111,7 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      artifacts: new Map([["assets/test/textures/entity/test.png", texture]]),
+      resources: new Map([["assets/test/textures/entity/test.png", texture]]),
     };
     const result = exportResourcePack(project, {
       minecraftVersion: "26.2",
@@ -149,11 +149,11 @@ describe("exportAnimation", () => {
       sourceName: "test.ajblueprint",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      artifactMinecraftVersion: "26.2",
+      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],
-      artifacts: new Map([[path, new Uint8Array([1])]]),
+      resources: new Map([[path, new Uint8Array([1])]]),
     };
 
     expect(() => generatedResourceFiles(project, "26.2"))
@@ -166,11 +166,11 @@ describe("exportAnimation", () => {
       sourceName: "test.ajblueprint",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      artifactMinecraftVersion: "26.2",
+      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],
-      artifacts: new Map([["pack.mcmeta", new Uint8Array([1])]]),
+      resources: new Map([["pack.mcmeta", new Uint8Array([1])]]),
     };
 
     expect(() => generatedResourceFiles(project, "26.2"))
