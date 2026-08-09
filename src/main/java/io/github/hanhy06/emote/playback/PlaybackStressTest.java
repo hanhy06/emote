@@ -14,7 +14,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Random;
 
-final class PlaybackLoadTest {
+final class PlaybackStressTest {
     static final int DEFAULT_INSTANCE_COUNT = 100;
     static final int MAX_INSTANCE_COUNT = 1_000;
     static final int MIN_INITIAL_TICK = 80;
@@ -25,16 +25,16 @@ final class PlaybackLoadTest {
 
     private @Nullable Session session;
 
-    PlaybackLoadTest(PlaybackEntityController entityController) {
+    PlaybackStressTest(PlaybackEntityController entityController) {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
     int start(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes, int instanceCount) {
         if (emotes.isEmpty()) {
-            throw new IllegalArgumentException("At least one emote is required for a load test");
+            throw new IllegalArgumentException("At least one emote is required for a stress test");
         }
         if (instanceCount < 1 || instanceCount > MAX_INSTANCE_COUNT) {
-            throw new IllegalArgumentException("Load-test instance count is out of range: " + instanceCount);
+            throw new IllegalArgumentException("Stress-test instance count is out of range: " + instanceCount);
         }
 
         stop();
@@ -44,7 +44,7 @@ final class PlaybackLoadTest {
         float targetTps = Emote.SERVER.tickRateManager().tickrate();
         Random random = new Random(RANDOM_SEED);
         List<RegisteredEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
-        List<LoadTestInstance> instances = new ArrayList<>(instanceCount);
+        List<StressTestInstance> instances = new ArrayList<>(instanceCount);
         int displayEntityCount = 0;
         try {
             for (int index = 0; index < instanceCount; index++) {
@@ -64,7 +64,7 @@ final class PlaybackLoadTest {
                 this.entityController.add(level, nodes);
                 try {
                     timeline.resumeInitialInterpolation();
-                    instances.add(new LoadTestInstance(emote, nodes, timeline));
+                    instances.add(new StressTestInstance(emote, nodes, timeline));
                     displayEntityCount += (int) nodes.nodes().values().stream()
                         .filter(node -> !node.isAnchor())
                         .count();
@@ -93,7 +93,7 @@ final class PlaybackLoadTest {
         return instances.size();
     }
 
-    @Nullable PlaybackLoadTestReport stop() {
+    @Nullable PlaybackStressTestReport stop() {
         Session current = this.session;
         if (current == null) {
             return null;
@@ -140,9 +140,9 @@ final class PlaybackLoadTest {
 
         long managerStartedNanos = System.nanoTime();
         try {
-            Iterator<LoadTestInstance> iterator = current.instances().iterator();
+            Iterator<StressTestInstance> iterator = current.instances().iterator();
             while (iterator.hasNext()) {
-                LoadTestInstance instance = iterator.next();
+                StressTestInstance instance = iterator.next();
                 try {
                     TimelinePlayer.AdvanceResult result = advanceTimeline(instance.timeline);
                     if (result == TimelinePlayer.AdvanceResult.FINISHED) {
@@ -154,7 +154,7 @@ final class PlaybackLoadTest {
                         instance.timeline.start();
                     }
                 } catch (RuntimeException exception) {
-                    Emote.LOGGER.warn("Failed while running load-test emote {}", instance.emote.id(), exception);
+                    Emote.LOGGER.warn("Failed while running stress-test emote {}", instance.emote.id(), exception);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
                     current.failedInstances++;
@@ -221,8 +221,8 @@ final class PlaybackLoadTest {
         return result;
     }
 
-    private void removeInstances(ServerLevel level, List<LoadTestInstance> instances) {
-        for (LoadTestInstance instance : instances) {
+    private void removeInstances(ServerLevel level, List<StressTestInstance> instances) {
+        for (StressTestInstance instance : instances) {
             this.entityController.remove(level, instance.nodes);
         }
     }
@@ -242,7 +242,7 @@ final class PlaybackLoadTest {
 
     private static final class Session {
         private final ServerLevel level;
-        private final List<LoadTestInstance> instances;
+        private final List<StressTestInstance> instances;
         private final int requestedInstances;
         private final int peakDisplayEntities;
         private final long startedNanos;
@@ -262,7 +262,7 @@ final class PlaybackLoadTest {
 
         private Session(
             ServerLevel level,
-            List<LoadTestInstance> instances,
+            List<StressTestInstance> instances,
             int requestedInstances,
             int peakDisplayEntities,
             long startedNanos,
@@ -286,7 +286,7 @@ final class PlaybackLoadTest {
             return this.level;
         }
 
-        private List<LoadTestInstance> instances() {
+        private List<StressTestInstance> instances() {
             return this.instances;
         }
 
@@ -313,7 +313,7 @@ final class PlaybackLoadTest {
             this.maximumServerTickNanos = Math.max(this.maximumServerTickNanos, elapsedNanos);
         }
 
-        private PlaybackLoadTestReport createReport(long cleanupNanos, long stoppedNanos) {
+        private PlaybackStressTestReport createReport(long cleanupNanos, long stoppedNanos) {
             double baselineMspt = nanosToMillis(this.baselineTickNanos);
             double averageMspt = this.serverTickSamples == 0
                 ? baselineMspt
@@ -327,7 +327,7 @@ final class PlaybackLoadTest {
             double averageManagerCpuMillis = this.managerCpuSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.managerCpuNanos) / this.managerCpuSamples;
-            return new PlaybackLoadTestReport(
+            return new PlaybackStressTestReport(
                 this.requestedInstances,
                 this.instances.size(),
                 this.peakDisplayEntities,
@@ -353,13 +353,13 @@ final class PlaybackLoadTest {
         }
     }
 
-    private static final class LoadTestInstance {
+    private static final class StressTestInstance {
         private final RegisteredEmote emote;
         private final PlaybackNodes nodes;
 
         private TimelinePlayer timeline;
 
-        private LoadTestInstance(RegisteredEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {
+        private StressTestInstance(RegisteredEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {
             this.emote = emote;
             this.nodes = nodes;
             this.timeline = timeline;

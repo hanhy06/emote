@@ -18,14 +18,14 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlaybackManager implements ConfigListener {
-    public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
-    public static final int MAX_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.MAX_INSTANCE_COUNT;
+    public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
+    public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
     private final Map<UUID, ActivePlayback> activePlaybacks = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
-    private final PlaybackLoadTest loadTest = new PlaybackLoadTest(this.entityController);
+    private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
@@ -182,7 +182,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public void tick() {
-        this.loadTest.tick();
+        this.stressTest.tick();
         if (this.activePlaybacks.isEmpty()) {
             return;
         }
@@ -254,24 +254,24 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public void stopAll(PlaybackStopReason reason) {
-        this.loadTest.stop();
+        this.stressTest.stop();
         for (UUID playerUuid : List.copyOf(this.activePlaybacks.keySet())) {
             stop(playerUuid, reason);
         }
     }
 
-    public int startLoadTest(
+    public int startStressTest(
         ServerLevel level,
         Vec3 origin,
         float yaw,
         List<RegisteredEmote> emotes,
         int instanceCount
     ) {
-        return this.loadTest.start(level, origin, yaw, emotes, instanceCount);
+        return this.stressTest.start(level, origin, yaw, emotes, instanceCount);
     }
 
-    public @Nullable PlaybackLoadTestReport stopLoadTest() {
-        return this.loadTest.stop();
+    public @Nullable PlaybackStressTestReport stopStressTest() {
+        return this.stressTest.stop();
     }
 
     public void stopById(String id) {
@@ -279,7 +279,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public void stopById(String id, PlaybackStopReason reason) {
-        this.loadTest.stopById(id);
+        this.stressTest.stopById(id);
         List<UUID> playerUuidList = this.activePlaybacks.entrySet().stream()
             .filter(entry -> entry.getValue().id().equals(id))
             .map(Map.Entry::getKey)
@@ -349,7 +349,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     int activeDisplayEntityCount() {
-        return this.loadTest.displayEntityCount() + this.activePlaybacks.values().stream()
+        return this.stressTest.displayEntityCount() + this.activePlaybacks.values().stream()
             .mapToInt(this::displayEntityCount)
             .sum();
     }

@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-public record PlaybackLoadTestReport(
+public record PlaybackStressTestReport(
     int requestedInstances,
     int activeInstances,
     int peakDisplayEntities,

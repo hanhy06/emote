@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackLoadTestReport;
+import io.github.hanhy06.emote.playback.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -21,8 +21,8 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.Locale;
 
-import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_LOAD_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_LOAD_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_STRESS_TEST_INSTANCE_COUNT;
 
 final class AdminCommands {
     private final EmoteRegistry emoteRegistry;
@@ -63,20 +63,20 @@ final class AdminCommands {
             .executes(context -> stopAll(context.getSource()));
     }
 
-    LiteralArgumentBuilder<CommandSourceStack> createLoadTestCommand() {
-        return Commands.literal("load-test")
+    LiteralArgumentBuilder<CommandSourceStack> createStressTestCommand() {
+        return Commands.literal("stress-test")
             .requires(this.permissionService.requireGameMaster())
-            .executes(context -> startLoadTest(context.getSource(), DEFAULT_LOAD_TEST_INSTANCE_COUNT))
+            .executes(context -> startStressTest(context.getSource(), DEFAULT_STRESS_TEST_INSTANCE_COUNT))
             .then(Commands.argument(
                     "count",
-                    IntegerArgumentType.integer(1, MAX_LOAD_TEST_INSTANCE_COUNT)
+                    IntegerArgumentType.integer(1, MAX_STRESS_TEST_INSTANCE_COUNT)
                 )
-                .executes(context -> startLoadTest(
+                .executes(context -> startStressTest(
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "count")
                 )))
             .then(Commands.literal("stop")
-                .executes(context -> stopLoadTest(context.getSource())));
+                .executes(context -> stopStressTest(context.getSource())));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
@@ -149,7 +149,7 @@ final class AdminCommands {
         return 1;
     }
 
-    private int startLoadTest(CommandSourceStack source, int requestedInstanceCount) {
+    private int startStressTest(CommandSourceStack source, int requestedInstanceCount) {
         List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -158,7 +158,7 @@ final class AdminCommands {
 
         int instanceCount;
         try {
-            instanceCount = this.playbackManager.startLoadTest(
+            instanceCount = this.playbackManager.startStressTest(
                 source.getLevel(),
                 source.getPosition(),
                 source.getRotation().y,
@@ -166,14 +166,14 @@ final class AdminCommands {
                 requestedInstanceCount
             );
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to start emote load test", exception);
-            source.sendFailure(Component.literal("Failed to start emote load test."));
+            Emote.LOGGER.warn("Failed to start emote stress test", exception);
+            source.sendFailure(Component.literal("Failed to start emote stress test."));
             return 0;
         }
         int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
         source.sendSuccess(
             () -> Component.literal(
-                "Started load test: instances=" + instanceCount
+                "Started stress test: instances=" + instanceCount
                     + ", grid=" + gridSize + "x" + gridSize
                     + ", emotes=" + emotes.size()
                     + ", initialTicks=80..175"
@@ -183,14 +183,14 @@ final class AdminCommands {
         return instanceCount;
     }
 
-    private int stopLoadTest(CommandSourceStack source) {
-        PlaybackLoadTestReport report = this.playbackManager.stopLoadTest();
+    private int stopStressTest(CommandSourceStack source) {
+        PlaybackStressTestReport report = this.playbackManager.stopStressTest();
         if (report == null) {
-            source.sendFailure(Component.literal("No emote load test is running."));
+            source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;
         }
 
-        var message = Component.literal("\n\n\n\n\n-- Emote Load Test Result --")
+        var message = Component.literal("\n\n\n\n\n-- Emote Stress Test Result --")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))

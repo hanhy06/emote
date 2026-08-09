@@ -13,7 +13,7 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class PlaybackLoadSimulationTest {
+class PlaybackStressSimulationTest {
     private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
     private static final int INSTANCE_COUNT = 100;
     private static final int MIN_START_TICK = 80;
