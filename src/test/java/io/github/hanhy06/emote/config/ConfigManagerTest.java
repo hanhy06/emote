@@ -63,9 +63,11 @@ class ConfigManagerTest {
         assertEquals(1, manager.getConfig().schemaVersion());
         assertEquals(30, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(256, manager.getConfig().mineSkinCacheMaxMiB());
+        assertEquals(512, manager.getConfig().maxActiveDisplayEntities());
         String configJson = Files.readString(tempDir.resolve("emote").resolve("config.json"));
         assertTrue(configJson.contains("\"mineskin_cache_retention_days\": 30"));
         assertTrue(configJson.contains("\"mineskin_cache_max_mib\": 256"));
+        assertTrue(configJson.contains("\"max_active_display_entities\": 512"));
         assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
     }
 
@@ -83,6 +85,18 @@ class ConfigManagerTest {
         assertTrue(manager.readConfig());
         assertEquals(45, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(512, manager.getConfig().mineSkinCacheMaxMiB());
+    }
+
+    @Test
+    void readsActiveDisplayEntityLimit(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("config.json"), """
+            {"max_active_display_entities": 900}
+            """);
+
+        assertTrue(manager.readConfig());
+        assertEquals(900, manager.getConfig().maxActiveDisplayEntities());
     }
 
     @Test

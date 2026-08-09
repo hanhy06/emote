@@ -107,6 +107,16 @@ final class PlaybackLoadTest {
         return current.createReport(cleanupNanos, System.nanoTime());
     }
 
+    int displayEntityCount() {
+        Session current = this.session;
+        if (current == null) {
+            return 0;
+        }
+        return current.instances().stream()
+            .mapToInt(instance -> displayEntityCount(instance.nodes))
+            .sum();
+    }
+
     void stopId(String id) {
         Session current = this.session;
         if (current == null) {
@@ -215,6 +225,12 @@ final class PlaybackLoadTest {
         for (LoadTestInstance instance : instances) {
             this.entityController.remove(level, instance.nodes);
         }
+    }
+
+    private static int displayEntityCount(PlaybackNodes nodes) {
+        return (int) nodes.nodes().values().stream()
+            .filter(node -> !node.isAnchor())
+            .count();
     }
 
     static double estimatedTps(double mspt, double targetTps) {

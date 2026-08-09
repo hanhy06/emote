@@ -55,7 +55,8 @@ config/emote/
   "mineskin_api_key": "",
   "mineskin_poll_interval_seconds": 3,
   "mineskin_cache_retention_days": 30,
-  "mineskin_cache_max_mib": 256
+  "mineskin_cache_max_mib": 256,
+  "max_active_display_entities": 512
 }
 ```
 
@@ -66,6 +67,7 @@ config/emote/
 | `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds.            |
 | `mineskin_cache_retention_days`  | Removes MineSkin cache files unused for this many days. Defaults to `30`.              |
 | `mineskin_cache_max_mib`         | Maximum MineSkin disk cache size before the oldest files are removed. Defaults to `256`. |
+| `max_active_display_entities`    | Maximum display entities used by active emotes across the server. Playback is rejected before spawning entities when the projected total exceeds this value. `0` disables the limit. Defaults to `512`. |
 
 #### Player Skin Support
 
@@ -141,7 +143,7 @@ See [the animation format](./emote-animation-format.md) and [reference JSON](./e
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
-To protect server tick time when many players use emotes together, animations are limited to 8 MiB, 32 total nodes, 24 display nodes, 10 minutes, an average of 12 transforms and 4 visibility changes per tick, and 16 commands at one timeline boundary. These limits also apply to runtime API registrations.
+Animation JSON files are limited to 8 MiB and timelines to 10 minutes. Node, display, transform, visibility-change, and command counts are controlled by animation creators rather than rejected by the loader. Runtime load is managed with the server-wide `max_active_display_entities` setting when playback starts; this also applies to runtime API registrations.
 
 ## Mod API
 

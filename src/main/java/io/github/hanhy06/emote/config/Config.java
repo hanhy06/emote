@@ -8,11 +8,13 @@ public record Config(
     String mineSkinApiKey,
     int mineSkinPollIntervalSeconds,
     int mineSkinCacheRetentionDays,
-    int mineSkinCacheMaxMiB
+    int mineSkinCacheMaxMiB,
+    int maxActiveDisplayEntities
 ) {
     public static final int CURRENT_SCHEMA_VERSION = 1;
     public static final int DEFAULT_MINESKIN_CACHE_RETENTION_DAYS = 30;
     public static final int DEFAULT_MINESKIN_CACHE_MAX_MIB = 256;
+    public static final int DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES = 512;
 
     public Config {
         if (schemaVersion != CURRENT_SCHEMA_VERSION) {
@@ -30,6 +32,9 @@ public record Config(
         if (mineSkinCacheMaxMiB < 1 || mineSkinCacheMaxMiB > 1_048_576) {
             throw new IllegalArgumentException("mineskin_cache_max_mib must be between 1 and 1048576");
         }
+        if (maxActiveDisplayEntities < 0 || maxActiveDisplayEntities > 1_048_576) {
+            throw new IllegalArgumentException("max_active_display_entities must be between 0 and 1048576");
+        }
         Objects.requireNonNull(mineSkinApiKey, "mineSkinApiKey");
     }
 
@@ -40,7 +45,8 @@ public record Config(
             "",
             3,
             DEFAULT_MINESKIN_CACHE_RETENTION_DAYS,
-            DEFAULT_MINESKIN_CACHE_MAX_MIB
+            DEFAULT_MINESKIN_CACHE_MAX_MIB,
+            DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES
         );
     }
 }

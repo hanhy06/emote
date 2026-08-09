@@ -17,6 +17,7 @@ final class ConfigJsonCodec {
         object.addProperty("mineskin_poll_interval_seconds", config.mineSkinPollIntervalSeconds());
         object.addProperty("mineskin_cache_retention_days", config.mineSkinCacheRetentionDays());
         object.addProperty("mineskin_cache_max_mib", config.mineSkinCacheMaxMiB());
+        object.addProperty("max_active_display_entities", config.maxActiveDisplayEntities());
         return object;
     }
 
@@ -62,7 +63,8 @@ final class ConfigJsonCodec {
             mineSkinApiKey,
             readInt(object, "mineskin_poll_interval_seconds", defaultConfig.mineSkinPollIntervalSeconds()),
             readInt(object, "mineskin_cache_retention_days", defaultConfig.mineSkinCacheRetentionDays()),
-            readInt(object, "mineskin_cache_max_mib", defaultConfig.mineSkinCacheMaxMiB())
+            readInt(object, "mineskin_cache_max_mib", defaultConfig.mineSkinCacheMaxMiB()),
+            readInt(object, "max_active_display_entities", defaultConfig.maxActiveDisplayEntities())
         );
     }
 

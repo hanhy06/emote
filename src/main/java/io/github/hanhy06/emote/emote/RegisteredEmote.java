@@ -57,4 +57,10 @@ public record RegisteredEmote(
     public int nodeCount() {
         return animation().nodes().size();
     }
+
+    public int displayNodeCount() {
+        return (int) animation().nodes().values().stream()
+            .filter(node -> !(node instanceof EmoteAnimation.AnchorNode))
+            .count();
+    }
 }

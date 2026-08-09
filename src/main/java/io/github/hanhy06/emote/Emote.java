@@ -97,6 +97,7 @@ public class Emote implements ModInitializer {
         configManager.addEmoteAccessListener(permissionService);
         configManager.addEmoteAccessListener(idleEmoteService);
         configManager.addListener(skinManager);
+        configManager.addListener(playbackManager);
 
         playbackManager.addStateListener(playbackStateService);
         playbackManager.addStateListener(apiEvents);

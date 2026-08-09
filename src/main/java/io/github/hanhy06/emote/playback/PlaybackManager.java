@@ -4,6 +4,8 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.config.Config;
+import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
@@ -15,7 +17,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class PlaybackManager {
+public class PlaybackManager implements ConfigListener {
     public static PlaybackManager INSTANCE;
 
     public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
@@ -30,6 +32,7 @@ public class PlaybackManager {
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackLoadTest loadTest = new PlaybackLoadTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
+    private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
         INSTANCE = this;
@@ -43,11 +46,28 @@ public class PlaybackManager {
         this.playerVisibilityService.register();
     }
 
+    @Override
+    public void onConfigReload(Config newConfig) {
+        this.maxActiveDisplayEntities = newConfig.maxActiveDisplayEntities();
+    }
+
     public void addStateListener(PlaybackStateListener stateListener) {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
     public PlayResult startEmote(ServerPlayer player, RegisteredEmote emote) {
+        int projectedDisplayEntities = projectedDisplayEntityCount(
+            activeDisplayEntityCount(),
+            displayEntityCount(this.activeEmoteMap.get(player.getUUID())),
+            emote.displayNodeCount()
+        );
+        if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
+            return PlayResult.failure(
+                "Active emote parts would exceed the server limit ("
+                    + projectedDisplayEntities + "/" + this.maxActiveDisplayEntities + ")."
+            );
+        }
+
         PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
@@ -310,6 +330,29 @@ public class PlaybackManager {
         double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
         return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED
             || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+    }
+
+    int activeDisplayEntityCount() {
+        return this.loadTest.displayEntityCount() + this.activeEmoteMap.values().stream()
+            .mapToInt(this::displayEntityCount)
+            .sum();
+    }
+
+    static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {
+        return limit > 0 && projectedDisplayEntities > limit;
+    }
+
+    static int projectedDisplayEntityCount(int activeDisplayEntities, int replacedDisplayEntities, int requestedDisplayEntities) {
+        return activeDisplayEntities - replacedDisplayEntities + requestedDisplayEntities;
+    }
+
+    private int displayEntityCount(@Nullable ActiveEmote activeEmote) {
+        if (activeEmote == null) {
+            return 0;
+        }
+        return (int) activeEmote.nodes().nodes().values().stream()
+            .filter(node -> !node.isAnchor())
+            .count();
     }
 
     private record StopRequest(UUID playerUuid, PlaybackStopReason reason) {

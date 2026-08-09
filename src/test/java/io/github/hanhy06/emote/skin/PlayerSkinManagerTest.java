@@ -144,7 +144,8 @@ class PlayerSkinManagerTest {
             "api-key",
             3,
             Config.DEFAULT_MINESKIN_CACHE_RETENTION_DAYS,
-            Config.DEFAULT_MINESKIN_CACHE_MAX_MIB
+            Config.DEFAULT_MINESKIN_CACHE_MAX_MIB,
+            Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES
         ));
         return manager;
     }
