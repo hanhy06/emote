@@ -19,9 +19,9 @@ public class EmoteClient implements ClientModInitializer {
         PerspectiveController perspectiveController = new PerspectiveController();
         WheelController wheelController = new WheelController();
 
-        ClientNetworking networking = new ClientNetworking(perspectiveController, wheelController);
+        ClientNetworking clientNetworking = new ClientNetworking(perspectiveController, wheelController);
 
-        networking.register();
+        clientNetworking.register();
         ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
         ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
         wheelController.registerBinding(EMOTE_WHEEL_KEY);

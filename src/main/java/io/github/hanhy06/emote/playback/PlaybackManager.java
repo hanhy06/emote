@@ -20,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class PlaybackManager implements ConfigListener {
     public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.MAX_INSTANCE_COUNT;
-    private final Map<UUID, ActivePlayback> activeEmoteMap = new ConcurrentHashMap<>();
+    private final Map<UUID, ActivePlayback> activePlaybacks = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
     private final PlayerSkinManager playerSkinManager;
@@ -51,7 +51,7 @@ public class PlaybackManager implements ConfigListener {
     public PlayResult start(ServerPlayer player, RegisteredEmote emote) {
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
-            displayEntityCount(this.activeEmoteMap.get(player.getUUID())),
+            displayEntityCount(this.activePlaybacks.get(player.getUUID())),
             emote.displayNodeCount()
         );
         if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
@@ -100,7 +100,7 @@ public class PlaybackManager implements ConfigListener {
                 emote.playerBehavior(),
                 player.isInvisible()
             );
-            this.activeEmoteMap.put(player.getUUID(), activeEmote);
+            this.activePlaybacks.put(player.getUUID(), activeEmote);
             this.playerVisibilityService.start(player, activeEmote);
             this.playerSkinManager.applySkinParts(
                 nodes.nodes(),
@@ -114,7 +114,7 @@ public class PlaybackManager implements ConfigListener {
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
-            ActivePlayback activeEmote = this.activeEmoteMap.remove(player.getUUID());
+            ActivePlayback activeEmote = this.activePlaybacks.remove(player.getUUID());
             if (activeEmote != null) {
                 cleanupActive(activeEmote, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
@@ -125,7 +125,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private void refreshPlayerSkin(UUID playerUuid) {
-        ActivePlayback activeEmote = this.activeEmoteMap.get(playerUuid);
+        ActivePlayback activeEmote = this.activePlaybacks.get(playerUuid);
         if (activeEmote == null) {
             return;
         }
@@ -153,7 +153,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
-        ActivePlayback activeEmote = this.activeEmoteMap.get(player.getUUID());
+        ActivePlayback activeEmote = this.activePlaybacks.get(player.getUUID());
         if (activeEmote == null || !shouldStopFor(activeEmote.playerBehavior().stopConditions(), reason)) {
             return;
         }
@@ -169,7 +169,7 @@ public class PlaybackManager implements ConfigListener {
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
-        ActivePlayback activeEmote = this.activeEmoteMap.remove(playerUuid);
+        ActivePlayback activeEmote = this.activePlaybacks.remove(playerUuid);
         if (activeEmote == null) {
             return null;
         }
@@ -178,17 +178,17 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public ActivePlayback findActive(UUID playerUuid) {
-        return this.activeEmoteMap.get(playerUuid);
+        return this.activePlaybacks.get(playerUuid);
     }
 
     public void tick() {
         this.loadTest.tick();
-        if (this.activeEmoteMap.isEmpty()) {
+        if (this.activePlaybacks.isEmpty()) {
             return;
         }
 
         List<StopRequest> stopRequests = null;
-        for (ActivePlayback activeEmote : this.activeEmoteMap.values()) {
+        for (ActivePlayback activeEmote : this.activePlaybacks.values()) {
             ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
             PlaybackStopReason stopReason = null;
             if (!canKeepPlaying(player, activeEmote)) {
@@ -255,7 +255,7 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopAll(PlaybackStopReason reason) {
         this.loadTest.stop();
-        for (UUID playerUuid : List.copyOf(this.activeEmoteMap.keySet())) {
+        for (UUID playerUuid : List.copyOf(this.activePlaybacks.keySet())) {
             stop(playerUuid, reason);
         }
     }
@@ -280,7 +280,7 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopById(String id, PlaybackStopReason reason) {
         this.loadTest.stopById(id);
-        List<UUID> playerUuidList = this.activeEmoteMap.entrySet().stream()
+        List<UUID> playerUuidList = this.activePlaybacks.entrySet().stream()
             .filter(entry -> entry.getValue().id().equals(id))
             .map(Map.Entry::getKey)
             .toList();
@@ -349,7 +349,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     int activeDisplayEntityCount() {
-        return this.loadTest.displayEntityCount() + this.activeEmoteMap.values().stream()
+        return this.loadTest.displayEntityCount() + this.activePlaybacks.values().stream()
             .mapToInt(this::displayEntityCount)
             .sum();
     }

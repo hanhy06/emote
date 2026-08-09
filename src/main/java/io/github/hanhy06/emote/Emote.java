@@ -36,8 +36,8 @@ public class Emote implements ModInitializer {
         EmoteRegistry emoteRegistry = new EmoteRegistry();
         PermissionService permissionService = new PermissionService();
 
-        PlayerSkinManager skinManager = new PlayerSkinManager();
-        PlaybackManager playbackManager = new PlaybackManager(skinManager);
+        PlayerSkinManager playerSkinManager = new PlayerSkinManager();
+        PlaybackManager playbackManager = new PlaybackManager(playerSkinManager);
         PlaybackStateService playbackStateService = new PlaybackStateService();
         ApiEvents apiEvents = new ApiEvents();
 
@@ -74,9 +74,9 @@ public class Emote implements ModInitializer {
             wheelSyncService
         );
 
-        PayloadRegistry networking = new PayloadRegistry();
-        ServerLifecycle lifecycle = new ServerLifecycle(
-            skinManager,
+        PayloadRegistry payloadRegistry = new PayloadRegistry();
+        ServerLifecycle serverLifecycle = new ServerLifecycle(
+            playerSkinManager,
             emoteRegistry,
             playbackManager,
             reloadService,
@@ -96,15 +96,15 @@ public class Emote implements ModInitializer {
 
         configManager.addAccessConfigListener(permissionService);
         configManager.addAccessConfigListener(idlePlaybackService);
-        configManager.addListener(skinManager);
+        configManager.addListener(playerSkinManager);
         configManager.addListener(playbackManager);
 
         playbackManager.addStateListener(playbackStateService);
         playbackManager.addStateListener(apiEvents);
         playbackManager.registerVisibilityService();
 
-        networking.register();
-        lifecycle.register();
+        payloadRegistry.register();
+        serverLifecycle.register();
         rootCommand.register();
 
         LOGGER.info("{} ready", MOD_ID);

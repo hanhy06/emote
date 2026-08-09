@@ -17,7 +17,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 
 public class ServerLifecycle {
-    private final PlayerSkinManager skinManager;
+    private final PlayerSkinManager playerSkinManager;
     private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
     private final ReloadService reloadService;
@@ -25,14 +25,14 @@ public class ServerLifecycle {
     private final IdlePlaybackService idlePlaybackService;
 
     public ServerLifecycle(
-        PlayerSkinManager skinManager,
+        PlayerSkinManager playerSkinManager,
         EmoteRegistry emoteRegistry,
         PlaybackManager playbackManager,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
         IdlePlaybackService idlePlaybackService
     ) {
-        this.skinManager = skinManager;
+        this.playerSkinManager = playerSkinManager;
         this.emoteRegistry = emoteRegistry;
         this.playbackManager = playbackManager;
         this.reloadService = reloadService;
@@ -86,7 +86,7 @@ public class ServerLifecycle {
         this.playbackManager.stopAll(PlaybackStopReason.SERVER_STOPPING);
         int removedApiEmotes = this.emoteRegistry.clearApiRegistrations();
         this.idlePlaybackService.clear();
-        this.skinManager.cancelPendingBakes();
+        this.playerSkinManager.cancelPendingBakes();
         Emote.SERVER = null;
         Emote.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
     }
