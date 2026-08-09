@@ -101,9 +101,8 @@ export function ExportPanel({
             <option value="loop">Loop</option>
             <option value="server_sync">Server-synchronized loop</option>
           </select></label>
-          <label>Movement distance
+          <label><span className="field-heading">Movement distance <small>Horizontal blocks; 0 allows movement.</small></span>
             <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.target.value))} />
-            <small>Horizontal blocks from the starting point. Set to 0 to allow movement.</small>
           </label>
         </div>
         <div className="fields playback-behavior-options">
