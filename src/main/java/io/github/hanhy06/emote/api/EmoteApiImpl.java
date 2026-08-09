@@ -55,7 +55,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public boolean stop(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
-        return this.playbackManager.stopEmote(player, PlaybackStopReason.MANUAL) != null;
+        return this.playbackManager.stop(player, PlaybackStopReason.MANUAL) != null;
     }
 
     @Override
@@ -139,7 +139,7 @@ public final class EmoteApiImpl extends EmoteApi {
             if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            EmoteApiImpl.this.playbackManager.stopId(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            EmoteApiImpl.this.playbackManager.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             EmoteApiImpl.this.wheelSyncService.syncAll();
             return true;
         }

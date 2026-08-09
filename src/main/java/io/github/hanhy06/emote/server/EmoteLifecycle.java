@@ -47,15 +47,15 @@ public class EmoteLifecycle {
             this.playbackManager.tick();
             this.idleEmoteService.tick();
         });
-        PlaybackHooks.INTERRUPTION.register(this.playbackManager::interruptEmote);
+        PlaybackHooks.INTERRUPTION.register(this.playbackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
-                this.playbackManager.interruptEmote(player, PlaybackStopReason.DAMAGED);
+                this.playbackManager.interrupt(player, PlaybackStopReason.DAMAGED);
             }
         });
         AttackEntityCallback.EVENT.register((player, ignoredLevel, ignoredHand, ignoredEntity, ignoredHitResult) -> {
             if (player instanceof ServerPlayer serverPlayer) {
-                this.playbackManager.interruptEmote(serverPlayer, PlaybackStopReason.ATTACKED);
+                this.playbackManager.interrupt(serverPlayer, PlaybackStopReason.ATTACKED);
             }
             return InteractionResult.PASS;
         });
@@ -65,11 +65,11 @@ public class EmoteLifecycle {
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
                 if (Emote.SERVER.isSameThread()) {
-                    this.playbackManager.stopEmote(handler.player, PlaybackStopReason.DISCONNECTED);
+                    this.playbackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idleEmoteService.removePlayer(handler.player);
                 } else {
                     Emote.SERVER.execute(() -> {
-                        this.playbackManager.stopEmote(handler.player, PlaybackStopReason.DISCONNECTED);
+                        this.playbackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idleEmoteService.removePlayer(handler.player);
                     });
                 }
@@ -83,7 +83,7 @@ public class EmoteLifecycle {
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
-        this.playbackManager.stopAllEmotes(PlaybackStopReason.SERVER_STOPPING);
+        this.playbackManager.stopAll(PlaybackStopReason.SERVER_STOPPING);
         int removedApiEmotes = this.emoteRegistry.clearApiRegistrations();
         this.idleEmoteService.clear();
         this.skinManager.cancelPendingBakes();

@@ -117,7 +117,7 @@ final class PlaybackLoadTest {
             .sum();
     }
 
-    void stopId(String id) {
+    void stopById(String id) {
         Session current = this.session;
         if (current == null) {
             return;

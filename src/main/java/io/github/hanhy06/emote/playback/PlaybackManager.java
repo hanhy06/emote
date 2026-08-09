@@ -48,7 +48,7 @@ public class PlaybackManager implements ConfigListener {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
-    public PlayResult startEmote(ServerPlayer player, RegisteredEmote emote) {
+    public PlayResult start(ServerPlayer player, RegisteredEmote emote) {
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(this.activeEmoteMap.get(player.getUUID())),
@@ -70,7 +70,7 @@ public class PlaybackManager implements ConfigListener {
         }
         PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
 
-        stopEmote(player, PlaybackStopReason.REPLACED);
+        stop(player, PlaybackStopReason.REPLACED);
         PlaybackNodes nodes = null;
         try {
             nodes = this.entityController.create(player, emote);
@@ -144,27 +144,27 @@ public class PlaybackManager implements ConfigListener {
         );
     }
 
-    public ActiveEmote stopEmote(ServerPlayer player) {
-        return stopEmote(player, PlaybackStopReason.MANUAL);
+    public ActiveEmote stop(ServerPlayer player) {
+        return stop(player, PlaybackStopReason.MANUAL);
     }
 
-    public ActiveEmote stopEmote(ServerPlayer player, PlaybackStopReason reason) {
-        return stopEmote(player.getUUID(), reason, player);
+    public ActiveEmote stop(ServerPlayer player, PlaybackStopReason reason) {
+        return stop(player.getUUID(), reason, player);
     }
 
-    public ActiveEmote interruptEmote(ServerPlayer player, PlaybackStopReason reason) {
+    public ActiveEmote interrupt(ServerPlayer player, PlaybackStopReason reason) {
         ActiveEmote activeEmote = this.activeEmoteMap.get(player.getUUID());
         if (activeEmote == null || !shouldStopFor(activeEmote.playerBehavior().stopConditions(), reason)) {
             return null;
         }
-        return stopEmote(player, reason);
+        return stop(player, reason);
     }
 
-    private void stopEmote(UUID playerUuid, PlaybackStopReason reason) {
-        stopEmote(playerUuid, reason, null);
+    private void stop(UUID playerUuid, PlaybackStopReason reason) {
+        stop(playerUuid, reason, null);
     }
 
-    private ActiveEmote stopEmote(
+    private ActiveEmote stop(
         UUID playerUuid,
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
@@ -221,7 +221,7 @@ public class PlaybackManager implements ConfigListener {
 
         if (stopRequests != null) {
             for (StopRequest request : stopRequests) {
-                stopEmote(request.playerUuid(), request.reason());
+                stop(request.playerUuid(), request.reason());
             }
         }
     }
@@ -249,14 +249,14 @@ public class PlaybackManager implements ConfigListener {
         return result;
     }
 
-    public void stopAllEmotes() {
-        stopAllEmotes(PlaybackStopReason.MANUAL);
+    public void stopAll() {
+        stopAll(PlaybackStopReason.MANUAL);
     }
 
-    public void stopAllEmotes(PlaybackStopReason reason) {
+    public void stopAll(PlaybackStopReason reason) {
         this.loadTest.stop();
         for (UUID playerUuid : List.copyOf(this.activeEmoteMap.keySet())) {
-            stopEmote(playerUuid, reason);
+            stop(playerUuid, reason);
         }
     }
 
@@ -274,18 +274,18 @@ public class PlaybackManager implements ConfigListener {
         return this.loadTest.stop();
     }
 
-    public void stopId(String id) {
-        stopId(id, PlaybackStopReason.EMOTE_REMOVED);
+    public void stopById(String id) {
+        stopById(id, PlaybackStopReason.EMOTE_REMOVED);
     }
 
-    public void stopId(String id, PlaybackStopReason reason) {
-        this.loadTest.stopId(id);
+    public void stopById(String id, PlaybackStopReason reason) {
+        this.loadTest.stopById(id);
         List<UUID> playerUuidList = this.activeEmoteMap.entrySet().stream()
             .filter(entry -> entry.getValue().id().equals(id))
             .map(Map.Entry::getKey)
             .toList();
         for (UUID playerUuid : playerUuidList) {
-            stopEmote(playerUuid, reason);
+            stop(playerUuid, reason);
         }
     }
 

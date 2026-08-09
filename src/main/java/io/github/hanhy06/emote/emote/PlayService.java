@@ -23,7 +23,7 @@ public class PlayService {
         this(
             emoteRegistry,
             (player, emote) -> permissionService.canPlay(player, emote.id()),
-            playbackManager::startEmote,
+            playbackManager::start,
             apiEvents::beforePlay
         );
     }

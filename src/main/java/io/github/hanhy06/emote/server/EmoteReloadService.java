@@ -45,7 +45,7 @@ public final class EmoteReloadService {
     }
 
     private int reloadLoadedConfig() {
-        this.playbackManager.stopAllEmotes(PlaybackStopReason.RELOAD);
+        this.playbackManager.stopAll(PlaybackStopReason.RELOAD);
         int emoteCount = reloadRegistry();
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);

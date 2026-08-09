@@ -144,7 +144,7 @@ final class EmoteAdminCommands {
     }
 
     private int stopAllEmotes(CommandSourceStack source) {
-        this.playbackManager.stopAllEmotes();
+        this.playbackManager.stopAll();
         source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
         return 1;
     }
@@ -252,7 +252,7 @@ final class EmoteAdminCommands {
             return 0;
         }
         if (!enabled) {
-            this.playbackManager.stopId(id);
+            this.playbackManager.stopById(id);
         }
 
         EmoteReloadResult reloadResult = this.reloadService.reloadFromCommand();

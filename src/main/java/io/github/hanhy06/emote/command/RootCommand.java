@@ -170,7 +170,7 @@ public final class RootCommand {
 
     private int stopEmote(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        ActiveEmote activeEmote = this.playbackManager.stopEmote(player);
+        ActiveEmote activeEmote = this.playbackManager.stop(player);
         if (activeEmote == null) {
             source.sendFailure(Component.literal("No active emote."));
             return 0;
