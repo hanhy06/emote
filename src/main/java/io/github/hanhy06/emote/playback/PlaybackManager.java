@@ -152,12 +152,12 @@ public class PlaybackManager implements ConfigListener {
         return stop(player.getUUID(), reason, player);
     }
 
-    public ActivePlayback interrupt(ServerPlayer player, PlaybackStopReason reason) {
+    public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
         ActivePlayback activeEmote = this.activeEmoteMap.get(player.getUUID());
         if (activeEmote == null || !shouldStopFor(activeEmote.playerBehavior().stopConditions(), reason)) {
-            return null;
+            return;
         }
-        return stop(player, reason);
+        stop(player, reason);
     }
 
     private void stop(UUID playerUuid, PlaybackStopReason reason) {
@@ -171,7 +171,7 @@ public class PlaybackManager implements ConfigListener {
     ) {
         ActivePlayback activeEmote = this.activeEmoteMap.remove(playerUuid);
         if (activeEmote == null) {
-            return activeEmote;
+            return null;
         }
         cleanupActive(activeEmote, true, reason, knownPlayer);
         return activeEmote;

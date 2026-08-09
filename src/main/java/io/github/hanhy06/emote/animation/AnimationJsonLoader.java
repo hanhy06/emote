@@ -52,8 +52,6 @@ public final class AnimationJsonLoader {
                 );
             }
             bytes = Files.readAllBytes(sourcePath);
-        } catch (EmoteAnimationLoadException exception) {
-            throw exception;
         } catch (IOException exception) {
             throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
         }
