@@ -95,7 +95,7 @@ export function ExportPanel({
         <h3 id="playback-behavior-heading">Playback behavior</h3>
         <p>Choose the playback mode, player visibility, and which actions stop the emote.</p>
         <div className="fields playback-behavior-primary">
-          <label>Playback mode<select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
+          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
             <option value="source">Source setting</option>
             <option value="once">Play once</option>
             <option value="loop">Loop</option>

@@ -87,8 +87,9 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .playback-behavior { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
 .playback-behavior > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
 .playback-behavior-primary { grid-template-columns: repeat(2, minmax(260px, 420px)); justify-content: start; gap: 16px; }
-.field-heading { display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
-.field-heading small { overflow: hidden; text-overflow: ellipsis; font-weight: 400; }
+.playback-behavior-primary input, .playback-behavior-primary select { height: 34px; min-height: 34px; }
+.field-heading { display: flex; align-items: baseline; height: 18px; gap: 8px; line-height: 18px; white-space: nowrap; }
+.field-heading small { overflow: hidden; text-overflow: ellipsis; font-weight: 400; line-height: inherit; }
 .playback-behavior-options { grid-template-columns: repeat(4, max-content); margin-top: 12px; column-gap: 48px; row-gap: 8px; }
 .playback-behavior-options .checkbox { align-self: center; min-height: 28px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
