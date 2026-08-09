@@ -2,6 +2,7 @@ import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
+import { isRecord } from "../../format/runtimeValue";
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
@@ -670,10 +671,6 @@ function stringProperty(value: Record<string, unknown>, key: string, fallback: s
 
 function numberProperty(value: Record<string, unknown>, key: string, fallback: number): number {
   return typeof value[key] === "number" && Number.isFinite(value[key]) ? value[key] : fallback;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function prettify(value: string): string {

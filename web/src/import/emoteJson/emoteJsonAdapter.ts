@@ -1,6 +1,7 @@
 import type { EmoteAnimation, EmoteEvent } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { asMatrix16 } from "../../format/matrix";
+import { isRecord } from "../../format/runtimeValue";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
@@ -118,8 +119,4 @@ function copyEvent(event: EmoteEvent): EmoteEvent {
     origin: { ...event.origin, ...(event.origin.offset ? { offset: [...event.origin.offset] as [number, number, number] } : {}) },
     commands: [...event.commands],
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

@@ -2,9 +2,13 @@ import { ConversionError } from "../import/errors";
 
 export type RuntimeRecord = Record<string, unknown>;
 
+export function isRecord(value: unknown): value is RuntimeRecord {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 export function requireRecord(value: unknown, path: string): RuntimeRecord {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) throw invalidInput(path, "must be an object");
-  return value as RuntimeRecord;
+  if (!isRecord(value)) throw invalidInput(path, "must be an object");
+  return value;
 }
 
 export function requireArray(value: unknown, path: string): unknown[] {
