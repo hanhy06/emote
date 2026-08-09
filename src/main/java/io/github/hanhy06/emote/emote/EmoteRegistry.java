@@ -72,7 +72,7 @@ public class EmoteRegistry {
         return this.state.emotes();
     }
 
-    public List<RegisteredEmote> getFileEmotes() {
+    public List<RegisteredEmote> getFileEntries() {
         return this.state.fileEmotes();
     }
 

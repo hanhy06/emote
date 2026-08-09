@@ -11,18 +11,18 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class PlaybackNodes {
-    private final EmoteRootTransform root;
+    private final RootTransform root;
     private final Map<String, NodeInstance> nodes;
 
     private float viewYaw;
 
-    public PlaybackNodes(EmoteRootTransform root, Map<String, NodeInstance> nodes) {
+    public PlaybackNodes(RootTransform root, Map<String, NodeInstance> nodes) {
         this.root = Objects.requireNonNull(root, "root");
         this.nodes = Map.copyOf(nodes);
         this.viewYaw = root.yaw();
     }
 
-    public EmoteRootTransform root() {
+    public RootTransform root() {
         return this.root;
     }
 

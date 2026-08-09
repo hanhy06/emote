@@ -76,7 +76,7 @@ class EmoteRegistryTest {
         registry.unregisterApi("api:wave", registrationId);
 
         assertEquals("File Wave", registry.find("api:wave").name());
-        assertEquals(1, registry.getFileEmotes().size());
+        assertEquals(1, registry.getFileEntries().size());
     }
 
     @Test

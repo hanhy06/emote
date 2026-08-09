@@ -1,23 +1,23 @@
 package io.github.hanhy06.emote;
 
-import io.github.hanhy06.emote.animation.EmoteAnimationDirectoryLoader;
-import io.github.hanhy06.emote.animation.EmoteAnimationServerValidator;
-import io.github.hanhy06.emote.api.EmoteApiEvents;
-import io.github.hanhy06.emote.api.EmoteApiImpl;
+import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
+import io.github.hanhy06.emote.animation.AnimationServerPreparer;
+import io.github.hanhy06.emote.api.ApiEvents;
+import io.github.hanhy06.emote.api.ApiImpl;
 import io.github.hanhy06.emote.command.RootCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.dialog.DialogManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.network.EmoteNetworking;
+import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.server.EmoteLifecycle;
-import io.github.hanhy06.emote.server.EmoteReloadService;
-import io.github.hanhy06.emote.server.IdleEmoteService;
+import io.github.hanhy06.emote.server.ServerLifecycle;
+import io.github.hanhy06.emote.server.ReloadService;
+import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
@@ -39,7 +39,7 @@ public class Emote implements ModInitializer {
         PlayerSkinManager skinManager = new PlayerSkinManager();
         PlaybackManager playbackManager = new PlaybackManager(skinManager);
         PlaybackStateService playbackStateService = new PlaybackStateService();
-        EmoteApiEvents apiEvents = new EmoteApiEvents();
+        ApiEvents apiEvents = new ApiEvents();
 
         PlayableEmoteService playableEmoteService = new PlayableEmoteService(emoteRegistry, permissionService);
         PlayService playService = new PlayService(
@@ -48,7 +48,7 @@ public class Emote implements ModInitializer {
             playbackManager,
             apiEvents
         );
-        IdleEmoteService idleEmoteService = new IdleEmoteService(permissionService, playService, playbackManager);
+        IdlePlaybackService idlePlaybackService = new IdlePlaybackService(permissionService, playService, playbackManager);
 
         DialogManager dialogManager = new DialogManager(
             configManager,
@@ -58,30 +58,30 @@ public class Emote implements ModInitializer {
         );
         WheelSyncService wheelSyncService = new WheelSyncService(playableEmoteService);
 
-        new EmoteApiImpl(
+        new ApiImpl(
             emoteRegistry,
             playService,
             playbackManager,
             apiEvents,
             wheelSyncService,
-            new EmoteAnimationServerValidator()
+            new AnimationServerPreparer()
         );
-        EmoteReloadService reloadService = new EmoteReloadService(
+        ReloadService reloadService = new ReloadService(
             configManager,
             emoteRegistry,
-            new EmoteAnimationDirectoryLoader(),
+            new AnimationDirectoryLoader(),
             playbackManager,
             wheelSyncService
         );
 
-        EmoteNetworking networking = new EmoteNetworking();
-        EmoteLifecycle lifecycle = new EmoteLifecycle(
+        PayloadRegistry networking = new PayloadRegistry();
+        ServerLifecycle lifecycle = new ServerLifecycle(
             skinManager,
             emoteRegistry,
             playbackManager,
             reloadService,
             wheelSyncService,
-            idleEmoteService
+            idlePlaybackService
         );
         RootCommand rootCommand = new RootCommand(
             emoteRegistry,
@@ -94,8 +94,8 @@ public class Emote implements ModInitializer {
             configManager
         );
 
-        configManager.addEmoteAccessListener(permissionService);
-        configManager.addEmoteAccessListener(idleEmoteService);
+        configManager.addAccessConfigListener(permissionService);
+        configManager.addAccessConfigListener(idlePlaybackService);
         configManager.addListener(skinManager);
         configManager.addListener(playbackManager);
 

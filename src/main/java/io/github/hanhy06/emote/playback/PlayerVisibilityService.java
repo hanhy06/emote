@@ -39,7 +39,7 @@ final class PlayerVisibilityService {
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
 
-    void start(ServerPlayer player, ActiveEmote activeEmote) {
+    void start(ServerPlayer player, ActivePlayback activeEmote) {
         if (!activeEmote.playerBehavior().hidden()) {
             return;
         }
@@ -48,7 +48,7 @@ final class PlayerVisibilityService {
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
-    void tick(ServerPlayer player, ActiveEmote activeEmote) {
+    void tick(ServerPlayer player, ActivePlayback activeEmote) {
         if (!activeEmote.playerBehavior().hidden() || player.isInvisible()) {
             return;
         }
@@ -56,7 +56,7 @@ final class PlayerVisibilityService {
         syncPlayerVisibility(player);
     }
 
-    void stop(ServerPlayer player, ActiveEmote activeEmote) {
+    void stop(ServerPlayer player, ActivePlayback activeEmote) {
         if (!activeEmote.playerBehavior().hidden()) {
             return;
         }
@@ -68,7 +68,7 @@ final class PlayerVisibilityService {
         if (!(entity instanceof ServerPlayer emotePlayer)) {
             return;
         }
-        ActiveEmote activeEmote = this.playbackManager.findActiveEmote(emotePlayer.getUUID());
+        ActivePlayback activeEmote = this.playbackManager.findActive(emotePlayer.getUUID());
         if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
@@ -78,7 +78,7 @@ final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
+        ActivePlayback activeEmote = this.playbackManager.findActive(player.getUUID());
         if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }

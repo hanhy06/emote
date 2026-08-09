@@ -31,7 +31,7 @@ abstract class EntityMixin {
     ) {
         Entity entity = (Entity) (Object) this;
         if (callbackInfo.getReturnValueZ() && entity instanceof ServerPlayer player) {
-            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.MOUNTED);
+            PlaybackHooks.INTERRUPTION.invoker().interrupt(player, PlaybackStopReason.MOUNTED);
         }
     }
 }

@@ -30,7 +30,7 @@ public class WheelController {
         this.lastSelectedId = "";
     }
 
-    public void updateEmotes(List<PlayableEmote> emotes) {
+    public void updateEntries(List<PlayableEmote> emotes) {
         this.syncedEmotes = List.copyOf(emotes);
         this.syncedFromServer = true;
     }
@@ -48,7 +48,7 @@ public class WheelController {
         client.gui.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), keyMapping));
     }
 
-    public void playEmote(PlayableEmote playableEmote) {
+    public void play(PlayableEmote playableEmote) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;

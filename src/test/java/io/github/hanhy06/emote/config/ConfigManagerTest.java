@@ -55,7 +55,7 @@ class ConfigManagerTest {
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
         assertTrue(accessJson.contains("\"emote.default\""));
-        EmoteAccessConfig.IdleEmote idle = manager.getEmoteAccessConfig()
+        AccessConfig.IdleSettings idle = manager.getAccessConfig()
             .permissions().getFirst().idle().orElseThrow();
         assertEquals(300, idle.delaySeconds());
         assertEquals(List.of("drink:default"), idle.emote());
@@ -117,13 +117,13 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readEmoteAccessConfig());
-        assertFalse(manager.getEmoteAccessConfig().isEnabled("demo:wave"));
-        assertTrue(manager.getEmoteAccessConfig().isEnabled("demo:bow"));
-        assertEquals("emote.default", manager.getEmoteAccessConfig().permissions().getFirst().permission());
-        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().permissions().getFirst().emotes());
-        assertTrue(manager.getEmoteAccessConfig().permissions().getFirst().idle().isEmpty());
-        EmoteAccessConfig.IdleEmote idle = manager.getEmoteAccessConfig().permissions().get(1).idle().orElseThrow();
+        assertTrue(manager.readAccessConfig());
+        assertFalse(manager.getAccessConfig().isEnabled("demo:wave"));
+        assertTrue(manager.getAccessConfig().isEnabled("demo:bow"));
+        assertEquals("emote.default", manager.getAccessConfig().permissions().getFirst().permission());
+        assertEquals(List.of("demo:wave"), manager.getAccessConfig().permissions().getFirst().emotes());
+        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().get(1).idle().orElseThrow();
         assertEquals(600, idle.delaySeconds());
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
     }
@@ -144,16 +144,16 @@ class ConfigManagerTest {
               ]
             }
             """);
-        assertTrue(manager.readEmoteAccessConfig());
+        assertTrue(manager.readAccessConfig());
 
         assertTrue(manager.setEmoteEnabled("demo:wave", false));
-        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().disabled());
-        assertEquals(List.of("demo:wave"), manager.getEmoteAccessConfig().permissions().getFirst().emotes());
-        assertTrue(manager.getEmoteAccessConfig().permissions().getFirst().idle().isPresent());
+        assertEquals(List.of("demo:wave"), manager.getAccessConfig().disabled());
+        assertEquals(List.of("demo:wave"), manager.getAccessConfig().permissions().getFirst().emotes());
+        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isPresent());
         assertTrue(Files.readString(tempDir.resolve("emote").resolve("emotes.json")).contains("demo:wave"));
 
         assertTrue(manager.setEmoteEnabled("demo:wave", true));
-        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
+        assertTrue(manager.getAccessConfig().disabled().isEmpty());
     }
 
     @Test
@@ -164,8 +164,8 @@ class ConfigManagerTest {
             {"disabled":["   "]}
             """);
 
-        assertFalse(manager.readEmoteAccessConfig());
-        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
+        assertFalse(manager.readAccessConfig());
+        assertTrue(manager.getAccessConfig().disabled().isEmpty());
     }
 
     @Test
@@ -189,8 +189,8 @@ class ConfigManagerTest {
             {"disabled":{"invalid":true}}
             """);
 
-        assertFalse(manager.readEmoteAccessConfig());
-        assertTrue(manager.getEmoteAccessConfig().disabled().isEmpty());
+        assertFalse(manager.readAccessConfig());
+        assertTrue(manager.getAccessConfig().disabled().isEmpty());
     }
 
     @Test
@@ -215,13 +215,13 @@ class ConfigManagerTest {
     @Test
     void accessConfigCopiesAndProtectsValues() {
         ArrayList<String> disabled = new ArrayList<>(List.of("demo:wave"));
-        ArrayList<EmoteAccessConfig.PermissionEntry> permissions = new ArrayList<>();
-        permissions.add(new EmoteAccessConfig.PermissionEntry(
+        ArrayList<AccessConfig.PermissionEntry> permissions = new ArrayList<>();
+        permissions.add(new AccessConfig.PermissionEntry(
             "emote.default",
             List.of("demo:wave"),
             Optional.empty()
         ));
-        EmoteAccessConfig config = new EmoteAccessConfig(disabled, permissions);
+        AccessConfig config = new AccessConfig(disabled, permissions);
 
         disabled.clear();
         permissions.clear();
@@ -231,7 +231,7 @@ class ConfigManagerTest {
         assertEquals("emote.default", config.permissions().getFirst().permission());
         assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("demo:bow"));
         assertThrows(UnsupportedOperationException.class, () -> config.permissions().add(
-            new EmoteAccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty())
+            new AccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty())
         ));
     }
 
@@ -251,10 +251,10 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readEmoteAccessConfig());
+        assertFalse(manager.readAccessConfig());
         assertEquals(
             List.of("drink:default"),
-            manager.getEmoteAccessConfig().permissions().getFirst().idle().orElseThrow().emote()
+            manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote()
         );
     }
 }

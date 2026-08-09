@@ -216,7 +216,7 @@ public final class PlaybackPlan {
         }
 
         static PreparedTransform create(EmoteAnimation.Matrix matrix, boolean preserveMatrix) {
-            Matrix4f localMatrix = EmoteRootTransform.toJoml(matrix);
+            Matrix4f localMatrix = RootTransform.toJoml(matrix);
             if (preserveMatrix) {
                 return new PreparedTransform(matrix, localMatrix, null, null, null, null);
             }

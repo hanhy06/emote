@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.playback.ActiveEmote;
+import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
@@ -84,7 +84,7 @@ public class DialogManager {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<PlayableEmote> playableEmoteList = this.playableEmoteService.getPlayableEmotes(player, query);
+        List<PlayableEmote> playableEmoteList = this.playableEmoteService.search(player, query);
         DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
@@ -188,33 +188,33 @@ public class DialogManager {
             return "No emotes.";
         }
 
-        ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
+        ActivePlayback activeEmote = this.playbackManager.findActive(player.getUUID());
         String activeEmoteText = activeEmote == null
             ? ""
-            : createActiveEmoteText(activeEmote);
+            : createActivePlaybackText(activeEmote);
 
-        if (dialogPage.playableEmoteCount() == 0) {
+        if (dialogPage.playableCount() == 0) {
             return (query.isEmpty() ? "No usable emotes." : "No matching emotes.") + activeEmoteText;
         }
 
         if (dialogPage.totalPageCount() == 1) {
-            return "Emotes: " + dialogPage.playableEmoteCount() + "." + activeEmoteText;
+            return "Emotes: " + dialogPage.playableCount() + "." + activeEmoteText;
         }
 
-        return (dialogPage.startIndex() + 1) + "-" + dialogPage.endIndex() + "/" + dialogPage.playableEmoteCount()
+        return (dialogPage.startIndex() + 1) + "-" + dialogPage.endIndex() + "/" + dialogPage.playableCount()
             + " | " + dialogPage.pageNumber() + "/" + dialogPage.totalPageCount() + "." + activeEmoteText;
     }
 
-    private DialogPage createDialogPage(int playableEmoteCount, int requestedPageNumber) {
+    private DialogPage createDialogPage(int playableCount, int requestedPageNumber) {
         int playButtonsPerPage = this.configManager.getConfig().menuPageSize();
-        int totalPageCount = Math.max(1, (int) Math.ceil((double) playableEmoteCount / playButtonsPerPage));
+        int totalPageCount = Math.max(1, (int) Math.ceil((double) playableCount / playButtonsPerPage));
         int pageNumber = Math.clamp(requestedPageNumber, 1, totalPageCount);
-        int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableEmoteCount);
-        int endIndex = Math.min(startIndex + playButtonsPerPage, playableEmoteCount);
-        return new DialogPage(playableEmoteCount, pageNumber, totalPageCount, startIndex, endIndex);
+        int startIndex = Math.min((pageNumber - 1) * playButtonsPerPage, playableCount);
+        int endIndex = Math.min(startIndex + playButtonsPerPage, playableCount);
+        return new DialogPage(playableCount, pageNumber, totalPageCount, startIndex, endIndex);
     }
 
-    private String createActiveEmoteText(ActiveEmote activeEmote) {
+    private String createActivePlaybackText(ActivePlayback activeEmote) {
         RegisteredEmote emote = this.emoteRegistry.find(activeEmote.id());
         String displayName = emote == null
             ? activeEmote.id()
@@ -223,7 +223,7 @@ public class DialogManager {
     }
 
     private record DialogPage(
-        int playableEmoteCount,
+        int playableCount,
         int pageNumber,
         int totalPageCount,
         int startIndex,

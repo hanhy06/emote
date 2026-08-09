@@ -95,7 +95,7 @@ public class WheelScreen extends Screen {
         updateHoveredSlot(mouseX, mouseY);
 
         WheelMetrics metrics = this.metrics;
-        List<PlayableEmote> pageEmotes = getCurrentPageEmotes();
+        List<PlayableEmote> pageEmotes = getCurrentPageEntries();
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
 
@@ -264,17 +264,17 @@ public class WheelScreen extends Screen {
     }
 
     private boolean selectHoveredSlot() {
-        PlayableEmote playableEmote = getPlayableEmoteAt(this.hoveredSlotIndex);
+        PlayableEmote playableEmote = getEntryAt(this.hoveredSlotIndex);
         if (playableEmote == null) {
             return false;
         }
 
         this.onClose();
-        this.controller.playEmote(playableEmote);
+        this.controller.play(playableEmote);
         return true;
     }
 
-    private PlayableEmote getPlayableEmoteAt(int slotIndex) {
+    private PlayableEmote getEntryAt(int slotIndex) {
         if (slotIndex < 0) {
             return null;
         }
@@ -285,7 +285,7 @@ public class WheelScreen extends Screen {
             : null;
     }
 
-    private List<PlayableEmote> getCurrentPageEmotes() {
+    private List<PlayableEmote> getCurrentPageEntries() {
         int startIndex = Math.min(this.pageIndex * WheelGeometry.SLOT_COUNT, this.emotes.size());
         int endIndex = Math.min(startIndex + WheelGeometry.SLOT_COUNT, this.emotes.size());
         return this.emotes.subList(startIndex, endIndex);
@@ -299,7 +299,7 @@ public class WheelScreen extends Screen {
         this.hoveredSlotIndex = -1;
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
-            if (getPlayableEmoteAt(slotIndex) == null) {
+            if (getEntryAt(slotIndex) == null) {
                 continue;
             }
 

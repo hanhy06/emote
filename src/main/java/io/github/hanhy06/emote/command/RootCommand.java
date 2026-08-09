@@ -13,9 +13,9 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.ActiveEmote;
+import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
-import io.github.hanhy06.emote.server.EmoteReloadService;
+import io.github.hanhy06.emote.server.ReloadService;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -32,7 +32,7 @@ public final class RootCommand {
     private final DialogManager dialogManager;
     private final PlayableEmoteService playableEmoteService;
     private final PlayService playService;
-    private final EmoteAdminCommands adminCommands;
+    private final AdminCommands adminCommands;
 
     public RootCommand(
         EmoteRegistry emoteRegistry,
@@ -41,14 +41,14 @@ public final class RootCommand {
         PlayableEmoteService playableEmoteService,
         PlayService playService,
         PermissionService permissionService,
-        EmoteReloadService reloadService,
+        ReloadService reloadService,
         ConfigManager configManager
     ) {
         this.playbackManager = playbackManager;
         this.dialogManager = dialogManager;
         this.playableEmoteService = playableEmoteService;
         this.playService = playService;
-        this.adminCommands = new EmoteAdminCommands(
+        this.adminCommands = new AdminCommands(
             emoteRegistry,
             playbackManager,
             permissionService,
@@ -103,22 +103,22 @@ public final class RootCommand {
         return Commands.literal("play")
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((context, builder) -> SharedSuggestionProvider.suggest(
-                    getSuggestedPlayNames(context.getSource()),
+                    getSuggestedPlayIds(context.getSource()),
                     builder
                 ))
-                .executes(this::playEmote));
+                .executes(this::play));
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createStopCommand() {
         return Commands.literal("stop")
-            .executes(context -> stopEmote(context.getSource()));
+            .executes(context -> stop(context.getSource()));
     }
 
-    private List<String> getSuggestedPlayNames(CommandSourceStack source) {
+    private List<String> getSuggestedPlayIds(CommandSourceStack source) {
         ServerPlayer player = findPlayer(source);
         return player == null
-            ? this.playableEmoteService.getPlayIds()
-            : this.playableEmoteService.getPlayablePlayIds(player);
+            ? this.playableEmoteService.getAllIds()
+            : this.playableEmoteService.getPlayableIds(player);
     }
 
     private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
@@ -159,7 +159,7 @@ public final class RootCommand {
         return 1;
     }
 
-    private int playEmote(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+    private int play(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerPlayer player = source.getPlayerOrException();
         return applyPlayResult(
@@ -168,9 +168,9 @@ public final class RootCommand {
         );
     }
 
-    private int stopEmote(CommandSourceStack source) throws CommandSyntaxException {
+    private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        ActiveEmote activeEmote = this.playbackManager.stop(player);
+        ActivePlayback activeEmote = this.playbackManager.stop(player);
         if (activeEmote == null) {
             source.sendFailure(Component.literal("No active emote."));
             return 0;

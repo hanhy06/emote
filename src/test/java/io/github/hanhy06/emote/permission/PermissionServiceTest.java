@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.EmoteAccessConfig;
+import io.github.hanhy06.emote.config.AccessConfig;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -12,7 +12,7 @@ class PermissionServiceTest {
     @Test
     void defaultAllowsOnlyConfiguredIds() {
         PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue);
-        service.onEmoteAccessConfigReload(new EmoteAccessConfig(
+        service.onAccessConfigReload(new AccessConfig(
             List.of(),
             List.of(entry("emote.default", List.of("demo:wave")))
         ));
@@ -26,7 +26,7 @@ class PermissionServiceTest {
         PermissionService service = new PermissionService(
             (ignoredPlayer, permission, ignoredDefaultValue) -> permission.equals("emote.admin")
         );
-        service.onEmoteAccessConfigReload(new EmoteAccessConfig(
+        service.onAccessConfigReload(new AccessConfig(
             List.of(),
             List.of(entry("emote.default", List.of()), entry("emote.admin", List.of("*")))
         ));
@@ -38,7 +38,7 @@ class PermissionServiceTest {
     @Test
     void emptyPermissionsDenyEveryId() {
         PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, ignoredDefaultValue) -> false);
-        service.onEmoteAccessConfigReload(new EmoteAccessConfig(List.of(), List.of()));
+        service.onAccessConfigReload(new AccessConfig(List.of(), List.of()));
 
         assertFalse(service.canPlay(null, "demo:wave"));
     }
@@ -49,23 +49,23 @@ class PermissionServiceTest {
             (ignoredPlayer, permission, ignoredDefaultValue) -> permission.equals("emote.vip")
                 || permission.equals("emote.default")
         );
-        service.onEmoteAccessConfigReload(new EmoteAccessConfig(
+        service.onAccessConfigReload(new AccessConfig(
             List.of(),
             List.of(
-                new EmoteAccessConfig.PermissionEntry(
+                new AccessConfig.PermissionEntry(
                     "emote.vip",
                     List.of("demo:vip"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(300, List.of("demo:vip", "demo:dance")))
+                    Optional.of(new AccessConfig.IdleSettings(300, List.of("demo:vip", "demo:dance")))
                 ),
-                new EmoteAccessConfig.PermissionEntry(
+                new AccessConfig.PermissionEntry(
                     "emote.default",
                     List.of("*"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(600, List.of("demo:sit")))
+                    Optional.of(new AccessConfig.IdleSettings(600, List.of("demo:sit")))
                 )
             )
         ));
 
-        EmoteAccessConfig.IdleEmote idle = service.findIdleEmote(null).orElseThrow();
+        AccessConfig.IdleSettings idle = service.findIdleSettings(null).orElseThrow();
 
         assertEquals(300, idle.delaySeconds());
         assertEquals(List.of("demo:vip", "demo:dance"), idle.emote());
@@ -77,19 +77,19 @@ class PermissionServiceTest {
             (ignoredPlayer, permission, ignoredDefaultValue) -> permission.equals("emote.vip")
                 || permission.equals("emote.default")
         );
-        service.onEmoteAccessConfigReload(new EmoteAccessConfig(
+        service.onAccessConfigReload(new AccessConfig(
             List.of(),
             List.of(
                 entry("emote.vip", List.of("demo:vip")),
-                new EmoteAccessConfig.PermissionEntry(
+                new AccessConfig.PermissionEntry(
                     "emote.default",
                     List.of("*"),
-                    Optional.of(new EmoteAccessConfig.IdleEmote(600, List.of("demo:sit")))
+                    Optional.of(new AccessConfig.IdleSettings(600, List.of("demo:sit")))
                 )
             )
         ));
 
-        assertEquals(List.of("demo:sit"), service.findIdleEmote(null).orElseThrow().emote());
+        assertEquals(List.of("demo:sit"), service.findIdleSettings(null).orElseThrow().emote());
     }
 
     @Test
@@ -97,7 +97,7 @@ class PermissionServiceTest {
         PermissionService service = new PermissionService(
             (ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue
         );
-        service.onEmoteAccessConfigReload(EmoteAccessConfig.createDefault());
+        service.onAccessConfigReload(AccessConfig.createDefault());
 
         assertTrue(service.canPlay(null, "demo:wave"));
     }
@@ -105,12 +105,12 @@ class PermissionServiceTest {
     @Test
     void explicitDefaultPermissionDenialRemovesDefaultAccess() {
         PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, ignoredDefaultValue) -> false);
-        service.onEmoteAccessConfigReload(EmoteAccessConfig.createDefault());
+        service.onAccessConfigReload(AccessConfig.createDefault());
 
         assertFalse(service.canPlay(null, "demo:wave"));
     }
 
-    private EmoteAccessConfig.PermissionEntry entry(String permission, List<String> emotes) {
-        return new EmoteAccessConfig.PermissionEntry(permission, emotes, Optional.empty());
+    private AccessConfig.PermissionEntry entry(String permission, List<String> emotes) {
+        return new AccessConfig.PermissionEntry(permission, emotes, Optional.empty());
     }
 }

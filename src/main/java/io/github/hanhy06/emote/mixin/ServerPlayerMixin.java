@@ -19,13 +19,13 @@ abstract class ServerPlayerMixin {
     private void emote$afterGameModeChange(GameType mode, CallbackInfoReturnable<Boolean> callbackInfo) {
         if (callbackInfo.getReturnValueZ()) {
             ServerPlayer player = (ServerPlayer) (Object) this;
-            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.GAME_MODE_CHANGED);
+            PlaybackHooks.INTERRUPTION.invoker().interrupt(player, PlaybackStopReason.GAME_MODE_CHANGED);
         }
     }
 
     @Inject(method = "jumpFromGround", at = @At("RETURN"))
     private void emote$afterJumpFromGround(CallbackInfo callbackInfo) {
         ServerPlayer player = (ServerPlayer) (Object) this;
-        PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.JUMPED);
+        PlaybackHooks.INTERRUPTION.invoker().interrupt(player, PlaybackStopReason.JUMPED);
     }
 }

@@ -1,27 +1,27 @@
 package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.network.payload.EmotePlaybackStatePayload;
-import io.github.hanhy06.emote.playback.ActiveEmote;
+import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
+import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlaybackStateService implements PlaybackStateListener {
-    private static final EmotePlaybackStatePayload INACTIVE_PAYLOAD = new EmotePlaybackStatePayload(false, false);
+    private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false);
 
     @Override
-    public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-        sync(player, new EmotePlaybackStatePayload(true, activeEmote.playerBehavior().hidden()));
+    public void onStarted(ServerPlayer player, ActivePlayback activeEmote) {
+        sync(player, new PlaybackStatePayload(true, activeEmote.playerBehavior().hidden()));
     }
 
     @Override
-    public void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote, PlaybackStopReason reason) {
+    public void onStopped(ServerPlayer player, ActivePlayback activeEmote, PlaybackStopReason reason) {
         sync(player, INACTIVE_PAYLOAD);
     }
 
-    private void sync(ServerPlayer player, EmotePlaybackStatePayload payload) {
-        if (!ServerPlayNetworking.canSend(player, EmotePlaybackStatePayload.TYPE)) {
+    private void sync(ServerPlayer player, PlaybackStatePayload payload) {
+        if (!ServerPlayNetworking.canSend(player, PlaybackStatePayload.TYPE)) {
             return;
         }
 

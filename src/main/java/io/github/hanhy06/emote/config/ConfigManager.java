@@ -18,7 +18,7 @@ import java.util.stream.Stream;
 public class ConfigManager {
     private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
-    private static final String EMOTE_ACCESS_FILE_NAME = "emotes.json";
+    private static final String ACCESS_CONFIG_FILE_NAME = "emotes.json";
     private static final String ANIMATION_DIRECTORY_NAME = "animations";
     private static final String BUNDLED_ANIMATION_DIRECTORY_NAME = "default-emote-animations";
 
@@ -30,10 +30,10 @@ public class ConfigManager {
         .create();
     private final ConfigJsonCodec jsonCodec = new ConfigJsonCodec();
     private final List<ConfigListener> listeners = new ArrayList<>();
-    private final List<EmoteAccessConfigListener> emoteAccessListeners = new ArrayList<>();
+    private final List<AccessConfigListener> accessConfigListeners = new ArrayList<>();
 
     private Config config = Config.createDefault();
-    private EmoteAccessConfig emoteAccessConfig = EmoteAccessConfig.createDefault();
+    private AccessConfig accessConfig = AccessConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
         this(configBasePath, findBundledAnimationDirectory().orElse(null));
@@ -64,7 +64,7 @@ public class ConfigManager {
         }
 
         writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(this.config));
-        writeIfAbsent(EMOTE_ACCESS_FILE_NAME, this.jsonCodec.writeEmoteAccessConfig(this.emoteAccessConfig));
+        writeIfAbsent(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig));
     }
 
     private static Optional<Path> findBundledAnimationDirectory() {
@@ -95,8 +95,8 @@ public class ConfigManager {
         return this.config;
     }
 
-    public EmoteAccessConfig getEmoteAccessConfig() {
-        return this.emoteAccessConfig;
+    public AccessConfig getAccessConfig() {
+        return this.accessConfig;
     }
 
     public Path getAnimationDirectory() {
@@ -125,26 +125,26 @@ public class ConfigManager {
         return true;
     }
 
-    public boolean readEmoteAccessConfig() {
-        JsonObject configJson = readJsonFile(EMOTE_ACCESS_FILE_NAME);
-        EmoteAccessConfig loadedConfig;
+    public boolean readAccessConfig() {
+        JsonObject configJson = readJsonFile(ACCESS_CONFIG_FILE_NAME);
+        AccessConfig loadedConfig;
         try {
-            loadedConfig = this.jsonCodec.readEmoteAccessConfig(configJson);
+            loadedConfig = this.jsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
-            broadcastEmoteAccessConfig();
+            broadcastAccessConfig();
             return false;
         }
 
         if (loadedConfig == null) {
             Emote.LOGGER.warn("Emote access config is empty or invalid. Keeping current config.");
-            broadcastEmoteAccessConfig();
+            broadcastAccessConfig();
             return false;
         }
 
-        this.emoteAccessConfig = loadedConfig;
-        broadcastEmoteAccessConfig();
-        Emote.LOGGER.info("Loaded emote access rules from {}", EMOTE_ACCESS_FILE_NAME);
+        this.accessConfig = loadedConfig;
+        broadcastAccessConfig();
+        Emote.LOGGER.info("Loaded emote access rules from {}", ACCESS_CONFIG_FILE_NAME);
         return true;
     }
 
@@ -152,8 +152,8 @@ public class ConfigManager {
         this.listeners.add(listener);
     }
 
-    public void addEmoteAccessListener(EmoteAccessConfigListener listener) {
-        this.emoteAccessListeners.add(listener);
+    public void addAccessConfigListener(AccessConfigListener listener) {
+        this.accessConfigListeners.add(listener);
     }
 
     public boolean setEmoteEnabled(String id, boolean enabled) {
@@ -162,23 +162,23 @@ public class ConfigManager {
             throw new IllegalArgumentException("emote id must not be blank");
         }
 
-        List<String> nextDisabled = new ArrayList<>(this.emoteAccessConfig.disabled());
+        List<String> nextDisabled = new ArrayList<>(this.accessConfig.disabled());
         if (enabled) {
             nextDisabled.remove(normalizedId);
         } else if (!nextDisabled.contains(normalizedId)) {
             nextDisabled.add(normalizedId);
         }
-        EmoteAccessConfig nextConfig = new EmoteAccessConfig(
+        AccessConfig nextConfig = new AccessConfig(
             nextDisabled,
-            this.emoteAccessConfig.permissions()
+            this.accessConfig.permissions()
         );
 
-        if (!writeJsonFile(EMOTE_ACCESS_FILE_NAME, this.jsonCodec.writeEmoteAccessConfig(nextConfig))) {
+        if (!writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(nextConfig))) {
             return false;
         }
 
-        this.emoteAccessConfig = nextConfig;
-        broadcastEmoteAccessConfig();
+        this.accessConfig = nextConfig;
+        broadcastAccessConfig();
         return true;
     }
 
@@ -188,9 +188,9 @@ public class ConfigManager {
         }
     }
 
-    private void broadcastEmoteAccessConfig() {
-        for (EmoteAccessConfigListener listener : this.emoteAccessListeners) {
-            listener.onEmoteAccessConfigReload(this.emoteAccessConfig);
+    private void broadcastAccessConfig() {
+        for (AccessConfigListener listener : this.accessConfigListeners) {
+            listener.onAccessConfigReload(this.accessConfig);
         }
     }
 

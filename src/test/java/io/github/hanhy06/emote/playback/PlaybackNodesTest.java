@@ -15,7 +15,7 @@ class PlaybackNodesTest {
     @Test
     void keepsViewYawInsideThresholdAndFollowsOnlyTheExcess() {
         PlaybackNodes nodes = new PlaybackNodes(
-            EmoteRootTransform.create(Vec3.ZERO, 0.0F),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
 
@@ -27,7 +27,7 @@ class PlaybackNodesTest {
     @Test
     void appliesViewYawThresholdAcrossDegreeWrap() {
         PlaybackNodes nodes = new PlaybackNodes(
-            EmoteRootTransform.create(Vec3.ZERO, 170.0F),
+            RootTransform.create(Vec3.ZERO, 170.0F),
             Map.of()
         );
 
@@ -38,7 +38,7 @@ class PlaybackNodesTest {
     @Test
     void updatesDisplayRotationOnlyWhenPackedYawChanges() {
         PlaybackNodes nodes = new PlaybackNodes(
-            EmoteRootTransform.create(Vec3.ZERO, 0.0F),
+            RootTransform.create(Vec3.ZERO, 0.0F),
             Map.of()
         );
         PlaybackEntityController controller = new PlaybackEntityController();

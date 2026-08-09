@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import net.minecraft.server.level.ServerPlayer;
 
 public interface PlaybackStateListener {
-    void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote);
+    void onStarted(ServerPlayer player, ActivePlayback activeEmote);
 
-    void onEmoteStopped(ServerPlayer player, ActiveEmote activeEmote, PlaybackStopReason reason);
+    void onStopped(ServerPlayer player, ActivePlayback activeEmote, PlaybackStopReason reason);
 }

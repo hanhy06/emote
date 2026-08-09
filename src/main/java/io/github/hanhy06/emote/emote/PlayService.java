@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
-import io.github.hanhy06.emote.api.EmoteApiEvents;
+import io.github.hanhy06.emote.api.ApiEvents;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.permission.PermissionService;
@@ -11,14 +11,14 @@ import net.minecraft.server.level.ServerPlayer;
 public class PlayService {
     private final EmoteRegistry emoteRegistry;
     private final PlayPermissionChecker playPermissionChecker;
-    private final EmoteStarter emoteStarter;
+    private final PlaybackStarter emoteStarter;
     private final PlayEventDispatcher eventDispatcher;
 
     public PlayService(
         EmoteRegistry emoteRegistry,
         PermissionService permissionService,
         PlaybackManager playbackManager,
-        EmoteApiEvents apiEvents
+        ApiEvents apiEvents
     ) {
         this(
             emoteRegistry,
@@ -31,7 +31,7 @@ public class PlayService {
     PlayService(
         EmoteRegistry emoteRegistry,
         PlayPermissionChecker playPermissionChecker,
-        EmoteStarter emoteStarter,
+        PlaybackStarter emoteStarter,
         PlayEventDispatcher eventDispatcher
     ) {
         this.emoteRegistry = emoteRegistry;
@@ -65,7 +65,7 @@ public class PlayService {
     }
 
     @FunctionalInterface
-    interface EmoteStarter {
+    interface PlaybackStarter {
         PlayResult start(ServerPlayer player, RegisteredEmote emote);
     }
 

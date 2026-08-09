@@ -21,13 +21,13 @@ final class ConfigJsonCodec {
         return object;
     }
 
-    JsonObject writeEmoteAccessConfig(EmoteAccessConfig config) {
+    JsonObject writeAccessConfig(AccessConfig config) {
         JsonObject object = new JsonObject();
         JsonArray disabledJson = new JsonArray();
         config.disabled().forEach(disabledJson::add);
         object.add("disabled", disabledJson);
         JsonArray permissionsJson = new JsonArray();
-        for (EmoteAccessConfig.PermissionEntry entry : config.permissions()) {
+        for (AccessConfig.PermissionEntry entry : config.permissions()) {
             JsonObject entryJson = new JsonObject();
             entryJson.addProperty("permission", entry.permission());
             JsonArray idsJson = new JsonArray();
@@ -68,7 +68,7 @@ final class ConfigJsonCodec {
         );
     }
 
-    EmoteAccessConfig readEmoteAccessConfig(JsonObject object) {
+    AccessConfig readAccessConfig(JsonObject object) {
         if (object == null) {
             return null;
         }
@@ -89,7 +89,7 @@ final class ConfigJsonCodec {
         if (permissionsElement != null && !permissionsElement.isJsonNull() && !permissionsElement.isJsonArray()) {
             return null;
         }
-        List<EmoteAccessConfig.PermissionEntry> permissions = new ArrayList<>();
+        List<AccessConfig.PermissionEntry> permissions = new ArrayList<>();
         if (permissionsElement != null && !permissionsElement.isJsonNull()) {
             for (JsonElement entryElement : permissionsElement.getAsJsonArray()) {
                 if (!entryElement.isJsonObject()) {
@@ -102,19 +102,19 @@ final class ConfigJsonCodec {
                     return null;
                 }
 
-                Optional<EmoteAccessConfig.IdleEmote> idle = Optional.empty();
+                Optional<AccessConfig.IdleSettings> idle = Optional.empty();
                 JsonElement idleElement = entryJson.get("idle");
                 if (idleElement != null && !idleElement.isJsonNull()) {
-                    EmoteAccessConfig.IdleEmote parsedIdle = readIdleEmote(idleElement);
+                    AccessConfig.IdleSettings parsedIdle = readIdleSettings(idleElement);
                     if (parsedIdle == null) {
                         return null;
                     }
                     idle = Optional.of(parsedIdle);
                 }
-                permissions.add(new EmoteAccessConfig.PermissionEntry(permission, ids, idle));
+                permissions.add(new AccessConfig.PermissionEntry(permission, ids, idle));
             }
         }
-        return new EmoteAccessConfig(disabled, permissions);
+        return new AccessConfig(disabled, permissions);
     }
 
     private int readInt(JsonObject object, String key, int defaultValue) {
@@ -122,7 +122,7 @@ final class ConfigJsonCodec {
         return element == null || element.isJsonNull() ? defaultValue : element.getAsInt();
     }
 
-    private EmoteAccessConfig.IdleEmote readIdleEmote(JsonElement element) {
+    private AccessConfig.IdleSettings readIdleSettings(JsonElement element) {
         if (!element.isJsonObject()) {
             return null;
         }
@@ -140,7 +140,7 @@ final class ConfigJsonCodec {
         if (emotes == null) {
             return null;
         }
-        return new EmoteAccessConfig.IdleEmote(delayElement.getAsInt(), emotes);
+        return new AccessConfig.IdleSettings(delayElement.getAsInt(), emotes);
     }
 
     private List<String> readRequiredStringList(JsonElement element) {

@@ -1,0 +1,93 @@
+package io.github.hanhy06.emote.animation;
+
+import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.stream.Stream;
+
+import static io.github.hanhy06.emote.api.animation.EmoteAnimation.Loaded;
+
+public final class AnimationDirectoryLoader {
+    private final AnimationJsonLoader jsonLoader;
+    private final AnimationServerPreparer serverValidator;
+
+    public AnimationDirectoryLoader() {
+        this(new AnimationJsonLoader(), new AnimationServerPreparer());
+    }
+
+    AnimationDirectoryLoader(
+        AnimationJsonLoader jsonLoader,
+        AnimationServerPreparer serverValidator
+    ) {
+        this.jsonLoader = jsonLoader;
+        this.serverValidator = serverValidator;
+    }
+
+    public List<Loaded> load(Path directory) {
+        return load(directory, Emote.SERVER.getServerVersion(), this.serverValidator::prepare);
+    }
+
+    List<Loaded> load(Path directory, String minecraftVersion, LoadedValidator validator) {
+        List<Loaded> candidates = new ArrayList<>();
+        for (Path path : findJsonFiles(directory)) {
+            try {
+                Loaded loaded = this.jsonLoader.load(path, minecraftVersion);
+                candidates.add(validator.validate(loaded));
+            } catch (EmoteAnimationLoadException exception) {
+                Emote.LOGGER.warn("Ignoring invalid emote animation: {}", exception.getMessage());
+            }
+        }
+        return rejectDuplicateIds(candidates);
+    }
+
+    private List<Path> findJsonFiles(Path directory) {
+        try {
+            Files.createDirectories(directory);
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to create emote animation directory {}", directory, exception);
+            return List.of();
+        }
+
+        try (Stream<Path> paths = Files.list(directory)) {
+            return paths
+                .filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json"))
+                .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT)))
+                .toList();
+        } catch (IOException exception) {
+            Emote.LOGGER.warn("Failed to scan emote animation directory {}", directory, exception);
+            return List.of();
+        }
+    }
+
+    private List<Loaded> rejectDuplicateIds(List<Loaded> candidates) {
+        Map<String, List<Loaded>> byId = new LinkedHashMap<>();
+        for (Loaded candidate : candidates) {
+            byId.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>()).add(candidate);
+        }
+
+        List<Loaded> loaded = new ArrayList<>();
+        for (Map.Entry<String, List<Loaded>> entry : byId.entrySet()) {
+            if (entry.getValue().size() == 1) {
+                loaded.add(entry.getValue().getFirst());
+                continue;
+            }
+            Emote.LOGGER.warn(
+                "Ignoring emote animations with duplicate id {}: {}",
+                entry.getKey(),
+                entry.getValue().stream().map(Loaded::sourcePath).toList()
+            );
+        }
+        loaded.sort(Comparator.comparing(candidate -> candidate.animation().id().toString()));
+        return List.copyOf(loaded);
+    }
+
+    @FunctionalInterface
+    interface LoadedValidator {
+        Loaded validate(Loaded loaded) throws EmoteAnimationLoadException;
+    }
+}

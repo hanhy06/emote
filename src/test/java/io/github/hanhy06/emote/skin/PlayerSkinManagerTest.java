@@ -115,8 +115,8 @@ class PlayerSkinManagerTest {
             );
 
             PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, List.of(
-                new EmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
-                new EmoteSkinPart("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
+                new AnimationSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
+                new AnimationSkinPart("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
             ));
 
             assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
@@ -150,8 +150,8 @@ class PlayerSkinManagerTest {
         return manager;
     }
 
-    private List<EmoteSkinPart> createSkinParts() {
-        return List.of(new EmoteSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
+    private List<AnimationSkinPart> createSkinParts() {
+        return List.of(new AnimationSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

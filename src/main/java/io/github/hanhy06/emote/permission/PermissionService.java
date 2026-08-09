@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.permission;
 
-import io.github.hanhy06.emote.config.EmoteAccessConfig;
-import io.github.hanhy06.emote.config.EmoteAccessConfigListener;
+import io.github.hanhy06.emote.config.AccessConfig;
+import io.github.hanhy06.emote.config.AccessConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,13 +11,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Predicate;
 
-public class PermissionService implements EmoteAccessConfigListener {
+public class PermissionService implements AccessConfigListener {
     private static final String DEFAULT_PERMISSION = "emote.default";
     private static final String ALL_IDS = "*";
 
     private final PermissionChecker permissionChecker;
 
-    private List<EmoteAccessConfig.PermissionEntry> permissionEntries = List.of();
+    private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
 
     public PermissionService() {
         this(Permissions::check);
@@ -28,7 +28,7 @@ public class PermissionService implements EmoteAccessConfigListener {
     }
 
     @Override
-    public void onEmoteAccessConfigReload(EmoteAccessConfig newConfig) {
+    public void onAccessConfigReload(AccessConfig newConfig) {
         this.permissionEntries = newConfig.permissions();
     }
 
@@ -36,12 +36,12 @@ public class PermissionService implements EmoteAccessConfigListener {
         return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN);
     }
 
-    public boolean canManageEmotes(CommandSourceStack source) {
+    public boolean canManage(CommandSourceStack source) {
         return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
     }
 
     public boolean canPlay(ServerPlayer player, String id) {
-        for (EmoteAccessConfig.PermissionEntry entry : this.permissionEntries) {
+        for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
             String permission = entry.permission();
             boolean grantedByDefault = permission.equals(DEFAULT_PERMISSION);
             List<String> ids = entry.emotes();
@@ -53,8 +53,8 @@ public class PermissionService implements EmoteAccessConfigListener {
         return false;
     }
 
-    public Optional<EmoteAccessConfig.IdleEmote> findIdleEmote(ServerPlayer player) {
-        for (EmoteAccessConfig.PermissionEntry entry : this.permissionEntries) {
+    public Optional<AccessConfig.IdleSettings> findIdleSettings(ServerPlayer player) {
+        for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
             if (entry.idle().isEmpty()) {
                 continue;
             }
@@ -72,7 +72,7 @@ public class PermissionService implements EmoteAccessConfigListener {
     }
 
     public Predicate<CommandSourceStack> requireGameMaster() {
-        return this::canManageEmotes;
+        return this::canManage;
     }
 
     @FunctionalInterface

@@ -14,7 +14,7 @@ public final class PlaybackHooks {
         Interruption.class,
         callbacks -> (player, reason) -> {
             for (Interruption callback : callbacks) {
-                callback.interruptPlayback(player, reason);
+                callback.interrupt(player, reason);
             }
         }
     );
@@ -32,7 +32,7 @@ public final class PlaybackHooks {
 
     @FunctionalInterface
     public interface Interruption {
-        void interruptPlayback(ServerPlayer player, PlaybackStopReason reason);
+        void interrupt(ServerPlayer player, PlaybackStopReason reason);
     }
 
     @FunctionalInterface

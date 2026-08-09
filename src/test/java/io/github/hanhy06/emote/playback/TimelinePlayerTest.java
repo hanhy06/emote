@@ -251,7 +251,7 @@ class TimelinePlayerTest {
 
         @Override
         public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
-            return new Transformation(EmoteRootTransform.toJoml(transform.matrix()));
+            return new Transformation(RootTransform.toJoml(transform.matrix()));
         }
 
         @Override

@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.network.payload.EmoteWheelSyncPayload;
+import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -14,11 +14,11 @@ public class WheelSyncService {
     }
 
     public void syncPlayer(ServerPlayer player) {
-        if (!ServerPlayNetworking.canSend(player, EmoteWheelSyncPayload.TYPE)) {
+        if (!ServerPlayNetworking.canSend(player, WheelSyncPayload.TYPE)) {
             return;
         }
 
-        ServerPlayNetworking.send(player, new EmoteWheelSyncPayload(this.playableEmoteService.getPlayableEmotes(player)));
+        ServerPlayNetworking.send(player, new WheelSyncPayload(this.playableEmoteService.getAll(player)));
     }
 
     public void syncAll() {

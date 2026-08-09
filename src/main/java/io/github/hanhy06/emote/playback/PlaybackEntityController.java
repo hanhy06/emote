@@ -35,14 +35,14 @@ public final class PlaybackEntityController {
     private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;
 
     public PlaybackNodes create(ServerPlayer player, RegisteredEmote emote) {
-        return create(player.level(), EmoteRootTransform.fromPlayer(player), emote);
+        return create(player.level(), RootTransform.fromPlayer(player), emote);
     }
 
     PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, RegisteredEmote emote) {
-        return create(level, EmoteRootTransform.create(position, yaw), emote);
+        return create(level, RootTransform.create(position, yaw), emote);
     }
 
-    private PlaybackNodes create(ServerLevel level, EmoteRootTransform root, RegisteredEmote emote) {
+    private PlaybackNodes create(ServerLevel level, RootTransform root, RegisteredEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
@@ -130,7 +130,7 @@ public final class PlaybackEntityController {
 
     private NodeInstance createNode(
         ServerLevel level,
-        EmoteRootTransform root,
+        RootTransform root,
         String nodeId,
         EmoteAnimation.Node node,
         EmoteAnimation.PreparedDisplayData preparedData

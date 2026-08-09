@@ -18,11 +18,11 @@ class PlayableEmoteServiceTest {
 
         assertEquals(
             List.of("demo:wave", "demo:wave_fast"),
-            PlayableEmoteService.filterPlayableEmotes(emotes, "WAVE").stream().map(PlayableEmote::id).toList()
+            PlayableEmoteService.filter(emotes, "WAVE").stream().map(PlayableEmote::id).toList()
         );
         assertEquals(
             List.of("demo:dance"),
-            PlayableEmoteService.filterPlayableEmotes(emotes, "quick").stream().map(PlayableEmote::id).toList()
+            PlayableEmoteService.filter(emotes, "quick").stream().map(PlayableEmote::id).toList()
         );
     }
 
@@ -38,7 +38,7 @@ class PlayableEmoteServiceTest {
             (ignoredPlayer, emote) -> !emote.id().equals("demo:bow")
         );
 
-        assertEquals(List.of("Wave"), service.getPlayableEmotes(null).stream().map(PlayableEmote::displayName).toList());
-        assertEquals(List.of("demo:wave"), service.getPlayablePlayIds(null));
+        assertEquals(List.of("Wave"), service.getAll(null).stream().map(PlayableEmote::displayName).toList());
+        assertEquals(List.of("demo:wave"), service.getPlayableIds(null));
     }
 }

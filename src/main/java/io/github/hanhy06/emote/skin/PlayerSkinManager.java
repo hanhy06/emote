@@ -65,12 +65,12 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<EmoteSkinPart> skinParts) {
+    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinPart> skinParts) {
         if (skinParts.isEmpty()) {
             return new SkinPreparation(null, SkinPreparationState.READY, 100);
         }
         Set<PlayerSkinTextureKey> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
-        for (EmoteSkinPart skinPart : skinParts) {
+        for (AnimationSkinPart skinPart : skinParts) {
             requiredTextureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
@@ -82,13 +82,13 @@ public class PlayerSkinManager implements ConfigListener {
 
     public void applySkinParts(
         Map<String, NodeInstance> nodes,
-        List<EmoteSkinPart> skinParts,
+        List<AnimationSkinPart> skinParts,
         PreparedPlayerSkin preparedPlayerSkin
     ) {
         if (preparedPlayerSkin == null || skinParts.isEmpty()) {
             return;
         }
-        for (EmoteSkinPart skinPart : skinParts) {
+        for (AnimationSkinPart skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
             if (node != null) {
                 applyMineSkinProfile(node, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);

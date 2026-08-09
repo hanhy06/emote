@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.animation.EmoteAnimationJsonLoader;
+import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
@@ -22,7 +22,7 @@ class PlaybackLoadSimulationTest {
 
     @Test
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
-        EmoteAnimation animation = new EmoteAnimationJsonLoader()
+        EmoteAnimation animation = new AnimationJsonLoader()
             .load(Path.of("docs/example/emote.dance.json"), MINECRAFT_VERSION)
             .animation();
         PlaybackPlan plan = PlaybackPlan.compile(animation);
@@ -96,7 +96,7 @@ class PlaybackLoadSimulationTest {
     }
 
     private static final class CountingTarget implements TimelinePlayer.TimelineTarget {
-        private final EmoteRootTransform rootTransform = EmoteRootTransform.create(Vec3.ZERO, 0.0F);
+        private final RootTransform rootTransform = RootTransform.create(Vec3.ZERO, 0.0F);
 
         private int transformCount;
         private int snapshotCount;

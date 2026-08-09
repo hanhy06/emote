@@ -21,7 +21,7 @@ public class PlayableEmoteService {
         this.playPermissionChecker = playPermissionChecker;
     }
 
-    public List<PlayableEmote> getPlayableEmotes(ServerPlayer player) {
+    public List<PlayableEmote> getAll(ServerPlayer player) {
         return this.emoteRegistry.getAll().stream()
             .filter(emote -> canPlay(player, emote))
             .sorted(Comparator.comparing(RegisteredEmote::name).thenComparing(RegisteredEmote::id))
@@ -29,21 +29,21 @@ public class PlayableEmoteService {
             .toList();
     }
 
-    public List<PlayableEmote> getPlayableEmotes(ServerPlayer player, String query) {
-        return filterPlayableEmotes(getPlayableEmotes(player), query);
+    public List<PlayableEmote> search(ServerPlayer player, String query) {
+        return filter(getAll(player), query);
     }
 
-    static List<PlayableEmote> filterPlayableEmotes(List<PlayableEmote> emotes, String query) {
+    static List<PlayableEmote> filter(List<PlayableEmote> emotes, String query) {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         if (normalizedQuery.isEmpty()) {
             return List.copyOf(emotes);
         }
 
         return emotes.stream()
-            .map(emote -> new RankedEmote(emote, searchRank(emote, normalizedQuery)))
-            .filter(rankedEmote -> rankedEmote.rank() < Integer.MAX_VALUE)
-            .sorted(Comparator.comparingInt(RankedEmote::rank))
-            .map(RankedEmote::emote)
+            .map(emote -> new RankedEntry(emote, searchRank(emote, normalizedQuery)))
+            .filter(rankedEntry -> rankedEntry.rank() < Integer.MAX_VALUE)
+            .sorted(Comparator.comparingInt(RankedEntry::rank))
+            .map(RankedEntry::emote)
             .toList();
     }
 
@@ -58,11 +58,11 @@ public class PlayableEmoteService {
         return Integer.MAX_VALUE;
     }
 
-    public List<String> getPlayIds() {
+    public List<String> getAllIds() {
         return collectPlayIds(ignored -> true);
     }
 
-    public List<String> getPlayablePlayIds(ServerPlayer player) {
+    public List<String> getPlayableIds(ServerPlayer player) {
         return collectPlayIds(emote -> canPlay(player, emote));
     }
 
@@ -85,6 +85,6 @@ public class PlayableEmoteService {
         boolean canPlay(ServerPlayer player, RegisteredEmote emote);
     }
 
-    private record RankedEmote(PlayableEmote emote, int rank) {
+    private record RankedEntry(PlayableEmote emote, int rank) {
     }
 }

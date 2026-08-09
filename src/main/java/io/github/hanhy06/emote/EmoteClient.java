@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import io.github.hanhy06.emote.client.EmoteClientNetworking;
+import io.github.hanhy06.emote.client.ClientNetworking;
 import io.github.hanhy06.emote.client.PerspectiveController;
 import io.github.hanhy06.emote.client.WheelController;
 import net.fabricmc.api.ClientModInitializer;
@@ -19,7 +19,7 @@ public class EmoteClient implements ClientModInitializer {
         PerspectiveController perspectiveController = new PerspectiveController();
         WheelController wheelController = new WheelController();
 
-        EmoteClientNetworking networking = new EmoteClientNetworking(perspectiveController, wheelController);
+        ClientNetworking networking = new ClientNetworking(perspectiveController, wheelController);
 
         networking.register();
         ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
