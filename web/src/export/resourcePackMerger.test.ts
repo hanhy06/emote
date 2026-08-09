@@ -25,6 +25,7 @@ const options: ExportOptions = {
   description: "",
   hide_player: false,
   playbackMode: "source",
+  additionalMetadata: {},
 };
 
 describe("resource pack merger", () => {

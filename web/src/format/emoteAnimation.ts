@@ -24,6 +24,7 @@ export interface EmoteMetadata {
   name: string;
   description: string;
   hide_player: boolean;
+  [key: string]: unknown;
 }
 
 interface EmoteNodeBase {

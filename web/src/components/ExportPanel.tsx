@@ -32,6 +32,7 @@ export function ExportPanel({
   onMergeResourcePackFolder,
 }: ExportPanelProps) {
   const [mergeMenuIndex, setMergeMenuIndex] = useState<number | null>(null);
+  const additionalMetadata = Object.entries(metadata.additionalMetadata);
 
   useEffect(() => {
     if (mergeMenuIndex === null) return;
@@ -84,6 +85,20 @@ export function ExportPanel({
         </select></label>
         <label className="checkbox"><input type="checkbox" checked={metadata.hide_player} onChange={(event) => onMetadataChange({ ...metadata, hide_player: event.target.checked })} />Hide original player</label>
       </div>
+      {additionalMetadata.length > 0 && (
+        <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
+          <h3 id="additional-metadata-heading">Additional metadata</h3>
+          <p>Unrecognized source metadata is preserved in the exported animation.</p>
+          <dl>
+            {additionalMetadata.map(([key, value]) => (
+              <div key={key}>
+                <dt>{key}</dt>
+                <dd><pre>{formatMetadataValue(value)}</pre></dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
       {error && <p className="error" role="alert">{error}</p>}
       <h3>Animations</h3>
       <ul className="download-list">
@@ -123,4 +138,9 @@ export function ExportPanel({
       </ul>
     </section>
   );
+}
+
+function formatMetadataValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  return JSON.stringify(value, null, 2) ?? String(value);
 }

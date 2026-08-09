@@ -108,7 +108,11 @@ export function App() {
           minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
           namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.name,
           playbackMode: "source",
-          ...imported.suggestedMetadata,
+          name: imported.suggestedMetadata.name,
+          description: imported.suggestedMetadata.description,
+          hide_player: imported.suggestedMetadata.hide_player,
+          additionalMetadata: Object.fromEntries(Object.entries(imported.suggestedMetadata)
+            .filter(([key]) => key !== "name" && key !== "description" && key !== "hide_player")),
         },
         conversionError: "",
       });

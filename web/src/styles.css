@@ -83,6 +83,13 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .fields label { display: grid; gap: 4px; font-size: 13px; }
 .fields .checkbox { display: flex; align-items: center; align-self: end; min-height: 34px; gap: 8px; }
 .fields .checkbox input { min-height: 0; }
+.additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
+.additional-metadata > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
+.additional-metadata dl { display: grid; gap: 8px; margin: 0; }
+.additional-metadata dl div { display: grid; grid-template-columns: minmax(120px, 0.25fr) minmax(0, 1fr); border: 1px solid #d7d7d7; }
+.additional-metadata dt { padding: 9px 10px; overflow-wrap: anywhere; background: #f3f3f3; font-size: 13px; font-weight: 600; }
+.additional-metadata dd { min-width: 0; margin: 0; padding: 9px 10px; }
+.additional-metadata pre { margin: 0; overflow-x: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 13px/1.45 Consolas, monospace; }
 .export-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; }
 .download-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .download-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #d7d7d7; }
@@ -115,4 +122,5 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .preview-error { height: 420px; }
   aside { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
   .fields { grid-template-columns: 1fr; }
+  .additional-metadata dl div { grid-template-columns: 1fr; }
 }

@@ -38,7 +38,10 @@ describe("exportAnimation", () => {
       minecraftVersion: "26.2",
       namespace: "test",
       playbackMode: "server_sync",
-      ...project.suggestedMetadata,
+      name: project.suggestedMetadata.name,
+      description: project.suggestedMetadata.description,
+      hide_player: project.suggestedMetadata.hide_player,
+      additionalMetadata: {},
     }, { body: { part: "body", order: 9 } }, 0);
     const animation = JSON.parse(await result.blob.text());
 
@@ -47,6 +50,43 @@ describe("exportAnimation", () => {
     expect(animation.schema_version).toBe(1);
     expect(animation.timeline.loop).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
+  });
+
+  it("preserves unrecognized metadata in the exported animation", async () => {
+    const project: ImportedProject = {
+      source: "emote_json",
+      sourceName: "licensed.json",
+      suggestedMetadata: { name: "Licensed", description: "", hide_player: false, license: "Apache-2.0" },
+      nodes: {},
+      animations: [{
+        id: "licensed",
+        name: "Licensed",
+        durationTicks: 1,
+        loop: "once",
+        loopDelayTicks: 0,
+        tracks: {},
+        events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [],
+      artifacts: new Map(),
+    };
+    const result = exportAnimation(project, {
+      minecraftVersion: "26.2",
+      namespace: "test",
+      playbackMode: "source",
+      name: "Licensed",
+      description: "",
+      hide_player: false,
+      additionalMetadata: { license: "Apache-2.0", authors: ["Creator"] },
+    }, {}, 0);
+
+    expect(JSON.parse(await result.blob.text()).metadata).toEqual({
+      license: "Apache-2.0",
+      authors: ["Creator"],
+      name: "Licensed",
+      description: "",
+      hide_player: false,
+    });
   });
 
   it("packages generated resources under the animation export name", async () => {
@@ -74,7 +114,10 @@ describe("exportAnimation", () => {
       minecraftVersion: "26.2",
       namespace: "test",
       playbackMode: "source",
-      ...project.suggestedMetadata,
+      name: project.suggestedMetadata.name,
+      description: project.suggestedMetadata.description,
+      hide_player: project.suggestedMetadata.hide_player,
+      additionalMetadata: {},
     }, {}, 0);
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
     const metadata = JSON.parse(strFromU8(files["pack.mcmeta"]));

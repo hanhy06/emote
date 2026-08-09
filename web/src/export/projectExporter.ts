@@ -1,15 +1,19 @@
 import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
-import type { EmoteAnimation, EmoteMetadata } from "../format/emoteAnimation";
+import type { EmoteAnimation } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
 
 const GENERATED_RESOURCE_PATH_PATTERN = /^assets\/[a-z0-9_.-]+\/[a-z0-9_./-]+$/;
 
-export interface ExportOptions extends EmoteMetadata {
+export interface ExportOptions {
   minecraftVersion: string;
   namespace: string;
   playbackMode: "source" | EmoteAnimation["timeline"]["loop"];
+  name: string;
+  description: string;
+  hide_player: boolean;
+  additionalMetadata: Record<string, unknown>;
 }
 
 export interface ExportResult {
@@ -112,6 +116,7 @@ function compileExportAnimation(
     namespace: options.namespace,
     ...(options.playbackMode === "source" ? {} : { loop: options.playbackMode }),
     metadata: {
+      ...options.additionalMetadata,
       name: options.name,
       description: options.description,
       hide_player: options.hide_player,
