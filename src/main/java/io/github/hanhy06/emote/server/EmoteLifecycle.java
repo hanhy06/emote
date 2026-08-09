@@ -17,8 +17,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionResult;
 
 public class EmoteLifecycle {
-    public static EmoteLifecycle INSTANCE;
-
     private final PlayerSkinManager skinManager;
     private final EmoteRegistry emoteRegistry;
     private final PlaybackManager playbackManager;
@@ -34,8 +32,6 @@ public class EmoteLifecycle {
         WheelSyncService wheelSyncService,
         IdleEmoteService idleEmoteService
     ) {
-        INSTANCE = this;
-
         this.skinManager = skinManager;
         this.emoteRegistry = emoteRegistry;
         this.playbackManager = playbackManager;

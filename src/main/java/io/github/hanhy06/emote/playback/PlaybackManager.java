@@ -18,8 +18,6 @@ import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class PlaybackManager implements ConfigListener {
-    public static PlaybackManager INSTANCE;
-
     public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.MAX_INSTANCE_COUNT;
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
@@ -32,8 +30,6 @@ public class PlaybackManager implements ConfigListener {
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
-        INSTANCE = this;
-
         this.playerSkinManager = playerSkinManager;
         this.playerVisibilityService = new PlayerVisibilityService(this);
         this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);

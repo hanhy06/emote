@@ -13,14 +13,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 public final class EmoteApiEvents implements PlaybackStateListener {
-    public static EmoteApiEvents INSTANCE;
-
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<EmotePlaybackListener> playbackListeners = new CopyOnWriteArrayList<>();
-
-    public EmoteApiEvents() {
-        INSTANCE = this;
-    }
 
     public ListenerRegistration addPlayListener(EmotePlayListener listener) {
         return register(this.playListeners, Objects.requireNonNull(listener, "listener"));

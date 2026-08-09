@@ -7,13 +7,9 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class WheelSyncService {
-    public static WheelSyncService INSTANCE;
-
     private final PlayableEmoteService playableEmoteService;
 
     public WheelSyncService(PlayableEmoteService playableEmoteService) {
-        INSTANCE = this;
-
         this.playableEmoteService = playableEmoteService;
     }
 

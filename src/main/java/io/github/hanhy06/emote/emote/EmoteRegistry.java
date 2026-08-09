@@ -3,18 +3,12 @@ package io.github.hanhy06.emote.emote;
 import java.util.*;
 
 public class EmoteRegistry {
-    public static EmoteRegistry INSTANCE;
-
     public static final int MAX_EMOTE_COUNT = 512;
 
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
 
     private volatile RegistryState state = RegistryState.empty();
     private Map<String, RegisteredEmote> fileEmotes = Map.of();
-
-    public EmoteRegistry() {
-        INSTANCE = this;
-    }
 
     public synchronized int replace(Collection<RegisteredEmote> emotes) {
         List<RegisteredEmote> sorted = new ArrayList<>(emotes);

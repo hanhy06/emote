@@ -10,8 +10,6 @@ import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 
 public final class EmoteReloadService {
-    public static EmoteReloadService INSTANCE;
-
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
     private final EmoteAnimationDirectoryLoader directoryLoader;
@@ -25,8 +23,6 @@ public final class EmoteReloadService {
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
     ) {
-        INSTANCE = this;
-
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.directoryLoader = directoryLoader;

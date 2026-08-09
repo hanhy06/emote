@@ -9,8 +9,6 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 public class PlayableEmoteService {
-    public static PlayableEmoteService INSTANCE;
-
     private final EmoteRegistry emoteRegistry;
     private final PlayPermissionChecker playPermissionChecker;
 
@@ -19,8 +17,6 @@ public class PlayableEmoteService {
     }
 
     PlayableEmoteService(EmoteRegistry emoteRegistry, PlayPermissionChecker playPermissionChecker) {
-        INSTANCE = this;
-
         this.emoteRegistry = emoteRegistry;
         this.playPermissionChecker = playPermissionChecker;
     }

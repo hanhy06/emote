@@ -17,8 +17,6 @@ import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 public final class IdleEmoteService implements EmoteAccessConfigListener {
-    public static IdleEmoteService INSTANCE;
-
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
     private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
@@ -52,8 +50,6 @@ public final class IdleEmoteService implements EmoteAccessConfigListener {
         LongSupplier clock,
         RandomGenerator random
     ) {
-        INSTANCE = this;
-
         this.idleEmoteResolver = Objects.requireNonNull(idleEmoteResolver, "idle emote resolver");
         this.emotePlayer = Objects.requireNonNull(emotePlayer, "emote player");
         this.activeEmoteChecker = Objects.requireNonNull(activeEmoteChecker, "active emote checker");

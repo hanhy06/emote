@@ -9,8 +9,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
 public class PlayService {
-    public static PlayService INSTANCE;
-
     private final EmoteRegistry emoteRegistry;
     private final PlayPermissionChecker playPermissionChecker;
     private final EmoteStarter emoteStarter;
@@ -36,8 +34,6 @@ public class PlayService {
         EmoteStarter emoteStarter,
         PlayEventDispatcher eventDispatcher
     ) {
-        INSTANCE = this;
-
         this.emoteRegistry = emoteRegistry;
         this.playPermissionChecker = playPermissionChecker;
         this.emoteStarter = emoteStarter;

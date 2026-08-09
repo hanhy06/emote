@@ -23,8 +23,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
-    public static PlayerSkinManager INSTANCE;
-
     private final MineSkinManager mineSkinManager;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
@@ -46,8 +44,6 @@ public class PlayerSkinManager implements ConfigListener {
         MineSkinGenerationQueue generationQueue,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
-        INSTANCE = this;
-
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
         this.mineSkinManager = new MineSkinManager(
             Objects.requireNonNull(playerSkinBaker, "playerSkinBaker"),
