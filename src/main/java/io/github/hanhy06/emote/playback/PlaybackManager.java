@@ -22,9 +22,6 @@ public class PlaybackManager implements ConfigListener {
 
     public static final int DEFAULT_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_LOAD_TEST_INSTANCE_COUNT = PlaybackLoadTest.MAX_INSTANCE_COUNT;
-    private static final double MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED = 0.01D;
-    private static final double MOVE_STOP_VERTICAL_DISTANCE = 0.12D;
-
     private final Map<UUID, ActiveEmote> activeEmoteMap = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
@@ -104,7 +101,7 @@ public class PlaybackManager implements ConfigListener {
                 timeline,
                 events,
                 emote.skinParts(),
-                emote.hidePlayer(),
+                emote.playerBehavior(),
                 player.isInvisible()
             );
             this.activeEmoteMap.put(player.getUUID(), activeEmote);
@@ -159,6 +156,14 @@ public class PlaybackManager implements ConfigListener {
         return stopEmote(player.getUUID(), reason, player);
     }
 
+    public ActiveEmote interruptEmote(ServerPlayer player, PlaybackStopReason reason) {
+        ActiveEmote activeEmote = this.activeEmoteMap.get(player.getUUID());
+        if (activeEmote == null || !shouldStopFor(activeEmote.playerBehavior().stopConditions(), reason)) {
+            return null;
+        }
+        return stopEmote(player, reason);
+    }
+
     private void stopEmote(UUID playerUuid, PlaybackStopReason reason) {
         stopEmote(playerUuid, reason, null);
     }
@@ -192,6 +197,8 @@ public class PlaybackManager implements ConfigListener {
             PlaybackStopReason stopReason = null;
             if (!canKeepPlaying(player, activeEmote)) {
                 stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
+            } else if (activeEmote.playerBehavior().stopConditions().submerge() && player.isUnderWater()) {
+                stopReason = PlaybackStopReason.SUBMERGED;
             } else if (hasMovedDuringPlayback(player, activeEmote)) {
                 stopReason = PlaybackStopReason.MOVED;
             } else {
@@ -322,14 +329,27 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private boolean hasMovedDuringPlayback(ServerPlayer player, ActiveEmote activeEmote) {
+        double movementDistance = activeEmote.playerBehavior().stopConditions().movementDistance();
+        if (movementDistance == 0.0D) {
+            return false;
+        }
         Vec3 currentPosition = player.position();
         Vec3 startPosition = activeEmote.startPosition();
         double xDistance = currentPosition.x - startPosition.x;
         double zDistance = currentPosition.z - startPosition.z;
         double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
-        double verticalDistance = Math.abs(currentPosition.y - startPosition.y);
-        return horizontalDistanceSquared > MOVE_STOP_HORIZONTAL_DISTANCE_SQUARED
-            || verticalDistance > MOVE_STOP_VERTICAL_DISTANCE;
+        return horizontalDistanceSquared > movementDistance * movementDistance;
+    }
+
+    static boolean shouldStopFor(EmoteAnimation.StopConditions conditions, PlaybackStopReason reason) {
+        return switch (reason) {
+            case JUMPED -> conditions.jump();
+            case MOUNTED -> conditions.ride();
+            case DAMAGED -> conditions.damage();
+            case ATTACKED -> conditions.attack();
+            case GAME_MODE_CHANGED -> conditions.gameModeChange();
+            default -> false;
+        };
     }
 
     int activeDisplayEntityCount() {

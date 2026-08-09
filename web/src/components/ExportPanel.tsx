@@ -62,6 +62,19 @@ export function ExportPanel({
     event.target.value = "";
   }
 
+  function updatePlayerStopCondition(
+    key: keyof ExportOptions["player"]["stop_conditions"],
+    value: number | boolean,
+  ) {
+    onMetadataChange({
+      ...metadata,
+      player: {
+        ...metadata.player,
+        stop_conditions: { ...metadata.player.stop_conditions, [key]: value },
+      },
+    });
+  }
+
   return (
     <section className="export">
       <div className="section-heading export-heading">
@@ -83,8 +96,24 @@ export function ExportPanel({
           <option value="loop">Loop</option>
           <option value="server_sync">Server-synchronized loop</option>
         </select></label>
-        <label className="checkbox"><input type="checkbox" checked={metadata.hide_player} onChange={(event) => onMetadataChange({ ...metadata, hide_player: event.target.checked })} />Hide original player</label>
       </div>
+      <section className="player-behavior" aria-labelledby="player-behavior-heading">
+        <h3 id="player-behavior-heading">Player behavior</h3>
+        <p>Choose how the original player is displayed and which actions stop playback.</p>
+        <div className="fields player-behavior-fields">
+          <label>Movement distance
+            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.target.value))} />
+            <small>Horizontal blocks from the starting point. Set to 0 to allow movement.</small>
+          </label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.target.checked } })} />Hide original player</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.jump} onChange={(event) => updatePlayerStopCondition("jump", event.target.checked)} />Stop on jump</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.submerge} onChange={(event) => updatePlayerStopCondition("submerge", event.target.checked)} />Stop when submerged</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.ride} onChange={(event) => updatePlayerStopCondition("ride", event.target.checked)} />Stop on mount</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.damage} onChange={(event) => updatePlayerStopCondition("damage", event.target.checked)} />Stop when damaged</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.attack} onChange={(event) => updatePlayerStopCondition("attack", event.target.checked)} />Stop on attack</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.game_mode_change} onChange={(event) => updatePlayerStopCondition("game_mode_change", event.target.checked)} />Stop on game mode change</label>
+        </div>
+      </section>
       {additionalMetadata.length > 0 && (
         <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
           <h3 id="additional-metadata-heading">Additional metadata</h3>

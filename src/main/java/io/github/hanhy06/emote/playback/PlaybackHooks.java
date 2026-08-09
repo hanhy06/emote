@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import net.fabricmc.fabric.api.event.Event;
 import net.fabricmc.fabric.api.event.EventFactory;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,9 +12,9 @@ import java.util.Map;
 public final class PlaybackHooks {
     public static final Event<Interruption> INTERRUPTION = EventFactory.createArrayBacked(
         Interruption.class,
-        callbacks -> player -> {
+        callbacks -> (player, reason) -> {
             for (Interruption callback : callbacks) {
-                callback.interruptPlayback(player);
+                callback.interruptPlayback(player, reason);
             }
         }
     );
@@ -31,7 +32,7 @@ public final class PlaybackHooks {
 
     @FunctionalInterface
     public interface Interruption {
-        void interruptPlayback(ServerPlayer player);
+        void interruptPlayback(ServerPlayer player, PlaybackStopReason reason);
     }
 
     @FunctionalInterface

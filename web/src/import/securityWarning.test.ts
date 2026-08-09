@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ImportedAnimation, ImportedProject } from "./types";
+import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { countImportedCommands } from "./securityWarning";
 
 function projectWithCommands(...commands: string[][]): ImportedProject {
@@ -25,7 +26,8 @@ function projectWithCommands(...commands: string[][]): ImportedProject {
   return {
     source: "emote_json",
     sourceName: "test.json",
-    suggestedMetadata: { name: "Test", description: "", hide_player: false },
+    suggestedMetadata: { name: "Test", description: "" },
+    suggestedPlayer: createDefaultPlayerBehavior(),
     nodes: {},
     animations,
     diagnostics: [],

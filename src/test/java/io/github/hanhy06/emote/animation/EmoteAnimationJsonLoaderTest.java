@@ -30,6 +30,9 @@ class EmoteAnimationJsonLoaderTest {
 
         assertEquals("emote:format_reference", loaded.animation().id().toString());
         assertEquals("Format Reference", loaded.animation().metadata().name());
+        assertTrue(loaded.animation().player().hidden());
+        assertEquals(0.1D, loaded.animation().player().stopConditions().movementDistance());
+        assertTrue(loaded.animation().player().stopConditions().jump());
         assertEquals(5, loaded.animation().nodes().size());
         assertEquals(80, loaded.animation().timeline().durationTicks());
         assertEquals(64, loaded.sha256().length());
@@ -67,7 +70,7 @@ class EmoteAnimationJsonLoaderTest {
         for (Path examplePath : examplePaths) {
             EmoteAnimation.Loaded loaded = this.loader.load(examplePath, MINECRAFT_VERSION);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
-            assertTrue(loaded.animation().metadata().hidePlayer(), examplePath.toString());
+            assertTrue(loaded.animation().player().hidden(), examplePath.toString());
         }
     }
 
@@ -85,6 +88,21 @@ class EmoteAnimationJsonLoaderTest {
         );
 
         assertEquals("$.nodes.player_head.default_matrix", exception.fieldPath());
+    }
+
+    @Test
+    void rejectsNegativeMovementStopDistanceAtExactFieldPath() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("player")
+            .getAsJsonObject("stop_conditions")
+            .addProperty("movement_distance", -0.1D);
+
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> parse(root)
+        );
+
+        assertEquals("$.player.stop_conditions.movement_distance", exception.fieldPath());
     }
 
     @Test

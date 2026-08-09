@@ -37,6 +37,7 @@ export const emoteJsonAdapter: ImportAdapter = {
       source: "emote_json",
       sourceName: input.name,
       suggestedMetadata: { ...animation.metadata },
+      suggestedPlayer: { ...animation.player, stop_conditions: { ...animation.player.stop_conditions } },
       suggestedMinecraftVersion: animation.minecraft_version,
       suggestedNamespace: namespace,
       nodes: importNodes(animation),

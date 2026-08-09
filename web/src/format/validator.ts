@@ -28,6 +28,10 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (!animation.minecraft_version.trim()) add(issues, "minecraft_version", "must not be empty");
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
+  if (!Number.isFinite(animation.player.stop_conditions.movement_distance)
+    || animation.player.stop_conditions.movement_distance < 0) {
+    add(issues, "player.stop_conditions.movement_distance", "must be a finite non-negative number");
+  }
   if (animation.transform_space.coordinate_space !== "root_local") add(issues, "transform_space.coordinate_space", "must be root_local");
   if (animation.transform_space.matrix_layout !== "row_major") add(issues, "transform_space.matrix_layout", "must be row_major");
   if (animation.transform_space.matrix_size !== 16) add(issues, "transform_space.matrix_size", "must be 16");

@@ -22,7 +22,8 @@ public final class RegisteredEmoteFixture {
     public static RegisteredEmote create(String id, String name) {
         EmoteAnimation animation = new EmoteAnimation(
             Objects.requireNonNull(Identifier.tryParse(id)),
-            new EmoteAnimation.Metadata(name, name + " description", true),
+            new EmoteAnimation.Metadata(name, name + " description"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)),
             new EmoteAnimation.Timeline(1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty())
         );

@@ -9,7 +9,7 @@ public record EmoteInfo(
     Identifier id,
     String name,
     String description,
-    boolean hidePlayer,
+    EmoteAnimation.PlayerBehavior player,
     int durationTicks,
     EmoteAnimation.LoopMode loopMode
 ) {
@@ -17,6 +17,7 @@ public record EmoteInfo(
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(description, "description");
+        Objects.requireNonNull(player, "player");
         Objects.requireNonNull(loopMode, "loopMode");
     }
 }

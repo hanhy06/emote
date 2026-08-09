@@ -51,15 +51,15 @@ public class EmoteLifecycle {
             this.playbackManager.tick();
             this.idleEmoteService.tick();
         });
-        PlaybackHooks.INTERRUPTION.register(this.playbackManager::stopEmote);
+        PlaybackHooks.INTERRUPTION.register(this.playbackManager::interruptEmote);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
-                this.playbackManager.stopEmote(player, PlaybackStopReason.DAMAGED);
+                this.playbackManager.interruptEmote(player, PlaybackStopReason.DAMAGED);
             }
         });
         AttackEntityCallback.EVENT.register((player, ignoredLevel, ignoredHand, ignoredEntity, ignoredHitResult) -> {
             if (player instanceof ServerPlayer serverPlayer) {
-                this.playbackManager.stopEmote(serverPlayer, PlaybackStopReason.ATTACKED);
+                this.playbackManager.interruptEmote(serverPlayer, PlaybackStopReason.ATTACKED);
             }
             return InteractionResult.PASS;
         });

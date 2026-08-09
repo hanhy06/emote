@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.mixin;
 
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
@@ -7,6 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayer.class)
 abstract class ServerPlayerMixin {
@@ -17,7 +19,13 @@ abstract class ServerPlayerMixin {
     private void emote$afterGameModeChange(GameType mode, CallbackInfoReturnable<Boolean> callbackInfo) {
         if (callbackInfo.getReturnValueZ()) {
             ServerPlayer player = (ServerPlayer) (Object) this;
-            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player);
+            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.GAME_MODE_CHANGED);
         }
+    }
+
+    @Inject(method = "jumpFromGround", at = @At("RETURN"))
+    private void emote$afterJumpFromGround(CallbackInfo callbackInfo) {
+        ServerPlayer player = (ServerPlayer) (Object) this;
+        PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.JUMPED);
     }
 }

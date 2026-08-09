@@ -73,7 +73,8 @@ class PlaybackManagerEventDispatchTest {
         );
         return new EmoteAnimation(
             Identifier.parse("test:event-dispatch"),
-            new EmoteAnimation.Metadata("Event Dispatch", "Event Dispatch", false),
+            new EmoteAnimation.Metadata("Event Dispatch", "Event Dispatch"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             Map.of(),
             new EmoteAnimation.Timeline(durationTicks, loopMode, loopDelayTicks, List.of(), events)
         );

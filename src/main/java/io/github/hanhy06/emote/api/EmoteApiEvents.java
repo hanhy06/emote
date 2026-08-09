@@ -80,7 +80,7 @@ public final class EmoteApiEvents implements PlaybackStateListener {
             animation.id(),
             emote.name(),
             emote.description(),
-            emote.hidePlayer(),
+            emote.playerBehavior(),
             animation.timeline().durationTicks(),
             animation.timeline().loop()
         );

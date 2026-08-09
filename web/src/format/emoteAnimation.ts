@@ -11,6 +11,7 @@ export interface EmoteAnimation {
   tick_rate: 20;
   id: string;
   metadata: EmoteMetadata;
+  player: EmotePlayerBehavior;
   transform_space: {
     coordinate_space: "root_local";
     matrix_layout: "row_major";
@@ -23,8 +24,35 @@ export interface EmoteAnimation {
 export interface EmoteMetadata {
   name: string;
   description: string;
-  hide_player: boolean;
   [key: string]: unknown;
+}
+
+export interface EmotePlayerBehavior {
+  hidden: boolean;
+  stop_conditions: {
+    movement_distance: number;
+    jump: boolean;
+    submerge: boolean;
+    ride: boolean;
+    damage: boolean;
+    attack: boolean;
+    game_mode_change: boolean;
+  };
+}
+
+export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
+  return {
+    hidden: true,
+    stop_conditions: {
+      movement_distance: 0.1,
+      jump: true,
+      submerge: true,
+      ride: true,
+      damage: true,
+      attack: true,
+      game_mode_change: true,
+    },
+  };
 }
 
 interface EmoteNodeBase {

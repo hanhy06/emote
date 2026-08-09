@@ -1,5 +1,5 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import type { Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
@@ -96,7 +96,8 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
     return {
       source: "geckolib_bbmodel",
       sourceName: input.name,
-      suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.`, hide_player: true },
+      suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedNamespace: namespace,
       nodes,
       animations,

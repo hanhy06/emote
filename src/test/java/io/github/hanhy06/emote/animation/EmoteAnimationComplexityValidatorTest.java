@@ -90,7 +90,8 @@ class EmoteAnimationComplexityValidatorTest {
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse("test:complexity"),
-            new EmoteAnimation.Metadata("Complexity", "Complexity", false),
+            new EmoteAnimation.Metadata("Complexity", "Complexity"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             nodes,
             new EmoteAnimation.Timeline(
                 durationTicks,

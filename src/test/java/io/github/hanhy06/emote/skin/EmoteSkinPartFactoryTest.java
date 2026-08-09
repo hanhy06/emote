@@ -49,7 +49,8 @@ class EmoteSkinPartFactoryTest {
     private EmoteAnimation animation(Map<String, EmoteAnimation.Node> nodes) {
         return new EmoteAnimation(
             Identifier.parse("test:skin"),
-            new EmoteAnimation.Metadata("Skin", "Skin", false),
+            new EmoteAnimation.Metadata("Skin", "Skin"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             nodes,
             new EmoteAnimation.Timeline(1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty())
         );

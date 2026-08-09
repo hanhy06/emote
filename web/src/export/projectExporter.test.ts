@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
-import type { Matrix16 } from "../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../import/types";
 import { exportAnimation, exportResourcePack, generatedResourceFiles } from "./projectExporter";
 
@@ -11,7 +11,8 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "test.json",
-      suggestedMetadata: { name: "Test", description: "Test emote.", hide_player: true },
+      suggestedMetadata: { name: "Test", description: "Test emote." },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       nodes: {
         body: {
           id: "body",
@@ -40,13 +41,14 @@ describe("exportAnimation", () => {
       playbackMode: "server_sync",
       name: project.suggestedMetadata.name,
       description: project.suggestedMetadata.description,
-      hide_player: project.suggestedMetadata.hide_player,
+      player: project.suggestedPlayer,
       additionalMetadata: {},
     }, { body: { part: "body", order: 9 } }, 0);
     const animation = JSON.parse(await result.blob.text());
 
     expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
-    expect(animation.metadata).toEqual({ name: "Test", description: "Test emote.", hide_player: true });
+    expect(animation.metadata).toEqual({ name: "Test", description: "Test emote." });
+    expect(animation.player).toEqual(project.suggestedPlayer);
     expect(animation.schema_version).toBe(1);
     expect(animation.timeline.loop).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
@@ -56,7 +58,8 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "licensed.json",
-      suggestedMetadata: { name: "Licensed", description: "", hide_player: false, license: "Apache-2.0" },
+      suggestedMetadata: { name: "Licensed", description: "", license: "Apache-2.0" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       nodes: {},
       animations: [{
         id: "licensed",
@@ -76,7 +79,7 @@ describe("exportAnimation", () => {
       playbackMode: "source",
       name: "Licensed",
       description: "",
-      hide_player: false,
+      player: project.suggestedPlayer,
       additionalMetadata: { license: "Apache-2.0", authors: ["Creator"] },
     }, {}, 0);
 
@@ -85,7 +88,6 @@ describe("exportAnimation", () => {
       authors: ["Creator"],
       name: "Licensed",
       description: "",
-      hide_player: false,
     });
   });
 
@@ -94,7 +96,8 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "animated_java_json",
       sourceName: "test.ajblueprint",
-      suggestedMetadata: { name: "Test Emote", description: "Test emote.", hide_player: false },
+      suggestedMetadata: { name: "Test Emote", description: "Test emote." },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
       artifactMinecraftVersion: "26.2",
       nodes: {},
@@ -116,7 +119,7 @@ describe("exportAnimation", () => {
       playbackMode: "source",
       name: project.suggestedMetadata.name,
       description: project.suggestedMetadata.description,
-      hide_player: project.suggestedMetadata.hide_player,
+      player: project.suggestedPlayer,
       additionalMetadata: {},
     }, {}, 0);
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
@@ -144,7 +147,8 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "animated_java_json",
       sourceName: "test.ajblueprint",
-      suggestedMetadata: { name: "Test", description: "", hide_player: false },
+      suggestedMetadata: { name: "Test", description: "" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       artifactMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
@@ -160,7 +164,8 @@ describe("exportAnimation", () => {
     const project: ImportedProject = {
       source: "animated_java_json",
       sourceName: "test.ajblueprint",
-      suggestedMetadata: { name: "Test", description: "", hide_player: false },
+      suggestedMetadata: { name: "Test", description: "" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       artifactMinecraftVersion: "26.2",
       nodes: {},
       animations: [],

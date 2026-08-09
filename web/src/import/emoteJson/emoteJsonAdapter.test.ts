@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../compiler/animationCompiler";
-import type { EmoteAnimation, Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "../../format/emoteAnimation";
 import { emoteJsonAdapter } from "./emoteJsonAdapter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -13,7 +13,8 @@ describe("emoteJsonAdapter", () => {
       minecraft_version: "26.2",
       tick_rate: 20,
       id: "demo:wave",
-      metadata: { name: "Wave", description: "Wave emote.", hide_player: true },
+      metadata: { name: "Wave", description: "Wave emote." },
+      player: createDefaultPlayerBehavior(),
       transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
       nodes: {
         arm: {
@@ -44,6 +45,7 @@ describe("emoteJsonAdapter", () => {
     });
 
     expect(project.nodes.arm.type === "item_display" && project.nodes.arm.skin).toEqual({ part: "right_arm", order: 1 });
+    expect(recompiled.player).toEqual(source.player);
     expect(recompiled.id).toBe(source.id);
     expect(recompiled.timeline.loop).toBe("server_sync");
     expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration_ticks).toBe(2);

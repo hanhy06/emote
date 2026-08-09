@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import type { ImportedProject } from "../import/types";
+import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import type { ExportOptions } from "./projectExporter";
 import { mergeResourcePackFolder, mergeResourcePackZip } from "./resourcePackMerger";
 
 const project = {
   source: "animated_java_json",
   sourceName: "emote.ajblueprint",
-  suggestedMetadata: { name: "Emote", description: "", hide_player: false },
+  suggestedMetadata: { name: "Emote", description: "" },
+  suggestedPlayer: createDefaultPlayerBehavior(),
   artifactMinecraftVersion: "26.2",
   nodes: {},
   animations: [],
@@ -23,7 +25,7 @@ const options: ExportOptions = {
   namespace: "emote",
   name: "Emote",
   description: "",
-  hide_player: false,
+  player: project.suggestedPlayer,
   playbackMode: "source",
   additionalMetadata: {},
 };

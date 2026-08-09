@@ -1,5 +1,5 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import type { Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -56,7 +56,8 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     return {
       source: "animated_java_json",
       sourceName: input.name,
-      suggestedMetadata: { name, description: `${name} emote.`, hide_player: true },
+      suggestedMetadata: { name, description: `${name} emote.` },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       nodes,
       animations,
       diagnostics: [],
@@ -89,7 +90,8 @@ function importAnimatedJavaProject(input: ImportInput, project: AjProject): Impo
   return {
     source: "animated_java_json",
     sourceName: input.name,
-    suggestedMetadata: { name: prettify(sourceStem), description: `${prettify(sourceStem)} emote.`, hide_player: true },
+    suggestedMetadata: { name: prettify(sourceStem), description: `${prettify(sourceStem)} emote.` },
+    suggestedPlayer: createDefaultPlayerBehavior(),
     nodes,
     animations,
     diagnostics: [],

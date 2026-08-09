@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { Matrix16 } from "../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../import/types";
 import { compileImportedAnimation, compileImportedProject } from "./animationCompiler";
 
@@ -48,7 +48,8 @@ function importedProject(): ImportedProject {
   return {
       source: "emote_json",
       sourceName: "test.json",
-      suggestedMetadata: { name: "Test", description: "Test emote.", hide_player: true },
+      suggestedMetadata: { name: "Test", description: "Test emote." },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       nodes: { anchor: { id: "anchor", type: "anchor", defaultMatrix: IDENTITY } },
       animations: [{
         id: "test",

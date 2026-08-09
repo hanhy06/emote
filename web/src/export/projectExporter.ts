@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
-import type { EmoteAnimation } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmotePlayerBehavior } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
 
@@ -12,7 +12,7 @@ export interface ExportOptions {
   playbackMode: "source" | EmoteAnimation["timeline"]["loop"];
   name: string;
   description: string;
-  hide_player: boolean;
+  player: EmotePlayerBehavior;
   additionalMetadata: Record<string, unknown>;
 }
 
@@ -119,8 +119,8 @@ function compileExportAnimation(
       ...options.additionalMetadata,
       name: options.name,
       description: options.description,
-      hide_player: options.hide_player,
     },
+    player: options.player,
   }, animationIndex);
 }
 

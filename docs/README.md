@@ -145,6 +145,25 @@ Invalid files are skipped independently. If multiple files declare the same `id`
 
 Animation JSON files are limited to 8 MiB and timelines to 10 minutes. Node, display, transform, visibility-change, and command counts are controlled by animation creators rather than rejected by the loader. Runtime load is managed with the server-wide `max_active_display_entities` setting when playback starts; this also applies to runtime API registrations.
 
+Player visibility and player-driven stop conditions are declared together in each animation's `player` block:
+
+```json
+"player": {
+  "hidden": true,
+  "stop_conditions": {
+    "movement_distance": 0.1,
+    "jump": true,
+    "submerge": true,
+    "ride": true,
+    "damage": true,
+    "attack": true,
+    "game_mode_change": true
+  }
+}
+```
+
+`movement_distance` is the horizontal distance in blocks from the playback start position. Set it to `0` to allow movement. Each boolean independently controls whether that player action stops playback. Manual stops and lifecycle cleanup such as disconnects, reloads, and server shutdown remain unconditional.
+
 ## Mod API
 
 Emote provides a server-side API under `io.github.hanhy06.emote.api`.

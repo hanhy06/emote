@@ -218,7 +218,8 @@ class TimelinePlayerTest {
     ) {
         return new EmoteAnimation(
             Identifier.parse("test:timeline"),
-            new EmoteAnimation.Metadata("Timeline", "Timeline", false),
+            new EmoteAnimation.Metadata("Timeline", "Timeline"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             Map.of("node", new EmoteAnimation.AnchorNode(matrix(0.0D))),
             new EmoteAnimation.Timeline(duration, loop, delay, keyframes, EmoteAnimation.Events.empty())
         );

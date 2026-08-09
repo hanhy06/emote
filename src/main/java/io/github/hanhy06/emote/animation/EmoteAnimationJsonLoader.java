@@ -95,10 +95,11 @@ public final class EmoteAnimationJsonLoader {
         String idText = reader.requireString(root, "id", "$");
         Identifier id = parseId(idText, reader);
         Metadata metadata = parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        PlayerBehavior player = parsePlayer(reader.requireObject(root, "player", "$"), reader);
         parseTransformSpace(reader.requireObject(root, "transform_space", "$"), reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
-        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, nodes, timeline));
+        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, player, nodes, timeline));
     }
 
     private Metadata parseMetadata(JsonObject object, EmoteAnimationJsonReader reader)
@@ -108,8 +109,29 @@ public final class EmoteAnimationJsonLoader {
             throw reader.error("$.metadata.name", "must not be blank");
         }
         String description = reader.requireString(object, "description", "$.metadata");
-        boolean hidePlayer = reader.requireBoolean(object, "hide_player", "$.metadata");
-        return new Metadata(name, description, hidePlayer);
+        return new Metadata(name, description);
+    }
+
+    private PlayerBehavior parsePlayer(JsonObject object, EmoteAnimationJsonReader reader)
+        throws EmoteAnimationLoadException {
+        boolean hidden = reader.requireBoolean(object, "hidden", "$.player");
+        JsonObject stopObject = reader.requireObject(object, "stop_conditions", "$.player");
+        double movementDistance = reader.requireFiniteDouble(
+            reader.requireElement(stopObject, "movement_distance", "$.player.stop_conditions"),
+            "$.player.stop_conditions.movement_distance"
+        );
+        if (movementDistance < 0.0D) {
+            throw reader.error("$.player.stop_conditions.movement_distance", "must not be negative");
+        }
+        return new PlayerBehavior(hidden, new StopConditions(
+            movementDistance,
+            reader.requireBoolean(stopObject, "jump", "$.player.stop_conditions"),
+            reader.requireBoolean(stopObject, "submerge", "$.player.stop_conditions"),
+            reader.requireBoolean(stopObject, "ride", "$.player.stop_conditions"),
+            reader.requireBoolean(stopObject, "damage", "$.player.stop_conditions"),
+            reader.requireBoolean(stopObject, "attack", "$.player.stop_conditions"),
+            reader.requireBoolean(stopObject, "game_mode_change", "$.player.stop_conditions")
+        ));
     }
 
     private void parseTransformSpace(JsonObject object, EmoteAnimationJsonReader reader)

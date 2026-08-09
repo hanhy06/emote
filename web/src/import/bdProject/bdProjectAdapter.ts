@@ -1,5 +1,5 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import type { Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor, stabilizeDisplayMatrix } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -96,8 +96,8 @@ export const bdProjectAdapter: ImportAdapter = {
       suggestedMetadata: {
         name: sourceStem,
         description: `${sourceStem} emote.`,
-        hide_player: true,
       },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       nodes,
       animations: [animation],
       diagnostics,

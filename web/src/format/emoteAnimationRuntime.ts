@@ -26,6 +26,7 @@ export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   requireNumber(root.tick_rate, "tick_rate");
   requireString(root.id, "id");
   requireMetadata(root.metadata);
+  requirePlayer(root.player);
   requireTransformSpace(root.transform_space);
   requireNodes(root.nodes);
   requireTimeline(root.timeline);
@@ -36,7 +37,19 @@ function requireMetadata(value: unknown): void {
   const metadata = requireRecord(value, "metadata");
   requireString(metadata.name, "metadata.name");
   requireString(metadata.description, "metadata.description");
-  requireBoolean(metadata.hide_player, "metadata.hide_player");
+}
+
+function requirePlayer(value: unknown): void {
+  const player = requireRecord(value, "player");
+  requireBoolean(player.hidden, "player.hidden");
+  const stopConditions = requireRecord(player.stop_conditions, "player.stop_conditions");
+  requireNumber(stopConditions.movement_distance, "player.stop_conditions.movement_distance");
+  requireBoolean(stopConditions.jump, "player.stop_conditions.jump");
+  requireBoolean(stopConditions.submerge, "player.stop_conditions.submerge");
+  requireBoolean(stopConditions.ride, "player.stop_conditions.ride");
+  requireBoolean(stopConditions.damage, "player.stop_conditions.damage");
+  requireBoolean(stopConditions.attack, "player.stop_conditions.attack");
+  requireBoolean(stopConditions.game_mode_change, "player.stop_conditions.game_mode_change");
 }
 
 function requireTransformSpace(value: unknown): void {

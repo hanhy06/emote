@@ -3,6 +3,7 @@ import type {
   EmoteKeyframe,
   EmoteMetadata,
   EmoteNode,
+  EmotePlayerBehavior,
   EmoteTimelineEvent,
 } from "../format/emoteAnimation";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
@@ -14,6 +15,7 @@ export interface CompileOptions {
   minecraftVersion: string;
   namespace?: string;
   metadata?: EmoteMetadata;
+  player?: EmotePlayerBehavior;
   loop?: EmoteAnimation["timeline"]["loop"];
 }
 
@@ -32,6 +34,7 @@ export function compileImportedAnimation(project: ImportedProject, options: Comp
 interface CompileContext {
   namespace: string;
   baseMetadata: EmoteMetadata;
+  player: EmotePlayerBehavior;
   multiple: boolean;
   minecraftVersion: string;
   loop?: EmoteAnimation["timeline"]["loop"];
@@ -42,6 +45,7 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
   if (importError) throw ConversionError.fromIssue(importError);
   const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.name ?? project.suggestedMetadata.name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
+  const player = options.player ?? project.suggestedPlayer;
   const multiple = project.animations.length > 1;
   const ids = new Set<string>();
   for (const animation of project.animations) {
@@ -49,7 +53,7 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }
-  return { namespace, baseMetadata, multiple, minecraftVersion: options.minecraftVersion, loop: options.loop };
+  return { namespace, baseMetadata, player, multiple, minecraftVersion: options.minecraftVersion, loop: options.loop };
 }
 
 function compileAnimation(
@@ -66,6 +70,7 @@ function compileAnimation(
       ...context.baseMetadata,
       name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
     },
+    player: context.player,
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: compileNodes(project.nodes, animation),
     timeline: compileTimeline(animation, context.loop),

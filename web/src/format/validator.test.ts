@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { EmoteAnimation, Matrix16 } from "./emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "./emoteAnimation";
 import { serializeEmoteAnimation } from "./serializer";
 import { validateEmoteAnimation } from "./validator";
 
@@ -11,7 +11,8 @@ function animation(): EmoteAnimation {
     minecraft_version: "26.2",
     tick_rate: 20,
     id: "emote:test",
-    metadata: { name: "Test", description: "Test emote.", hide_player: true },
+    metadata: { name: "Test", description: "Test emote." },
+    player: createDefaultPlayerBehavior(),
     transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
     nodes: {
       display: { type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },
@@ -101,6 +102,14 @@ describe("validateEmoteAnimation", () => {
     expect(paths).toContain("timeline.loop_delay_ticks");
     expect(paths).toContain("timeline.keyframes[0].interpolation_duration_ticks");
     expect(paths).toContain("timeline.events.timeline[1].tick");
+  });
+
+  it("rejects an invalid movement stop distance", () => {
+    const value = animation();
+    value.player.stop_conditions.movement_distance = Number.NaN;
+
+    expect(validateEmoteAnimation(value).map((issue) => issue.path))
+      .toContain("player.stop_conditions.movement_distance");
   });
 
   it("allows timeline events with the same tick in source order", () => {

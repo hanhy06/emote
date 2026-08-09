@@ -18,7 +18,7 @@ public class PlaybackStateService implements PlaybackStateListener {
 
     @Override
     public void onEmoteStarted(ServerPlayer player, ActiveEmote activeEmote) {
-        sync(player, new EmotePlaybackStatePayload(true, activeEmote.playerVisibilityManaged()));
+        sync(player, new EmotePlaybackStatePayload(true, activeEmote.playerBehavior().hidden()));
     }
 
     @Override

@@ -110,9 +110,9 @@ export function App() {
           playbackMode: "source",
           name: imported.suggestedMetadata.name,
           description: imported.suggestedMetadata.description,
-          hide_player: imported.suggestedMetadata.hide_player,
+          player: imported.suggestedPlayer,
           additionalMetadata: Object.fromEntries(Object.entries(imported.suggestedMetadata)
-            .filter(([key]) => key !== "name" && key !== "description" && key !== "hide_player")),
+            .filter(([key]) => key !== "name" && key !== "description")),
         },
         conversionError: "",
       });

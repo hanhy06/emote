@@ -38,7 +38,8 @@ class EventPlayerTest {
         );
         return new EmoteAnimation(
             Identifier.parse("test:events"),
-            new EmoteAnimation.Metadata("Events", "Events", false),
+            new EmoteAnimation.Metadata("Events", "Events"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             Map.of(),
             new EmoteAnimation.Timeline(2, EmoteAnimation.LoopMode.LOOP, 0, List.of(), events)
         );

@@ -1,4 +1,4 @@
-import type { EmoteEvent, EmoteMetadata, Matrix16 } from "../format/emoteAnimation";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16 } from "../format/emoteAnimation";
 import type { ConversionIssue } from "./errors";
 
 export type ImportSource = "bd_project" | "bd_datapack" | "animated_java_json" | "geckolib_bbmodel" | "emote_json";
@@ -7,6 +7,7 @@ export interface ImportedProject {
   source: ImportSource;
   sourceName: string;
   suggestedMetadata: EmoteMetadata;
+  suggestedPlayer: EmotePlayerBehavior;
   suggestedMinecraftVersion?: string;
   suggestedNamespace?: string;
   nodes: Record<string, ImportedNode>;

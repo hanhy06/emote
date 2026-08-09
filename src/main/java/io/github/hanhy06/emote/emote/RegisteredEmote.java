@@ -46,8 +46,8 @@ public record RegisteredEmote(
         return animation().metadata().description();
     }
 
-    public boolean hidePlayer() {
-        return animation().metadata().hidePlayer();
+    public EmoteAnimation.PlayerBehavior playerBehavior() {
+        return animation().player();
     }
 
     public Path sourcePath() {

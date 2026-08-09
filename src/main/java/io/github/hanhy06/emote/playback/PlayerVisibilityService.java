@@ -40,7 +40,7 @@ final class PlayerVisibilityService {
     }
 
     void start(ServerPlayer player, ActiveEmote activeEmote) {
-        if (!activeEmote.playerVisibilityManaged()) {
+        if (!activeEmote.playerBehavior().hidden()) {
             return;
         }
         player.setInvisible(true);
@@ -49,7 +49,7 @@ final class PlayerVisibilityService {
     }
 
     void tick(ServerPlayer player, ActiveEmote activeEmote) {
-        if (!activeEmote.playerVisibilityManaged() || player.isInvisible()) {
+        if (!activeEmote.playerBehavior().hidden() || player.isInvisible()) {
             return;
         }
         player.setInvisible(true);
@@ -57,7 +57,7 @@ final class PlayerVisibilityService {
     }
 
     void stop(ServerPlayer player, ActiveEmote activeEmote) {
-        if (!activeEmote.playerVisibilityManaged()) {
+        if (!activeEmote.playerBehavior().hidden()) {
             return;
         }
         player.setInvisible(activeEmote.wasInvisible());
@@ -69,7 +69,7 @@ final class PlayerVisibilityService {
             return;
         }
         ActiveEmote activeEmote = this.playbackManager.findActiveEmote(emotePlayer.getUUID());
-        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
+        if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -79,7 +79,7 @@ final class PlayerVisibilityService {
             return;
         }
         ActiveEmote activeEmote = this.playbackManager.findActiveEmote(player.getUUID());
-        if (activeEmote != null && activeEmote.playerVisibilityManaged()) {
+        if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }

@@ -1,5 +1,5 @@
 import { unzipSync } from "fflate";
-import type { Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { asMatrix16 } from "../../format/matrix";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import {
@@ -65,7 +65,8 @@ export const bdDatapackAdapter: ImportAdapter = {
     return {
       source: "bd_datapack",
       sourceName: input.name,
-      suggestedMetadata: { name, description: `${name} emote.`, hide_player: true },
+      suggestedMetadata: { name, description: `${name} emote.` },
+      suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedNamespace: archive.namespace,
       nodes: displays.nodes,
       animations,

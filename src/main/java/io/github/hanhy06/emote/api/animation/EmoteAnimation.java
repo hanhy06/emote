@@ -16,20 +16,52 @@ import java.util.Objects;
 public record EmoteAnimation(
     Identifier id,
     Metadata metadata,
+    PlayerBehavior player,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
+        Objects.requireNonNull(player, "player");
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
     }
 
-    public record Metadata(String name, String description, boolean hidePlayer) {
+    public record Metadata(String name, String description) {
         public Metadata {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(description, "description");
+        }
+    }
+
+    public record PlayerBehavior(boolean hidden, StopConditions stopConditions) {
+        public PlayerBehavior {
+            Objects.requireNonNull(stopConditions, "stopConditions");
+        }
+
+        public static PlayerBehavior createDefault() {
+            return new PlayerBehavior(true, StopConditions.createDefault());
+        }
+    }
+
+    public record StopConditions(
+        double movementDistance,
+        boolean jump,
+        boolean submerge,
+        boolean ride,
+        boolean damage,
+        boolean attack,
+        boolean gameModeChange
+    ) {
+        public StopConditions {
+            if (!Double.isFinite(movementDistance) || movementDistance < 0.0D) {
+                throw new IllegalArgumentException("movement distance must be a finite non-negative number");
+            }
+        }
+
+        public static StopConditions createDefault() {
+            return new StopConditions(0.1D, true, true, true, true, true, true);
         }
     }
 

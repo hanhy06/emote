@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.mixin;
 
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.playback.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.minecraft.server.level.ServerPlayer;
@@ -30,7 +31,7 @@ abstract class EntityMixin {
     ) {
         Entity entity = (Entity) (Object) this;
         if (callbackInfo.getReturnValueZ() && entity instanceof ServerPlayer player) {
-            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player);
+            PlaybackHooks.INTERRUPTION.invoker().interruptPlayback(player, PlaybackStopReason.MOUNTED);
         }
     }
 }
