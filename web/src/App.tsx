@@ -66,6 +66,12 @@ export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
+    setSession((current) => current ? update(current) : current);
+  }, []);
+  const setConversionError = useCallback((conversionError: string) => {
+    updateSession((current) => ({ ...current, conversionError }));
+  }, [updateSession]);
 
   const project = session?.project ?? null;
   const animationIndex = session?.animationIndex ?? 0;
@@ -135,74 +141,74 @@ export function App() {
 
   function handleAnimationDownload(index: number) {
     if (!session) return;
-    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    setConversionError("");
     try {
       downloadExport(exportAnimation(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Conversion failed.");
-      setSession((current) => current ? { ...current, conversionError: message } : current);
+      setConversionError(message);
     }
   }
 
   function handleResourcePackDownload(index: number) {
     if (!session) return;
-    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    setConversionError("");
     try {
       downloadExport(exportResourcePack(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource export failed.");
-      setSession((current) => current ? { ...current, conversionError: message } : current);
+      setConversionError(message);
     }
   }
 
   async function handleResourcePackZipMerge(file: File) {
     if (!session) return;
-    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    setConversionError("");
     try {
       downloadExport(await mergeResourcePackZip(session.project, session.metadata, file));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource pack merge failed.");
-      setSession((current) => current ? { ...current, conversionError: message } : current);
+      setConversionError(message);
     }
   }
 
   async function handleResourcePackFolderMerge(files: File[]) {
     if (!session) return;
-    setSession((current) => current ? { ...current, conversionError: "" } : current);
+    setConversionError("");
     try {
       downloadExport(await mergeResourcePackFolder(session.project, session.metadata, files));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource pack merge failed.");
-      setSession((current) => current ? { ...current, conversionError: message } : current);
+      setConversionError(message);
     }
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
-    setSession((current) => current ? { ...current, selectedParts: selectPart(current.selectedParts, nodeId, additive) } : current);
-  }, []);
+    updateSession((current) => ({ ...current, selectedParts: selectPart(current.selectedParts, nodeId, additive) }));
+  }, [updateSession]);
 
   const handlePartsSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
-    setSession((current) => current ? { ...current, selectedParts: selectParts(current.selectedParts, nodeIds, additive) } : current);
-  }, []);
+    updateSession((current) => ({ ...current, selectedParts: selectParts(current.selectedParts, nodeIds, additive) }));
+  }, [updateSession]);
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
-    setSession((current) => current ? {
+    updateSession((current) => ({
       ...current,
       assignments: { ...current.assignments, ...Object.fromEntries([...selectedParts].map((nodeId) => [nodeId, part])) },
       orders: {
         ...current.orders,
         ...Object.fromEntries([...selectedParts].map((nodeId) => [nodeId, part ? current.orders[nodeId] ?? 0 : null])),
       },
-    } : current);
+    }));
   }
 
   function assignOrder(order: number) {
     const nodeIds = [...selectedParts].filter((nodeId) => assignments[nodeId] != null);
-    if (nodeIds.length) setSession((current) => current ? {
+    if (nodeIds.length) updateSession((current) => ({
       ...current,
       orders: { ...current.orders, ...Object.fromEntries(nodeIds.map((nodeId) => [nodeId, order])) },
-    } : current);
+    }));
   }
 
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
@@ -296,14 +302,14 @@ export function App() {
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
-                      setSession((current) => current ? { ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() } : current);
+                      updateSession((current) => ({ ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() }));
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
                   </label>
                 )}
                 {project.animations.length > 1 && (
                   <label className="animation-select"><span>Animation</span><select value={animationIndex} onChange={(event) => {
-                    setSession((current) => current ? { ...current, animationIndex: Number(event.target.value), previewFrameIndex: 0, selectedParts: new Set() } : current);
+                    updateSession((current) => ({ ...current, animationIndex: Number(event.target.value), previewFrameIndex: 0, selectedParts: new Set() }));
                   }}>
                     {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
                   </select></label>
@@ -344,7 +350,7 @@ export function App() {
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
             hasResources={project.artifacts.size > 0}
             error={session.conversionError}
-            onMetadataChange={(metadata) => setSession((current) => current ? { ...current, metadata } : current)}
+            onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadResourcePack={handleResourcePackDownload}
             onMergeResourcePackZip={handleResourcePackZipMerge}
