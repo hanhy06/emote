@@ -35,8 +35,6 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 | `/emote stop-all`          | Stops every active emote.                                 |
 | `/emote stress-test <count>` | Runs an emote stress test and reports server performance. |
 
-Reloading configuration or the emote list stops every active emote. This includes reloads triggered by `/emote enable` and `/emote disable`.
-
 ## Server Configuration
 
 The following files and directories are created in `config/emote` when the server starts for the first time:
