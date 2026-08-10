@@ -31,9 +31,11 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 | `/emote list`              | Lists loaded emotes and their source information.         |
 | `/emote reload`            | Reloads configuration and animation JSON files.           |
 | `/emote enable <id>`       | Enables an emote and reloads the emote list.              |
-| `/emote disable <id>`      | Disables an emote and stops its active instances.         |
+| `/emote disable <id>`      | Disables an emote and reloads the emote list.             |
 | `/emote stop-all`          | Stops every active emote.                                 |
 | `/emote stress-test <count>` | Runs an emote stress test and reports server performance. |
+
+Reloading configuration or the emote list stops every active emote. This includes reloads triggered by `/emote enable` and `/emote disable`.
 
 ## Server Configuration
 
