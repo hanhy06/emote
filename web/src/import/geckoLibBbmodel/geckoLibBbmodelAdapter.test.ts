@@ -98,6 +98,25 @@ describe("geckoLibBbmodelAdapter", () => {
     expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/right_arm_right_arm_layer.json");
   });
 
+  it("splits tall body-part cubes into ordered upper and lower player heads", async () => {
+    const value = project();
+    value.groups[0].name = "Right Arm";
+    value.outliner[0].name = "Right Arm";
+    value.elements[0].name = "Right Arm";
+    value.elements[0].from = [4, 12, -2];
+    value.elements[0].to = [8, 24, 2];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(Object.keys(imported.nodes)).toEqual(["right_arm", "right_arm_right_arm_lower", "child"]);
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.skin).toEqual({ part: "right_arm", order: 0 });
+    expect(imported.nodes.right_arm_right_arm_lower.type === "item_display" && imported.nodes.right_arm_right_arm_lower.skin)
+      .toEqual({ part: "right_arm", order: 1 });
+    expect(imported.nodes.right_arm.defaultMatrix[5]).toBeCloseTo(0.5);
+    expect(imported.nodes.right_arm_right_arm_lower.defaultMatrix[5]).toBeCloseTo(1);
+    expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(2);
+  });
+
   it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {
     const value = project();
     const rootAnimator = value.animations[0].animators.root;

@@ -84,7 +84,10 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
         }
       }
     }
-    const playableCubesByBone = new Map(bones.map((bone) => [bone.uuid, removeDuplicateSkinLayers(bone.cubes)]));
+    const playableCubesByBone = new Map(bones.map((bone) => [
+      bone.uuid,
+      splitTallSkinCubes(bone, removeDuplicateSkinLayers(bone.cubes)),
+    ]));
     const skinAssignments = inferSkinAssignments(bones, playableCubesByBone);
     const nodes: Record<string, ImportedNode> = {};
     const nodeIds = new Set(bones.map((bone) => bone.id));
@@ -278,6 +281,30 @@ function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
     const nameMarksLayer = normalizeBoneName(cube.name)?.includes("layer") ?? false;
     return nameMarksLayer || (cube.inflate ?? 0) > (other.inflate ?? 0);
   }));
+}
+
+function splitTallSkinCubes(bone: BoneEntry, cubes: BbCube[]): BbCube[] {
+  if (inferSkinPart(bone) === "head") return cubes;
+  return cubes.flatMap((cube) => {
+    const height = cube.to[1] - cube.from[1];
+    if (height <= 8 + 1e-7) return [cube];
+    const upperHeight = height / 3;
+    const splitY = cube.to[1] - upperHeight;
+    return [
+      {
+        ...cube,
+        uuid: `${cube.uuid}_skin_upper`,
+        name: `${cube.name ?? "Cube"} Upper`,
+        from: [cube.from[0], splitY, cube.from[2]],
+      },
+      {
+        ...cube,
+        uuid: `${cube.uuid}_skin_lower`,
+        name: `${cube.name ?? "Cube"} Lower`,
+        to: [cube.to[0], splitY, cube.to[2]],
+      },
+    ];
+  });
 }
 
 function sameCubeBounds(first: BbCube, second: BbCube): boolean {
