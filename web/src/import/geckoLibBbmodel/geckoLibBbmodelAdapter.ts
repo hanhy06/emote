@@ -1,6 +1,6 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
+import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { TICKS_PER_SECOND } from "../../format/time";
@@ -24,14 +24,9 @@ import {
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
-const PLAYER_HEAD_SNBT = serializeSnbtCompound([
-  ["id", serializeSnbtString("minecraft:player_head")],
-  ["count", "1"],
-]);
 
 interface BoneNodeEntry {
   id: string;
-  conversion?: Matrix16;
 }
 
 interface BoneEntry {
@@ -104,16 +99,24 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
         const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
         if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
         const skin = skinAssignments.get(cube.uuid);
-        if (!skin) throw new Error(`GeckoLib cube ${cube.name ?? cube.uuid} is missing its inferred skin part.`);
-        bone.nodes.push({ id: nodeId, conversion: conversionMatrix });
+        bone.nodes.push({ id: nodeId });
+        const modelPath = `${projectPath}/${nodeId}`;
+        writeCubeResources(project, bone, cube, namespace, modelPath, resources);
         nodes[nodeId] = {
           id: nodeId,
           type: "item_display",
-          defaultMatrix: multiplyMatrix16(defaultMatrix, conversionMatrix, `GeckoLib player head ${nodeId}`),
+          defaultMatrix,
           visible: true,
           itemDisplay: "none",
-          itemStackSnbt: PLAYER_HEAD_SNBT,
-          skin,
+          itemStackSnbt: serializeSnbtCompound([
+            ["id", serializeSnbtString("minecraft:paper")],
+            ["count", "1"],
+            ["components", serializeSnbtCompound([
+              ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
+            ])],
+          ]),
+          playerHeadConversion: { matrix: conversionMatrix },
+          ...(skin ? { suggestedSkin: skin } : {}),
         };
       }
     }
@@ -219,17 +222,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    for (const node of bone.nodes) {
-      tracks[node.id] = {
-        transforms: node.conversion
-          ? transforms.map((transform) => ({
-            ...transform,
-            matrix: multiplyMatrix16(transform.matrix, node.conversion!, `GeckoLib player head track ${animation.name}/${node.id}/${transform.tick}`),
-          }))
-          : transforms,
-        visibility: [],
-      };
-    }
+    for (const node of bone.nodes) tracks[node.id] = { transforms, visibility: [] };
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
@@ -284,10 +277,10 @@ function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
 }
 
 function splitTallSkinCubes(bone: BoneEntry, cubes: BbCube[]): BbCube[] {
-  if (inferSkinPart(bone) === "head") return cubes;
+  const part = inferSkinPart(bone);
   return cubes.flatMap((cube) => {
+    if (!part || part === "head" || !isStandardPlayerSkinCube(cube, part)) return [cube];
     const height = cube.to[1] - cube.from[1];
-    if (height <= 8 + 1e-7) return [cube];
     const upperHeight = height / 3;
     const splitY = cube.to[1] - upperHeight;
     return [
@@ -319,8 +312,11 @@ function inferSkinAssignments(
   const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number }[] = [];
   let sourceOrder = 0;
   for (const bone of bones) {
+    const part = inferSkinPart(bone);
     for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
-      candidates.push({ cube, part: inferSkinPart(bone), centerY: (cube.from[1] + cube.to[1]) / 2, sourceOrder: sourceOrder++ });
+      const isSplitSkinCube = cube.uuid.endsWith("_skin_upper") || cube.uuid.endsWith("_skin_lower");
+      if (!part || (!isSplitSkinCube && !isStandardPlayerSkinCube(cube, part))) continue;
+      candidates.push({ cube, part, centerY: (cube.from[1] + cube.to[1]) / 2, sourceOrder: sourceOrder++ });
     }
   }
 
@@ -334,7 +330,15 @@ function inferSkinAssignments(
   return result;
 }
 
-function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] {
+function isStandardPlayerSkinCube(cube: BbCube, part: ImportedSkinPart["part"]): boolean {
+  const size = cube.to.map((value, axis) => Math.abs(value - cube.from[axis]));
+  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
+  if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
+  if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);
+  return (closeTo(size[0], 3) || closeTo(size[0], 4)) && closeTo(size[1], 12) && closeTo(size[2], 4);
+}
+
+function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
   for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
     const name = normalizeBoneName(current.group.name) ?? "";
     if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
@@ -344,7 +348,7 @@ function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] {
     if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
     if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
   }
-  return "body";
+  return undefined;
 }
 
 function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined): void {

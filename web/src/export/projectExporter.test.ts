@@ -109,6 +109,22 @@ describe("exportAnimation", () => {
     expect(animation.nodes.cube.default_matrix).toEqual(conversion);
     expect(animation.nodes.cube.skin).toEqual({ part: "head", order: 0 });
     expect(animation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(conversion);
+
+    const unassignedResult = exportAnimation(project, {
+      minecraftVersion: "26.2",
+      namespace: "test",
+      playbackMode: "source",
+      name: "Test",
+      description: "Test emote.",
+      player: project.suggestedPlayer,
+      additionalMetadata: {},
+    }, { cube: null }, 0);
+    const unassignedAnimation = JSON.parse(await unassignedResult.blob.text());
+
+    expect(unassignedAnimation.nodes.cube.item_stack_snbt).toContain("minecraft:paper");
+    expect(unassignedAnimation.nodes.cube.skin).toBeUndefined();
+    expect(unassignedAnimation.nodes.cube.default_matrix).toEqual(IDENTITY);
+    expect(unassignedAnimation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(IDENTITY);
   });
 
   it("preserves unrecognized metadata in the exported animation", async () => {

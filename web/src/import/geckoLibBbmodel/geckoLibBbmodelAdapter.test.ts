@@ -26,13 +26,19 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.root.type).toBe("item_display");
     expect(imported.nodes.child.type).toBe("anchor");
     expect(imported.nodes.root.defaultMatrix).toEqual([
+      1, 0, 0, 0,
+      0, 1, 0, 0,
+      0, 0, 1, 0,
+      0, 0, 0, 1,
+    ]);
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.playerHeadConversion?.matrix).toEqual([
       0.5, 0, 0, 0.125,
       0, 0.5, 0, 0.25,
       0, 0, 0.5, 0.125,
       0, 0, 0, 1,
     ]);
-    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStackSnbt).toContain("minecraft:player_head");
-    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.skin).toEqual({ part: "body", order: 0 });
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStackSnbt).toContain("minecraft:item_model");
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.suggestedSkin).toBeUndefined();
     expect([...imported.resources.keys()]).toEqual([
       "assets/demo/textures/item/test_model/texture.png",
       "assets/demo/models/item/test_model/root.json",
@@ -50,7 +56,7 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(animation.loop).toBe("loop");
     expect(animation.loopDelayTicks).toBe(1);
     expect(animation.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
-    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(1.125);
+    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(1);
     expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(1);
     expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(1);
 
@@ -73,10 +79,9 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(Object.keys(imported.nodes)).toEqual(["root", "root_second_cube", "child"]);
     expect(imported.nodes.root_second_cube.type).toBe("item_display");
-    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.skin).toEqual({ part: "body", order: 0 });
-    expect(imported.nodes.root_second_cube.type === "item_display" && imported.nodes.root_second_cube.skin).toEqual({ part: "body", order: 1 });
-    expect(imported.animations[0].tracks.root_second_cube.transforms).toHaveLength(3);
-    expect(imported.animations[0].tracks.root_second_cube.transforms[2].matrix[3]).toBeCloseTo(1.375);
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.suggestedSkin).toBeUndefined();
+    expect(imported.nodes.root_second_cube.type === "item_display" && imported.nodes.root_second_cube.suggestedSkin).toBeUndefined();
+    expect(imported.animations[0].tracks.root_second_cube.transforms).toEqual(imported.animations[0].tracks.root.transforms);
     expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/root_second_cube.json");
   });
 
@@ -94,7 +99,7 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(Object.keys(imported.nodes)).toEqual(["right_arm", "child"]);
-    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.skin).toEqual({ part: "right_arm", order: 0 });
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.suggestedSkin).toBeUndefined();
     expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/right_arm_right_arm_layer.json");
   });
 
@@ -109,12 +114,14 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(Object.keys(imported.nodes)).toEqual(["right_arm", "right_arm_right_arm_lower", "child"]);
-    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.skin).toEqual({ part: "right_arm", order: 0 });
-    expect(imported.nodes.right_arm_right_arm_lower.type === "item_display" && imported.nodes.right_arm_right_arm_lower.skin)
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.suggestedSkin).toEqual({ part: "right_arm", order: 0 });
+    expect(imported.nodes.right_arm_right_arm_lower.type === "item_display" && imported.nodes.right_arm_right_arm_lower.suggestedSkin)
       .toEqual({ part: "right_arm", order: 1 });
-    expect(imported.nodes.right_arm.defaultMatrix[5]).toBeCloseTo(0.5);
-    expect(imported.nodes.right_arm_right_arm_lower.defaultMatrix[5]).toBeCloseTo(1);
-    expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(2);
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.playerHeadConversion?.matrix[5]).toBeCloseTo(0.5);
+    expect(imported.nodes.right_arm_right_arm_lower.type === "item_display"
+      && imported.nodes.right_arm_right_arm_lower.playerHeadConversion?.matrix[5]).toBeCloseTo(1);
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStackSnbt).toContain("minecraft:item_model");
+    expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(4);
   });
 
   it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {
@@ -126,7 +133,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(1.125);
+    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(1);
   });
 
   it("rejects interpolation that would otherwise be silently lost", async () => {

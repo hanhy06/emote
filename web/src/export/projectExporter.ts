@@ -104,7 +104,7 @@ function applySkinAssignments(
   const nodes = Object.fromEntries(Object.entries(project.nodes).map(([id, node]) => {
     if (node.type !== "item_display" || !Object.hasOwn(skinAssignments, id)) return [id, node];
     const skin = skinAssignments[id];
-    const { skin: _oldSkin, ...withoutSkin } = node;
+    const { skin: _oldSkin, suggestedSkin: _suggestedSkin, ...withoutSkin } = node;
     if (!skin) return [id, withoutSkin];
     if (!node.playerHeadConversion) return [id, { ...withoutSkin, skin }];
 

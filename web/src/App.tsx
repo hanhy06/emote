@@ -109,8 +109,8 @@ export function App() {
         animationIndex: 0,
         previewFrameIndex: 0,
         selectedParts: new Set(),
-        assignments: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, candidate.node.skin?.part ?? null])),
-        orders: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, candidate.node.skin?.order ?? null])),
+        assignments: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, (candidate.node.suggestedSkin ?? candidate.node.skin)?.part ?? null])),
+        orders: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, (candidate.node.suggestedSkin ?? candidate.node.skin)?.order ?? null])),
         metadata: {
           minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
           namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.name,
