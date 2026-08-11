@@ -25,6 +25,7 @@ public class WheelShortcutSettings {
     private final Path filePath;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private final Map<String, List<String>> shortcutsByServer = new LinkedHashMap<>();
+    private final Map<String, List<String>> knownIdsByServer = new LinkedHashMap<>();
 
     private String serverKey = "";
     private Map<String, PlayableEmote> availableById = Map.of();
@@ -44,9 +45,39 @@ public class WheelShortcutSettings {
         this.availableById = Collections.unmodifiableMap(nextAvailableById);
 
         List<String> storedIds = this.shortcutsByServer.get(serverKey);
+        List<String> knownIds = this.knownIdsByServer.get(serverKey);
+        boolean settingsChanged = false;
         if (storedIds == null) {
             storedIds = List.copyOf(nextAvailableById.keySet());
+            knownIds = storedIds;
             this.shortcutsByServer.put(serverKey, storedIds);
+            this.knownIdsByServer.put(serverKey, knownIds);
+            settingsChanged = true;
+        } else if (knownIds == null) {
+            LinkedHashSet<String> migratedKnownIds = new LinkedHashSet<>(storedIds);
+            migratedKnownIds.addAll(nextAvailableById.keySet());
+            knownIds = List.copyOf(migratedKnownIds);
+            this.knownIdsByServer.put(serverKey, knownIds);
+            settingsChanged = true;
+        } else {
+            List<String> nextStoredIds = new ArrayList<>(storedIds);
+            LinkedHashSet<String> nextKnownIds = new LinkedHashSet<>(knownIds);
+            settingsChanged = nextKnownIds.addAll(storedIds);
+            for (String id : nextAvailableById.keySet()) {
+                if (nextKnownIds.add(id)) {
+                    nextStoredIds.add(id);
+                    settingsChanged = true;
+                }
+            }
+            if (settingsChanged) {
+                storedIds = List.copyOf(nextStoredIds);
+                knownIds = List.copyOf(nextKnownIds);
+                this.shortcutsByServer.put(serverKey, storedIds);
+                this.knownIdsByServer.put(serverKey, knownIds);
+            }
+        }
+
+        if (settingsChanged) {
             save();
         }
         this.selectedIds = storedIds;
@@ -167,6 +198,16 @@ public class WheelShortcutSettings {
                     this.shortcutsByServer.put(entry.getKey(), ids);
                 }
             }
+
+            JsonElement knownServersElement = root.get("known_servers");
+            if (knownServersElement != null && knownServersElement.isJsonObject()) {
+                for (Map.Entry<String, JsonElement> entry : knownServersElement.getAsJsonObject().entrySet()) {
+                    List<String> ids = readIds(entry.getValue());
+                    if (ids != null) {
+                        this.knownIdsByServer.put(entry.getKey(), ids);
+                    }
+                }
+            }
         } catch (IOException | RuntimeException exception) {
             Emote.LOGGER.warn("Failed to read wheel shortcut settings: {}", exception.getMessage());
         }
@@ -182,6 +223,13 @@ public class WheelShortcutSettings {
             servers.add(entry.getKey(), ids);
         }
         root.add("servers", servers);
+        JsonObject knownServers = new JsonObject();
+        for (Map.Entry<String, List<String>> entry : this.knownIdsByServer.entrySet()) {
+            JsonArray ids = new JsonArray();
+            entry.getValue().forEach(ids::add);
+            knownServers.add(entry.getKey(), ids);
+        }
+        root.add("known_servers", knownServers);
 
         try {
             JsonFileStore.writeObjectAtomically(this.filePath, root, this.gson);
