@@ -1,13 +1,13 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../errors";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../types";
 import {
   requireGeckoLibBbmodel,
   type BbAnimation,
@@ -24,6 +24,15 @@ import {
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
+const PLAYER_HEAD_SNBT = serializeSnbtCompound([
+  ["id", serializeSnbtString("minecraft:player_head")],
+  ["count", "1"],
+]);
+
+interface BoneNodeEntry {
+  id: string;
+  conversion?: Matrix16;
+}
 
 interface BoneEntry {
   id: string;
@@ -31,7 +40,7 @@ interface BoneEntry {
   group: BbGroup;
   parent?: BoneEntry;
   cubes: BbCube[];
-  nodeIds: string[];
+  nodes: BoneNodeEntry[];
 }
 
 export const geckoLibBbmodelAdapter: ImportAdapter = {
@@ -67,36 +76,41 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
       const texture = requireEmbeddedTexture(project.textures);
       const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
       resources.set(texturePath, decodeTexture(texture));
+      const resourceNodeIds = new Set(bones.map((bone) => bone.id));
+      for (const bone of bones) {
+        for (const [cubeIndex, cube] of bone.cubes.entries()) {
+          const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
+          writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources);
+        }
+      }
     }
+    const playableCubesByBone = new Map(bones.map((bone) => [bone.uuid, removeDuplicateSkinLayers(bone.cubes)]));
+    const skinAssignments = inferSkinAssignments(bones, playableCubesByBone);
     const nodes: Record<string, ImportedNode> = {};
     const nodeIds = new Set(bones.map((bone) => bone.id));
     for (const bone of bones) {
       const defaultMatrix = boneWorldMatrix(bone, new Map());
-      if (bone.cubes.length === 0) {
+      const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
+      if (playableCubes.length === 0) {
         nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix };
-        bone.nodeIds.push(bone.id);
+        bone.nodes.push({ id: bone.id });
         continue;
       }
-      for (const [cubeIndex, cube] of bone.cubes.entries()) {
+      for (const [cubeIndex, cube] of playableCubes.entries()) {
         const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
-        bone.nodeIds.push(nodeId);
-        const modelPath = `${projectPath}/${nodeId}`;
-        writeCubeResources(project, bone, cube, namespace, modelPath, resources);
         const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
+        if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
+        const skin = skinAssignments.get(cube.uuid);
+        if (!skin) throw new Error(`GeckoLib cube ${cube.name ?? cube.uuid} is missing its inferred skin part.`);
+        bone.nodes.push({ id: nodeId, conversion: conversionMatrix });
         nodes[nodeId] = {
           id: nodeId,
           type: "item_display",
-          defaultMatrix,
+          defaultMatrix: multiplyMatrix16(defaultMatrix, conversionMatrix, `GeckoLib player head ${nodeId}`),
           visible: true,
           itemDisplay: "none",
-          itemStackSnbt: serializeSnbtCompound([
-            ["id", serializeSnbtString("minecraft:paper")],
-            ["count", "1"],
-            ["components", serializeSnbtCompound([
-              ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
-            ])],
-          ]),
-          ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
+          itemStackSnbt: PLAYER_HEAD_SNBT,
+          skin,
         };
       }
     }
@@ -137,7 +151,7 @@ function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
     const base = id;
     for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
     ids.add(id);
-    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [], nodeIds: [] };
+    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [], nodes: [] };
     entries.push(bone);
     entry.children.forEach((child) => visit(child, bone));
   };
@@ -202,7 +216,17 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    for (const nodeId of bone.nodeIds) tracks[nodeId] = { transforms, visibility: [] };
+    for (const node of bone.nodes) {
+      tracks[node.id] = {
+        transforms: node.conversion
+          ? transforms.map((transform) => ({
+            ...transform,
+            matrix: multiplyMatrix16(transform.matrix, node.conversion!, `GeckoLib player head track ${animation.name}/${node.id}/${transform.tick}`),
+          }))
+          : transforms,
+        visibility: [],
+      };
+    }
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
@@ -246,6 +270,54 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
 function normalizeBoneName(name: string | undefined): string | undefined {
   const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
   return normalized || undefined;
+}
+
+function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
+  return cubes.filter((cube, cubeIndex) => !cubes.some((other, otherIndex) => {
+    if (cubeIndex === otherIndex || !sameCubeBounds(cube, other)) return false;
+    const nameMarksLayer = normalizeBoneName(cube.name)?.includes("layer") ?? false;
+    return nameMarksLayer || (cube.inflate ?? 0) > (other.inflate ?? 0);
+  }));
+}
+
+function sameCubeBounds(first: BbCube, second: BbCube): boolean {
+  return first.from.every((value, axis) => Math.abs(value - second.from[axis]) <= 1e-7)
+    && first.to.every((value, axis) => Math.abs(value - second.to[axis]) <= 1e-7);
+}
+
+function inferSkinAssignments(
+  bones: BoneEntry[],
+  playableCubesByBone: ReadonlyMap<string, BbCube[]>,
+): Map<string, ImportedSkinPart> {
+  const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number }[] = [];
+  let sourceOrder = 0;
+  for (const bone of bones) {
+    for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
+      candidates.push({ cube, part: inferSkinPart(bone), centerY: (cube.from[1] + cube.to[1]) / 2, sourceOrder: sourceOrder++ });
+    }
+  }
+
+  const result = new Map<string, ImportedSkinPart>();
+  for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
+    candidates
+      .filter((candidate) => candidate.part === part)
+      .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
+      .forEach((candidate, order) => result.set(candidate.cube.uuid, { part, order }));
+  }
+  return result;
+}
+
+function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] {
+  for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
+    const name = normalizeBoneName(current.group.name) ?? "";
+    if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
+    if (name.includes("right") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "right_arm";
+    if (name.includes("left") && (name.includes("leg") || name.includes("foot"))) return "left_leg";
+    if (name.includes("right") && (name.includes("leg") || name.includes("foot"))) return "right_leg";
+    if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
+    if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
+  }
+  return "body";
 }
 
 function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined): void {
