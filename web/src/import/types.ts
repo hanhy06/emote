@@ -30,6 +30,7 @@ export type ImportedNode =
     itemStackSnbt: string;
     itemDisplay: string;
     skin?: ImportedSkinPart;
+    playerHeadConversion?: { matrix: Matrix16 };
   })
   | (ImportedNodeBase & { type: "block_display"; blockStateSnbt: string })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })

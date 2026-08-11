@@ -9,6 +9,7 @@ import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
+import { multiplyMatrix16 } from "./format/matrix";
 import {
   isPlayerHeadItemStack,
   selectPart,
@@ -58,7 +59,7 @@ const IMPORT_FORMATS = [
   {
     label: "GeckoLib",
     extensions: ".bbmodel",
-    description: "Imports GeckoLib cube models, animations, and embedded textures, then generates the required resource files.",
+    description: "Imports GeckoLib cube models and lets individual cubes be replaced with player-skin parts.",
   },
 ] as const;
 
@@ -295,7 +296,7 @@ export function App() {
                 <h2 id="workspace-title">{skinCandidates.length > 0 ? "Review player skin parts" : "Review imported animation"}</h2>
                 <p>{skinCandidates.length > 0
                   ? "Select parts in the preview, then assign each one to a player body part."
-                  : "This file does not contain player-head parts, so no skin assignment is needed."}</p>
+                   : "This file does not contain skin-compatible parts, so no skin assignment is needed."}</p>
               </div>
               <div className="preview-controls">
                 {skinCandidates.length > 0 && (
@@ -366,11 +367,13 @@ function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
   if (!project) return [];
   return Object.entries(project.nodes).flatMap(([nodeId, node]) => {
     if (node.type !== "item_display") return [];
+    let isPlayerHead = false;
     try {
-      if (!isPlayerHeadItemStack(node.itemStackSnbt)) return [];
+      isPlayerHead = isPlayerHeadItemStack(node.itemStackSnbt);
     } catch {
-      return [];
+      isPlayerHead = false;
     }
+    if (!isPlayerHead && !node.playerHeadConversion) return [];
     return [{ nodeId, partIndex: 0, node }];
   }).map((candidate, partIndex) => ({ ...candidate, partIndex }));
 }
@@ -388,9 +391,13 @@ function createPreviewParts(
   tick: number | null,
 ): PlayerHeadPart[] {
   return candidates.map((candidate) => {
-    if (tick === null) return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, candidate.node.defaultMatrix);
-    const track = animation?.tracks[candidate.nodeId];
-    const matrix = track?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix ?? candidate.node.defaultMatrix;
+    const sourceMatrix = tick === null
+      ? candidate.node.defaultMatrix
+      : animation?.tracks[candidate.nodeId]?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix
+        ?? candidate.node.defaultMatrix;
+    const matrix = candidate.node.playerHeadConversion
+      ? multiplyMatrix16(sourceMatrix, candidate.node.playerHeadConversion.matrix, `Preview ${candidate.nodeId}`)
+      : sourceMatrix;
     return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, matrix);
   });
 }

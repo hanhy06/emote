@@ -25,6 +25,12 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(Object.keys(imported.nodes)).toEqual(["root", "child"]);
     expect(imported.nodes.root.type).toBe("item_display");
     expect(imported.nodes.child.type).toBe("anchor");
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.playerHeadConversion?.matrix).toEqual([
+      0.5, 0, 0, 0.125,
+      0, 0.5, 0, 0.25,
+      0, 0, 0.5, 0.125,
+      0, 0, 0, 1,
+    ]);
     expect([...imported.resources.keys()]).toEqual([
       "assets/demo/textures/item/test_model/texture.png",
       "assets/demo/models/item/test_model/root.json",
@@ -48,6 +54,26 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
+  });
+
+  it("splits cubes in the same bone into independently assignable nodes", async () => {
+    const value = project();
+    value.elements.push({
+      ...value.elements[0],
+      uuid: "second_cube",
+      name: "Second Cube",
+      from: [4, 0, 0],
+      to: [8, 4, 4],
+    });
+    value.outliner[0].children.splice(1, 0, "second_cube");
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(Object.keys(imported.nodes)).toEqual(["root", "root_second_cube", "child"]);
+    expect(imported.nodes.root_second_cube.type).toBe("item_display");
+    expect(imported.animations[0].tracks.root_second_cube.transforms)
+      .toEqual(imported.animations[0].tracks.root.transforms);
+    expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/root_second_cube.json");
   });
 
   it("rejects interpolation that would otherwise be silently lost", async () => {

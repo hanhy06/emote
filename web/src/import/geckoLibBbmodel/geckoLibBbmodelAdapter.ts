@@ -30,6 +30,7 @@ interface BoneEntry {
   group: BbGroup;
   parent?: BoneEntry;
   cubes: BbCube[];
+  nodeIds: string[];
 }
 
 export const geckoLibBbmodelAdapter: ImportAdapter = {
@@ -67,28 +68,36 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
       resources.set(texturePath, decodeTexture(texture));
     }
     const nodes: Record<string, ImportedNode> = {};
+    const nodeIds = new Set(bones.map((bone) => bone.id));
     for (const bone of bones) {
       const defaultMatrix = boneWorldMatrix(bone, new Map());
       if (bone.cubes.length === 0) {
         nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix };
+        bone.nodeIds.push(bone.id);
         continue;
       }
-      const modelPath = `${projectPath}/${bone.id}`;
-      writeBoneResources(project, bone, namespace, modelPath, resources);
-      nodes[bone.id] = {
-        id: bone.id,
-        type: "item_display",
-        defaultMatrix,
-        visible: true,
-        itemDisplay: "none",
-        itemStackSnbt: serializeSnbtCompound([
-          ["id", serializeSnbtString("minecraft:paper")],
-          ["count", "1"],
-          ["components", serializeSnbtCompound([
-            ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
-          ])],
-        ]),
-      };
+      for (const [cubeIndex, cube] of bone.cubes.entries()) {
+        const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
+        bone.nodeIds.push(nodeId);
+        const modelPath = `${projectPath}/${nodeId}`;
+        writeCubeResources(project, bone, cube, namespace, modelPath, resources);
+        const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
+        nodes[nodeId] = {
+          id: nodeId,
+          type: "item_display",
+          defaultMatrix,
+          visible: true,
+          itemDisplay: "none",
+          itemStackSnbt: serializeSnbtCompound([
+            ["id", serializeSnbtString("minecraft:paper")],
+            ["count", "1"],
+            ["components", serializeSnbtCompound([
+              ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
+            ])],
+          ]),
+          ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
+        };
+      }
     }
 
     if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
@@ -127,7 +136,7 @@ function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
     const base = id;
     for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
     ids.add(id);
-    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [] };
+    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [], nodeIds: [] };
     entries.push(bone);
     entry.children.forEach((child) => visit(child, bone));
   };
@@ -141,6 +150,15 @@ function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGr
   const rotation = outliner.rotation ?? saved?.rotation ?? [0, 0, 0];
   if (!name || !origin) throw new Error(`GeckoLib bone ${outliner.uuid} is missing its saved group data.`);
   return { uuid: outliner.uuid, name, origin, rotation };
+}
+
+function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: number, ids: Set<string>): string {
+  const cubeName = sanitizeResourcePath(cube.name?.trim() || `cube_${cubeIndex + 1}`, `cube_${cubeIndex + 1}`).replaceAll("/", "_");
+  const base = `${bone.id}_${cubeName}`;
+  let id = base;
+  for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
+  ids.add(id);
+  return id;
 }
 
 function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>): Matrix16 {
@@ -193,7 +211,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    tracks[bone.id] = { transforms, visibility: [] };
+    for (const nodeId of bone.nodeIds) tracks[nodeId] = { transforms, visibility: [] };
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
@@ -300,20 +318,44 @@ function composeTransform(position: number[], rotation: number[], scale: number[
   );
 }
 
-function writeBoneResources(
+function writeCubeResources(
   project: BbmodelProject,
   bone: BoneEntry,
+  cube: BbCube,
   namespace: string,
   modelPath: string,
   resources: Map<string, Uint8Array>,
 ): void {
-  const elements = bone.cubes.map((cube) => cubeModelElement(cube, bone.group.origin, project.resolution));
   const model = {
     textures: { layer0: `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/texture` },
-    elements,
+    elements: [cubeModelElement(cube, bone.group.origin, project.resolution)],
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
   resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
+}
+
+function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | undefined {
+  const inflate = cube.inflate ?? 0;
+  const from = cube.from.map((value, axis) => (value - bone.group.origin[axis] - inflate) / 16);
+  const to = cube.to.map((value, axis) => (value - bone.group.origin[axis] + inflate) / 16);
+  const size = to.map((value, axis) => value - from[axis]);
+  if (size.some((value) => value <= 0)) return undefined;
+
+  const center = from.map((value, axis) => (value + to[axis]) / 2);
+  const fit = new Matrix4()
+    .makeTranslation(center[0], center[1], center[2])
+    .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
+    .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
+  const rotation = cube.rotation ?? [0, 0, 0];
+  if (rotation.every((value) => Math.abs(value) <= 1e-7)) {
+    return matrix4ToRowMajor(fit, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
+  }
+
+  const origin = (cube.origin ?? bone.group.origin).map((value, axis) => (value - bone.group.origin[axis]) / 16);
+  const rotated = composeTransform(origin, rotation, [1, 1, 1])
+    .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]))
+    .multiply(fit);
+  return matrix4ToRowMajor(rotated, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
 }
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {

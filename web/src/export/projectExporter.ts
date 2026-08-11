@@ -2,9 +2,15 @@ import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
 import type { EmoteAnimation, EmotePlayerBehavior } from "../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../format/serializer";
-import type { ImportedProject, ImportedSkinPart } from "../import/types";
+import { multiplyMatrix16 } from "../format/matrix";
+import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
+import type { ImportedNode, ImportedProject, ImportedSkinPart } from "../import/types";
 
 const GENERATED_RESOURCE_PATH_PATTERN = /^assets\/[a-z0-9_.-]+\/[a-z0-9_./-]+$/;
+const PLAYER_HEAD_SNBT = serializeSnbtCompound([
+  ["id", serializeSnbtString("minecraft:player_head")],
+  ["count", "1"],
+]);
 
 export interface ExportOptions {
   minecraftVersion: string;
@@ -94,15 +100,39 @@ function applySkinAssignments(
   project: ImportedProject,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
 ): ImportedProject {
-  return {
-    ...project,
-    nodes: Object.fromEntries(Object.entries(project.nodes).map(([id, node]) => {
-      if (node.type !== "item_display" || !Object.hasOwn(skinAssignments, id)) return [id, node];
-      const skin = skinAssignments[id];
-      const { skin: _oldSkin, ...withoutSkin } = node;
-      return [id, skin ? { ...withoutSkin, skin } : withoutSkin];
+  const conversions = new Map<string, ImportedNode["defaultMatrix"]>();
+  const nodes = Object.fromEntries(Object.entries(project.nodes).map(([id, node]) => {
+    if (node.type !== "item_display" || !Object.hasOwn(skinAssignments, id)) return [id, node];
+    const skin = skinAssignments[id];
+    const { skin: _oldSkin, ...withoutSkin } = node;
+    if (!skin) return [id, withoutSkin];
+    if (!node.playerHeadConversion) return [id, { ...withoutSkin, skin }];
+
+    const conversion = node.playerHeadConversion.matrix;
+    conversions.set(id, conversion);
+    const { playerHeadConversion: _conversion, ...convertedNode } = withoutSkin;
+    return [id, {
+      ...convertedNode,
+      defaultMatrix: multiplyMatrix16(node.defaultMatrix, conversion, `Player head node ${id}`),
+      itemStackSnbt: PLAYER_HEAD_SNBT,
+      skin,
+    }];
+  }));
+  const animations = project.animations.map((animation) => ({
+    ...animation,
+    tracks: Object.fromEntries(Object.entries(animation.tracks).map(([id, track]) => {
+      const conversion = conversions.get(id);
+      if (!conversion) return [id, track];
+      return [id, {
+        ...track,
+        transforms: track.transforms.map((transform) => ({
+          ...transform,
+          matrix: multiplyMatrix16(transform.matrix, conversion, `Player head track ${animation.id}/${id}/${transform.tick}`),
+        })),
+      }];
     })),
-  };
+  }));
+  return { ...project, nodes, animations };
 }
 
 function compileExportAnimation(

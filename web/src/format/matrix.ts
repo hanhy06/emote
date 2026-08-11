@@ -1,4 +1,4 @@
-import type { Matrix4 } from "three";
+import { Matrix4 } from "three";
 import type { Matrix16 } from "./emoteAnimation";
 
 const SHEAR_EPSILON = 1e-6;
@@ -28,6 +28,10 @@ export function matrix4ToRowMajor(matrix: Matrix4, label: string): Matrix16 {
     values[2], values[6], values[10], values[14],
     values[3], values[7], values[11], values[15],
   ], label);
+}
+
+export function multiplyMatrix16(left: Matrix16, right: Matrix16, label: string): Matrix16 {
+  return matrix4ToRowMajor(new Matrix4().set(...left).multiply(new Matrix4().set(...right)), label);
 }
 
 export function stabilizeDisplayMatrix(values: readonly number[], label: string): Matrix16 {

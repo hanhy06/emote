@@ -54,6 +54,63 @@ describe("exportAnimation", () => {
     expect(result.fileName).toBe("emote.test.json");
   });
 
+  it("replaces an assigned GeckoLib cube with a fitted player head", async () => {
+    const conversion: Matrix16 = [
+      0.5, 0, 0, 0.125,
+      0, 0.5, 0, 0.25,
+      0, 0, 0.5, 0.125,
+      0, 0, 0, 1,
+    ];
+    const project: ImportedProject = {
+      source: "geckolib_bbmodel",
+      sourceName: "test.bbmodel",
+      suggestedMetadata: { name: "Test", description: "Test emote." },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      nodes: {
+        cube: {
+          id: "cube",
+          type: "item_display",
+          defaultMatrix: IDENTITY,
+          visible: true,
+          itemStackSnbt: '{id:"minecraft:paper",count:1}',
+          itemDisplay: "none",
+          playerHeadConversion: { matrix: conversion },
+        },
+      },
+      animations: [{
+        id: "test",
+        name: "Test",
+        durationTicks: 1,
+        loop: "once",
+        loopDelayTicks: 0,
+        tracks: {
+          cube: {
+            transforms: [{ tick: 0, matrix: IDENTITY, interpolation: { type: "step" } }],
+            visibility: [],
+          },
+        },
+        events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [],
+      resources: new Map(),
+    };
+    const result = exportAnimation(project, {
+      minecraftVersion: "26.2",
+      namespace: "test",
+      playbackMode: "source",
+      name: "Test",
+      description: "Test emote.",
+      player: project.suggestedPlayer,
+      additionalMetadata: {},
+    }, { cube: { part: "head", order: 0 } }, 0);
+    const animation = JSON.parse(await result.blob.text());
+
+    expect(animation.nodes.cube.item_stack_snbt).toContain("minecraft:player_head");
+    expect(animation.nodes.cube.default_matrix).toEqual(conversion);
+    expect(animation.nodes.cube.skin).toEqual({ part: "head", order: 0 });
+    expect(animation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(conversion);
+  });
+
   it("preserves unrecognized metadata in the exported animation", async () => {
     const project: ImportedProject = {
       source: "emote_json",
