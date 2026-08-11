@@ -11,6 +11,7 @@ import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransfor
 import {
   requireGeckoLibBbmodel,
   type BbAnimation,
+  type BbAnimator,
   type BbCube,
   type BbDataPoint,
   type BbGroup,
@@ -188,26 +189,16 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   if (loop !== "once" && loop !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
   const durationTicks = Math.max(1, Math.round(animation.length * TICKS_PER_SECOND));
-  const animatorIds = new Set(bones.map((bone) => bone.uuid));
-  for (const [animatorId, animator] of Object.entries(animation.animators)) {
-    if (animatorIds.has(animatorId)) continue;
-    if ((animator.keyframes?.length ?? 0) > 0) {
-      throw new ConversionError(
-        "unsupported_geckolib_animator",
-        `GeckoLib animation ${animation.name} contains a non-bone animator (${animator.name ?? animatorId}).`,
-        `animations[${index}].animators.${animatorId}`,
-      );
-    }
-  }
+  const boneAnimators = resolveBoneAnimators(animation, index, bones);
   const tracks: ImportedAnimation["tracks"] = {};
   for (const bone of bones) {
-    validateBoneAnimator(animation, index, bone);
+    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, tick / TICKS_PER_SECOND, cache, index), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, tick / TICKS_PER_SECOND, cache, index), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -226,8 +217,39 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   };
 }
 
-function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry): void {
-  for (const [keyframeIndex, keyframe] of (animation.animators[bone.uuid]?.keyframes ?? []).entries()) {
+function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[]): Map<string, BbAnimator> {
+  const result = new Map<string, BbAnimator>();
+  const boneByUuid = new Map(bones.map((bone) => [bone.uuid, bone]));
+  for (const [animatorId, animator] of Object.entries(animation.animators)) {
+    if (boneByUuid.has(animatorId)) result.set(animatorId, animator);
+  }
+
+  for (const [animatorId, animator] of Object.entries(animation.animators)) {
+    if (boneByUuid.has(animatorId) || (animator.keyframes?.length ?? 0) === 0) continue;
+    const normalizedName = normalizeBoneName(animator.name);
+    const matchingBones = normalizedName
+      ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBoneName(bone.group.name) === normalizedName)
+      : [];
+    if (matchingBones.length === 1) {
+      result.set(matchingBones[0].uuid, animator);
+      continue;
+    }
+    throw new ConversionError(
+      "unsupported_geckolib_animator",
+      `GeckoLib animation ${animation.name} contains a non-bone animator (${animator.name ?? animatorId}).`,
+      `animations[${animationIndex}].animators.${animatorId}`,
+    );
+  }
+  return result;
+}
+
+function normalizeBoneName(name: string | undefined): string | undefined {
+  const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+  return normalized || undefined;
+}
+
+function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined): void {
+  for (const [keyframeIndex, keyframe] of (animator?.keyframes ?? []).entries()) {
     if (!["position", "rotation", "scale"].includes(keyframe.channel)) {
       throw new ConversionError(
         "unsupported_geckolib_channel",
@@ -241,13 +263,14 @@ function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bo
 function animatedWorldMatrix(
   bone: BoneEntry,
   animation: BbAnimation,
+  boneAnimators: Map<string, BbAnimator>,
   time: number,
   cache: Map<string, Matrix4>,
   animationIndex: number,
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
-  const animator = animation.animators[bone.uuid];
+  const animator = boneAnimators.get(bone.uuid);
   const position = evaluateChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationIndex, bone.uuid).map((value) => value / 16);
   const rotationDelta = evaluateChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationIndex, bone.uuid);
   const scale = evaluateChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationIndex, bone.uuid);
@@ -256,7 +279,7 @@ function animatedWorldMatrix(
   const baseRotation = bone.group.rotation.map((value, index) => value + rotationDelta[index]);
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
-    ? animatedWorldMatrix(bone.parent, animation, time, cache, animationIndex).clone().multiply(local)
+    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex).clone().multiply(local)
     : local;
   cache.set(bone.uuid, world);
   return world;

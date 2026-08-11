@@ -76,6 +76,18 @@ describe("geckoLibBbmodelAdapter", () => {
     expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/root_second_cube.json");
   });
 
+  it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {
+    const value = project();
+    const rootAnimator = value.animations[0].animators.root;
+    value.animations[0].animators = {
+      stale_root: { ...rootAnimator, name: "r_o-o t" },
+    } as unknown as typeof value.animations[0]["animators"];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(1);
+  });
+
   it("rejects interpolation that would otherwise be silently lost", async () => {
     const value = project();
     value.animations[0].animators.root.keyframes[1].interpolation = "catmullrom";
