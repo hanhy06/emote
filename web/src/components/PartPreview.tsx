@@ -22,6 +22,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
   const onSelectPartsRef = useRef(onSelectParts);
   const selectedPartsRef = useRef(selectedParts);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const resetViewRef = useRef<() => void>(() => {});
   const [renderError, setRenderError] = useState("");
 
   onSelectPartRef.current = onSelectPart;
@@ -98,14 +99,22 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
     const bounds = new THREE.Box3().setFromObject(partGroup);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
+    const initialPosition = center.clone().add(new THREE.Vector3(size * 4.3, size * 1.9, size * 5));
     const previousCamera = cameraStateRef.current;
     if (previousCamera) {
       controls.target.copy(previousCamera.target);
       camera.position.copy(previousCamera.position);
     } else {
       controls.target.copy(center);
-      camera.position.copy(center).add(new THREE.Vector3(size * 4.3, size * 1.9, size * 5));
+      camera.position.copy(initialPosition);
     }
+    resetViewRef.current = () => {
+      controls.target.copy(center);
+      camera.position.copy(initialPosition);
+      camera.up.set(0, 1, 0);
+      controls.update();
+      cameraStateRef.current = { position: camera.position.clone(), target: controls.target.clone() };
+    };
     camera.near = Math.max(size / 100, 0.01);
     camera.far = Math.max(size * 20, 100);
     camera.updateProjectionMatrix();
@@ -241,6 +250,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
     render();
 
     return () => {
+      resetViewRef.current = () => {};
       cameraStateRef.current = { position: camera.position.clone(), target: controls.target.clone() };
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
@@ -265,7 +275,16 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
   }, [parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
-  return <div className="part-preview" ref={containerRef} aria-label="3D preview of emote parts" />;
+  return (
+    <div className="part-preview" ref={containerRef} aria-label="3D preview of emote parts">
+      <button type="button" className="preview-reset-view" onClick={() => resetViewRef.current()} aria-label="Reset view" title="Reset view">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    </div>
+  );
 }
 
 type MatrixValues = [number, number, number, number, number, number, number, number, number, number, number, number, number, number, number, number];
