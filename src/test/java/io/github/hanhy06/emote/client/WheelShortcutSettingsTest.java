@@ -46,6 +46,21 @@ class WheelShortcutSettingsTest {
         assertEquals(List.of("y", "x"), ids(reloaded.selectedEmotes()));
     }
 
+    @Test
+    void wrapsMovementBetweenFirstAndLastPositions(@TempDir Path tempDir) {
+        WheelShortcutSettings settings = new WheelShortcutSettings(tempDir.resolve("emote/wheel-shortcuts.json"));
+        settings.updateServer("server:example.test", emotes("a", "b", "c"));
+
+        settings.moveUp("a");
+        assertEquals(List.of("b", "c", "a"), ids(settings.selectedEmotes()));
+
+        settings.moveDown("a");
+        assertEquals(List.of("a", "b", "c"), ids(settings.selectedEmotes()));
+
+        settings.moveDown("c");
+        assertEquals(List.of("c", "a", "b"), ids(settings.selectedEmotes()));
+    }
+
     private static List<PlayableEmote> emotes(String... ids) {
         return java.util.Arrays.stream(ids)
             .map(id -> new PlayableEmote(id, id.toUpperCase(), "Description " + id))

@@ -22,6 +22,7 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
+    private static final int EDIT_BUTTON_WIDTH = 50;
     private static final int LEFT_MOUSE_BUTTON = 0;
     private static final int RIGHT_MOUSE_BUTTON = 1;
     private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
@@ -76,7 +77,7 @@ public class WheelScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.wheel.edit"),
             ignoredButton -> this.controller.openShortcutEditor()
-        ).bounds(Math.max(4, this.width - 154), this.height - 24, 150, 20).build());
+        ).bounds(Math.max(4, this.width - EDIT_BUTTON_WIDTH - 4), this.height - 24, EDIT_BUTTON_WIDTH, 20).build());
         updateHoveredSlot(this.width / 2.0D, this.height / 2.0D);
     }
 
