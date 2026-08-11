@@ -30,11 +30,12 @@ class WheelShortcutSettingsTest {
 
         settings.updateServer("server:first.test", available);
         settings.remove("d");
-        settings.moveToFirst("c");
+        settings.moveUp("c");
+        settings.moveUp("c");
         settings.moveDown("c");
 
         settings.updateServer("server:second.test", emotes("x", "y"));
-        settings.moveToFirst("y");
+        settings.moveUp("y");
 
         WheelShortcutSettings reloaded = new WheelShortcutSettings(filePath);
         reloaded.updateServer("server:first.test", available);

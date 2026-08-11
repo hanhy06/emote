@@ -76,7 +76,7 @@ public class WheelScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.wheel.edit"),
             ignoredButton -> this.controller.openShortcutEditor()
-        ).bounds(this.metrics.centerX() - 75, this.height - 24, 150, 20).build());
+        ).bounds(Math.max(4, this.width - 154), this.height - 24, 150, 20).build());
         updateHoveredSlot(this.width / 2.0D, this.height / 2.0D);
     }
 

@@ -81,10 +81,6 @@ public class WheelController {
         this.shortcutSettings.remove(id);
     }
 
-    public void moveShortcutToFirst(String id) {
-        this.shortcutSettings.moveToFirst(id);
-    }
-
     public void moveShortcutUp(String id) {
         this.shortcutSettings.moveUp(id);
     }

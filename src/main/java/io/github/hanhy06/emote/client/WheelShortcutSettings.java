@@ -96,18 +96,6 @@ public class WheelShortcutSettings {
         updateSelectedIds(nextIds);
     }
 
-    public void moveToFirst(String id) {
-        int index = this.selectedIds.indexOf(id);
-        if (index <= 0) {
-            return;
-        }
-
-        List<String> nextIds = new ArrayList<>(this.selectedIds);
-        nextIds.remove(index);
-        nextIds.addFirst(id);
-        updateSelectedIds(nextIds);
-    }
-
     public void moveUp(String id) {
         move(id, -1);
     }

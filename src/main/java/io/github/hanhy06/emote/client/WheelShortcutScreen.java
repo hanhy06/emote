@@ -6,6 +6,9 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.input.InputWithModifiers;
+import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.network.chat.Component;
 
 import java.util.List;
@@ -119,28 +122,21 @@ public class WheelShortcutScreen extends Screen {
 
     private void addSelectedRow(PlayableEmote emote, int entryIndex, int rowY) {
         int rowX = (this.width - ROW_WIDTH) / 2;
-        this.addRenderableWidget(Button.builder(
+        this.addRenderableWidget(new ShortcutOrderButton(
+            rowX,
+            rowY,
+            234,
+            ROW_HEIGHT,
             Component.literal("#" + (entryIndex + 1) + " " + emote.displayName()),
-            ignoredButton -> {
-                this.controller.moveShortcutToFirst(emote.id());
-                this.pageIndex = 0;
-                rebuildWidgets();
-            }
-        ).bounds(rowX, rowY, 150, ROW_HEIGHT).build());
-        this.addRenderableWidget(Button.builder(
-            Component.translatable("screen.emote.shortcuts.up"),
-            ignoredButton -> {
+            () -> {
                 this.controller.moveShortcutUp(emote.id());
                 rebuildWidgets();
-            }
-        ).bounds(rowX + 154, rowY, 38, ROW_HEIGHT).build()).active = entryIndex > 0;
-        this.addRenderableWidget(Button.builder(
-            Component.translatable("screen.emote.shortcuts.down"),
-            ignoredButton -> {
+            },
+            () -> {
                 this.controller.moveShortcutDown(emote.id());
                 rebuildWidgets();
             }
-        ).bounds(rowX + 196, rowY, 38, ROW_HEIGHT).build()).active = entryIndex + 1 < this.controller.getShortcutEmotes().size();
+        ));
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.shortcuts.remove"),
             ignoredButton -> {
@@ -185,5 +181,38 @@ public class WheelShortcutScreen extends Screen {
     private enum Tab {
         SELECTED,
         AVAILABLE
+    }
+
+    private static class ShortcutOrderButton extends Button.Plain {
+        private final Runnable moveUp;
+        private final Runnable moveDown;
+
+        private ShortcutOrderButton(
+            int x,
+            int y,
+            int width,
+            int height,
+            Component message,
+            Runnable moveUp,
+            Runnable moveDown
+        ) {
+            super(x, y, width, height, message, ignoredButton -> {}, Button.DEFAULT_NARRATION);
+            this.moveUp = moveUp;
+            this.moveDown = moveDown;
+        }
+
+        @Override
+        public void onPress(InputWithModifiers input) {
+            if (input instanceof MouseButtonEvent event && event.button() == 1) {
+                this.moveDown.run();
+            } else {
+                this.moveUp.run();
+            }
+        }
+
+        @Override
+        protected boolean isValidClickButton(MouseButtonInfo buttonInfo) {
+            return buttonInfo.button() == 0 || buttonInfo.button() == 1;
+        }
     }
 }
