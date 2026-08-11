@@ -6,7 +6,9 @@ import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.level.storage.LevelResource;
 
 import java.util.List;
 
@@ -16,22 +18,23 @@ public class WheelController {
 
     private static final String MENU_FALLBACK_COMMAND = "emote";
 
-    private List<PlayableEmote> syncedEmotes = List.of();
+    private final WheelShortcutSettings shortcutSettings;
     private boolean syncedFromServer;
     private String lastSelectedId = "";
 
-    public WheelController() {
+    public WheelController(WheelShortcutSettings shortcutSettings) {
         INSTANCE = this;
+        this.shortcutSettings = shortcutSettings;
     }
 
     public void clear() {
-        this.syncedEmotes = List.of();
+        this.shortcutSettings.clearSession();
         this.syncedFromServer = false;
         this.lastSelectedId = "";
     }
 
     public void updateEntries(List<PlayableEmote> emotes) {
-        this.syncedEmotes = List.copyOf(emotes);
+        this.shortcutSettings.updateServer(findServerKey(Minecraft.getInstance()), emotes);
         this.syncedFromServer = true;
     }
 
@@ -45,7 +48,7 @@ public class WheelController {
             return;
         }
 
-        client.gui.setScreen(new WheelScreen(this, this.syncedEmotes, findInitialPageIndex(), keyMapping));
+        client.gui.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
     }
 
     public void play(PlayableEmote playableEmote) {
@@ -56,6 +59,38 @@ public class WheelController {
 
         this.lastSelectedId = playableEmote.id();
         player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
+    }
+
+    public void openShortcutEditor() {
+        Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
+    }
+
+    public List<PlayableEmote> getShortcutEmotes() {
+        return this.shortcutSettings.selectedEmotes();
+    }
+
+    public List<PlayableEmote> getAvailableShortcutEmotes() {
+        return this.shortcutSettings.availableEmotes();
+    }
+
+    public void addShortcut(String id) {
+        this.shortcutSettings.add(id);
+    }
+
+    public void removeShortcut(String id) {
+        this.shortcutSettings.remove(id);
+    }
+
+    public void moveShortcutToFirst(String id) {
+        this.shortcutSettings.moveToFirst(id);
+    }
+
+    public void moveShortcutUp(String id) {
+        this.shortcutSettings.moveUp(id);
+    }
+
+    public void moveShortcutDown(String id) {
+        this.shortcutSettings.moveDown(id);
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
@@ -69,16 +104,26 @@ public class WheelController {
     }
 
     private int findInitialPageIndex() {
-        if (this.lastSelectedId.isEmpty() || this.syncedEmotes.isEmpty()) {
+        List<PlayableEmote> shortcuts = getShortcutEmotes();
+        if (this.lastSelectedId.isEmpty() || shortcuts.isEmpty()) {
             return 0;
         }
 
-        for (int index = 0; index < this.syncedEmotes.size(); index++) {
-            if (this.syncedEmotes.get(index).id().equals(this.lastSelectedId)) {
+        for (int index = 0; index < shortcuts.size(); index++) {
+            if (shortcuts.get(index).id().equals(this.lastSelectedId)) {
                 return index / WheelGeometry.SLOT_COUNT;
             }
         }
 
         return 0;
+    }
+
+    private static String findServerKey(Minecraft client) {
+        if (client.getSingleplayerServer() != null) {
+            return "singleplayer:" + client.getSingleplayerServer().getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize();
+        }
+
+        ServerData serverData = client.getCurrentServer();
+        return serverData == null ? "unknown" : "server:" + serverData.ip;
     }
 }

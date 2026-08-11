@@ -24,6 +24,8 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 | `/emote stop`      | Stops the currently playing emote.                                                 |
 | `V`                | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
 
+When the client mod is installed, the wheel's **Edit Shortcuts** button can add, remove, and reorder its entries. The first six shortcuts appear on the first wheel page. Shortcut order is stored per server in the client's `config/emote/wheel-shortcuts.json`; server syncs only refresh which emotes are currently available.
+
 ## Admin Commands
 
 | Command                      | Description                                               |

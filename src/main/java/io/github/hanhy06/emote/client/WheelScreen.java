@@ -7,6 +7,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -72,6 +73,10 @@ public class WheelScreen extends Screen {
             this.metrics.centerY(),
             this.metrics.centerRadius()
         );
+        this.addRenderableWidget(Button.builder(
+            Component.translatable("screen.emote.wheel.edit"),
+            ignoredButton -> this.controller.openShortcutEditor()
+        ).bounds(this.metrics.centerX() - 75, this.height - 24, 150, 20).build());
         updateHoveredSlot(this.width / 2.0D, this.height / 2.0D);
     }
 
@@ -92,6 +97,7 @@ public class WheelScreen extends Screen {
 
     @Override
     public void extractRenderState(GuiGraphicsExtractor graphics, int mouseX, int mouseY, float a) {
+        super.extractRenderState(graphics, mouseX, mouseY, a);
         updateHoveredSlot(mouseX, mouseY);
 
         WheelMetrics metrics = this.metrics;
@@ -117,6 +123,10 @@ public class WheelScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        if (super.mouseClicked(event, doubleClick)) {
+            return true;
+        }
+
         updateHoveredSlot(event.x(), event.y());
 
         if (event.button() == LEFT_MOUSE_BUTTON) {
@@ -215,8 +225,8 @@ public class WheelScreen extends Screen {
         drawHex(graphics, this.centerXPoints, this.centerYPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
 
         if (this.emotes.isEmpty()) {
-            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_usable"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
-            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.emotes"), metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_shortcuts"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.selected"), metrics.centerX(), metrics.centerY() + 2, TITLE_COLOR);
             return;
         }
 
@@ -246,7 +256,7 @@ public class WheelScreen extends Screen {
         }
 
         if (this.emotes.isEmpty()) {
-            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.no_usable"), metrics.centerX(), footerTop + 8, BODY_COLOR);
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.no_shortcuts"), metrics.centerX(), footerTop + 8, BODY_COLOR);
             return;
         }
 
@@ -259,7 +269,7 @@ public class WheelScreen extends Screen {
         );
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.close"), metrics.centerX(), footerTop + 14, MUTED_COLOR);
         if (getPageCount() > 1) {
-        graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.page_click"), metrics.centerX(), footerTop + 28, MUTED_COLOR);
+            graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.footer.page_click"), metrics.centerX(), footerTop + 28, MUTED_COLOR);
         }
     }
 
