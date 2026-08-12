@@ -61,6 +61,7 @@ final class PlayerVisibilityService {
             return;
         }
         player.setInvisible(activeEmote.wasInvisible());
+        syncPlayerVisibility(player);
         sendToTrackingPlayers(player, createVisibleEquipment(player));
     }
 
