@@ -159,6 +159,11 @@ public class PlaybackManager implements ConfigListener {
             } else {
                 timeline.start();
             }
+            this.playerSkinManager.applySkinParts(
+                nodes.nodes(),
+                emote.skinParts(),
+                preparedSkin
+            );
             this.entityController.add(player.level(), nodes);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.resumeSynchronizedInterpolation();
@@ -183,11 +188,6 @@ public class PlaybackManager implements ConfigListener {
             );
             this.activePlaybacks.put(player.getUUID(), activeEmote);
             this.playerVisibilityService.start(player, activeEmote);
-            this.playerSkinManager.applySkinParts(
-                nodes.nodes(),
-                emote.skinParts(),
-                preparedSkin
-            );
             startEvents(timeline, events);
             if (playbackChanged(activeEmote)) {
                 return PlayResult.SUCCESS;
@@ -202,7 +202,7 @@ public class PlaybackManager implements ConfigListener {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             ActivePlayback activeEmote = this.activePlaybacks.remove(player.getUUID());
             if (activeEmote != null) {
-                cleanupActive(activeEmote, false, PlaybackStopReason.ERROR, null);
+                cleanupActive(activeEmote, false, true, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -255,7 +255,7 @@ public class PlaybackManager implements ConfigListener {
         if (activeEmote == null) {
             return null;
         }
-        cleanupActive(activeEmote, true, reason, knownPlayer);
+        cleanupActive(activeEmote, true, true, reason, knownPlayer);
         return activeEmote;
     }
 
@@ -373,7 +373,7 @@ public class PlaybackManager implements ConfigListener {
             return true;
         }
 
-        cleanupActive(activeEmote, false, PlaybackStopReason.FINISHED, player);
+        cleanupActive(activeEmote, false, false, PlaybackStopReason.FINISHED, player);
         if (playbackChanged(activeEmote)) {
             return true;
         }
@@ -453,12 +453,13 @@ public class PlaybackManager implements ConfigListener {
         if (!this.activePlaybacks.remove(activeEmote.playerUuid(), activeEmote)) {
             return;
         }
-        cleanupActive(activeEmote, true, reason, null);
+        cleanupActive(activeEmote, true, true, reason, null);
     }
 
     private void cleanupActive(
         ActivePlayback activeEmote,
         boolean notifyListeners,
+        boolean restorePlayerVisibility,
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
@@ -467,7 +468,9 @@ public class PlaybackManager implements ConfigListener {
                 ? knownPlayer
                 : Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
             if (player != null) {
-                this.playerVisibilityService.stop(player, activeEmote);
+                if (restorePlayerVisibility) {
+                    this.playerVisibilityService.stop(player, activeEmote);
+                }
                 if (notifyListeners) {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
                         stateListener.onStopped(player, activeEmote, reason);
