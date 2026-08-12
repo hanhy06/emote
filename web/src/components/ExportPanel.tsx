@@ -22,6 +22,7 @@ interface ExportPanelProps {
   animations: DownloadItem[];
   hasResources: boolean;
   error: string;
+  disabled: boolean;
   onMetadataChange: (metadata: ExportOptions) => void;
   onDownloadAnimation: (index: number) => void;
   onDownloadResourcePack: (index: number) => void;
@@ -35,6 +36,7 @@ export function ExportPanel({
   animations,
   hasResources,
   error,
+  disabled,
   onMetadataChange,
   onDownloadAnimation,
   onDownloadResourcePack,
@@ -96,30 +98,30 @@ export function ExportPanel({
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
       <div className="fields">
-        <label>Minecraft version<input value={metadata.minecraftVersion} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.currentTarget.value })} /></label>
-        <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
-        <label>Display name<input value={metadata.name} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
-        <label>Description<input value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
+        <label>Minecraft version<input value={metadata.minecraftVersion} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.currentTarget.value })} /></label>
+        <label>Namespace<input value={metadata.namespace} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
+        <label>Display name<input value={metadata.name} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
+        <label>Description<input value={metadata.description} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
       </div>
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Playback behavior</h3>
         <p>Choose the playback mode, player visibility, and which actions stop the emote.</p>
         <div className="fields playback-behavior-primary">
-          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.currentTarget.value as ExportOptions["playbackMode"] })}>
+          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.currentTarget.value as ExportOptions["playbackMode"] })}>
             <option value="source">Source setting</option>
             <option value="once">Play once</option>
             <option value="loop">Loop</option>
             <option value="server_sync">Server-synchronized loop</option>
           </select></label>
           <label><span className="field-heading">Movement distance <small>Horizontal blocks; 0 allows movement.</small></span>
-            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} />
+            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} />
           </label>
         </div>
         <div className="fields playback-behavior-options">
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => (
             <label className="checkbox" key={condition}>
-              <input type="checkbox" checked={metadata.player.stop_conditions[condition]} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />
+              <input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />
               {label}
             </label>
           ))}
@@ -146,17 +148,18 @@ export function ExportPanel({
           <li key={`${animation.detail}:${index}`}>
             <span><strong>{animation.label}</strong><small>{animation.detail}</small></span>
             <div className="download-actions">
-              <button className="primary-button" type="button" onClick={() => onDownloadAnimation(index)}>Download JSON</button>
+              <button className="primary-button" type="button" disabled={disabled} onClick={() => onDownloadAnimation(index)}>Download JSON</button>
               {hasResources && (
                 <div className="resource-pack-action">
                   <div className="resource-pack-button">
-                    <button type="button" onClick={() => {
+                    <button type="button" disabled={disabled} onClick={() => {
                       setMergeMenuIndex(null);
                       onDownloadResourcePack(index);
                     }}>Download resource pack</button>
                     <button
                       className="split-menu-toggle"
                       type="button"
+                      disabled={disabled}
                       aria-label="Resource pack merge options"
                       aria-haspopup="menu"
                       aria-expanded={mergeMenuIndex === index}
@@ -166,8 +169,8 @@ export function ExportPanel({
                   </div>
                   {mergeMenuIndex === index && (
                     <div className="merge-menu" role="menu" onPointerDown={(event) => event.stopPropagation()}>
-                      <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" onChange={selectZip} /></label>
-                      <label className="button-file-input">Merge into folder<input type="file" multiple ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
+                      <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" disabled={disabled} onChange={selectZip} /></label>
+                      <label className="button-file-input">Merge into folder<input type="file" multiple disabled={disabled} ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
                     </div>
                   )}
                 </div>

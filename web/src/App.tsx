@@ -1,6 +1,6 @@
 import type { TargetedEvent } from "preact";
 import { lazy, Suspense } from "preact/compat";
-import { useCallback, useMemo, useState } from "preact/hooks";
+import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { downloadExport } from "./export/download";
@@ -67,6 +67,7 @@ export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
   const [error, setError] = useState("");
   const [busyMessage, setBusyMessage] = useState<string | null>(null);
+  const busyRef = useRef(false);
   const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
     setSession((current) => current ? update(current) : current);
   }, []);
@@ -96,6 +97,11 @@ export function App() {
     const inputElement = event.currentTarget;
     const file = inputElement.files?.[0];
     if (!file) return;
+    if (busyRef.current) {
+      inputElement.value = "";
+      return;
+    }
+    busyRef.current = true;
     setBusyMessage("Opening animation project");
     setError("");
     setSession(null);
@@ -128,6 +134,7 @@ export function App() {
     } catch (reason) {
       setError(conversionErrorMessage(reason, "Could not import the file."));
     } finally {
+      busyRef.current = false;
       setBusyMessage(null);
       inputElement.value = "";
     }
@@ -143,6 +150,8 @@ export function App() {
   }
 
   async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string, progressMessage: string) {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setConversionError("");
     setBusyMessage(progressMessage);
 
@@ -152,6 +161,7 @@ export function App() {
     } catch (reason) {
       setConversionError(conversionErrorMessage(reason, fallbackMessage));
     } finally {
+      busyRef.current = false;
       setBusyMessage(null);
     }
   }
@@ -370,6 +380,7 @@ export function App() {
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
             hasResources={project.resources.size > 0}
             error={session.conversionError}
+            disabled={busy}
             onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadResourcePack={handleResourcePackDownload}
