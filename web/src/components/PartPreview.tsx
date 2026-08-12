@@ -85,6 +85,7 @@ export function PartPreview({ parts, assignments, selectedParts, onSelectPart, o
       const mesh = new THREE.Mesh(geometry, material);
       mesh.matrixAutoUpdate = false;
       mesh.matrix.set(...part.matrix as MatrixValues);
+      if (part.conversionMatrix) mesh.matrix.multiply(new THREE.Matrix4().set(...part.conversionMatrix as MatrixValues));
       mesh.userData.nodeId = part.nodeId;
       partGroup.add(mesh);
       clickableMeshes.push(mesh);

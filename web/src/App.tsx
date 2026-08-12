@@ -1,15 +1,14 @@
 import { lazy, Suspense, useCallback, useMemo, useState, type ChangeEvent } from "react";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
-import { downloadExport, exportAnimation, exportResourcePack, type ExportOptions } from "./export/projectExporter";
-import { mergeResourcePackFolder, mergeResourcePackZip } from "./export/resourcePackMerger";
+import { downloadExport } from "./export/download";
+import type { ExportOptions } from "./export/types";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
-import { multiplyMatrix16 } from "./format/matrix";
 import {
   isPlayerHeadItemStack,
   selectPart,
@@ -140,10 +139,11 @@ export function App() {
     return skins;
   }
 
-  function handleAnimationDownload(index: number) {
+  async function handleAnimationDownload(index: number) {
     if (!session) return;
     setConversionError("");
     try {
+      const { exportAnimation } = await import("./export/projectExporter");
       downloadExport(exportAnimation(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Conversion failed.");
@@ -151,10 +151,11 @@ export function App() {
     }
   }
 
-  function handleResourcePackDownload(index: number) {
+  async function handleResourcePackDownload(index: number) {
     if (!session) return;
     setConversionError("");
     try {
+      const { exportResourcePack } = await import("./export/resourcePackExporter");
       downloadExport(exportResourcePack(session.project, session.metadata, skinAssignments(), index));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource export failed.");
@@ -166,6 +167,7 @@ export function App() {
     if (!session) return;
     setConversionError("");
     try {
+      const { mergeResourcePackZip } = await import("./export/resourcePackMerger");
       downloadExport(await mergeResourcePackZip(session.project, session.metadata, file));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource pack merge failed.");
@@ -177,6 +179,7 @@ export function App() {
     if (!session) return;
     setConversionError("");
     try {
+      const { mergeResourcePackFolder } = await import("./export/resourcePackMerger");
       downloadExport(await mergeResourcePackFolder(session.project, session.metadata, files));
     } catch (reason) {
       const message = conversionErrorMessage(reason, "Resource pack merge failed.");
@@ -395,10 +398,7 @@ function createPreviewParts(
       ? candidate.node.defaultMatrix
       : animation?.tracks[candidate.nodeId]?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix
         ?? candidate.node.defaultMatrix;
-    const matrix = candidate.node.playerHeadConversion
-      ? multiplyMatrix16(sourceMatrix, candidate.node.playerHeadConversion.matrix, `Preview ${candidate.nodeId}`)
-      : sourceMatrix;
-    return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, matrix);
+    return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, sourceMatrix, candidate.node.playerHeadConversion?.matrix);
   });
 }
 

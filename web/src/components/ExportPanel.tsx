@@ -1,5 +1,5 @@
 import { useEffect, useState, type ChangeEvent } from "react";
-import type { ExportOptions } from "../export/projectExporter";
+import type { ExportOptions } from "../export/types";
 
 interface DownloadItem {
   label: string;

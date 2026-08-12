@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import type { ImportAdapter } from "./adapter";
+import type { ImportAdapter, ImportAdapterLoader } from "./adapter";
 import type { ImportSource } from "./types";
 import { detectAdapter, importDetected } from "./adapterRegistry";
 import { ConversionError } from "./errors";
@@ -14,16 +14,20 @@ function adapter(id: string, confidence: number, extensions: readonly string[] =
   };
 }
 
+function loader(value: ImportAdapter): ImportAdapterLoader {
+  return { id: value.id, label: value.label, extensions: value.extensions, load: vi.fn(async () => value) };
+}
+
 describe("detectAdapter", () => {
   const input = { name: "input.bin", bytes: new Uint8Array() };
 
   it("selects the highest-confidence adapter", async () => {
-    const result = await detectAdapter([adapter("weak", 20), adapter("strong", 100)], input);
+    const result = await detectAdapter([loader(adapter("weak", 20)), loader(adapter("strong", 100))], input);
     expect(result.adapter.id).toBe("strong");
   });
 
   it("rejects an ambiguous highest-confidence match", async () => {
-    await expect(detectAdapter([adapter("first", 100), adapter("second", 100)], input)).rejects.toThrow("ambiguous");
+    await expect(detectAdapter([loader(adapter("first", 100)), loader(adapter("second", 100))], input)).rejects.toThrow("ambiguous");
   });
 
   it("adds adapter and input context to import failures", async () => {
@@ -43,7 +47,7 @@ describe("detectAdapter", () => {
     const zip = adapter("zip", 100, ["zip"]);
     zip.probe = vi.fn(zip.probe);
 
-    const result = await detectAdapter([json, zip], { name: "input.json", bytes: new Uint8Array() });
+    const result = await detectAdapter([loader(json), loader(zip)], { name: "input.json", bytes: new Uint8Array() });
 
     expect(result.adapter.id).toBe("json");
     expect(zip.probe).not.toHaveBeenCalled();
@@ -54,7 +58,7 @@ describe("detectAdapter", () => {
     const model = adapter("model", 100, ["bbmodel"]);
     model.probe = vi.fn(model.probe);
 
-    const result = await detectAdapter([json, model], { name: "renamed.json", bytes: new Uint8Array() });
+    const result = await detectAdapter([loader(json), loader(model)], { name: "renamed.json", bytes: new Uint8Array() });
 
     expect(result.adapter.id).toBe("model");
     expect(model.probe).toHaveBeenCalledOnce();

@@ -1,4 +1,4 @@
-import type { ImportAdapter, ImportInput, ProbeResult } from "./adapter";
+import type { ImportAdapter, ImportAdapterLoader, ImportInput, ProbeResult } from "./adapter";
 import { ConversionError } from "./errors";
 import type { ImportedProject } from "./types";
 
@@ -7,7 +7,7 @@ export interface DetectedAdapter {
   probe: ProbeResult;
 }
 
-export async function detectAdapter(adapters: readonly ImportAdapter[], input: ImportInput): Promise<DetectedAdapter> {
+export async function detectAdapter(adapters: readonly ImportAdapterLoader[], input: ImportInput): Promise<DetectedAdapter> {
   const extension = input.name.toLowerCase().split(".").at(-1);
   const extensionMatches = extension ? adapters.filter((adapter) => adapter.extensions.includes(extension)) : [];
   const candidates = extensionMatches.length > 0 ? extensionMatches : adapters;
@@ -25,11 +25,11 @@ export async function detectAdapter(adapters: readonly ImportAdapter[], input: I
   return matches[0];
 }
 
-async function probeAdapters(adapters: readonly ImportAdapter[], input: ImportInput): Promise<DetectedAdapter[]> {
-  return (await Promise.all(adapters.map(async (adapter) => ({
-    adapter,
-    probe: await adapter.probe(input),
-  }))))
+async function probeAdapters(loaders: readonly ImportAdapterLoader[], input: ImportInput): Promise<DetectedAdapter[]> {
+  return (await Promise.all(loaders.map(async (loader) => {
+    const adapter = await loader.load();
+    return { adapter, probe: await adapter.probe(input) };
+  })))
     .filter((match) => match.probe.confidence > 0)
     .sort((first, second) => second.probe.confidence - first.probe.confidence);
 }

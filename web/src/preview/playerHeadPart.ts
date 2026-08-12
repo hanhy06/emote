@@ -8,14 +8,21 @@ export interface PlayerHeadPart {
   nodeId: string;
   partIndex: number;
   matrix: readonly number[];
+  conversionMatrix?: readonly number[];
   anchor: Vector3Value;
 }
 
-export function createPlayerHeadPart(nodeId: string, partIndex: number, matrix: readonly number[]): PlayerHeadPart {
+export function createPlayerHeadPart(
+  nodeId: string,
+  partIndex: number,
+  matrix: readonly number[],
+  conversionMatrix?: readonly number[],
+): PlayerHeadPart {
   return {
     nodeId,
     partIndex,
     matrix,
+    ...(conversionMatrix ? { conversionMatrix } : {}),
     anchor: {
       x: matrix[3] - matrix[1] * 0.25,
       y: matrix[7] - matrix[5] * 0.25,

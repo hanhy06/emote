@@ -19,3 +19,11 @@ export interface ImportAdapter {
   probe(input: ImportInput): Promise<ProbeResult> | ProbeResult;
   import(input: ImportInput): Promise<ImportedProject>;
 }
+
+export interface ImportAdapterLoader {
+  readonly id: ImportSource;
+  readonly label: string;
+  readonly extensions: readonly string[];
+
+  load(): Promise<ImportAdapter>;
+}

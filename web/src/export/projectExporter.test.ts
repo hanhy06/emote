@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../import/types";
-import { exportAnimation, exportResourcePack, generatedResourceFiles } from "./projectExporter";
+import { exportAnimation } from "./projectExporter";
+import { exportResourcePack, generatedResourceFiles } from "./resourcePackExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
