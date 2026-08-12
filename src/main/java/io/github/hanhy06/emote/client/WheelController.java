@@ -14,8 +14,6 @@ import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelController {
-    public static WheelController INSTANCE;
-
     private static final String MENU_FALLBACK_COMMAND = "emote";
 
     private final WheelShortcutSettings shortcutSettings;
@@ -23,7 +21,6 @@ public class WheelController {
     private String lastSelectedId = "";
 
     public WheelController(WheelShortcutSettings shortcutSettings) {
-        INSTANCE = this;
         this.shortcutSettings = shortcutSettings;
     }
 

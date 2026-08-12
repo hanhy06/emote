@@ -74,7 +74,6 @@ public class Emote implements ModInitializer {
             wheelSyncService
         );
 
-        PayloadRegistry payloadRegistry = new PayloadRegistry();
         ServerLifecycle serverLifecycle = new ServerLifecycle(
             playerSkinManager,
             emoteRegistry,
@@ -103,7 +102,7 @@ public class Emote implements ModInitializer {
         playbackManager.addStateListener(apiEvents);
         playbackManager.registerVisibilityService();
 
-        payloadRegistry.register();
+        PayloadRegistry.register();
         serverLifecycle.register();
         rootCommand.register();
 

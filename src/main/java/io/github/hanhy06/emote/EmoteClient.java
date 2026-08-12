@@ -27,8 +27,12 @@ public class EmoteClient implements ClientModInitializer {
         ClientNetworking clientNetworking = new ClientNetworking(perspectiveController, wheelController);
 
         clientNetworking.register();
-        ClientPlayConnectionEvents.JOIN.register((ignoredHandler, ignoredSender, ignoredClient) -> clearClientState());
-        ClientPlayConnectionEvents.DISCONNECT.register((ignoredHandler, ignoredClient) -> clearClientState());
+        ClientPlayConnectionEvents.JOIN.register(
+            (ignoredHandler, ignoredSender, ignoredClient) -> clearClientState(perspectiveController, wheelController)
+        );
+        ClientPlayConnectionEvents.DISCONNECT.register(
+            (ignoredHandler, ignoredClient) -> clearClientState(perspectiveController, wheelController)
+        );
         wheelController.registerBinding(EMOTE_WHEEL_KEY);
     }
 
@@ -36,8 +40,11 @@ public class EmoteClient implements ClientModInitializer {
         return PerspectiveController.INSTANCE.shouldHideLocalPlayerEquipment();
     }
 
-    private static void clearClientState() {
-        PerspectiveController.INSTANCE.clear();
-        WheelController.INSTANCE.clear();
+    private static void clearClientState(
+        PerspectiveController perspectiveController,
+        WheelController wheelController
+    ) {
+        perspectiveController.clear();
+        wheelController.clear();
     }
 }
