@@ -130,18 +130,33 @@ final class AdminCommands {
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal("Emotes: " + emotes.size()), false);
+        source.sendSuccess(
+            () -> Component.literal("Emotes").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+                .append(Component.literal(" (" + emotes.size() + ")").withStyle(ChatFormatting.YELLOW)),
+            false
+        );
 
         for (EmoteDefinition emote : emotes) {
-            source.sendSystemMessage(Component.literal(
-                "- " + emote.id()
-                    + " name=" + emote.name()
-                    + " nodes=" + emote.nodeCount()
-                    + " source=" + emote.sourcePath().getFileName()
+            source.sendSystemMessage(createListEntry(
+                emote.id(),
+                emote.name(),
+                emote.nodeCount(),
+                emote.sourcePath().getFileName().toString()
             ));
         }
 
         return emotes.size();
+    }
+
+    static Component createListEntry(String id, String name, int nodeCount, String sourceFileName) {
+        return Component.literal("\n• ").withStyle(ChatFormatting.DARK_GRAY)
+            .append(Component.literal(id).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n  Name: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(name).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n  Nodes: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(Integer.toString(nodeCount)).withStyle(ChatFormatting.GREEN))
+            .append(Component.literal("  Source: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(sourceFileName).withStyle(ChatFormatting.YELLOW));
     }
 
     private int stopAll(CommandSourceStack source) {
