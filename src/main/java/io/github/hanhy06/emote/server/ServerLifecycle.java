@@ -43,6 +43,7 @@ public class ServerLifecycle {
     public void register() {
         ServerLifecycleEvents.SERVER_STARTED.register(this::handleServerStarted);
         ServerLifecycleEvents.SERVER_STOPPING.register(this::handleServerStopping);
+        ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
             this.playbackManager.tick();
             this.idlePlaybackService.tick();
@@ -87,7 +88,10 @@ public class ServerLifecycle {
         int removedApiEmotes = this.emoteRegistry.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();
-        Emote.SERVER = null;
         Emote.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
+    }
+
+    private void handleServerStopped(MinecraftServer ignoredServer) {
+        Emote.SERVER = null;
     }
 }
