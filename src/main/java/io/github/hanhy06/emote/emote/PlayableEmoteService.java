@@ -23,6 +23,7 @@ public class PlayableEmoteService {
 
     public List<PlayableEmote> getAll(ServerPlayer player) {
         return this.emoteRegistry.getAllDefinitions().stream()
+            .filter(EmoteDefinition::standalone)
             .filter(emote -> canPlay(player, emote))
             .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::id))
             .map(emote -> new PlayableEmote(emote.id(), emote.name(), emote.description()))
@@ -69,7 +70,7 @@ public class PlayableEmoteService {
     private List<String> collectPlayIds(Predicate<EmoteDefinition> filter) {
         List<String> ids = new java.util.ArrayList<>();
         for (EmoteDefinition emote : this.emoteRegistry.getAllDefinitions()) {
-            if (filter.test(emote)) {
+            if (emote.standalone() && filter.test(emote)) {
                 ids.add(emote.id());
             }
         }

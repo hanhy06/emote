@@ -46,6 +46,11 @@ public record RegisteredEmote(
         return animation().metadata().description();
     }
 
+    @Override
+    public boolean standalone() {
+        return animation().standalone();
+    }
+
     public EmoteAnimation.PlayerBehavior playerBehavior() {
         return animation().player();
     }

@@ -31,7 +31,8 @@ class PlayableEmoteServiceTest {
         EmoteRegistry registry = new EmoteRegistry();
         registry.replace(List.of(
             create("demo:wave", "Wave"),
-            create("demo:bow", "Bow")
+            create("demo:bow", "Bow"),
+            create("demo:sit_idle", "Sit Idle", false)
         ));
         PlayableEmoteService service = new PlayableEmoteService(
             registry,
@@ -40,5 +41,6 @@ class PlayableEmoteServiceTest {
 
         assertEquals(List.of("Wave"), service.getAll(null).stream().map(PlayableEmote::displayName).toList());
         assertEquals(List.of("demo:wave"), service.getPlayableIds(null));
+        assertEquals(List.of("demo:bow", "demo:wave"), service.getAllIds());
     }
 }

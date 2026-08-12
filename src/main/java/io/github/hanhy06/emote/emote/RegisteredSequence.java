@@ -49,6 +49,11 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
     }
 
     @Override
+    public boolean standalone() {
+        return true;
+    }
+
+    @Override
     public EmoteAnimation.PlayerBehavior playerBehavior() {
         return this.source.player();
     }

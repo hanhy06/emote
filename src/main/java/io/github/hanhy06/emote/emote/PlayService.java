@@ -49,6 +49,9 @@ public class PlayService {
         if (emote == null) {
             return PlayResult.failure("Unknown: " + id);
         }
+        if (!emote.standalone()) {
+            return PlayResult.failure("Sequence-only animation: " + id);
+        }
         if (!this.playPermissionChecker.canPlay(player, emote)) {
             return PlayResult.failure("No emote permission.");
         }

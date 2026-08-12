@@ -93,11 +93,14 @@ public final class AnimationJsonLoader {
         String idText = reader.requireString(root, "id", "$");
         Identifier id = parseId(idText, reader);
         Metadata metadata = parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        boolean standalone = !root.has("standalone")
+            || root.get("standalone").isJsonNull()
+            || reader.requireBoolean(root, "standalone", "$");
         PlayerBehavior player = parsePlayer(reader.requireObject(root, "player", "$"), reader);
         parseTransformSpace(reader.requireObject(root, "transform_space", "$"), reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
-        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, player, nodes, timeline));
+        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, standalone, player, nodes, timeline));
     }
 
     private Metadata parseMetadata(JsonObject object, AnimationJsonReader reader)

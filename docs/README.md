@@ -147,6 +147,8 @@ All `.json` files below `animations`, including files in nested directories, are
 
 Animation files may declare `"type": "animation"`. Files without `type` are also treated as animations, so existing converter output remains valid.
 
+Animations intended only as sequence steps can set `"standalone": false` at the root. The default is `true`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
+
 See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json) for details.
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.

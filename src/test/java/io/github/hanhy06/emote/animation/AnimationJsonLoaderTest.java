@@ -30,12 +30,23 @@ class AnimationJsonLoaderTest {
 
         assertEquals("emote:format_reference", loaded.animation().id().toString());
         assertEquals("Format Reference", loaded.animation().metadata().name());
+        assertTrue(loaded.animation().standalone());
         assertTrue(loaded.animation().player().hidden());
         assertEquals(0.1D, loaded.animation().player().stopConditions().movementDistance());
         assertTrue(loaded.animation().player().stopConditions().jump());
         assertEquals(5, loaded.animation().nodes().size());
         assertEquals(80, loaded.animation().timeline().durationTicks());
         assertEquals(64, loaded.sha256().length());
+    }
+
+    @Test
+    void defaultsStandaloneToTrueAndReadsExplicitFalse() throws Exception {
+        JsonObject root = readReference();
+        root.remove("standalone");
+        assertTrue(parse(root).animation().standalone());
+
+        root.addProperty("standalone", false);
+        assertFalse(parse(root).animation().standalone());
     }
 
     @Test

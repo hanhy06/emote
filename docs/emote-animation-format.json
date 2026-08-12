@@ -1,5 +1,6 @@
 {
     "type": "animation",
+    "standalone": true,
     "schema_version": 1,
     "minecraft_version": "26.2",
     "tick_rate": 20,

@@ -16,10 +16,21 @@ import java.util.Objects;
 public record EmoteAnimation(
     Identifier id,
     Metadata metadata,
+    boolean standalone,
     PlayerBehavior player,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
+    public EmoteAnimation(
+        Identifier id,
+        Metadata metadata,
+        PlayerBehavior player,
+        Map<String, Node> nodes,
+        Timeline timeline
+    ) {
+        this(id, metadata, true, player, nodes, timeline);
+    }
+
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");

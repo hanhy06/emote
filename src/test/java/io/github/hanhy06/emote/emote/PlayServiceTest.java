@@ -66,6 +66,23 @@ class PlayServiceTest {
     }
 
     @Test
+    void rejectsDirectPlaybackOfSequenceOnlyAnimation() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)));
+        PlayService service = new PlayService(
+            registry,
+            (ignoredPlayer, ignoredDefinition) -> true,
+            (ignoredPlayer, ignoredDefinition) -> fail("Sequence-only animation must not start directly"),
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertEquals(
+            "Sequence-only animation: minecraft:sit_idle",
+            service.play(null, "minecraft:sit_idle").errorMessage().getString()
+        );
+    }
+
+    @Test
     void listenerCanCancelPlaybackWithAComponentMessage() {
         PlayService service = new PlayService(
             createRegistry(),

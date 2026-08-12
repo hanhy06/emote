@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class SequenceProgressTest {
     @Test
     void advancesAfterRepeatingTheCurrentStep() {
-        RegisteredEmote idle = create("demo:idle", "Idle");
+        RegisteredEmote idle = create("demo:idle", "Idle", false);
         EmoteAnimation.PlayerBehavior visiblePlayer = new EmoteAnimation.PlayerBehavior(
             false,
             new EmoteAnimation.StopConditions(0.0D, false, false, false, false, false, false)
