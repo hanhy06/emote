@@ -108,6 +108,9 @@ public class PlaybackManager implements ConfigListener {
                 preparedSkin
             );
             startEvents(timeline, events);
+            if (playbackChanged(activeEmote)) {
+                return PlayResult.SUCCESS;
+            }
             for (PlaybackStateListener stateListener : this.stateListeners) {
                 stateListener.onStarted(player, activeEmote);
             }
@@ -160,10 +163,6 @@ public class PlaybackManager implements ConfigListener {
         stop(player, reason);
     }
 
-    private void stop(UUID playerUuid, PlaybackStopReason reason) {
-        stop(playerUuid, reason, null);
-    }
-
     private ActivePlayback stop(
         UUID playerUuid,
         PlaybackStopReason reason,
@@ -201,6 +200,9 @@ public class PlaybackManager implements ConfigListener {
                 try {
                     this.entityController.updateViewRotation(activeEmote.nodes(), player.getYRot());
                     TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
+                    if (playbackChanged(activeEmote)) {
+                        continue;
+                    }
                     if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                         stopReason = PlaybackStopReason.FINISHED;
                     } else {
@@ -215,13 +217,13 @@ public class PlaybackManager implements ConfigListener {
                 if (stopRequests == null) {
                     stopRequests = new ArrayList<>();
                 }
-                stopRequests.add(new StopRequest(activeEmote.playerUuid(), stopReason));
+                stopRequests.add(new StopRequest(activeEmote, stopReason));
             }
         }
 
         if (stopRequests != null) {
             for (StopRequest request : stopRequests) {
-                stop(request.playerUuid(), request.reason());
+                stopIfCurrent(request.activeEmote(), request.reason());
             }
         }
     }
@@ -255,8 +257,8 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (UUID playerUuid : List.copyOf(this.activePlaybacks.keySet())) {
-            stop(playerUuid, reason);
+        for (ActivePlayback activeEmote : List.copyOf(this.activePlaybacks.values())) {
+            stopIfCurrent(activeEmote, reason);
         }
     }
 
@@ -280,13 +282,23 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopById(String id, PlaybackStopReason reason) {
         this.stressTest.stopById(id);
-        List<UUID> playerUuidList = this.activePlaybacks.entrySet().stream()
-            .filter(entry -> entry.getValue().id().equals(id))
-            .map(Map.Entry::getKey)
+        List<ActivePlayback> matchingPlaybacks = this.activePlaybacks.values().stream()
+            .filter(activeEmote -> activeEmote.id().equals(id))
             .toList();
-        for (UUID playerUuid : playerUuidList) {
-            stop(playerUuid, reason);
+        for (ActivePlayback activeEmote : matchingPlaybacks) {
+            stopIfCurrent(activeEmote, reason);
         }
+    }
+
+    private boolean playbackChanged(ActivePlayback activeEmote) {
+        return this.activePlaybacks.get(activeEmote.playerUuid()) != activeEmote;
+    }
+
+    private void stopIfCurrent(ActivePlayback activeEmote, PlaybackStopReason reason) {
+        if (!this.activePlaybacks.remove(activeEmote.playerUuid(), activeEmote)) {
+            return;
+        }
+        cleanupActive(activeEmote, true, reason, null);
     }
 
     private void cleanupActive(
@@ -296,14 +308,6 @@ public class PlaybackManager implements ConfigListener {
         @Nullable ServerPlayer knownPlayer
     ) {
         try {
-            activeEmote.events().stop();
-        } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to run stop events for emote {}", activeEmote.id(), exception);
-        } finally {
-            ServerLevel level = Emote.SERVER.getLevel(activeEmote.levelKey());
-            if (level != null) {
-                this.entityController.remove(level, activeEmote.nodes());
-            }
             ServerPlayer player = knownPlayer != null
                 ? knownPlayer
                 : Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
@@ -313,6 +317,17 @@ public class PlaybackManager implements ConfigListener {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
                         stateListener.onStopped(player, activeEmote, reason);
                     }
+                }
+            }
+        } finally {
+            try {
+                activeEmote.events().stop();
+            } catch (RuntimeException exception) {
+                Emote.LOGGER.warn("Failed to run stop events for emote {}", activeEmote.id(), exception);
+            } finally {
+                ServerLevel level = Emote.SERVER.getLevel(activeEmote.levelKey());
+                if (level != null) {
+                    this.entityController.remove(level, activeEmote.nodes());
                 }
             }
         }
@@ -371,6 +386,6 @@ public class PlaybackManager implements ConfigListener {
             .count();
     }
 
-    private record StopRequest(UUID playerUuid, PlaybackStopReason reason) {
+    private record StopRequest(ActivePlayback activeEmote, PlaybackStopReason reason) {
     }
 }
