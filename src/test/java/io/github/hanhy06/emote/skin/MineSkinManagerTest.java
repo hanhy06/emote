@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.AbstractExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -53,6 +54,45 @@ class MineSkinManagerTest {
 
             assertEquals(0, manager.trackedBakeTaskCount());
             manager.cancelPendingBakes();
+        }
+    }
+
+    @Test
+    void cancelledBakeTaskDoesNotNotifyCompletion(@TempDir Path tempDir) {
+        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        MineSkinCache cache = new MineSkinCache(tempDir);
+        AtomicInteger completionNotifications = new AtomicInteger();
+
+        try (CapturingExecutorService executorService = new CapturingExecutorService();
+             HttpClient httpClient = MineSkinClient.createHttpClient()) {
+            MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
+            MineSkinManager manager = new MineSkinManager(
+                new PlayerSkinBaker(),
+                cache,
+                new MineSkinClient(httpClient),
+                queue,
+                ignored -> completionNotifications.incrementAndGet(),
+                ignored -> {
+                }
+            );
+            manager.configure("api-key", 3, 30, 256);
+            PlayerSkinManager.PlayerSkinSource source = new PlayerSkinManager.PlayerSkinSource(
+                UUID.randomUUID(),
+                "player",
+                "skin-hash",
+                "https://textures.example/skin",
+                false
+            );
+
+            manager.prepare(source, Set.of(textureKey));
+            assertNotNull(executorService.command);
+            cache.save("skin-hash", false, Map.of(textureKey, "https://textures.example/head"));
+
+            manager.cancelPendingBakes();
+            executorService.command.run();
+
+            assertEquals(0, completionNotifications.get());
+            assertEquals(0, manager.trackedBakeTaskCount());
         }
     }
 

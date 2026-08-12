@@ -175,13 +175,13 @@ final class MineSkinManager {
     }
 
     void cancelPendingBakes() {
-        this.generationQueue.cancelAll();
         synchronized (this.bakeTasks) {
             for (BakeTask bakeTask : this.bakeTasks.values()) {
                 bakeTask.cancel();
             }
             this.bakeTasks.clear();
         }
+        this.generationQueue.cancelAll();
         this.cache.clearMemory();
     }
 
@@ -482,7 +482,9 @@ final class MineSkinManager {
         }
 
         private synchronized void updateStage(BakeStage stage) {
-            this.stage = stage;
+            if (this.stage != BakeStage.CANCELLED) {
+                this.stage = stage;
+            }
         }
 
         private synchronized void markCompleted(PlayerSkinTextureKey textureKey) {
@@ -499,7 +501,9 @@ final class MineSkinManager {
         }
 
         private synchronized void waitForRetry() {
-            this.stage = BakeStage.RETRY_WAIT;
+            if (this.stage != BakeStage.CANCELLED) {
+                this.stage = BakeStage.RETRY_WAIT;
+            }
         }
 
         private synchronized boolean isSatisfiedBy(Set<PlayerSkinTextureKey> availableKeys) {
@@ -507,12 +511,18 @@ final class MineSkinManager {
         }
 
         private synchronized boolean complete() {
+            if (this.stage == BakeStage.CANCELLED) {
+                return false;
+            }
             boolean changed = this.stage != BakeStage.COMPLETE;
             this.stage = BakeStage.COMPLETE;
             return changed;
         }
 
         private synchronized boolean fail() {
+            if (this.stage == BakeStage.CANCELLED) {
+                return false;
+            }
             boolean changed = this.stage != BakeStage.FAILED;
             this.stage = BakeStage.FAILED;
             this.failedAtEpochMillis = System.currentTimeMillis();
