@@ -1,5 +1,4 @@
-import type { ImportedProject } from "./types";
-import type { ImportSource } from "./types";
+import type { ImportedProject, ImportSource } from "./types";
 
 export interface ImportInput {
   name: string;
@@ -20,10 +19,6 @@ export interface ImportAdapter {
   import(input: ImportInput): Promise<ImportedProject>;
 }
 
-export interface ImportAdapterLoader {
-  readonly id: ImportSource;
-  readonly label: string;
-  readonly extensions: readonly string[];
-
+export interface ImportAdapterLoader extends Pick<ImportAdapter, "id" | "label" | "extensions"> {
   load(): Promise<ImportAdapter>;
 }

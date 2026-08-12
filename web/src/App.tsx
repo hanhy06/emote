@@ -10,7 +10,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
-import { createPlayerHeadPart, type PlayerHeadPart } from "./preview/playerHeadPart";
+import type { PlayerHeadPart } from "./preview/playerHeadPart";
 import {
   isPlayerHeadItemStack,
   selectPart,
@@ -41,8 +41,7 @@ interface ConverterSession {
 const EMPTY_ASSIGNMENTS: PartAssignments = {};
 const EMPTY_ORDERS: PartOrders = {};
 const EMPTY_SELECTION = new Set<string>();
-const PartPreview = lazy(() => import("./components/PartPreview")
-  .then((module) => ({ default: module.PartPreview })));
+const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
   .join(",");
@@ -132,7 +131,7 @@ export function App() {
     }
   }
 
-  function skinAssignments(): Record<string, ImportedSkinPart | null> {
+  function buildSkinAssignments(): Record<string, ImportedSkinPart | null> {
     const skins: Record<string, ImportedSkinPart | null> = {};
     for (const candidate of skinCandidates) {
       const part = assignments[candidate.nodeId];
@@ -141,7 +140,7 @@ export function App() {
     return skins;
   }
 
-  async function runExport(action: () => ExportResult | Promise<ExportResult>, fallbackMessage: string) {
+  async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string) {
     setConversionError("");
 
     try {
@@ -156,7 +155,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.project, session.metadata, skinAssignments(), index);
+      return exportAnimation(session.project, session.metadata, buildSkinAssignments(), index);
     }, "Conversion failed.");
   }
 
@@ -165,7 +164,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportResourcePack } = await import("./export/resourcePackExporter");
-      return exportResourcePack(session.project, session.metadata, skinAssignments(), index);
+      return exportResourcePack(session.project, session.metadata, buildSkinAssignments(), index);
     }, "Resource export failed.");
   }
 
@@ -398,7 +397,12 @@ function createPreviewParts(
       ? candidate.node.defaultMatrix
       : animation?.tracks[candidate.nodeId]?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix
         ?? candidate.node.defaultMatrix;
-    return createPlayerHeadPart(candidate.nodeId, candidate.partIndex, sourceMatrix, candidate.node.playerHeadConversion?.matrix);
+    return {
+      nodeId: candidate.nodeId,
+      partIndex: candidate.partIndex,
+      matrix: sourceMatrix,
+      ...(candidate.node.playerHeadConversion ? { conversionMatrix: candidate.node.playerHeadConversion.matrix } : {}),
+    };
   });
 }
 

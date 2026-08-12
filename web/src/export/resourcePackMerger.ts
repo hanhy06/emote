@@ -1,6 +1,6 @@
 import { unzip, zip } from "fflate";
 import type { ImportedProject } from "../import/types";
-import { generatedResourceFiles } from "./resourcePackExporter";
+import { generatedResourceFiles } from "./generatedResources";
 import type { ExportOptions, ExportResult } from "./types";
 
 interface FolderFile {

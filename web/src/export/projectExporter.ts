@@ -4,6 +4,7 @@ import { serializeEmoteAnimation } from "../format/serializer";
 import { multiplyMatrix16 } from "../format/matrix";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import type { ImportedNode, ImportedProject, ImportedSkinPart } from "../import/types";
+import { validateResourceVersion } from "./generatedResources";
 import type { ExportOptions, ExportResult } from "./types";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([
@@ -81,12 +82,6 @@ export function compileExportAnimation(
     },
     player: options.player,
   }, animationIndex);
-}
-
-export function validateResourceVersion(project: ImportedProject, minecraftVersion: string): void {
-  if (project.resourceMinecraftVersion && minecraftVersion !== project.resourceMinecraftVersion) {
-    throw new Error(`Generated resources require Minecraft ${project.resourceMinecraftVersion}.`);
-  }
 }
 
 export function sanitizeAnimationFileName(value: string): string {

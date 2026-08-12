@@ -15,7 +15,7 @@ interface PartPreviewProps {
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
+export default function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
