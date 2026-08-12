@@ -77,13 +77,13 @@ public final class ApiImpl extends EmoteApi {
     @Override
     public Optional<EmoteInfo> find(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
-        return Optional.ofNullable(this.emoteRegistry.find(emoteId.toString()))
+        return Optional.ofNullable(this.emoteRegistry.findDefinition(emoteId.toString()))
             .map(ApiEvents::toInfo);
     }
 
     @Override
     public List<EmoteInfo> getAll() {
-        return this.emoteRegistry.getAll().stream()
+        return this.emoteRegistry.getAllDefinitions().stream()
             .map(ApiEvents::toInfo)
             .toList();
     }

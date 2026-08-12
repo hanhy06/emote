@@ -25,7 +25,14 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
             if (animation == null) {
                 throw new IllegalArgumentException("Unknown or disabled animation: " + step.emoteId());
             }
+            if (animation.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                throw new IllegalArgumentException("Server-synchronized animation is not supported in a sequence: " + animation.id());
+            }
             resolvedSteps.add(new Step(animation, step.repeat()));
+        }
+        EmoteAnimation.PlayerBehavior playerBehavior = resolvedSteps.getFirst().animation().playerBehavior();
+        if (resolvedSteps.stream().anyMatch(step -> !step.animation().playerBehavior().equals(playerBehavior))) {
+            throw new IllegalArgumentException("Every sequence animation must use the same player behavior");
         }
         return new RegisteredSequence(source, resolvedSteps);
     }
@@ -43,6 +50,11 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
     @Override
     public String description() {
         return this.source.metadata().description();
+    }
+
+    @Override
+    public EmoteAnimation.PlayerBehavior playerBehavior() {
+        return this.steps.getFirst().animation().playerBehavior();
     }
 
     @Override
@@ -69,6 +81,10 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
     @Override
     public int nodeCount() {
         return this.steps.stream().mapToInt(step -> step.animation().nodeCount()).max().orElse(0);
+    }
+
+    public int displayNodeCount() {
+        return this.steps.stream().mapToInt(step -> step.animation().displayNodeCount()).max().orElse(0);
     }
 
     public record Step(RegisteredEmote animation, int repeat) {

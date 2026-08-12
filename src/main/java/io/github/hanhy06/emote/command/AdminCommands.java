@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackStressTestReport;
@@ -99,7 +100,7 @@ final class AdminCommands {
             .requires(this.permissionService.requireGameMaster())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getFileEntries().stream().map(RegisteredEmote::id),
+                    this.emoteRegistry.getFileDefinitions().stream().map(EmoteDefinition::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -123,7 +124,7 @@ final class AdminCommands {
     }
 
     private int list(CommandSourceStack source) {
-        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
+        List<EmoteDefinition> emotes = this.emoteRegistry.getAllDefinitions();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
@@ -131,7 +132,7 @@ final class AdminCommands {
 
         source.sendSuccess(() -> Component.literal("Emotes: " + emotes.size()), false);
 
-        for (RegisteredEmote emote : emotes) {
+        for (EmoteDefinition emote : emotes) {
             source.sendSystemMessage(Component.literal(
                 "- " + emote.id()
                     + " name=" + emote.name()
@@ -242,7 +243,7 @@ final class AdminCommands {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteRegistry.findFile(id) == null) {
+        } else if (this.emoteRegistry.findFileDefinition(id) == null) {
             source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }

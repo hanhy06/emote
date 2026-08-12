@@ -1,0 +1,44 @@
+package io.github.hanhy06.emote.playback;
+
+import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.sequence.EmoteSequence;
+import net.minecraft.resources.Identifier;
+import org.junit.jupiter.api.Test;
+
+import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
+
+import static io.github.hanhy06.emote.emote.RegisteredEmoteFixture.create;
+import static org.junit.jupiter.api.Assertions.*;
+
+class SequenceProgressTest {
+    @Test
+    void advancesAfterRepeatingTheCurrentStep() {
+        RegisteredEmote idle = create("demo:idle", "Idle");
+        RegisteredEmote stand = create("demo:stand", "Stand");
+        EmoteSequence source = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("demo:sit"),
+            new EmoteSequence.Metadata("Sit", "Sit sequence"),
+            List.of(
+                new EmoteSequence.Step(Identifier.parse(idle.id()), 3),
+                new EmoteSequence.Step(Identifier.parse(stand.id()), 1)
+            )
+        );
+        SequenceProgress progress = new SequenceProgress(RegisteredSequence.resolve(
+            source,
+            Map.of(idle.id(), idle, stand.id(), stand)
+        ));
+
+        assertSame(idle, progress.currentAnimation());
+        assertFalse(progress.completeCycle());
+        assertSame(idle, progress.currentAnimation());
+        assertFalse(progress.completeCycle());
+        assertSame(idle, progress.currentAnimation());
+        assertFalse(progress.completeCycle());
+        assertSame(stand, progress.currentAnimation());
+        assertTrue(progress.completeCycle());
+    }
+}

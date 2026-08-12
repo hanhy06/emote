@@ -11,6 +11,8 @@ public sealed interface EmoteDefinition permits RegisteredEmote, RegisteredSeque
 
     String description();
 
+    EmoteAnimation.PlayerBehavior playerBehavior();
+
     Path sourcePath();
 
     int durationTicks();

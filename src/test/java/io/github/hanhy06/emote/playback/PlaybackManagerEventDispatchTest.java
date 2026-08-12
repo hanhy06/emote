@@ -56,6 +56,22 @@ class PlaybackManagerEventDispatchTest {
         assertEquals(List.of("start", "tick-0", "loop", "tick-0"), fixture.executed());
     }
 
+    @Test
+    void canHoldAtLoopBoundaryForSequenceRepeatCounting() {
+        PlaybackFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 0);
+        fixture.timeline().start();
+        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+
+        TimelinePlayer.AdvanceResult result = PlaybackManager.advanceTimeline(
+            fixture.timeline(),
+            fixture.events(),
+            false
+        );
+
+        assertEquals(TimelinePlayer.AdvanceResult.LOOP_BOUNDARY, result);
+        assertEquals(List.of("start", "tick-0", "loop"), fixture.executed());
+    }
+
     private PlaybackFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);

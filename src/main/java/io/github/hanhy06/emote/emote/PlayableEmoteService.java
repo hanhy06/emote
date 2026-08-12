@@ -22,9 +22,9 @@ public class PlayableEmoteService {
     }
 
     public List<PlayableEmote> getAll(ServerPlayer player) {
-        return this.emoteRegistry.getAll().stream()
+        return this.emoteRegistry.getAllDefinitions().stream()
             .filter(emote -> canPlay(player, emote))
-            .sorted(Comparator.comparing(RegisteredEmote::name).thenComparing(RegisteredEmote::id))
+            .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::id))
             .map(emote -> new PlayableEmote(emote.id(), emote.name(), emote.description()))
             .toList();
     }
@@ -66,9 +66,9 @@ public class PlayableEmoteService {
         return collectPlayIds(emote -> canPlay(player, emote));
     }
 
-    private List<String> collectPlayIds(Predicate<RegisteredEmote> filter) {
+    private List<String> collectPlayIds(Predicate<EmoteDefinition> filter) {
         List<String> ids = new java.util.ArrayList<>();
-        for (RegisteredEmote emote : this.emoteRegistry.getAll()) {
+        for (EmoteDefinition emote : this.emoteRegistry.getAllDefinitions()) {
             if (filter.test(emote)) {
                 ids.add(emote.id());
             }
@@ -76,13 +76,13 @@ public class PlayableEmoteService {
         return List.copyOf(ids);
     }
 
-    private boolean canPlay(ServerPlayer player, RegisteredEmote emote) {
+    private boolean canPlay(ServerPlayer player, EmoteDefinition emote) {
         return this.playPermissionChecker.canPlay(player, emote);
     }
 
     @FunctionalInterface
     interface PlayPermissionChecker {
-        boolean canPlay(ServerPlayer player, RegisteredEmote emote);
+        boolean canPlay(ServerPlayer player, EmoteDefinition emote);
     }
 
     private record RankedEntry(PlayableEmote emote, int rank) {

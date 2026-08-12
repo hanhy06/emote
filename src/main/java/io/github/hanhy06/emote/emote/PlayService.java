@@ -45,7 +45,7 @@ public class PlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        RegisteredEmote emote = this.emoteRegistry.find(id);
+        EmoteDefinition emote = this.emoteRegistry.findDefinition(id);
         if (emote == null) {
             return PlayResult.failure("Unknown: " + id);
         }
@@ -61,16 +61,16 @@ public class PlayService {
 
     @FunctionalInterface
     interface PlayPermissionChecker {
-        boolean canPlay(ServerPlayer player, RegisteredEmote emote);
+        boolean canPlay(ServerPlayer player, EmoteDefinition emote);
     }
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, RegisteredEmote emote);
+        PlayResult start(ServerPlayer player, EmoteDefinition emote);
     }
 
     @FunctionalInterface
     interface PlayEventDispatcher {
-        Component beforePlay(ServerPlayer player, RegisteredEmote emote, PlaySource source);
+        Component beforePlay(ServerPlayer player, EmoteDefinition emote, PlaySource source);
     }
 }

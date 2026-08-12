@@ -77,11 +77,12 @@ public class EmoteRegistry {
 
     public synchronized int clearApiRegistrations() {
         int removedCount = this.apiEmotes.size();
-        if (removedCount == 0) {
-            return 0;
+
+        if (removedCount > 0) {
+            this.apiEmotes.clear();
+            rebuildState();
         }
-        this.apiEmotes.clear();
-        rebuildState();
+
         return removedCount;
     }
 

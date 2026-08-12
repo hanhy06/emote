@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.core.Holder;
@@ -215,7 +215,7 @@ public class DialogManager {
     }
 
     private String createActivePlaybackText(ActivePlayback activeEmote) {
-        RegisteredEmote emote = this.emoteRegistry.find(activeEmote.id());
+        EmoteDefinition emote = this.emoteRegistry.findDefinition(activeEmote.id());
         String displayName = emote == null
             ? activeEmote.id()
             : emote.name();

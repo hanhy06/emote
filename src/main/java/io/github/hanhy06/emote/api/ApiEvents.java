@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.api;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import net.minecraft.network.chat.Component;
@@ -24,7 +25,7 @@ public final class ApiEvents implements PlaybackStateListener {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, RegisteredEmote emote, PlaySource source) {
+    public Component beforePlay(ServerPlayer player, EmoteDefinition emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
@@ -69,14 +70,17 @@ public final class ApiEvents implements PlaybackStateListener {
     }
 
     public static EmoteInfo toInfo(RegisteredEmote emote) {
-        var animation = emote.animation();
+        return toInfo((EmoteDefinition) emote);
+    }
+
+    public static EmoteInfo toInfo(EmoteDefinition emote) {
         return new EmoteInfo(
-            animation.id(),
+            Identifier.parse(emote.id()),
             emote.name(),
             emote.description(),
             emote.playerBehavior(),
-            animation.timeline().durationTicks(),
-            animation.timeline().loop()
+            emote.durationTicks(),
+            emote.loopMode()
         );
     }
 
