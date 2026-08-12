@@ -150,7 +150,7 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
 function importDisplay(id: string, type: string, compound: string): ImportedNode {
   const defaultMatrix = readMatrix(readSnbtRawField(compound, "transformation"), `${id} create transformation`);
   const entityNbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
-  const common = { id, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}) };
+  const common = { id, defaultMatrix, visible: true, skinAssignmentGroup: id, ...(entityNbt ? { entityNbt } : {}) };
   if (type === "item_display") {
     const item = readSnbtRawField(compound, "item");
     if (!item) throw new Error(`BD Engine datapack node ${id} does not contain an item.`);

@@ -22,6 +22,7 @@ export interface ImportedNodeBase {
   defaultMatrix: Matrix16;
   visible: boolean;
   entityNbt?: string;
+  skinAssignmentGroup?: string;
 }
 
 export type ImportedNode =

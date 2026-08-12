@@ -19,30 +19,38 @@ export function assignSkinPart(
   orders: PartOrders,
   selectedNodeIds: readonly string[],
   part: SkinPartId | null,
+  assignmentGroups: Readonly<Record<string, string>> = {},
 ): { assignments: PartAssignments; orders: PartOrders } {
   const nextAssignments = { ...assignments };
   const nextOrders = { ...orders };
+  const selectedGroups = new Set(selectedNodeIds.map((nodeId) => assignmentGroups[nodeId] ?? nodeId));
+  const assignedNodeIds = Object.keys(assignments)
+    .filter((nodeId) => selectedGroups.has(assignmentGroups[nodeId] ?? nodeId));
+  selectedNodeIds.forEach((nodeId) => {
+    if (!assignedNodeIds.includes(nodeId)) assignedNodeIds.push(nodeId);
+  });
   if (part === null) {
-    selectedNodeIds.forEach((nodeId) => {
+    assignedNodeIds.forEach((nodeId) => {
       nextAssignments[nodeId] = null;
       nextOrders[nodeId] = null;
     });
     return { assignments: nextAssignments, orders: nextOrders };
   }
 
-  if (selectedNodeIds.length !== 1) {
-    selectedNodeIds.forEach((nodeId) => {
+  if (selectedGroups.size !== 1) {
+    assignedNodeIds.forEach((nodeId) => {
       nextAssignments[nodeId] = part;
       nextOrders[nodeId] = orders[nodeId] ?? 0;
     });
     return { assignments: nextAssignments, orders: nextOrders };
   }
 
-  selectedNodeIds.forEach((nodeId) => {
+  const order = new Set(Object.entries(assignments)
+    .filter(([nodeId, assignment]) => !selectedGroups.has(assignmentGroups[nodeId] ?? nodeId) && assignment === part)
+    .map(([nodeId]) => assignmentGroups[nodeId] ?? nodeId)).size;
+  assignedNodeIds.forEach((nodeId) => {
     nextAssignments[nodeId] = part;
-    nextOrders[nodeId] = Object.entries(assignments)
-      .filter(([assignedNodeId, assignment]) => assignedNodeId !== nodeId && assignment === part)
-      .length;
+    nextOrders[nodeId] = order;
   });
   return { assignments: nextAssignments, orders: nextOrders };
 }

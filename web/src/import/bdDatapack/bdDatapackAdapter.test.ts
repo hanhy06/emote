@@ -26,6 +26,8 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2" });
 
     expect(project).toMatchObject({ source: "bd_datapack", suggestedNamespace: "dance" });
+    expect(project.nodes.display_0).toMatchObject({ skinAssignmentGroup: "display_0" });
+    expect(project.nodes.display_0_variant_1).toMatchObject({ skinAssignmentGroup: "display_0" });
     expect(animation.nodes.display_0).toMatchObject({ type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",Count:1}" });
     expect(animation.nodes.display_0_variant_1).toMatchObject({
       type: "item_display",

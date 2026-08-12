@@ -25,6 +25,33 @@ describe("assignSkinPart", () => {
     expect(result.orders.selected).toBe(1);
   });
 
+  it("assigns one order to every texture variant in a logical part", () => {
+    const result = assignSkinPart(
+      { head: null, head_variant_1: null, body: "body" },
+      { head: null, head_variant_1: null, body: 0 },
+      ["head_variant_1"],
+      "head",
+      { head: "head", head_variant_1: "head", body: "body" },
+    );
+
+    expect(result.assignments.head).toBe("head");
+    expect(result.assignments.head_variant_1).toBe("head");
+    expect(result.orders.head).toBe(0);
+    expect(result.orders.head_variant_1).toBe(0);
+  });
+
+  it("counts logical parts instead of their texture variants", () => {
+    const result = assignSkinPart(
+      { first: "head", first_variant_1: "head", selected: null },
+      { first: 0, first_variant_1: 0, selected: null },
+      ["selected"],
+      "head",
+      { first: "first", first_variant_1: "first", selected: "selected" },
+    );
+
+    expect(result.orders.selected).toBe(1);
+  });
+
   it("does not auto-increment orders for multiple selected models", () => {
     const result = assignSkinPart(
       { existing: "left_arm", first: "head", second: null },

@@ -10,7 +10,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
-import type { PlayerHeadPart } from "./preview/playerHeadPart";
+import { isVisibleAtTick, type PlayerHeadPart } from "./preview/playerHeadPart";
 import {
   assignSkinPart,
   isPlayerHeadItemStack,
@@ -213,11 +213,18 @@ export function App() {
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => ({ ...current, ...assignSkinPart(current.assignments, current.orders, [...current.selectedParts], part) }));
+    updateSession((current) => ({
+      ...current,
+      ...assignSkinPart(current.assignments, current.orders, [...current.selectedParts], part, skinAssignmentGroups(skinCandidates)),
+    }));
   }
 
   function assignOrder(order: number) {
-    const nodeIds = [...selectedParts].filter((nodeId) => assignments[nodeId] != null);
+    const groups = skinAssignmentGroups(skinCandidates);
+    const selectedGroups = new Set([...selectedParts].map((nodeId) => groups[nodeId]));
+    const nodeIds = skinCandidates
+      .map((candidate) => candidate.nodeId)
+      .filter((nodeId) => selectedGroups.has(groups[nodeId]) && assignments[nodeId] != null);
     if (nodeIds.length) updateSession((current) => ({
       ...current,
       orders: { ...current.orders, ...Object.fromEntries(nodeIds.map((nodeId) => [nodeId, order])) },
@@ -389,7 +396,7 @@ export function App() {
 
 function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
   if (!project) return [];
-  return Object.entries(project.nodes).flatMap(([nodeId, node]) => {
+  const candidates = Object.entries(project.nodes).flatMap(([nodeId, node]) => {
     if (node.type !== "item_display") return [];
     let isPlayerHead = false;
     try {
@@ -399,7 +406,13 @@ function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
     }
     if (!isPlayerHead && !node.playerHeadConversion) return [];
     return [{ nodeId, partIndex: 0, node }];
-  }).map((candidate, partIndex) => ({ ...candidate, partIndex }));
+  });
+  const partIndexByGroup = new Map<string, number>();
+  return candidates.map((candidate) => {
+    const group = candidate.node.skinAssignmentGroup ?? candidate.nodeId;
+    if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
+    return { ...candidate, partIndex: partIndexByGroup.get(group)! };
+  });
 }
 
 function animationTicks(animation: ImportedAnimation | undefined): number[] {
@@ -414,7 +427,11 @@ function createPreviewParts(
   animation: ImportedAnimation | undefined,
   tick: number | null,
 ): PlayerHeadPart[] {
-  return candidates.map((candidate) => {
+  return candidates.filter((candidate) => isVisibleAtTick(
+    candidate.node.visible,
+    animation?.tracks[candidate.nodeId],
+    tick,
+  )).map((candidate) => {
     const sourceMatrix = tick === null
       ? candidate.node.defaultMatrix
       : animation?.tracks[candidate.nodeId]?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix
@@ -428,9 +445,21 @@ function createPreviewParts(
   });
 }
 
+function skinAssignmentGroups(candidates: SkinCandidate[]): Record<string, string> {
+  return Object.fromEntries(candidates.map((candidate) => [
+    candidate.nodeId,
+    candidate.node.skinAssignmentGroup ?? candidate.nodeId,
+  ]));
+}
+
 function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignments, resourceCount: number): string {
-  const assigned = candidates.filter((candidate) => assignments[candidate.nodeId]).length;
-  const skin = candidates.length ? `${assigned}/${candidates.length} skin parts assigned` : "No skin assignment needed";
+  const groups = new Map<string, SkinCandidate[]>();
+  candidates.forEach((candidate) => {
+    const group = candidate.node.skinAssignmentGroup ?? candidate.nodeId;
+    groups.set(group, [...groups.get(group) ?? [], candidate]);
+  });
+  const assigned = [...groups.values()].filter((group) => group.every((candidate) => assignments[candidate.nodeId])).length;
+  const skin = groups.size ? `${assigned}/${groups.size} skin parts assigned` : "No skin assignment needed";
   return resourceCount ? `${skin} · ${resourceCount} resource files` : skin;
 }
 
