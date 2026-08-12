@@ -110,6 +110,12 @@ describe("geckoLibBbmodelAdapter", () => {
     value.elements[0].name = "Right Arm";
     value.elements[0].from = [4, 12, -2];
     value.elements[0].to = [8, 24, 2];
+    value.elements[0].faces.north = { uv: [0, 0, 4, 12], texture: 0 };
+    value.elements[0].faces.south = Object.assign({ uv: [0, 0, 4, 12], texture: 0 }, { rotation: 180 });
+    Object.assign(value.elements[0].faces, {
+      east: Object.assign({ uv: [0, 0, 12, 4], texture: 0 }, { rotation: 90 }),
+      west: Object.assign({ uv: [0, 0, 12, 4], texture: 0 }, { rotation: 270 }),
+    });
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
@@ -122,6 +128,20 @@ describe("geckoLibBbmodelAdapter", () => {
       && imported.nodes.right_arm_right_arm_lower.playerHeadConversion?.matrix[5]).toBeCloseTo(1);
     expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStackSnbt).toContain("minecraft:item_model");
     expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(4);
+
+    const decodeModel = (path: string) => JSON.parse(new TextDecoder().decode(imported.resources.get(path))) as {
+      elements: { faces: Record<string, { uv: number[] }> }[];
+    };
+    const upperFaces = decodeModel("assets/demo/models/item/test_model/right_arm.json").elements[0].faces;
+    const lowerFaces = decodeModel("assets/demo/models/item/test_model/right_arm_right_arm_lower.json").elements[0].faces;
+    expect(upperFaces.north.uv).toEqual([0, 0, 4, 4]);
+    expect(lowerFaces.north.uv).toEqual([0, 4, 4, 12]);
+    expect(upperFaces.south.uv).toEqual([0, 8, 4, 12]);
+    expect(lowerFaces.south.uv).toEqual([0, 0, 4, 8]);
+    expect(upperFaces.east.uv).toEqual([0, 0, 4, 4]);
+    expect(lowerFaces.east.uv).toEqual([4, 0, 12, 4]);
+    expect(upperFaces.west.uv).toEqual([8, 0, 12, 4]);
+    expect(lowerFaces.west.uv).toEqual([0, 0, 8, 4]);
   });
 
   it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {

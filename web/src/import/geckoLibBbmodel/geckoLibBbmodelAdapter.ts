@@ -286,21 +286,57 @@ function splitTallSkinCubes(bone: BoneEntry, cubes: BbCube[]): BbCube[] {
     const height = cube.to[1] - cube.from[1];
     const upperHeight = height / 3;
     const splitY = cube.to[1] - upperHeight;
+    const [upperFaces, lowerFaces] = splitVerticalFaceUvs(cube.faces, upperHeight / height);
     return [
       {
         ...cube,
         uuid: `${cube.uuid}_skin_upper`,
         name: `${cube.name ?? "Cube"} Upper`,
         from: [cube.from[0], splitY, cube.from[2]],
+        faces: upperFaces,
       },
       {
         ...cube,
         uuid: `${cube.uuid}_skin_lower`,
         name: `${cube.name ?? "Cube"} Lower`,
         to: [cube.to[0], splitY, cube.to[2]],
+        faces: lowerFaces,
       },
     ];
   });
+}
+
+function splitVerticalFaceUvs(faces: BbCube["faces"], upperRatio: number): [BbCube["faces"], BbCube["faces"]] {
+  const upperFaces: BbCube["faces"] = {};
+  const lowerFaces: BbCube["faces"] = {};
+  for (const [direction, face] of Object.entries(faces)) {
+    if (!["north", "south", "east", "west"].includes(direction) || face.uv?.length !== 4) {
+      upperFaces[direction] = face;
+      lowerFaces[direction] = face;
+      continue;
+    }
+
+    const [minU, minV, maxU, maxV] = face.uv;
+    const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
+    if (rotation === 90) {
+      const splitU = minU + (maxU - minU) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+    } else if (rotation === 180) {
+      const splitV = maxV + (minV - maxV) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+    } else if (rotation === 270) {
+      const splitU = maxU + (minU - maxU) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+    } else {
+      const splitV = minV + (maxV - minV) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+      lowerFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+    }
+  }
+  return [upperFaces, lowerFaces];
 }
 
 function sameCubeBounds(first: BbCube, second: BbCube): boolean {
