@@ -89,6 +89,21 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .summary-badge { padding: 7px 10px; color: #3a3a3a; background: #ededed; font-size: 12px; }
 .no-skin-parts { display: grid; gap: 6px; padding: 38px 24px; border: 1px solid #cfcfcf; color: #555; text-align: center; background: #fafafa; }
 .no-skin-parts strong { color: #222; font-size: 16px; }
+.command-editor { margin-top: 14px; border: 1px solid #cfcfcf; background: #fff; }
+.command-editor-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 14px 16px; border-bottom: 1px solid #dedede; background: #f6f6f6; }
+.command-editor-heading h3 { margin: 0; font-size: 15px; }
+.command-editor-heading p { margin: 4px 0 0; color: #666; font-size: 12px; line-height: 1.45; }
+.command-frame { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #c8c8c8; background: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
+.command-empty { margin: 0; padding: 18px 16px; color: #666; font-size: 13px; }
+.command-list { display: grid; gap: 8px; margin: 0; padding: 12px 16px 0; list-style: none; }
+.command-list li { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #e4e4e4; }
+.command-list label { display: grid; gap: 4px; min-width: 0; font-size: 12px; }
+.command-list input { width: 100%; font-family: Consolas, monospace; }
+.command-list input[aria-invalid="true"] { border-color: #c42b1c; }
+.command-label-heading { display: flex; align-items: baseline; gap: 8px; }
+.command-label-heading small { color: #666; font-weight: 400; }
+.command-validation { color: #a4262c; }
+.command-add { margin: 12px 16px 14px; color: #005a9e; border-color: #5b9bd5; }
 .fields { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
 .fields label { display: grid; gap: 4px; font-size: 13px; }
 .fields .checkbox { display: flex; align-items: center; align-self: end; min-height: 34px; gap: 8px; }
@@ -143,6 +158,8 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .preview-loading { height: 420px; }
   .preview-error { height: 420px; }
   aside { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
+  .command-editor-heading { align-items: flex-start; }
+  .command-label-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .fields { grid-template-columns: 1fr; }
   .additional-metadata dl div { grid-template-columns: 1fr; }
 }

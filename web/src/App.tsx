@@ -2,7 +2,9 @@ import type { TargetedEvent } from "preact";
 import { lazy, Suspense } from "preact/compat";
 import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
+import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
 import { downloadExport } from "./export/download";
 import type { ExportOptions, ExportResult } from "./export/types";
 import { IMPORT_ADAPTERS } from "./import/adapters";
@@ -85,10 +87,9 @@ export function App() {
   const animation = project?.animations[animationIndex];
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
-  const previewTicks = useMemo(() => animationTicks(animation), [animation]);
   const previewTick = previewFrameIndex === 0
     ? null
-    : previewTicks[Math.min(previewFrameIndex - 1, previewTicks.length - 1)] ?? 0;
+    : Math.min(previewFrameIndex - 1, Math.max(0, (animation?.durationTicks ?? 1) - 1));
   const previewParts = useMemo(
     () => createPreviewParts(skinCandidates, animation, previewTick),
     [animation, previewTick, skinCandidates],
@@ -231,6 +232,28 @@ export function App() {
     }));
   }
 
+  function editCurrentAnimation(edit: (current: ImportedAnimation) => ImportedAnimation) {
+    updateSession((current) => ({
+      ...current,
+      project: {
+        ...current.project,
+        animations: current.project.animations.map((item, index) => index === current.animationIndex ? edit(item) : item),
+      },
+    }));
+  }
+
+  function addCommandAtPreviewTick() {
+    if (previewTick !== null) editCurrentAnimation((current) => addFrameCommand(current, previewTick));
+  }
+
+  function changeFrameCommand(eventIndex: number, commandIndex: number, command: string) {
+    editCurrentAnimation((current) => updateFrameCommand(current, eventIndex, commandIndex, command));
+  }
+
+  function deleteFrameCommand(eventIndex: number, commandIndex: number) {
+    editCurrentAnimation((current) => removeFrameCommand(current, eventIndex, commandIndex));
+  }
+
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
   const busy = busyMessage !== null;
   const filePicker = (
@@ -332,7 +355,7 @@ export function App() {
                 {skinCandidates.length > 0 && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
-                    <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
+                    <input type="range" min="0" max={animation.durationTicks} step="1" value={previewFrameIndex} onChange={(event) => {
                       updateSession((current) => ({ ...current, previewFrameIndex: Number(event.currentTarget.value), selectedParts: new Set() }));
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
@@ -373,6 +396,14 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
+            <CommandPanel
+              animation={animation}
+              tick={previewTick}
+              disabled={busy}
+              onAdd={addCommandAtPreviewTick}
+              onChange={changeFrameCommand}
+              onRemove={deleteFrameCommand}
+            />
           </section>
 
           <ExportPanel
@@ -413,13 +444,6 @@ function findSkinCandidates(project: ImportedProject | null): SkinCandidate[] {
     if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
     return { ...candidate, partIndex: partIndexByGroup.get(group)! };
   });
-}
-
-function animationTicks(animation: ImportedAnimation | undefined): number[] {
-  if (!animation) return [0];
-  const ticks = new Set<number>([0]);
-  Object.values(animation.tracks).forEach((track) => track.transforms.forEach((keyframe) => ticks.add(keyframe.tick)));
-  return [...ticks].sort((first, second) => first - second);
 }
 
 function createPreviewParts(
