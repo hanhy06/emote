@@ -66,6 +66,33 @@ class AnimationDirectoryLoaderTest {
         assertTrue(Files.isDirectory(directory));
     }
 
+    @Test
+    void separatesSequenceFilesFromAnimations(@TempDir Path tempDir) throws Exception {
+        writeAnimation(tempDir.resolve("clips/sit.json"), "example:sit_down");
+        Files.writeString(tempDir.resolve("sequence.json"), """
+            {
+              "type": "sequence",
+              "schema_version": 1,
+              "id": "example:sit",
+              "metadata": {"name": "Sit", "description": "Sit sequence"},
+              "steps": [{"emote": "example:sit_down"}]
+            }
+            """);
+
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.loadAll(
+            tempDir,
+            MINECRAFT_VERSION,
+            animation -> animation
+        );
+
+        assertEquals(List.of("example:sit_down"), contents.animations().stream()
+            .map(animation -> animation.animation().id().toString())
+            .toList());
+        assertEquals(List.of("example:sit"), contents.sequences().stream()
+            .map(sequence -> sequence.id().toString())
+            .toList());
+    }
+
     private void writeAnimation(Path path, String id) throws IOException {
         JsonObject root = JsonParser
             .parseString(Files.readString(REFERENCE_PATH))

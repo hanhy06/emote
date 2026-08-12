@@ -13,7 +13,7 @@ public record RegisteredEmote(
     EmoteAnimation.Loaded source,
     List<AnimationSkinPart> skinParts,
     PlaybackPlan playbackPlan
-) {
+) implements EmoteDefinition {
     private static final AnimationSkinPartFactory SKIN_PART_FACTORY = new AnimationSkinPartFactory();
 
     public RegisteredEmote {
@@ -56,6 +56,16 @@ public record RegisteredEmote(
 
     public int nodeCount() {
         return animation().nodes().size();
+    }
+
+    @Override
+    public int durationTicks() {
+        return animation().timeline().durationTicks();
+    }
+
+    @Override
+    public EmoteAnimation.LoopMode loopMode() {
+        return animation().timeline().loop();
     }
 
     public int displayNodeCount() {

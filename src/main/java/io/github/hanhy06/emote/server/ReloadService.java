@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 
@@ -54,11 +55,21 @@ public final class ReloadService {
 
     private int reloadRegistry() {
         var accessConfig = this.configManager.getAccessConfig();
-        var emotes = this.directoryLoader.load(this.configManager.getAnimationDirectory()).stream()
+        var contents = this.directoryLoader.loadAll(this.configManager.getAnimationDirectory());
+        var emotes = contents.animations().stream()
             .map(RegisteredEmote::from)
             .filter(emote -> accessConfig.isEnabled(emote.id()))
             .toList();
-        int ignoredCount = this.emoteRegistry.replace(emotes);
+        var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
+            RegisteredEmote::id,
+            java.util.function.Function.identity()
+        ));
+        var sequences = contents.sequences().stream()
+            .filter(sequence -> accessConfig.isEnabled(sequence.id().toString()))
+            .map(sequence -> resolveSequence(sequence, animationsById))
+            .filter(java.util.Objects::nonNull)
+            .toList();
+        int ignoredCount = this.emoteRegistry.replace(emotes, sequences);
         if (ignoredCount > 0) {
             Emote.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
@@ -67,5 +78,17 @@ public final class ReloadService {
             );
         }
         return this.emoteRegistry.size();
+    }
+
+    private RegisteredSequence resolveSequence(
+        io.github.hanhy06.emote.sequence.EmoteSequence sequence,
+        java.util.Map<String, RegisteredEmote> animationsById
+    ) {
+        try {
+            return RegisteredSequence.resolve(sequence, animationsById);
+        } catch (IllegalArgumentException exception) {
+            Emote.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
+            return null;
+        }
     }
 }

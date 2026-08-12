@@ -1,7 +1,10 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.sequence.EmoteSequence;
+import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -116,5 +119,26 @@ class EmoteRegistryTest {
         assertNull(registry.find("api:clap"));
         assertNotNull(registry.find("file:dance"));
         assertEquals(1, registry.size());
+    }
+
+    @Test
+    void includesResolvedSequencesInDefinitionLookup() {
+        RegisteredEmote animation = create("demo:sit_down", "Sit Down");
+        EmoteSequence source = new EmoteSequence(
+            Path.of("sit.json"),
+            Identifier.parse("demo:sit"),
+            new EmoteSequence.Metadata("Sit", "Sit sequence"),
+            List.of(new EmoteSequence.Step(Identifier.parse(animation.id()), 1))
+        );
+        RegisteredSequence sequence = RegisteredSequence.resolve(source, java.util.Map.of(animation.id(), animation));
+        EmoteRegistry registry = new EmoteRegistry();
+
+        registry.replace(List.of(animation), List.of(sequence));
+
+        assertSame(sequence, registry.findDefinition("demo:sit"));
+        assertEquals(List.of("demo:sit", "demo:sit_down"), registry.getAllDefinitions().stream()
+            .map(EmoteDefinition::id)
+            .toList());
+        assertEquals(List.of(animation), registry.getAll());
     }
 }
