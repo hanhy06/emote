@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { downloadExport } from "./export/download";
-import type { ExportOptions } from "./export/types";
+import type { ExportOptions, ExportResult } from "./export/types";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
@@ -141,52 +141,50 @@ export function App() {
     return skins;
   }
 
+  async function runExport(action: () => ExportResult | Promise<ExportResult>, fallbackMessage: string) {
+    setConversionError("");
+
+    try {
+      downloadExport(await action());
+    } catch (reason) {
+      setConversionError(conversionErrorMessage(reason, fallbackMessage));
+    }
+  }
+
   async function handleAnimationDownload(index: number) {
     if (!session) return;
-    setConversionError("");
-    try {
+
+    await runExport(async () => {
       const { exportAnimation } = await import("./export/projectExporter");
-      downloadExport(exportAnimation(session.project, session.metadata, skinAssignments(), index));
-    } catch (reason) {
-      const message = conversionErrorMessage(reason, "Conversion failed.");
-      setConversionError(message);
-    }
+      return exportAnimation(session.project, session.metadata, skinAssignments(), index);
+    }, "Conversion failed.");
   }
 
   async function handleResourcePackDownload(index: number) {
     if (!session) return;
-    setConversionError("");
-    try {
+
+    await runExport(async () => {
       const { exportResourcePack } = await import("./export/resourcePackExporter");
-      downloadExport(exportResourcePack(session.project, session.metadata, skinAssignments(), index));
-    } catch (reason) {
-      const message = conversionErrorMessage(reason, "Resource export failed.");
-      setConversionError(message);
-    }
+      return exportResourcePack(session.project, session.metadata, skinAssignments(), index);
+    }, "Resource export failed.");
   }
 
   async function handleResourcePackZipMerge(file: File) {
     if (!session) return;
-    setConversionError("");
-    try {
+
+    await runExport(async () => {
       const { mergeResourcePackZip } = await import("./export/resourcePackMerger");
-      downloadExport(await mergeResourcePackZip(session.project, session.metadata, file));
-    } catch (reason) {
-      const message = conversionErrorMessage(reason, "Resource pack merge failed.");
-      setConversionError(message);
-    }
+      return mergeResourcePackZip(session.project, session.metadata, file);
+    }, "Resource pack merge failed.");
   }
 
   async function handleResourcePackFolderMerge(files: File[]) {
     if (!session) return;
-    setConversionError("");
-    try {
+
+    await runExport(async () => {
       const { mergeResourcePackFolder } = await import("./export/resourcePackMerger");
-      downloadExport(await mergeResourcePackFolder(session.project, session.metadata, files));
-    } catch (reason) {
-      const message = conversionErrorMessage(reason, "Resource pack merge failed.");
-      setConversionError(message);
-    }
+      return mergeResourcePackFolder(session.project, session.metadata, files);
+    }, "Resource pack merge failed.");
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {

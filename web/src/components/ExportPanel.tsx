@@ -2,6 +2,15 @@ import type { TargetedEvent } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { ExportOptions } from "../export/types";
 
+const STOP_CONDITION_OPTIONS = [
+  ["jump", "Stop on jump"],
+  ["submerge", "Stop when submerged"],
+  ["ride", "Stop on mount"],
+  ["damage", "Stop when damaged"],
+  ["attack", "Stop on attack"],
+  ["game_mode_change", "Stop on game mode change"],
+] as const;
+
 interface DownloadItem {
   label: string;
   detail: string;
@@ -108,12 +117,12 @@ export function ExportPanel({
         </div>
         <div className="fields playback-behavior-options">
           <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.jump} onChange={(event) => updatePlayerStopCondition("jump", event.currentTarget.checked)} />Stop on jump</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.submerge} onChange={(event) => updatePlayerStopCondition("submerge", event.currentTarget.checked)} />Stop when submerged</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.ride} onChange={(event) => updatePlayerStopCondition("ride", event.currentTarget.checked)} />Stop on mount</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.damage} onChange={(event) => updatePlayerStopCondition("damage", event.currentTarget.checked)} />Stop when damaged</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.attack} onChange={(event) => updatePlayerStopCondition("attack", event.currentTarget.checked)} />Stop on attack</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.game_mode_change} onChange={(event) => updatePlayerStopCondition("game_mode_change", event.currentTarget.checked)} />Stop on game mode change</label>
+          {STOP_CONDITION_OPTIONS.map(([condition, label]) => (
+            <label className="checkbox" key={condition}>
+              <input type="checkbox" checked={metadata.player.stop_conditions[condition]} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />
+              {label}
+            </label>
+          ))}
         </div>
       </section>
       {additionalMetadata.length > 0 && (
