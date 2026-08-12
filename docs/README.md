@@ -4,11 +4,11 @@
 
 > Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
 
-Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine and Animated Java.
+Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine, GeckoLib, and Animated Java.
 
 The mod can be installed on the server only. Installing it on the client also adds an emote wheel and automatic third-person view while an emote is playing.
 
-Compatible emotes can use the playing player’s skin. The web converter exports BD Engine projects, BD Engine datapacks, and Animated Java blueprints as Emote animation JSON files.
+Compatible emotes can use the playing player’s skin. The web converter exports BD Engine projects and datapacks, GeckoLib Blockbench models, and Animated Java blueprints as Emote animation JSON files.
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
