@@ -23,6 +23,18 @@ class SequenceJsonLoaderTest {
               "schema_version": 1,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence"},
+              "player": {
+                "hidden": true,
+                "stop_conditions": {
+                  "movement_distance": 0.1,
+                  "jump": true,
+                  "submerge": true,
+                  "ride": true,
+                  "damage": true,
+                  "attack": true,
+                  "game_mode_change": true
+                }
+              },
               "steps": [
                 {"emote": "example:sit_down"},
                 {"emote": "example:sit_idle", "repeat": 3}
@@ -33,6 +45,8 @@ class SequenceJsonLoaderTest {
         EmoteSequence sequence = this.loader.load(path);
 
         assertEquals("example:sit", sequence.id().toString());
+        assertEquals(0.1D, sequence.player().stopConditions().movementDistance());
+        assertEquals(true, sequence.player().stopConditions().damage());
         assertEquals(1, sequence.steps().get(0).repeat());
         assertEquals(3, sequence.steps().get(1).repeat());
     }
@@ -46,10 +60,42 @@ class SequenceJsonLoaderTest {
               "schema_version": 1,
               "id": "example:empty",
               "metadata": {"name": "Empty", "description": ""},
+              "player": {
+                "hidden": true,
+                "stop_conditions": {
+                  "movement_distance": 0.1,
+                  "jump": true,
+                  "submerge": true,
+                  "ride": true,
+                  "damage": true,
+                  "attack": true,
+                  "game_mode_change": true
+                }
+              },
               "steps": []
             }
             """);
 
         assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+    }
+
+    @Test
+    void requiresSequencePlayerBehavior(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("missing-player.json");
+        Files.writeString(path, """
+            {
+              "type": "sequence",
+              "schema_version": 1,
+              "id": "example:missing_player",
+              "metadata": {"name": "Missing Player", "description": ""},
+              "steps": [{"emote": "example:wave"}]
+            }
+            """);
+
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> this.loader.load(path)
+        );
+        assertEquals("$.player", exception.fieldPath());
     }
 }

@@ -110,7 +110,7 @@ public final class AnimationJsonLoader {
         return new Metadata(name, description);
     }
 
-    private PlayerBehavior parsePlayer(JsonObject object, AnimationJsonReader reader)
+    static PlayerBehavior parsePlayer(JsonObject object, AnimationJsonReader reader)
         throws EmoteAnimationLoadException {
         boolean hidden = reader.requireBoolean(object, "hidden", "$.player");
         JsonObject stopObject = reader.requireObject(object, "stop_conditions", "$.player");

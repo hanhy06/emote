@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
 
@@ -60,6 +61,10 @@ public final class SequenceJsonLoader {
             name,
             reader.requireString(metadataObject, "description", "$.metadata")
         );
+        EmoteAnimation.PlayerBehavior player = AnimationJsonLoader.parsePlayer(
+            reader.requireObject(root, "player", "$"),
+            reader
+        );
 
         var stepsArray = reader.requireArray(root, "steps", "$");
         if (stepsArray.isEmpty()) {
@@ -78,7 +83,7 @@ public final class SequenceJsonLoader {
             }
             steps.add(new EmoteSequence.Step(emoteId, repeat));
         }
-        return new EmoteSequence(sourcePath, id, metadata, steps);
+        return new EmoteSequence(sourcePath, id, metadata, player, steps);
     }
 
     private Identifier parseId(String value, String path, AnimationJsonReader reader)

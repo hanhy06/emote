@@ -20,10 +20,18 @@ public final class RegisteredEmoteFixture {
     }
 
     public static RegisteredEmote create(String id, String name) {
+        return create(id, name, EmoteAnimation.PlayerBehavior.createDefault());
+    }
+
+    public static RegisteredEmote create(
+        String id,
+        String name,
+        EmoteAnimation.PlayerBehavior playerBehavior
+    ) {
         EmoteAnimation animation = new EmoteAnimation(
             Objects.requireNonNull(Identifier.tryParse(id)),
             new EmoteAnimation.Metadata(name, name + " description"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            playerBehavior,
             Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)),
             new EmoteAnimation.Timeline(1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty())
         );

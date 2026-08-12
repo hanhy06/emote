@@ -30,10 +30,6 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
             }
             resolvedSteps.add(new Step(animation, step.repeat()));
         }
-        EmoteAnimation.PlayerBehavior playerBehavior = resolvedSteps.getFirst().animation().playerBehavior();
-        if (resolvedSteps.stream().anyMatch(step -> !step.animation().playerBehavior().equals(playerBehavior))) {
-            throw new IllegalArgumentException("Every sequence animation must use the same player behavior");
-        }
         return new RegisteredSequence(source, resolvedSteps);
     }
 
@@ -54,7 +50,7 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
 
     @Override
     public EmoteAnimation.PlayerBehavior playerBehavior() {
-        return this.steps.getFirst().animation().playerBehavior();
+        return this.source.player();
     }
 
     @Override

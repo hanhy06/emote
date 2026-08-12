@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
@@ -17,11 +18,16 @@ class SequenceProgressTest {
     @Test
     void advancesAfterRepeatingTheCurrentStep() {
         RegisteredEmote idle = create("demo:idle", "Idle");
-        RegisteredEmote stand = create("demo:stand", "Stand");
+        EmoteAnimation.PlayerBehavior visiblePlayer = new EmoteAnimation.PlayerBehavior(
+            false,
+            new EmoteAnimation.StopConditions(0.0D, false, false, false, false, false, false)
+        );
+        RegisteredEmote stand = create("demo:stand", "Stand", visiblePlayer);
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sit"),
             new EmoteSequence.Metadata("Sit", "Sit sequence"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
             List.of(
                 new EmoteSequence.Step(Identifier.parse(idle.id()), 3),
                 new EmoteSequence.Step(Identifier.parse(stand.id()), 1)
@@ -32,6 +38,7 @@ class SequenceProgressTest {
             Map.of(idle.id(), idle, stand.id(), stand)
         ));
 
+        assertEquals(EmoteAnimation.PlayerBehavior.createDefault(), progress.sequence().playerBehavior());
         assertSame(idle, progress.currentAnimation());
         assertFalse(progress.completeCycle());
         assertSame(idle, progress.currentAnimation());

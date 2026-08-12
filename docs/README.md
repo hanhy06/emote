@@ -166,6 +166,18 @@ A sequence is a playable emote that runs existing animations in order. Put it an
     "name": "Sit",
     "description": "Sit down, wait, and stand up."
   },
+  "player": {
+    "hidden": true,
+    "stop_conditions": {
+      "movement_distance": 0.1,
+      "jump": true,
+      "submerge": true,
+      "ride": true,
+      "damage": true,
+      "attack": true,
+      "game_mode_change": true
+    }
+  },
   "steps": [
     {"emote": "example:sit_down"},
     {"emote": "example:sit_idle", "repeat": 3},
@@ -178,7 +190,8 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 - `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
 - Sequences may reference animations but not other sequences.
 - Referenced animations must be loaded and enabled.
-- Every referenced animation must use the same player visibility and stop conditions.
+- `player` uses the same format as animation files and controls player visibility and stop conditions for the entire sequence.
+- A referenced animation's own `player` settings apply when it is played independently, but are ignored while it is part of a sequence.
 - Server-synchronized animations cannot be used in a sequence.
 - A sequence appears in commands, permissions, and the emote UI under its own `id`. Stopping or interrupting it cancels all remaining steps.
 
