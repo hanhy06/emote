@@ -1,0 +1,21 @@
+{
+    "type": "sequence",
+    "schema_version": 1,
+    "id": "emote:sit",
+    "metadata": {
+        "name": "Sit",
+        "description": "Sit down, wait for three cycles, and stand up."
+    },
+    "steps": [
+        {
+            "emote": "emote:sit_down"
+        },
+        {
+            "emote": "emote:sit_idle",
+            "repeat": 3
+        },
+        {
+            "emote": "emote:stand_up"
+        }
+    ]
+}

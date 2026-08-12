@@ -70,6 +70,13 @@ public final class AnimationDirectoryLoader {
 
     private String fileType(Path path) throws EmoteAnimationLoadException {
         try {
+            if (Files.size(path) > AnimationJsonLoader.MAX_JSON_BYTES) {
+                throw new EmoteAnimationLoadException(
+                    path,
+                    "$",
+                    "file must not exceed " + AnimationJsonLoader.MAX_JSON_BYTES + " bytes"
+                );
+            }
             JsonElement element = JsonParser.parseString(Files.readString(path));
             if (!element.isJsonObject()) {
                 return "animation";

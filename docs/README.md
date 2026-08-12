@@ -136,16 +136,53 @@ Put `.json` files exported by the converter in `config/emote/animations`:
 config/emote/animations/
 ├── hello.json
 ├── dance.json
-└── another-emote.json
+└── sitting/
+    ├── sit-down.json
+    ├── sit-idle.json
+    ├── stand-up.json
+    └── sit-sequence.json
 ```
 
-The file name is only used for storage. The root `id` field is the identifier used by commands, permissions, enable/disable settings, and the UI.
+All `.json` files below `animations`, including files in nested directories, are loaded recursively. File names and directory names are only used for storage. The root `id` field is the identifier used by commands, permissions, enable/disable settings, and the UI.
+
+Animation files may declare `"type": "animation"`. Files without `type` are also treated as animations, so existing converter output remains valid.
 
 See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json) for details.
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
 Animation JSON files are limited to 8 MiB and timelines to 10 minutes. Node, display, transform, visibility-change, and command counts are controlled by animation creators rather than rejected by the loader. Runtime load is managed with the server-wide `max_active_display_entities` setting when playback starts; this also applies to runtime API registrations.
+
+### Sequence Files
+
+A sequence is a playable emote that runs existing animations in order. Put it anywhere below `config/emote/animations` with `"type": "sequence"`:
+
+```json
+{
+  "type": "sequence",
+  "schema_version": 1,
+  "id": "example:sit",
+  "metadata": {
+    "name": "Sit",
+    "description": "Sit down, wait, and stand up."
+  },
+  "steps": [
+    {"emote": "example:sit_down"},
+    {"emote": "example:sit_idle", "repeat": 3},
+    {"emote": "example:stand_up"}
+  ]
+}
+```
+
+- `steps` must contain at least one animation.
+- `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
+- Sequences may reference animations but not other sequences.
+- Referenced animations must be loaded and enabled.
+- Every referenced animation must use the same player visibility and stop conditions.
+- Server-synchronized animations cannot be used in a sequence.
+- A sequence appears in commands, permissions, and the emote UI under its own `id`. Stopping or interrupting it cancels all remaining steps.
+
+See the [sequence reference JSON](./emote-sequence-format.json) for a complete example.
 
 ## Mod API
 
