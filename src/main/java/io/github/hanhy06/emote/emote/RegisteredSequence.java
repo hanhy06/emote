@@ -9,10 +9,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public record RegisteredSequence(EmoteSequence source, List<Step> steps) implements EmoteDefinition {
+public record RegisteredSequence(
+    EmoteSequence source,
+    List<Step> steps,
+    RegisteredEmote compiledAnimation
+) implements EmoteDefinition {
     public RegisteredSequence {
         Objects.requireNonNull(source, "source");
         steps = List.copyOf(steps);
+        Objects.requireNonNull(compiledAnimation, "compiledAnimation");
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("sequence steps must not be empty");
         }
@@ -30,7 +35,7 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
             }
             resolvedSteps.add(new Step(animation, step.repeat()));
         }
-        return new RegisteredSequence(source, resolvedSteps);
+        return new RegisteredSequence(source, resolvedSteps, SequenceAnimationCompiler.compile(source, resolvedSteps));
     }
 
     @Override
@@ -65,13 +70,7 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
 
     @Override
     public int durationTicks() {
-        long total = 0L;
-        for (Step step : this.steps) {
-            long duration = step.animation().durationTicks();
-            long loopDelay = step.animation().animation().timeline().loopDelayTicks();
-            total += duration * step.repeat() + loopDelay * Math.max(0, step.repeat() - 1L);
-        }
-        return (int) Math.min(total, Integer.MAX_VALUE);
+        return this.compiledAnimation.durationTicks();
     }
 
     @Override
@@ -81,11 +80,11 @@ public record RegisteredSequence(EmoteSequence source, List<Step> steps) impleme
 
     @Override
     public int nodeCount() {
-        return this.steps.stream().mapToInt(step -> step.animation().nodeCount()).max().orElse(0);
+        return this.compiledAnimation.nodeCount();
     }
 
     public int displayNodeCount() {
-        return this.steps.stream().mapToInt(step -> step.animation().displayNodeCount()).max().orElse(0);
+        return this.compiledAnimation.displayNodeCount();
     }
 
     public record Step(RegisteredEmote animation, int repeat) {

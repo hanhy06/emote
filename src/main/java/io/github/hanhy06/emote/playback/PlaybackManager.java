@@ -84,7 +84,6 @@ public class PlaybackManager implements ConfigListener {
             player,
             emote,
             emote.id(),
-            null,
             emote.playerBehavior(),
             RootTransform.fromPlayer(player),
             player.isInvisible(),
@@ -94,10 +93,11 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
+        RegisteredEmote animation = sequence.compiledAnimation();
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(this.activePlaybacks.get(player.getUUID())),
-            sequence.displayNodeCount()
+            animation.displayNodeCount()
         );
         if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
             return PlayResult.failure(
@@ -106,35 +106,24 @@ public class PlaybackManager implements ConfigListener {
             );
         }
 
-        Map<String, PreparedPlayerSkin> preparedSkins = new HashMap<>();
-        for (RegisteredSequence.Step step : sequence.steps()) {
-            RegisteredEmote animation = step.animation();
-            if (preparedSkins.containsKey(animation.id())) {
-                continue;
-            }
-            PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
-                player,
-                animation.skinParts()
-            );
-            if (preparation.preparing()) {
-                return PlayResult.failure("Preparing player skin... " + preparation.progressPercent() + "%");
-            }
-            preparedSkins.put(animation.id(), preparation.preparedPlayerSkin());
+        PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
+            player,
+            animation.skinParts()
+        );
+        if (preparation.preparing()) {
+            return PlayResult.failure("Preparing player skin... " + preparation.progressPercent() + "%");
         }
 
         stop(player, PlaybackStopReason.REPLACED);
         RootTransform root = RootTransform.fromPlayer(player);
-        SequenceProgress progress = new SequenceProgress(sequence, root);
-        RegisteredEmote firstAnimation = progress.currentAnimation();
         return startPrepared(
             player,
-            firstAnimation,
+            animation,
             sequence.id(),
-            progress,
             sequence.playerBehavior(),
             root,
             player.isInvisible(),
-            preparedSkins.get(firstAnimation.id()),
+            preparation.preparedPlayerSkin(),
             true
         );
     }
@@ -143,7 +132,6 @@ public class PlaybackManager implements ConfigListener {
         ServerPlayer player,
         RegisteredEmote emote,
         String playbackId,
-        @Nullable SequenceProgress sequenceProgress,
         EmoteAnimation.PlayerBehavior playerBehavior,
         RootTransform root,
         boolean wasInvisible,
@@ -184,8 +172,7 @@ public class PlaybackManager implements ConfigListener {
                 events,
                 emote.skinParts(),
                 playerBehavior,
-                wasInvisible,
-                sequenceProgress
+                wasInvisible
             );
             this.activePlaybacks.put(player.getUUID(), activeEmote);
             this.playerVisibilityService.start(player, activeEmote);
@@ -203,7 +190,7 @@ public class PlaybackManager implements ConfigListener {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             ActivePlayback activeEmote = this.activePlaybacks.remove(player.getUUID());
             if (activeEmote != null) {
-                cleanupActive(activeEmote, false, true, PlaybackStopReason.ERROR, null);
+                cleanupActive(activeEmote, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -256,7 +243,7 @@ public class PlaybackManager implements ConfigListener {
         if (activeEmote == null) {
             return null;
         }
-        cleanupActive(activeEmote, true, true, reason, knownPlayer);
+        cleanupActive(activeEmote, true, reason, knownPlayer);
         return activeEmote;
     }
 
@@ -284,20 +271,11 @@ public class PlaybackManager implements ConfigListener {
                 try {
                     activeEmote.timeline().restoreDeferredVisibility();
                     this.entityController.updateViewRotation(activeEmote.nodes(), player.getYRot());
-                    TimelinePlayer.AdvanceResult result = advanceTimeline(
-                        activeEmote.timeline(),
-                        activeEmote.events(),
-                        activeEmote.sequenceProgress() == null
-                    );
+                    TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
                     if (playbackChanged(activeEmote)) {
                         continue;
                     }
-                    if (activeEmote.sequenceProgress() != null && isCycleBoundary(result)) {
-                        if (advanceSequence(player, activeEmote, result)) {
-                            continue;
-                        }
-                        stopReason = PlaybackStopReason.FINISHED;
-                    } else if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                    if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                         stopReason = PlaybackStopReason.FINISHED;
                     } else {
                         this.playerVisibilityService.tick(player, activeEmote);
@@ -355,59 +333,6 @@ public class PlaybackManager implements ConfigListener {
         return result;
     }
 
-    private boolean advanceSequence(
-        ServerPlayer player,
-        ActivePlayback activeEmote,
-        TimelinePlayer.AdvanceResult result
-    ) {
-        SequenceProgress progress = Objects.requireNonNull(activeEmote.sequenceProgress());
-        RegisteredEmote completedAnimation = progress.currentAnimation();
-        if (progress.completeCycle()) {
-            return false;
-        }
-
-        RegisteredEmote nextAnimation = progress.currentAnimation();
-        if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY && nextAnimation == completedAnimation) {
-            TimelinePlayer.AdvanceResult continuation = activeEmote.timeline().continueAfterLoopEvent();
-            if (continuation == TimelinePlayer.AdvanceResult.RESTARTED) {
-                activeEmote.events().timelineTick(0);
-            }
-            return true;
-        }
-
-        cleanupActive(activeEmote, false, false, PlaybackStopReason.FINISHED, player);
-        if (playbackChanged(activeEmote)) {
-            return true;
-        }
-        PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            nextAnimation.skinParts()
-        );
-        if (preparation.preparing()) {
-            throw new IllegalStateException("Player skin became unavailable during an emote sequence");
-        }
-        PlayResult resultOfStart = startPrepared(
-            player,
-            nextAnimation,
-            progress.sequence().id(),
-            progress,
-            progress.sequence().playerBehavior(),
-            progress.root(),
-            activeEmote.wasInvisible(),
-            preparation.preparedPlayerSkin(),
-            false
-        );
-        if (!resultOfStart.isSuccess()) {
-            throw new IllegalStateException(resultOfStart.errorMessage().getString());
-        }
-        return true;
-    }
-
-    private static boolean isCycleBoundary(TimelinePlayer.AdvanceResult result) {
-        return result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY
-            || result == TimelinePlayer.AdvanceResult.FINISHED;
-    }
-
     public void stopAll() {
         stopAll(PlaybackStopReason.MANUAL);
     }
@@ -455,13 +380,12 @@ public class PlaybackManager implements ConfigListener {
         if (!this.activePlaybacks.remove(activeEmote.playerUuid(), activeEmote)) {
             return;
         }
-        cleanupActive(activeEmote, true, true, reason, null);
+        cleanupActive(activeEmote, true, reason, null);
     }
 
     private void cleanupActive(
         ActivePlayback activeEmote,
         boolean notifyListeners,
-        boolean restorePlayerVisibility,
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
@@ -470,9 +394,7 @@ public class PlaybackManager implements ConfigListener {
                 ? knownPlayer
                 : Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
             if (player != null) {
-                if (restorePlayerVisibility) {
-                    this.playerVisibilityService.stop(player, activeEmote);
-                }
+                this.playerVisibilityService.stop(player, activeEmote);
                 if (notifyListeners) {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
                         stateListener.onStopped(player, activeEmote, reason);
@@ -540,9 +462,6 @@ public class PlaybackManager implements ConfigListener {
     private int displayEntityCount(@Nullable ActivePlayback activeEmote) {
         if (activeEmote == null) {
             return 0;
-        }
-        if (activeEmote.sequenceProgress() != null) {
-            return activeEmote.sequenceProgress().sequence().displayNodeCount();
         }
         return (int) activeEmote.nodes().nodes().values().stream()
             .filter(node -> !node.isAnchor())

@@ -194,6 +194,9 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 - Referenced animations must be loaded and enabled.
 - `player` uses the same format as animation files and controls player visibility and stop conditions for the entire sequence.
 - A referenced animation's own `player` settings apply when it is played independently, but are ignored while it is part of a sequence.
+- Sequences are compiled into one in-memory animation during reload. Their display entities are created once and reused until the whole sequence finishes.
+- Referenced animations must use compatible node IDs, node types, display content, and skin layouts. Default transforms and visibility may differ between steps.
+- Timeline command events are preserved. Start, loop, and stop command events are not currently supported in animations referenced by a sequence.
 - Server-synchronized animations cannot be used in a sequence.
 - A sequence appears in commands, permissions, and the emote UI under its own `id`. Stopping or interrupting it cancels all remaining steps.
 

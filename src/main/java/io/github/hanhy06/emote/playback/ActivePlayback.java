@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.skin.AnimationSkinPart;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import org.jspecify.annotations.Nullable;
 
 import java.util.List;
 import java.util.Objects;
@@ -22,8 +21,7 @@ public record ActivePlayback(
     EventPlayer events,
     List<AnimationSkinPart> skinParts,
     EmoteAnimation.PlayerBehavior playerBehavior,
-    boolean wasInvisible,
-    @Nullable SequenceProgress sequenceProgress
+    boolean wasInvisible
 ) {
     public ActivePlayback {
         Objects.requireNonNull(playerUuid, "playerUuid");
