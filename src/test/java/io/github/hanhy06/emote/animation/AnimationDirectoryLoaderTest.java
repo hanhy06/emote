@@ -23,7 +23,8 @@ class AnimationDirectoryLoaderTest {
     @Test
     void loadsMultipleJsonFilesInIdOrder(@TempDir Path tempDir) throws Exception {
         writeAnimation(tempDir.resolve("z.json"), "zeta:wave");
-        writeAnimation(tempDir.resolve("a.json"), "alpha:wave");
+        Path nestedDirectory = Files.createDirectories(tempDir.resolve("nested/deeper"));
+        writeAnimation(nestedDirectory.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
         List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation);
@@ -73,6 +74,7 @@ class AnimationDirectoryLoaderTest {
         root.addProperty("minecraft_version", MINECRAFT_VERSION);
         root.addProperty("id", id);
 
+        Files.createDirectories(path.getParent());
         Files.writeString(path, root.toString());
     }
 }

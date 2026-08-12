@@ -52,11 +52,11 @@ public final class AnimationDirectoryLoader {
             return List.of();
         }
 
-        try (Stream<Path> paths = Files.list(directory)) {
+        try (Stream<Path> paths = Files.walk(directory)) {
             return paths
                 .filter(Files::isRegularFile)
                 .filter(path -> path.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".json"))
-                .sorted(Comparator.comparing(path -> path.getFileName().toString().toLowerCase(Locale.ROOT)))
+                .sorted(Comparator.comparing(path -> directory.relativize(path).toString().toLowerCase(Locale.ROOT)))
                 .toList();
         } catch (IOException exception) {
             Emote.LOGGER.warn("Failed to scan emote animation directory {}", directory, exception);
