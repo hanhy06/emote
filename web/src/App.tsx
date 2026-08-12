@@ -12,6 +12,7 @@ import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
 import type { PlayerHeadPart } from "./preview/playerHeadPart";
 import {
+  assignSkinPart,
   isPlayerHeadItemStack,
   selectPart,
   selectParts,
@@ -212,14 +213,7 @@ export function App() {
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => ({
-      ...current,
-      assignments: { ...current.assignments, ...Object.fromEntries([...selectedParts].map((nodeId) => [nodeId, part])) },
-      orders: {
-        ...current.orders,
-        ...Object.fromEntries([...selectedParts].map((nodeId) => [nodeId, part ? current.orders[nodeId] ?? 0 : null])),
-      },
-    }));
+    updateSession((current) => ({ ...current, ...assignSkinPart(current.assignments, current.orders, [...current.selectedParts], part) }));
   }
 
   function assignOrder(order: number) {

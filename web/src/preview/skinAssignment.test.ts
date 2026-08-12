@@ -1,5 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { isPlayerHeadItemStack, selectPart, selectParts } from "./skinAssignment";
+import { assignSkinPart, isPlayerHeadItemStack, selectPart, selectParts } from "./skinAssignment";
+
+describe("assignSkinPart", () => {
+  it("automatically appends the next order for the selected skin part", () => {
+    const result = assignSkinPart(
+      { body_0: "body", body_1: "body", head_0: "head", selected: null },
+      { body_0: 0, body_1: 1, head_0: 4, selected: null },
+      ["selected"],
+      "body",
+    );
+
+    expect(result.assignments.selected).toBe("body");
+    expect(result.orders.selected).toBe(2);
+  });
+
+  it("reuses the current part count after an assignment is removed", () => {
+    const result = assignSkinPart(
+      { body_0: "body", removed: null, selected: null },
+      { body_0: 0, removed: null, selected: null },
+      ["selected"],
+      "body",
+    );
+
+    expect(result.orders.selected).toBe(1);
+  });
+
+  it("does not auto-increment orders for multiple selected models", () => {
+    const result = assignSkinPart(
+      { existing: "left_arm", first: "head", second: null },
+      { existing: 2, first: 4, second: null },
+      ["first", "second"],
+      "left_arm",
+    );
+
+    expect(result.orders.first).toBe(4);
+    expect(result.orders.second).toBe(0);
+  });
+
+  it("removes the order when models are unassigned", () => {
+    const result = assignSkinPart({ selected: "head" }, { selected: 3 }, ["selected"], null);
+
+    expect(result.assignments.selected).toBeNull();
+    expect(result.orders.selected).toBeNull();
+  });
+});
 
 describe("isPlayerHeadItemStack", () => {
   it("recognizes quoted and bare player heads with the default namespace", () => {

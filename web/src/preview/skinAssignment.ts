@@ -14,6 +14,39 @@ export type SkinPartId = typeof SKIN_PARTS[number]["id"];
 export type PartAssignments = Record<string, SkinPartId | null>;
 export type PartOrders = Record<string, number | null>;
 
+export function assignSkinPart(
+  assignments: PartAssignments,
+  orders: PartOrders,
+  selectedNodeIds: readonly string[],
+  part: SkinPartId | null,
+): { assignments: PartAssignments; orders: PartOrders } {
+  const nextAssignments = { ...assignments };
+  const nextOrders = { ...orders };
+  if (part === null) {
+    selectedNodeIds.forEach((nodeId) => {
+      nextAssignments[nodeId] = null;
+      nextOrders[nodeId] = null;
+    });
+    return { assignments: nextAssignments, orders: nextOrders };
+  }
+
+  if (selectedNodeIds.length !== 1) {
+    selectedNodeIds.forEach((nodeId) => {
+      nextAssignments[nodeId] = part;
+      nextOrders[nodeId] = orders[nodeId] ?? 0;
+    });
+    return { assignments: nextAssignments, orders: nextOrders };
+  }
+
+  selectedNodeIds.forEach((nodeId) => {
+    nextAssignments[nodeId] = part;
+    nextOrders[nodeId] = Object.entries(assignments)
+      .filter(([assignedNodeId, assignment]) => assignedNodeId !== nodeId && assignment === part)
+      .length;
+  });
+  return { assignments: nextAssignments, orders: nextOrders };
+}
+
 export function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
   const quotedId = readSnbtStringField(itemStackSnbt, "id");
   const rawId = quotedId === null ? readSnbtRawField(itemStackSnbt, "id") : null;
