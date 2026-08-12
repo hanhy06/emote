@@ -164,6 +164,7 @@ public class PlaybackManager implements ConfigListener {
                 emote.skinParts(),
                 preparedSkin
             );
+            timeline.deferInitialVisibility();
             this.entityController.add(player.level(), nodes);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.resumeSynchronizedInterpolation();
@@ -281,6 +282,7 @@ public class PlaybackManager implements ConfigListener {
                 stopReason = PlaybackStopReason.MOVED;
             } else {
                 try {
+                    activeEmote.timeline().restoreDeferredVisibility();
                     this.entityController.updateViewRotation(activeEmote.nodes(), player.getYRot());
                     TimelinePlayer.AdvanceResult result = advanceTimeline(
                         activeEmote.timeline(),

@@ -89,6 +89,25 @@ class TimelinePlayerTest {
     }
 
     @Test
+    void hidesNodesUntilVisibilityIsRestoredOnTheNextPlaybackTick() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(3, EmoteAnimation.LoopMode.ONCE, 0, List.of()),
+            target
+        );
+
+        player.start();
+        player.deferInitialVisibility();
+        assertEquals(List.of(false), target.visibility);
+
+        player.restoreDeferredVisibility();
+        assertEquals(List.of(false, true), target.visibility);
+
+        player.restoreDeferredVisibility();
+        assertEquals(List.of(false, true), target.visibility);
+    }
+
+    @Test
     void doesNotRestartInterpolationForRepeatedTransformMatrix() {
         FakeTarget target = new FakeTarget();
         TimelinePlayer player = new TimelinePlayer(

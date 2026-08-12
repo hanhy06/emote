@@ -19,6 +19,7 @@ public final class TimelinePlayer {
     private boolean started;
     private boolean finished;
     private boolean awaitingLoopContinuation;
+    private boolean initialVisibilityDeferred;
 
     public TimelinePlayer(
         PlaybackPlan playbackPlan,
@@ -83,6 +84,25 @@ public final class TimelinePlayer {
             throw new IllegalStateException("Synchronized timeline has not started");
         }
         resumeInitialInterpolation();
+    }
+
+    void deferInitialVisibility() {
+        if (!this.started) {
+            throw new IllegalStateException("Timeline has not started");
+        }
+        this.animation.nodes().keySet().forEach(nodeId -> this.target.setVisible(nodeId, false));
+        this.initialVisibilityDeferred = true;
+    }
+
+    void restoreDeferredVisibility() {
+        if (!this.initialVisibilityDeferred) {
+            return;
+        }
+        this.initialVisibilityDeferred = false;
+        this.animation.nodes().forEach((nodeId, node) -> this.target.setVisible(
+            nodeId,
+            this.playbackPlan.visible(nodeId, this.currentTick, node.visible())
+        ));
     }
 
     void resumeInitialInterpolation() {
