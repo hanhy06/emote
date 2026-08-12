@@ -2,6 +2,9 @@ package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
+import com.google.gson.JsonPrimitive;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -130,6 +133,46 @@ class SequenceAnimationCompilerTest {
         );
     }
 
+    @Test
+    void acceptsEquivalentDisplayContentPreparedAsSeparateRuntimeObjects() {
+        EmoteAnimation.TextNode node = new EmoteAnimation.TextNode(
+            true,
+            IDENTITY,
+            new CompoundTag(),
+            new JsonPrimitive("same")
+        );
+        RegisteredEmote first = animation(
+            "demo:first",
+            1,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of("text", node),
+            Map.of("text", new EmoteAnimation.PreparedTextData(Component.literal("same")))
+        );
+        RegisteredEmote second = animation(
+            "demo:second",
+            1,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of("text", node),
+            Map.of("text", new EmoteAnimation.PreparedTextData(Component.literal("same")))
+        );
+
+        RegisteredSequence sequence = RegisteredSequence.resolve(
+            sequence(
+                new EmoteSequence.Step(Identifier.parse(first.id()), 1),
+                new EmoteSequence.Step(Identifier.parse(second.id()), 1)
+            ),
+            Map.of(first.id(), first, second.id(), second)
+        );
+
+        assertEquals(2, sequence.durationTicks());
+    }
+
     private static EmoteSequence sequence(EmoteSequence.Step... steps) {
         return new EmoteSequence(
             Path.of("sequence.json"),
@@ -149,6 +192,19 @@ class SequenceAnimationCompilerTest {
         EmoteAnimation.Events events,
         Map<String, EmoteAnimation.Node> nodes
     ) {
+        return animation(id, duration, loop, loopDelay, keyframes, events, nodes, Map.of());
+    }
+
+    private static RegisteredEmote animation(
+        String id,
+        int duration,
+        EmoteAnimation.LoopMode loop,
+        int loopDelay,
+        List<EmoteAnimation.Keyframe> keyframes,
+        EmoteAnimation.Events events,
+        Map<String, EmoteAnimation.Node> nodes,
+        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData
+    ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
             new EmoteAnimation.Metadata(id, id),
@@ -160,7 +216,8 @@ class SequenceAnimationCompilerTest {
         return RegisteredEmote.from(new EmoteAnimation.Loaded(
             Path.of(id.replace(':', '_') + ".json"),
             id,
-            animation
+            animation,
+            preparedDisplayData
         ));
     }
 

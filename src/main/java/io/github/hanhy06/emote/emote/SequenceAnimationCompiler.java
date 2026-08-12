@@ -83,11 +83,6 @@ final class SequenceAnimationCompiler {
                     "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
                 );
             }
-            if (!first.source().preparedDisplayData().equals(animation.source().preparedDisplayData())) {
-                throw new IllegalArgumentException(
-                    "Sequence animations must use the same display content: " + first.id() + " and " + animation.id()
-                );
-            }
             if (!first.skinParts().equals(animation.skinParts())) {
                 throw new IllegalArgumentException(
                     "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
