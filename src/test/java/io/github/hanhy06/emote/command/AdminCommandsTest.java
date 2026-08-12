@@ -8,10 +8,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 final class AdminCommandsTest {
     @Test
     void listEntrySeparatesFieldsAcrossReadableLines() {
-        var entry = AdminCommands.createListEntry("emote:dance", "Dance", 12, "emote.dance.json");
+        var entry = AdminCommands.createListEntry(
+            "emote:dance",
+            "Dance",
+            "A looping dance",
+            12,
+            85,
+            "emote.dance.json",
+            "loop",
+            true,
+            false
+        );
 
         assertEquals(
-            "\n• emote:dance\n  Name: Dance\n  Nodes: 12  Source: emote.dance.json",
+            """
+
+            • emote:dance
+              Dance — A looping dance
+              Nodes: 12  Time: 85 ticks (4.3s)
+              Source: emote.dance.json
+              Loop: loop  Standalone: yes  Player: visible
+            """.stripTrailing(),
             entry.getString()
         );
         assertEquals(TextColor.DARK_GRAY, entry.getStyle().getColor());

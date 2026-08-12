@@ -140,23 +140,47 @@ final class AdminCommands {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.name(),
+                emote.description(),
                 emote.nodeCount(),
-                emote.sourcePath().getFileName().toString()
+                emote.durationTicks(),
+                emote.sourcePath().getFileName().toString(),
+                emote.loopMode().name().toLowerCase(Locale.ROOT),
+                emote.standalone(),
+                emote.playerBehavior().hidden()
             ));
         }
 
         return emotes.size();
     }
 
-    static Component createListEntry(String id, String name, int nodeCount, String sourceFileName) {
+    static Component createListEntry(
+        String id,
+        String name,
+        String description,
+        int nodeCount,
+        int durationTicks,
+        String sourceFileName,
+        String loopMode,
+        boolean standalone,
+        boolean playerHidden
+    ) {
         return Component.literal("\n• ").withStyle(ChatFormatting.DARK_GRAY)
             .append(Component.literal(id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal("\n  Name: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(name).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n  " + name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
+            .append(Component.literal(" — " + description).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  Nodes: ").withStyle(ChatFormatting.GRAY))
             .append(Component.literal(Integer.toString(nodeCount)).withStyle(ChatFormatting.GREEN))
-            .append(Component.literal("  Source: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(sourceFileName).withStyle(ChatFormatting.YELLOW));
+            .append(Component.literal("  Time: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(String.format(Locale.ROOT, "%d ticks (%.1fs)", durationTicks, durationTicks / 20.0D))
+                .withStyle(ChatFormatting.GOLD))
+            .append(Component.literal("\n  Source: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(sourceFileName).withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal("\n  Loop: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(loopMode).withStyle(ChatFormatting.LIGHT_PURPLE))
+            .append(Component.literal("  Standalone: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(standalone ? "yes" : "no").withStyle(standalone ? ChatFormatting.GREEN : ChatFormatting.RED))
+            .append(Component.literal("  Player: ").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(playerHidden ? "hidden" : "visible").withStyle(ChatFormatting.AQUA));
     }
 
     private int stopAll(CommandSourceStack source) {
