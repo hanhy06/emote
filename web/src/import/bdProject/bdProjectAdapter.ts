@@ -3,7 +3,7 @@ import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAn
 import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor, stabilizeDisplayMatrix } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/resourceLocation";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
-import { TICKS_PER_SECOND } from "../../format/time";
+import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe } from "../types";
 import { requireBdSceneNode, type BdAnimationSample, type BdSceneNode, type BdSound, type BdTransform, type VectorLike } from "./bdProjectSchema";
@@ -63,6 +63,7 @@ export const bdProjectAdapter: ImportAdapter = {
     const soundEvents = compileSoundEvents(sound);
     const animationDurationTicks = frameCount * TICKS_PER_BD_SAMPLE;
     const soundDurationTicks = soundEvents.length > 0 ? soundEvents[soundEvents.length - 1].tick + 1 : 0;
+    const durationTicks = requireAnimationDurationTicks(Math.max(animationDurationTicks, soundDurationTicks), "BD animation duration");
     const tracks = Object.fromEntries(displays.map((entry) => [entry.id, {
       transforms: Array.from({ length: frameCount }, (_, time): ImportedTransformKeyframe => ({
         tick: time * TICKS_PER_BD_SAMPLE,
@@ -75,7 +76,7 @@ export const bdProjectAdapter: ImportAdapter = {
     const animation: ImportedAnimation = {
       id: sanitizeResourcePath(animationName, "default"),
       name: animationName,
-      durationTicks: Math.max(animationDurationTicks, soundDurationTicks),
+      durationTicks,
       loop: "loop",
       loopDelayTicks: 0,
       tracks,

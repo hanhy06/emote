@@ -2,6 +2,7 @@ import { unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { asMatrix16 } from "../../format/matrix";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
+import { requireAnimationDurationTicks } from "../../format/time";
 import {
   findMatchingSnbtDelimiter,
   omitSnbtFields,
@@ -188,6 +189,7 @@ function importAnimations(
     frames.forEach((frame, expected) => {
       if (frame.index !== expected) throw new Error(`BD Engine animation ${animationName} is missing keyframe_${expected}.mcfunction.`);
     });
+    const durationTicks = requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${animationName} duration`);
     const tracks: Record<string, ImportedNodeTrack> = Object.fromEntries(
       Object.keys(displays.nodes).map((id) => [id, { transforms: [], visibility: [] }]),
     );
@@ -245,7 +247,7 @@ function importAnimations(
     return {
       id: sanitizeResourcePath(animationName, "default"),
       name: prettify(animationName),
-      durationTicks: frames.length * TICKS_PER_BD_FRAME,
+      durationTicks,
       loop: "loop" as const,
       loopDelayTicks: 0,
       tracks,

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../compiler/animationCompiler";
 import { serializeEmoteAnimation } from "../../format/serializer";
+import { MAX_ANIMATION_DURATION_TICKS, TICKS_PER_SECOND } from "../../format/time";
 import { animatedJavaJsonAdapter } from "./animatedJavaJsonAdapter";
 
 const encoder = new TextEncoder();
@@ -54,6 +55,33 @@ describe("animatedJavaJsonAdapter", () => {
     expect(node.type === "block_display" && node.blockStateSnbt).toContain("minecraft:stone");
     expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(1);
+  });
+
+  it("rejects native projects longer than ten minutes before baking transforms", async () => {
+    const element = {
+      name: "block_display",
+      position: [0, 0, 0],
+      rotation: [0, 0, 0],
+      scale: [1, 1, 1],
+      visibility: true,
+      block: "minecraft:stone",
+      configs: { default: {}, variants: {} },
+      uuid: "block",
+      type: "animated_java:vanilla_block_display",
+    };
+    const input = nativeProject({
+      elements: [element],
+      outliner: [element.uuid],
+      animations: [{
+        name: "too_long",
+        loop: "once",
+        length: (MAX_ANIMATION_DURATION_TICKS + 1) / TICKS_PER_SECOND,
+        loop_delay: "0",
+        animators: {},
+      }],
+    });
+
+    await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow("between 1 and 12000 ticks");
   });
 
   it("interpolates unsorted native project keyframes across ticks", async () => {

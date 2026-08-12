@@ -3,7 +3,7 @@ import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAn
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
-import { TICKS_PER_SECOND } from "../../format/time";
+import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../errors";
 import { parseInputJson } from "../inputCache";
@@ -208,7 +208,10 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   }
   if (loop !== "once" && loop !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
-  const durationTicks = Math.max(1, Math.round(animation.length * TICKS_PER_SECOND));
+  const durationTicks = requireAnimationDurationTicks(
+    Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
+    `${animation.name}.length`,
+  );
   const boneAnimators = resolveBoneAnimators(animation, index, bones);
   const tracks: ImportedAnimation["tracks"] = {};
   for (const bone of bones) {

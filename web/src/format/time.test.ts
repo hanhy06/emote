@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { requireTick, secondsToTicks } from "./time";
+import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, requireTick, secondsToTicks } from "./time";
 
 describe("time utilities", () => {
   it("converts exact 20 TPS times to integer ticks", () => {
@@ -11,5 +11,11 @@ describe("time utilities", () => {
   it("rejects fractional and invalid ticks", () => {
     expect(() => secondsToTicks(0.01, "keyframe")).toThrow("does not fall on a 20 TPS tick");
     expect(() => requireTick(1.5, "keyframe")).toThrow("must be a non-negative integer tick");
+  });
+
+  it("limits animation duration to ten minutes", () => {
+    expect(requireAnimationDurationTicks(MAX_ANIMATION_DURATION_TICKS, "duration")).toBe(12_000);
+    expect(() => requireAnimationDurationTicks(0, "duration")).toThrow("between 1 and 12000 ticks");
+    expect(() => requireAnimationDurationTicks(MAX_ANIMATION_DURATION_TICKS + 1, "duration")).toThrow("between 1 and 12000 ticks");
   });
 });

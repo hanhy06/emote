@@ -1,6 +1,6 @@
 import type { EmoteAnimation, EmoteEvent, Matrix16 } from "./emoteAnimation";
 import { isResourceLocation } from "./resourceLocation";
-import { TICKS_PER_SECOND } from "./time";
+import { MAX_ANIMATION_DURATION_TICKS, TICKS_PER_SECOND } from "./time";
 
 const JAVA_INT_MAX = 2_147_483_647;
 const ITEM_DISPLAY_VALUES = new Set([
@@ -37,6 +37,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (animation.transform_space.matrix_size !== 16) add(issues, "transform_space.matrix_size", "must be 16");
   if (!isPositiveInt32(animation.timeline.duration_ticks)) {
     add(issues, "timeline.duration_ticks", "must be a positive Java integer");
+  } else if (animation.timeline.duration_ticks > MAX_ANIMATION_DURATION_TICKS) {
+    add(issues, "timeline.duration_ticks", `must not exceed ${MAX_ANIMATION_DURATION_TICKS}`);
   }
   if (!isNonNegativeInt32(animation.timeline.loop_delay_ticks)) {
     add(issues, "timeline.loop_delay_ticks", "must be a non-negative Java integer");

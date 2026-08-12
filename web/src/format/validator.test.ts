@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "./emoteAnimation";
 import { serializeEmoteAnimation } from "./serializer";
+import { MAX_ANIMATION_DURATION_TICKS } from "./time";
 import { validateEmoteAnimation } from "./validator";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -102,6 +103,16 @@ describe("validateEmoteAnimation", () => {
     expect(paths).toContain("timeline.loop_delay_ticks");
     expect(paths).toContain("timeline.keyframes[0].interpolation_duration_ticks");
     expect(paths).toContain("timeline.events.timeline[1].tick");
+  });
+
+  it("rejects animations longer than ten minutes", () => {
+    const value = animation();
+    value.timeline.duration_ticks = MAX_ANIMATION_DURATION_TICKS + 1;
+
+    expect(validateEmoteAnimation(value)).toContainEqual({
+      path: "timeline.duration_ticks",
+      message: `must not exceed ${MAX_ANIMATION_DURATION_TICKS}`,
+    });
   });
 
   it("rejects an invalid movement stop distance", () => {

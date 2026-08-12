@@ -4,7 +4,7 @@ import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
-import { secondsToTicks } from "../../format/time";
+import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
@@ -158,7 +158,10 @@ function importProjectAnimation(
 ): ImportedAnimation {
   if (animation.loop === "hold") throw new Error(`Animated Java animation ${animation.name} uses hold mode, which the emote format cannot represent.`);
   if (animation.loop !== "once" && animation.loop !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
-  const durationTicks = secondsToTicks(animation.length, `${animation.name}.length`);
+  const durationTicks = requireAnimationDurationTicks(
+    secondsToTicks(animation.length, `${animation.name}.length`),
+    `${animation.name}.length`,
+  );
   const tracks: ImportedAnimation["tracks"] = {};
   for (const element of elements) {
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
@@ -379,7 +382,7 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
   const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const animationDurationTicks = secondsToTicks(animation.length, `${id}.length`);
-  const durationTicks = animationDurationTicks + startDelayTicks;
+  const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
   const global = animation.global_keyframes;
   if (global && (Object.keys(global.texture ?? {}).length || Object.keys(global.event ?? {}).length)) {
     throw new Error(`Animated Java animation ${id} contains texture or API event keyframes that the emote format cannot preserve.`);
