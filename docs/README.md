@@ -24,7 +24,7 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 | `/emote stop`      | Stops the currently playing emote.                                                 |
 | `V`                | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
 
-When the client mod is installed, the wheel's **Order** button can add, remove, and reorder its entries. The first six shortcuts appear on the first wheel page. Shortcut order is stored per server in the client's `config/emote/wheel-shortcuts.json`; server syncs refresh availability and append newly discovered emotes without changing the existing order.
+When the client mod is installed, the wheel's Order button can add, remove, and reorder its entries. The first six shortcuts appear on the first wheel page. Shortcut order is stored per server in the client's `config/emote/wheel-shortcuts.json`; server syncs refresh availability and append newly discovered emotes without changing the existing order.
 
 ## Admin Commands
 
@@ -83,37 +83,23 @@ Controls emote availability and play permissions.
 
 ```json
 {
-  "disabled": [
-    "example:disabled"
-  ],
+  "disabled": ["example:disabled"],
   "permissions": [
     {
       "permission": "emote.vip",
-      "emotes": [
-        "example:dance",
-        "example:cry"
-      ],
+      "emotes": ["example:dance", "example:cry"],
       "idle": {
-        "delay_seconds": 600,
-        "emote": [
-          "example:dance",
-          "example:cry"
-        ]
+        "delay_seconds": 300,
+        "emote": ["example:dance", "example:cry"]
       }
     },
     {
       "permission": "emote.default",
-      "emotes": [
-        "example:hello",
-        "example:yes",
-        "example:no"
-      ]
+      "emotes": ["example:hello", "example:wave"]
     },
     {
       "permission": "emote.admin",
-      "emotes": [
-        "*"
-      ]
+      "emotes": ["*"]
     }
   ]
 }
@@ -149,7 +135,7 @@ Animation files may declare `"type": "animation"`. Files without `type` are also
 
 Animations intended only as sequence steps can set `"standalone": false` at the root. The default is `true`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
 
-See [the animation format](./emote-animation-format.md) and [reference JSON](./emote-animation-format.json) for details.
+See [the animation format](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.md) and [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.json) for details.
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
@@ -200,7 +186,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 - Server-synchronized animations cannot be used in a sequence.
 - A sequence appears in commands, permissions, and the emote UI under its own `id`. Stopping or interrupting it cancels all remaining steps.
 
-See the [sequence reference JSON](./emote-sequence-format.json) for a complete example.
+See the [sequence reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for a complete example.
 
 ## Mod API
 
