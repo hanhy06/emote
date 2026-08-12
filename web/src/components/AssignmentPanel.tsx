@@ -1,4 +1,5 @@
-import { useEffect, useRef, type ChangeEvent, type MouseEvent } from "react";
+import type { TargetedEvent, TargetedMouseEvent } from "preact";
+import { useEffect, useRef } from "preact/hooks";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -59,7 +60,7 @@ export function AssignmentPanel({
     }
   }, [parts, selectedParts]);
 
-  function handlePartClick(event: MouseEvent<HTMLButtonElement>, nodeId: string) {
+  function handlePartClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
     onSelectPart(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
   }
 
@@ -85,8 +86,8 @@ export function AssignmentPanel({
     }
   }
 
-  function handleOrderChange(event: ChangeEvent<HTMLInputElement>) {
-    const order = Number(event.target.value);
+  function handleOrderChange(event: TargetedEvent<HTMLInputElement>) {
+    const order = Number(event.currentTarget.value);
     if (Number.isInteger(order)) assignOrderAndScroll(order);
   }
 

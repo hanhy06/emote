@@ -1,4 +1,6 @@
-import { lazy, Suspense, useCallback, useMemo, useState, type ChangeEvent } from "react";
+import type { TargetedEvent } from "preact";
+import { lazy, Suspense } from "preact/compat";
+import { useCallback, useMemo, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { downloadExport } from "./export/download";
@@ -91,8 +93,8 @@ export function App() {
     [animation, previewTick, skinCandidates],
   );
 
-  async function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
     if (!file) return;
     setLoading(true);
     setError("");
@@ -126,7 +128,7 @@ export function App() {
       setError(conversionErrorMessage(reason, "Could not import the file."));
     } finally {
       setLoading(false);
-      event.target.value = "";
+      event.currentTarget.value = "";
     }
   }
 
@@ -306,14 +308,14 @@ export function App() {
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewTicks.length} step="1" value={previewFrameIndex} onChange={(event) => {
-                      updateSession((current) => ({ ...current, previewFrameIndex: Number(event.target.value), selectedParts: new Set() }));
+                      updateSession((current) => ({ ...current, previewFrameIndex: Number(event.currentTarget.value), selectedParts: new Set() }));
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
                   </label>
                 )}
                 {project.animations.length > 1 && (
                   <label className="animation-select"><span>Animation</span><select value={animationIndex} onChange={(event) => {
-                    updateSession((current) => ({ ...current, animationIndex: Number(event.target.value), previewFrameIndex: 0, selectedParts: new Set() }));
+                    updateSession((current) => ({ ...current, animationIndex: Number(event.currentTarget.value), previewFrameIndex: 0, selectedParts: new Set() }));
                   }}>
                     {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
                   </select></label>

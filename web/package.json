@@ -11,20 +11,17 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
-    "@vitejs/plugin-react": "6.0.3",
     "fflate": "^0.8.3",
     "molangjs": "^1.7.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7",
-    "three": "0.185.1",
-    "vite": "8.1.4"
+    "preact": "^10.29.7",
+    "three": "0.185.1"
   },
   "devDependencies": {
+    "@preact/preset-vite": "^2.10.6",
     "@types/node": "26.1.1",
-    "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3",
     "@types/three": "0.185.1",
     "typescript": "7.0.2",
+    "vite": "^8.1.4",
     "vitest": "4.1.10"
   }
 }

@@ -1,4 +1,5 @@
-import { useEffect, useState, type ChangeEvent } from "react";
+import type { TargetedEvent } from "preact";
+import { useEffect, useState } from "preact/hooks";
 import type { ExportOptions } from "../export/types";
 
 interface DownloadItem {
@@ -48,18 +49,18 @@ export function ExportPanel({
     };
   }, [mergeMenuIndex]);
 
-  function selectZip(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
+  function selectZip(event: TargetedEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
     if (file) onMergeResourcePackZip(file);
     setMergeMenuIndex(null);
-    event.target.value = "";
+    event.currentTarget.value = "";
   }
 
-  function selectFolder(event: ChangeEvent<HTMLInputElement>) {
-    const files = [...(event.target.files ?? [])];
+  function selectFolder(event: TargetedEvent<HTMLInputElement>) {
+    const files = [...(event.currentTarget.files ?? [])];
     if (files.length) onMergeResourcePackFolder(files);
     setMergeMenuIndex(null);
-    event.target.value = "";
+    event.currentTarget.value = "";
   }
 
   function updatePlayerStopCondition(
@@ -86,33 +87,33 @@ export function ExportPanel({
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
       <div className="fields">
-        <label>Minecraft version<input value={metadata.minecraftVersion} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.target.value })} /></label>
-        <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.target.value })} /></label>
-        <label>Display name<input value={metadata.name} onChange={(event) => onMetadataChange({ ...metadata, name: event.target.value })} /></label>
-        <label>Description<input value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.target.value })} /></label>
+        <label>Minecraft version<input value={metadata.minecraftVersion} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.currentTarget.value })} /></label>
+        <label>Namespace<input value={metadata.namespace} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
+        <label>Display name<input value={metadata.name} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
+        <label>Description<input value={metadata.description} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
       </div>
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Playback behavior</h3>
         <p>Choose the playback mode, player visibility, and which actions stop the emote.</p>
         <div className="fields playback-behavior-primary">
-          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.target.value as ExportOptions["playbackMode"] })}>
+          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.currentTarget.value as ExportOptions["playbackMode"] })}>
             <option value="source">Source setting</option>
             <option value="once">Play once</option>
             <option value="loop">Loop</option>
             <option value="server_sync">Server-synchronized loop</option>
           </select></label>
           <label><span className="field-heading">Movement distance <small>Horizontal blocks; 0 allows movement.</small></span>
-            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.target.value))} />
+            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} />
           </label>
         </div>
         <div className="fields playback-behavior-options">
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.target.checked } })} />Hide original player</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.jump} onChange={(event) => updatePlayerStopCondition("jump", event.target.checked)} />Stop on jump</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.submerge} onChange={(event) => updatePlayerStopCondition("submerge", event.target.checked)} />Stop when submerged</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.ride} onChange={(event) => updatePlayerStopCondition("ride", event.target.checked)} />Stop on mount</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.damage} onChange={(event) => updatePlayerStopCondition("damage", event.target.checked)} />Stop when damaged</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.attack} onChange={(event) => updatePlayerStopCondition("attack", event.target.checked)} />Stop on attack</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.game_mode_change} onChange={(event) => updatePlayerStopCondition("game_mode_change", event.target.checked)} />Stop on game mode change</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.jump} onChange={(event) => updatePlayerStopCondition("jump", event.currentTarget.checked)} />Stop on jump</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.submerge} onChange={(event) => updatePlayerStopCondition("submerge", event.currentTarget.checked)} />Stop when submerged</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.ride} onChange={(event) => updatePlayerStopCondition("ride", event.currentTarget.checked)} />Stop on mount</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.damage} onChange={(event) => updatePlayerStopCondition("damage", event.currentTarget.checked)} />Stop when damaged</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.attack} onChange={(event) => updatePlayerStopCondition("attack", event.currentTarget.checked)} />Stop on attack</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.stop_conditions.game_mode_change} onChange={(event) => updatePlayerStopCondition("game_mode_change", event.currentTarget.checked)} />Stop on game mode change</label>
         </div>
       </section>
       {additionalMetadata.length > 0 && (
