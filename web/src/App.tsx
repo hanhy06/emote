@@ -66,7 +66,7 @@ const IMPORT_FORMATS = [
 export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [busyMessage, setBusyMessage] = useState<string | null>(null);
   const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
     setSession((current) => current ? update(current) : current);
   }, []);
@@ -93,12 +93,14 @@ export function App() {
   );
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
+    const inputElement = event.currentTarget;
+    const file = inputElement.files?.[0];
     if (!file) return;
-    setLoading(true);
+    setBusyMessage("Opening animation project");
     setError("");
     setSession(null);
     try {
+      await showLoadingScreen();
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
       const detected = await detectAdapter(IMPORT_ADAPTERS, input);
       const imported = await importDetected(detected, input);
@@ -126,8 +128,8 @@ export function App() {
     } catch (reason) {
       setError(conversionErrorMessage(reason, "Could not import the file."));
     } finally {
-      setLoading(false);
-      event.currentTarget.value = "";
+      setBusyMessage(null);
+      inputElement.value = "";
     }
   }
 
@@ -140,13 +142,17 @@ export function App() {
     return skins;
   }
 
-  async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string) {
+  async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string, progressMessage: string) {
     setConversionError("");
+    setBusyMessage(progressMessage);
 
     try {
+      await showLoadingScreen();
       downloadExport(await action());
     } catch (reason) {
       setConversionError(conversionErrorMessage(reason, fallbackMessage));
+    } finally {
+      setBusyMessage(null);
     }
   }
 
@@ -156,7 +162,7 @@ export function App() {
     await runExport(async () => {
       const { exportAnimation } = await import("./export/projectExporter");
       return exportAnimation(session.project, session.metadata, buildSkinAssignments(), index);
-    }, "Conversion failed.");
+    }, "Conversion failed.", "Creating animation file");
   }
 
   async function handleResourcePackDownload(index: number) {
@@ -165,7 +171,7 @@ export function App() {
     await runExport(async () => {
       const { exportResourcePack } = await import("./export/resourcePackExporter");
       return exportResourcePack(session.project, session.metadata, buildSkinAssignments(), index);
-    }, "Resource export failed.");
+    }, "Resource export failed.", "Creating resource pack");
   }
 
   async function handleResourcePackZipMerge(file: File) {
@@ -174,7 +180,7 @@ export function App() {
     await runExport(async () => {
       const { mergeResourcePackZip } = await import("./export/resourcePackMerger");
       return mergeResourcePackZip(session.project, session.metadata, file);
-    }, "Resource pack merge failed.");
+    }, "Resource pack merge failed.", "Merging resource pack");
   }
 
   async function handleResourcePackFolderMerge(files: File[]) {
@@ -183,7 +189,7 @@ export function App() {
     await runExport(async () => {
       const { mergeResourcePackFolder } = await import("./export/resourcePackMerger");
       return mergeResourcePackFolder(session.project, session.metadata, files);
-    }, "Resource pack merge failed.");
+    }, "Resource pack merge failed.", "Merging resource pack");
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
@@ -215,15 +221,27 @@ export function App() {
   }
 
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
+  const busy = busyMessage !== null;
   const filePicker = (
-    <label className={`file-input${loading ? " disabled" : ""}`}>
+    <label className={`file-input${busy ? " disabled" : ""}`}>
       <span>{session ? "Open another file" : "Choose animation file"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={loading} />
+      <input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={busy} />
     </label>
   );
 
   return (
-    <main className="app">
+    <main className="app" aria-busy={busy}>
+      {busyMessage && (
+        <div className="loading-overlay" role="status" aria-live="polite">
+          <div className="loading-dialog">
+            <span className="loading-spinner" aria-hidden="true" />
+            <span className="loading-copy">
+              <strong>{busyMessage}</strong>
+              <small>Large files may take a moment. Keep this tab open.</small>
+            </span>
+          </div>
+        </div>
+      )}
       <header className="app-header">
         <div>
           <span className="product-label">Emote tools</span>
@@ -233,7 +251,6 @@ export function App() {
         {session && filePicker}
       </header>
 
-      {loading && <p className="message">Reading and validating the file…</p>}
       {error && <p className="message error" role="alert"><strong>Could not open the file.</strong><span>{error}</span></p>}
 
       {!session && (
@@ -410,4 +427,18 @@ function assignmentSummary(candidates: SkinCandidate[], assignments: PartAssignm
   const assigned = candidates.filter((candidate) => assignments[candidate.nodeId]).length;
   const skin = candidates.length ? `${assigned}/${candidates.length} skin parts assigned` : "No skin assignment needed";
   return resourceCount ? `${skin} · ${resourceCount} resource files` : skin;
+}
+
+function showLoadingScreen(): Promise<void> {
+  return new Promise((resolve) => {
+    let complete = false;
+    const finish = () => {
+      if (complete) return;
+      complete = true;
+      clearTimeout(fallback);
+      resolve();
+    };
+    const fallback = setTimeout(finish, 100);
+    requestAnimationFrame(() => requestAnimationFrame(finish));
+  });
 }

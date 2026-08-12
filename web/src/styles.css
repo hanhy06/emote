@@ -38,6 +38,14 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .error { color: #8a0018; }
 .message.error { flex-direction: column; color: #8a0018; border-color: #c42b1c; background: #fdf3f4; }
 .warning { color: #694d00; border-color: #9d7600; background: #fff9e7; }
+.loading-overlay { position: fixed; z-index: 100; inset: 0; display: grid; place-items: center; padding: 24px; background: rgb(242 242 242 / 82%); backdrop-filter: blur(2px); }
+.loading-dialog { display: flex; align-items: center; width: min(420px, 100%); gap: 16px; padding: 22px 24px; border: 1px solid #9a9a9a; border-top: 3px solid #0067c0; background: #fff; box-shadow: 0 8px 28px rgb(0 0 0 / 18%); }
+.loading-spinner { width: 30px; height: 30px; flex: 0 0 auto; border: 3px solid #d4d4d4; border-top-color: #0067c0; border-radius: 50%; animation: loading-spin 0.8s linear infinite; }
+.loading-copy { display: grid; gap: 4px; }
+.loading-copy strong { font-size: 15px; font-weight: 600; }
+.loading-copy small { color: #666; line-height: 1.4; }
+@keyframes loading-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .loading-spinner { animation-duration: 1.8s; } }
 .project-summary { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-bottom: 22px; padding: 14px 16px; border-left: 3px solid #0067c0; background: #f6f6f6; }
 .project-file { display: grid; gap: 4px; min-width: 0; }
 .project-file span, .project-summary dt { color: #666; font-size: 12px; }
