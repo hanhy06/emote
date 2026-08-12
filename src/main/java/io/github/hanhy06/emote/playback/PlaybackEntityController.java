@@ -38,11 +38,7 @@ public final class PlaybackEntityController {
         return create(player.level(), RootTransform.fromPlayer(player), emote);
     }
 
-    PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, RegisteredEmote emote) {
-        return create(level, RootTransform.create(position, yaw), emote);
-    }
-
-    private PlaybackNodes create(ServerLevel level, RootTransform root, RegisteredEmote emote) {
+    PlaybackNodes create(ServerLevel level, RootTransform root, RegisteredEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
@@ -50,6 +46,10 @@ public final class PlaybackEntityController {
             instances.put(entry.getKey(), instance);
         }
         return new PlaybackNodes(root, instances);
+    }
+
+    PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, RegisteredEmote emote) {
+        return create(level, RootTransform.create(position, yaw), emote);
     }
 
     public void add(ServerLevel level, PlaybackNodes nodes) {

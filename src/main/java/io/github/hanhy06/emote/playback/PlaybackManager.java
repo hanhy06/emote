@@ -86,7 +86,7 @@ public class PlaybackManager implements ConfigListener {
             emote.id(),
             null,
             emote.playerBehavior(),
-            player.position(),
+            RootTransform.fromPlayer(player),
             player.isInvisible(),
             preparedSkin,
             true
@@ -123,7 +123,8 @@ public class PlaybackManager implements ConfigListener {
         }
 
         stop(player, PlaybackStopReason.REPLACED);
-        SequenceProgress progress = new SequenceProgress(sequence);
+        RootTransform root = RootTransform.fromPlayer(player);
+        SequenceProgress progress = new SequenceProgress(sequence, root);
         RegisteredEmote firstAnimation = progress.currentAnimation();
         return startPrepared(
             player,
@@ -131,7 +132,7 @@ public class PlaybackManager implements ConfigListener {
             sequence.id(),
             progress,
             sequence.playerBehavior(),
-            player.position(),
+            root,
             player.isInvisible(),
             preparedSkins.get(firstAnimation.id()),
             true
@@ -144,14 +145,14 @@ public class PlaybackManager implements ConfigListener {
         String playbackId,
         @Nullable SequenceProgress sequenceProgress,
         EmoteAnimation.PlayerBehavior playerBehavior,
-        Vec3 startPosition,
+        RootTransform root,
         boolean wasInvisible,
         PreparedPlayerSkin preparedSkin,
         boolean notifyStarted
     ) {
         PlaybackNodes nodes = null;
         try {
-            nodes = this.entityController.create(player, emote);
+            nodes = this.entityController.create(player.level(), root, emote);
             TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
             if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
@@ -171,7 +172,7 @@ public class PlaybackManager implements ConfigListener {
                 player.level().dimension(),
                 playbackId,
                 emote.id(),
-                startPosition,
+                root.position(),
                 nodes,
                 timeline,
                 events,
@@ -389,7 +390,7 @@ public class PlaybackManager implements ConfigListener {
             progress.sequence().id(),
             progress,
             progress.sequence().playerBehavior(),
-            activeEmote.startPosition(),
+            progress.root(),
             activeEmote.wasInvisible(),
             preparation.preparedPlayerSkin(),
             false

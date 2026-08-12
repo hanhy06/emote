@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
@@ -33,12 +34,14 @@ class SequenceProgressTest {
                 new EmoteSequence.Step(Identifier.parse(stand.id()), 1)
             )
         );
-        SequenceProgress progress = new SequenceProgress(RegisteredSequence.resolve(
-            source,
-            Map.of(idle.id(), idle, stand.id(), stand)
-        ));
+        RootTransform root = RootTransform.create(new Vec3(10.0D, 64.0D, -3.0D), 90.0F);
+        SequenceProgress progress = new SequenceProgress(
+            RegisteredSequence.resolve(source, Map.of(idle.id(), idle, stand.id(), stand)),
+            root
+        );
 
         assertEquals(EmoteAnimation.PlayerBehavior.createDefault(), progress.sequence().playerBehavior());
+        assertSame(root, progress.root());
         assertSame(idle, progress.currentAnimation());
         assertFalse(progress.completeCycle());
         assertSame(idle, progress.currentAnimation());
@@ -47,5 +50,6 @@ class SequenceProgressTest {
         assertFalse(progress.completeCycle());
         assertSame(stand, progress.currentAnimation());
         assertTrue(progress.completeCycle());
+        assertSame(root, progress.root());
     }
 }
