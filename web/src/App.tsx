@@ -52,14 +52,14 @@ const IMPORT_FORMATS = [
     description: "The format that works best with the Emote mod. Set the display order and assign each part to the player skin.",
   },
   {
+    label: "GeckoLib",
+    extensions: ".bbmodel",
+    description: "Imports GeckoLib cube models, detects standard player-model cubes, and lets them be assigned to player-skin parts.",
+  },
+  {
     label: "Animated Java",
     extensions: ".ajblueprint, .json",
     description: "Imports Animated Java animations and generated resources. Player skin assignment is available only for parts that use player heads.",
-  },
-  {
-    label: "GeckoLib",
-    extensions: ".bbmodel",
-    description: "Imports GeckoLib cube models and lets individual cubes be replaced with player-skin parts.",
   },
 ] as const;
 
