@@ -5,7 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.time.MinecraftTime;
+import io.github.hanhy06.emote.util.MinecraftTime;
 
 import java.nio.file.Path;
 import java.util.ArrayList;

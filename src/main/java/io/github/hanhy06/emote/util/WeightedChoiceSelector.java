@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.selection;
+package io.github.hanhy06.emote.util;
 
 import java.util.List;
 import java.util.Objects;

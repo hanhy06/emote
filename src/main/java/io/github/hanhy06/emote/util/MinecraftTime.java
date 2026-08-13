@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.time;
+package io.github.hanhy06.emote.util;
 
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;

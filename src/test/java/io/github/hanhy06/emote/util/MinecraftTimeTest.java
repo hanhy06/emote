@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.time;
+package io.github.hanhy06.emote.util;
 
 import org.junit.jupiter.api.Test;
 

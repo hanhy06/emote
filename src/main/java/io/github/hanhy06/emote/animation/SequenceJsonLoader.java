@@ -8,7 +8,7 @@ import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.sequence.EmoteSequence;
+import io.github.hanhy06.emote.emote.EmoteSequence;
 import net.minecraft.resources.Identifier;
 
 import java.io.IOException;

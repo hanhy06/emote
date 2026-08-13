@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.emote;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.sequence.EmoteSequence;
 import com.google.gson.JsonPrimitive;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;

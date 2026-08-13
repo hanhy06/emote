@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
-import io.github.hanhy06.emote.sequence.EmoteSequence;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;

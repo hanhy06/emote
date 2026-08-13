@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.dialog;
+package io.github.hanhy06.emote.command;
 
 import org.junit.jupiter.api.Test;
 

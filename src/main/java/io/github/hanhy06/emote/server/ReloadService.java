@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.emote.EmoteSequence;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.network.WheelSyncService;
@@ -88,7 +89,7 @@ public final class ReloadService {
     }
 
     private RegisteredSequence resolveSequence(
-        io.github.hanhy06.emote.sequence.EmoteSequence sequence,
+        EmoteSequence sequence,
         java.util.Map<String, RegisteredEmote> animationsById
     ) {
         try {

@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.animation;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.sequence.EmoteSequence;
+import io.github.hanhy06.emote.emote.EmoteSequence;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;

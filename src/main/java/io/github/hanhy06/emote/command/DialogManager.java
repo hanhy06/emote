@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.dialog;
+package io.github.hanhy06.emote.command;
 
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;

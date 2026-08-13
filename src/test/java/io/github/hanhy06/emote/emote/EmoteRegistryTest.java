@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
