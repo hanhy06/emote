@@ -56,87 +56,91 @@ export const geckoLibBbmodelAdapter: ImportAdapter = {
 
   async import(input: ImportInput): Promise<ImportedProject> {
     const project = requireGeckoLibBbmodel(parseInputJson(input));
-    if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
-    if (project.elements.some((element) => element.type && element.type !== "cube")) {
-      throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
-    }
-
-    const sourceStem = input.name.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
-    const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
-    const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
-    const resources = new Map<string, Uint8Array>();
-    const bones = buildBoneEntries(project);
-    if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
-    if (bones.some((bone) => bone.cubes.length > 0)) {
-      const texture = requireEmbeddedTexture(project.textures);
-      const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-      resources.set(texturePath, decodeTexture(texture));
-      const resourceNodeIds = new Set(bones.map((bone) => bone.id));
-      for (const bone of bones) {
-        for (const [cubeIndex, cube] of bone.cubes.entries()) {
-          const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-          writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources);
-        }
-      }
-    }
-    const playableCubesByBone = new Map(bones.map((bone) => [
-      bone.uuid,
-      splitTallSkinCubes(bone, removeDuplicateSkinLayers(bone.cubes)),
-    ]));
-    const skinAssignments = inferSkinAssignments(bones, playableCubesByBone);
-    const nodes: Record<string, ImportedNode> = {};
-    const nodeIds = new Set(bones.map((bone) => bone.id));
-    for (const bone of bones) {
-      const defaultMatrix = boneWorldMatrix(bone, new Map());
-      const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
-      if (playableCubes.length === 0) {
-        nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix };
-        bone.nodes.push({ id: bone.id });
-        continue;
-      }
-      for (const [cubeIndex, cube] of playableCubes.entries()) {
-        const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
-        const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
-        if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
-        const skin = skinAssignments.get(cube.uuid);
-        bone.nodes.push({ id: nodeId });
-        const modelPath = `${projectPath}/${nodeId}`;
-        writeCubeResources(project, bone, cube, namespace, modelPath, resources);
-        nodes[nodeId] = {
-          id: nodeId,
-          type: "item_display",
-          defaultMatrix,
-          visible: true,
-          itemDisplay: "none",
-          itemStackSnbt: serializeSnbtCompound([
-            ["id", serializeSnbtString("minecraft:paper")],
-            ["count", "1"],
-            ["components", serializeSnbtCompound([
-              ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
-            ])],
-          ]),
-          playerHeadConversion: { matrix: conversionMatrix },
-          ...(skin ? { suggestedSkin: skin } : {}),
-        };
-      }
-    }
-
-    if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
-    const animations = project.animations.map((animation, index) => importAnimation(animation, index, bones));
-    return {
-      source: "geckolib_bbmodel",
-      sourceName: input.name,
-      suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
-      suggestedPlayer: createDefaultPlayerBehavior(),
-      suggestedNamespace: namespace,
-      nodes,
-      animations,
-      diagnostics: [],
-      resources,
-      ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
-    };
+    return importGeckoLibProject(project, input.name);
   },
 };
+
+export function importGeckoLibProject(project: BbmodelProject, sourceName: string): ImportedProject {
+  if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
+  if (project.elements.some((element) => element.type && element.type !== "cube")) {
+    throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
+  }
+
+  const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
+  const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
+  const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
+  const resources = new Map<string, Uint8Array>();
+  const bones = buildBoneEntries(project);
+  if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
+  if (bones.some((bone) => bone.cubes.length > 0)) {
+    const texture = requireEmbeddedTexture(project.textures);
+    const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
+    resources.set(texturePath, decodeTexture(texture));
+    const resourceNodeIds = new Set(bones.map((bone) => bone.id));
+    for (const bone of bones) {
+      for (const [cubeIndex, cube] of bone.cubes.entries()) {
+        const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
+        writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources);
+      }
+    }
+  }
+  const playableCubesByBone = new Map(bones.map((bone) => [
+    bone.uuid,
+    splitTallSkinCubes(bone, removeDuplicateSkinLayers(bone.cubes)),
+  ]));
+  const skinAssignments = inferSkinAssignments(bones, playableCubesByBone);
+  const nodes: Record<string, ImportedNode> = {};
+  const nodeIds = new Set(bones.map((bone) => bone.id));
+  for (const bone of bones) {
+    const defaultMatrix = boneWorldMatrix(bone, new Map());
+    const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
+    if (playableCubes.length === 0) {
+      nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix };
+      bone.nodes.push({ id: bone.id });
+      continue;
+    }
+    for (const [cubeIndex, cube] of playableCubes.entries()) {
+      const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
+      const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
+      if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
+      const skin = skinAssignments.get(cube.uuid);
+      bone.nodes.push({ id: nodeId });
+      const modelPath = `${projectPath}/${nodeId}`;
+      writeCubeResources(project, bone, cube, namespace, modelPath, resources);
+      nodes[nodeId] = {
+        id: nodeId,
+        type: "item_display",
+        defaultMatrix,
+        visible: true,
+        itemDisplay: "none",
+        itemStackSnbt: serializeSnbtCompound([
+          ["id", serializeSnbtString("minecraft:paper")],
+          ["count", "1"],
+          ["components", serializeSnbtCompound([
+            ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
+          ])],
+        ]),
+        playerHeadConversion: { matrix: conversionMatrix },
+        ...(skin ? { suggestedSkin: skin } : {}),
+      };
+    }
+  }
+
+  if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
+  const animations = project.animations.map((animation, index) => importAnimation(animation, index, bones));
+  return {
+    source: "geckolib_bbmodel",
+    sourceName,
+    suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
+    suggestedPlayer: createDefaultPlayerBehavior(),
+    suggestedNamespace: namespace,
+    nodes,
+    animations,
+    diagnostics: [],
+    resources,
+    ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
+  };
+}
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
   const groups = new Map(project.groups.map((group) => [group.uuid, group]));
