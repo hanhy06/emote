@@ -34,6 +34,8 @@ public class PlaybackManager implements ConfigListener {
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
+    private final SceneRootResolver sceneRootResolver = new SceneRootResolver();
+    private final PartnerMatcher partnerMatcher = new PartnerMatcher();
     private final RandomGenerator random = RandomGenerator.getDefault();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
@@ -68,12 +70,92 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
+        if (sequence.collaborative()) {
+            return startCollaborative(player, sequence);
+        }
         return startResolved(
             player,
             sequence.compileRandom(this.random),
             sequence.id(),
             sequence.playerBehavior()
         );
+    }
+
+    private PlayResult startCollaborative(ServerPlayer player, RegisteredSequence sequence) {
+        if (findActive(player.getUUID()) == null) {
+            PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessions.values());
+            if (waitingSession != null) {
+                return reservePartner(player, waitingSession);
+            }
+        }
+
+        RegisteredEmote offer = sequence.awaitPartner().offer();
+        int projectedDisplayEntities = projectedDisplayEntityCount(
+            activeDisplayEntityCount(),
+            displayEntityCount(findActive(player.getUUID())),
+            offer.displayNodeCount()
+        );
+        if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
+            return PlayResult.failure(
+                "Active emote parts would exceed the server limit ("
+                    + projectedDisplayEntities + "/" + this.maxActiveDisplayEntities + ")."
+            );
+        }
+
+        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
+            player,
+            offer.skinParts(ParticipantRole.INITIATOR)
+        );
+        if (skinPreparation.preparing()) {
+            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
+        }
+
+        stop(player, PlaybackStopReason.REPLACED);
+        Map<EmoteAnimation.NodeSpace, RootTransform> roots = this.sceneRootResolver.resolve(
+            player,
+            Objects.requireNonNull(sequence.source().participants(), "participants")
+        );
+        return startPrepared(
+            player,
+            offer,
+            sequence.id(),
+            sequence.playerBehavior(),
+            roots,
+            player.isInvisible(),
+            skinPreparation.preparedPlayerSkin(),
+            sequence
+        );
+    }
+
+    private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
+        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredEmote offer = sequence.awaitPartner().offer();
+        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
+            player,
+            offer.skinParts(ParticipantRole.PARTNER)
+        );
+        if (skinPreparation.preparing()) {
+            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
+        }
+
+        PlaybackParticipant partner = new PlaybackParticipant(
+            player.getUUID(),
+            ParticipantRole.PARTNER,
+            player.position(),
+            offer.skinParts(ParticipantRole.PARTNER),
+            player.isInvisible()
+        );
+        session.reservePartner(partner);
+        this.playerSessions.put(player.getUUID(), session.sessionId());
+        this.playerSkinManager.applySkinParts(
+            session.nodes().nodes(),
+            partner.skinParts(),
+            skinPreparation.preparedPlayerSkin()
+        );
+        if (session.state() == PlaybackSession.State.WAITING) {
+            activateMatched(session);
+        }
+        return PlayResult.SUCCESS;
     }
 
     private PlayResult startResolved(
@@ -110,9 +192,10 @@ public class PlaybackManager implements ConfigListener {
             emote,
             playbackId,
             playerBehavior,
-            RootTransform.fromPlayer(player),
+            singlePlayerRoots(RootTransform.fromPlayer(player)),
             player.isInvisible(),
-            preparedSkin
+            preparedSkin,
+            null
         );
     }
 
@@ -121,14 +204,15 @@ public class PlaybackManager implements ConfigListener {
         RegisteredEmote emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
-        RootTransform root,
+        Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         boolean wasInvisible,
-        PreparedPlayerSkin preparedSkin
+        PreparedPlayerSkin preparedSkin,
+        @Nullable RegisteredSequence collaborativeSequence
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
         try {
-            nodes = this.entityController.create(player.level(), root, emote);
+            nodes = this.entityController.create(player.level(), roots, emote);
             TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
@@ -152,7 +236,7 @@ public class PlaybackManager implements ConfigListener {
             PlaybackParticipant initiator = new PlaybackParticipant(
                 player.getUUID(),
                 ParticipantRole.INITIATOR,
-                root.position(),
+                roots.get(EmoteAnimation.NodeSpace.SCENE).position(),
                 emote.skinParts(ParticipantRole.INITIATOR),
                 wasInvisible
             );
@@ -165,7 +249,8 @@ public class PlaybackManager implements ConfigListener {
                 timeline,
                 events,
                 playerBehavior,
-                initiator
+                initiator,
+                collaborativeSequence
             );
             this.sessions.put(session.sessionId(), session);
             this.playerSessions.put(player.getUUID(), session.sessionId());
@@ -244,6 +329,11 @@ public class PlaybackManager implements ConfigListener {
         return sessionId == null ? null : this.sessions.get(sessionId);
     }
 
+    boolean isActiveParticipant(UUID playerUuid) {
+        PlaybackSession session = findActive(playerUuid);
+        return session != null && session.participant(playerUuid) != null;
+    }
+
     public void tick() {
         this.stressTest.tick();
         if (this.sessions.isEmpty()) {
@@ -255,24 +345,51 @@ public class PlaybackManager implements ConfigListener {
             PlaybackParticipant initiator = session.initiator();
             ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
-            if (!canKeepPlaying(player, session)) {
-                stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
-            } else if (session.playerBehavior().stopConditions().submerge() && player.isUnderWater()) {
-                stopReason = PlaybackStopReason.SUBMERGED;
-            } else if (hasMovedDuringPlayback(player, session, initiator)) {
-                stopReason = PlaybackStopReason.MOVED;
-            } else {
+            for (PlaybackParticipant participant : session.participants()) {
+                ServerPlayer participantPlayer = Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                if (!canKeepPlaying(participantPlayer, session)) {
+                    stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
+                    break;
+                }
+                if (session.playerBehavior().stopConditions().submerge() && participantPlayer.isUnderWater()) {
+                    stopReason = PlaybackStopReason.SUBMERGED;
+                    break;
+                }
+                if (hasMovedDuringPlayback(participantPlayer, session, participant)) {
+                    stopReason = PlaybackStopReason.MOVED;
+                    break;
+                }
+            }
+            if (stopReason == null) {
                 try {
                     session.timeline().restoreDeferredVisibility();
-                    this.entityController.updateViewRotation(session.nodes(), player.getYRot());
-                    TimelinePlayer.AdvanceResult result = advanceTimeline(session.timeline(), session.events());
-                    if (playbackChanged(session)) {
-                        continue;
+                    if (session.state() == PlaybackSession.State.SOLO) {
+                        this.entityController.updateViewRotation(session.nodes(), player.getYRot());
                     }
-                    if (result == TimelinePlayer.AdvanceResult.FINISHED) {
-                        stopReason = PlaybackStopReason.FINISHED;
+
+                    if (session.state() == PlaybackSession.State.WAITING) {
+                        if (session.reservedPartner() != null) {
+                            activateMatched(session);
+                        } else if (session.tickTimeout()) {
+                            activateTimeout(session);
+                        }
                     } else {
-                        this.playerVisibilityService.tick(player, session, initiator);
+                        TimelinePlayer.AdvanceResult result = advanceTimeline(session.timeline(), session.events());
+                        if (playbackChanged(session)) {
+                            continue;
+                        }
+                        if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                            stopReason = handleFinishedTimeline(session);
+                        }
+                    }
+
+                    if (stopReason == null && !playbackChanged(session)) {
+                        for (PlaybackParticipant participant : session.participants()) {
+                            ServerPlayer participantPlayer = Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                            if (participantPlayer != null) {
+                                this.playerVisibilityService.tick(participantPlayer, session, participant);
+                            }
+                        }
                     }
                 } catch (RuntimeException exception) {
                     Emote.LOGGER.warn("Failed while playing emote {}", session.id(), exception);
@@ -292,6 +409,74 @@ public class PlaybackManager implements ConfigListener {
                 stopIfCurrent(request.session(), request.reason());
             }
         }
+    }
+
+    private @Nullable PlaybackStopReason handleFinishedTimeline(PlaybackSession session) {
+        return switch (session.state()) {
+            case SOLO, MATCHED, TIMEOUT -> PlaybackStopReason.FINISHED;
+            case OFFERING -> {
+                if (session.reservedPartner() == null || !activateMatched(session)) {
+                    session.enterWaiting();
+                }
+                yield null;
+            }
+            case WAITING -> throw new IllegalStateException("Waiting sessions do not advance their timeline");
+        };
+    }
+
+    private boolean activateMatched(PlaybackSession session) {
+        PlaybackParticipant reservedPartner = Objects.requireNonNull(session.reservedPartner(), "reservedPartner");
+        ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(reservedPartner.playerUuid());
+        if (player == null || !player.isAlive() || !this.partnerMatcher.stillMatches(session, player)) {
+            releaseReservedPartner(session);
+            return false;
+        }
+
+        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredEmote matched = sequence.compileMatchedRandom(this.random);
+        TimelinePlayer timeline = new TimelinePlayer(matched.playbackPlan(), session.nodes(), this.entityController);
+        timeline.start();
+        EventPlayer events = new EventPlayer(
+            matched.playbackPlan(),
+            new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
+        );
+        PlaybackParticipant partner = session.activateReservedPartner();
+        session.replacePlayback(timeline, events, PlaybackSession.State.MATCHED);
+        this.playerVisibilityService.start(player, session, partner);
+        startEvents(timeline, events);
+        this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
+        for (PlaybackStateListener stateListener : this.stateListeners) {
+            stateListener.onStarted(player, session, partner);
+        }
+        return true;
+    }
+
+    private void activateTimeout(PlaybackSession session) {
+        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredEmote timeout = sequence.compileTimeoutRandom(this.random);
+        TimelinePlayer timeline = new TimelinePlayer(timeout.playbackPlan(), session.nodes(), this.entityController);
+        timeline.start();
+        EventPlayer events = new EventPlayer(
+            timeout.playbackPlan(),
+            new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
+        );
+        session.replacePlayback(timeline, events, PlaybackSession.State.TIMEOUT);
+        startEvents(timeline, events);
+    }
+
+    private void releaseReservedPartner(PlaybackSession session) {
+        PlaybackParticipant partner = session.clearReservedPartner();
+        if (partner != null) {
+            this.playerSessions.remove(partner.playerUuid(), session.sessionId());
+        }
+    }
+
+    private ServerPlayer sessionInitiatorPlayer(PlaybackSession session) {
+        ServerPlayer initiator = Emote.SERVER.getPlayerList().getPlayer(session.initiator().playerUuid());
+        if (initiator == null) {
+            throw new IllegalStateException("Initiator is unavailable");
+        }
+        return initiator;
     }
 
     static void startEvents(TimelinePlayer timeline, EventPlayer events) {
@@ -384,6 +569,10 @@ public class PlaybackManager implements ConfigListener {
         for (PlaybackParticipant participant : session.participants()) {
             this.playerSessions.remove(participant.playerUuid(), session.sessionId());
         }
+        PlaybackParticipant reservedPartner = session.reservedPartner();
+        if (reservedPartner != null) {
+            this.playerSessions.remove(reservedPartner.playerUuid(), session.sessionId());
+        }
         return true;
     }
 
@@ -473,6 +662,14 @@ public class PlaybackManager implements ConfigListener {
         return (int) session.nodes().nodes().values().stream()
             .filter(node -> !node.isAnchor())
             .count();
+    }
+
+    private static Map<EmoteAnimation.NodeSpace, RootTransform> singlePlayerRoots(RootTransform root) {
+        return Map.of(
+            EmoteAnimation.NodeSpace.SCENE, root,
+            EmoteAnimation.NodeSpace.INITIATOR, root,
+            EmoteAnimation.NodeSpace.PARTNER, root
+        );
     }
 
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {

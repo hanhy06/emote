@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SequenceJsonLoader {
-    private static final int SCHEMA_VERSION = 2;
+    private static final int SCHEMA_VERSION = 3;
+    private final ParticipantPlacementParser placementParser = new ParticipantPlacementParser();
 
     public EmoteSequence load(Path sourcePath) throws EmoteAnimationLoadException {
         byte[] bytes;
@@ -51,6 +52,7 @@ public final class SequenceJsonLoader {
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = parseId(reader.requireString(root, "id", "$"), "$.id", reader);
         EmoteMetadata metadata = AnimationJsonLoader.parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        EmoteSequence.Participants participants = parseParticipants(root, reader);
         JsonObject settingsObject = reader.requireObject(root, "settings", "$");
         int cooldownTicks = reader.requireTime(settingsObject, "cooldown", "$.settings", 0);
         EmotePlayerBehavior player = AnimationJsonLoader.parsePlayer(
@@ -60,18 +62,67 @@ public final class SequenceJsonLoader {
         );
         EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
 
-        var stepsArray = reader.requireArray(root, "steps", "$");
+        List<EmoteSequence.Step> steps = parseSteps(reader.requireArray(root, "steps", "$"), "$.steps", true, reader);
+        try {
+            return new EmoteSequence(sourcePath, id, metadata, settings, participants, steps);
+        } catch (IllegalArgumentException | NullPointerException exception) {
+            throw reader.error("$.steps", exception.getMessage(), exception);
+        }
+    }
+
+    private EmoteSequence.Participants parseParticipants(JsonObject root, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        JsonElement element = root.get("participants");
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        JsonObject participants = reader.requireObject(element, "$.participants");
+        return new EmoteSequence.Participants(
+            parseParticipant(participants, "initiator", reader),
+            parseParticipant(participants, "partner", reader)
+        );
+    }
+
+    private EmoteSequence.ParticipantPlacement parseParticipant(
+        JsonObject participants,
+        String role,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        String path = "$.participants." + role;
+        JsonObject placement = reader.requireObject(participants, role, "$.participants");
+        return this.placementParser.parse(
+            reader.requireString(placement, "position", path),
+            reader.requireString(placement, "rotation", path),
+            path,
+            reader
+        );
+    }
+
+    private List<EmoteSequence.Step> parseSteps(
+        JsonArray stepsArray,
+        String stepsPath,
+        boolean allowAwaitPartner,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
         if (stepsArray.isEmpty()) {
-            throw reader.error("$.steps", "must not be empty");
+            throw reader.error(stepsPath, "must not be empty");
         }
         List<EmoteSequence.Step> steps = new ArrayList<>(stepsArray.size());
         for (int index = 0; index < stepsArray.size(); index++) {
-            String path = "$.steps[" + index + "]";
+            String path = stepsPath + "[" + index + "]";
             JsonObject stepObject = reader.requireObject(stepsArray.get(index), path);
             boolean hasEmote = stepObject.has("emote") && !stepObject.get("emote").isJsonNull();
             boolean hasWait = stepObject.has("wait") && !stepObject.get("wait").isJsonNull();
-            if (hasEmote == hasWait) {
-                throw reader.error(path, "must contain exactly one of emote or wait");
+            boolean hasAwaitPartner = stepObject.has("await_partner") && !stepObject.get("await_partner").isJsonNull();
+            if ((hasEmote ? 1 : 0) + (hasWait ? 1 : 0) + (hasAwaitPartner ? 1 : 0) != 1) {
+                throw reader.error(path, "must contain exactly one of emote, wait, or await_partner");
+            }
+            if (hasAwaitPartner) {
+                if (!allowAwaitPartner) {
+                    throw reader.error(path + ".await_partner", "is not supported inside a collaboration branch");
+                }
+                steps.add(parseAwaitPartner(stepObject, path, reader));
+                continue;
             }
             if (hasWait) {
                 if (stepObject.has("repeat")) {
@@ -95,7 +146,37 @@ public final class SequenceJsonLoader {
             }
             steps.add(new EmoteSequence.EmoteStep(choices, repeat));
         }
-        return new EmoteSequence(sourcePath, id, metadata, settings, steps);
+        return List.copyOf(steps);
+    }
+
+    private EmoteSequence.AwaitPartnerStep parseAwaitPartner(
+        JsonObject stepObject,
+        String path,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        if (stepObject.has("repeat")) {
+            throw reader.error(path + ".repeat", "is not supported on an await_partner step");
+        }
+        JsonObject await = reader.requireObject(stepObject, "await_partner", path);
+        Identifier offer = parseId(
+            reader.requireString(await, "emote", path + ".await_partner"),
+            path + ".await_partner.emote",
+            reader
+        );
+        int timeoutTicks = reader.requireTime(await, "timeout", path + ".await_partner", 1);
+        List<EmoteSequence.Step> matched = parseSteps(
+            reader.requireArray(stepObject, "matched", path),
+            path + ".matched",
+            false,
+            reader
+        );
+        List<EmoteSequence.Step> timeout = parseSteps(
+            reader.requireArray(stepObject, "timeout", path),
+            path + ".timeout",
+            false,
+            reader
+        );
+        return new EmoteSequence.AwaitPartnerStep(offer, timeoutTicks, matched, timeout);
     }
 
     private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonReader reader)

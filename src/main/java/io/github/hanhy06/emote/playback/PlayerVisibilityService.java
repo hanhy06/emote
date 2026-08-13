@@ -70,7 +70,9 @@ final class PlayerVisibilityService {
             return;
         }
         PlaybackSession session = this.playbackManager.findActive(emotePlayer.getUUID());
-        if (session != null && session.playerBehavior().hidden()) {
+        if (session != null
+            && this.playbackManager.isActiveParticipant(emotePlayer.getUUID())
+            && session.playerBehavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -80,7 +82,9 @@ final class PlayerVisibilityService {
             return;
         }
         PlaybackSession session = this.playbackManager.findActive(player.getUUID());
-        if (session != null && session.playerBehavior().hidden()) {
+        if (session != null
+            && this.playbackManager.isActiveParticipant(player.getUUID())
+            && session.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }

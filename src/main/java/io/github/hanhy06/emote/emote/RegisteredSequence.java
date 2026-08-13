@@ -27,45 +27,108 @@ public record RegisteredSequence(
     }
 
     public static RegisteredSequence resolve(EmoteSequence source, Map<String, RegisteredEmote> animations) {
-        List<Step> resolvedSteps = new ArrayList<>(source.steps().size());
-        for (EmoteSequence.Step sourceStep : source.steps()) {
+        List<Step> resolvedSteps = resolveSteps(source.steps(), animations);
+        List<Step> validationSteps = flattenForValidation(resolvedSteps);
+        SequenceAnimationCompiler.validateCompatibleAnimations(validationSteps);
+        List<SelectedStep> initialSteps = resolvedSteps.getFirst() instanceof AwaitPartnerStep await
+            ? List.of(new SelectedEmoteStep(await.offer(), false))
+            : selectFirstCandidates(resolvedSteps);
+        return new RegisteredSequence(
+            source,
+            resolvedSteps,
+            SequenceAnimationCompiler.compile(source, initialSteps)
+        );
+    }
+
+    private static List<Step> resolveSteps(List<EmoteSequence.Step> sourceSteps, Map<String, RegisteredEmote> animations) {
+        List<Step> resolvedSteps = new ArrayList<>(sourceSteps.size());
+        for (EmoteSequence.Step sourceStep : sourceSteps) {
             if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
                 resolvedSteps.add(new WaitStep(ticks));
+                continue;
+            }
+            if (sourceStep instanceof EmoteSequence.AwaitPartnerStep await) {
+                resolvedSteps.add(new AwaitPartnerStep(
+                    resolveAnimation(await.offerEmoteId().toString(), animations),
+                    await.timeoutTicks(),
+                    resolveSteps(await.matched(), animations),
+                    resolveSteps(await.timeout(), animations)
+                ));
                 continue;
             }
             EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
-                RegisteredEmote animation = animations.get(choice.emoteId().toString());
-                if (animation == null) {
-                    throw new IllegalArgumentException("Unknown or disabled animation: " + choice.emoteId());
-                }
-                if (animation.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                    throw new IllegalArgumentException("Server-synchronized animation is not supported in a sequence: " + animation.id());
-                }
+                RegisteredEmote animation = resolveAnimation(choice.emoteId().toString(), animations);
                 candidates.add(new Choice(animation, choice.chance()));
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat()));
         }
-        SequenceAnimationCompiler.validateCompatibleAnimations(resolvedSteps);
-        return new RegisteredSequence(
-            source,
-            resolvedSteps,
-            SequenceAnimationCompiler.compile(source, selectFirstCandidates(resolvedSteps))
-        );
+        return List.copyOf(resolvedSteps);
+    }
+
+    private static RegisteredEmote resolveAnimation(String id, Map<String, RegisteredEmote> animations) {
+        RegisteredEmote animation = animations.get(id);
+        if (animation == null) {
+            throw new IllegalArgumentException("Unknown or disabled animation: " + id);
+        }
+        if (animation.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+            throw new IllegalArgumentException("Server-synchronized animation is not supported in a sequence: " + animation.id());
+        }
+        return animation;
+    }
+
+    private static List<Step> flattenForValidation(List<Step> steps) {
+        if (!(steps.getFirst() instanceof AwaitPartnerStep await)) {
+            return steps;
+        }
+        List<Step> flattened = new ArrayList<>();
+        flattened.add(new EmoteStep(List.of(new Choice(await.offer(), 0)), 1));
+        flattened.addAll(await.matched());
+        flattened.addAll(await.timeout());
+        return List.copyOf(flattened);
     }
 
     public RegisteredEmote compileRandom(RandomGenerator random) {
+        if (collaborative()) {
+            throw new IllegalStateException("Collaborative sequence branches must be compiled separately");
+        }
         return SequenceAnimationCompiler.compile(this.source, selectSteps(random));
     }
 
+    public RegisteredEmote compileMatchedRandom(RandomGenerator random) {
+        return SequenceAnimationCompiler.compile(this.source, selectSteps(awaitPartner().matched(), random));
+    }
+
+    public RegisteredEmote compileTimeoutRandom(RandomGenerator random) {
+        return SequenceAnimationCompiler.compile(this.source, selectSteps(awaitPartner().timeout(), random));
+    }
+
+    public boolean collaborative() {
+        return this.steps.getFirst() instanceof AwaitPartnerStep;
+    }
+
+    public AwaitPartnerStep awaitPartner() {
+        if (!(this.steps.getFirst() instanceof AwaitPartnerStep await)) {
+            throw new IllegalStateException("Sequence is not collaborative: " + id());
+        }
+        return await;
+    }
+
     List<SelectedStep> selectSteps(RandomGenerator random) {
+        return selectSteps(this.steps, random);
+    }
+
+    private static List<SelectedStep> selectSteps(List<Step> steps, RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : this.steps) {
+        for (Step step : steps) {
             if (step instanceof WaitStep(int ticks)) {
                 selectedSteps.add(new SelectedWaitStep(ticks));
                 continue;
+            }
+            if (step instanceof AwaitPartnerStep) {
+                throw new IllegalArgumentException("await_partner cannot be compiled as a linear branch");
             }
             EmoteStep emoteStep = (EmoteStep) step;
             int previousIndex = -1;
@@ -144,7 +207,7 @@ public record RegisteredSequence(
         return this.compiledAnimation.nodeCount();
     }
 
-    public sealed interface Step permits EmoteStep, WaitStep {
+    public sealed interface Step permits EmoteStep, WaitStep, AwaitPartnerStep {
     }
 
     public record EmoteStep(List<Choice> candidates, int repeat) implements Step {
@@ -167,6 +230,22 @@ public record RegisteredSequence(
             if (ticks < 1) {
                 throw new IllegalArgumentException("sequence wait must be at least 1 tick");
             }
+        }
+    }
+
+    public record AwaitPartnerStep(
+        RegisteredEmote offer,
+        int timeoutTicks,
+        List<Step> matched,
+        List<Step> timeout
+    ) implements Step {
+        public AwaitPartnerStep {
+            Objects.requireNonNull(offer, "offer");
+            if (timeoutTicks < 1) {
+                throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
+            }
+            matched = List.copyOf(matched);
+            timeout = List.copyOf(timeout);
         }
     }
 

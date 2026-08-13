@@ -18,7 +18,7 @@ class SequenceJsonLoaderTest {
     private final SequenceJsonLoader loader = new SequenceJsonLoader();
 
     @Test
-    void loadsSchemaTwoSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
+    void loadsSchemaThreeSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
         EmoteSequence sequence = load(tempDir, "sit.json", baseJson("""
             {"emote": "example:sit_down"},
             {"wait": "0.5s"},
@@ -32,6 +32,43 @@ class SequenceJsonLoaderTest {
         assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
         assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());
+    }
+
+    @Test
+    void loadsParticipantsAndAwaitPartnerBranches(@TempDir Path tempDir) throws Exception {
+        EmoteSequence sequence = load(tempDir, "handshake.json", collaborativeJson(
+            "^ ^ ^1.2",
+            """
+                {"emote": ["example:handshake_left", "example:handshake_right"], "repeat": 3}
+                """,
+            """
+                {"emote": "example:handshake_withdraw"}
+                """
+        ));
+
+        EmoteSequence.AwaitPartnerStep await = assertInstanceOf(
+            EmoteSequence.AwaitPartnerStep.class,
+            sequence.steps().getFirst()
+        );
+        assertEquals(60, await.timeoutTicks());
+        assertEquals("example:handshake_offer", await.offerEmoteId().toString());
+        assertEquals(3, assertInstanceOf(EmoteSequence.EmoteStep.class, await.matched().getFirst()).repeat());
+        assertEquals("example:handshake_withdraw", assertInstanceOf(EmoteSequence.EmoteStep.class, await.timeout().getFirst()).emoteIds().getFirst().toString());
+        assertEquals(1.2D, ((net.minecraft.commands.arguments.coordinates.LocalCoordinates) sequence.participants().partner().position()).forwards());
+    }
+
+    @Test
+    void rejectsAbsoluteParticipantPosition(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("absolute-partner.json");
+        Files.writeString(path, collaborativeJson(
+            "0 64 0",
+            "{\"emote\":\"example:handshake\"}",
+            "{\"emote\":\"example:withdraw\"}"
+        ));
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+
+        assertEquals("$.participants.partner.position", exception.fieldPath());
     }
 
     @Test
@@ -93,7 +130,7 @@ class SequenceJsonLoaderTest {
         return """
             {
               "type": "sequence",
-              "schema_version": 2,
+              "schema_version": 3,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence", "credit": "author"},
               "settings": {
@@ -103,6 +140,30 @@ class SequenceJsonLoaderTest {
               "steps": [%s]
             }
             """.formatted(playerJson(), steps);
+    }
+
+    private static String collaborativeJson(String partnerPosition, String matched, String timeout) {
+        return """
+            {
+              "type": "sequence",
+              "schema_version": 3,
+              "id": "example:handshake",
+              "metadata": {"name": "Handshake", "description": "Two-player handshake"},
+              "participants": {
+                "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
+                "partner": {"position": "%s", "rotation": "~180 0"}
+              },
+              "settings": {
+                "cooldown": "5s",
+                %s
+              },
+              "steps": [{
+                "await_partner": {"emote": "example:handshake_offer", "timeout": "3s"},
+                "matched": [%s],
+                "timeout": [%s]
+              }]
+            }
+            """.formatted(partnerPosition, playerJson(), matched, timeout);
     }
 
     private static String playerJson() {

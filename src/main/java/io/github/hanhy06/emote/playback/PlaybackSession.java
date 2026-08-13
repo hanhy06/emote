@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.emote.RegisteredSequence;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -11,6 +12,7 @@ import java.util.EnumMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import org.jspecify.annotations.Nullable;
 
 public final class PlaybackSession {
     private final UUID sessionId;
@@ -18,10 +20,15 @@ public final class PlaybackSession {
     private final String id;
     private final String animationId;
     private final PlaybackNodes nodes;
-    private final TimelinePlayer timeline;
-    private final EventPlayer events;
+    private TimelinePlayer timeline;
+    private EventPlayer events;
     private final EmotePlayerBehavior playerBehavior;
+    private final @Nullable RegisteredSequence collaborativeSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
+
+    private State state;
+    private int remainingTimeoutTicks;
+    private @Nullable PlaybackParticipant reservedPartner;
 
     public PlaybackSession(
         UUID sessionId,
@@ -34,6 +41,21 @@ public final class PlaybackSession {
         EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator
     ) {
+        this(sessionId, levelKey, id, animationId, nodes, timeline, events, playerBehavior, initiator, null);
+    }
+
+    public PlaybackSession(
+        UUID sessionId,
+        ResourceKey<Level> levelKey,
+        String id,
+        String animationId,
+        PlaybackNodes nodes,
+        TimelinePlayer timeline,
+        EventPlayer events,
+        EmotePlayerBehavior playerBehavior,
+        PlaybackParticipant initiator,
+        @Nullable RegisteredSequence collaborativeSequence
+    ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
         this.id = Objects.requireNonNull(id, "id");
@@ -42,6 +64,9 @@ public final class PlaybackSession {
         this.timeline = Objects.requireNonNull(timeline, "timeline");
         this.events = Objects.requireNonNull(events, "events");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
+        this.collaborativeSequence = collaborativeSequence;
+        this.state = collaborativeSequence == null ? State.SOLO : State.OFFERING;
+        this.remainingTimeoutTicks = collaborativeSequence == null ? 0 : collaborativeSequence.awaitPartner().timeoutTicks();
         addParticipant(Objects.requireNonNull(initiator, "initiator"));
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
@@ -83,6 +108,12 @@ public final class PlaybackSession {
         return this.events;
     }
 
+    void replacePlayback(TimelinePlayer timeline, EventPlayer events, State state) {
+        this.timeline = Objects.requireNonNull(timeline, "timeline");
+        this.events = Objects.requireNonNull(events, "events");
+        this.state = Objects.requireNonNull(state, "state");
+    }
+
     public EmotePlayerBehavior playerBehavior() {
         return this.playerBehavior;
     }
@@ -100,11 +131,68 @@ public final class PlaybackSession {
         return null;
     }
 
+    public @Nullable RegisteredSequence collaborativeSequence() {
+        return this.collaborativeSequence;
+    }
+
+    public State state() {
+        return this.state;
+    }
+
+    void enterWaiting() {
+        this.state = State.WAITING;
+    }
+
+    boolean tickTimeout() {
+        if (this.state != State.WAITING) {
+            throw new IllegalStateException("Session is not waiting for a partner");
+        }
+        return --this.remainingTimeoutTicks <= 0;
+    }
+
+    void reservePartner(PlaybackParticipant participant) {
+        if (this.state != State.OFFERING && this.state != State.WAITING) {
+            throw new IllegalStateException("Session is not accepting a partner");
+        }
+        if (participant.role() != ParticipantRole.PARTNER) {
+            throw new IllegalArgumentException("Reserved participant must use the partner role");
+        }
+        if (this.reservedPartner != null) {
+            throw new IllegalStateException("A partner is already reserved");
+        }
+        this.reservedPartner = participant;
+    }
+
+    public @Nullable PlaybackParticipant reservedPartner() {
+        return this.reservedPartner;
+    }
+
+    PlaybackParticipant activateReservedPartner() {
+        PlaybackParticipant participant = Objects.requireNonNull(this.reservedPartner, "reservedPartner");
+        this.reservedPartner = null;
+        addParticipant(participant);
+        return participant;
+    }
+
+    PlaybackParticipant clearReservedPartner() {
+        PlaybackParticipant participant = this.reservedPartner;
+        this.reservedPartner = null;
+        return participant;
+    }
+
     public Collection<PlaybackParticipant> participants() {
         return Collections.unmodifiableCollection(this.participants.values());
     }
 
     public Map<ParticipantRole, PlaybackParticipant> participantsByRole() {
         return Collections.unmodifiableMap(this.participants);
+    }
+
+    public enum State {
+        SOLO,
+        OFFERING,
+        WAITING,
+        MATCHED,
+        TIMEOUT
     }
 }

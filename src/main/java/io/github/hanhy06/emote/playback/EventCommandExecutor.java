@@ -54,20 +54,22 @@ public final class EventCommandExecutor implements EventPlayer.EventExecutor {
     }
 
     private Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin) {
+        RootTransform root = this.nodes.root();
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
-            displayMatrix = this.nodes.root().rotationMatrix();
+            displayMatrix = root.rotationMatrix();
         } else {
-            requiredNode(origin.node());
+            PlaybackNodes.NodeInstance node = requiredNode(origin.node());
+            root = this.nodes.root(node.node().space());
             displayMatrix = this.timeline.currentTransformation(origin.node()).getMatrix();
         }
-        Matrix4fc matrix = this.nodes.root().worldMatrix(this.nodes.viewYaw(), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(root.yaw(), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),
             (float) origin.offset().z()
         ), new Vector3f());
-        return this.nodes.root().position().add(position.x, position.y, position.z);
+        return root.position().add(position.x, position.y, position.z);
     }
 
     private Entity requiredEntity(String nodeId) {
