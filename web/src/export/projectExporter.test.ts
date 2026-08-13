@@ -9,7 +9,7 @@ import { exportResourcePack } from "./resourcePackExporter";
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 describe("exportAnimation", () => {
-  it("exports multiple animations with a schema 2 sequence in one ZIP", async () => {
+  it("exports multiple animations with a schema 3 sequence in one ZIP", async () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "multi.json",
@@ -30,7 +30,7 @@ describe("exportAnimation", () => {
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
     const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
     const sequence = JSON.parse(strFromU8(files[sequenceName]));
-    expect(sequence.schema_version).toBe(2);
+    expect(sequence.schema_version).toBe(3);
     expect(sequence.settings.cooldown).toBe("20t");
     expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
     expect(Object.keys(files).filter((name) => !name.endsWith(".sequence.json"))).toHaveLength(2);
@@ -75,12 +75,46 @@ describe("exportAnimation", () => {
     }, { body: { part: "body", order: 9 } }, 0);
     const animation = JSON.parse(await result.blob.text());
 
-    expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
+    expect(animation.nodes.body.skin).toEqual({ participant: "initiator", part: "body", order: 9 });
+    expect(animation.nodes.body.space).toBe("initiator");
     expect(animation.metadata).toEqual({ name: "Test", description: "Test emote." });
     expect(animation.settings.player).toEqual(project.suggestedPlayer);
-    expect(animation.schema_version).toBe(2);
+    expect(animation.schema_version).toBe(3);
     expect(animation.settings.playback.mode).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
+  });
+
+  it("exports participant node spaces and matching skin ownership", async () => {
+    const project: ImportedProject = {
+      source: "emote_json",
+      sourceName: "partner.json",
+      suggestedMetadata: { name: "Partner", description: "Partner pose." },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      nodes: {
+        body: {
+          id: "body", type: "item_display", defaultMatrix: IDENTITY, visible: true,
+          itemStackSnbt: "{id:\"minecraft:player_head\",count:1}", itemDisplay: "none",
+        },
+        origin: { id: "origin", type: "anchor", defaultMatrix: IDENTITY },
+      },
+      animations: [{
+        id: "partner", name: "Partner", durationTicks: 1, loop: "once", loopDelayTicks: 0,
+        tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [], resources: new Map(),
+    };
+    const result = exportAnimation(project, {
+      minecraftVersion: "26.2", namespace: "test", playbackMode: "source", name: "Partner", description: "Partner pose.",
+      player: project.suggestedPlayer, additionalMetadata: {},
+    }, { body: { participant: "partner", part: "body", order: 0 } }, 0, {
+      body: "partner",
+      origin: "partner",
+    });
+    const animation = JSON.parse(await result.blob.text());
+
+    expect(animation.nodes.body.space).toBe("partner");
+    expect(animation.nodes.body.skin.participant).toBe("partner");
+    expect(animation.nodes.origin.space).toBe("partner");
   });
 
   it("replaces an assigned GeckoLib cube with a fitted player head", async () => {
@@ -136,7 +170,7 @@ describe("exportAnimation", () => {
 
     expect(animation.nodes.cube.item_stack_snbt).toContain("minecraft:player_head");
     expect(animation.nodes.cube.default_matrix).toEqual(conversion);
-    expect(animation.nodes.cube.skin).toEqual({ part: "head", order: 0 });
+    expect(animation.nodes.cube.skin).toEqual({ participant: "initiator", part: "head", order: 0 });
     expect(animation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(conversion);
 
     const unassignedResult = exportAnimation(project, {

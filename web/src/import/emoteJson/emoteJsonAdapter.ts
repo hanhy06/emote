@@ -8,7 +8,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../errors";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
-import { migrateSchema1Animation } from "./schema1Migration";
+import { migrateLegacyNodes, migrateSchema1Animation } from "./schema1Migration";
 
 export const emoteJsonAdapter: ImportAdapter = {
   id: "emote_json",
@@ -22,8 +22,8 @@ export const emoteJsonAdapter: ImportAdapter = {
         return { confidence: 0, reason: "does not match an emote animation schema" };
       }
       if (value.schema_version === 1) return { confidence: 100, reason: "matches emote animation schema 1" };
-      return value.type === "animation" && value.schema_version === 2
-        ? { confidence: 100, reason: "matches emote animation schema 2" }
+      return value.type === "animation" && (value.schema_version === 2 || value.schema_version === 3)
+        ? { confidence: 100, reason: `matches emote animation schema ${value.schema_version}` }
         : { confidence: 0, reason: "does not match a supported emote animation schema" };
     } catch {
       return { confidence: 0, reason: "not JSON" };
@@ -33,7 +33,10 @@ export const emoteJsonAdapter: ImportAdapter = {
   async import(input: ImportInput): Promise<ImportedProject> {
     const parsed = parseInputJson(input);
     const migrated = isRecord(parsed) && parsed.schema_version === 1 ? migrateSchema1Animation(parsed) : null;
-    const animation = migrated?.animation ?? requireEmoteAnimation(parsed);
+    const schemaTwo = isRecord(parsed) && parsed.schema_version === 2
+      ? { ...parsed, schema_version: 3, nodes: isRecord(parsed.nodes) ? migrateLegacyNodes(parsed.nodes) : parsed.nodes }
+      : parsed;
+    const animation = migrated?.animation ?? requireEmoteAnimation(schemaTwo);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
@@ -61,11 +64,12 @@ export const emoteJsonAdapter: ImportAdapter = {
 function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
     const defaultMatrix = asMatrix16(node.default_matrix, `${id}.default_matrix`);
-    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix }];
+    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix, space: node.space }];
     const common = {
       id,
       defaultMatrix,
       visible: node.visible ?? true,
+      space: node.space,
       ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
     };
     if (node.type === "item_display") {

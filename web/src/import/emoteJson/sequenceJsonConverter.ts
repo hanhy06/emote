@@ -15,7 +15,7 @@ import { parseInputJson } from "../inputCache";
 
 interface EmoteSequence {
   type: "sequence";
-  schema_version: 2;
+  schema_version: 3;
   id: string;
   metadata: RuntimeRecord;
   settings: {
@@ -34,14 +34,14 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
   if (value.schema_version === 1) return migrateSchema1Sequence(value);
-  if (value.schema_version === 2) return requireSchema2Sequence(value);
+  if (value.schema_version === 2 || value.schema_version === 3) return requireSchema3Sequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
 }
 
 function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
-  return requireSchema2Sequence({
+  return requireSchema3Sequence({
     type: "sequence",
-    schema_version: 2,
+    schema_version: 3,
     id: root.id,
     metadata: root.metadata,
     settings: { cooldown: "0t", player: root.player },
@@ -49,10 +49,10 @@ function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
   });
 }
 
-function requireSchema2Sequence(value: unknown): EmoteSequence {
+function requireSchema3Sequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
-  if (root.schema_version !== 2) throw invalid("schema_version", "must be 2");
+  if (root.schema_version !== 2 && root.schema_version !== 3) throw invalid("schema_version", "must be 2 or 3");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
   const metadata = requireRecord(root.metadata, "metadata");
@@ -70,7 +70,7 @@ function requireSchema2Sequence(value: unknown): EmoteSequence {
     if (index === 0 || index === steps.length - 1) throw invalid(`steps[${index}].wait`, "must be between emote steps");
     if ("wait" in steps[index - 1]) throw invalid(`steps[${index}].wait`, "must not follow another wait step");
   });
-  return { type: "sequence", schema_version: 2, id, metadata, settings: { cooldown, player }, steps };
+  return { type: "sequence", schema_version: 3, id, metadata, settings: { cooldown, player }, steps };
 }
 
 function requirePlayer(player: RuntimeRecord): void {

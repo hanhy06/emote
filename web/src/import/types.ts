@@ -1,4 +1,4 @@
-import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16 } from "../format/emoteAnimation";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
 import type { ConversionIssue } from "./errors";
 
 export type ImportSource = "bd_project" | "bd_datapack" | "animated_java_json" | "geckolib_bbmodel" | "emote_json";
@@ -25,6 +25,7 @@ export interface ImportedNodeBase {
   visible: boolean;
   entityNbt?: string;
   skinAssignmentGroup?: string;
+  space?: NodeSpace;
 }
 
 export type ImportedNode =
@@ -41,6 +42,7 @@ export type ImportedNode =
   | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
 
 export interface ImportedSkinPart {
+  participant?: Participant;
   part: "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg";
   order: number;
 }

@@ -5,7 +5,7 @@ import { convertSequenceInput } from "./sequenceJsonConverter";
 const encoder = new TextEncoder();
 
 describe("convertSequenceInput", () => {
-  it("migrates schema 1 sequences to schema 2", () => {
+  it("migrates schema 1 sequences to schema 3", () => {
     const input = {
       name: "emote.inventory.json",
       bytes: encoder.encode(JSON.stringify({
@@ -24,7 +24,7 @@ describe("convertSequenceInput", () => {
 
     expect(convertSequenceInput(input)).toEqual({
       type: "sequence",
-      schema_version: 2,
+      schema_version: 3,
       id: "emote:inventory",
       metadata: { name: "Inventory", description: "" },
       settings: { cooldown: "0t", player: createDefaultPlayerBehavior() },
@@ -36,7 +36,7 @@ describe("convertSequenceInput", () => {
     });
   });
 
-  it("accepts and validates schema 2 sequences", () => {
+  it("accepts and migrates schema 2 sequences", () => {
     const sequence = {
       type: "sequence",
       schema_version: 2,
@@ -46,7 +46,10 @@ describe("convertSequenceInput", () => {
       steps: [{ emote: "emote:sit_down" }, { wait: "10t" }, { emote: ["emote:idle", 100], repeat: 3 }],
     };
 
-    expect(convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) })).toEqual(sequence);
+    expect(convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) })).toEqual({
+      ...sequence,
+      schema_version: 3,
+    });
   });
 
   it("ignores non-sequence JSON", () => {

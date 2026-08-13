@@ -1,4 +1,5 @@
 import { strToU8, zipSync } from "fflate";
+import type { NodeSpace } from "../format/emoteAnimation";
 import type { ImportedProject, ImportedSkinPart } from "../import/types";
 import { generatedResourceFiles } from "./generatedResources";
 import { compileExportAnimation, sanitizeAnimationFileName } from "./projectExporter";
@@ -9,9 +10,10 @@ export function exportResourcePack(
   options: ExportOptions,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
+  nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): ExportResult {
   const generatedResources = generatedResourceFiles(project, options.minecraftVersion);
-  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
+  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex, nodeSpaces);
   const packFormat = resourcePackFormat(project.resourceMinecraftVersion ?? options.minecraftVersion);
   const files: Record<string, Uint8Array> = {
     "pack.mcmeta": strToU8(`${JSON.stringify({

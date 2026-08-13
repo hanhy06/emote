@@ -25,7 +25,7 @@ export interface ValidationIssue {
 export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   if (animation.type !== "animation") add(issues, "type", "must be animation");
-  if (animation.schema_version !== 2) add(issues, "schema_version", "must be 2");
+  if (animation.schema_version !== 3) add(issues, "schema_version", "must be 3");
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
   if (!Number.isFinite(animation.settings.player.stop_conditions.movement_distance)
@@ -45,6 +45,9 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   const nodeIds = new Set(Object.keys(animation.nodes));
   for (const [nodeId, node] of Object.entries(animation.nodes)) {
     if (!nodeId.trim()) add(issues, "nodes", "node id must not be blank");
+    if (!(["scene", "initiator", "partner"] as const).includes(node.space)) {
+      add(issues, `nodes.${nodeId}.space`, "must be scene, initiator, or partner");
+    }
     validateMatrix(node.default_matrix, `nodes.${nodeId}.default_matrix`, issues);
     if (node.type === "anchor" && ("visible" in node || "entity_nbt" in node)) {
       add(issues, `nodes.${nodeId}`, "anchor cannot define visible or entity_nbt");
@@ -55,6 +58,9 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
       }
       if (node.skin && !isNonNegativeInt32(node.skin.order)) {
         add(issues, `nodes.${nodeId}.skin.order`, "must be a non-negative Java integer");
+      }
+      if (node.skin && node.skin.participant !== node.space) {
+        add(issues, `nodes.${nodeId}.skin.participant`, "must match the node space");
       }
     }
   }

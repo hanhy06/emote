@@ -9,7 +9,7 @@ export type MinecraftTime = string;
 
 export interface EmoteAnimation {
   type: "animation";
-  schema_version: 2;
+  schema_version: 3;
   id: string;
   metadata: EmoteMetadata;
   settings: EmoteAnimationSettings;
@@ -61,7 +61,11 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
   };
 }
 
+export type NodeSpace = "scene" | "initiator" | "partner";
+export type Participant = "initiator" | "partner";
+
 interface EmoteNodeBase {
+  space: NodeSpace;
   visible?: boolean;
   default_matrix: Matrix16;
   entity_nbt?: string;
@@ -72,11 +76,11 @@ export type EmoteNode =
     type: "item_display";
     item_stack_snbt: string;
     item_display: string;
-    skin?: { part: "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg"; order: number };
+    skin?: { participant: Participant; part: "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg"; order: number };
   })
   | (EmoteNodeBase & { type: "block_display"; block_state_snbt: string })
   | (EmoteNodeBase & { type: "text_display"; text: unknown })
-  | { type: "anchor"; default_matrix: Matrix16 };
+  | { type: "anchor"; space: NodeSpace; default_matrix: Matrix16 };
 
 export interface EmoteTimeline {
   duration: MinecraftTime;

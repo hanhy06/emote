@@ -9,7 +9,7 @@ const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 function animation(): EmoteAnimation {
   return {
     type: "animation",
-    schema_version: 2,
+    schema_version: 3,
     id: "emote:test",
     metadata: { name: "Test", description: "Test emote." },
     settings: {
@@ -19,8 +19,8 @@ function animation(): EmoteAnimation {
       playback: { mode: "once", loop_delay: "0t" },
     },
     nodes: {
-      display: { type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },
-      effect: { type: "anchor", default_matrix: IDENTITY },
+      display: { type: "item_display", space: "scene", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },
+      effect: { type: "anchor", space: "scene", default_matrix: IDENTITY },
     },
     timeline: {
       duration: "2t",
@@ -33,7 +33,7 @@ describe("validateEmoteAnimation", () => {
   it("accepts and serializes a structurally valid animation", () => {
     const value = animation();
     expect(validateEmoteAnimation(value)).toEqual([]);
-    expect(serializeEmoteAnimation(value)).toContain('"schema_version":2');
+    expect(serializeEmoteAnimation(value)).toContain('"schema_version":3');
   });
 
   it("accepts Minecraft time units", () => {

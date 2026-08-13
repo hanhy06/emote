@@ -1,5 +1,6 @@
 import type { TargetedEvent, TargetedMouseEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
+import type { NodeSpace } from "../format/emoteAnimation";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -12,10 +13,12 @@ interface AssignmentPanelProps {
   parts: PlayerHeadPart[];
   assignments: PartAssignments;
   orders: PartOrders;
+  spaces: Readonly<Record<string, NodeSpace>>;
   selectedParts: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
   onAssignOrder: (order: number) => void;
+  onAssignSpace: (space: NodeSpace) => void;
   onSelectPart: (nodeId: string, additive: boolean) => void;
 }
 
@@ -23,10 +26,12 @@ export function AssignmentPanel({
   parts,
   assignments,
   orders,
+  spaces,
   selectedParts,
   hasSelectedAssignment,
   onAssignPart,
   onAssignOrder,
+  onAssignSpace,
   onSelectPart,
 }: AssignmentPanelProps) {
   const hasSelection = selectedParts.size > 0;
@@ -103,6 +108,14 @@ export function AssignmentPanel({
         ))}
         <button type="button" disabled={!hasSelection} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
+      <p><strong>Coordinate space</strong></p>
+      <div className="assignment-buttons">
+        {(["scene", "initiator", "partner"] as const).map((space) => (
+          <button type="button" key={space} disabled={!hasSelection} onClick={() => onAssignSpace(space)}>
+            {space[0].toUpperCase() + space.slice(1)}
+          </button>
+        ))}
+      </div>
       <label className="order-control">
         <strong>Skin order</strong>
         <input
@@ -131,7 +144,7 @@ export function AssignmentPanel({
               onClick={(event) => handlePartClick(event, part.nodeId)}
             >
               <span>#{part.partIndex}</span>
-              <span>{assignmentLabel(assignments[part.nodeId], orders[part.nodeId])}</span>
+              <span>{spaces[part.nodeId] ?? "scene"} · {assignmentLabel(assignments[part.nodeId], orders[part.nodeId])}</span>
             </button>
           </li>
         ))}

@@ -37,7 +37,7 @@ export function migrateSchema1Animation(value: unknown): MigratedSchema1Animatio
   const events = optionalRecord(timeline.events, "timeline.events");
   const migrated = requireEmoteAnimation({
     type: "animation",
-    schema_version: 2,
+    schema_version: 3,
     id: root.id,
     metadata: root.metadata,
     settings: {
@@ -49,7 +49,7 @@ export function migrateSchema1Animation(value: unknown): MigratedSchema1Animatio
         loop_delay: formatLegacyTicks(timeline.loop_delay_ticks, "timeline.loop_delay_ticks"),
       },
     },
-    nodes: root.nodes,
+    nodes: migrateLegacyNodes(root.nodes),
     timeline: {
       duration: formatLegacyTicks(timeline.duration_ticks, "timeline.duration_ticks"),
       keyframes: requireArray(timeline.keyframes, "timeline.keyframes").map(migrateKeyframe),
@@ -57,6 +57,19 @@ export function migrateSchema1Animation(value: unknown): MigratedSchema1Animatio
     },
   });
   return { animation: migrated, minecraftVersion };
+}
+
+export function migrateLegacyNodes(value: unknown): RuntimeRecord {
+  const nodes = requireRecord(value, "nodes");
+  return Object.fromEntries(Object.entries(nodes).map(([nodeId, nodeValue]) => {
+    const node = requireRecord(nodeValue, `nodes.${nodeId}`);
+    const skin = optionalRecord(node.skin, `nodes.${nodeId}.skin`);
+    return [nodeId, {
+      ...node,
+      space: skin ? "initiator" : "scene",
+      ...(skin ? { skin: { ...skin, participant: "initiator" } } : {}),
+    }];
+  }));
 }
 
 function migrateKeyframe(value: unknown, index: number): RuntimeRecord {

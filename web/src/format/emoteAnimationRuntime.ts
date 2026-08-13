@@ -17,6 +17,8 @@ import {
 const NODE_TYPES = ["anchor", "item_display", "block_display", "text_display"] as const;
 const LOOP_TYPES = ["once", "loop", "server_sync"] as const;
 const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const;
+const NODE_SPACES = ["scene", "initiator", "partner"] as const;
+const PARTICIPANTS = ["initiator", "partner"] as const;
 
 export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   const root = requireRecord(value, "animation");
@@ -61,6 +63,7 @@ function requireNodes(value: unknown): void {
     const path = `nodes.${nodeId}`;
     const node = requireRecord(nodeValue, path);
     const type = requireStringValue(node.type, NODE_TYPES, `${path}.type`);
+    const space = requireStringValue(node.space, NODE_SPACES, `${path}.space`);
     requireNumberArray(node.default_matrix, `${path}.default_matrix`);
     if (type === "anchor") {
       optionalAnchorFields(node, path);
@@ -71,7 +74,7 @@ function requireNodes(value: unknown): void {
     if (type === "item_display") {
       requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
       requireString(node.item_display, `${path}.item_display`);
-      requireSkin(node.skin, `${path}.skin`);
+      requireSkin(node.skin, space, `${path}.skin`);
     } else if (type === "block_display") {
       requireString(node.block_state_snbt, `${path}.block_state_snbt`);
     } else {
@@ -85,10 +88,12 @@ function optionalAnchorFields(node: RuntimeRecord, path: string): void {
   optionalString(node.entity_nbt, `${path}.entity_nbt`);
 }
 
-function requireSkin(value: unknown, path: string): void {
+function requireSkin(value: unknown, space: typeof NODE_SPACES[number], path: string): void {
   const skin = optionalRecord(value, path);
   if (!skin) return;
   requireStringValue(skin.part, SKIN_PARTS, `${path}.part`);
+  const participant = requireStringValue(skin.participant, PARTICIPANTS, `${path}.participant`);
+  if (participant !== space) throw new Error(`${path}.participant must match the node space.`);
   requireNumber(skin.order, `${path}.order`);
 }
 

@@ -1,6 +1,6 @@
 import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
-import type { EmoteAnimation } from "../format/emoteAnimation";
+import type { EmoteAnimation, NodeSpace } from "../format/emoteAnimation";
 import { multiplyMatrix16 } from "../format/matrix";
 import { sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
@@ -19,9 +19,10 @@ export function exportAnimation(
   options: ExportOptions,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
+  nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): ExportResult {
   validateResourceVersion(project, options.minecraftVersion);
-  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex);
+  const animation = compileExportAnimation(project, options, skinAssignments, animationIndex, nodeSpaces);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
@@ -33,9 +34,10 @@ export function exportAnimationBundle(
   options: ExportOptions,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   includeSequence: boolean,
+  nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): ExportResult {
   validateResourceVersion(project, options.minecraftVersion);
-  const animations = project.animations.map((_, index) => compileExportAnimation(project, options, skinAssignments, index));
+  const animations = project.animations.map((_, index) => compileExportAnimation(project, options, skinAssignments, index, nodeSpaces));
   const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
     `emote.${index + 1}.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
     strToU8(serializeEmoteAnimation(animation)),
@@ -45,7 +47,7 @@ export function exportAnimationBundle(
     if (!first) throw new Error("The project does not contain animations.");
     const sequence = {
       type: "sequence",
-      schema_version: 2,
+      schema_version: 3,
       id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(`${options.name}_sequence`)}`,
       metadata: { ...options.additionalMetadata, name: `${options.name} Sequence`, description: options.description },
       settings: { cooldown: first.settings.cooldown, player: options.player },
@@ -59,12 +61,14 @@ export function exportAnimationBundle(
   };
 }
 
-function applySkinAssignments(
+function applyNodeAssignments(
   project: ImportedProject,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  nodeSpaces: Readonly<Record<string, NodeSpace>>,
 ): ImportedProject {
   const conversions = new Map<string, ImportedNode["defaultMatrix"]>();
-  const nodes = Object.fromEntries(Object.entries(project.nodes).map(([id, node]) => {
+  const nodes = Object.fromEntries(Object.entries(project.nodes).map(([id, originalNode]) => {
+    const node = { ...originalNode, space: nodeSpaces[id] ?? originalNode.space } as ImportedNode;
     if (node.type !== "item_display" || !Object.hasOwn(skinAssignments, id)) return [id, node];
     const skin = skinAssignments[id];
     const { skin: _oldSkin, suggestedSkin: _suggestedSkin, ...withoutSkin } = node;
@@ -103,8 +107,9 @@ export function compileExportAnimation(
   options: ExportOptions,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   animationIndex: number,
+  nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): EmoteAnimation {
-  return compileImportedAnimation(applySkinAssignments(project, skinAssignments), {
+  return compileImportedAnimation(applyNodeAssignments(project, skinAssignments, nodeSpaces), {
     minecraftVersion: options.minecraftVersion,
     namespace: options.namespace,
     ...(options.playbackMode === "source" ? {} : { loop: options.playbackMode }),

@@ -10,7 +10,7 @@ describe("emoteJsonAdapter", () => {
   it("reimports converted JSON without losing skin order or interpolation duration", async () => {
     const source: EmoteAnimation = {
       type: "animation",
-      schema_version: 2,
+      schema_version: 3,
       id: "demo:wave",
       metadata: { name: "Wave", description: "Wave emote." },
       settings: {
@@ -22,10 +22,11 @@ describe("emoteJsonAdapter", () => {
       nodes: {
         arm: {
           type: "item_display",
+          space: "partner",
           item_stack_snbt: "{id:\"minecraft:player_head\",count:1}",
           item_display: "none",
           default_matrix: IDENTITY,
-          skin: { part: "right_arm", order: 1 },
+          skin: { participant: "partner", part: "right_arm", order: 1 },
         },
       },
       timeline: {
@@ -45,7 +46,8 @@ describe("emoteJsonAdapter", () => {
       namespace: project.suggestedNamespace,
     });
 
-    expect(project.nodes.arm.type === "item_display" && project.nodes.arm.skin).toEqual({ part: "right_arm", order: 1 });
+    expect(project.nodes.arm.type === "item_display" && project.nodes.arm.skin).toEqual({ participant: "partner", part: "right_arm", order: 1 });
+    expect(project.nodes.arm.space).toBe("partner");
     expect(recompiled.settings.player).toEqual(source.settings.player);
     expect(recompiled.id).toBe(source.id);
     expect(recompiled.settings.playback.mode).toBe("server_sync");
@@ -118,7 +120,7 @@ describe("emoteJsonAdapter", () => {
     expect(project.suggestedCooldown).toBe("0t");
     expect(project.animations[0].events.timeline[0].tick).toBe(2);
     expect(recompiled.type).toBe("animation");
-    expect(recompiled.schema_version).toBe(2);
+    expect(recompiled.schema_version).toBe(3);
     expect(recompiled.settings.playback).toEqual({ mode: "loop", loop_delay: "2t" });
     expect(recompiled.timeline.duration).toBe("4t");
     expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration).toBe("2t");

@@ -4,10 +4,12 @@ import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { NodeSpacePanel } from "./components/NodeSpacePanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
 import { downloadExport } from "./export/download";
 import type { ExportOptions, ExportResult } from "./export/types";
+import type { NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
@@ -38,6 +40,7 @@ interface ConverterSession {
   previewFrameIndex: number;
   assignments: PartAssignments;
   orders: PartOrders;
+  spaces: Record<string, NodeSpace>;
   selectedParts: Set<string>;
   metadata: ExportOptions;
   conversionError: string;
@@ -86,6 +89,7 @@ export function App() {
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
   const assignments = session?.assignments ?? EMPTY_ASSIGNMENTS;
   const orders = session?.orders ?? EMPTY_ORDERS;
+  const spaces = session?.spaces ?? {};
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex];
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
@@ -132,6 +136,10 @@ export function App() {
         selectedParts: new Set(),
         assignments: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, (candidate.node.suggestedSkin ?? candidate.node.skin)?.part ?? null])),
         orders: Object.fromEntries(candidates.map((candidate) => [candidate.nodeId, (candidate.node.suggestedSkin ?? candidate.node.skin)?.order ?? null])),
+        spaces: Object.fromEntries(Object.entries(imported.nodes).map(([nodeId, node]) => {
+          const skin = node.type === "item_display" ? node.suggestedSkin ?? node.skin : null;
+          return [nodeId, node.space ?? skin?.participant ?? (skin ? "initiator" : "scene")];
+        })),
         metadata: {
           minecraftVersion: imported.suggestedMinecraftVersion ?? "26.2",
           namespace: imported.suggestedNamespace ?? imported.suggestedMetadata.name,
@@ -161,7 +169,8 @@ export function App() {
     const skins: Record<string, ImportedSkinPart | null> = {};
     for (const candidate of skinCandidates) {
       const part = assignments[candidate.nodeId];
-      skins[candidate.nodeId] = part ? { part, order: orders[candidate.nodeId] ?? 0 } : null;
+      const participant = spaces[candidate.nodeId] === "partner" ? "partner" : "initiator";
+      skins[candidate.nodeId] = part ? { participant, part, order: orders[candidate.nodeId] ?? 0 } : null;
     }
     return skins;
   }
@@ -188,7 +197,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.project, session.metadata, buildSkinAssignments(), index);
+      return exportAnimation(session.project, session.metadata, buildSkinAssignments(), index, session.spaces);
     }, "Conversion failed.", "Creating animation file");
   }
 
@@ -196,7 +205,7 @@ export function App() {
     if (!session) return;
     await runExport(async () => {
       const { exportAnimationBundle } = await import("./export/projectExporter");
-      return exportAnimationBundle(session.project, session.metadata, buildSkinAssignments(), includeSequence);
+      return exportAnimationBundle(session.project, session.metadata, buildSkinAssignments(), includeSequence, session.spaces);
     }, "Bundle export failed.", includeSequence ? "Creating sequence ZIP" : "Creating animation ZIP");
   }
 
@@ -205,7 +214,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportResourcePack } = await import("./export/resourcePackExporter");
-      return exportResourcePack(session.project, session.metadata, buildSkinAssignments(), index);
+      return exportResourcePack(session.project, session.metadata, buildSkinAssignments(), index, session.spaces);
     }, "Resource export failed.", "Creating resource pack");
   }
 
@@ -237,9 +246,47 @@ export function App() {
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
+    updateSession((current) => {
+      const assigned = assignSkinPart(current.assignments, current.orders, [...current.selectedParts], part, skinAssignmentGroups(skinCandidates));
+      const nextSpaces = part === null ? current.spaces : {
+        ...current.spaces,
+        ...Object.fromEntries([...current.selectedParts].map((nodeId) => [
+          nodeId,
+          current.spaces[nodeId] === "scene" ? "initiator" : current.spaces[nodeId],
+        ])),
+      };
+      return { ...current, ...assigned, spaces: nextSpaces };
+    });
+  }
+
+  function assignSelectedSpace(space: NodeSpace) {
+    if (selectedParts.size === 0) return;
     updateSession((current) => ({
       ...current,
-      ...assignSkinPart(current.assignments, current.orders, [...current.selectedParts], part, skinAssignmentGroups(skinCandidates)),
+      spaces: { ...current.spaces, ...Object.fromEntries([...current.selectedParts].map((nodeId) => [nodeId, space])) },
+      ...(space === "scene" ? assignSkinPart(
+        current.assignments,
+        current.orders,
+        [...current.selectedParts],
+        null,
+        skinAssignmentGroups(skinCandidates),
+      ) : {}),
+    }));
+  }
+
+  function assignNodeSpace(nodeId: string, space: NodeSpace) {
+    updateSession((current) => ({
+      ...current,
+      spaces: { ...current.spaces, [nodeId]: space },
+      ...(space === "scene" && current.assignments[nodeId] != null
+        ? assignSkinPart(
+          current.assignments,
+          current.orders,
+          [nodeId],
+          null,
+          skinAssignmentGroups(skinCandidates),
+        )
+        : {}),
     }));
   }
 
@@ -417,16 +464,19 @@ export function App() {
                   parts={previewParts}
                   assignments={assignments}
                   orders={orders}
+                  spaces={spaces}
                   selectedParts={selectedParts}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
+                  onAssignSpace={assignSelectedSpace}
                   onSelectPart={handlePartSelect}
                 />
               </div>
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
+            <NodeSpacePanel nodes={project.nodes} spaces={spaces} onChange={assignNodeSpace} />
             <CommandPanel
               animation={animation}
               tick={previewTick}

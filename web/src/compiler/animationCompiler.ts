@@ -78,7 +78,7 @@ function compileAnimation(
 ): EmoteAnimation {
   return {
     type: "animation",
-    schema_version: 2,
+    schema_version: 3,
     id: `${context.namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: {
       ...context.baseMetadata,
@@ -106,8 +106,12 @@ function compileNodes(nodes: Record<string, ImportedNode>, animation: ImportedAn
   return Object.fromEntries(Object.entries(nodes).map(([id, node]) => {
     const defaultMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix
       ?? node.defaultMatrix;
-    if (node.type === "anchor") return [id, { type: "anchor", default_matrix: defaultMatrix }];
+    const space = node.space ?? (node.type === "item_display" && node.skin
+      ? node.skin.participant ?? "initiator"
+      : "scene");
+    if (node.type === "anchor") return [id, { type: "anchor", space, default_matrix: defaultMatrix }];
     const common = {
+      space,
       ...(node.visible ? {} : { visible: false }),
       default_matrix: defaultMatrix,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
@@ -118,7 +122,7 @@ function compileNodes(nodes: Record<string, ImportedNode>, animation: ImportedAn
         type: "item_display",
         item_stack_snbt: node.itemStackSnbt,
         item_display: node.itemDisplay,
-        ...(node.skin ? { skin: node.skin } : {}),
+        ...(node.skin ? { skin: { ...node.skin, participant: node.skin.participant ?? "initiator" } } : {}),
       }];
     }
     if (node.type === "block_display") return [id, { ...common, type: "block_display", block_state_snbt: node.blockStateSnbt }];
