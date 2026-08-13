@@ -8,8 +8,9 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -91,8 +92,12 @@ public final class ApiImpl extends EmoteApi {
     @Override
     public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
-        ActivePlayback activeEmote = this.playbackManager.findActive(player.getUUID());
-        return Optional.ofNullable(activeEmote).map(ApiEvents::toPlaybackInfo);
+        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        if (session == null) {
+            return Optional.empty();
+        }
+        PlaybackParticipant participant = session.participant(player.getUUID());
+        return participant == null ? Optional.empty() : Optional.of(ApiEvents.toPlaybackInfo(session, participant));
     }
 
     @Override

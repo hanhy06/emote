@@ -12,8 +12,8 @@ import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.server.ReloadService;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
@@ -169,13 +169,13 @@ public final class RootCommand {
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        ActivePlayback activeEmote = this.playbackManager.stop(player);
-        if (activeEmote == null) {
+        PlaybackSession session = this.playbackManager.stop(player);
+        if (session == null) {
             source.sendFailure(Component.literal("No active emote."));
             return 0;
         }
 
-        source.sendSuccess(() -> Component.literal("Stop: " + activeEmote.id()), false);
+        source.sendSuccess(() -> Component.literal("Stop: " + session.id()), false);
         return 1;
     }
 

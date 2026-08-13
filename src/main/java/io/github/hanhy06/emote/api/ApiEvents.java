@@ -2,7 +2,8 @@ package io.github.hanhy06.emote.api;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.playback.ActivePlayback;
+import io.github.hanhy06.emote.playback.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -41,8 +42,8 @@ public final class ApiEvents implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, ActivePlayback activeEmote) {
-        PlaybackInfo playback = toPlaybackInfo(activeEmote);
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        PlaybackInfo playback = toPlaybackInfo(session, participant);
         for (EmotePlaybackListener listener : this.playbackListeners) {
             try {
                 listener.onStarted(playback);
@@ -55,10 +56,11 @@ public final class ApiEvents implements PlaybackStateListener {
     @Override
     public void onStopped(
         ServerPlayer player,
-        ActivePlayback activeEmote,
+        PlaybackSession session,
+        PlaybackParticipant participant,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = toPlaybackInfo(activeEmote);
+        PlaybackInfo playback = toPlaybackInfo(session, participant);
         for (EmotePlaybackListener listener : this.playbackListeners) {
             try {
                 listener.onStopped(playback, reason);
@@ -79,11 +81,11 @@ public final class ApiEvents implements PlaybackStateListener {
         );
     }
 
-    public static PlaybackInfo toPlaybackInfo(ActivePlayback activeEmote) {
+    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlaybackParticipant participant) {
         return new PlaybackInfo(
-            activeEmote.playerUuid(),
-            Identifier.parse(activeEmote.id()),
-            activeEmote.timeline().currentTick()
+            participant.playerUuid(),
+            Identifier.parse(session.id()),
+            session.timeline().currentTick()
         );
     }
 

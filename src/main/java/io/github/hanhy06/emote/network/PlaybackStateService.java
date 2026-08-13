@@ -2,7 +2,8 @@ package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
-import io.github.hanhy06.emote.playback.ActivePlayback;
+import io.github.hanhy06.emote.playback.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,12 +12,12 @@ public class PlaybackStateService implements PlaybackStateListener {
     private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false);
 
     @Override
-    public void onStarted(ServerPlayer player, ActivePlayback activeEmote) {
-        sync(player, new PlaybackStatePayload(true, activeEmote.playerBehavior().hidden()));
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        sync(player, new PlaybackStatePayload(true, session.playerBehavior().hidden()));
     }
 
     @Override
-    public void onStopped(ServerPlayer player, ActivePlayback activeEmote, PlaybackStopReason reason) {
+    public void onStopped(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant, PlaybackStopReason reason) {
         sync(player, INACTIVE_PAYLOAD);
     }
 

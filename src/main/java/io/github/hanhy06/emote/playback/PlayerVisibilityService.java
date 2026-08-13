@@ -39,8 +39,8 @@ final class PlayerVisibilityService {
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
 
-    void start(ServerPlayer player, ActivePlayback activeEmote) {
-        if (!activeEmote.playerBehavior().hidden()) {
+    void start(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        if (!session.playerBehavior().hidden()) {
             return;
         }
         player.setInvisible(true);
@@ -48,19 +48,19 @@ final class PlayerVisibilityService {
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
-    void tick(ServerPlayer player, ActivePlayback activeEmote) {
-        if (!activeEmote.playerBehavior().hidden() || player.isInvisible()) {
+    void tick(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        if (!session.playerBehavior().hidden() || player.isInvisible()) {
             return;
         }
         player.setInvisible(true);
         syncPlayerVisibility(player);
     }
 
-    void stop(ServerPlayer player, ActivePlayback activeEmote) {
-        if (!activeEmote.playerBehavior().hidden()) {
+    void stop(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        if (!session.playerBehavior().hidden()) {
             return;
         }
-        player.setInvisible(activeEmote.wasInvisible());
+        player.setInvisible(participant.wasInvisible());
         syncPlayerVisibility(player);
         sendToTrackingPlayers(player, createVisibleEquipment(player));
     }
@@ -69,8 +69,8 @@ final class PlayerVisibilityService {
         if (!(entity instanceof ServerPlayer emotePlayer)) {
             return;
         }
-        ActivePlayback activeEmote = this.playbackManager.findActive(emotePlayer.getUUID());
-        if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
+        PlaybackSession session = this.playbackManager.findActive(emotePlayer.getUUID());
+        if (session != null && session.playerBehavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -79,8 +79,8 @@ final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        ActivePlayback activeEmote = this.playbackManager.findActive(player.getUUID());
-        if (activeEmote != null && activeEmote.playerBehavior().hidden()) {
+        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        if (session != null && session.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }

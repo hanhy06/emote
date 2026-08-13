@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -25,7 +26,8 @@ import java.util.random.RandomGenerator;
 public class PlaybackManager implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
-    private final Map<UUID, ActivePlayback> activePlaybacks = new ConcurrentHashMap<>();
+    private final Map<UUID, PlaybackSession> sessions = new ConcurrentHashMap<>();
+    private final Map<UUID, UUID> playerSessions = new ConcurrentHashMap<>();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
     private final PlayerSkinManager playerSkinManager;
@@ -80,9 +82,10 @@ public class PlaybackManager implements ConfigListener {
         String playbackId,
         EmotePlayerBehavior playerBehavior
     ) {
+        PlaybackSession currentSession = findActive(player.getUUID());
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
-            displayEntityCount(this.activePlaybacks.get(player.getUUID())),
+            displayEntityCount(currentSession),
             emote.displayNodeCount()
         );
         if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
@@ -123,6 +126,7 @@ public class PlaybackManager implements ConfigListener {
         PreparedPlayerSkin preparedSkin
     ) {
         PlaybackNodes nodes = null;
+        PlaybackSession session = null;
         try {
             nodes = this.entityController.create(player.level(), root, emote);
             TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
@@ -145,34 +149,39 @@ public class PlaybackManager implements ConfigListener {
                 emote.playbackPlan(),
                 new EventCommandExecutor(player, nodes, timeline)
             );
-            ActivePlayback activeEmote = new ActivePlayback(
+            PlaybackParticipant initiator = new PlaybackParticipant(
                 player.getUUID(),
+                ParticipantRole.INITIATOR,
+                root.position(),
+                emote.skinParts(),
+                wasInvisible
+            );
+            session = new PlaybackSession(
+                UUID.randomUUID(),
                 player.level().dimension(),
                 playbackId,
                 emote.id(),
-                root.position(),
                 nodes,
                 timeline,
                 events,
-                emote.skinParts(),
                 playerBehavior,
-                wasInvisible
+                initiator
             );
-            this.activePlaybacks.put(player.getUUID(), activeEmote);
-            this.playerVisibilityService.start(player, activeEmote);
+            this.sessions.put(session.sessionId(), session);
+            this.playerSessions.put(player.getUUID(), session.sessionId());
+            this.playerVisibilityService.start(player, session, initiator);
             startEvents(timeline, events);
-            if (playbackChanged(activeEmote)) {
+            if (playbackChanged(session)) {
                 return PlayResult.SUCCESS;
             }
             for (PlaybackStateListener stateListener : this.stateListeners) {
-                stateListener.onStarted(player, activeEmote);
+                stateListener.onStarted(player, session, initiator);
             }
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
             Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
-            ActivePlayback activeEmote = this.activePlaybacks.remove(player.getUUID());
-            if (activeEmote != null) {
-                cleanupActive(activeEmote, false, PlaybackStopReason.ERROR, null);
+            if (session != null && removeSession(session)) {
+                cleanupSession(session, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -181,89 +190,92 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private void refreshPlayerSkin(UUID playerUuid) {
-        ActivePlayback activeEmote = this.activePlaybacks.get(playerUuid);
-        if (activeEmote == null) {
+        PlaybackSession session = findActive(playerUuid);
+        if (session == null) {
             return;
         }
+        PlaybackParticipant participant = session.participant(playerUuid);
         ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(playerUuid);
-        if (player == null) {
+        if (player == null || participant == null) {
             return;
         }
         PlayerSkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            activeEmote.skinParts()
+            participant.skinParts()
         );
         this.playerSkinManager.applySkinParts(
-            activeEmote.nodes().nodes(),
-            activeEmote.skinParts(),
+            session.nodes().nodes(),
+            participant.skinParts(),
             preparation.preparedPlayerSkin()
         );
     }
 
-    public ActivePlayback stop(ServerPlayer player) {
+    public PlaybackSession stop(ServerPlayer player) {
         return stop(player, PlaybackStopReason.MANUAL);
     }
 
-    public ActivePlayback stop(ServerPlayer player, PlaybackStopReason reason) {
+    public PlaybackSession stop(ServerPlayer player, PlaybackStopReason reason) {
         return stop(player.getUUID(), reason, player);
     }
 
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
-        ActivePlayback activeEmote = this.activePlaybacks.get(player.getUUID());
-        if (activeEmote == null || !shouldStopFor(activeEmote.playerBehavior().stopConditions(), reason)) {
+        PlaybackSession session = findActive(player.getUUID());
+        if (session == null || !shouldStopFor(session.playerBehavior().stopConditions(), reason)) {
             return;
         }
         stop(player, reason);
     }
 
-    private ActivePlayback stop(
+    private PlaybackSession stop(
         UUID playerUuid,
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
-        ActivePlayback activeEmote = this.activePlaybacks.remove(playerUuid);
-        if (activeEmote == null) {
+        PlaybackSession session = findActive(playerUuid);
+        if (session == null || !removeSession(session)) {
             return null;
         }
-        cleanupActive(activeEmote, true, reason, knownPlayer);
-        return activeEmote;
+        cleanupSession(session, true, reason, knownPlayer);
+        return session;
     }
 
-    public ActivePlayback findActive(UUID playerUuid) {
-        return this.activePlaybacks.get(playerUuid);
+    public PlaybackSession findActive(UUID playerUuid) {
+        UUID sessionId = this.playerSessions.get(playerUuid);
+        return sessionId == null ? null : this.sessions.get(sessionId);
     }
 
     public void tick() {
         this.stressTest.tick();
-        if (this.activePlaybacks.isEmpty()) {
+        if (this.sessions.isEmpty()) {
             return;
         }
 
         List<StopRequest> stopRequests = null;
-        for (ActivePlayback activeEmote : this.activePlaybacks.values()) {
-            ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
+        for (PlaybackSession session : this.sessions.values()) {
+            PlaybackParticipant initiator = session.initiator();
+            ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
-            if (!canKeepPlaying(player, activeEmote)) {
+            if (!canKeepPlaying(player, session)) {
                 stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
-            } else if (activeEmote.playerBehavior().stopConditions().submerge() && player.isUnderWater()) {
+            } else if (session.playerBehavior().stopConditions().submerge() && player.isUnderWater()) {
                 stopReason = PlaybackStopReason.SUBMERGED;
-            } else if (hasMovedDuringPlayback(player, activeEmote)) {
+            } else if (hasMovedDuringPlayback(player, session, initiator)) {
                 stopReason = PlaybackStopReason.MOVED;
             } else {
                 try {
-                    activeEmote.timeline().restoreDeferredVisibility();
-                    this.entityController.updateViewRotation(activeEmote.nodes(), player.getYRot());
-                    TimelinePlayer.AdvanceResult result = advanceTimeline(activeEmote.timeline(), activeEmote.events());
-                    if (playbackChanged(activeEmote)) {
+                    session.timeline().restoreDeferredVisibility();
+                    this.entityController.updateViewRotation(session.nodes(), player.getYRot());
+                    TimelinePlayer.AdvanceResult result = advanceTimeline(session.timeline(), session.events());
+                    if (playbackChanged(session)) {
                         continue;
                     }
                     if (result == TimelinePlayer.AdvanceResult.FINISHED) {
                         stopReason = PlaybackStopReason.FINISHED;
                     } else {
-                        this.playerVisibilityService.tick(player, activeEmote);
+                        this.playerVisibilityService.tick(player, session, initiator);
                     }
                 } catch (RuntimeException exception) {
-                    Emote.LOGGER.warn("Failed while playing emote {}", activeEmote.id(), exception);
+                    Emote.LOGGER.warn("Failed while playing emote {}", session.id(), exception);
                     stopReason = PlaybackStopReason.ERROR;
                 }
             }
@@ -271,13 +283,13 @@ public class PlaybackManager implements ConfigListener {
                 if (stopRequests == null) {
                     stopRequests = new ArrayList<>();
                 }
-                stopRequests.add(new StopRequest(activeEmote, stopReason));
+                stopRequests.add(new StopRequest(session, stopReason));
             }
         }
 
         if (stopRequests != null) {
             for (StopRequest request : stopRequests) {
-                stopIfCurrent(request.activeEmote(), request.reason());
+                stopIfCurrent(request.session(), request.reason());
             }
         }
     }
@@ -321,8 +333,8 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (ActivePlayback activeEmote : List.copyOf(this.activePlaybacks.values())) {
-            stopIfCurrent(activeEmote, reason);
+        for (PlaybackSession session : List.copyOf(this.sessions.values())) {
+            stopIfCurrent(session, reason);
         }
     }
 
@@ -346,70 +358,83 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopById(String id, PlaybackStopReason reason) {
         this.stressTest.stopById(id);
-        List<ActivePlayback> matchingPlaybacks = this.activePlaybacks.values().stream()
-            .filter(activeEmote -> activeEmote.id().equals(id) || activeEmote.animationId().equals(id))
+        List<PlaybackSession> matchingPlaybacks = this.sessions.values().stream()
+            .filter(session -> session.id().equals(id) || session.animationId().equals(id))
             .toList();
-        for (ActivePlayback activeEmote : matchingPlaybacks) {
-            stopIfCurrent(activeEmote, reason);
+        for (PlaybackSession session : matchingPlaybacks) {
+            stopIfCurrent(session, reason);
         }
     }
 
-    private boolean playbackChanged(ActivePlayback activeEmote) {
-        return this.activePlaybacks.get(activeEmote.playerUuid()) != activeEmote;
+    private boolean playbackChanged(PlaybackSession session) {
+        return this.sessions.get(session.sessionId()) != session;
     }
 
-    private void stopIfCurrent(ActivePlayback activeEmote, PlaybackStopReason reason) {
-        if (!this.activePlaybacks.remove(activeEmote.playerUuid(), activeEmote)) {
+    private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
+        if (!removeSession(session)) {
             return;
         }
-        cleanupActive(activeEmote, true, reason, null);
+        cleanupSession(session, true, reason, null);
     }
 
-    private void cleanupActive(
-        ActivePlayback activeEmote,
+    private boolean removeSession(PlaybackSession session) {
+        if (!this.sessions.remove(session.sessionId(), session)) {
+            return false;
+        }
+        for (PlaybackParticipant participant : session.participants()) {
+            this.playerSessions.remove(participant.playerUuid(), session.sessionId());
+        }
+        return true;
+    }
+
+    private void cleanupSession(
+        PlaybackSession session,
         boolean notifyListeners,
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
         try {
-            ServerPlayer player = knownPlayer != null
-                ? knownPlayer
-                : Emote.SERVER.getPlayerList().getPlayer(activeEmote.playerUuid());
-            if (player != null) {
-                this.playerVisibilityService.stop(player, activeEmote);
+            for (PlaybackParticipant participant : session.participants()) {
+                ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
+                    ? knownPlayer
+                    : Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                if (player == null) {
+                    continue;
+                }
+                this.playerVisibilityService.stop(player, session, participant);
                 if (notifyListeners) {
                     for (PlaybackStateListener stateListener : this.stateListeners) {
-                        stateListener.onStopped(player, activeEmote, reason);
+                        stateListener.onStopped(player, session, participant, reason);
                     }
                 }
             }
         } finally {
             try {
-                activeEmote.events().stop();
+                session.events().stop();
             } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("Failed to run stop events for emote {}", activeEmote.id(), exception);
+                Emote.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
             } finally {
-                ServerLevel level = Emote.SERVER.getLevel(activeEmote.levelKey());
+                ServerLevel level = Emote.SERVER.getLevel(session.levelKey());
                 if (level != null) {
-                    this.entityController.remove(level, activeEmote.nodes());
+                    this.entityController.remove(level, session.nodes());
                 }
             }
         }
     }
 
-    private boolean canKeepPlaying(ServerPlayer player, ActivePlayback activeEmote) {
+    private boolean canKeepPlaying(ServerPlayer player, PlaybackSession session) {
         return player != null
             && player.isAlive()
-            && player.level().dimension().equals(activeEmote.levelKey());
+            && player.level().dimension().equals(session.levelKey());
     }
 
-    private boolean hasMovedDuringPlayback(ServerPlayer player, ActivePlayback activeEmote) {
-        double movementDistance = activeEmote.playerBehavior().stopConditions().movementDistance();
+    private boolean hasMovedDuringPlayback(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        double movementDistance = session.playerBehavior().stopConditions().movementDistance();
         if (movementDistance == 0.0D) {
             return false;
         }
         Vec3 currentPosition = player.position();
-        Vec3 startPosition = activeEmote.startPosition();
+        Vec3 startPosition = participant.startPosition();
         double xDistance = currentPosition.x - startPosition.x;
         double zDistance = currentPosition.z - startPosition.z;
         double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
@@ -428,7 +453,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     int activeDisplayEntityCount() {
-        return this.stressTest.displayEntityCount() + this.activePlaybacks.values().stream()
+        return this.stressTest.displayEntityCount() + this.sessions.values().stream()
             .mapToInt(this::displayEntityCount)
             .sum();
     }
@@ -441,15 +466,15 @@ public class PlaybackManager implements ConfigListener {
         return activeDisplayEntities - replacedDisplayEntities + requestedDisplayEntities;
     }
 
-    private int displayEntityCount(@Nullable ActivePlayback activeEmote) {
-        if (activeEmote == null) {
+    private int displayEntityCount(@Nullable PlaybackSession session) {
+        if (session == null) {
             return 0;
         }
-        return (int) activeEmote.nodes().nodes().values().stream()
+        return (int) session.nodes().nodes().values().stream()
             .filter(node -> !node.isAnchor())
             .count();
     }
 
-    private record StopRequest(ActivePlayback activeEmote, PlaybackStopReason reason) {
+    private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {
     }
 }

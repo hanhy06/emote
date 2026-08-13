@@ -7,8 +7,8 @@ import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.EmoteRegistry;
 import io.github.hanhy06.emote.emote.PlayableEmote;
 import io.github.hanhy06.emote.emote.PlayableEmoteService;
-import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
@@ -188,10 +188,10 @@ public class DialogManager {
             return "No emotes.";
         }
 
-        ActivePlayback activeEmote = this.playbackManager.findActive(player.getUUID());
-        String activeEmoteText = activeEmote == null
+        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        String activeEmoteText = session == null
             ? ""
-            : createActivePlaybackText(activeEmote);
+            : createActivePlaybackText(session);
 
         if (dialogPage.playableCount() == 0) {
             return (query.isEmpty() ? "No usable emotes." : "No matching emotes.") + activeEmoteText;
@@ -214,10 +214,10 @@ public class DialogManager {
         return new DialogPage(playableCount, pageNumber, totalPageCount, startIndex, endIndex);
     }
 
-    private String createActivePlaybackText(ActivePlayback activeEmote) {
-        EmoteDefinition emote = this.emoteRegistry.findDefinition(activeEmote.id());
+    private String createActivePlaybackText(PlaybackSession session) {
+        EmoteDefinition emote = this.emoteRegistry.findDefinition(session.id());
         String displayName = emote == null
-            ? activeEmote.id()
+            ? session.id()
             : emote.name();
         return " Active: " + displayName;
     }
