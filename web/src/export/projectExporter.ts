@@ -1,7 +1,9 @@
+import { strToU8, zipSync } from "fflate";
 import { compileImportedAnimation } from "../compiler/animationCompiler";
 import type { EmoteAnimation } from "../format/emoteAnimation";
-import { serializeEmoteAnimation } from "../format/serializer";
 import { multiplyMatrix16 } from "../format/matrix";
+import { sanitizeResourcePath } from "../format/resourceLocation";
+import { serializeEmoteAnimation } from "../format/serializer";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import type { ImportedNode, ImportedProject, ImportedSkinPart } from "../import/types";
 import { validateResourceVersion } from "./generatedResources";
@@ -23,6 +25,37 @@ export function exportAnimation(
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
+  };
+}
+
+export function exportAnimationBundle(
+  project: ImportedProject,
+  options: ExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  includeSequence: boolean,
+): ExportResult {
+  validateResourceVersion(project, options.minecraftVersion);
+  const animations = project.animations.map((_, index) => compileExportAnimation(project, options, skinAssignments, index));
+  const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
+    `emote.${index + 1}.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
+    strToU8(serializeEmoteAnimation(animation)),
+  ]));
+  if (includeSequence) {
+    const first = animations[0];
+    if (!first) throw new Error("The project does not contain animations.");
+    const sequence = {
+      type: "sequence",
+      schema_version: 2,
+      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(`${options.name}_sequence`)}`,
+      metadata: { ...options.additionalMetadata, name: `${options.name} Sequence`, description: options.description },
+      settings: { cooldown: first.settings.cooldown, player: options.player },
+      steps: animations.map((animation) => ({ emote: animation.id })),
+    };
+    files[`emote.${sanitizeAnimationFileName(options.name)}.sequence.json`] = strToU8(JSON.stringify(sequence));
+  }
+  return {
+    blob: new Blob([zipSync(files)], { type: "application/zip" }),
+    fileName: `emote.${sanitizeAnimationFileName(options.name)}.${includeSequence ? "sequence" : "animations"}.zip`,
   };
 }
 
@@ -81,6 +114,9 @@ export function compileExportAnimation(
       description: options.description,
     },
     player: options.player,
+    standalone: options.standalone,
+    cooldown: options.cooldown,
+    loopDelay: options.loopDelay,
   }, animationIndex);
 }
 

@@ -1,16 +1,5 @@
 import type { TargetedEvent } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import type { ExportOptions } from "../export/types";
-import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
-
-const STOP_CONDITION_OPTIONS = [
-  ["jump", "Stop on jump"],
-  ["submerge", "Stop when submerged"],
-  ["ride", "Stop on mount"],
-  ["damage", "Stop when damaged"],
-  ["attack", "Stop on attack"],
-  ["game_mode_change", "Stop on game mode change"],
-] as const;
 
 interface DownloadItem {
   label: string;
@@ -18,28 +7,28 @@ interface DownloadItem {
 }
 
 interface ExportPanelProps {
-  metadata: ExportOptions;
   assignmentSummary: string;
   animations: DownloadItem[];
   hasResources: boolean;
   error: string;
   disabled: boolean;
-  onMetadataChange: (metadata: ExportOptions) => void;
   onDownloadAnimation: (index: number) => void;
+  onDownloadAllAnimations: () => void;
+  onDownloadSequence: () => void;
   onDownloadResourcePack: (index: number) => void;
   onMergeResourcePackZip: (file: File) => void;
   onMergeResourcePackFolder: (files: File[]) => void;
 }
 
 export function ExportPanel({
-  metadata,
   assignmentSummary,
   animations,
   hasResources,
   error,
   disabled,
-  onMetadataChange,
   onDownloadAnimation,
+  onDownloadAllAnimations,
+  onDownloadSequence,
   onDownloadResourcePack,
   onMergeResourcePackZip,
   onMergeResourcePackFolder,
@@ -73,65 +62,21 @@ export function ExportPanel({
     event.currentTarget.value = "";
   }
 
-  function updatePlayerStopCondition(
-    key: keyof ExportOptions["player"]["stop_conditions"],
-    value: number | boolean,
-  ) {
-    onMetadataChange({
-      ...metadata,
-      player: {
-        ...metadata.player,
-        stop_conditions: { ...metadata.player.stop_conditions, [key]: value },
-      },
-    });
-  }
-
   return (
     <section className="export">
       <div className="section-heading export-heading">
         <div>
-          <span className="step-label">Final step</span>
-          <h2>Export files</h2>
-          <p>Review the output settings, then download the animation and its generated resource pack.</p>
+          <span className="step-label">Page 3</span>
+          <h2>Output</h2>
+          <p>Download one animation or package all animations together.</p>
         </div>
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
-      <div className="fields">
-        <label>Minecraft version<input value={metadata.minecraftVersion} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.currentTarget.value })} /></label>
-        <label>Namespace<input value={metadata.namespace} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
-        <label>Display name<input value={metadata.name} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
-        <label>Description<input value={metadata.description} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
-      </div>
-      <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
-        <h3 id="playback-behavior-heading">Playback behavior</h3>
-        <p>Choose the playback mode, player visibility, and which actions stop the emote.</p>
-        <div className="fields playback-behavior-primary">
-          <label><span className="field-heading">Playback mode</span><select value={metadata.playbackMode} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.currentTarget.value as ExportOptions["playbackMode"] })}>
-            <option value="source">Source setting</option>
-            <option value="once">Play once</option>
-            <option value="loop">Loop</option>
-            <option value="server_sync">Server-synchronized loop</option>
-          </select></label>
-          <label><span className="field-heading">Movement distance <small>Horizontal blocks; 0 allows movement.</small></span>
-            <input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} />
-          </label>
-        </div>
-        <div className="fields playback-behavior-options">
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
-          {STOP_CONDITION_OPTIONS.map(([condition, label]) => (
-            <label className="checkbox" key={condition}>
-              <input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />
-              {label}
-            </label>
-          ))}
-        </div>
-      </section>
-      <AdditionalMetadataEditor
-        value={metadata.additionalMetadata}
-        disabled={disabled}
-        onChange={(additionalMetadata) => onMetadataChange({ ...metadata, additionalMetadata })}
-      />
       {error && <p className="error" role="alert">{error}</p>}
+      {animations.length > 1 && <div className="bundle-actions">
+        <button type="button" disabled={disabled} onClick={onDownloadAllAnimations}>Download all JSON as ZIP</button>
+        <button className="primary-button" type="button" disabled={disabled} onClick={onDownloadSequence}>Download sequence ZIP</button>
+      </div>}
       <h3>Animations</h3>
       <ul className="download-list">
         {animations.map((animation, index) => (

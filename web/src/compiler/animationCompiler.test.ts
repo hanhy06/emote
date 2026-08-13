@@ -6,6 +6,21 @@ import { compileImportedAnimation, compileImportedProject } from "./animationCom
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 describe("compileImportedProject time handling", () => {
+  it("normalizes JSON-facing settings to Minecraft ticks", () => {
+    const [animation] = compileImportedProject(importedProject(), {
+      minecraftVersion: "26.2",
+      namespace: "test",
+      standalone: false,
+      cooldown: "10s",
+      loop: "loop",
+      loopDelay: "0.5s",
+    });
+
+    expect(animation.settings.standalone).toBe(false);
+    expect(animation.settings.cooldown).toBe("200t");
+    expect(animation.settings.playback).toEqual({ mode: "loop", loop_delay: "10t" });
+  });
+
   it("writes interpolation duration on the current target keyframe", () => {
     const project = importedProject();
 

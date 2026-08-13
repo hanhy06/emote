@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
+import { SettingsPanel } from "./components/SettingsPanel";
 import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
 import { downloadExport } from "./export/download";
 import type { ExportOptions, ExportResult } from "./export/types";
@@ -70,6 +71,7 @@ export function App() {
   const [session, setSession] = useState<ConverterSession | null>(null);
   const [error, setError] = useState("");
   const [busyMessage, setBusyMessage] = useState<string | null>(null);
+  const [page, setPage] = useState<0 | 1 | 2>(0);
   const busyRef = useRef(false);
   const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
     setSession((current) => current ? update(current) : current);
@@ -130,9 +132,13 @@ export function App() {
           player: imported.suggestedPlayer,
           additionalMetadata: Object.fromEntries(Object.entries(imported.suggestedMetadata)
             .filter(([key]) => key !== "name" && key !== "description")),
+          standalone: imported.suggestedStandalone ?? true,
+          cooldown: imported.suggestedCooldown ?? "0t",
+          loopDelay: `${imported.animations[0]?.loopDelayTicks ?? 0}t`,
         },
         conversionError: "",
       });
+      setPage(0);
     } catch (reason) {
       setError(conversionErrorMessage(reason, "Could not import the file."));
     } finally {
@@ -175,6 +181,14 @@ export function App() {
       const { exportAnimation } = await import("./export/projectExporter");
       return exportAnimation(session.project, session.metadata, buildSkinAssignments(), index);
     }, "Conversion failed.", "Creating animation file");
+  }
+
+  async function handleAnimationBundle(includeSequence: boolean) {
+    if (!session) return;
+    await runExport(async () => {
+      const { exportAnimationBundle } = await import("./export/projectExporter");
+      return exportAnimationBundle(session.project, session.metadata, buildSkinAssignments(), includeSequence);
+    }, "Bundle export failed.", includeSequence ? "Creating sequence ZIP" : "Creating animation ZIP");
   }
 
   async function handleResourcePackDownload(index: number) {
@@ -329,6 +343,14 @@ export function App() {
             </dl>
           </section>
 
+          <nav className="workflow-pages" aria-label="Conversion pages">
+            {(["Rigging & commands", "Metadata, settings & other", "Output"] as const).map((label, index) => (
+              <button className={page === index ? "active" : ""} type="button" onClick={() => setPage(index as 0 | 1 | 2)} key={label}>
+                <span>{index + 1}</span>{label}
+              </button>
+            ))}
+          </nav>
+
           {project.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").map((diagnostic) => (
             <p className="message warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
           ))}
@@ -342,10 +364,10 @@ export function App() {
             </p>
           )}
 
-          <section className="workspace" aria-labelledby="workspace-title">
+          {page === 0 && <section className="workspace page-panel" aria-labelledby="workspace-title">
             <div className="section-heading">
               <div>
-                <span className="step-label">Step 2</span>
+                <span className="step-label">Page 1</span>
                 <h2 id="workspace-title">{skinCandidates.length > 0 ? "Review player skin parts" : "Review imported animation"}</h2>
                 <p>{skinCandidates.length > 0
                   ? "Select parts in the preview, then assign each one to a player body part."
@@ -404,21 +426,27 @@ export function App() {
               onChange={changeFrameCommand}
               onRemove={deleteFrameCommand}
             />
-          </section>
+          </section>}
 
-          <ExportPanel
+          {page === 1 && <SettingsPanel
             metadata={session.metadata}
+            disabled={busy}
+            onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
+          />}
+
+          {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(skinCandidates, assignments, project.resources.size)}
             animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
             hasResources={project.resources.size > 0}
             error={session.conversionError}
             disabled={busy}
-            onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
             onDownloadAnimation={handleAnimationDownload}
+            onDownloadAllAnimations={() => handleAnimationBundle(false)}
+            onDownloadSequence={() => handleAnimationBundle(true)}
             onDownloadResourcePack={handleResourcePackDownload}
             onMergeResourcePackZip={handleResourcePackZipMerge}
             onMergeResourcePackFolder={handleResourcePackFolderMerge}
-          />
+          />}
         </>
       )}
     </main>

@@ -9,7 +9,7 @@ import type {
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { requireTick } from "../format/time";
-import { formatMinecraftTime } from "../format/minecraftTime";
+import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
 import { ConversionError } from "../import/errors";
 
 export interface CompileOptions {
@@ -18,6 +18,9 @@ export interface CompileOptions {
   metadata?: EmoteMetadata;
   player?: EmotePlayerBehavior;
   loop?: EmoteAnimation["settings"]["playback"]["mode"];
+  standalone?: boolean;
+  cooldown?: string;
+  loopDelay?: string;
 }
 
 export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
@@ -38,6 +41,9 @@ interface CompileContext {
   player: EmotePlayerBehavior;
   multiple: boolean;
   loop?: EmoteAnimation["settings"]["playback"]["mode"];
+  standalone: boolean;
+  cooldown: string;
+  loopDelay?: string;
 }
 
 function prepareCompile(project: ImportedProject, options: CompileOptions): CompileContext {
@@ -53,7 +59,16 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }
-  return { namespace, baseMetadata, player, multiple, loop: options.loop };
+  return {
+    namespace,
+    baseMetadata,
+    player,
+    multiple,
+    loop: options.loop,
+    standalone: options.standalone ?? true,
+    cooldown: formatMinecraftTime(parseMinecraftTime(options.cooldown ?? "0t")),
+    loopDelay: options.loopDelay,
+  };
 }
 
 function compileAnimation(
@@ -70,12 +85,16 @@ function compileAnimation(
       name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
     },
     settings: {
-      standalone: true,
-      cooldown: "0t",
+      standalone: context.standalone,
+      cooldown: context.cooldown,
       player: context.player,
       playback: {
         mode: context.loop ?? animation.loop,
-        loop_delay: formatMinecraftTime((context.loop ?? animation.loop) === "once" ? 0 : requireTick(animation.loopDelayTicks, `${animation.id} loop delay`)),
+        loop_delay: formatMinecraftTime((context.loop ?? animation.loop) === "once"
+          ? 0
+          : context.loopDelay === undefined
+            ? requireTick(animation.loopDelayTicks, `${animation.id} loop delay`)
+            : parseMinecraftTime(context.loopDelay)),
       },
     },
     nodes: compileNodes(project.nodes, animation),

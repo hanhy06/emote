@@ -40,6 +40,8 @@ export const emoteJsonAdapter: ImportAdapter = {
       suggestedMetadata: { ...animation.metadata },
       suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
       suggestedNamespace: namespace,
+      suggestedStandalone: animation.settings.standalone,
+      suggestedCooldown: animation.settings.cooldown,
       nodes: importNodes(animation),
       animations: [importTimeline(animation, animationId)],
       diagnostics: [],

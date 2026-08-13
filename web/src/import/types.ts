@@ -10,6 +10,8 @@ export interface ImportedProject {
   suggestedPlayer: EmotePlayerBehavior;
   suggestedMinecraftVersion?: string;
   suggestedNamespace?: string;
+  suggestedStandalone?: boolean;
+  suggestedCooldown?: string;
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];

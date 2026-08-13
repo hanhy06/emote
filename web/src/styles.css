@@ -53,6 +53,12 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .project-summary dl { display: flex; gap: 32px; margin: 0; }
 .project-summary dl div { display: grid; gap: 4px; min-width: 80px; }
 .project-summary dd { margin: 0; font-size: 14px; }
+.workflow-pages { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 0 22px; border: 1px solid #bcbcbc; }
+.workflow-pages button { display: flex; align-items: center; justify-content: flex-start; min-height: 48px; gap: 10px; border: 0; border-right: 1px solid #d2d2d2; border-radius: 0; text-align: left; }
+.workflow-pages button:last-child { border-right: 0; }
+.workflow-pages button span { display: grid; width: 24px; height: 24px; place-items: center; color: #fff; background: #777; font-size: 12px; }
+.workflow-pages button.active { color: #fff; background: #0067c0; }
+.workflow-pages button.active span { color: #0067c0; background: #fff; }
 .workspace { margin-top: 22px; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
 .section-heading p { margin: 7px 0 0; color: #606060; line-height: 1.45; }
@@ -127,6 +133,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .metadata-editor-row .error { grid-column: 1 / -1; margin: 0; }
 .export-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; }
 .download-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.bundle-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-bottom: 18px; }
 .download-list li { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 12px; border: 1px solid #d7d7d7; }
 .download-list span { min-width: 0; }
 .download-list small { display: block; margin-top: 3px; overflow-wrap: anywhere; color: #666; }
@@ -153,6 +160,8 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .start-copy { padding: 32px 26px; }
   .start-details { padding: 26px; border-top: 1px solid #e0e0e0; border-left: 0; }
   .project-summary dl { gap: 16px; }
+  .workflow-pages { grid-template-columns: 1fr; }
+  .workflow-pages button { border-right: 0; border-bottom: 1px solid #d2d2d2; }
   .preview-controls { align-items: stretch; flex-direction: column; }
   .editor { grid-template-columns: 1fr; }
   .part-preview { height: 420px; }

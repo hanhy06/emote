@@ -8,6 +8,9 @@ export interface ExportOptions {
   description: string;
   player: EmotePlayerBehavior;
   additionalMetadata: Record<string, unknown>;
+  standalone?: boolean;
+  cooldown?: string;
+  loopDelay?: string;
 }
 
 export interface ExportResult {
