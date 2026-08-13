@@ -11,13 +11,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
 
-final class PlayerHeadProfileFactory {
+public final class PlayerHeadProfileFactory {
     private static final String PROFILE_NAME = "emote";
 
     private PlayerHeadProfileFactory() {
     }
 
-    static ResolvableProfile createProfile(String textureUrl) {
+    public static ResolvableProfile createProfile(String textureUrl) {
         UUID profileId = UUID.nameUUIDFromBytes(textureUrl.getBytes(StandardCharsets.UTF_8));
         PropertyMap properties = new PropertyMap(ImmutableMultimap.of(
             "textures",

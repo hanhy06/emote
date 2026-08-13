@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.content.SkinBinding;
+import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;

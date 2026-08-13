@@ -11,6 +11,10 @@ import io.github.hanhy06.emote.mixin.BlockDisplayAccessor;
 import io.github.hanhy06.emote.mixin.DisplayAccessor;
 import io.github.hanhy06.emote.mixin.ItemDisplayAccessor;
 import io.github.hanhy06.emote.mixin.TextDisplayAccessor;
+import io.github.hanhy06.emote.skin.PlayerHeadProfileFactory;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
@@ -21,7 +25,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
@@ -33,6 +39,32 @@ import java.util.Map;
 import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
+    void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, PreparedPlayerSkin skin) {
+        if (skin == null || bindings.isEmpty()) {
+            return;
+        }
+        for (SkinBinding binding : bindings) {
+            NodeInstance node = nodes.nodes().get(binding.nodeId());
+            if (node == null) {
+                continue;
+            }
+            String textureUrl = skin.findTextureUrl(binding.region());
+            if (textureUrl == null
+                || !(node.entity() instanceof Display.ItemDisplay itemDisplay)
+                || !(node.displayContent() instanceof ItemContent(ItemStack itemStack))
+                || !itemStack.is(Items.PLAYER_HEAD)) {
+                continue;
+            }
+            ItemStack profileStack = itemStack.copy();
+            profileStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+            node.setItemStack(profileStack);
+            SlotAccess itemSlot = itemDisplay.getSlot(0);
+            if (!itemSlot.get().isEmpty()) {
+                itemSlot.set(profileStack);
+            }
+        }
+    }
+
     public static final String RUNTIME_TAG = "emote.runtime";
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
     private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;

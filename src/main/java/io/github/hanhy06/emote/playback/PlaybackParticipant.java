@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.content.SkinBinding;
+import io.github.hanhy06.emote.skin.SkinBinding;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;

@@ -65,7 +65,7 @@ public class Emote implements ModInitializer {
             playService,
             playbackEngine,
             apiEvents,
-            wheelSyncService,
+            wheelSyncService::syncAll,
             new AnimationServerPreparer()
         );
         ReloadService reloadService = new ReloadService(

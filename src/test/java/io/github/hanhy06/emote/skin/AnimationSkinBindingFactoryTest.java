@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.content.SkinBinding;
-import io.github.hanhy06.emote.content.SkinBindingCompiler;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.SkinBindingCompiler;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;

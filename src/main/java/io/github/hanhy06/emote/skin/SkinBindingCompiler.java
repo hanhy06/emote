@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.content;
+package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;

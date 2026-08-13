@@ -131,8 +131,8 @@ public class PlaybackEngine implements ConfigListener {
         );
         session.reservePartner(partner);
         this.sessionRegistry.reservePartner(session, player.getUUID());
-        this.playerSkinManager.applySkinParts(
-            session.nodes().nodes(),
+        this.entityController.applySkin(
+            session.nodes(),
             partner.skinParts(),
             skinPreparation.preparedPlayerSkin()
         );
@@ -201,8 +201,8 @@ public class PlaybackEngine implements ConfigListener {
             } else {
                 timeline.start();
             }
-            this.playerSkinManager.applySkinParts(
-                nodes.nodes(),
+            this.entityController.applySkin(
+                nodes,
                 emote.skinParts(ParticipantRole.INITIATOR),
                 preparedSkin
             );
@@ -268,8 +268,8 @@ public class PlaybackEngine implements ConfigListener {
             player,
             participant.skinParts()
         );
-        this.playerSkinManager.applySkinParts(
-            session.nodes().nodes(),
+        this.entityController.applySkin(
+            session.nodes(),
             participant.skinParts(),
             preparation.preparedPlayerSkin()
         );

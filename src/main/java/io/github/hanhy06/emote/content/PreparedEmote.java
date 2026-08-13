@@ -7,8 +7,8 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.CompiledTimeline;
-import io.github.hanhy06.emote.content.SkinBinding;
-import io.github.hanhy06.emote.content.SkinBindingCompiler;
+import io.github.hanhy06.emote.skin.SkinBinding;
+import io.github.hanhy06.emote.skin.SkinBindingCompiler;
 
 import java.nio.file.Path;
 import java.util.List;

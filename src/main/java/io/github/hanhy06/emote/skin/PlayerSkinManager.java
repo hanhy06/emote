@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.content.SkinBinding;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinPipeline;
@@ -16,16 +15,9 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.playback.PlaybackNodes.ItemContent;
-import io.github.hanhy06.emote.playback.PlaybackNodes.NodeInstance;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.SlotAccess;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 
 import java.util.*;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -90,53 +82,12 @@ public class PlayerSkinManager implements ConfigListener {
         return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
     }
 
-    public void applySkinParts(
-        Map<String, NodeInstance> nodes,
-        List<SkinBinding> skinParts,
-        PreparedPlayerSkin preparedPlayerSkin
-    ) {
-        if (preparedPlayerSkin == null || skinParts.isEmpty()) {
-            return;
-        }
-        for (SkinBinding skinPart : skinParts) {
-            NodeInstance node = nodes.get(skinPart.nodeId());
-            if (node != null) {
-                applyMineSkinProfile(node, skinPart.region(), preparedPlayerSkin);
-            }
-        }
-    }
-
     public void addReadyListener(Consumer<UUID> readyListener) {
         this.readyListeners.add(Objects.requireNonNull(readyListener, "readyListener"));
     }
 
     public void cancelPendingBakes() {
         this.mineSkinManager.cancelPendingBakes();
-    }
-
-    private void applyMineSkinProfile(
-        NodeInstance node,
-        PlayerSkinRegion region,
-        PreparedPlayerSkin preparedSkin
-    ) {
-        String textureUrl = preparedSkin.findTextureUrl(region);
-        if (textureUrl == null) {
-            return;
-        }
-        if (!(node.entity() instanceof Display.ItemDisplay itemDisplay)
-            || !(node.displayContent() instanceof ItemContent(ItemStack itemStack))
-            || !itemStack.is(Items.PLAYER_HEAD)) {
-            return;
-        }
-        ItemStack profileStack = itemStack.copy();
-        profileStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
-        node.setItemStack(profileStack);
-
-        SlotAccess itemSlot = itemDisplay.getSlot(0);
-        if (itemSlot.get().isEmpty()) {
-            return;
-        }
-        itemSlot.set(profileStack);
     }
 
     private void notifySkinReady(UUID playerUuid) {

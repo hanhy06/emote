@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.PlaybackSession;
@@ -27,7 +26,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmotePlayService playService;
     private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
-    private final WheelSyncService wheelSyncService;
+    private final EmoteChangeNotifier changeNotifier;
     private final AnimationServerPreparer animationValidator;
 
     public EmoteApiImpl(
@@ -35,14 +34,14 @@ public final class EmoteApiImpl extends EmoteApi {
         EmotePlayService playService,
         PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
-        WheelSyncService wheelSyncService,
+        EmoteChangeNotifier changeNotifier,
         AnimationServerPreparer animationValidator
     ) {
         this.emoteRegistry = Objects.requireNonNull(emoteRegistry, "emoteRegistry");
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playbackEngine = Objects.requireNonNull(playbackEngine, "playbackEngine");
         this.events = Objects.requireNonNull(events, "events");
-        this.wheelSyncService = Objects.requireNonNull(wheelSyncService, "wheelSyncService");
+        this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
         this.animationValidator = Objects.requireNonNull(animationValidator, "animationValidator");
     }
 
@@ -73,7 +72,7 @@ public final class EmoteApiImpl extends EmoteApi {
         );
         PreparedEmote emote = PreparedEmote.from(this.animationValidator.prepare(loaded));
         UUID registrationId = this.emoteRegistry.registerApi(emote);
-        this.wheelSyncService.syncAll();
+        this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);
     }
 
@@ -147,7 +146,7 @@ public final class EmoteApiImpl extends EmoteApi {
                 return false;
             }
             EmoteApiImpl.this.playbackEngine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
-            EmoteApiImpl.this.wheelSyncService.syncAll();
+            EmoteApiImpl.this.changeNotifier.notifyChanged();
             return true;
         }
     }
