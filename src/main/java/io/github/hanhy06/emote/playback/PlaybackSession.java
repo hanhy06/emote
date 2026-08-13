@@ -66,7 +66,7 @@ public final class PlaybackSession {
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
         this.collaborativeSequence = collaborativeSequence;
         this.state = collaborativeSequence == null ? State.SOLO : State.OFFERING;
-        this.remainingTimeoutTicks = collaborativeSequence == null ? 0 : collaborativeSequence.awaitPartner().timeoutTicks();
+        this.remainingTimeoutTicks = collaborativeSequence == null ? 0 : collaborativeSequence.collaboration().timeoutTicks();
         addParticipant(Objects.requireNonNull(initiator, "initiator"));
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
