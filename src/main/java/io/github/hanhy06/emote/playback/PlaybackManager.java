@@ -61,6 +61,24 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public PlayResult start(ServerPlayer player, RegisteredEmote emote) {
+        return startResolved(player, emote, emote.id(), emote.playerBehavior());
+    }
+
+    private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
+        return startResolved(
+            player,
+            sequence.compileRandom(this.random),
+            sequence.id(),
+            sequence.playerBehavior()
+        );
+    }
+
+    private PlayResult startResolved(
+        ServerPlayer player,
+        RegisteredEmote emote,
+        String playbackId,
+        EmotePlayerBehavior playerBehavior
+    ) {
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(this.activePlaybacks.get(player.getUUID())),
@@ -86,48 +104,11 @@ public class PlaybackManager implements ConfigListener {
         return startPrepared(
             player,
             emote,
-            emote.id(),
-            emote.playerBehavior(),
+            playbackId,
+            playerBehavior,
             RootTransform.fromPlayer(player),
             player.isInvisible(),
-            preparedSkin,
-            true
-        );
-    }
-
-    private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
-        RegisteredEmote animation = sequence.compileRandom(this.random);
-        int projectedDisplayEntities = projectedDisplayEntityCount(
-            activeDisplayEntityCount(),
-            displayEntityCount(this.activePlaybacks.get(player.getUUID())),
-            animation.displayNodeCount()
-        );
-        if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
-            return PlayResult.failure(
-                "Active emote parts would exceed the server limit ("
-                    + projectedDisplayEntities + "/" + this.maxActiveDisplayEntities + ")."
-            );
-        }
-
-        PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            animation.skinParts()
-        );
-        if (preparation.preparing()) {
-            return PlayResult.failure("Preparing player skin... " + preparation.progressPercent() + "%");
-        }
-
-        stop(player, PlaybackStopReason.REPLACED);
-        RootTransform root = RootTransform.fromPlayer(player);
-        return startPrepared(
-            player,
-            animation,
-            sequence.id(),
-            sequence.playerBehavior(),
-            root,
-            player.isInvisible(),
-            preparation.preparedPlayerSkin(),
-            true
+            preparedSkin
         );
     }
 
@@ -138,8 +119,7 @@ public class PlaybackManager implements ConfigListener {
         EmotePlayerBehavior playerBehavior,
         RootTransform root,
         boolean wasInvisible,
-        PreparedPlayerSkin preparedSkin,
-        boolean notifyStarted
+        PreparedPlayerSkin preparedSkin
     ) {
         PlaybackNodes nodes = null;
         try {
@@ -183,10 +163,8 @@ public class PlaybackManager implements ConfigListener {
             if (playbackChanged(activeEmote)) {
                 return PlayResult.SUCCESS;
             }
-            if (notifyStarted) {
-                for (PlaybackStateListener stateListener : this.stateListeners) {
-                    stateListener.onStarted(player, activeEmote);
-                }
+            for (PlaybackStateListener stateListener : this.stateListeners) {
+                stateListener.onStarted(player, activeEmote);
             }
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
