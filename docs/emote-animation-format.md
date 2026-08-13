@@ -1,11 +1,11 @@
 # Emote animation format
 
-Animation files use schema version 2 and contain the display entities, transforms, and commands for one emote.
+Animation files use schema version 3 and contain the display entities, transforms, and commands for one emote.
 
 ```json
 {
   "type": "animation",
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "example:wave",
   "metadata": {
     "name": "Wave",
@@ -47,7 +47,7 @@ See [emote-animation-format.json](./emote-animation-format.json) for a complete 
 | Field | Description |
 |-------|-------------|
 | `type` | Must be `animation`. |
-| `schema_version` | Must be `2`. |
+| `schema_version` | Must be `3`. |
 | `id` | Lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and optional custom metadata. |
 | `settings` | Selection, player, and playback behavior. |
@@ -97,7 +97,9 @@ This format is used by `cooldown`, `loop_delay`, timeline and event `time`, `dur
 
 ## Nodes
 
-Each property in `nodes` is a stable node ID. Every node requires a 16-number `default_matrix` in column-major order.
+Each property in `nodes` is a stable node ID. Every node requires a `space` and a 16-number `default_matrix` in column-major order.
+
+`space` is `scene`, `initiator`, or `partner`. Scene nodes use the shared scene root. Participant nodes use their participant root from a collaborative sequence.
 
 | Type | Required fields | Purpose |
 |------|-----------------|---------|
@@ -110,9 +112,9 @@ Display nodes also support:
 
 - `visible`, which defaults to `true`;
 - `entity_nbt`, containing additional display entity SNBT; and
-- `skin` on item display nodes, containing a player body `part` and non-negative `order`.
+- `skin` on item display nodes, containing `participant`, a player body `part`, and non-negative `order`.
 
-Supported skin parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes with the same part are ordered using `order` when the player's skin is applied.
+`participant` must match the node's `initiator` or `partner` space. Supported skin parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes with the same part are ordered using `order` when the player's skin is applied.
 
 ## Timeline
 

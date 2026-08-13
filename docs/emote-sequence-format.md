@@ -1,11 +1,11 @@
 # Emote sequence format
 
-Sequence files use schema version 2 and combine existing animations into one playable emote.
+Sequence files use schema version 3 and combine existing animations into one playable emote.
 
 ```json
 {
   "type": "sequence",
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "example:sit",
   "metadata": {
     "name": "Sit",
@@ -42,7 +42,7 @@ See [emote-sequence-format.json](./emote-sequence-format.json) for a complete ex
 | Field | Description |
 |-------|-------------|
 | `type` | Must be `sequence`. |
-| `schema_version` | Must be `2`. |
+| `schema_version` | Must be `3`. |
 | `id` | Lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and optional custom metadata. |
 | `settings` | Cooldown and player behavior for the whole sequence. |
@@ -129,3 +129,13 @@ Timeline command events are preserved. Start, loop, and stop command events are 
 Referenced animations are resolved and checked for compatibility when emotes are reloaded. Before playback, the selected steps are compiled into one animation. Its display entities are created once and reused until the sequence finishes.
 
 The sequence's `player` settings replace the referenced animations' player settings. Stopping or interrupting the sequence cancels all remaining steps.
+
+## Two-player sequences
+
+A two-player sequence adds top-level `participants` and contains one `await_partner` step. See [emote-two-player-sequence-format.json](./emote-two-player-sequence-format.json) for a complete example.
+
+Participant positions use Minecraft relative coordinates. Absolute positions are rejected. `~` is relative to the scene origin and `^` is relative to the initiator's horizontal view direction. Participant rotations use Minecraft relative rotation syntax.
+
+The offer animation plays for the initiator while the partner space remains hidden. A nearby player joins by starting the same sequence. The matched branch begins at the end of the offer, or immediately when the offer is already holding. If no player joins before the timeout, the timeout branch begins.
+
+If compatible animations contain no `partner` nodes, every `initiator` node, skin binding, transform track, and visibility track is duplicated automatically for the partner. The duplicate uses the partner root, so a partner rotation such as `~180 0` turns the same local animation to face the initiator. If any `partner` node exists, the sequence is treated as explicitly asymmetric and no automatic partner nodes are generated.

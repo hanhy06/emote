@@ -1,9 +1,13 @@
 package io.github.hanhy06.emote.emote;
 
+import com.mojang.brigadier.StringReader;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import com.google.gson.JsonPrimitive;
+import net.minecraft.commands.arguments.coordinates.RotationArgument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -16,6 +20,8 @@ import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class SequenceAnimationCompilerTest {
@@ -285,6 +291,72 @@ class SequenceAnimationCompilerTest {
         assertEquals(List.of("demo:second", "demo:first", "demo:third"), selectedIds);
     }
 
+    @Test
+    void automaticallyDuplicatesInitiatorNodesWhenPartnerNodesAreAbsent() throws Exception {
+        RegisteredEmote animation = animation(
+            "demo:handshake",
+            2,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(new EmoteAnimation.Keyframe(
+                1,
+                Map.of("body", new EmoteAnimation.NodeTransform(matrix(1.0D), 1)),
+                Map.of("body", new EmoteAnimation.NodeState(false))
+            )),
+            EmoteAnimation.Events.empty(),
+            Map.of("body", new EmoteAnimation.ItemNode(
+                true,
+                EmoteAnimation.NodeSpace.INITIATOR,
+                IDENTITY,
+                new CompoundTag(),
+                new CompoundTag(),
+                "none",
+                new EmoteAnimation.Skin(ParticipantRole.INITIATOR, EmoteAnimation.SkinPart.BODY, 0)
+            ))
+        );
+        RegisteredSequence sequence = RegisteredSequence.resolve(
+            collaborativeSequence(animation.id()),
+            Map.of(animation.id(), animation)
+        );
+
+        RegisteredEmote compiledEmote = sequence.compileMatchedRandom(new Random(1L));
+        EmoteAnimation compiled = compiledEmote.animation();
+        String partnerId = compiled.nodes().keySet().stream().filter(id -> !id.equals("body")).findFirst().orElseThrow();
+
+        assertEquals(EmoteAnimation.NodeSpace.PARTNER, compiled.nodes().get(partnerId).space());
+        assertEquals(1, compiledEmote.skinParts(ParticipantRole.PARTNER).size());
+        assertEquals(
+            compiled.timeline().keyframes().stream().filter(keyframe -> keyframe.nodeTransforms().containsKey("body")).count(),
+            compiled.timeline().keyframes().stream().filter(keyframe -> keyframe.nodeTransforms().containsKey(partnerId)).count()
+        );
+        assertTrue(compiled.timeline().keyframes().stream().anyMatch(keyframe -> keyframe.nodeStates().containsKey(partnerId)));
+    }
+
+    @Test
+    void keepsExplicitPartnerNodesWithoutGeneratingAnotherCopy() throws Exception {
+        RegisteredEmote animation = animation(
+            "demo:hug",
+            2,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of(
+                "giver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.INITIATOR, IDENTITY),
+                "receiver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.PARTNER, IDENTITY)
+            )
+        );
+        RegisteredSequence sequence = RegisteredSequence.resolve(
+            collaborativeSequence(animation.id()),
+            Map.of(animation.id(), animation)
+        );
+
+        EmoteAnimation compiled = sequence.compileMatchedRandom(new Random(1L)).animation();
+
+        assertEquals(java.util.Set.of("giver", "receiver"), compiled.nodes().keySet());
+        assertFalse(compiled.nodes().keySet().stream().anyMatch(id -> id.startsWith("__partner__")));
+    }
+
     private static EmoteSequence sequence(EmoteSequence.Step... steps) {
         return new EmoteSequence(
             Path.of("sequence.json"),
@@ -292,6 +364,31 @@ class SequenceAnimationCompilerTest {
             new EmoteMetadata("Sequence", "Compiled sequence"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(steps)
+        );
+    }
+
+    private static EmoteSequence collaborativeSequence(String animationId) throws Exception {
+        EmoteSequence.ParticipantPlacement initiator = new EmoteSequence.ParticipantPlacement(
+            Vec3Argument.vec3(false).parse(new StringReader("~ ~ ~")),
+            RotationArgument.rotation().parse(new StringReader("~ 0"))
+        );
+        EmoteSequence.ParticipantPlacement partner = new EmoteSequence.ParticipantPlacement(
+            Vec3Argument.vec3(false).parse(new StringReader("^ ^ ^1.2")),
+            RotationArgument.rotation().parse(new StringReader("~180 0"))
+        );
+        Identifier id = Identifier.parse(animationId);
+        return new EmoteSequence(
+            Path.of("collaborative.json"),
+            Identifier.parse("demo:collaborative"),
+            new EmoteMetadata("Collaborative", "Two-player sequence"),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            new EmoteSequence.Participants(initiator, partner),
+            List.of(new EmoteSequence.AwaitPartnerStep(
+                id,
+                20,
+                List.of(new EmoteSequence.EmoteStep(id, 1)),
+                List.of(new EmoteSequence.EmoteStep(id, 1))
+            ))
         );
     }
 

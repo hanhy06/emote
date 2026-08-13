@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
 
 import java.nio.charset.StandardCharsets;
@@ -70,13 +71,123 @@ final class SequenceAnimationCompiler {
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
             )
         );
+        boolean automaticPartner = sequence.participants() != null
+            && compiledAnimation.nodes().values().stream().noneMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER);
+        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData = first.source().preparedDisplayData();
+        if (automaticPartner) {
+            AutomaticPartnerAnimation expanded = addAutomaticPartner(compiledAnimation, preparedDisplayData);
+            compiledAnimation = expanded.animation();
+            preparedDisplayData = expanded.preparedDisplayData();
+        }
         EmoteAnimation.Loaded loaded = new EmoteAnimation.Loaded(
             sequence.sourcePath(),
             fingerprint(sequence, steps),
             compiledAnimation,
-            first.source().preparedDisplayData()
+            preparedDisplayData
         );
-        return new RegisteredEmote(loaded, first.skinParts(), PlaybackPlan.compile(compiledAnimation));
+        return automaticPartner
+            ? RegisteredEmote.from(loaded)
+            : new RegisteredEmote(loaded, first.skinParts(), PlaybackPlan.compile(compiledAnimation));
+    }
+
+    private static AutomaticPartnerAnimation addAutomaticPartner(
+        EmoteAnimation animation,
+        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData
+    ) {
+        Map<String, String> partnerIds = partnerNodeIds(animation.nodes());
+        Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>(animation.nodes());
+        Map<String, EmoteAnimation.PreparedDisplayData> expandedPreparedData = new LinkedHashMap<>(preparedDisplayData);
+        partnerIds.forEach((sourceId, partnerId) -> {
+            nodes.put(partnerId, asPartnerNode(animation.nodes().get(sourceId)));
+            EmoteAnimation.PreparedDisplayData prepared = preparedDisplayData.get(sourceId);
+            if (prepared != null) {
+                expandedPreparedData.put(partnerId, prepared);
+            }
+        });
+
+        List<EmoteAnimation.Keyframe> keyframes = animation.timeline().keyframes().stream()
+            .map(keyframe -> duplicatePartnerTracks(keyframe, partnerIds))
+            .toList();
+        EmoteAnimation expanded = new EmoteAnimation(
+            animation.id(),
+            animation.metadata(),
+            animation.settings(),
+            nodes,
+            new EmoteAnimation.Timeline(
+                animation.timeline().durationTicks(),
+                keyframes,
+                animation.timeline().events()
+            )
+        );
+        return new AutomaticPartnerAnimation(expanded, expandedPreparedData);
+    }
+
+    private static Map<String, String> partnerNodeIds(Map<String, EmoteAnimation.Node> nodes) {
+        List<String> initiatorIds = nodes.entrySet().stream()
+            .filter(entry -> entry.getValue().space() == EmoteAnimation.NodeSpace.INITIATOR)
+            .map(Map.Entry::getKey)
+            .toList();
+        String prefix = "__partner__";
+        while (initiatorIds.stream().map(prefix::concat).anyMatch(nodes::containsKey)) {
+            prefix += "_";
+        }
+        Map<String, String> ids = new LinkedHashMap<>();
+        for (String initiatorId : initiatorIds) {
+            ids.put(initiatorId, prefix + initiatorId);
+        }
+        return ids;
+    }
+
+    private static EmoteAnimation.Node asPartnerNode(EmoteAnimation.Node node) {
+        return switch (node) {
+            case EmoteAnimation.ItemNode item -> new EmoteAnimation.ItemNode(
+                item.visible(),
+                EmoteAnimation.NodeSpace.PARTNER,
+                item.defaultMatrix(),
+                item.entityNbt(),
+                item.itemStackNbt(),
+                item.itemDisplay(),
+                item.skin() == null ? null : new EmoteAnimation.Skin(
+                    ParticipantRole.PARTNER,
+                    item.skin().part(),
+                    item.skin().order()
+                )
+            );
+            case EmoteAnimation.BlockNode block -> new EmoteAnimation.BlockNode(
+                block.visible(), EmoteAnimation.NodeSpace.PARTNER, block.defaultMatrix(), block.entityNbt(), block.blockStateNbt()
+            );
+            case EmoteAnimation.TextNode text -> new EmoteAnimation.TextNode(
+                text.visible(), EmoteAnimation.NodeSpace.PARTNER, text.defaultMatrix(), text.entityNbt(), text.text()
+            );
+            case EmoteAnimation.AnchorNode anchor -> new EmoteAnimation.AnchorNode(
+                EmoteAnimation.NodeSpace.PARTNER, anchor.defaultMatrix()
+            );
+        };
+    }
+
+    private static EmoteAnimation.Keyframe duplicatePartnerTracks(
+        EmoteAnimation.Keyframe keyframe,
+        Map<String, String> partnerIds
+    ) {
+        Map<String, EmoteAnimation.NodeTransform> transforms = new LinkedHashMap<>(keyframe.nodeTransforms());
+        Map<String, EmoteAnimation.NodeState> states = new LinkedHashMap<>(keyframe.nodeStates());
+        partnerIds.forEach((sourceId, partnerId) -> {
+            EmoteAnimation.NodeTransform transform = keyframe.nodeTransforms().get(sourceId);
+            if (transform != null) {
+                transforms.put(partnerId, transform);
+            }
+            EmoteAnimation.NodeState state = keyframe.nodeStates().get(sourceId);
+            if (state != null) {
+                states.put(partnerId, state);
+            }
+        });
+        return new EmoteAnimation.Keyframe(keyframe.tick(), transforms, states);
+    }
+
+    private record AutomaticPartnerAnimation(
+        EmoteAnimation animation,
+        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData
+    ) {
     }
 
     static void validateCompatibleAnimations(List<RegisteredSequence.Step> steps) {
