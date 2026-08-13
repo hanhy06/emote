@@ -111,7 +111,14 @@ public final class PlaybackSession {
         return null;
     }
 
-    @Nullable RegisteredSequence collaborativeSequence() {
+    boolean collaborative() {
+        return this.collaborativeSequence != null;
+    }
+
+    RegisteredSequence collaborativeSequence() {
+        if (this.collaborativeSequence == null) {
+            throw new IllegalStateException("Solo sessions do not have a collaborative sequence");
+        }
         return this.collaborativeSequence;
     }
 

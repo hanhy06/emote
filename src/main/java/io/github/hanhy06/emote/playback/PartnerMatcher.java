@@ -5,6 +5,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
+import org.jspecify.annotations.Nullable;
 
 final class PartnerMatcher {
     static final double MAX_HORIZONTAL_DISTANCE = 2.0D;
@@ -18,42 +19,36 @@ final class PartnerMatcher {
             if (!acceptsPartner(session, sequenceId)) {
                 continue;
             }
-            PlaybackParticipant initiatorState = session.initiator();
-            if (initiatorState.playerUuid().equals(partner.getUUID())) {
-                continue;
-            }
-            ServerPlayer initiator = Emote.SERVER.getPlayerList().getPlayer(initiatorState.playerUuid());
-            if (initiator == null || !initiator.isAlive() || initiator.level() != partner.level()) {
-                continue;
-            }
-            Vec3 initiatorPosition = initiator.position();
-            Vec3 partnerPosition = partner.position();
-            double distanceSquared = horizontalDistanceSquared(initiatorPosition, partnerPosition);
-            if (distanceSquared >= nearestDistanceSquared || !matchesGeometry(
-                initiatorPosition,
-                initiator.getYRot(),
-                partnerPosition,
-                partner.getYRot()
-            )) {
-                continue;
-            }
-            if (!initiator.hasLineOfSight(partner)) {
+            Candidate candidate = matchingCandidate(session, partner);
+            if (candidate == null || candidate.distanceSquared() >= nearestDistanceSquared) {
                 continue;
             }
             nearest = session;
-            nearestDistanceSquared = distanceSquared;
+            nearestDistanceSquared = candidate.distanceSquared();
         }
         return nearest;
     }
 
     boolean stillMatches(PlaybackSession session, ServerPlayer partner) {
+        return matchingCandidate(session, partner) != null;
+    }
+
+    private static @Nullable Candidate matchingCandidate(PlaybackSession session, ServerPlayer partner) {
         PlaybackParticipant initiatorState = session.initiator();
+        if (initiatorState.playerUuid().equals(partner.getUUID())) {
+            return null;
+        }
         ServerPlayer initiator = Emote.SERVER.getPlayerList().getPlayer(initiatorState.playerUuid());
-        return initiator != null
-            && initiator.isAlive()
-            && initiator.level() == partner.level()
-            && matchesGeometry(initiator.position(), initiator.getYRot(), partner.position(), partner.getYRot())
-            && initiator.hasLineOfSight(partner);
+        if (initiator == null || !initiator.isAlive() || initiator.level() != partner.level()) {
+            return null;
+        }
+        Vec3 initiatorPosition = initiator.position();
+        Vec3 partnerPosition = partner.position();
+        if (!matchesGeometry(initiatorPosition, initiator.getYRot(), partnerPosition, partner.getYRot())
+            || !initiator.hasLineOfSight(partner)) {
+            return null;
+        }
+        return new Candidate(horizontalDistanceSquared(initiatorPosition, partnerPosition));
     }
 
     static boolean matchesGeometry(Vec3 firstPosition, float firstYaw, Vec3 secondPosition, float secondYaw) {
@@ -77,7 +72,7 @@ final class PartnerMatcher {
 
     private static boolean acceptsPartner(PlaybackSession session, String sequenceId) {
         return session.id().equals(sequenceId)
-            && session.collaborativeSequence() != null
+            && session.collaborative()
             && session.acceptsPartner();
     }
 
@@ -90,5 +85,8 @@ final class PartnerMatcher {
         double x = second.x - first.x;
         double z = second.z - first.z;
         return x * x + z * z;
+    }
+
+    private record Candidate(double distanceSquared) {
     }
 }

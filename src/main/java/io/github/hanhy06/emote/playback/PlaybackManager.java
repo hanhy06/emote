@@ -112,7 +112,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
-        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredSequence sequence = session.collaborativeSequence();
         RegisteredEmote offer = sequence.compiledAnimation();
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
@@ -410,7 +410,7 @@ public class PlaybackManager implements ConfigListener {
             return false;
         }
 
-        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredSequence sequence = session.collaborativeSequence();
         RegisteredEmote matched = sequence.compileMatchedRandom(this.random);
         BranchPlayback playback = createBranchPlayback(session, matched);
         PlaybackParticipant partner = session.activateReservedPartner(playback.timeline(), playback.events());
@@ -425,7 +425,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private void activateTimeout(PlaybackSession session) {
-        RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
+        RegisteredSequence sequence = session.collaborativeSequence();
         RegisteredEmote timeout = sequence.compileTimeoutRandom(this.random);
         BranchPlayback playback = createBranchPlayback(session, timeout);
         session.beginTimeout(playback.timeline(), playback.events());
