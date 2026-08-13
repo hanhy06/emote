@@ -37,7 +37,8 @@ export function exportAnimationBundle(
   nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): ExportResult {
   validateResourceVersion(project, options.minecraftVersion);
-  const animations = project.animations.map((_, index) => compileExportAnimation(project, options, skinAssignments, index, nodeSpaces));
+  const animationOptions = includeSequence ? { ...options, standalone: false } : options;
+  const animations = project.animations.map((_, index) => compileExportAnimation(project, animationOptions, skinAssignments, index, nodeSpaces));
   const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
     `emote.${index + 1}.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
     strToU8(serializeEmoteAnimation(animation)),

@@ -24,7 +24,7 @@ describe("exportAnimation", () => {
     };
     const result = exportAnimationBundle(project, {
       minecraftVersion: "26.2", namespace: "demo", playbackMode: "source", name: "Demo", description: "Sequence demo",
-      player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s",
+      player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s", standalone: true,
     }, {}, true);
 
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
@@ -35,7 +35,11 @@ describe("exportAnimation", () => {
     expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");
     expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
-    expect(Object.keys(files).filter((name) => !name.endsWith(".sequence.json"))).toHaveLength(2);
+    const animationNames = Object.keys(files).filter((name) => !name.endsWith(".sequence.json"));
+    expect(animationNames).toHaveLength(2);
+    for (const animationName of animationNames) {
+      expect(JSON.parse(strFromU8(files[animationName])).settings.standalone).toBe(false);
+    }
     expect(result.fileName).toBe("emote.demo.zip");
   });
 
