@@ -230,8 +230,10 @@ public final class AnimationJsonLoader {
             JsonElement skinElement = object.get("skin");
             if (skinElement != null && skinElement.isJsonObject()) {
                 JsonElement participantElement = skinElement.getAsJsonObject().get("participant");
-                if (participantElement != null && participantElement.isJsonPrimitive()
-                    && participantElement.getAsJsonPrimitive().isString()) {
+                if (participantElement == null || participantElement.isJsonNull()) {
+                    return NodeSpace.INITIATOR;
+                }
+                if (participantElement.isJsonPrimitive() && participantElement.getAsJsonPrimitive().isString()) {
                     return switch (participantElement.getAsString()) {
                         case "initiator" -> NodeSpace.INITIATOR;
                         case "partner" -> NodeSpace.PARTNER;
@@ -269,7 +271,10 @@ public final class AnimationJsonLoader {
             throw reader.error(path + ".skin", "must be an object");
         }
         JsonObject skin = element.getAsJsonObject();
-        String participantText = reader.requireString(skin, "participant", path + ".skin");
+        JsonElement participantElement = skin.get("participant");
+        String participantText = participantElement == null || participantElement.isJsonNull()
+            ? "initiator"
+            : reader.requireString(skin, "participant", path + ".skin");
         ParticipantRole participant = switch (participantText) {
             case "initiator" -> ParticipantRole.INITIATOR;
             case "partner" -> ParticipantRole.PARTNER;

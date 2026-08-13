@@ -70,14 +70,17 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void defaultsMissingNodeSpaceFromSkinParticipantOrScene() throws Exception {
+    void loadsSchemaTwoStyleNodesAfterOnlyChangingSchemaVersion() throws Exception {
         JsonObject root = readReference();
-        root.getAsJsonObject("nodes").getAsJsonObject("player_head").remove("space");
+        JsonObject playerHead = root.getAsJsonObject("nodes").getAsJsonObject("player_head");
+        playerHead.remove("space");
+        playerHead.getAsJsonObject("skin").remove("participant");
         root.getAsJsonObject("nodes").getAsJsonObject("effect_anchor").remove("space");
 
         EmoteAnimation animation = parse(root).animation();
 
         assertEquals(EmoteAnimation.NodeSpace.INITIATOR, animation.nodes().get("player_head").space());
+        assertEquals(ParticipantRole.INITIATOR, ((EmoteAnimation.ItemNode) animation.nodes().get("player_head")).skin().participant());
         assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
     }
 
