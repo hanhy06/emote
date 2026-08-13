@@ -168,7 +168,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
   },
   "steps": [
     {"emote": "example:sit_down"},
-    {"emote": ["example:sit_idle_1", 30, "example:sit_idle_2", 40, "example:sit_idle_3", 30], "repeat": 3},
+    {"emote": ["example:sit_idle_1", 30, "example:sit_idle_2", 40, "example:sit_idle_3", 30], "repeat": 2},
     {"emote": "example:stand_up"}
   ]
 }

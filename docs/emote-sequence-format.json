@@ -24,12 +24,9 @@
         },
         {
             "emote": [
-                "emote:sit_idle",
-                30,
-                "emote:sit_idle_2",
-                40,
-                "emote:sit_idle_3",
-                30
+                "emote:sit_idle", 30,
+                "emote:sit_idle_2", 40,
+                "emote:sit_idle_3", 30
             ],
             "repeat": 3
         },
