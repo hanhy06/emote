@@ -63,4 +63,65 @@ describe("emoteJsonAdapter", () => {
     await expect(emoteJsonAdapter.import({ name: "broken.json", bytes: encoder.encode(JSON.stringify(malformed)) }))
       .rejects.toThrow("metadata must be an object");
   });
+
+  it("automatically migrates schema 1 animations", async () => {
+    const schema1 = {
+      schema_version: 1,
+      minecraft_version: "26.2",
+      tick_rate: 20,
+      id: "legacy:wave",
+      metadata: { name: "Legacy Wave", description: "Schema 1 emote." },
+      player: createDefaultPlayerBehavior(),
+      transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
+      nodes: {
+        arm: {
+          type: "item_display",
+          item_stack_snbt: "{id:\"minecraft:player_head\",count:1}",
+          item_display: "none",
+          default_matrix: IDENTITY,
+          skin: { part: "right_arm", order: 1 },
+        },
+      },
+      timeline: {
+        duration_ticks: 4,
+        loop: "loop",
+        loop_delay_ticks: 2,
+        keyframes: [
+          { tick: 0, node_transforms: { arm: { matrix: IDENTITY } } },
+          {
+            tick: 4,
+            interpolation_duration_ticks: 3,
+            node_transforms: { arm: { matrix: IDENTITY, interpolation_duration_ticks: 2 } },
+          },
+        ],
+        events: {
+          timeline: [{
+            tick: 2,
+            source: { type: "server" },
+            origin: { type: "root" },
+            commands: ["say legacy"],
+          }],
+        },
+      },
+    };
+    const input = { name: "emote.legacy_wave.json", bytes: encoder.encode(JSON.stringify(schema1)) };
+
+    expect((await emoteJsonAdapter.probe(input)).reason).toBe("matches emote animation schema 1");
+    const project = await emoteJsonAdapter.import(input);
+    const [recompiled] = compileImportedProject(project, {
+      minecraftVersion: project.suggestedMinecraftVersion ?? "unexpected",
+      namespace: project.suggestedNamespace,
+    });
+
+    expect(project.suggestedMinecraftVersion).toBe("26.2");
+    expect(project.suggestedStandalone).toBe(true);
+    expect(project.suggestedCooldown).toBe("0t");
+    expect(project.animations[0].events.timeline[0].tick).toBe(2);
+    expect(recompiled.type).toBe("animation");
+    expect(recompiled.schema_version).toBe(2);
+    expect(recompiled.settings.playback).toEqual({ mode: "loop", loop_delay: "2t" });
+    expect(recompiled.timeline.duration).toBe("4t");
+    expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration).toBe("2t");
+    expect(recompiled.timeline.events?.timeline?.[0].time).toBe("2t");
+  });
 });

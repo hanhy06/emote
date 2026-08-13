@@ -8,6 +8,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../errors";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
+import { migrateSchema1Animation } from "./schema1Migration";
 
 export const emoteJsonAdapter: ImportAdapter = {
   id: "emote_json",
@@ -16,17 +17,23 @@ export const emoteJsonAdapter: ImportAdapter = {
 
   probe(input: ImportInput): ProbeResult {
     try {
-      const value = parseInputJson(input) as Record<string, unknown>;
-      return value.type === "animation" && value.schema_version === 2 && isRecord(value.nodes) && isRecord(value.timeline)
+      const value = parseInputJson(input);
+      if (!isRecord(value) || !isRecord(value.nodes) || !isRecord(value.timeline)) {
+        return { confidence: 0, reason: "does not match an emote animation schema" };
+      }
+      if (value.schema_version === 1) return { confidence: 100, reason: "matches emote animation schema 1" };
+      return value.type === "animation" && value.schema_version === 2
         ? { confidence: 100, reason: "matches emote animation schema 2" }
-        : { confidence: 0, reason: "does not match emote animation schema 2" };
+        : { confidence: 0, reason: "does not match a supported emote animation schema" };
     } catch {
       return { confidence: 0, reason: "not JSON" };
     }
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    const animation = requireEmoteAnimation(parseInputJson(input));
+    const parsed = parseInputJson(input);
+    const migrated = isRecord(parsed) && parsed.schema_version === 1 ? migrateSchema1Animation(parsed) : null;
+    const animation = migrated?.animation ?? requireEmoteAnimation(parsed);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
@@ -39,6 +46,7 @@ export const emoteJsonAdapter: ImportAdapter = {
       sourceName: input.name,
       suggestedMetadata: { ...animation.metadata },
       suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
+      ...(migrated ? { suggestedMinecraftVersion: migrated.minecraftVersion } : {}),
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
