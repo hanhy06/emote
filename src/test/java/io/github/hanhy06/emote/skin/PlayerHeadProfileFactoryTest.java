@@ -8,7 +8,7 @@ import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class PlayerSkinTextureHelperTest {
+class PlayerHeadProfileFactoryTest {
     @Test
     void createsProfileWithMineSkinTextureUrl() {
         String textureUrl = "https://textures.minecraft.net/texture/cached";

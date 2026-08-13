@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
 import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -17,7 +16,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class AnimationSkinPartFactoryTest {
+class AnimationSkinBindingFactoryTest {
     @Test
     void usesExplicitOrderAndLocalYScaleForLimbSegments() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
