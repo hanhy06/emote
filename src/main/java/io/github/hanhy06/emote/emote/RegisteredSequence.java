@@ -25,7 +25,7 @@ public record RegisteredSequence(
 
     public static RegisteredSequence resolve(EmoteSequence source, Map<String, RegisteredEmote> animations) {
         Playback playback = resolvePlayback(source, animations);
-        SequenceAnimationCompiler.validateCompatibleAnimations(playback.validationSteps());
+        SequenceNodeLayout.validateCompatibleAnimations(playback.validationSteps());
         List<SelectedStep> initialSteps = switch (playback) {
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
             case CollaborativePlayback collaborative -> List.of(new SelectedEmoteStep(collaborative.offer(), false));
