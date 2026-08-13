@@ -70,7 +70,7 @@ function MetadataRow({ fieldKey, value, metadata, disabled, onChange }: Metadata
   return (
     <div className="metadata-editor-row">
       <label>Key<input value={keyDraft} disabled={disabled} onInput={(event) => setKeyDraft(event.currentTarget.value)} onBlur={commitKey} /></label>
-      <label>JSON value<textarea rows={2} value={valueDraft} disabled={disabled} onInput={(event) => setValueDraft(event.currentTarget.value)} onBlur={commitValue} /></label>
+      <label>JSON value<input className="metadata-json-value" value={valueDraft} disabled={disabled} onInput={(event) => setValueDraft(event.currentTarget.value)} onBlur={commitValue} /></label>
       <button type="button" disabled={disabled} onClick={() => onChange(Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== fieldKey)))}>Remove</button>
       {error && <p className="error" role="alert">{error}</p>}
     </div>
