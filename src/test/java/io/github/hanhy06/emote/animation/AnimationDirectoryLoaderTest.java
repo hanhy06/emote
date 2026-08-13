@@ -70,7 +70,7 @@ class AnimationDirectoryLoaderTest {
         Files.writeString(tempDir.resolve("sequence.json"), """
             {
               "type": "sequence",
-              "schema_version": 2,
+              "schema_version": 3,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence"},
               "settings": {
