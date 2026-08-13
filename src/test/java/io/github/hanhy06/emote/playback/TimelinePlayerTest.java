@@ -271,7 +271,7 @@ class TimelinePlayerTest {
         private int resetCount;
 
         @Override
-        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
             return new Transformation(RootTransform.toJoml(transform.matrix()));
         }
 

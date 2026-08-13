@@ -1,6 +1,6 @@
 {
     "type": "animation",
-    "schema_version": 2,
+    "schema_version": 3,
     "id": "emote:format_reference",
     "metadata": {
         "name": "Format Reference",
@@ -35,7 +35,8 @@
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
             "skin": {
                 "part": "head",
-                "order": 0
+                "order": 0,
+                "participant": "initiator"
             },
             "default_matrix": [
                 1,
@@ -54,7 +55,8 @@
                 0,
                 0,
                 1
-            ]
+            ],
+            "space": "initiator"
         },
         "enchanted_sword": {
             "type": "item_display",
@@ -79,7 +81,8 @@
                 0,
                 0,
                 1
-            ]
+            ],
+            "space": "scene"
         },
         "stage": {
             "type": "block_display",
@@ -103,7 +106,8 @@
                 0,
                 0,
                 1
-            ]
+            ],
+            "space": "scene"
         },
         "caption": {
             "type": "text_display",
@@ -129,7 +133,8 @@
                 0,
                 0,
                 1
-            ]
+            ],
+            "space": "scene"
         },
         "effect_anchor": {
             "type": "anchor",
@@ -150,7 +155,8 @@
                 0,
                 0,
                 1
-            ]
+            ],
+            "space": "scene"
         }
     },
     "timeline": {

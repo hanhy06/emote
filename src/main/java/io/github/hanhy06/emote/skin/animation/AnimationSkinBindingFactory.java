@@ -10,13 +10,14 @@ import java.util.*;
 
 public final class AnimationSkinBindingFactory {
     public List<AnimationSkinBinding> create(EmoteAnimation animation) {
-        Map<PlayerSkinPart, List<RawPart>> byPart = new EnumMap<>(PlayerSkinPart.class);
+        Map<ParticipantSkinPart, List<RawPart>> byPart = new HashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {
                 continue;
             }
             PlayerSkinPart skinPart = convert(itemNode.skin().part());
-            byPart.computeIfAbsent(skinPart, ignored -> new ArrayList<>()).add(new RawPart(
+            ParticipantSkinPart participantSkinPart = new ParticipantSkinPart(itemNode.skin().participant(), skinPart);
+            byPart.computeIfAbsent(participantSkinPart, ignored -> new ArrayList<>()).add(new RawPart(
                 entry.getKey(),
                 itemNode.skin().order(),
                 localYScale(itemNode.defaultMatrix())
@@ -24,26 +25,27 @@ public final class AnimationSkinBindingFactory {
         }
 
         List<AnimationSkinBinding> result = new ArrayList<>();
-        for (Map.Entry<PlayerSkinPart, List<RawPart>> entry : byPart.entrySet()) {
+        for (Map.Entry<ParticipantSkinPart, List<RawPart>> entry : byPart.entrySet()) {
             List<RawPart> parts = entry.getValue().stream()
                 .sorted(Comparator.comparingInt(RawPart::order).thenComparing(RawPart::nodeId))
                 .toList();
             result.addAll(createParts(entry.getKey(), parts));
         }
-        result.sort(Comparator.comparing(AnimationSkinBinding::nodeId));
+        result.sort(Comparator.comparing(AnimationSkinBinding::participant).thenComparing(AnimationSkinBinding::nodeId));
         return List.copyOf(result);
     }
 
-    private List<AnimationSkinBinding> createParts(PlayerSkinPart skinPart, List<RawPart> parts) {
+    private List<AnimationSkinBinding> createParts(ParticipantSkinPart participantSkinPart, List<RawPart> parts) {
+        PlayerSkinPart skinPart = participantSkinPart.skinPart();
         if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), participantSkinPart.participant(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
             Emote.LOGGER.warn("Too many vertical JSON skin segments for {}: {}", skinPart.id(), parts.size());
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), participantSkinPart.participant(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
                 .toList();
         }
 
@@ -64,6 +66,7 @@ public final class AnimationSkinBindingFactory {
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
             result.add(new AnimationSkinBinding(
                 part.nodeId(),
+                participantSkinPart.participant(),
                 new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd))
             ));
             segmentStart = segmentEnd;
@@ -90,5 +93,9 @@ public final class AnimationSkinBindingFactory {
     }
 
     private record RawPart(String nodeId, int order, double localYScale) {
+    }
+
+    private record ParticipantSkinPart(io.github.hanhy06.emote.api.ParticipantRole participant,
+                                       PlayerSkinPart skinPart) {
     }
 }

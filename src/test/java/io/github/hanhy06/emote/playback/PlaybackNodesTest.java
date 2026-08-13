@@ -76,4 +76,49 @@ class PlaybackNodesTest {
 
         assertNotSame(originalContent, node.displayContent());
     }
+
+    @Test
+    void masksPartnerVisibilityUntilPartnerSpaceIsActivated() {
+        EmoteAnimation.AnchorNode partnerNode = new EmoteAnimation.AnchorNode(
+            EmoteAnimation.NodeSpace.PARTNER,
+            identityMatrix()
+        );
+        PlaybackNodes nodes = new PlaybackNodes(
+            RootTransform.create(Vec3.ZERO, 0.0F),
+            Map.of("partner", new PlaybackNodes.NodeInstance("partner", partnerNode, null, null))
+        );
+
+        assertFalse(nodes.setRequestedVisibility("partner", true));
+        assertTrue(nodes.requestedVisibility("partner"));
+
+        nodes.activateSpace(EmoteAnimation.NodeSpace.PARTNER);
+
+        assertTrue(nodes.setRequestedVisibility("partner", true));
+    }
+
+    @Test
+    void resolvesEachNodeSpaceAgainstItsOwnRoot() {
+        RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
+        RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
+        PlaybackNodes nodes = new PlaybackNodes(
+            Map.of(
+                EmoteAnimation.NodeSpace.SCENE, scene,
+                EmoteAnimation.NodeSpace.INITIATOR, scene,
+                EmoteAnimation.NodeSpace.PARTNER, partner
+            ),
+            Map.of()
+        );
+
+        assertSame(scene, nodes.root(EmoteAnimation.NodeSpace.INITIATOR));
+        assertSame(partner, nodes.root(EmoteAnimation.NodeSpace.PARTNER));
+    }
+
+    private EmoteAnimation.Matrix identityMatrix() {
+        return new EmoteAnimation.Matrix(List.of(
+            1.0D, 0.0D, 0.0D, 0.0D,
+            0.0D, 1.0D, 0.0D, 0.0D,
+            0.0D, 0.0D, 1.0D, 0.0D,
+            0.0D, 0.0D, 0.0D, 1.0D
+        ));
+    }
 }

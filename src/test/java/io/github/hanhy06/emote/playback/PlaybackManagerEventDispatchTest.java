@@ -116,7 +116,7 @@ class PlaybackManagerEventDispatchTest {
 
     private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 

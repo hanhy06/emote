@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
 import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
@@ -80,5 +81,11 @@ public record RegisteredEmote(
         return (int) animation().nodes().values().stream()
             .filter(node -> !(node instanceof EmoteAnimation.AnchorNode))
             .count();
+    }
+
+    public List<AnimationSkinBinding> skinParts(ParticipantRole participant) {
+        return this.skinParts.stream()
+            .filter(binding -> binding.participant() == participant)
+            .toList();
     }
 }

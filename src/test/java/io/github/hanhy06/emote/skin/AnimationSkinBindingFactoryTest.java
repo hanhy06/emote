@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -29,6 +30,7 @@ class AnimationSkinBindingFactoryTest {
         assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").region().skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").region().skinSegment());
         assertEquals(PlayerSkinSegment.FULL, find(parts, "head").region().skinSegment());
+        assertEquals(ParticipantRole.INITIATOR, find(parts, "head").participant());
     }
 
     private AnimationSkinBinding find(List<AnimationSkinBinding> parts, String nodeId) {

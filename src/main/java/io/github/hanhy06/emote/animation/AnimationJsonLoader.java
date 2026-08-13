@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.nbt.CompoundTag;
@@ -24,7 +25,7 @@ import java.util.*;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class AnimationJsonLoader {
-    private static final int SCHEMA_VERSION = 2;
+    private static final int SCHEMA_VERSION = 3;
     static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
@@ -179,6 +180,7 @@ public final class AnimationJsonLoader {
     private Node parseNode(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
+        NodeSpace space = parseNodeSpace(object, path, reader);
         Matrix defaultMatrix = reader.requireMatrix(object, "default_matrix", path);
         if (type.equals("anchor")) {
             if (object.has("visible")) {
@@ -187,7 +189,7 @@ public final class AnimationJsonLoader {
             if (object.has("entity_nbt")) {
                 throw reader.error(path + ".entity_nbt", "is not supported by anchor nodes");
             }
-            return new AnchorNode(defaultMatrix);
+            return new AnchorNode(space, defaultMatrix);
         }
 
         defaultMatrix = MatrixNormalizer.stabilize(defaultMatrix);
@@ -196,25 +198,39 @@ public final class AnimationJsonLoader {
         return switch (type) {
             case "item_display" -> new ItemNode(
                 visible,
+                space,
                 defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "item_stack_snbt", path, reader),
                 parseItemDisplay(object, path, reader),
-                parseSkin(object, path, reader)
+                parseSkin(object, space, path, reader)
             );
             case "block_display" -> new BlockNode(
                 visible,
+                space,
                 defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "block_state_snbt", path, reader)
             );
             case "text_display" -> new TextNode(
                 visible,
+                space,
                 defaultMatrix,
                 entityNbt,
                 reader.requireElement(object, "text", path)
             );
             default -> throw reader.error(path + ".type", "unsupported node type: " + type);
+        };
+    }
+
+    private NodeSpace parseNodeSpace(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        String value = reader.requireString(object, "space", path);
+        return switch (value) {
+            case "scene" -> NodeSpace.SCENE;
+            case "initiator" -> NodeSpace.INITIATOR;
+            case "partner" -> NodeSpace.PARTNER;
+            default -> throw reader.error(path + ".space", "unsupported node space: " + value);
         };
     }
 
@@ -227,7 +243,7 @@ public final class AnimationJsonLoader {
         return value;
     }
 
-    private Skin parseSkin(JsonObject object, String path, EmoteJsonReader reader)
+    private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("skin");
         if (element == null || element.isJsonNull()) {
@@ -237,6 +253,15 @@ public final class AnimationJsonLoader {
             throw reader.error(path + ".skin", "must be an object");
         }
         JsonObject skin = element.getAsJsonObject();
+        String participantText = reader.requireString(skin, "participant", path + ".skin");
+        ParticipantRole participant = switch (participantText) {
+            case "initiator" -> ParticipantRole.INITIATOR;
+            case "partner" -> ParticipantRole.PARTNER;
+            default -> throw reader.error(path + ".skin.participant", "unsupported participant: " + participantText);
+        };
+        if (nodeSpace != NodeSpace.forParticipant(participant)) {
+            throw reader.error(path + ".skin.participant", "must match the node space");
+        }
         String partText = reader.requireString(skin, "part", path + ".skin");
         SkinPart part = switch (partText) {
             case "head" -> SkinPart.HEAD;
@@ -251,7 +276,7 @@ public final class AnimationJsonLoader {
         if (order < 0) {
             throw reader.error(path + ".skin.order", "must not be negative");
         }
-        return new Skin(part, order);
+        return new Skin(participant, part, order);
     }
 
     private Identifier parseId(String value, EmoteJsonReader reader) throws EmoteAnimationLoadException {

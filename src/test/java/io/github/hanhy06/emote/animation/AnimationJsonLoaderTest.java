@@ -5,6 +5,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -54,8 +55,32 @@ class AnimationJsonLoaderTest {
 
         EmoteAnimation.Loaded loaded = parse(root);
 
-        assertEquals(2, root.get("schema_version").getAsInt());
+        assertEquals(3, root.get("schema_version").getAsInt());
         assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().settings().playback().mode());
+    }
+
+    @Test
+    void loadsNodeSpaceAndSkinParticipant() throws Exception {
+        EmoteAnimation animation = parse(readReference()).animation();
+        EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");
+
+        assertEquals(EmoteAnimation.NodeSpace.INITIATOR, head.space());
+        assertEquals(ParticipantRole.INITIATOR, head.skin().participant());
+        assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
+    }
+
+    @Test
+    void rejectsSkinParticipantThatDoesNotMatchNodeSpace() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("nodes").getAsJsonObject("player_head")
+            .getAsJsonObject("skin").addProperty("participant", "partner");
+
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> parse(root)
+        );
+
+        assertEquals("$.nodes.player_head.skin.participant", exception.fieldPath());
     }
 
     @Test

@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.api.animation;
 import com.google.gson.JsonElement;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -71,6 +72,8 @@ public record EmoteAnimation(
     }
 
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
+        NodeSpace space();
+
         Matrix defaultMatrix();
 
         default boolean visible() {
@@ -84,13 +87,26 @@ public record EmoteAnimation(
 
     public record ItemNode(
         boolean visible,
+        NodeSpace space,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag itemStackNbt,
         String itemDisplay,
         Skin skin
     ) implements Node {
+        public ItemNode(
+            boolean visible,
+            Matrix defaultMatrix,
+            CompoundTag entityNbt,
+            CompoundTag itemStackNbt,
+            String itemDisplay,
+            Skin skin
+        ) {
+            this(visible, skin == null ? NodeSpace.SCENE : NodeSpace.forParticipant(skin.participant()), defaultMatrix, entityNbt, itemStackNbt, itemDisplay, skin);
+        }
+
         public ItemNode {
+            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             itemStackNbt = copy(itemStackNbt);
@@ -100,11 +116,17 @@ public record EmoteAnimation(
 
     public record BlockNode(
         boolean visible,
+        NodeSpace space,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
+        public BlockNode(boolean visible, Matrix defaultMatrix, CompoundTag entityNbt, CompoundTag blockStateNbt) {
+            this(visible, NodeSpace.SCENE, defaultMatrix, entityNbt, blockStateNbt);
+        }
+
         public BlockNode {
+            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
@@ -113,11 +135,17 @@ public record EmoteAnimation(
 
     public record TextNode(
         boolean visible,
+        NodeSpace space,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
+        public TextNode(boolean visible, Matrix defaultMatrix, CompoundTag entityNbt, JsonElement text) {
+            this(visible, NodeSpace.SCENE, defaultMatrix, entityNbt, text);
+        }
+
         public TextNode {
+            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
@@ -129,14 +157,37 @@ public record EmoteAnimation(
         }
     }
 
-    public record AnchorNode(Matrix defaultMatrix) implements Node {
+    public record AnchorNode(NodeSpace space, Matrix defaultMatrix) implements Node {
+        public AnchorNode(Matrix defaultMatrix) {
+            this(NodeSpace.SCENE, defaultMatrix);
+        }
+
         public AnchorNode {
+            Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
         }
     }
 
-    public record Skin(SkinPart part, int order) {
+    public enum NodeSpace {
+        SCENE,
+        INITIATOR,
+        PARTNER;
+
+        public static NodeSpace forParticipant(ParticipantRole participant) {
+            return switch (participant) {
+                case INITIATOR -> INITIATOR;
+                case PARTNER -> PARTNER;
+            };
+        }
+    }
+
+    public record Skin(ParticipantRole participant, SkinPart part, int order) {
+        public Skin(SkinPart part, int order) {
+            this(ParticipantRole.INITIATOR, part, order);
+        }
+
         public Skin {
+            Objects.requireNonNull(participant, "participant");
             Objects.requireNonNull(part, "part");
             if (order < 0) {
                 throw new IllegalArgumentException("skin order must not be negative");

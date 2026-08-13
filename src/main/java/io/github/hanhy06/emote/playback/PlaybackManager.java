@@ -97,7 +97,7 @@ public class PlaybackManager implements ConfigListener {
 
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            emote.skinParts()
+            emote.skinParts(ParticipantRole.INITIATOR)
         );
         if (skinPreparation.preparing()) {
             return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
@@ -137,7 +137,7 @@ public class PlaybackManager implements ConfigListener {
             }
             this.playerSkinManager.applySkinParts(
                 nodes.nodes(),
-                emote.skinParts(),
+                emote.skinParts(ParticipantRole.INITIATOR),
                 preparedSkin
             );
             timeline.deferInitialVisibility();
@@ -153,7 +153,7 @@ public class PlaybackManager implements ConfigListener {
                 player.getUUID(),
                 ParticipantRole.INITIATOR,
                 root.position(),
-                emote.skinParts(),
+                emote.skinParts(ParticipantRole.INITIATOR),
                 wasInvisible
             );
             session = new PlaybackSession(

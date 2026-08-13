@@ -103,7 +103,7 @@ class PlaybackStressSimulationTest {
         private Transformation lastTransformation;
 
         @Override
-        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
             return this.rootTransform.displayTransformation(transform);
         }
 

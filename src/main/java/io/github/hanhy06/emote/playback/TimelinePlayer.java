@@ -167,7 +167,7 @@ public final class TimelinePlayer {
     public Transformation currentTransformation(String nodeId) {
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {
-            return this.target.createTransformation(this.playbackPlan.defaultTransform(nodeId));
+            return this.target.createTransformation(nodeId, this.playbackPlan.defaultTransform(nodeId));
         }
         return state.at(this.currentTick);
     }
@@ -194,10 +194,10 @@ public final class TimelinePlayer {
             PlaybackPlan.TransformActivation activation = this.playbackPlan.activeTransform(nodeId, tick);
             Transformation currentTransformation;
             if (activation == null) {
-                currentTransformation = this.target.createTransformation(this.playbackPlan.defaultTransform(nodeId));
+                currentTransformation = this.target.createTransformation(nodeId, this.playbackPlan.defaultTransform(nodeId));
             } else {
-                Transformation previous = this.target.createTransformation(activation.previousTransform());
-                Transformation targetTransformation = this.target.createTransformation(activation.transform());
+                Transformation previous = this.target.createTransformation(nodeId, activation.previousTransform());
+                Transformation targetTransformation = this.target.createTransformation(nodeId, activation.transform());
                 TransformState state = new TransformState(
                     previous,
                     targetTransformation,
@@ -238,7 +238,7 @@ public final class TimelinePlayer {
                 continue;
             }
             Transformation previous = currentTransformation(activation.nodeId());
-            Transformation next = this.target.createTransformation(activation.transform());
+            Transformation next = this.target.createTransformation(activation.nodeId(), activation.transform());
             this.transformStates.put(
                 activation.nodeId(),
                 new TransformState(previous, next, tick, activation.interpolationDurationTicks())
@@ -263,7 +263,7 @@ public final class TimelinePlayer {
     }
 
     interface TimelineTarget {
-        Transformation createTransformation(PlaybackPlan.PreparedTransform transform);
+        Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform);
 
         void applyTransform(
             String nodeId,
@@ -299,8 +299,9 @@ public final class TimelinePlayer {
         PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
-        public Transformation createTransformation(PlaybackPlan.PreparedTransform transform) {
-            return this.nodes.root().displayTransformation(transform);
+        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
+            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
+            return this.nodes.root(node.node().space()).displayTransformation(transform);
         }
 
         @Override
@@ -324,7 +325,7 @@ public final class TimelinePlayer {
 
         @Override
         public void setVisible(String nodeId, boolean visible) {
-            this.entityController.setVisible(requiredNode(nodeId), visible);
+            this.entityController.setVisible(requiredNode(nodeId), this.nodes.setRequestedVisibility(nodeId, visible));
         }
 
         @Override
@@ -336,7 +337,7 @@ public final class TimelinePlayer {
                     this.playbackPlan.defaultTransform(nodeId),
                     0
                 );
-                this.entityController.setVisible(node, node.node().visible());
+                this.entityController.setVisible(node, this.nodes.setRequestedVisibility(nodeId, node.node().visible()));
             });
         }
 

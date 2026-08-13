@@ -39,13 +39,25 @@ public final class PlaybackEntityController {
     }
 
     PlaybackNodes create(ServerLevel level, RootTransform root, RegisteredEmote emote) {
+        return create(level, Map.of(
+            EmoteAnimation.NodeSpace.SCENE, root,
+            EmoteAnimation.NodeSpace.INITIATOR, root,
+            EmoteAnimation.NodeSpace.PARTNER, root
+        ), emote);
+    }
+
+    PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, RegisteredEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
-            NodeInstance instance = createNode(level, root, entry.getKey(), entry.getValue(), preparedData);
+            RootTransform nodeRoot = spaces.get(entry.getValue().space());
+            if (nodeRoot == null) {
+                throw new IllegalArgumentException("Missing root for node space " + entry.getValue().space());
+            }
+            NodeInstance instance = createNode(level, nodeRoot, entry.getKey(), entry.getValue(), preparedData);
             instances.put(entry.getKey(), instance);
         }
-        return new PlaybackNodes(root, instances);
+        return new PlaybackNodes(spaces, instances);
     }
 
     PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, RegisteredEmote emote) {
@@ -101,6 +113,15 @@ public final class PlaybackEntityController {
         }
     }
 
+    public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
+        nodes.activateSpace(space);
+        nodes.nodes().forEach((nodeId, node) -> {
+            if (node.node().space() == space) {
+                setVisible(node, nodes.requestedVisibility(nodeId));
+            }
+        });
+    }
+
     void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
@@ -112,7 +133,7 @@ public final class PlaybackEntityController {
         }
         applyTransformation(
             node,
-            playbackNodes.root().displayTransformation(transform),
+            playbackNodes.root(node.node().space()).displayTransformation(transform),
             interpolationDurationTicks
         );
     }
