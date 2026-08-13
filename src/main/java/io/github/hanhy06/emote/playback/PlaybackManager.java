@@ -70,7 +70,7 @@ public class PlaybackManager implements ConfigListener {
             emote,
             emote.id(),
             emote.playerBehavior(),
-            singlePlayerRoots(RootTransform.fromPlayer(player)),
+            SceneRootResolver.single(RootTransform.fromPlayer(player)),
             null
         );
     }
@@ -84,7 +84,7 @@ public class PlaybackManager implements ConfigListener {
             sequence.compileRandom(this.random),
             sequence.id(),
             sequence.playerBehavior(),
-            singlePlayerRoots(RootTransform.fromPlayer(player)),
+            SceneRootResolver.single(RootTransform.fromPlayer(player)),
             null
         );
     }
@@ -643,14 +643,6 @@ public class PlaybackManager implements ConfigListener {
         return (int) session.nodes().nodes().values().stream()
             .filter(node -> !node.isAnchor())
             .count();
-    }
-
-    private static Map<EmoteAnimation.NodeSpace, RootTransform> singlePlayerRoots(RootTransform root) {
-        return Map.of(
-            EmoteAnimation.NodeSpace.SCENE, root,
-            EmoteAnimation.NodeSpace.INITIATOR, root,
-            EmoteAnimation.NodeSpace.PARTNER, root
-        );
     }
 
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {

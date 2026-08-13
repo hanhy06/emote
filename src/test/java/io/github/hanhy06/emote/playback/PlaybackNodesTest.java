@@ -88,12 +88,12 @@ class PlaybackNodesTest {
             Map.of("partner", new PlaybackNodes.NodeInstance("partner", partnerNode, null, null))
         );
 
-        assertFalse(nodes.setRequestedVisibility("partner", true));
-        assertTrue(nodes.requestedVisibility("partner"));
+        assertFalse(nodes.requestVisibility("partner", true));
+        assertFalse(nodes.effectiveVisibility("partner"));
 
         nodes.activateSpace(EmoteAnimation.NodeSpace.PARTNER);
 
-        assertTrue(nodes.setRequestedVisibility("partner", true));
+        assertTrue(nodes.effectiveVisibility("partner"));
     }
 
     @Test
@@ -111,6 +111,9 @@ class PlaybackNodesTest {
 
         assertSame(scene, nodes.root(EmoteAnimation.NodeSpace.INITIATOR));
         assertSame(partner, nodes.root(EmoteAnimation.NodeSpace.PARTNER));
+        nodes.updateViewYaw(90.0F, 50.0F);
+        assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
+        assertEquals(180.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.PARTNER));
     }
 
     private EmoteAnimation.Matrix identityMatrix() {

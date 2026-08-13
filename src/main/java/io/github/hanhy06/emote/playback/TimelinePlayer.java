@@ -325,7 +325,7 @@ public final class TimelinePlayer {
 
         @Override
         public void setVisible(String nodeId, boolean visible) {
-            this.entityController.setVisible(requiredNode(nodeId), this.nodes.setRequestedVisibility(nodeId, visible));
+            this.entityController.setVisible(requiredNode(nodeId), this.nodes.requestVisibility(nodeId, visible));
         }
 
         @Override
@@ -337,7 +337,7 @@ public final class TimelinePlayer {
                     this.playbackPlan.defaultTransform(nodeId),
                     0
                 );
-                this.entityController.setVisible(node, this.nodes.setRequestedVisibility(nodeId, node.node().visible()));
+                this.entityController.setVisible(node, this.nodes.requestVisibility(nodeId, node.node().visible()));
             });
         }
 

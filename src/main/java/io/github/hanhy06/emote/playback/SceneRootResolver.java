@@ -12,6 +12,14 @@ import java.util.EnumMap;
 import java.util.Map;
 
 final class SceneRootResolver {
+    static Map<EmoteAnimation.NodeSpace, RootTransform> single(RootTransform root) {
+        EnumMap<EmoteAnimation.NodeSpace, RootTransform> roots = new EnumMap<>(EmoteAnimation.NodeSpace.class);
+        for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
+            roots.put(space, root);
+        }
+        return Map.copyOf(roots);
+    }
+
     Map<EmoteAnimation.NodeSpace, RootTransform> resolve(
         ServerPlayer initiator,
         EmoteSequence.Participants participants

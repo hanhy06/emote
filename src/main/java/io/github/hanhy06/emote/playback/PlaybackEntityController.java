@@ -39,11 +39,7 @@ public final class PlaybackEntityController {
     }
 
     PlaybackNodes create(ServerLevel level, RootTransform root, RegisteredEmote emote) {
-        return create(level, Map.of(
-            EmoteAnimation.NodeSpace.SCENE, root,
-            EmoteAnimation.NodeSpace.INITIATOR, root,
-            EmoteAnimation.NodeSpace.PARTNER, root
-        ), emote);
+        return create(level, SceneRootResolver.single(root), emote);
     }
 
     PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, RegisteredEmote emote) {
@@ -113,11 +109,11 @@ public final class PlaybackEntityController {
         }
     }
 
-    public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
+    void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
         nodes.activateSpace(space);
         nodes.nodes().forEach((nodeId, node) -> {
             if (node.node().space() == space) {
-                setVisible(node, nodes.requestedVisibility(nodeId));
+                setVisible(node, nodes.effectiveVisibility(nodeId));
             }
         });
     }

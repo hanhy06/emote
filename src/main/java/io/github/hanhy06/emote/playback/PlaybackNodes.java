@@ -7,10 +7,10 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.Map;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Objects;
 
 public final class PlaybackNodes {
@@ -25,15 +25,7 @@ public final class PlaybackNodes {
     private float viewYaw;
 
     public PlaybackNodes(RootTransform root, Map<String, NodeInstance> nodes) {
-        Objects.requireNonNull(root, "root");
-        EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces = new EnumMap<>(EmoteAnimation.NodeSpace.class);
-        for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
-            spaces.put(space, root);
-        }
-        this.spaces = Map.copyOf(spaces);
-        this.nodes = Map.copyOf(nodes);
-        initializeVisibility();
-        this.viewYaw = root.yaw();
+        this(SceneRootResolver.single(Objects.requireNonNull(root, "root")), nodes);
     }
 
     public PlaybackNodes(Map<EmoteAnimation.NodeSpace, RootTransform> spaces, Map<String, NodeInstance> nodes) {
@@ -52,7 +44,7 @@ public final class PlaybackNodes {
         return root(EmoteAnimation.NodeSpace.SCENE);
     }
 
-    public RootTransform root(EmoteAnimation.NodeSpace space) {
+    RootTransform root(EmoteAnimation.NodeSpace space) {
         return this.spaces.get(Objects.requireNonNull(space, "space"));
     }
 
@@ -60,18 +52,23 @@ public final class PlaybackNodes {
         return this.nodes;
     }
 
-    public boolean setRequestedVisibility(String nodeId, boolean visible) {
+    boolean requestVisibility(String nodeId, boolean visible) {
         NodeInstance node = Objects.requireNonNull(this.nodes.get(nodeId), "Unknown node " + nodeId);
         this.requestedVisibility.put(nodeId, visible);
-        return visible && this.activeSpaces.contains(node.node().space());
+        return effectiveVisibility(nodeId);
     }
 
-    public boolean requestedVisibility(String nodeId) {
-        return this.requestedVisibility.getOrDefault(nodeId, false);
+    boolean effectiveVisibility(String nodeId) {
+        NodeInstance node = Objects.requireNonNull(this.nodes.get(nodeId), "Unknown node " + nodeId);
+        return this.requestedVisibility.getOrDefault(nodeId, false) && this.activeSpaces.contains(node.node().space());
     }
 
-    public void activateSpace(EmoteAnimation.NodeSpace space) {
+    void activateSpace(EmoteAnimation.NodeSpace space) {
         this.activeSpaces.add(Objects.requireNonNull(space, "space"));
+    }
+
+    float orientationYaw(EmoteAnimation.NodeSpace space) {
+        return space == EmoteAnimation.NodeSpace.SCENE ? this.viewYaw : root(space).yaw();
     }
 
     public float viewYaw() {

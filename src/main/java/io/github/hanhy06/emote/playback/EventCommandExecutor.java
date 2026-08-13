@@ -55,15 +55,17 @@ public final class EventCommandExecutor implements EventPlayer.EventExecutor {
 
     private Vec3 resolveOrigin(EmoteAnimation.CommandOrigin origin) {
         RootTransform root = this.nodes.root();
+        EmoteAnimation.NodeSpace space = EmoteAnimation.NodeSpace.SCENE;
         Matrix4fc displayMatrix;
         if (origin.type() == EmoteAnimation.OriginType.ROOT) {
             displayMatrix = root.rotationMatrix();
         } else {
             PlaybackNodes.NodeInstance node = requiredNode(origin.node());
-            root = this.nodes.root(node.node().space());
+            space = node.node().space();
+            root = this.nodes.root(space);
             displayMatrix = this.timeline.currentTransformation(origin.node()).getMatrix();
         }
-        Matrix4fc matrix = root.worldMatrix(root.yaw(), displayMatrix);
+        Matrix4fc matrix = root.worldMatrix(this.nodes.orientationYaw(space), displayMatrix);
         Vector3f position = matrix.transformPosition(new Vector3f(
             (float) origin.offset().x(),
             (float) origin.offset().y(),
