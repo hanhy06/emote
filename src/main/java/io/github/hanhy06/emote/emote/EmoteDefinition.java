@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
@@ -8,9 +9,15 @@ import java.nio.file.Path;
 public sealed interface EmoteDefinition permits RegisteredEmote, RegisteredSequence {
     String id();
 
-    String name();
+    EmoteMetadata metadata();
 
-    String description();
+    default String name() {
+        return metadata().name();
+    }
+
+    default String description() {
+        return metadata().description();
+    }
 
     boolean standalone();
 

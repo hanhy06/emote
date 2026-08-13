@@ -7,17 +7,23 @@ import java.util.Objects;
 
 public record EmoteInfo(
     Identifier id,
-    String name,
-    String description,
+    EmoteMetadata metadata,
     EmotePlayerBehavior player,
     int durationTicks,
     EmoteAnimation.LoopMode loopMode
 ) {
     public EmoteInfo {
         Objects.requireNonNull(id, "id");
-        Objects.requireNonNull(name, "name");
-        Objects.requireNonNull(description, "description");
+        Objects.requireNonNull(metadata, "metadata");
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(loopMode, "loopMode");
+    }
+
+    public String name() {
+        return this.metadata.name();
+    }
+
+    public String description() {
+        return this.metadata.description();
     }
 }

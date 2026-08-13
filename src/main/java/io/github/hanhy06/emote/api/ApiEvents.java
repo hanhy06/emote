@@ -76,8 +76,7 @@ public final class ApiEvents implements PlaybackStateListener {
     public static EmoteInfo toInfo(EmoteDefinition emote) {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
-            emote.name(),
-            emote.description(),
+            emote.metadata(),
             emote.playerBehavior(),
             emote.durationTicks(),
             emote.loopMode()

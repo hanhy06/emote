@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
 import io.github.hanhy06.emote.skin.AnimationSkinPart;
@@ -37,6 +38,10 @@ public record RegisteredEmote(
 
     public String id() {
         return animation().id().toString();
+    }
+
+    public EmoteMetadata metadata() {
+        return animation().metadata();
     }
 
     public String name() {

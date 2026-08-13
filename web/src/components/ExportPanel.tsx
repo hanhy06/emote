@@ -1,6 +1,7 @@
 import type { TargetedEvent } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import type { ExportOptions } from "../export/types";
+import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 
 const STOP_CONDITION_OPTIONS = [
   ["jump", "Stop on jump"],
@@ -44,8 +45,6 @@ export function ExportPanel({
   onMergeResourcePackFolder,
 }: ExportPanelProps) {
   const [mergeMenuIndex, setMergeMenuIndex] = useState<number | null>(null);
-  const additionalMetadata = Object.entries(metadata.additionalMetadata);
-
   useEffect(() => {
     if (mergeMenuIndex === null) return;
     const closeMenu = () => setMergeMenuIndex(null);
@@ -127,20 +126,11 @@ export function ExportPanel({
           ))}
         </div>
       </section>
-      {additionalMetadata.length > 0 && (
-        <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
-          <h3 id="additional-metadata-heading">Additional metadata</h3>
-          <p>Unrecognized source metadata is preserved in the exported animation.</p>
-          <dl>
-            {additionalMetadata.map(([key, value]) => (
-              <div key={key}>
-                <dt>{key}</dt>
-                <dd><pre>{formatMetadataValue(value)}</pre></dd>
-              </div>
-            ))}
-          </dl>
-        </section>
-      )}
+      <AdditionalMetadataEditor
+        value={metadata.additionalMetadata}
+        disabled={disabled}
+        onChange={(additionalMetadata) => onMetadataChange({ ...metadata, additionalMetadata })}
+      />
       {error && <p className="error" role="alert">{error}</p>}
       <h3>Animations</h3>
       <ul className="download-list">
@@ -181,9 +171,4 @@ export function ExportPanel({
       </ul>
     </section>
   );
-}
-
-function formatMetadataValue(value: unknown): string {
-  if (typeof value === "string") return value;
-  return JSON.stringify(value, null, 2) ?? String(value);
 }
