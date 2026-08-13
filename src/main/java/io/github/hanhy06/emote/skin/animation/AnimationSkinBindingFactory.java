@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.skin.animation;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 
 import java.util.*;
@@ -36,13 +37,13 @@ public final class AnimationSkinBindingFactory {
     private List<AnimationSkinBinding> createParts(PlayerSkinPart skinPart, List<RawPart> parts) {
         if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
             Emote.LOGGER.warn("Too many vertical JSON skin segments for {}: {}", skinPart.id(), parts.size());
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
                 .toList();
         }
 
@@ -63,8 +64,7 @@ public final class AnimationSkinBindingFactory {
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
             result.add(new AnimationSkinBinding(
                 part.nodeId(),
-                skinPart,
-                new PlayerSkinSegment(segmentStart, segmentEnd)
+                new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd))
             ));
             segmentStart = segmentEnd;
         }

@@ -50,7 +50,7 @@ class PlayerSkinManagerTest {
             assertEquals(100, result.progressPercent());
             assertEquals(
                 "https://textures.example/head",
-                result.preparedPlayerSkin().findTextureUrl(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL)
+                result.preparedPlayerSkin().findTextureUrl(HEAD_TEXTURE_KEY)
             );
         }
     }
@@ -125,8 +125,8 @@ class PlayerSkinManagerTest {
             );
 
             PlayerSkinPreparation result = manager.preparePlayerSkin(null, List.of(
-                new AnimationSkinBinding("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
-                new AnimationSkinBinding("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
+                new AnimationSkinBinding("head", HEAD_TEXTURE_KEY),
+                new AnimationSkinBinding("body", bodyTextureKey)
             ));
 
             assertEquals(PlayerSkinPreparation.State.PREPARING, result.state());
@@ -161,7 +161,7 @@ class PlayerSkinManagerTest {
     }
 
     private List<AnimationSkinBinding> createSkinParts() {
-        return List.of(new AnimationSkinBinding("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
+        return List.of(new AnimationSkinBinding("head", HEAD_TEXTURE_KEY));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

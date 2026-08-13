@@ -27,9 +27,9 @@ class AnimationSkinPartFactoryTest {
 
         List<AnimationSkinBinding> parts = new AnimationSkinBindingFactory().create(animation(nodes));
 
-        assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").skinSegment());
-        assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").skinSegment());
-        assertEquals(PlayerSkinSegment.FULL, find(parts, "head").skinSegment());
+        assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").region().skinSegment());
+        assertEquals(PlayerSkinSegment.FULL, find(parts, "head").region().skinSegment());
     }
 
     private AnimationSkinBinding find(List<AnimationSkinBinding> parts, String nodeId) {

@@ -83,7 +83,7 @@ public class PlayerSkinManager implements ConfigListener {
         }
         Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
         for (AnimationSkinBinding skinPart : skinParts) {
-            requiredTextureKeys.add(new PlayerSkinRegion(skinPart.skinPart(), skinPart.skinSegment()));
+            requiredTextureKeys.add(skinPart.region());
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
@@ -103,7 +103,7 @@ public class PlayerSkinManager implements ConfigListener {
         for (AnimationSkinBinding skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
             if (node != null) {
-                applyMineSkinProfile(node, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);
+                applyMineSkinProfile(node, skinPart.region(), preparedPlayerSkin);
             }
         }
     }
@@ -118,11 +118,10 @@ public class PlayerSkinManager implements ConfigListener {
 
     private void applyMineSkinProfile(
         NodeInstance node,
-        PlayerSkinPart skinPart,
-        PlayerSkinSegment skinSegment,
+        PlayerSkinRegion region,
         PreparedPlayerSkin preparedSkin
     ) {
-        String textureUrl = preparedSkin.findTextureUrl(skinPart, skinSegment);
+        String textureUrl = preparedSkin.findTextureUrl(region);
         if (textureUrl == null) {
             return;
         }

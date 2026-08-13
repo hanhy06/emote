@@ -11,7 +11,7 @@ public record PreparedPlayerSkin(
         textureUrlMap = Map.copyOf(textureUrlMap);
     }
 
-    public String findTextureUrl(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
-        return this.textureUrlMap.get(new PlayerSkinRegion(skinPart, skinSegment));
+    public String findTextureUrl(PlayerSkinRegion region) {
+        return this.textureUrlMap.get(region);
     }
 }
