@@ -1,5 +1,9 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.config.Config;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -16,7 +20,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlayerSkinManagerTest {
-    private static final PlayerSkinTextureKey HEAD_TEXTURE_KEY = new PlayerSkinTextureKey(
+    private static final PlayerSkinRegion HEAD_TEXTURE_KEY = new PlayerSkinRegion(
         PlayerSkinPart.HEAD,
         PlayerSkinSegment.FULL
     );
@@ -97,7 +101,7 @@ class PlayerSkinManagerTest {
     void preparePlayerSkinReportsProgressForRequestedParts(@TempDir Path tempDir) {
         MineSkinCache textureStore = new MineSkinCache(tempDir);
         textureStore.save("skin-hash", false, Map.of(HEAD_TEXTURE_KEY, "https://textures.example/head"));
-        PlayerSkinTextureKey bodyTextureKey = new PlayerSkinTextureKey(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
+        PlayerSkinRegion bodyTextureKey = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
 
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
@@ -115,8 +119,8 @@ class PlayerSkinManagerTest {
             );
 
             PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, List.of(
-                new AnimationSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
-                new AnimationSkinPart("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
+                new AnimationSkinBinding("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
+                new AnimationSkinBinding("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
             ));
 
             assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
@@ -150,8 +154,8 @@ class PlayerSkinManagerTest {
         return manager;
     }
 
-    private List<AnimationSkinPart> createSkinParts() {
-        return List.of(new AnimationSkinPart("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
+    private List<AnimationSkinBinding> createSkinParts() {
+        return List.of(new AnimationSkinBinding("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

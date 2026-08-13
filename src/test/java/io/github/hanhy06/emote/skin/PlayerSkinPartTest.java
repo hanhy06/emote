@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import org.junit.jupiter.api.Test;
 
 import java.util.Locale;

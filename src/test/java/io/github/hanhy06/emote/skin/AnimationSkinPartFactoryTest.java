@@ -1,5 +1,9 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -21,14 +25,14 @@ class AnimationSkinPartFactoryTest {
         nodes.put("inner", itemNode(1.0D, EmoteAnimation.SkinPart.LEFT_ARM, 0));
         nodes.put("head", itemNode(1.0D, EmoteAnimation.SkinPart.HEAD, 0));
 
-        List<AnimationSkinPart> parts = new AnimationSkinPartFactory().create(animation(nodes));
+        List<AnimationSkinBinding> parts = new AnimationSkinBindingFactory().create(animation(nodes));
 
         assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").skinSegment());
         assertEquals(PlayerSkinSegment.FULL, find(parts, "head").skinSegment());
     }
 
-    private AnimationSkinPart find(List<AnimationSkinPart> parts, String nodeId) {
+    private AnimationSkinBinding find(List<AnimationSkinBinding> parts, String nodeId) {
         return parts.stream().filter(part -> part.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }
 

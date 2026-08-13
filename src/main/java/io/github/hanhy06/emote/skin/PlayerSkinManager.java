@@ -1,5 +1,10 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
@@ -65,13 +70,13 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinPart> skinParts) {
+    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinBinding> skinParts) {
         if (skinParts.isEmpty()) {
             return new SkinPreparation(null, SkinPreparationState.READY, 100);
         }
-        Set<PlayerSkinTextureKey> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
-        for (AnimationSkinPart skinPart : skinParts) {
-            requiredTextureKeys.add(new PlayerSkinTextureKey(skinPart.skinPart(), skinPart.skinSegment()));
+        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
+        for (AnimationSkinBinding skinPart : skinParts) {
+            requiredTextureKeys.add(new PlayerSkinRegion(skinPart.skinPart(), skinPart.skinSegment()));
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
@@ -82,13 +87,13 @@ public class PlayerSkinManager implements ConfigListener {
 
     public void applySkinParts(
         Map<String, NodeInstance> nodes,
-        List<AnimationSkinPart> skinParts,
+        List<AnimationSkinBinding> skinParts,
         PreparedPlayerSkin preparedPlayerSkin
     ) {
         if (preparedPlayerSkin == null || skinParts.isEmpty()) {
             return;
         }
-        for (AnimationSkinPart skinPart : skinParts) {
+        for (AnimationSkinBinding skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
             if (node != null) {
                 applyMineSkinProfile(node, skinPart.skinPart(), skinPart.skinSegment(), preparedPlayerSkin);

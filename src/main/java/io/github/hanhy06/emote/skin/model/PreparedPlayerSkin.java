@@ -1,10 +1,10 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.model;
 
 import java.util.Map;
 import java.util.Objects;
 
 public record PreparedPlayerSkin(
-    Map<PlayerSkinTextureKey, String> textureUrlMap
+    Map<PlayerSkinRegion, String> textureUrlMap
 ) {
     public PreparedPlayerSkin {
         Objects.requireNonNull(textureUrlMap, "textureUrlMap");
@@ -12,6 +12,6 @@ public record PreparedPlayerSkin(
     }
 
     public String findTextureUrl(PlayerSkinPart skinPart, PlayerSkinSegment skinSegment) {
-        return this.textureUrlMap.get(new PlayerSkinTextureKey(skinPart, skinSegment));
+        return this.textureUrlMap.get(new PlayerSkinRegion(skinPart, skinSegment));
     }
 }

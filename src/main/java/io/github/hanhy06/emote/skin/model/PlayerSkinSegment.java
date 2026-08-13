@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.model;
 
 public record PlayerSkinSegment(int startY, int endY) {
     public static final int SIDE_FACE_HEIGHT = 12;

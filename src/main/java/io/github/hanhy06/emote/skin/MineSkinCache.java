@@ -3,6 +3,9 @@ package io.github.hanhy06.emote.skin;
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.JsonFileStore;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -26,7 +29,7 @@ final class MineSkinCache {
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
 
     private final Path skinDirPath;
-    private final BoundedCache<SkinCacheKey, Map<PlayerSkinTextureKey, String>> skinTextures =
+    private final BoundedCache<SkinCacheKey, Map<PlayerSkinRegion, String>> skinTextures =
         new BoundedCache<>(SKIN_MEMORY_CACHE_MAX_ENTRIES);
     private final BoundedCache<String, String> contentTextureUrls =
         new BoundedCache<>(CONTENT_MEMORY_CACHE_MAX_ENTRIES);
@@ -56,10 +59,10 @@ final class MineSkinCache {
         }
     }
 
-    Map<PlayerSkinTextureKey, String> load(String textureHash, boolean slimModel) {
+    Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {
         SkinCacheKey cacheKey = new SkinCacheKey(textureHash, slimModel);
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinTextureKey, String> cached = this.skinTextures.get(cacheKey);
+        Map<PlayerSkinRegion, String> cached = this.skinTextures.get(cacheKey);
         if (cached != null) {
             refreshLastUsed(filePath);
             return cached;
@@ -80,9 +83,9 @@ final class MineSkinCache {
                 return cacheSkinTextures(cacheKey, Map.of());
             }
 
-            Map<PlayerSkinTextureKey, String> textureUrlMap = new HashMap<>();
+            Map<PlayerSkinRegion, String> textureUrlMap = new HashMap<>();
             for (JsonElement textureElement : textures) {
-                PlayerSkinTextureKey textureKey = readTextureKey(textureElement);
+                PlayerSkinRegion textureKey = readTextureKey(textureElement);
                 String textureUrl = readTextureUrl(textureElement);
                 if (textureKey == null || textureUrl == null) {
                     continue;
@@ -102,13 +105,13 @@ final class MineSkinCache {
         }
     }
 
-    void save(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
+    void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
         if (textureUrlMap.isEmpty()) {
             return;
         }
 
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.copyOf(textureUrlMap);
+        Map<PlayerSkinRegion, String> savedTextureUrls = Map.copyOf(textureUrlMap);
         JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
@@ -328,11 +331,11 @@ final class MineSkinCache {
         );
     }
 
-    private Map<PlayerSkinTextureKey, String> cacheSkinTextures(
+    private Map<PlayerSkinRegion, String> cacheSkinTextures(
         SkinCacheKey cacheKey,
-        Map<PlayerSkinTextureKey, String> textureUrls
+        Map<PlayerSkinRegion, String> textureUrls
     ) {
-        Map<PlayerSkinTextureKey, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
+        Map<PlayerSkinRegion, String> existing = this.skinTextures.putIfAbsent(cacheKey, textureUrls);
         return existing == null ? textureUrls : existing;
     }
 
@@ -436,19 +439,19 @@ final class MineSkinCache {
         }
     }
 
-    private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinTextureKey, String> textureUrlMap) {
+    private JsonObject createSkinJson(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
         JsonObject skinJson = new JsonObject();
         skinJson.addProperty("texture_hash", textureHash);
         skinJson.addProperty("slim_model", slimModel);
 
         JsonArray texturesJson = new JsonArray();
-        List<Map.Entry<PlayerSkinTextureKey, String>> textureEntries = new ArrayList<>(textureUrlMap.entrySet());
+        List<Map.Entry<PlayerSkinRegion, String>> textureEntries = new ArrayList<>(textureUrlMap.entrySet());
         textureEntries.sort(Comparator
-            .comparing((Map.Entry<PlayerSkinTextureKey, String> entry) -> entry.getKey().skinPart().ordinal())
+            .comparing((Map.Entry<PlayerSkinRegion, String> entry) -> entry.getKey().skinPart().ordinal())
             .thenComparing(entry -> entry.getKey().skinSegment().startY())
             .thenComparing(entry -> entry.getKey().skinSegment().endY()));
 
-        for (Map.Entry<PlayerSkinTextureKey, String> textureEntry : textureEntries) {
+        for (Map.Entry<PlayerSkinRegion, String> textureEntry : textureEntries) {
             JsonObject textureJson = new JsonObject();
             textureJson.addProperty("skin_part", textureEntry.getKey().skinPart().id());
             textureJson.addProperty("segment_start_y", textureEntry.getKey().skinSegment().startY());
@@ -466,7 +469,7 @@ final class MineSkinCache {
         return textures != null && textures.isJsonArray() ? textures.getAsJsonArray() : null;
     }
 
-    private PlayerSkinTextureKey readTextureKey(JsonElement textureElement) {
+    private PlayerSkinRegion readTextureKey(JsonElement textureElement) {
         if (textureElement == null || !textureElement.isJsonObject()) {
             return null;
         }
@@ -480,7 +483,7 @@ final class MineSkinCache {
         }
 
         try {
-            return new PlayerSkinTextureKey(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd));
+            return new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd));
         } catch (IllegalArgumentException ignored) {
             return null;
         }

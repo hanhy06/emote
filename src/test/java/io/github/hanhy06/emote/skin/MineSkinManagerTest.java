@@ -1,5 +1,8 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -20,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 class MineSkinManagerTest {
     @Test
     void completedBakeTaskIsRemoved(@TempDir Path tempDir) {
-        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         MineSkinCache cache = new MineSkinCache(tempDir);
 
         try (CapturingExecutorService executorService = new CapturingExecutorService();
@@ -59,7 +62,7 @@ class MineSkinManagerTest {
 
     @Test
     void cancelledBakeTaskDoesNotNotifyCompletion(@TempDir Path tempDir) {
-        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         MineSkinCache cache = new MineSkinCache(tempDir);
         AtomicInteger completionNotifications = new AtomicInteger();
 

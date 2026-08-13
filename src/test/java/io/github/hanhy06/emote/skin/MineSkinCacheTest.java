@@ -1,5 +1,8 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -16,9 +19,9 @@ class MineSkinCacheTest {
     @Test
     void saveAndLoadRoundTrip(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        Map<PlayerSkinTextureKey, String> savedTextureUrls = Map.of(
-            new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL), "https://textures.minecraft.net/texture/head",
-            new PlayerSkinTextureKey(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)), "https://textures.minecraft.net/texture/left_arm"
+        Map<PlayerSkinRegion, String> savedTextureUrls = Map.of(
+            new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL), "https://textures.minecraft.net/texture/head",
+            new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)), "https://textures.minecraft.net/texture/left_arm"
         );
 
         store.save("ABCDEF", true, savedTextureUrls);
@@ -39,8 +42,8 @@ class MineSkinCacheTest {
 
     @Test
     void repeatedSkinLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
-        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
-        Map<PlayerSkinTextureKey, String> saved = Map.of(textureKey, "https://textures.example/head");
+        PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        Map<PlayerSkinRegion, String> saved = Map.of(textureKey, "https://textures.example/head");
         new MineSkinCache(tempDir).save("ABCDEF", false, saved);
         MineSkinCache store = new MineSkinCache(tempDir);
 
@@ -55,8 +58,8 @@ class MineSkinCacheTest {
     @Test
     void repeatedMissingSkinLoadUsesMemoryCache(@TempDir Path tempDir) {
         MineSkinCache store = new MineSkinCache(tempDir);
-        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
-        Map<PlayerSkinTextureKey, String> saved = Map.of(textureKey, "https://textures.example/head");
+        PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        Map<PlayerSkinRegion, String> saved = Map.of(textureKey, "https://textures.example/head");
 
         assertTrue(store.load("abcdef", false).isEmpty());
         new MineSkinCache(tempDir).save("abcdef", false, saved);
@@ -127,7 +130,7 @@ class MineSkinCacheTest {
     @Test
     void cleanupRemovesExpiredCacheAndRetainsRecentlyUsedEntry(@TempDir Path tempDir) throws IOException {
         MineSkinCache store = new MineSkinCache(tempDir);
-        PlayerSkinTextureKey textureKey = new PlayerSkinTextureKey(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
+        PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         Path expiredPath = tempDir.resolve("expired-classic.json");
         store.save("expired", false, Map.of(textureKey, "https://textures.example/expired"));
 

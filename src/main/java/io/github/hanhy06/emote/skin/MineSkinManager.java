@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
@@ -60,9 +62,9 @@ final class MineSkinManager {
 
     PlayerSkinManager.SkinPreparation prepare(
         PlayerSkinManager.PlayerSkinSource source,
-        Set<PlayerSkinTextureKey> requiredTextureKeys
+        Set<PlayerSkinRegion> requiredTextureKeys
     ) {
-        Map<PlayerSkinTextureKey, String> savedTextureUrls = loadTextureSet(source, requiredTextureKeys);
+        Map<PlayerSkinRegion, String> savedTextureUrls = loadTextureSet(source, requiredTextureKeys);
         if (savedTextureUrls.size() == requiredTextureKeys.size()) {
             return new PlayerSkinManager.SkinPreparation(
                 new PreparedPlayerSkin(savedTextureUrls),
@@ -213,13 +215,13 @@ final class MineSkinManager {
         }
     }
 
-    private Map<PlayerSkinTextureKey, String> loadTextureSet(
+    private Map<PlayerSkinRegion, String> loadTextureSet(
         PlayerSkinManager.PlayerSkinSource source,
-        Set<PlayerSkinTextureKey> requiredTextureKeys
+        Set<PlayerSkinRegion> requiredTextureKeys
     ) {
-        Map<PlayerSkinTextureKey, String> stored = this.cache.load(source.textureHash(), source.slimModel());
-        Map<PlayerSkinTextureKey, String> result = new HashMap<>();
-        for (PlayerSkinTextureKey textureKey : requiredTextureKeys) {
+        Map<PlayerSkinRegion, String> stored = this.cache.load(source.textureHash(), source.slimModel());
+        Map<PlayerSkinRegion, String> result = new HashMap<>();
+        for (PlayerSkinRegion textureKey : requiredTextureKeys) {
             String textureUrl = stored.get(textureKey);
             if (textureUrl != null) {
                 result.put(textureKey, textureUrl);
@@ -230,7 +232,7 @@ final class MineSkinManager {
 
     private BakeStage scheduleBake(
         PlayerSkinManager.PlayerSkinSource source,
-        Set<PlayerSkinTextureKey> requiredKeys
+        Set<PlayerSkinRegion> requiredKeys
     ) {
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
         BakeTask bakeTask;
@@ -250,8 +252,8 @@ final class MineSkinManager {
     private void bakeAndSave(BakeTask bakeTask) {
         PlayerSkinManager.PlayerSkinSource source = bakeTask.source();
         try {
-            Map<PlayerSkinTextureKey, String> stored = this.cache.load(source.textureHash(), source.slimModel());
-            Set<PlayerSkinTextureKey> missingKeys = new LinkedHashSet<>(bakeTask.requiredKeys());
+            Map<PlayerSkinRegion, String> stored = this.cache.load(source.textureHash(), source.slimModel());
+            Set<PlayerSkinRegion> missingKeys = new LinkedHashSet<>(bakeTask.requiredKeys());
             missingKeys.removeAll(stored.keySet());
             if (missingKeys.isEmpty()) {
                 complete(bakeTask);
@@ -264,8 +266,8 @@ final class MineSkinManager {
                 sourceImage,
                 source.slimModel()
             );
-            Map<PlayerSkinTextureKey, String> saved = new HashMap<>(stored);
-            for (PlayerSkinTextureKey textureKey : missingKeys) {
+            Map<PlayerSkinRegion, String> saved = new HashMap<>(stored);
+            for (PlayerSkinRegion textureKey : missingKeys) {
                 bakeTask.updateStage(BakeStage.BAKING_PART);
                 byte[] bakedImage = this.playerSkinBaker.bake(
                     preparedSkin,
@@ -419,9 +421,9 @@ final class MineSkinManager {
         private final PlayerSkinManager.PlayerSkinSource source;
         private final long queueGeneration;
         private final Set<UUID> subscribers = new LinkedHashSet<>();
-        private final Set<PlayerSkinTextureKey> requiredKeys = new LinkedHashSet<>();
-        private final Map<PlayerSkinTextureKey, Integer> retryAttempts = new HashMap<>();
-        private final Map<PlayerSkinTextureKey, Long> retryTimes = new HashMap<>();
+        private final Set<PlayerSkinRegion> requiredKeys = new LinkedHashSet<>();
+        private final Map<PlayerSkinRegion, Integer> retryAttempts = new HashMap<>();
+        private final Map<PlayerSkinRegion, Long> retryTimes = new HashMap<>();
 
         private BakeStage stage = BakeStage.QUEUED;
         private long failedAtEpochMillis;
@@ -448,7 +450,7 @@ final class MineSkinManager {
             this.subscribers.add(playerUuid);
         }
 
-        private synchronized boolean addRequiredKeys(Set<PlayerSkinTextureKey> keys) {
+        private synchronized boolean addRequiredKeys(Set<PlayerSkinRegion> keys) {
             boolean changed = this.requiredKeys.addAll(keys);
             if (changed && (this.stage == BakeStage.COMPLETE || this.stage == BakeStage.FAILED)) {
                 this.stage = BakeStage.QUEUED;
@@ -456,7 +458,7 @@ final class MineSkinManager {
             return changed;
         }
 
-        private synchronized Set<PlayerSkinTextureKey> requiredKeys() {
+        private synchronized Set<PlayerSkinRegion> requiredKeys() {
             return Set.copyOf(this.requiredKeys);
         }
 
@@ -487,12 +489,12 @@ final class MineSkinManager {
             }
         }
 
-        private synchronized void markCompleted(PlayerSkinTextureKey textureKey) {
+        private synchronized void markCompleted(PlayerSkinRegion textureKey) {
             this.retryAttempts.remove(textureKey);
             this.retryTimes.remove(textureKey);
         }
 
-        private synchronized int recordRetry(PlayerSkinTextureKey textureKey, long retryAtEpochMillis) {
+        private synchronized int recordRetry(PlayerSkinRegion textureKey, long retryAtEpochMillis) {
             Long previousRetryAt = this.retryTimes.put(textureKey, retryAtEpochMillis);
             if (previousRetryAt != null && previousRetryAt == retryAtEpochMillis) {
                 return this.retryAttempts.getOrDefault(textureKey, 1);
@@ -506,7 +508,7 @@ final class MineSkinManager {
             }
         }
 
-        private synchronized boolean isSatisfiedBy(Set<PlayerSkinTextureKey> availableKeys) {
+        private synchronized boolean isSatisfiedBy(Set<PlayerSkinRegion> availableKeys) {
             return availableKeys.containsAll(this.requiredKeys);
         }
 

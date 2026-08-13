@@ -4,8 +4,8 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
-import io.github.hanhy06.emote.skin.AnimationSkinPart;
-import io.github.hanhy06.emote.skin.AnimationSkinPartFactory;
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -13,10 +13,10 @@ import java.util.Objects;
 
 public record RegisteredEmote(
     EmoteAnimation.Loaded source,
-    List<AnimationSkinPart> skinParts,
+    List<AnimationSkinBinding> skinParts,
     PlaybackPlan playbackPlan
 ) implements EmoteDefinition {
-    private static final AnimationSkinPartFactory SKIN_PART_FACTORY = new AnimationSkinPartFactory();
+    private static final AnimationSkinBindingFactory SKIN_PART_FACTORY = new AnimationSkinBindingFactory();
 
     public RegisteredEmote {
         Objects.requireNonNull(source, "source");

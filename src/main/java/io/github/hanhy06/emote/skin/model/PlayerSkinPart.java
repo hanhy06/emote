@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.model;
 
 import java.util.Locale;
 import java.util.Map;

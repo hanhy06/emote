@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.skin.AnimationSkinPart;
+import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
@@ -19,7 +19,7 @@ public record ActivePlayback(
     PlaybackNodes nodes,
     TimelinePlayer timeline,
     EventPlayer events,
-    List<AnimationSkinPart> skinParts,
+    List<AnimationSkinBinding> skinParts,
     EmotePlayerBehavior playerBehavior,
     boolean wasInvisible
 ) {

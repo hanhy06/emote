@@ -1,12 +1,14 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.animation;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 
 import java.util.*;
 
-public final class AnimationSkinPartFactory {
-    public List<AnimationSkinPart> create(EmoteAnimation animation) {
+public final class AnimationSkinBindingFactory {
+    public List<AnimationSkinBinding> create(EmoteAnimation animation) {
         Map<PlayerSkinPart, List<RawPart>> byPart = new EnumMap<>(PlayerSkinPart.class);
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {
@@ -20,27 +22,27 @@ public final class AnimationSkinPartFactory {
             ));
         }
 
-        List<AnimationSkinPart> result = new ArrayList<>();
+        List<AnimationSkinBinding> result = new ArrayList<>();
         for (Map.Entry<PlayerSkinPart, List<RawPart>> entry : byPart.entrySet()) {
             List<RawPart> parts = entry.getValue().stream()
                 .sorted(Comparator.comparingInt(RawPart::order).thenComparing(RawPart::nodeId))
                 .toList();
             result.addAll(createParts(entry.getKey(), parts));
         }
-        result.sort(Comparator.comparing(AnimationSkinPart::nodeId));
+        result.sort(Comparator.comparing(AnimationSkinBinding::nodeId));
         return List.copyOf(result);
     }
 
-    private List<AnimationSkinPart> createParts(PlayerSkinPart skinPart, List<RawPart> parts) {
+    private List<AnimationSkinBinding> createParts(PlayerSkinPart skinPart, List<RawPart> parts) {
         if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
             return parts.stream()
-                .map(part -> new AnimationSkinPart(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
             Emote.LOGGER.warn("Too many vertical JSON skin segments for {}: {}", skinPart.id(), parts.size());
             return parts.stream()
-                .map(part -> new AnimationSkinPart(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
+                .map(part -> new AnimationSkinBinding(part.nodeId(), skinPart, PlayerSkinSegment.FULL))
                 .toList();
         }
 
@@ -48,7 +50,7 @@ public final class AnimationSkinPartFactory {
         if (totalScale <= 0.0D) {
             totalScale = parts.size();
         }
-        List<AnimationSkinPart> result = new ArrayList<>();
+        List<AnimationSkinBinding> result = new ArrayList<>();
         int segmentStart = 0;
         double accumulatedScale = 0.0D;
         for (int index = 0; index < parts.size(); index++) {
@@ -59,7 +61,7 @@ public final class AnimationSkinPartFactory {
             int maximumEnd = Math.max(minimumEnd, PlayerSkinSegment.SIDE_FACE_HEIGHT - remaining);
             int suggestedEnd = (int) Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
-            result.add(new AnimationSkinPart(
+            result.add(new AnimationSkinBinding(
                 part.nodeId(),
                 skinPart,
                 new PlayerSkinSegment(segmentStart, segmentEnd)

@@ -11,7 +11,7 @@ import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.PreparedPlayerSkin;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
