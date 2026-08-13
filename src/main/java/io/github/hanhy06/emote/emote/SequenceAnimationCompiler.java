@@ -24,8 +24,8 @@ final class SequenceAnimationCompiler {
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         long offset = 0L;
         for (RegisteredSequence.SelectedStep selectedStep : steps) {
-            if (selectedStep instanceof RegisteredSequence.SelectedWaitStep waitStep) {
-                offset += waitStep.ticks();
+            if (selectedStep instanceof RegisteredSequence.SelectedWaitStep(int ticks)) {
+                offset += ticks;
                 continue;
             }
             RegisteredSequence.SelectedEmoteStep step = (RegisteredSequence.SelectedEmoteStep) selectedStep;
@@ -164,8 +164,8 @@ final class SequenceAnimationCompiler {
     private static String fingerprint(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
         StringBuilder input = new StringBuilder(sequence.id().toString());
         for (RegisteredSequence.SelectedStep step : steps) {
-            if (step instanceof RegisteredSequence.SelectedWaitStep waitStep) {
-                input.append("|wait:").append(waitStep.ticks());
+            if (step instanceof RegisteredSequence.SelectedWaitStep(int ticks)) {
+                input.append("|wait:").append(ticks);
             } else {
                 RegisteredSequence.SelectedEmoteStep emoteStep = (RegisteredSequence.SelectedEmoteStep) step;
                 input.append('|').append(emoteStep.animation().source().sha256()).append(':').append(emoteStep.loopDelayAfter());

@@ -36,7 +36,7 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         return new Matrix4f(this.rotationMatrix).mul(toJoml(nodeMatrix));
     }
 
-    public Transformation displayTransformation(PlaybackPlan.PreparedTransform transform) {
+    Transformation displayTransformation(PlaybackPlan.PreparedTransform transform) {
         if (transform.preservesMatrix()) {
             return new Transformation(new Matrix4f(this.rotationMatrix).mul(transform.localMatrix()));
         }

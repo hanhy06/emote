@@ -29,8 +29,8 @@ public record RegisteredSequence(
     public static RegisteredSequence resolve(EmoteSequence source, Map<String, RegisteredEmote> animations) {
         List<Step> resolvedSteps = new ArrayList<>(source.steps().size());
         for (EmoteSequence.Step sourceStep : source.steps()) {
-            if (sourceStep instanceof EmoteSequence.WaitStep waitStep) {
-                resolvedSteps.add(new WaitStep(waitStep.ticks()));
+            if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
+                resolvedSteps.add(new WaitStep(ticks));
                 continue;
             }
             EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
@@ -63,8 +63,8 @@ public record RegisteredSequence(
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
         for (Step step : this.steps) {
-            if (step instanceof WaitStep waitStep) {
-                selectedSteps.add(new SelectedWaitStep(waitStep.ticks()));
+            if (step instanceof WaitStep(int ticks)) {
+                selectedSteps.add(new SelectedWaitStep(ticks));
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
@@ -84,8 +84,8 @@ public record RegisteredSequence(
     private static List<SelectedStep> selectFirstCandidates(List<Step> steps) {
         List<SelectedStep> selectedSteps = new ArrayList<>();
         for (Step step : steps) {
-            if (step instanceof WaitStep waitStep) {
-                selectedSteps.add(new SelectedWaitStep(waitStep.ticks()));
+            if (step instanceof WaitStep(int ticks)) {
+                selectedSteps.add(new SelectedWaitStep(ticks));
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
@@ -142,10 +142,6 @@ public record RegisteredSequence(
     @Override
     public int nodeCount() {
         return this.compiledAnimation.nodeCount();
-    }
-
-    public int displayNodeCount() {
-        return this.compiledAnimation.displayNodeCount();
     }
 
     public sealed interface Step permits EmoteStep, WaitStep {

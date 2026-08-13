@@ -37,7 +37,7 @@ public class WheelShortcutSettings {
 
         List<String> storedIds = this.shortcutsByServer.get(serverKey);
         List<String> knownIds = this.knownIdsByServer.get(serverKey);
-        boolean settingsChanged = false;
+        boolean settingsChanged;
         if (storedIds == null) {
             storedIds = List.copyOf(nextAvailableById.keySet());
             knownIds = storedIds;
@@ -172,7 +172,7 @@ public class WheelShortcutSettings {
 
         try {
             JsonObject root = JsonFileStore.readObject(this.filePath);
-            if (root == null || readInt(root.get("schema_version"), 0) != CURRENT_SCHEMA_VERSION) {
+            if (root == null || readInt(root.get("schema_version")) != CURRENT_SCHEMA_VERSION) {
                 Emote.LOGGER.warn("Wheel shortcut settings are empty or use an unsupported schema version.");
                 return;
             }
@@ -229,9 +229,9 @@ public class WheelShortcutSettings {
         }
     }
 
-    private static int readInt(JsonElement element, int defaultValue) {
+    private static int readInt(JsonElement element) {
         return element == null || !element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()
-            ? defaultValue
+            ? 0
             : element.getAsInt();
     }
 
