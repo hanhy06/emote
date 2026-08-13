@@ -1,6 +1,6 @@
-# Emote animation schema 2
+# Emote animation format
 
-Animation files are JSON objects with five required root sections:
+Animation files use schema version 2 and contain the display entities, transforms, and commands for one emote.
 
 ```json
 {
@@ -40,36 +40,104 @@ Animation files are JSON objects with five required root sections:
 }
 ```
 
+See [emote-animation-format.json](./emote-animation-format.json) for a complete example containing every node and event form.
+
+## Root fields
+
+| Field | Description |
+|-------|-------------|
+| `type` | Must be `animation`. |
+| `schema_version` | Must be `2`. |
+| `id` | Lowercase Minecraft identifier in `namespace:path` form. |
+| `metadata` | Display name, description, and optional custom metadata. |
+| `settings` | Selection, player, and playback behavior. |
+| `nodes` | Display entities and command anchors keyed by stable node IDs. |
+| `timeline` | Duration, transforms, visibility changes, and command events. |
+
+Animation JSON files are limited to 8 MiB and timelines to 10 minutes.
+
 ## Time values
 
-Every gameplay time value is a string parsed with Minecraft's time argument rules. Supported suffixes are `d` for Minecraft days, `s` for seconds, and `t` for ticks. A bare integer also means ticks. Examples: `"1d"`, `"5s"`, `"20t"`, and `"20"`.
+Gameplay time values are strings using Minecraft time units:
 
-This applies to `settings.cooldown`, `settings.playback.loop_delay`, `timeline.duration`, keyframe and event `time`, and `interpolation_duration`. `loop_delay` must be zero when playback mode is `once`.
+| Example | Meaning |
+|---------|---------|
+| `"1d"` | One Minecraft day. |
+| `"5s"` | Five seconds. |
+| `"20t"` | Twenty ticks. |
+| `"20"` | Twenty ticks. |
 
-## Metadata and settings
+This format is used by `cooldown`, `loop_delay`, timeline and event `time`, `duration`, and `interpolation_duration`.
 
-- `id` is a lowercase Minecraft `namespace:path` identifier.
-- `metadata.name` and `metadata.description` are required. Any additional metadata fields are preserved and exposed through the API and web editor.
-- `settings.standalone` controls whether the animation can be selected and played directly. A non-standalone animation can still be used by a sequence.
-- `settings.cooldown` is applied per player and emote after successful playback.
-- `settings.player.hidden` hides the original player while the emote runs.
-- `settings.player.stop_conditions` defines interruptions. `movement_distance` is a non-negative horizontal block distance; zero disables movement interruption.
-- `settings.playback.mode` is `once`, `loop`, or `server_sync`.
+## Metadata
+
+- `name` is the name shown in commands and the emote UI.
+- `description` is the description shown to players.
+- Additional fields are preserved and exposed through the API and web converter.
+
+## Settings
+
+### Selection and cooldown
+
+- `standalone` controls whether the animation appears in the emote menu, wheel, search, and command suggestions and whether it can be played directly. Set it to `false` for an animation intended only for sequences.
+- `cooldown` is applied to the player after the animation starts successfully.
+
+### Player behavior
+
+- `hidden` hides the original player while the animation is playing.
+- `movement_distance` stops playback after the player moves the given horizontal distance. `0` disables this condition.
+- `jump`, `submerge`, `ride`, `damage`, `attack`, and `game_mode_change` stop playback when the corresponding action occurs.
+
+### Playback
+
+| Mode | Description |
+|------|-------------|
+| `once` | Plays the timeline once. `loop_delay` must be `0t`. |
+| `loop` | Repeats the timeline after `loop_delay`. |
+| `server_sync` | Synchronizes playback to server time. It cannot be used in a sequence. |
 
 ## Nodes
 
-Each property of `nodes` is a stable node ID. Every node has a 16-number `default_matrix` in column-major transformation form.
+Each property in `nodes` is a stable node ID. Every node requires a 16-number `default_matrix` in column-major order.
 
-- `item_display` requires `item_stack_snbt` and `item_display`. It may include player `skin` mapping with a body `part` and non-negative `order`.
-- `block_display` requires `block_state_snbt`.
-- `text_display` requires a text component in `text`.
-- `anchor` has no display entity and is used as a command origin or source.
-- Display nodes may include `visible` and `entity_nbt`.
+| Type | Required fields | Purpose |
+|------|-----------------|---------|
+| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack. |
+| `block_display` | `block_state_snbt` | Displays a block state. |
+| `text_display` | `text` | Displays a Minecraft text component. |
+| `anchor` | None beyond `type` and `default_matrix` | Provides a command source or origin without creating a display entity. |
 
-## Timeline and commands
+Display nodes also support:
 
-`timeline.keyframes` changes node transforms and visibility. A keyframe-level `interpolation_duration` applies to its transforms unless an individual node transform overrides it.
+- `visible`, which defaults to `true`;
+- `entity_nbt`, containing additional display entity SNBT; and
+- `skin` on item display nodes, containing a player body `part` and non-negative `order`.
 
-`timeline.events` may contain `start`, `timeline`, `loop`, and `stop` command arrays. Timeline events additionally require `time`. A command `source` is `player`, `server`, or a named `node`; its `origin` is the animation `root` or a named `node`, with an optional three-number `offset`.
+Supported skin parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes with the same part are ordered using `order` when the player's skin is applied.
 
-See [emote-animation-format.json](./emote-animation-format.json) for a complete example containing every node and event form.
+## Timeline
+
+`duration` sets the total playback time. `keyframes` must be ordered by `time`.
+
+A keyframe can contain:
+
+- `node_transforms`, mapping node IDs to a `matrix`;
+- `node_states`, mapping display node IDs to a `visible` value; and
+- `interpolation_duration`, used by transforms in that keyframe unless a transform overrides it.
+
+An interpolation duration must fit between the node's previous transform and the current keyframe. Anchor nodes support transforms but not visibility states.
+
+## Command events
+
+The optional `timeline.events` object supports four event groups:
+
+| Event | Runs |
+|-------|------|
+| `start` | When playback starts. |
+| `timeline` | At its specified `time`. |
+| `loop` | After each completed loop. |
+| `stop` | When playback stops. |
+
+Each event contains a `source`, an `origin`, and a `commands` array. A source can be the `player`, the `server`, or a named `node`. An origin can be the animation `root` or a named `node`, with an optional three-number `offset`.
+
+Timeline events must be ordered by time and occur before the timeline duration.
