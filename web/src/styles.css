@@ -123,6 +123,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .field-heading { display: flex; align-items: baseline; height: 18px; gap: 8px; line-height: 18px; white-space: nowrap; }
 .field-heading small { overflow: hidden; text-overflow: ellipsis; font-weight: 400; line-height: inherit; }
 .settings-selectors { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.playback-settings-group { display: contents; }
 .settings-toggles { grid-template-columns: repeat(4, max-content); margin-top: 14px; column-gap: 48px; row-gap: 6px; }
 .settings-toggles .checkbox { align-self: center; min-height: 28px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
