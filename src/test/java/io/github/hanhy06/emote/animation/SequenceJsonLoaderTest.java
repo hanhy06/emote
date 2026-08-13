@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.animation;
 
 import com.google.gson.JsonPrimitive;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.emote.EmoteSequence;
+import io.github.hanhy06.emote.content.EmoteSequence;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

@@ -3,10 +3,10 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.emote.EmoteSequence;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.emote.RegisteredEmoteFixture;
-import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import net.minecraft.SharedConstants;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
@@ -33,7 +33,7 @@ class PlaybackSessionRegistryTest {
 
     @Test
     void keepsPartnerReservationsSeparateUntilActivation() {
-        RegisteredEmote emote = RegisteredEmoteFixture.create("test:registry", "Registry");
+        PreparedEmote emote = PreparedEmoteFixture.create("test:registry", "Registry");
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
@@ -54,7 +54,7 @@ class PlaybackSessionRegistryTest {
 
     @Test
     void removingSessionClearsParticipantAndReservationIndexes() {
-        RegisteredEmote emote = RegisteredEmoteFixture.create("test:remove", "Remove");
+        PreparedEmote emote = PreparedEmoteFixture.create("test:remove", "Remove");
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
@@ -69,7 +69,7 @@ class PlaybackSessionRegistryTest {
         assertTrue(registry.isEmpty());
     }
 
-    private static PlaybackSession session(RegisteredEmote emote) {
+    private static PlaybackSession session(PreparedEmote emote) {
         EmoteSequence source = new EmoteSequence(
             Path.of("registry.json"),
             Identifier.parse("test:registry"),
@@ -77,12 +77,12 @@ class PlaybackSessionRegistryTest {
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(new EmoteSequence.EmoteStep(emote.animation().id(), 1))
         );
-        RegisteredSequence.Branch branch = new RegisteredSequence.Branch(List.of(
-            new RegisteredSequence.EmoteStep(List.of(new RegisteredSequence.Choice(emote, 0)), 1)
+        PreparedSequence.Branch branch = new PreparedSequence.Branch(List.of(
+            new PreparedSequence.EmoteStep(List.of(new PreparedSequence.Choice(emote, 0)), 1)
         ));
-        RegisteredSequence sequence = new RegisteredSequence(
+        PreparedSequence sequence = new PreparedSequence(
             source,
-            new RegisteredSequence.CollaborativePlayback(emote, 20, branch, branch),
+            new PreparedSequence.CollaborativePlayback(emote, 20, branch, branch),
             emote
         );
         return new PlaybackSession(
@@ -99,7 +99,7 @@ class PlaybackSessionRegistryTest {
         );
     }
 
-    private static TimelinePlayer timeline(RegisteredEmote emote) {
+    private static TimelinePlayer timeline(PreparedEmote emote) {
         return new TimelinePlayer(
             emote.playbackPlan(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
@@ -107,7 +107,7 @@ class PlaybackSessionRegistryTest {
         );
     }
 
-    private static EventPlayer events(RegisteredEmote emote) {
+    private static EventPlayer events(PreparedEmote emote) {
         return new EventPlayer(emote.playbackPlan(), ignored -> {
         });
     }

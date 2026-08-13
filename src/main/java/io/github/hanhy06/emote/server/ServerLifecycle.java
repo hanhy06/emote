@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import io.github.hanhy06.emote.playback.PlaybackManager;
@@ -18,7 +18,7 @@ import net.minecraft.world.InteractionResult;
 
 public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
-    private final EmoteRegistry emoteRegistry;
+    private final EmoteCatalog emoteRegistry;
     private final PlaybackManager playbackManager;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
@@ -26,7 +26,7 @@ public class ServerLifecycle {
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
-        EmoteRegistry emoteRegistry,
+        EmoteCatalog emoteRegistry,
         PlaybackManager playbackManager,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,

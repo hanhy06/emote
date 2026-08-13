@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
-import io.github.hanhy06.emote.emote.PlayService;
+import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
@@ -32,7 +32,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
 
     public IdlePlaybackService(
         PermissionService permissionService,
-        PlayService playService,
+        EmotePlayService playService,
         PlaybackManager playbackManager
     ) {
         this(

@@ -1,14 +1,14 @@
-package io.github.hanhy06.emote.api;
+package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
+import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayService;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackParticipant;
@@ -22,19 +22,19 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
-public final class ApiImpl extends EmoteApi {
-    private final EmoteRegistry emoteRegistry;
-    private final PlayService playService;
+public final class EmoteApiImpl extends EmoteApi {
+    private final EmoteCatalog emoteRegistry;
+    private final EmotePlayService playService;
     private final PlaybackManager playbackManager;
-    private final ApiEvents events;
+    private final ApiEventDispatcher events;
     private final WheelSyncService wheelSyncService;
     private final AnimationServerPreparer animationValidator;
 
-    public ApiImpl(
-        EmoteRegistry emoteRegistry,
-        PlayService playService,
+    public EmoteApiImpl(
+        EmoteCatalog emoteRegistry,
+        EmotePlayService playService,
         PlaybackManager playbackManager,
-        ApiEvents events,
+        ApiEventDispatcher events,
         WheelSyncService wheelSyncService,
         AnimationServerPreparer animationValidator
     ) {
@@ -71,7 +71,7 @@ public final class ApiImpl extends EmoteApi {
             "api:" + animation.id(),
             animation
         );
-        RegisteredEmote emote = RegisteredEmote.from(this.animationValidator.prepare(loaded));
+        PreparedEmote emote = PreparedEmote.from(this.animationValidator.prepare(loaded));
         UUID registrationId = this.emoteRegistry.registerApi(emote);
         this.wheelSyncService.syncAll();
         return new ApiRegistration(animation.id(), registrationId);
@@ -81,13 +81,13 @@ public final class ApiImpl extends EmoteApi {
     public Optional<EmoteInfo> find(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
         return Optional.ofNullable(this.emoteRegistry.findDefinition(emoteId.toString()))
-            .map(ApiEvents::toInfo);
+            .map(ApiEventDispatcher::toInfo);
     }
 
     @Override
     public List<EmoteInfo> getAll() {
         return this.emoteRegistry.getAllDefinitions().stream()
-            .map(ApiEvents::toInfo)
+            .map(ApiEventDispatcher::toInfo)
             .toList();
     }
 
@@ -99,7 +99,7 @@ public final class ApiImpl extends EmoteApi {
             return Optional.empty();
         }
         PlaybackParticipant participant = session.participant(player.getUUID());
-        return participant == null ? Optional.empty() : Optional.of(ApiEvents.toPlaybackInfo(session, participant));
+        return participant == null ? Optional.empty() : Optional.of(ApiEventDispatcher.toPlaybackInfo(session, participant));
     }
 
     @Override
@@ -134,7 +134,7 @@ public final class ApiImpl extends EmoteApi {
 
         @Override
         public boolean isRegistered() {
-            return ApiImpl.this.emoteRegistry.isApiRegistrationActive(
+            return EmoteApiImpl.this.emoteRegistry.isApiRegistrationActive(
                 this.id.toString(),
                 this.registrationId
             );
@@ -143,11 +143,11 @@ public final class ApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
-            if (!ApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
+            if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            ApiImpl.this.playbackManager.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
-            ApiImpl.this.wheelSyncService.syncAll();
+            EmoteApiImpl.this.playbackManager.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            EmoteApiImpl.this.wheelSyncService.syncAll();
             return true;
         }
     }

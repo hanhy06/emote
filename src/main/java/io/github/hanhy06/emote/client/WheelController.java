@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.client;
 
-import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -30,7 +30,7 @@ public class WheelController {
         this.lastSelectedId = "";
     }
 
-    public void updateEntries(List<PlayableEmote> emotes) {
+    public void updateEntries(List<EmoteSummary> emotes) {
         this.shortcutSettings.updateServer(findServerKey(Minecraft.getInstance()), emotes);
         this.syncedFromServer = true;
     }
@@ -48,7 +48,7 @@ public class WheelController {
         client.gui.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
     }
 
-    public void play(PlayableEmote playableEmote) {
+    public void play(EmoteSummary playableEmote) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
@@ -62,11 +62,11 @@ public class WheelController {
         Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
     }
 
-    public List<PlayableEmote> getShortcutEmotes() {
+    public List<EmoteSummary> getShortcutEmotes() {
         return this.shortcutSettings.selectedEmotes();
     }
 
-    public List<PlayableEmote> getAvailableShortcutEmotes() {
+    public List<EmoteSummary> getAvailableShortcutEmotes() {
         return this.shortcutSettings.availableEmotes();
     }
 
@@ -97,7 +97,7 @@ public class WheelController {
     }
 
     private int findInitialPageIndex() {
-        List<PlayableEmote> shortcuts = getShortcutEmotes();
+        List<EmoteSummary> shortcuts = getShortcutEmotes();
         if (this.lastSelectedId.isEmpty() || shortcuts.isEmpty()) {
             return 0;
         }

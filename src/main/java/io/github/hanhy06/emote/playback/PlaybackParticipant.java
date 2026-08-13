@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.content.SkinBinding;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
@@ -12,7 +12,7 @@ public record PlaybackParticipant(
     UUID playerUuid,
     ParticipantRole role,
     Vec3 startPosition,
-    List<AnimationSkinBinding> skinParts,
+    List<SkinBinding> skinParts,
     boolean wasInvisible
 ) {
     public PlaybackParticipant {

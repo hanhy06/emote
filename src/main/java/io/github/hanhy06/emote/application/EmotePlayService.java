@@ -1,8 +1,9 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
-import io.github.hanhy06.emote.api.ApiEvents;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import net.minecraft.network.chat.Component;
@@ -12,8 +13,8 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
-public class PlayService {
-    private final EmoteRegistry emoteRegistry;
+public class EmotePlayService {
+    private final EmoteCatalog emoteRegistry;
     private final PlayPermissionChecker playPermissionChecker;
     private final BypassChecker bypassChecker;
     private final PlaybackStarter emoteStarter;
@@ -22,11 +23,11 @@ public class PlayService {
     private final ToLongFunction<ServerPlayer> tickSource;
     private final EmoteCooldowns cooldowns = new EmoteCooldowns();
 
-    public PlayService(
-        EmoteRegistry emoteRegistry,
+    public EmotePlayService(
+        EmoteCatalog emoteRegistry,
         PermissionService permissionService,
         PlaybackManager playbackManager,
-        ApiEvents apiEvents
+        ApiEventDispatcher apiEvents
     ) {
         this(
             emoteRegistry,
@@ -39,8 +40,8 @@ public class PlayService {
         );
     }
 
-    PlayService(
-        EmoteRegistry emoteRegistry,
+    EmotePlayService(
+        EmoteCatalog emoteRegistry,
         PlayPermissionChecker playPermissionChecker,
         PlaybackStarter emoteStarter,
         PlayEventDispatcher eventDispatcher
@@ -56,8 +57,8 @@ public class PlayService {
         );
     }
 
-    PlayService(
-        EmoteRegistry emoteRegistry,
+    EmotePlayService(
+        EmoteCatalog emoteRegistry,
         PlayPermissionChecker playPermissionChecker,
         BypassChecker bypassChecker,
         PlaybackStarter emoteStarter,
@@ -79,7 +80,7 @@ public class PlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        EmoteDefinition emote = this.emoteRegistry.findDefinition(id);
+        PreparedDefinition emote = this.emoteRegistry.findDefinition(id);
         if (emote == null) {
             return PlayResult.failure("Unknown: " + id);
         }
@@ -113,7 +114,7 @@ public class PlayService {
 
     @FunctionalInterface
     interface PlayPermissionChecker {
-        boolean canPlay(ServerPlayer player, EmoteDefinition emote);
+        boolean canPlay(ServerPlayer player, PreparedDefinition emote);
     }
 
     @FunctionalInterface
@@ -123,11 +124,11 @@ public class PlayService {
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, EmoteDefinition emote);
+        PlayResult start(ServerPlayer player, PreparedDefinition emote);
     }
 
     @FunctionalInterface
     interface PlayEventDispatcher {
-        Component beforePlay(ServerPlayer player, EmoteDefinition emote, PlaySource source);
+        Component beforePlay(ServerPlayer player, PreparedDefinition emote, PlaySource source);
     }
 }

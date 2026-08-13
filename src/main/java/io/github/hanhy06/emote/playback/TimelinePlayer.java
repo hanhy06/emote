@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.CompiledTimeline;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
@@ -7,12 +8,12 @@ import java.util.*;
 
 public final class TimelinePlayer {
     private final EmoteAnimation animation;
-    private final PlaybackPlan playbackPlan;
+    private final CompiledTimeline playbackPlan;
     private final TimelineTarget target;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
 
-    private List<PlaybackPlan.TransformActivation> pendingInterpolations = List.of();
+    private List<CompiledTimeline.TransformActivation> pendingInterpolations = List.of();
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -22,7 +23,7 @@ public final class TimelinePlayer {
     private boolean initialVisibilityDeferred;
 
     public TimelinePlayer(
-        PlaybackPlan playbackPlan,
+        CompiledTimeline playbackPlan,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
@@ -30,10 +31,10 @@ public final class TimelinePlayer {
     }
 
     TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
-        this(PlaybackPlan.compile(animation), target);
+        this(CompiledTimeline.compile(animation), target);
     }
 
-    TimelinePlayer(PlaybackPlan playbackPlan, TimelineTarget target) {
+    TimelinePlayer(CompiledTimeline playbackPlan, TimelineTarget target) {
         this.playbackPlan = Objects.requireNonNull(playbackPlan, "playbackPlan");
         this.animation = playbackPlan.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -187,11 +188,11 @@ public final class TimelinePlayer {
     }
 
     private void applySynchronizedSnapshot(int tick) {
-        List<PlaybackPlan.TransformActivation> activeInterpolations = new ArrayList<>();
+        List<CompiledTimeline.TransformActivation> activeInterpolations = new ArrayList<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : this.animation.nodes().entrySet()) {
             String nodeId = entry.getKey();
             EmoteAnimation.Node node = entry.getValue();
-            PlaybackPlan.TransformActivation activation = this.playbackPlan.activeTransform(nodeId, tick);
+            CompiledTimeline.TransformActivation activation = this.playbackPlan.activeTransform(nodeId, tick);
             Transformation currentTransformation;
             if (activation == null) {
                 currentTransformation = this.target.createTransformation(nodeId, this.playbackPlan.defaultTransform(nodeId));
@@ -221,7 +222,7 @@ public final class TimelinePlayer {
         if (this.pendingInterpolations.isEmpty()) {
             return;
         }
-        for (PlaybackPlan.TransformActivation activation : this.pendingInterpolations) {
+        for (CompiledTimeline.TransformActivation activation : this.pendingInterpolations) {
             this.target.applyTransform(
                 activation.nodeId(),
                 activation.transform(),
@@ -232,7 +233,7 @@ public final class TimelinePlayer {
     }
 
     private void applyTick(int tick) {
-        for (PlaybackPlan.TransformActivation activation : this.playbackPlan.transformActivations(tick)) {
+        for (CompiledTimeline.TransformActivation activation : this.playbackPlan.transformActivations(tick)) {
             EmoteAnimation.Matrix matrix = activation.transform().matrix();
             if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
                 continue;
@@ -250,7 +251,7 @@ public final class TimelinePlayer {
                 activation.interpolationDurationTicks()
             );
         }
-        for (PlaybackPlan.StateActivation activation : this.playbackPlan.stateActivations(tick)) {
+        for (CompiledTimeline.StateActivation activation : this.playbackPlan.stateActivations(tick)) {
             this.target.setVisible(activation.nodeId(), activation.state().visible());
         }
     }
@@ -263,11 +264,11 @@ public final class TimelinePlayer {
     }
 
     interface TimelineTarget {
-        Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform);
+        Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform);
 
         void applyTransform(
             String nodeId,
-            PlaybackPlan.PreparedTransform transform,
+            CompiledTimeline.PreparedTransform transform,
             int interpolationDurationTicks
         );
 
@@ -294,12 +295,12 @@ public final class TimelinePlayer {
     }
 
     private record EntityTimelineTarget(
-        PlaybackPlan playbackPlan,
+        CompiledTimeline playbackPlan,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             PlaybackNodes.NodeInstance node = requiredNode(nodeId);
             return this.nodes.root(node.node().space()).displayTransformation(transform);
         }
@@ -307,7 +308,7 @@ public final class TimelinePlayer {
         @Override
         public void applyTransform(
             String nodeId,
-            PlaybackPlan.PreparedTransform transform,
+            CompiledTimeline.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.entityController.applyTransformation(

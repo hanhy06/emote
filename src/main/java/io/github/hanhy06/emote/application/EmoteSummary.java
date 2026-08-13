@@ -1,9 +1,9 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
 import java.util.Objects;
 
-public record PlayableEmote(String id, String displayName, String description) {
-    public PlayableEmote {
+public record EmoteSummary(String id, String displayName, String description) {
+    public EmoteSummary {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(displayName, "displayName");
         Objects.requireNonNull(description, "description");

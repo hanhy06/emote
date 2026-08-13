@@ -1,7 +1,8 @@
-package io.github.hanhy06.emote.api;
+package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
+import io.github.hanhy06.emote.api.*;
+import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.playback.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
@@ -13,7 +14,7 @@ import java.util.Objects;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-public final class ApiEvents implements PlaybackStateListener {
+public final class ApiEventDispatcher implements PlaybackStateListener {
     private final CopyOnWriteArrayList<EmotePlayListener> playListeners = new CopyOnWriteArrayList<>();
     private final CopyOnWriteArrayList<EmotePlaybackListener> playbackListeners = new CopyOnWriteArrayList<>();
 
@@ -25,7 +26,7 @@ public final class ApiEvents implements PlaybackStateListener {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, EmoteDefinition emote, PlaySource source) {
+    public Component beforePlay(ServerPlayer player, PreparedDefinition emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
@@ -70,7 +71,7 @@ public final class ApiEvents implements PlaybackStateListener {
         }
     }
 
-    public static EmoteInfo toInfo(EmoteDefinition emote) {
+    public static EmoteInfo toInfo(PreparedDefinition emote) {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
             emote.metadata(),

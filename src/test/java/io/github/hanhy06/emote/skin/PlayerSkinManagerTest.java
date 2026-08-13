@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.content.SkinBinding;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
@@ -126,8 +126,8 @@ class PlayerSkinManagerTest {
             );
 
             PlayerSkinPreparation result = manager.preparePlayerSkin(null, List.of(
-                new AnimationSkinBinding("head", ParticipantRole.INITIATOR, HEAD_TEXTURE_KEY),
-                new AnimationSkinBinding("body", ParticipantRole.INITIATOR, bodyTextureKey)
+                new SkinBinding("head", ParticipantRole.INITIATOR, HEAD_TEXTURE_KEY),
+                new SkinBinding("body", ParticipantRole.INITIATOR, bodyTextureKey)
             ));
 
             assertEquals(PlayerSkinPreparation.State.PREPARING, result.state());
@@ -161,8 +161,8 @@ class PlayerSkinManagerTest {
         return manager;
     }
 
-    private List<AnimationSkinBinding> createSkinParts() {
-        return List.of(new AnimationSkinBinding("head", ParticipantRole.INITIATOR, HEAD_TEXTURE_KEY));
+    private List<SkinBinding> createSkinParts() {
+        return List.of(new SkinBinding("head", ParticipantRole.INITIATOR, HEAD_TEXTURE_KEY));
     }
 
     private static final class CapturingExecutorService extends AbstractExecutorService {

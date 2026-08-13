@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.CompiledTimeline;
+
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -116,14 +118,14 @@ class PlaybackManagerEventDispatchTest {
 
     private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PlaybackPlan.PreparedTransform transform,
+            CompiledTimeline.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             throw new UnsupportedOperationException();

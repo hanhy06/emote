@@ -3,10 +3,10 @@ package io.github.hanhy06.emote.command;
 import com.google.gson.JsonPrimitive;
 import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayableEmote;
-import io.github.hanhy06.emote.emote.PlayableEmoteService;
+import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.application.EmoteSummary;
+import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.core.Holder;
@@ -35,14 +35,14 @@ public class DialogManager {
         .getOrThrow();
 
     private final ConfigManager configManager;
-    private final EmoteRegistry emoteRegistry;
-    private final PlayableEmoteService playableEmoteService;
+    private final EmoteCatalog emoteRegistry;
+    private final EmoteQueryService playableEmoteService;
     private final PlaybackManager playbackManager;
 
     public DialogManager(
         ConfigManager configManager,
-        EmoteRegistry emoteRegistry,
-        PlayableEmoteService playableEmoteService,
+        EmoteCatalog emoteRegistry,
+        EmoteQueryService playableEmoteService,
         PlaybackManager playbackManager
     ) {
         this.configManager = configManager;
@@ -84,11 +84,11 @@ public class DialogManager {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<PlayableEmote> playableEmoteList = this.playableEmoteService.search(player, query);
+        List<EmoteSummary> playableEmoteList = this.playableEmoteService.search(player, query);
         DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
-        for (PlayableEmote playableEmote : playableEmoteList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
+        for (EmoteSummary playableEmote : playableEmoteList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
             String command = "/" + playableEmote.createPlayCommand();
             actionButtons.add(createRunCommandButton(
                 playableEmote.displayName(),
@@ -215,7 +215,7 @@ public class DialogManager {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        EmoteDefinition emote = this.emoteRegistry.findDefinition(session.id());
+        PreparedDefinition emote = this.emoteRegistry.findDefinition(session.id());
         String displayName = emote == null
             ? session.id()
             : emote.name();

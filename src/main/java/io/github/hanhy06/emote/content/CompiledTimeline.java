@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.content;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -8,7 +8,7 @@ import org.joml.Vector3f;
 
 import java.util.*;
 
-public final class PlaybackPlan {
+public final class CompiledTimeline {
     private final EmoteAnimation animation;
     private final Map<Integer, List<TransformActivation>> transformActivations;
     private final Map<Integer, List<StateActivation>> stateActivations;
@@ -17,7 +17,7 @@ public final class PlaybackPlan {
     private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
     private final Map<String, PreparedTransform> defaultTransforms;
 
-    private PlaybackPlan(
+    private CompiledTimeline(
         EmoteAnimation animation,
         Map<Integer, List<TransformActivation>> transformActivations,
         Map<Integer, List<StateActivation>> stateActivations,
@@ -35,7 +35,7 @@ public final class PlaybackPlan {
         this.defaultTransforms = defaultTransforms;
     }
 
-    public static PlaybackPlan compile(EmoteAnimation animation) {
+    public static CompiledTimeline compile(EmoteAnimation animation) {
         Objects.requireNonNull(animation, "animation");
         Map<Integer, List<TransformActivation>> transformsByTick = new HashMap<>();
         Map<Integer, List<StateActivation>> statesByTick = new HashMap<>();
@@ -89,7 +89,7 @@ public final class PlaybackPlan {
         transformsByNode.values().forEach(values -> values.sort(transformOrder));
         statesByNode.values().forEach(values -> values.sort(Comparator.comparingInt(StateActivation::tick)));
 
-        return new PlaybackPlan(
+        return new CompiledTimeline(
             animation,
             copyListMap(transformsByTick),
             copyListMap(statesByTick),
@@ -100,23 +100,23 @@ public final class PlaybackPlan {
         );
     }
 
-    EmoteAnimation animation() {
+    public EmoteAnimation animation() {
         return this.animation;
     }
 
-    List<TransformActivation> transformActivations(int tick) {
+    public List<TransformActivation> transformActivations(int tick) {
         return this.transformActivations.getOrDefault(tick, List.of());
     }
 
-    List<StateActivation> stateActivations(int tick) {
+    public List<StateActivation> stateActivations(int tick) {
         return this.stateActivations.getOrDefault(tick, List.of());
     }
 
-    List<EmoteAnimation.Event> timelineEvents(int tick) {
+    public List<EmoteAnimation.Event> timelineEvents(int tick) {
         return this.timelineEvents.getOrDefault(tick, List.of());
     }
 
-    PreparedTransform defaultTransform(String nodeId) {
+    public PreparedTransform defaultTransform(String nodeId) {
         PreparedTransform transform = this.defaultTransforms.get(nodeId);
         if (transform == null) {
             throw new IllegalStateException("Missing default transform for node: " + nodeId);
@@ -124,7 +124,7 @@ public final class PlaybackPlan {
         return transform;
     }
 
-    TransformActivation activeTransform(String nodeId, int tick) {
+    public TransformActivation activeTransform(String nodeId, int tick) {
         return findLastAtOrBefore(
             this.nodeTransformActivations.getOrDefault(nodeId, List.of()),
             tick,
@@ -132,7 +132,7 @@ public final class PlaybackPlan {
         );
     }
 
-    boolean visible(String nodeId, int tick, boolean defaultValue) {
+    public boolean visible(String nodeId, int tick, boolean defaultValue) {
         StateActivation activation = findLastAtOrBefore(
             this.nodeStateActivations.getOrDefault(nodeId, List.of()),
             tick,
@@ -178,7 +178,7 @@ public final class PlaybackPlan {
         return result;
     }
 
-    record TransformActivation(
+    public record TransformActivation(
         int activationTick,
         int targetTick,
         String nodeId,
@@ -188,10 +188,10 @@ public final class PlaybackPlan {
     ) {
     }
 
-    record StateActivation(int tick, String nodeId, EmoteAnimation.NodeState state) {
+    public record StateActivation(int tick, String nodeId, EmoteAnimation.NodeState state) {
     }
 
-    static final class PreparedTransform {
+    public static final class PreparedTransform {
         private final EmoteAnimation.Matrix matrix;
         private final Matrix4f localMatrix;
         private final Vector3f translation;
@@ -215,8 +215,8 @@ public final class PlaybackPlan {
             this.rightRotation = rightRotation;
         }
 
-        static PreparedTransform create(EmoteAnimation.Matrix matrix, boolean preserveMatrix) {
-            Matrix4f localMatrix = RootTransform.toJoml(matrix);
+        public static PreparedTransform create(EmoteAnimation.Matrix matrix, boolean preserveMatrix) {
+            Matrix4f localMatrix = toJoml(matrix);
             if (preserveMatrix) {
                 return new PreparedTransform(matrix, localMatrix, null, null, null, null);
             }
@@ -231,31 +231,40 @@ public final class PlaybackPlan {
             );
         }
 
-        EmoteAnimation.Matrix matrix() {
+        private static Matrix4f toJoml(EmoteAnimation.Matrix matrix) {
+            return new Matrix4f(
+                (float) matrix.value(0), (float) matrix.value(4), (float) matrix.value(8), (float) matrix.value(12),
+                (float) matrix.value(1), (float) matrix.value(5), (float) matrix.value(9), (float) matrix.value(13),
+                (float) matrix.value(2), (float) matrix.value(6), (float) matrix.value(10), (float) matrix.value(14),
+                (float) matrix.value(3), (float) matrix.value(7), (float) matrix.value(11), (float) matrix.value(15)
+            );
+        }
+
+        public EmoteAnimation.Matrix matrix() {
             return this.matrix;
         }
 
-        boolean preservesMatrix() {
+        public boolean preservesMatrix() {
             return this.translation == null;
         }
 
-        Matrix4f localMatrix() {
+        public Matrix4f localMatrix() {
             return this.localMatrix;
         }
 
-        Vector3f translation() {
+        public Vector3f translation() {
             return this.translation;
         }
 
-        Quaternionf leftRotation() {
+        public Quaternionf leftRotation() {
             return this.leftRotation;
         }
 
-        Vector3f scale() {
+        public Vector3f scale() {
             return this.scale;
         }
 
-        Quaternionf rightRotation() {
+        public Quaternionf rightRotation() {
             return this.rightRotation;
         }
     }

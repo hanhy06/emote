@@ -1,7 +1,9 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedDefinition;
 import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
@@ -10,16 +12,16 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.hanhy06.emote.emote.RegisteredEmoteFixture.create;
+import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
-class PlayServiceTest {
+class EmotePlayServiceTest {
     @Test
     void enforcesCooldownAfterSuccessfulPlayback() {
-        EmoteRegistry registry = new EmoteRegistry();
+        EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
         AtomicLong tick = new AtomicLong();
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
             ignoredPlayer -> false,
@@ -37,10 +39,10 @@ class PlayServiceTest {
 
     @Test
     void bypassIgnoresAnActiveCooldown() {
-        EmoteRegistry registry = new EmoteRegistry();
+        EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
         AtomicBoolean bypass = new AtomicBoolean();
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
             ignoredPlayer -> bypass.get(),
@@ -57,7 +59,7 @@ class PlayServiceTest {
 
     @Test
     void playReturnsSuccess() {
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             createRegistry(),
             (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
@@ -71,7 +73,7 @@ class PlayServiceTest {
 
     @Test
     void playReturnsPlaybackFailure() {
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             createRegistry(),
             (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Animation unavailable. "),
@@ -86,7 +88,7 @@ class PlayServiceTest {
 
     @Test
     void selectionRequiresTheExactId() {
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             createRegistry(),
             (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
@@ -99,7 +101,7 @@ class PlayServiceTest {
 
     @Test
     void rejectsBlockedEmote() {
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             createRegistry(),
             (ignoredPlayer, ignoredDefinition) -> false,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
@@ -111,9 +113,9 @@ class PlayServiceTest {
 
     @Test
     void rejectsDirectPlaybackOfSequenceOnlyAnimation() {
-        EmoteRegistry registry = new EmoteRegistry();
+        EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)), List.of());
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> fail("Sequence-only animation must not start directly"),
@@ -128,7 +130,7 @@ class PlayServiceTest {
 
     @Test
     void listenerCanCancelPlaybackWithAComponentMessage() {
-        PlayService service = new PlayService(
+        EmotePlayService service = new EmotePlayService(
             createRegistry(),
             (ignoredPlayer, ignoredDefinition) -> true,
             (ignoredPlayer, ignoredDefinition) -> fail("Cancelled playback must not start"),
@@ -142,8 +144,8 @@ class PlayServiceTest {
         assertEquals("Playback blocked by another mod.", result.errorMessage().getString());
     }
 
-    private EmoteRegistry createRegistry() {
-        EmoteRegistry registry = new EmoteRegistry();
+    private EmoteCatalog createRegistry() {
+        EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("wave", "Wave")), List.of());
         return registry;
     }

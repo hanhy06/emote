@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
+import io.github.hanhy06.emote.content.SkinBinding;
+import io.github.hanhy06.emote.content.SkinBindingCompiler;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -18,7 +18,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class AnimationSkinBindingFactoryTest {
+class SkinBindingCompilerTest {
     @Test
     void usesExplicitOrderAndLocalYScaleForLimbSegments() {
         LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
@@ -26,7 +26,7 @@ class AnimationSkinBindingFactoryTest {
         nodes.put("inner", itemNode(1.0D, EmoteAnimation.SkinPart.LEFT_ARM, 0));
         nodes.put("head", itemNode(1.0D, EmoteAnimation.SkinPart.HEAD, 0));
 
-        List<AnimationSkinBinding> parts = new AnimationSkinBindingFactory().create(animation(nodes));
+        List<SkinBinding> parts = new SkinBindingCompiler().create(animation(nodes));
 
         assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").region().skinSegment());
         assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").region().skinSegment());
@@ -34,7 +34,7 @@ class AnimationSkinBindingFactoryTest {
         assertEquals(ParticipantRole.INITIATOR, find(parts, "head").participant());
     }
 
-    private AnimationSkinBinding find(List<AnimationSkinBinding> parts, String nodeId) {
+    private SkinBinding find(List<SkinBinding> parts, String nodeId) {
         return parts.stream().filter(part -> part.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }
 

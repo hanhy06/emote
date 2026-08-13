@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.CompiledTimeline;
+
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -271,14 +273,14 @@ class TimelinePlayerTest {
         private int resetCount;
 
         @Override
-        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             return new Transformation(RootTransform.toJoml(transform.matrix()));
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PlaybackPlan.PreparedTransform transform,
+            CompiledTimeline.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.transforms.add(new AppliedTransform(transform.matrix().value(3), interpolationDurationTicks));

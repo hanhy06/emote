@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.content.PreparedDisplayData;
 
@@ -52,19 +52,19 @@ final class SequenceNodeLayout {
         return new Expansion(expanded, expandedPreparedData, true);
     }
 
-    static void validateCompatibleAnimations(List<RegisteredSequence.Step> steps) {
-        RegisteredEmote first = steps.stream()
-            .filter(RegisteredSequence.EmoteStep.class::isInstance)
-            .map(RegisteredSequence.EmoteStep.class::cast)
+    static void validateCompatibleAnimations(List<PreparedSequence.Step> steps) {
+        PreparedEmote first = steps.stream()
+            .filter(PreparedSequence.EmoteStep.class::isInstance)
+            .map(PreparedSequence.EmoteStep.class::cast)
             .map(step -> step.candidates().getFirst().animation())
             .findFirst()
             .orElseThrow();
-        for (RegisteredSequence.Step step : steps) {
-            if (!(step instanceof RegisteredSequence.EmoteStep emoteStep)) {
+        for (PreparedSequence.Step step : steps) {
+            if (!(step instanceof PreparedSequence.EmoteStep emoteStep)) {
                 continue;
             }
-            for (RegisteredSequence.Choice choice : emoteStep.candidates()) {
-                RegisteredEmote animation = choice.animation();
+            for (PreparedSequence.Choice choice : emoteStep.candidates()) {
+                PreparedEmote animation = choice.animation();
                 if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()

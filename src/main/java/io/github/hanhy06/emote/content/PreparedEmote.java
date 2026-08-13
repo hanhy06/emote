@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
@@ -6,32 +6,32 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.playback.PlaybackPlan;
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBindingFactory;
+import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.SkinBinding;
+import io.github.hanhy06.emote.content.SkinBindingCompiler;
 
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
 
-public record RegisteredEmote(
+public record PreparedEmote(
     LoadedAnimation source,
-    List<AnimationSkinBinding> skinParts,
-    PlaybackPlan playbackPlan
-) implements EmoteDefinition {
-    private static final AnimationSkinBindingFactory SKIN_PART_FACTORY = new AnimationSkinBindingFactory();
+    List<SkinBinding> skinParts,
+    CompiledTimeline playbackPlan
+) implements PreparedDefinition {
+    private static final SkinBindingCompiler SKIN_PART_FACTORY = new SkinBindingCompiler();
 
-    public RegisteredEmote {
+    public PreparedEmote {
         Objects.requireNonNull(source, "source");
         skinParts = List.copyOf(skinParts);
         Objects.requireNonNull(playbackPlan, "playbackPlan");
     }
 
-    public static RegisteredEmote from(LoadedAnimation source) {
-        return new RegisteredEmote(
+    public static PreparedEmote from(LoadedAnimation source) {
+        return new PreparedEmote(
             source,
             SKIN_PART_FACTORY.create(source.animation()),
-            PlaybackPlan.compile(source.animation())
+            CompiledTimeline.compile(source.animation())
         );
     }
 
@@ -85,7 +85,7 @@ public record RegisteredEmote(
             .count();
     }
 
-    public List<AnimationSkinBinding> skinParts(ParticipantRole participant) {
+    public List<SkinBinding> skinParts(ParticipantRole participant) {
         return this.skinParts.stream()
             .filter(binding -> binding.participant() == participant)
             .toList();

@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.content.SkinBinding;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinPipeline;
@@ -75,12 +75,12 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinBinding> skinParts) {
+    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinParts) {
         if (skinParts.isEmpty()) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
         Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
-        for (AnimationSkinBinding skinPart : skinParts) {
+        for (SkinBinding skinPart : skinParts) {
             requiredTextureKeys.add(skinPart.region());
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
@@ -92,13 +92,13 @@ public class PlayerSkinManager implements ConfigListener {
 
     public void applySkinParts(
         Map<String, NodeInstance> nodes,
-        List<AnimationSkinBinding> skinParts,
+        List<SkinBinding> skinParts,
         PreparedPlayerSkin preparedPlayerSkin
     ) {
         if (preparedPlayerSkin == null || skinParts.isEmpty()) {
             return;
         }
-        for (AnimationSkinBinding skinPart : skinParts) {
+        for (SkinBinding skinPart : skinParts) {
             NodeInstance node = nodes.get(skinPart.nodeId());
             if (node != null) {
                 applyMineSkinProfile(node, skinPart.region(), preparedPlayerSkin);

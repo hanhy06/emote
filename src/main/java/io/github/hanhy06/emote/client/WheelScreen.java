@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.client;
 
 import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
 import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
-import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;
@@ -38,7 +38,7 @@ public class WheelScreen extends Screen {
     private static final int MUTED_COLOR = 0xFF9DB0BC;
 
     private final WheelController controller;
-    private final List<PlayableEmote> emotes;
+    private final List<EmoteSummary> emotes;
     private final KeyMapping keyMapping;
     private final Component bindingLabel;
 
@@ -49,7 +49,7 @@ public class WheelScreen extends Screen {
     private int pageIndex;
     private int hoveredSlotIndex = -1;
 
-    public WheelScreen(WheelController controller, List<PlayableEmote> emotes, int pageIndex, KeyMapping keyMapping) {
+    public WheelScreen(WheelController controller, List<EmoteSummary> emotes, int pageIndex, KeyMapping keyMapping) {
         super(Component.translatable("screen.emote.wheel.title"));
         this.controller = controller;
         this.emotes = List.copyOf(emotes);
@@ -102,13 +102,13 @@ public class WheelScreen extends Screen {
         updateHoveredSlot(mouseX, mouseY);
 
         WheelMetrics metrics = this.metrics;
-        List<PlayableEmote> pageEmotes = getCurrentPageEntries();
+        List<EmoteSummary> pageEmotes = getCurrentPageEntries();
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             SlotGeometry slot = this.slotGeometries.get(slotIndex);
-            PlayableEmote playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
+            EmoteSummary playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
             boolean hovered = slotIndex == this.hoveredSlotIndex;
             drawSlot(graphics, slot, playableEmote, hovered);
         }
@@ -196,7 +196,7 @@ public class WheelScreen extends Screen {
         updateHoveredSlot(mouseX, mouseY);
     }
 
-    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, PlayableEmote playableEmote, boolean hovered) {
+    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, EmoteSummary playableEmote, boolean hovered) {
         int fillColor = playableEmote == null
             ? SLOT_EMPTY_FILL_COLOR
             : hovered
@@ -236,9 +236,9 @@ public class WheelScreen extends Screen {
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
     }
 
-    private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<PlayableEmote> pageEmotes) {
+    private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<EmoteSummary> pageEmotes) {
         int footerTop = Math.min(this.height - 70, metrics.centerY() + metrics.ringRadius() + metrics.slotRadius() + 14);
-        PlayableEmote hoveredEmote = this.hoveredSlotIndex >= 0 && this.hoveredSlotIndex < pageEmotes.size()
+        EmoteSummary hoveredEmote = this.hoveredSlotIndex >= 0 && this.hoveredSlotIndex < pageEmotes.size()
             ? pageEmotes.get(this.hoveredSlotIndex)
             : null;
 
@@ -275,7 +275,7 @@ public class WheelScreen extends Screen {
     }
 
     private boolean selectHoveredSlot() {
-        PlayableEmote playableEmote = getEntryAt(this.hoveredSlotIndex);
+        EmoteSummary playableEmote = getEntryAt(this.hoveredSlotIndex);
         if (playableEmote == null) {
             return false;
         }
@@ -285,7 +285,7 @@ public class WheelScreen extends Screen {
         return true;
     }
 
-    private PlayableEmote getEntryAt(int slotIndex) {
+    private EmoteSummary getEntryAt(int slotIndex) {
         if (slotIndex < 0) {
             return null;
         }
@@ -296,7 +296,7 @@ public class WheelScreen extends Screen {
             : null;
     }
 
-    private List<PlayableEmote> getCurrentPageEntries() {
+    private List<EmoteSummary> getCurrentPageEntries() {
         int startIndex = Math.min(this.pageIndex * WheelGeometry.SLOT_COUNT, this.emotes.size());
         int endIndex = Math.min(startIndex + WheelGeometry.SLOT_COUNT, this.emotes.size());
         return this.emotes.subList(startIndex, endIndex);

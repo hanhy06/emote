@@ -4,9 +4,9 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackStressTestReport;
@@ -26,14 +26,14 @@ import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_STRESS_TE
 import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_STRESS_TEST_INSTANCE_COUNT;
 
 final class AdminCommands {
-    private final EmoteRegistry emoteRegistry;
+    private final EmoteCatalog emoteRegistry;
     private final PlaybackManager playbackManager;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
 
     AdminCommands(
-        EmoteRegistry emoteRegistry,
+        EmoteCatalog emoteRegistry,
         PlaybackManager playbackManager,
         PermissionService permissionService,
         ReloadService reloadService,
@@ -100,7 +100,7 @@ final class AdminCommands {
             .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getFileDefinitions().stream().map(EmoteDefinition::id),
+                    this.emoteRegistry.getFileDefinitions().stream().map(PreparedDefinition::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -124,7 +124,7 @@ final class AdminCommands {
     }
 
     private int list(CommandSourceStack source) {
-        List<EmoteDefinition> emotes = this.emoteRegistry.getAllDefinitions();
+        List<PreparedDefinition> emotes = this.emoteRegistry.getAllDefinitions();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
@@ -136,7 +136,7 @@ final class AdminCommands {
             false
         );
 
-        for (EmoteDefinition emote : emotes) {
+        for (PreparedDefinition emote : emotes) {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.name(),
@@ -190,7 +190,7 @@ final class AdminCommands {
     }
 
     private int startStressTest(CommandSourceStack source, int requestedInstanceCount) {
-        List<RegisteredEmote> emotes = this.emoteRegistry.getAll();
+        List<PreparedEmote> emotes = this.emoteRegistry.getAll();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;

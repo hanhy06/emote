@@ -1,15 +1,17 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.CompiledTimeline;
+
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.emote.EmoteSequence;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.emote.RegisteredEmoteFixture;
-import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.arguments.coordinates.RotationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
@@ -93,7 +95,7 @@ class PlaybackSessionTest {
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
-        RegisteredEmote offer = RegisteredEmoteFixture.create("test:offer", "Offer");
+        PreparedEmote offer = PreparedEmoteFixture.create("test:offer", "Offer");
         Identifier offerId = offer.animation().id();
         EmoteSequence source = new EmoteSequence(
             Path.of("collaborative.json"),
@@ -117,7 +119,7 @@ class PlaybackSessionTest {
                 List.of(new EmoteSequence.EmoteStep(offerId, 1))
             ))
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(source, Map.of(offer.id(), offer));
+        PreparedSequence sequence = PreparedSequence.resolve(source, Map.of(offer.id(), offer));
         PlaybackSession session = new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
@@ -137,26 +139,26 @@ class PlaybackSessionTest {
         return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
     }
 
-    private static TimelinePlayer timeline(RegisteredEmote emote) {
+    private static TimelinePlayer timeline(PreparedEmote emote) {
         return new TimelinePlayer(emote.animation(), new EmptyTimelineTarget());
     }
 
-    private static EventPlayer events(RegisteredEmote emote) {
+    private static EventPlayer events(PreparedEmote emote) {
         return new EventPlayer(emote.animation(), ignored -> {
         });
     }
 
-    private record SessionFixture(PlaybackSession session, RegisteredEmote offer) {
+    private record SessionFixture(PlaybackSession session, PreparedEmote offer) {
     }
 
     private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PlaybackPlan.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, PlaybackPlan.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, CompiledTimeline.PreparedTransform transform, int interpolationDurationTicks) {
             throw new UnsupportedOperationException();
         }
 

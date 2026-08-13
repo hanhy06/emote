@@ -1,13 +1,13 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class PlayableEmoteTest {
+class EmoteSummaryTest {
     @Test
     void createPlayCommandUsesThePublicPlayCommand() {
-        PlayableEmote emote = new PlayableEmote("wave", "Wave", "Friendly wave");
+        EmoteSummary emote = new EmoteSummary("wave", "Wave", "Friendly wave");
 
         assertEquals("emote play wave", emote.createPlayCommand());
     }

@@ -2,14 +2,14 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
-import io.github.hanhy06.emote.api.ApiEvents;
-import io.github.hanhy06.emote.api.ApiImpl;
+import io.github.hanhy06.emote.application.ApiEventDispatcher;
+import io.github.hanhy06.emote.application.EmoteApiImpl;
 import io.github.hanhy06.emote.command.DialogManager;
 import io.github.hanhy06.emote.command.RootCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayService;
-import io.github.hanhy06.emote.emote.PlayableEmoteService;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.application.EmotePlayService;
+import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateService;
 import io.github.hanhy06.emote.network.WheelSyncService;
@@ -33,16 +33,16 @@ public class Emote implements ModInitializer {
     @Override
     public void onInitialize() {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
-        EmoteRegistry emoteRegistry = new EmoteRegistry();
+        EmoteCatalog emoteRegistry = new EmoteCatalog();
         PermissionService permissionService = new PermissionService();
 
         PlayerSkinManager playerSkinManager = new PlayerSkinManager();
         PlaybackManager playbackManager = new PlaybackManager(playerSkinManager);
         PlaybackStateService playbackStateService = new PlaybackStateService();
-        ApiEvents apiEvents = new ApiEvents();
+        ApiEventDispatcher apiEvents = new ApiEventDispatcher();
 
-        PlayableEmoteService playableEmoteService = new PlayableEmoteService(emoteRegistry, permissionService);
-        PlayService playService = new PlayService(
+        EmoteQueryService playableEmoteService = new EmoteQueryService(emoteRegistry, permissionService);
+        EmotePlayService playService = new EmotePlayService(
             emoteRegistry,
             permissionService,
             playbackManager,
@@ -58,7 +58,7 @@ public class Emote implements ModInitializer {
         );
         WheelSyncService wheelSyncService = new WheelSyncService(playableEmoteService);
 
-        new ApiImpl(
+        new EmoteApiImpl(
             emoteRegistry,
             playService,
             playbackManager,

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.content.PreparedDisplayData;
 
@@ -29,14 +29,14 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-class SequenceAnimationCompilerTest {
+class SequenceCompilerTest {
     private static final EmoteAnimation.Matrix IDENTITY = matrix(0.0D);
 
     @Test
     void keepsThePreviousPoseDuringAnExplicitWaitStep() {
-        RegisteredEmote first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        RegisteredEmote second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedEmote first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
                 new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
                 new EmoteSequence.WaitStep(5),
@@ -53,7 +53,7 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void compilesStepsRepeatsLoopDelayAndTimelineEventsIntoOneAnimation() {
-        RegisteredEmote enter = animation(
+        PreparedEmote enter = animation(
             "demo:enter",
             2,
             EmoteAnimation.LoopMode.ONCE,
@@ -62,7 +62,7 @@ class SequenceAnimationCompilerTest {
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
-        RegisteredEmote idle = animation(
+        PreparedEmote idle = animation(
             "demo:idle",
             3,
             EmoteAnimation.LoopMode.LOOP,
@@ -81,7 +81,7 @@ class SequenceAnimationCompilerTest {
             ),
             Map.of("root", sceneAnchor())
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
                 new EmoteSequence.EmoteStep(Identifier.parse("demo:enter"), 1),
                 new EmoteSequence.EmoteStep(Identifier.parse("demo:idle"), 2)
@@ -105,7 +105,7 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void rejectsAnimationsWithDifferentNodeLayouts() {
-        RegisteredEmote first = animation(
+        PreparedEmote first = animation(
             "demo:first",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -114,7 +114,7 @@ class SequenceAnimationCompilerTest {
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
-        RegisteredEmote second = animation(
+        PreparedEmote second = animation(
             "demo:second",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -124,7 +124,7 @@ class SequenceAnimationCompilerTest {
             Map.of("other", sceneAnchor())
         );
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> RegisteredSequence.resolve(
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(
             sequence(
                 new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
                 new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
@@ -145,7 +145,7 @@ class SequenceAnimationCompilerTest {
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
             List.of("say start")
         );
-        RegisteredEmote animation = animation(
+        PreparedEmote animation = animation(
             "demo:eventful",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -155,7 +155,7 @@ class SequenceAnimationCompilerTest {
             Map.of("root", sceneAnchor())
         );
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> RegisteredSequence.resolve(
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(
             sequence(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1)),
             Map.of(animation.id(), animation)
         ));
@@ -175,7 +175,7 @@ class SequenceAnimationCompilerTest {
             new CompoundTag(),
             new JsonPrimitive("same")
         );
-        RegisteredEmote first = animation(
+        PreparedEmote first = animation(
             "demo:first",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -185,7 +185,7 @@ class SequenceAnimationCompilerTest {
             Map.of("text", node),
             Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
         );
-        RegisteredEmote second = animation(
+        PreparedEmote second = animation(
             "demo:second",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -196,7 +196,7 @@ class SequenceAnimationCompilerTest {
             Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
         );
 
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
                 new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
                 new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
@@ -209,7 +209,7 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void randomCandidatesDoNotRepeatConsecutively() {
-        RegisteredEmote first = animation(
+        PreparedEmote first = animation(
             "demo:first",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -218,7 +218,7 @@ class SequenceAnimationCompilerTest {
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
-        RegisteredEmote second = animation(
+        PreparedEmote second = animation(
             "demo:second",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -227,7 +227,7 @@ class SequenceAnimationCompilerTest {
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
-        RegisteredEmote third = animation(
+        PreparedEmote third = animation(
             "demo:third",
             1,
             EmoteAnimation.LoopMode.ONCE,
@@ -247,13 +247,13 @@ class SequenceAnimationCompilerTest {
                 Identifier.parse(third.id())
             ), 20))
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             source,
             Map.of(first.id(), first, second.id(), second, third.id(), third)
         );
 
         List<String> selectedIds = sequence.selectSteps(new Random(7L)).stream()
-            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
+            .map(PreparedSequence.SelectedEmoteStep.class::cast)
             .map(step -> step.animation().id())
             .toList();
 
@@ -265,9 +265,9 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void selectsWeightedCandidatesAfterExcludingThePreviousCandidate() {
-        RegisteredEmote first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        RegisteredEmote second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        RegisteredEmote third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
@@ -279,7 +279,7 @@ class SequenceAnimationCompilerTest {
                 new EmoteSequence.Choice(Identifier.parse(third.id()), 70)
             ), 3))
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(source, Map.of(first.id(), first, second.id(), second, third.id(), third));
+        PreparedSequence sequence = PreparedSequence.resolve(source, Map.of(first.id(), first, second.id(), second, third.id(), third));
         int[] randomValues = {15, 0, 89};
         AtomicInteger randomIndex = new AtomicInteger();
         Random random = new Random() {
@@ -290,7 +290,7 @@ class SequenceAnimationCompilerTest {
         };
 
         List<String> selectedIds = sequence.selectSteps(random).stream()
-            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
+            .map(PreparedSequence.SelectedEmoteStep.class::cast)
             .map(step -> step.animation().id())
             .toList();
 
@@ -299,7 +299,7 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void automaticallyDuplicatesInitiatorNodesWhenPartnerNodesAreAbsent() throws Exception {
-        RegisteredEmote animation = animation(
+        PreparedEmote animation = animation(
             "demo:handshake",
             2,
             EmoteAnimation.LoopMode.ONCE,
@@ -320,12 +320,12 @@ class SequenceAnimationCompilerTest {
                 new EmoteAnimation.Skin(ParticipantRole.INITIATOR, EmoteAnimation.SkinPart.BODY, 0)
             ))
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             collaborativeSequence(animation.id()),
             Map.of(animation.id(), animation)
         );
 
-        RegisteredEmote compiledEmote = sequence.compileMatchedRandom(new Random(1L));
+        PreparedEmote compiledEmote = sequence.compileMatchedRandom(new Random(1L));
         EmoteAnimation compiled = compiledEmote.animation();
         String partnerId = compiled.nodes().keySet().stream().filter(id -> !id.equals("body")).findFirst().orElseThrow();
 
@@ -342,7 +342,7 @@ class SequenceAnimationCompilerTest {
 
     @Test
     void keepsExplicitPartnerNodesWithoutGeneratingAnotherCopy() throws Exception {
-        RegisteredEmote animation = animation(
+        PreparedEmote animation = animation(
             "demo:hug",
             2,
             EmoteAnimation.LoopMode.ONCE,
@@ -354,7 +354,7 @@ class SequenceAnimationCompilerTest {
                 "receiver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.PARTNER, IDENTITY)
             )
         );
-        RegisteredSequence sequence = RegisteredSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             collaborativeSequence(animation.id()),
             Map.of(animation.id(), animation)
         );
@@ -400,7 +400,7 @@ class SequenceAnimationCompilerTest {
         );
     }
 
-    private static RegisteredEmote animation(
+    private static PreparedEmote animation(
         String id,
         int duration,
         EmoteAnimation.LoopMode loop,
@@ -416,7 +416,7 @@ class SequenceAnimationCompilerTest {
         return new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, IDENTITY);
     }
 
-    private static RegisteredEmote animation(
+    private static PreparedEmote animation(
         String id,
         int duration,
         EmoteAnimation.LoopMode loop,
@@ -433,7 +433,7 @@ class SequenceAnimationCompilerTest {
             nodes,
             new EmoteAnimation.Timeline(duration, keyframes, events)
         );
-        return RegisteredEmote.from(new LoadedAnimation(
+        return PreparedEmote.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             id,
             animation,

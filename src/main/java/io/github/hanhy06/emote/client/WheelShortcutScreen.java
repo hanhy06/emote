@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.client;
 
-import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -44,7 +44,7 @@ public class WheelShortcutScreen extends Screen {
         selectedTab.active = this.tab != Tab.SELECTED;
         availableTab.active = this.tab != Tab.AVAILABLE;
 
-        List<PlayableEmote> entries = getEntries();
+        List<EmoteSummary> entries = getEntries();
         int pageCount = getPageCount(entries);
         this.pageIndex = Math.clamp(this.pageIndex, 0, pageCount - 1);
         int startIndex = Math.min(this.pageIndex * ENTRIES_PER_PAGE, entries.size());
@@ -52,7 +52,7 @@ public class WheelShortcutScreen extends Screen {
         for (int entryIndex = startIndex; entryIndex < endIndex; entryIndex++) {
             int rowIndex = entryIndex - startIndex;
             int rowY = 62 + rowIndex * ROW_SPACING;
-            PlayableEmote emote = entries.get(entryIndex);
+            EmoteSummary emote = entries.get(entryIndex);
             if (this.tab == Tab.SELECTED) {
                 addSelectedRow(emote, entryIndex, rowY);
             } else {
@@ -93,7 +93,7 @@ public class WheelShortcutScreen extends Screen {
         super.extractRenderState(graphics, mouseX, mouseY, a);
         graphics.centeredText(this.font, this.title, this.width / 2, 10, 0xFFFFFFFF);
 
-        List<PlayableEmote> entries = getEntries();
+        List<EmoteSummary> entries = getEntries();
         if (entries.isEmpty()) {
             Component emptyMessage = Component.translatable(this.tab == Tab.SELECTED
                 ? "screen.emote.shortcuts.empty_selected"
@@ -120,7 +120,7 @@ public class WheelShortcutScreen extends Screen {
         );
     }
 
-    private void addSelectedRow(PlayableEmote emote, int entryIndex, int rowY) {
+    private void addSelectedRow(EmoteSummary emote, int entryIndex, int rowY) {
         int rowX = (this.width - ROW_WIDTH) / 2;
         this.addRenderableWidget(new ShortcutOrderButton(
             rowX,
@@ -146,7 +146,7 @@ public class WheelShortcutScreen extends Screen {
         ).bounds(rowX + 238, rowY, 54, ROW_HEIGHT).build());
     }
 
-    private void addAvailableRow(PlayableEmote emote, int rowY) {
+    private void addAvailableRow(EmoteSummary emote, int rowY) {
         int rowX = (this.width - ROW_WIDTH) / 2;
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.shortcuts.add", emote.displayName()),
@@ -157,13 +157,13 @@ public class WheelShortcutScreen extends Screen {
         ).bounds(rowX, rowY, ROW_WIDTH, ROW_HEIGHT).build());
     }
 
-    private List<PlayableEmote> getEntries() {
+    private List<EmoteSummary> getEntries() {
         return this.tab == Tab.SELECTED
             ? this.controller.getShortcutEmotes()
             : this.controller.getAvailableShortcutEmotes();
     }
 
-    private int getPageCount(List<PlayableEmote> entries) {
+    private int getPageCount(List<EmoteSummary> entries) {
         return Math.max(1, (entries.size() + ENTRIES_PER_PAGE - 1) / ENTRIES_PER_PAGE);
     }
 

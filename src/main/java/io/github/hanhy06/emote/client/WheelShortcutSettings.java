@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.client;
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.JsonFileStore;
-import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.application.EmoteSummary;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -19,7 +19,7 @@ public class WheelShortcutSettings {
     private final Map<String, List<String>> knownIdsByServer = new LinkedHashMap<>();
 
     private String serverKey = "";
-    private Map<String, PlayableEmote> availableById = Map.of();
+    private Map<String, EmoteSummary> availableById = Map.of();
     private List<String> selectedIds = List.of();
 
     public WheelShortcutSettings(Path filePath) {
@@ -27,10 +27,10 @@ public class WheelShortcutSettings {
         load();
     }
 
-    public void updateServer(String serverKey, List<PlayableEmote> availableEmotes) {
+    public void updateServer(String serverKey, List<EmoteSummary> availableEmotes) {
         this.serverKey = serverKey;
-        Map<String, PlayableEmote> nextAvailableById = new LinkedHashMap<>();
-        for (PlayableEmote emote : availableEmotes) {
+        Map<String, EmoteSummary> nextAvailableById = new LinkedHashMap<>();
+        for (EmoteSummary emote : availableEmotes) {
             nextAvailableById.putIfAbsent(emote.id(), emote);
         }
         this.availableById = Collections.unmodifiableMap(nextAvailableById);
@@ -80,10 +80,10 @@ public class WheelShortcutSettings {
         this.selectedIds = List.of();
     }
 
-    public List<PlayableEmote> selectedEmotes() {
-        List<PlayableEmote> selected = new ArrayList<>();
+    public List<EmoteSummary> selectedEmotes() {
+        List<EmoteSummary> selected = new ArrayList<>();
         for (String id : this.selectedIds) {
-            PlayableEmote emote = this.availableById.get(id);
+            EmoteSummary emote = this.availableById.get(id);
             if (emote != null) {
                 selected.add(emote);
             }
@@ -91,7 +91,7 @@ public class WheelShortcutSettings {
         return List.copyOf(selected);
     }
 
-    public List<PlayableEmote> availableEmotes() {
+    public List<EmoteSummary> availableEmotes() {
         LinkedHashSet<String> selected = new LinkedHashSet<>(this.selectedIds);
         return this.availableById.values().stream()
             .filter(emote -> !selected.contains(emote.id()))
@@ -127,7 +127,7 @@ public class WheelShortcutSettings {
     }
 
     private void move(String id, int direction) {
-        List<PlayableEmote> visibleSelection = selectedEmotes();
+        List<EmoteSummary> visibleSelection = selectedEmotes();
         if (visibleSelection.size() <= 1) {
             return;
         }

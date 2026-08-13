@@ -4,23 +4,23 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.EmoteSequence;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 
 public final class ReloadService {
     private final ConfigManager configManager;
-    private final EmoteRegistry emoteRegistry;
+    private final EmoteCatalog emoteRegistry;
     private final DirectoryContentsLoader directoryLoader;
     private final PlaybackManager playbackManager;
     private final WheelSyncService wheelSyncService;
 
     public ReloadService(
         ConfigManager configManager,
-        EmoteRegistry emoteRegistry,
+        EmoteCatalog emoteRegistry,
         AnimationDirectoryLoader directoryLoader,
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
@@ -30,7 +30,7 @@ public final class ReloadService {
 
     ReloadService(
         ConfigManager configManager,
-        EmoteRegistry emoteRegistry,
+        EmoteCatalog emoteRegistry,
         DirectoryContentsLoader directoryLoader,
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
@@ -67,10 +67,10 @@ public final class ReloadService {
     private int reloadRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
         var emotes = contents.animations().stream()
-            .map(RegisteredEmote::from)
+            .map(PreparedEmote::from)
             .toList();
         var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
-            RegisteredEmote::id,
+            PreparedEmote::id,
             java.util.function.Function.identity()
         ));
         var sequences = contents.sequences().stream()
@@ -82,18 +82,18 @@ public final class ReloadService {
             Emote.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
                 ignoredCount,
-                EmoteRegistry.MAX_EMOTE_COUNT
+                EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
         return this.emoteRegistry.size();
     }
 
-    private RegisteredSequence resolveSequence(
+    private PreparedSequence resolveSequence(
         EmoteSequence sequence,
-        java.util.Map<String, RegisteredEmote> animationsById
+        java.util.Map<String, PreparedEmote> animationsById
     ) {
         try {
-            return RegisteredSequence.resolve(sequence, animationsById);
+            return PreparedSequence.resolve(sequence, animationsById);
         } catch (IllegalArgumentException exception) {
             Emote.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;

@@ -8,9 +8,9 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.emote.EmoteDefinition;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
-import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
@@ -56,15 +56,15 @@ public class PlaybackManager implements ConfigListener {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
-    public PlayResult start(ServerPlayer player, EmoteDefinition definition) {
+    public PlayResult start(ServerPlayer player, PreparedDefinition definition) {
         releasePlayerReservation(player.getUUID());
         return switch (definition) {
-            case RegisteredEmote animation -> start(player, animation);
-            case RegisteredSequence sequence -> start(player, sequence);
+            case PreparedEmote animation -> start(player, animation);
+            case PreparedSequence sequence -> start(player, sequence);
         };
     }
 
-    public PlayResult start(ServerPlayer player, RegisteredEmote emote) {
+    public PlayResult start(ServerPlayer player, PreparedEmote emote) {
         return startResolved(
             player,
             emote,
@@ -75,7 +75,7 @@ public class PlaybackManager implements ConfigListener {
         );
     }
 
-    private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
+    private PlayResult start(ServerPlayer player, PreparedSequence sequence) {
         if (sequence.collaborative()) {
             return startCollaborative(player, sequence);
         }
@@ -89,7 +89,7 @@ public class PlaybackManager implements ConfigListener {
         );
     }
 
-    private PlayResult startCollaborative(ServerPlayer player, RegisteredSequence sequence) {
+    private PlayResult startCollaborative(ServerPlayer player, PreparedSequence sequence) {
         if (findActive(player.getUUID()) == null) {
             PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessionRegistry.sessions());
             if (waitingSession != null) {
@@ -112,8 +112,8 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
-        RegisteredSequence sequence = session.collaborativeSequence();
-        RegisteredEmote offer = sequence.compiledAnimation();
+        PreparedSequence sequence = session.collaborativeSequence();
+        PreparedEmote offer = sequence.compiledAnimation();
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             offer.skinParts(ParticipantRole.PARTNER)
@@ -144,11 +144,11 @@ public class PlaybackManager implements ConfigListener {
 
     private PlayResult startResolved(
         ServerPlayer player,
-        RegisteredEmote emote,
+        PreparedEmote emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
-        @Nullable RegisteredSequence collaborativeSequence
+        @Nullable PreparedSequence collaborativeSequence
     ) {
         PlaybackSession currentSession = findActive(player.getUUID());
         int projectedDisplayEntities = projectedDisplayEntityCount(
@@ -184,12 +184,12 @@ public class PlaybackManager implements ConfigListener {
 
     private PlayResult startPrepared(
         ServerPlayer player,
-        RegisteredEmote emote,
+        PreparedEmote emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
-        @Nullable RegisteredSequence collaborativeSequence
+        @Nullable PreparedSequence collaborativeSequence
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
@@ -410,8 +410,8 @@ public class PlaybackManager implements ConfigListener {
             return false;
         }
 
-        RegisteredSequence sequence = session.collaborativeSequence();
-        RegisteredEmote matched = sequence.compileMatchedRandom(this.random);
+        PreparedSequence sequence = session.collaborativeSequence();
+        PreparedEmote matched = sequence.compileMatchedRandom(this.random);
         BranchPlayback playback = createBranchPlayback(session, matched);
         PlaybackParticipant partner = session.activateReservedPartner(playback.timeline(), playback.events());
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
@@ -425,14 +425,14 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private void activateTimeout(PlaybackSession session) {
-        RegisteredSequence sequence = session.collaborativeSequence();
-        RegisteredEmote timeout = sequence.compileTimeoutRandom(this.random);
+        PreparedSequence sequence = session.collaborativeSequence();
+        PreparedEmote timeout = sequence.compileTimeoutRandom(this.random);
         BranchPlayback playback = createBranchPlayback(session, timeout);
         session.beginTimeout(playback.timeline(), playback.events());
         startEvents(playback.timeline(), playback.events());
     }
 
-    private BranchPlayback createBranchPlayback(PlaybackSession session, RegisteredEmote emote) {
+    private BranchPlayback createBranchPlayback(PlaybackSession session, PreparedEmote emote) {
         TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), session.nodes(), this.entityController);
         timeline.start();
         EventPlayer events = new EventPlayer(
@@ -518,7 +518,7 @@ public class PlaybackManager implements ConfigListener {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<RegisteredEmote> emotes,
+        List<PreparedEmote> emotes,
         int instanceCount
     ) {
         return this.stressTest.start(level, origin, yaw, emotes, instanceCount);

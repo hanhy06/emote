@@ -8,9 +8,9 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
-import io.github.hanhy06.emote.emote.PlayService;
-import io.github.hanhy06.emote.emote.PlayableEmoteService;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.application.EmotePlayService;
+import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackSession;
@@ -29,16 +29,16 @@ import java.util.List;
 public final class RootCommand {
     private final PlaybackManager playbackManager;
     private final DialogManager dialogManager;
-    private final PlayableEmoteService playableEmoteService;
-    private final PlayService playService;
+    private final EmoteQueryService playableEmoteService;
+    private final EmotePlayService playService;
     private final AdminCommands adminCommands;
 
     public RootCommand(
-        EmoteRegistry emoteRegistry,
+        EmoteCatalog emoteRegistry,
         PlaybackManager playbackManager,
         DialogManager dialogManager,
-        PlayableEmoteService playableEmoteService,
-        PlayService playService,
+        EmoteQueryService playableEmoteService,
+        EmotePlayService playService,
         PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager

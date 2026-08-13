@@ -1,16 +1,19 @@
-package io.github.hanhy06.emote.skin.animation;
+package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
-public final class AnimationSkinBindingFactory {
-    public List<AnimationSkinBinding> create(EmoteAnimation animation) {
+public final class SkinBindingCompiler {
+    private static final Logger LOGGER = LoggerFactory.getLogger(SkinBindingCompiler.class);
+
+    public List<SkinBinding> create(EmoteAnimation animation) {
         Map<ParticipantSkinPart, List<RawPart>> byPart = new HashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {
@@ -25,22 +28,22 @@ public final class AnimationSkinBindingFactory {
             ));
         }
 
-        List<AnimationSkinBinding> result = new ArrayList<>();
+        List<SkinBinding> result = new ArrayList<>();
         for (Map.Entry<ParticipantSkinPart, List<RawPart>> entry : byPart.entrySet()) {
             List<RawPart> parts = entry.getValue().stream()
                 .sorted(Comparator.comparingInt(RawPart::order).thenComparing(RawPart::nodeId))
                 .toList();
             result.addAll(createParts(entry.getKey(), parts));
         }
-        result.sort(Comparator.comparing(AnimationSkinBinding::participant).thenComparing(AnimationSkinBinding::nodeId));
+        result.sort(Comparator.comparing(SkinBinding::participant).thenComparing(SkinBinding::nodeId));
         return List.copyOf(result);
     }
 
-    private List<AnimationSkinBinding> createParts(ParticipantSkinPart participantSkinPart, List<RawPart> parts) {
+    private List<SkinBinding> createParts(ParticipantSkinPart participantSkinPart, List<RawPart> parts) {
         PlayerSkinPart skinPart = participantSkinPart.skinPart();
         if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(
+                .map(part -> new SkinBinding(
                     part.nodeId(),
                     participantSkinPart.participant(),
                     new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
@@ -48,14 +51,14 @@ public final class AnimationSkinBindingFactory {
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
-            Emote.LOGGER.warn(
+            LOGGER.warn(
                 "Too many vertical JSON skin segments for {} {}: {}",
                 participantSkinPart.participant(),
                 skinPart.id(),
                 parts.size()
             );
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(
+                .map(part -> new SkinBinding(
                     part.nodeId(),
                     participantSkinPart.participant(),
                     new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
@@ -67,7 +70,7 @@ public final class AnimationSkinBindingFactory {
         if (totalScale <= 0.0D) {
             totalScale = parts.size();
         }
-        List<AnimationSkinBinding> result = new ArrayList<>();
+        List<SkinBinding> result = new ArrayList<>();
         int segmentStart = 0;
         double accumulatedScale = 0.0D;
         for (int index = 0; index < parts.size(); index++) {
@@ -78,7 +81,7 @@ public final class AnimationSkinBindingFactory {
             int maximumEnd = Math.max(minimumEnd, PlayerSkinSegment.SIDE_FACE_HEIGHT - remaining);
             int suggestedEnd = (int) Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
-            result.add(new AnimationSkinBinding(
+            result.add(new SkinBinding(
                 part.nodeId(),
                 participantSkinPart.participant(),
                 new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd))

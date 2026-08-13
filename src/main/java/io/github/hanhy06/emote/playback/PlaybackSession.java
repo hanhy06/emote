@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.emote.RegisteredSequence;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 
@@ -23,7 +23,7 @@ public final class PlaybackSession {
     private TimelinePlayer timeline;
     private EventPlayer events;
     private final EmotePlayerBehavior playerBehavior;
-    private final @Nullable RegisteredSequence collaborativeSequence;
+    private final @Nullable PreparedSequence collaborativeSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
 
     private State state;
@@ -40,7 +40,7 @@ public final class PlaybackSession {
         EventPlayer events,
         EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator,
-        @Nullable RegisteredSequence collaborativeSequence
+        @Nullable PreparedSequence collaborativeSequence
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -115,7 +115,7 @@ public final class PlaybackSession {
         return this.collaborativeSequence != null;
     }
 
-    RegisteredSequence collaborativeSequence() {
+    PreparedSequence collaborativeSequence() {
         if (this.collaborativeSequence == null) {
             throw new IllegalStateException("Solo sessions do not have a collaborative sequence");
         }

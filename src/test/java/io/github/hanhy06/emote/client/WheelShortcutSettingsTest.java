@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.config.JsonFileStore;
-import io.github.hanhy06.emote.emote.PlayableEmote;
+import io.github.hanhy06.emote.application.EmoteSummary;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -31,7 +31,7 @@ class WheelShortcutSettingsTest {
     void savesSelectionAndOrderingPerServer(@TempDir Path tempDir) {
         Path filePath = tempDir.resolve("emote/wheel-shortcuts.json");
         WheelShortcutSettings settings = new WheelShortcutSettings(filePath);
-        List<PlayableEmote> available = emotes("a", "b", "c", "d");
+        List<EmoteSummary> available = emotes("a", "b", "c", "d");
 
         settings.updateServer("server:first.test", available);
         settings.remove("d");
@@ -88,13 +88,13 @@ class WheelShortcutSettingsTest {
         assertEquals(List.of("b"), ids(settings.availableEmotes()));
     }
 
-    private static List<PlayableEmote> emotes(String... ids) {
+    private static List<EmoteSummary> emotes(String... ids) {
         return java.util.Arrays.stream(ids)
-            .map(id -> new PlayableEmote(id, id.toUpperCase(), "Description " + id))
+            .map(id -> new EmoteSummary(id, id.toUpperCase(), "Description " + id))
             .toList();
     }
 
-    private static List<String> ids(List<PlayableEmote> emotes) {
-        return emotes.stream().map(PlayableEmote::id).toList();
+    private static List<String> ids(List<EmoteSummary> emotes) {
+        return emotes.stream().map(EmoteSummary::id).toList();
     }
 }

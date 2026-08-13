@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.server;
 import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.emote.EmoteRegistry;
+import io.github.hanhy06.emote.content.EmoteCatalog;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -37,7 +37,7 @@ class ReloadServiceTest {
               "timeline":{"duration":"1t","keyframes":[]}
             }
             """);
-        EmoteRegistry registry = new EmoteRegistry();
+        EmoteCatalog registry = new EmoteCatalog();
         var loaded = new AnimationJsonLoader().load(configManager.getAnimationDirectory().resolve("disabled.json"));
         ReloadService service = new ReloadService(
             configManager,

@@ -1,38 +1,38 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.content.PreparedDisplayData;
 
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.playback.PlaybackPlan;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-final class SequenceAnimationCompiler {
-    private SequenceAnimationCompiler() {
+final class SequenceCompiler {
+    private SequenceCompiler() {
     }
 
-    static RegisteredEmote compile(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
-        RegisteredEmote first = steps.stream()
-            .filter(RegisteredSequence.SelectedEmoteStep.class::isInstance)
-            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
-            .map(RegisteredSequence.SelectedEmoteStep::animation)
+    static PreparedEmote compile(EmoteSequence sequence, List<PreparedSequence.SelectedStep> steps) {
+        PreparedEmote first = steps.stream()
+            .filter(PreparedSequence.SelectedEmoteStep.class::isInstance)
+            .map(PreparedSequence.SelectedEmoteStep.class::cast)
+            .map(PreparedSequence.SelectedEmoteStep::animation)
             .findFirst()
             .orElseThrow();
 
         List<EmoteAnimation.Keyframe> keyframes = new ArrayList<>();
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         long offset = 0L;
-        for (RegisteredSequence.SelectedStep selectedStep : steps) {
-            if (selectedStep instanceof RegisteredSequence.SelectedWaitStep(int ticks)) {
+        for (PreparedSequence.SelectedStep selectedStep : steps) {
+            if (selectedStep instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
                 offset += ticks;
                 continue;
             }
-            RegisteredSequence.SelectedEmoteStep step = (RegisteredSequence.SelectedEmoteStep) selectedStep;
+            PreparedSequence.SelectedEmoteStep step = (PreparedSequence.SelectedEmoteStep) selectedStep;
             EmoteAnimation animation = step.animation().animation();
             int segmentOffset = requireTick(offset, sequence);
             keyframes.add(createResetKeyframe(animation, segmentOffset));
@@ -87,8 +87,8 @@ final class SequenceAnimationCompiler {
             layout.preparedDisplayData()
         );
         return layout.generatedPartner()
-            ? RegisteredEmote.from(loaded)
-            : new RegisteredEmote(loaded, first.skinParts(), PlaybackPlan.compile(compiledAnimation));
+            ? PreparedEmote.from(loaded)
+            : new PreparedEmote(loaded, first.skinParts(), CompiledTimeline.compile(compiledAnimation));
     }
 
     private static EmoteAnimation.Keyframe createResetKeyframe(EmoteAnimation animation, int tick) {
@@ -108,13 +108,13 @@ final class SequenceAnimationCompiler {
         return (int) tick;
     }
 
-    private static String fingerprint(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
+    private static String fingerprint(EmoteSequence sequence, List<PreparedSequence.SelectedStep> steps) {
         StringBuilder input = new StringBuilder(sequence.id().toString());
-        for (RegisteredSequence.SelectedStep step : steps) {
-            if (step instanceof RegisteredSequence.SelectedWaitStep(int ticks)) {
+        for (PreparedSequence.SelectedStep step : steps) {
+            if (step instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
                 input.append("|wait:").append(ticks);
             } else {
-                RegisteredSequence.SelectedEmoteStep emoteStep = (RegisteredSequence.SelectedEmoteStep) step;
+                PreparedSequence.SelectedEmoteStep emoteStep = (PreparedSequence.SelectedEmoteStep) step;
                 input.append('|').append(emoteStep.animation().source().sha256()).append(':').append(emoteStep.loopDelayAfter());
             }
         }

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
 import java.util.HashMap;
 import java.util.Map;

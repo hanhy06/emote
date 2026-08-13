@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -12,32 +12,32 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.random.RandomGenerator;
 
-public record RegisteredSequence(
+public record PreparedSequence(
     EmoteSequence source,
     Playback playback,
-    RegisteredEmote compiledAnimation
-) implements EmoteDefinition {
-    public RegisteredSequence {
+    PreparedEmote compiledAnimation
+) implements PreparedDefinition {
+    public PreparedSequence {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(playback, "playback");
         Objects.requireNonNull(compiledAnimation, "compiledAnimation");
     }
 
-    public static RegisteredSequence resolve(EmoteSequence source, Map<String, RegisteredEmote> animations) {
+    public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedEmote> animations) {
         Playback playback = resolvePlayback(source, animations);
         SequenceNodeLayout.validateCompatibleAnimations(playback.validationSteps());
         List<SelectedStep> initialSteps = switch (playback) {
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
             case CollaborativePlayback collaborative -> List.of(new SelectedEmoteStep(collaborative.offer(), false));
         };
-        return new RegisteredSequence(
+        return new PreparedSequence(
             source,
             playback,
-            SequenceAnimationCompiler.compile(source, initialSteps)
+            SequenceCompiler.compile(source, initialSteps)
         );
     }
 
-    private static Playback resolvePlayback(EmoteSequence source, Map<String, RegisteredEmote> animations) {
+    private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedEmote> animations) {
         if (source.steps().getFirst() instanceof EmoteSequence.AwaitPartnerStep await) {
             return new CollaborativePlayback(
                 resolveAnimation(await.offerEmoteId().toString(), animations),
@@ -49,7 +49,7 @@ public record RegisteredSequence(
         return new LinearPlayback(resolveBranch(source.steps(), animations));
     }
 
-    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, RegisteredEmote> animations) {
+    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedEmote> animations) {
         List<Step> resolvedSteps = new ArrayList<>(sourceSteps.size());
         for (EmoteSequence.Step sourceStep : sourceSteps) {
             if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
@@ -59,7 +59,7 @@ public record RegisteredSequence(
             EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
-                RegisteredEmote animation = resolveAnimation(choice.emoteId().toString(), animations);
+                PreparedEmote animation = resolveAnimation(choice.emoteId().toString(), animations);
                 candidates.add(new Choice(animation, choice.chance()));
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat()));
@@ -67,8 +67,8 @@ public record RegisteredSequence(
         return new Branch(resolvedSteps);
     }
 
-    private static RegisteredEmote resolveAnimation(String id, Map<String, RegisteredEmote> animations) {
-        RegisteredEmote animation = animations.get(id);
+    private static PreparedEmote resolveAnimation(String id, Map<String, PreparedEmote> animations) {
+        PreparedEmote animation = animations.get(id);
         if (animation == null) {
             throw new IllegalArgumentException("Unknown or disabled animation: " + id);
         }
@@ -78,19 +78,19 @@ public record RegisteredSequence(
         return animation;
     }
 
-    public RegisteredEmote compileRandom(RandomGenerator random) {
+    public PreparedEmote compileRandom(RandomGenerator random) {
         if (!(this.playback instanceof LinearPlayback linear)) {
             throw new IllegalStateException("Collaborative sequence branches must be compiled separately: " + id());
         }
-        return SequenceAnimationCompiler.compile(this.source, selectSteps(linear.branch(), random));
+        return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random));
     }
 
-    public RegisteredEmote compileMatchedRandom(RandomGenerator random) {
-        return SequenceAnimationCompiler.compile(this.source, selectSteps(collaboration().matched(), random));
+    public PreparedEmote compileMatchedRandom(RandomGenerator random) {
+        return SequenceCompiler.compile(this.source, selectSteps(collaboration().matched(), random));
     }
 
-    public RegisteredEmote compileTimeoutRandom(RandomGenerator random) {
-        return SequenceAnimationCompiler.compile(this.source, selectSteps(collaboration().timeout(), random));
+    public PreparedEmote compileTimeoutRandom(RandomGenerator random) {
+        return SequenceCompiler.compile(this.source, selectSteps(collaboration().timeout(), random));
     }
 
     public boolean collaborative() {
@@ -212,7 +212,7 @@ public record RegisteredSequence(
     }
 
     public record CollaborativePlayback(
-        RegisteredEmote offer,
+        PreparedEmote offer,
         int timeoutTicks,
         Branch matched,
         Branch timeout
@@ -271,7 +271,7 @@ public record RegisteredSequence(
         }
     }
 
-    public record Choice(RegisteredEmote animation, int chance) {
+    public record Choice(PreparedEmote animation, int chance) {
         public Choice {
             Objects.requireNonNull(animation, "animation");
         }
@@ -280,7 +280,7 @@ public record RegisteredSequence(
     sealed interface SelectedStep permits SelectedEmoteStep, SelectedWaitStep {
     }
 
-    record SelectedEmoteStep(RegisteredEmote animation, boolean loopDelayAfter) implements SelectedStep {
+    record SelectedEmoteStep(PreparedEmote animation, boolean loopDelayAfter) implements SelectedStep {
         SelectedEmoteStep {
             Objects.requireNonNull(animation, "animation");
         }

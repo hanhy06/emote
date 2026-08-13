@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -24,7 +24,7 @@ final class PlaybackStressTest {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
-    int start(ServerLevel level, Vec3 origin, float yaw, List<RegisteredEmote> emotes, int instanceCount) {
+    int start(ServerLevel level, Vec3 origin, float yaw, List<PreparedEmote> emotes, int instanceCount) {
         if (emotes.isEmpty()) {
             throw new IllegalArgumentException("At least one emote is required for a stress test");
         }
@@ -38,12 +38,12 @@ final class PlaybackStressTest {
         long baselineTickNanos = Emote.SERVER.getAverageTickTimeNanos();
         float targetTps = Emote.SERVER.tickRateManager().tickrate();
         Random random = new Random(RANDOM_SEED);
-        List<RegisteredEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
+        List<PreparedEmote> selection = createRandomizedSelection(emotes, random, instanceCount);
         List<StressTestInstance> instances = new ArrayList<>(instanceCount);
         int displayEntityCount = 0;
         try {
             for (int index = 0; index < instanceCount; index++) {
-                RegisteredEmote emote = selection.get(index);
+                PreparedEmote emote = selection.get(index);
                 PlaybackNodes nodes = this.entityController.create(
                     level,
                     gridPosition(origin, index, instanceCount),
@@ -349,12 +349,12 @@ final class PlaybackStressTest {
     }
 
     private static final class StressTestInstance {
-        private final RegisteredEmote emote;
+        private final PreparedEmote emote;
         private final PlaybackNodes nodes;
 
         private TimelinePlayer timeline;
 
-        private StressTestInstance(RegisteredEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {
+        private StressTestInstance(PreparedEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {
             this.emote = emote;
             this.nodes = nodes;
             this.timeline = timeline;

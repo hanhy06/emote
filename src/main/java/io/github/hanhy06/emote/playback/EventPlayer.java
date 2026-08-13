@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.CompiledTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
 import java.util.List;
@@ -8,16 +9,16 @@ import java.util.Objects;
 public final class EventPlayer {
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
-    private final PlaybackPlan playbackPlan;
+    private final CompiledTimeline playbackPlan;
 
     private boolean started;
     private boolean stopped;
 
     public EventPlayer(EmoteAnimation animation, EventExecutor executor) {
-        this(PlaybackPlan.compile(animation), executor);
+        this(CompiledTimeline.compile(animation), executor);
     }
 
-    public EventPlayer(PlaybackPlan playbackPlan, EventExecutor executor) {
+    public EventPlayer(CompiledTimeline playbackPlan, EventExecutor executor) {
         this.playbackPlan = Objects.requireNonNull(playbackPlan, "playbackPlan");
         this.events = playbackPlan.animation().timeline().events();
         this.executor = Objects.requireNonNull(executor, "executor");

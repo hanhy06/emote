@@ -1,5 +1,7 @@
-package io.github.hanhy06.emote.emote;
+package io.github.hanhy06.emote.application;
 
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -8,33 +10,33 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.Predicate;
 
-public class PlayableEmoteService {
-    private final EmoteRegistry emoteRegistry;
+public class EmoteQueryService {
+    private final EmoteCatalog emoteRegistry;
     private final PlayPermissionChecker playPermissionChecker;
 
-    public PlayableEmoteService(EmoteRegistry emoteRegistry, PermissionService permissionService) {
+    public EmoteQueryService(EmoteCatalog emoteRegistry, PermissionService permissionService) {
         this(emoteRegistry, (player, emote) -> permissionService.canPlay(player, emote.id()));
     }
 
-    PlayableEmoteService(EmoteRegistry emoteRegistry, PlayPermissionChecker playPermissionChecker) {
+    EmoteQueryService(EmoteCatalog emoteRegistry, PlayPermissionChecker playPermissionChecker) {
         this.emoteRegistry = emoteRegistry;
         this.playPermissionChecker = playPermissionChecker;
     }
 
-    public List<PlayableEmote> getAll(ServerPlayer player) {
+    public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteRegistry.getAllDefinitions().stream()
-            .filter(EmoteDefinition::standalone)
+            .filter(PreparedDefinition::standalone)
             .filter(emote -> canPlay(player, emote))
-            .sorted(Comparator.comparing(EmoteDefinition::name).thenComparing(EmoteDefinition::id))
-            .map(emote -> new PlayableEmote(emote.id(), emote.name(), emote.description()))
+            .sorted(Comparator.comparing(PreparedDefinition::name).thenComparing(PreparedDefinition::id))
+            .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description()))
             .toList();
     }
 
-    public List<PlayableEmote> search(ServerPlayer player, String query) {
+    public List<EmoteSummary> search(ServerPlayer player, String query) {
         return filter(getAll(player), query);
     }
 
-    static List<PlayableEmote> filter(List<PlayableEmote> emotes, String query) {
+    static List<EmoteSummary> filter(List<EmoteSummary> emotes, String query) {
         String normalizedQuery = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
         if (normalizedQuery.isEmpty()) {
             return List.copyOf(emotes);
@@ -48,7 +50,7 @@ public class PlayableEmoteService {
             .toList();
     }
 
-    private static int searchRank(PlayableEmote emote, String query) {
+    private static int searchRank(EmoteSummary emote, String query) {
         String displayName = emote.displayName().toLowerCase(Locale.ROOT);
         String id = emote.id().toLowerCase(Locale.ROOT);
         String description = emote.description().toLowerCase(Locale.ROOT);
@@ -67,9 +69,9 @@ public class PlayableEmoteService {
         return collectPlayIds(emote -> canPlay(player, emote));
     }
 
-    private List<String> collectPlayIds(Predicate<EmoteDefinition> filter) {
+    private List<String> collectPlayIds(Predicate<PreparedDefinition> filter) {
         List<String> ids = new java.util.ArrayList<>();
-        for (EmoteDefinition emote : this.emoteRegistry.getAllDefinitions()) {
+        for (PreparedDefinition emote : this.emoteRegistry.getAllDefinitions()) {
             if (emote.standalone() && filter.test(emote)) {
                 ids.add(emote.id());
             }
@@ -77,15 +79,15 @@ public class PlayableEmoteService {
         return List.copyOf(ids);
     }
 
-    private boolean canPlay(ServerPlayer player, EmoteDefinition emote) {
+    private boolean canPlay(ServerPlayer player, PreparedDefinition emote) {
         return this.playPermissionChecker.canPlay(player, emote);
     }
 
     @FunctionalInterface
     interface PlayPermissionChecker {
-        boolean canPlay(ServerPlayer player, EmoteDefinition emote);
+        boolean canPlay(ServerPlayer player, PreparedDefinition emote);
     }
 
-    private record RankedEntry(PlayableEmote emote, int rank) {
+    private record RankedEntry(EmoteSummary emote, int rank) {
     }
 }
