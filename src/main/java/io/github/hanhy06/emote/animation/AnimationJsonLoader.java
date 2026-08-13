@@ -225,6 +225,22 @@ public final class AnimationJsonLoader {
 
     private NodeSpace parseNodeSpace(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
+        JsonElement element = object.get("space");
+        if (element == null || element.isJsonNull()) {
+            JsonElement skinElement = object.get("skin");
+            if (skinElement != null && skinElement.isJsonObject()) {
+                JsonElement participantElement = skinElement.getAsJsonObject().get("participant");
+                if (participantElement != null && participantElement.isJsonPrimitive()
+                    && participantElement.getAsJsonPrimitive().isString()) {
+                    return switch (participantElement.getAsString()) {
+                        case "initiator" -> NodeSpace.INITIATOR;
+                        case "partner" -> NodeSpace.PARTNER;
+                        default -> NodeSpace.SCENE;
+                    };
+                }
+            }
+            return NodeSpace.SCENE;
+        }
         String value = reader.requireString(object, "space", path);
         return switch (value) {
             case "scene" -> NodeSpace.SCENE;
