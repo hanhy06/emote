@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -35,7 +37,7 @@ class AnimationComplexityValidatorTest {
         AnimationJsonLoader loader = new AnimationJsonLoader();
         try (var paths = Files.list(Path.of("docs/example"))) {
             for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
-                EmoteAnimation.Loaded loaded = loader.load(path);
+                LoadedAnimation loaded = loader.load(path);
                 assertDoesNotThrow(() -> this.validator.validate(loaded), path.toString());
             }
         }
@@ -84,7 +86,7 @@ class AnimationComplexityValidatorTest {
         assertEquals("$.timeline.duration", exception.fieldPath());
     }
 
-    private EmoteAnimation.Loaded loaded(
+    private LoadedAnimation loaded(
         Map<String, EmoteAnimation.Node> nodes,
         int durationTicks,
         List<EmoteAnimation.Keyframe> keyframes,
@@ -101,7 +103,7 @@ class AnimationComplexityValidatorTest {
                 events
             )
         );
-        return new EmoteAnimation.Loaded(Path.of("complexity.json"), "test", animation);
+        return new LoadedAnimation(Path.of("complexity.json"), "test", animation);
     }
 
     private EmoteAnimation.BlockNode blockNode() {

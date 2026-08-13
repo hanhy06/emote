@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
@@ -11,8 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
-
-import static io.github.hanhy06.emote.api.animation.EmoteAnimation.Loaded;
 
 public final class AnimationDirectoryLoader {
     private final AnimationJsonLoader jsonLoader;
@@ -38,14 +38,14 @@ public final class AnimationDirectoryLoader {
     }
 
     DirectoryContents load(Path directory, LoadedValidator validator) {
-        List<Loaded> candidates = new ArrayList<>();
+        List<LoadedAnimation> candidates = new ArrayList<>();
         List<EmoteSequence> sequenceCandidates = new ArrayList<>();
         for (Path path : findJsonFiles(directory)) {
             try {
                 if (fileType(path).equals("sequence")) {
                     sequenceCandidates.add(this.sequenceJsonLoader.load(path));
                 } else {
-                    Loaded loaded = this.jsonLoader.load(path);
+                    LoadedAnimation loaded = this.jsonLoader.load(path);
                     candidates.add(validator.validate(loaded));
                 }
             } catch (EmoteAnimationLoadException exception) {
@@ -105,9 +105,9 @@ public final class AnimationDirectoryLoader {
         }
     }
 
-    private DirectoryContents rejectDuplicateIds(List<Loaded> candidates, List<EmoteSequence> sequenceCandidates) {
+    private DirectoryContents rejectDuplicateIds(List<LoadedAnimation> candidates, List<EmoteSequence> sequenceCandidates) {
         Map<String, List<Path>> pathsById = new LinkedHashMap<>();
-        for (Loaded candidate : candidates) {
+        for (LoadedAnimation candidate : candidates) {
             pathsById.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>())
                 .add(candidate.sourcePath());
         }
@@ -120,7 +120,7 @@ public final class AnimationDirectoryLoader {
             .peek(entry -> Emote.LOGGER.warn("Ignoring emote files with duplicate id {}: {}", entry.getKey(), entry.getValue()))
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
-        List<Loaded> loaded = candidates.stream()
+        List<LoadedAnimation> loaded = candidates.stream()
             .filter(candidate -> !duplicateIds.contains(candidate.animation().id().toString()))
             .sorted(Comparator.comparing(candidate -> candidate.animation().id().toString()))
             .toList();
@@ -131,7 +131,7 @@ public final class AnimationDirectoryLoader {
         return new DirectoryContents(loaded, sequences);
     }
 
-    public record DirectoryContents(List<Loaded> animations, List<EmoteSequence> sequences) {
+    public record DirectoryContents(List<LoadedAnimation> animations, List<EmoteSequence> sequences) {
         public DirectoryContents {
             animations = List.copyOf(animations);
             sequences = List.copyOf(sequences);
@@ -140,6 +140,6 @@ public final class AnimationDirectoryLoader {
 
     @FunctionalInterface
     interface LoadedValidator {
-        Loaded validate(Loaded loaded) throws EmoteAnimationLoadException;
+        LoadedAnimation validate(LoadedAnimation loaded) throws EmoteAnimationLoadException;
     }
 }

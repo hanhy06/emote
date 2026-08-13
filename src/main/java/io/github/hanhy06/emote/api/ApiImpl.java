@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.api;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -64,7 +66,7 @@ public final class ApiImpl extends EmoteApi {
         Objects.requireNonNull(animation, "animation");
         requireServerThread();
         Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
-        EmoteAnimation.Loaded loaded = new EmoteAnimation.Loaded(
+        LoadedAnimation loaded = new LoadedAnimation(
             sourcePath,
             "api:" + animation.id(),
             animation

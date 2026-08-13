@@ -1,5 +1,9 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.content.PreparedDisplayData;
+
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
 
@@ -76,7 +80,7 @@ final class SequenceAnimationCompiler {
             first.source().preparedDisplayData()
         );
         compiledAnimation = layout.animation();
-        EmoteAnimation.Loaded loaded = new EmoteAnimation.Loaded(
+        LoadedAnimation loaded = new LoadedAnimation(
             sequence.sourcePath(),
             fingerprint(sequence, steps),
             compiledAnimation,

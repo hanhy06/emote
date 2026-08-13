@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -64,7 +66,7 @@ public final class RegisteredEmoteFixture {
             Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, IDENTITY)),
             new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
         );
-        return RegisteredEmote.from(new EmoteAnimation.Loaded(
+        return RegisteredEmote.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             "0000000000000000000000000000000000000000000000000000000000000000",
             animation

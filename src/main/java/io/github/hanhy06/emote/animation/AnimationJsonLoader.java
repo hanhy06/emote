@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -41,7 +43,7 @@ public final class AnimationJsonLoader {
     );
     private final TimelineJsonParser timelineParser = new TimelineJsonParser();
 
-    public Loaded load(Path sourcePath) throws EmoteAnimationLoadException {
+    public LoadedAnimation load(Path sourcePath) throws EmoteAnimationLoadException {
         byte[] bytes;
         try {
             long fileSize = Files.size(sourcePath);
@@ -59,7 +61,7 @@ public final class AnimationJsonLoader {
         return parse(sourcePath, bytes);
     }
 
-    public Loaded parse(Path sourcePath, byte[] bytes)
+    public LoadedAnimation parse(Path sourcePath, byte[] bytes)
         throws EmoteAnimationLoadException {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Objects.requireNonNull(bytes, "bytes");
@@ -95,7 +97,7 @@ public final class AnimationJsonLoader {
         Settings settings = parseSettings(settingsObject, reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
-        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, settings, nodes, timeline));
+        return new LoadedAnimation(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, settings, nodes, timeline));
     }
 
     static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)

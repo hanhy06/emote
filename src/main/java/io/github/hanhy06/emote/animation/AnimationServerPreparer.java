@@ -1,5 +1,9 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.content.PreparedDisplayData;
+
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
@@ -27,7 +31,7 @@ import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 public final class AnimationServerPreparer {
     private final AnimationComplexityValidator complexityValidator = new AnimationComplexityValidator();
 
-    public Loaded prepare(Loaded loaded) throws EmoteAnimationLoadException {
+    public LoadedAnimation prepare(LoadedAnimation loaded) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
         MinecraftServer server = Emote.SERVER;
         Path sourcePath = loaded.sourcePath();
@@ -46,13 +50,13 @@ public final class AnimationServerPreparer {
                         JsonOps.INSTANCE,
                         new JsonPrimitive(itemNode.itemDisplay())
                     ).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedItemData(itemStack, itemDisplay));
+                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Item(itemStack, itemDisplay));
                 } else if (entry.getValue() instanceof BlockNode blockNode) {
                     BlockState blockState = BlockState.CODEC.parse(nbtOps, blockNode.blockStateNbt()).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedBlockData(blockState));
+                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Block(blockState));
                 } else if (entry.getValue() instanceof TextNode textNode) {
                     var text = ComponentSerialization.CODEC.parse(jsonOps, textNode.text()).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedTextData(text));
+                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Text(text));
                 }
             } catch (RuntimeException exception) {
                 String field = entry.getValue() instanceof ItemNode
@@ -75,7 +79,7 @@ public final class AnimationServerPreparer {
         validateTimelineEvents(events.timeline(), validationSource, server, sourcePath);
         validateEvents(events.loop(), "$.timeline.events.loop", validationSource, server, sourcePath);
         validateEvents(events.stop(), "$.timeline.events.stop", validationSource, server, sourcePath);
-        return new Loaded(loaded.sourcePath(), loaded.sha256(), loaded.animation(), preparedDisplayData);
+        return new LoadedAnimation(loaded.sourcePath(), loaded.sha256(), loaded.animation(), preparedDisplayData);
     }
 
     static void validateSkinTarget(Path sourcePath, String nodePath, ItemNode itemNode, ItemStack itemStack)

@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
@@ -13,7 +15,7 @@ import java.util.List;
 import java.util.Objects;
 
 public record RegisteredEmote(
-    EmoteAnimation.Loaded source,
+    LoadedAnimation source,
     List<AnimationSkinBinding> skinParts,
     PlaybackPlan playbackPlan
 ) implements EmoteDefinition {
@@ -25,7 +27,7 @@ public record RegisteredEmote(
         Objects.requireNonNull(playbackPlan, "playbackPlan");
     }
 
-    public static RegisteredEmote from(EmoteAnimation.Loaded source) {
+    public static RegisteredEmote from(LoadedAnimation source) {
         return new RegisteredEmote(
             source,
             SKIN_PART_FACTORY.create(source.animation()),

@@ -1,5 +1,9 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.content.PreparedDisplayData;
+
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import com.mojang.brigadier.StringReader;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -179,7 +183,7 @@ class SequenceAnimationCompilerTest {
             List.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
-            Map.of("text", new EmoteAnimation.PreparedTextData(Component.literal("same")))
+            Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
         );
         RegisteredEmote second = animation(
             "demo:second",
@@ -189,7 +193,7 @@ class SequenceAnimationCompilerTest {
             List.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
-            Map.of("text", new EmoteAnimation.PreparedTextData(Component.literal("same")))
+            Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
         );
 
         RegisteredSequence sequence = RegisteredSequence.resolve(
@@ -420,7 +424,7 @@ class SequenceAnimationCompilerTest {
         List<EmoteAnimation.Keyframe> keyframes,
         EmoteAnimation.Events events,
         Map<String, EmoteAnimation.Node> nodes,
-        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData
+        Map<String, PreparedDisplayData> preparedDisplayData
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
@@ -429,7 +433,7 @@ class SequenceAnimationCompilerTest {
             nodes,
             new EmoteAnimation.Timeline(duration, keyframes, events)
         );
-        return RegisteredEmote.from(new EmoteAnimation.Loaded(
+        return RegisteredEmote.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             id,
             animation,

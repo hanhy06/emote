@@ -5,13 +5,8 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.level.block.state.BlockState;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -278,56 +273,6 @@ public record EmoteAnimation(
 
     public record Vec3(double x, double y, double z) {
         public static final Vec3 ZERO = new Vec3(0.0D, 0.0D, 0.0D);
-    }
-
-    public sealed interface PreparedDisplayData permits PreparedItemData, PreparedBlockData, PreparedTextData {
-    }
-
-    public record PreparedItemData(ItemStack itemStack, ItemDisplayContext itemDisplay) implements PreparedDisplayData {
-        public PreparedItemData {
-            itemStack = Objects.requireNonNull(itemStack, "itemStack").copy();
-            Objects.requireNonNull(itemDisplay, "itemDisplay");
-        }
-
-        @Override
-        public ItemStack itemStack() {
-            return this.itemStack.copy();
-        }
-    }
-
-    public record PreparedBlockData(BlockState blockState) implements PreparedDisplayData {
-        public PreparedBlockData {
-            Objects.requireNonNull(blockState, "blockState");
-        }
-    }
-
-    public record PreparedTextData(Component text) implements PreparedDisplayData {
-        public PreparedTextData {
-            text = Objects.requireNonNull(text, "text").copy();
-        }
-
-        @Override
-        public Component text() {
-            return this.text.copy();
-        }
-    }
-
-    public record Loaded(
-        Path sourcePath,
-        String sha256,
-        EmoteAnimation animation,
-        Map<String, PreparedDisplayData> preparedDisplayData
-    ) {
-        public Loaded(Path sourcePath, String sha256, EmoteAnimation animation) {
-            this(sourcePath, sha256, animation, Map.of());
-        }
-
-        public Loaded {
-            Objects.requireNonNull(sourcePath, "sourcePath");
-            Objects.requireNonNull(sha256, "sha256");
-            Objects.requireNonNull(animation, "animation");
-            preparedDisplayData = Map.copyOf(preparedDisplayData);
-        }
     }
 
     private static CompoundTag copy(CompoundTag tag) {

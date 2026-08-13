@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.content.LoadedAnimation;
+
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -25,7 +27,7 @@ class AnimationJsonLoaderTest {
         JsonObject root = readReference();
         root.getAsJsonObject("metadata").addProperty("future_metadata", "ignored");
 
-        EmoteAnimation.Loaded loaded = parse(root);
+        LoadedAnimation loaded = parse(root);
 
         assertEquals("emote:format_reference", loaded.animation().id().toString());
         assertEquals("Format Reference", loaded.animation().metadata().name());
@@ -53,7 +55,7 @@ class AnimationJsonLoaderTest {
         JsonObject root = readReference();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
 
-        EmoteAnimation.Loaded loaded = parse(root);
+        LoadedAnimation loaded = parse(root);
 
         assertEquals(3, root.get("schema_version").getAsInt());
         assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().settings().playback().mode());
@@ -104,7 +106,7 @@ class AnimationJsonLoaderTest {
         root.getAsJsonObject("settings").addProperty("cooldown", "1.5s");
         root.getAsJsonObject("timeline").addProperty("duration", "4s");
 
-        EmoteAnimation.Loaded loaded = parse(root);
+        LoadedAnimation loaded = parse(root);
 
         assertEquals(30, loaded.animation().settings().cooldownTicks());
         assertEquals(80, loaded.animation().timeline().durationTicks());
@@ -119,7 +121,7 @@ class AnimationJsonLoaderTest {
 
         assertEquals(6, examplePaths.size());
         for (Path examplePath : examplePaths) {
-            EmoteAnimation.Loaded loaded = this.loader.load(examplePath);
+            LoadedAnimation loaded = this.loader.load(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
         }
@@ -256,7 +258,7 @@ class AnimationJsonLoaderTest {
         return root;
     }
 
-    private EmoteAnimation.Loaded parse(JsonObject root) throws EmoteAnimationLoadException {
+    private LoadedAnimation parse(JsonObject root) throws EmoteAnimationLoadException {
         return this.loader.parse(
             REFERENCE_PATH,
             root.toString().getBytes(StandardCharsets.UTF_8)

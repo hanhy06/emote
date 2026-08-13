@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.content.PreparedDisplayData;
+
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
@@ -16,7 +18,7 @@ final class SequenceNodeLayout {
     static Expansion expandCollaborativeLayout(
         boolean collaborative,
         EmoteAnimation animation,
-        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData
+        Map<String, PreparedDisplayData> preparedDisplayData
     ) {
         if (!collaborative || animation.nodes().values().stream().anyMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER)) {
             return new Expansion(animation, preparedDisplayData, false);
@@ -24,10 +26,10 @@ final class SequenceNodeLayout {
 
         Map<String, String> partnerIds = partnerNodeIds(animation.nodes());
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>(animation.nodes());
-        Map<String, EmoteAnimation.PreparedDisplayData> expandedPreparedData = new LinkedHashMap<>(preparedDisplayData);
+        Map<String, PreparedDisplayData> expandedPreparedData = new LinkedHashMap<>(preparedDisplayData);
         partnerIds.forEach((sourceId, partnerId) -> {
             nodes.put(partnerId, asPartnerNode(animation.nodes().get(sourceId)));
-            EmoteAnimation.PreparedDisplayData prepared = preparedDisplayData.get(sourceId);
+            PreparedDisplayData prepared = preparedDisplayData.get(sourceId);
             if (prepared != null) {
                 expandedPreparedData.put(partnerId, prepared);
             }
@@ -182,7 +184,7 @@ final class SequenceNodeLayout {
 
     record Expansion(
         EmoteAnimation animation,
-        Map<String, EmoteAnimation.PreparedDisplayData> preparedDisplayData,
+        Map<String, PreparedDisplayData> preparedDisplayData,
         boolean generatedPartner
     ) {
         Expansion {

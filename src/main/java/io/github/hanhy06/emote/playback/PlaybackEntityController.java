@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.content.PreparedDisplayData;
+
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -45,7 +47,7 @@ public final class PlaybackEntityController {
     PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, RegisteredEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
-            EmoteAnimation.PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
+            PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
             RootTransform nodeRoot = spaces.get(entry.getValue().space());
             if (nodeRoot == null) {
                 throw new IllegalArgumentException("Missing root for node space " + entry.getValue().space());
@@ -150,7 +152,7 @@ public final class PlaybackEntityController {
         RootTransform root,
         String nodeId,
         EmoteAnimation.Node node,
-        EmoteAnimation.PreparedDisplayData preparedData
+        PreparedDisplayData preparedData
     ) {
         if (node instanceof EmoteAnimation.AnchorNode) {
             return new NodeInstance(nodeId, node, null, null);
@@ -185,20 +187,20 @@ public final class PlaybackEntityController {
 
     private DisplayContent applyRuntimeData(
         Display entity,
-        EmoteAnimation.PreparedDisplayData preparedData
+        PreparedDisplayData preparedData
     ) {
         return switch (preparedData) {
-            case EmoteAnimation.PreparedItemData(ItemStack itemStack, var itemDisplay) -> {
+            case PreparedDisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
                 accessor.emote$setItemStack(itemStack);
                 accessor.emote$setItemTransform(itemDisplay);
                 yield new ItemContent(itemStack);
             }
-            case EmoteAnimation.PreparedBlockData(var blockState) -> {
+            case PreparedDisplayData.Block(var blockState) -> {
                 ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);
                 yield new BlockContent(blockState);
             }
-            case EmoteAnimation.PreparedTextData(Component unresolvedText) -> {
+            case PreparedDisplayData.Text(Component unresolvedText) -> {
                 Component text = resolveText((Display.TextDisplay) entity, unresolvedText);
                 ((TextDisplayAccessor) entity).emote$setText(text);
                 yield new TextContent(text);
@@ -213,9 +215,9 @@ public final class PlaybackEntityController {
         accessor.emote$setTransformationInterpolationDelay(0);
     }
 
-    private EmoteAnimation.PreparedDisplayData requirePreparedData(
+    private PreparedDisplayData requirePreparedData(
         String nodeId,
-        EmoteAnimation.PreparedDisplayData preparedData
+        PreparedDisplayData preparedData
     ) {
         if (preparedData == null) {
             throw new IllegalStateException("Display node was not prepared during reload: " + nodeId);
