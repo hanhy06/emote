@@ -34,23 +34,11 @@ public final class AnimationDirectoryLoader {
         this.serverValidator = serverValidator;
     }
 
-    AnimationDirectoryLoader(AnimationJsonLoader jsonLoader, AnimationServerPreparer serverValidator) {
-        this(jsonLoader, new SequenceJsonLoader(), serverValidator);
-    }
-
-    public List<Loaded> load(Path directory) {
+    public DirectoryContents load(Path directory) {
         return load(directory, this.serverValidator::prepare);
     }
 
-    List<Loaded> load(Path directory, LoadedValidator validator) {
-        return loadAll(directory, validator).animations();
-    }
-
-    public DirectoryContents loadAll(Path directory) {
-        return loadAll(directory, this.serverValidator::prepare);
-    }
-
-    DirectoryContents loadAll(Path directory, LoadedValidator validator) {
+    DirectoryContents load(Path directory, LoadedValidator validator) {
         List<Loaded> candidates = new ArrayList<>();
         List<EmoteSequence> sequenceCandidates = new ArrayList<>();
         for (Path path : findJsonFiles(directory)) {

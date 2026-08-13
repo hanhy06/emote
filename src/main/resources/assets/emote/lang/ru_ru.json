@@ -1,11 +1,8 @@
 {
     "key.emote.wheel": "Колесо эмоций",
     "screen.emote.wheel.title": "Колесо эмоций",
-    "screen.emote.wheel.center.no_usable": "Нет доступных",
-    "screen.emote.wheel.center.emotes": "эмоций",
     "screen.emote.wheel.center.release": "Отпустите для",
     "screen.emote.wheel.center.to_play": "воспроизведения",
-    "screen.emote.wheel.footer.no_usable": "Колесо синхронизировано, но вам недоступны эмоции.",
     "screen.emote.wheel.footer.release_to_play": "Отпустите %s, чтобы воспроизвести эмоцию.",
     "screen.emote.wheel.footer.close": "Отпустите клавишу вне ячейки или нажмите Esc, чтобы закрыть.",
     "screen.emote.wheel.footer.page_click": "Левая кнопка: предыдущая страница; правая кнопка: следующая."

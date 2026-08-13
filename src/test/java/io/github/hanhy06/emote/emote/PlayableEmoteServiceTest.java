@@ -33,7 +33,7 @@ class PlayableEmoteServiceTest {
             create("demo:wave", "Wave"),
             create("demo:bow", "Bow"),
             create("demo:sit_idle", "Sit Idle", false)
-        ));
+        ), List.of());
         PlayableEmoteService service = new PlayableEmoteService(
             registry,
             (ignoredPlayer, emote) -> !emote.id().equals("demo:bow")

@@ -25,7 +25,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(nestedDirectory.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation).animations();
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -38,7 +38,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("second.json"), "same:wave");
         writeAnimation(tempDir.resolve("valid.json"), "other:wave");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation).animations();
 
         assertEquals(List.of("other:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -50,7 +50,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("valid.json"), "valid:wave");
         Files.writeString(tempDir.resolve("broken.json"), "{");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation).animations();
 
         assertEquals(1, loaded.size());
         assertEquals("valid:wave", loaded.getFirst().animation().id().toString());
@@ -60,7 +60,7 @@ class AnimationDirectoryLoaderTest {
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        assertTrue(this.loader.load(directory, animation -> animation).isEmpty());
+        assertTrue(this.loader.load(directory, animation -> animation).animations().isEmpty());
         assertTrue(Files.isDirectory(directory));
     }
 
@@ -92,7 +92,7 @@ class AnimationDirectoryLoaderTest {
             }
             """);
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.loadAll(
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(
             tempDir,
             animation -> animation
         );

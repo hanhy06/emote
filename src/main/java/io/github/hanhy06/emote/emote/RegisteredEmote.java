@@ -44,14 +44,6 @@ public record RegisteredEmote(
         return animation().metadata();
     }
 
-    public String name() {
-        return animation().metadata().name();
-    }
-
-    public String description() {
-        return animation().metadata().description();
-    }
-
     @Override
     public boolean standalone() {
         return animation().settings().standalone();

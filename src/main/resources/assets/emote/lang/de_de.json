@@ -1,11 +1,8 @@
 {
     "key.emote.wheel": "Emote-Rad",
     "screen.emote.wheel.title": "Emote-Rad",
-    "screen.emote.wheel.center.no_usable": "Keine nutzbaren",
-    "screen.emote.wheel.center.emotes": "Emotes",
     "screen.emote.wheel.center.release": "Loslassen zum",
     "screen.emote.wheel.center.to_play": "Abspielen",
-    "screen.emote.wheel.footer.no_usable": "Das Rad wurde synchronisiert, aber du kannst keine Emotes verwenden.",
     "screen.emote.wheel.footer.release_to_play": "%s loslassen, um das Emote abzuspielen.",
     "screen.emote.wheel.footer.close": "Außerhalb eines Feldes loslassen oder Esc drücken, um das Rad zu schließen.",
     "screen.emote.wheel.footer.page_click": "Linksklick: vorherige Seite; Rechtsklick: nächste Seite."

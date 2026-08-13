@@ -24,7 +24,7 @@ public final class ReloadService {
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
     ) {
-        this(configManager, emoteRegistry, directoryLoader::loadAll, playbackManager, wheelSyncService);
+        this(configManager, emoteRegistry, directoryLoader::load, playbackManager, wheelSyncService);
     }
 
     ReloadService(

@@ -17,7 +17,7 @@ class PlayServiceTest {
     @Test
     void enforcesCooldownAfterSuccessfulPlayback() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("minecraft:wave", "Wave", 20)));
+        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
         AtomicLong tick = new AtomicLong();
         PlayService service = new PlayService(
             registry,
@@ -38,7 +38,7 @@ class PlayServiceTest {
     @Test
     void bypassIgnoresAnActiveCooldown() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("minecraft:wave", "Wave", 20)));
+        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
         AtomicBoolean bypass = new AtomicBoolean();
         PlayService service = new PlayService(
             registry,
@@ -112,7 +112,7 @@ class PlayServiceTest {
     @Test
     void rejectsDirectPlaybackOfSequenceOnlyAnimation() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)));
+        registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)), List.of());
         PlayService service = new PlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
@@ -144,7 +144,7 @@ class PlayServiceTest {
 
     private EmoteRegistry createRegistry() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("wave", "Wave")));
+        registry.replace(List.of(create("wave", "Wave")), List.of());
         return registry;
     }
 }

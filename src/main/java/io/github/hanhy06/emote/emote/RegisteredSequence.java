@@ -111,16 +111,6 @@ public record RegisteredSequence(
     }
 
     @Override
-    public String name() {
-        return this.source.metadata().name();
-    }
-
-    @Override
-    public String description() {
-        return this.source.metadata().description();
-    }
-
-    @Override
     public boolean standalone() {
         return true;
     }

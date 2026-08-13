@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.api;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.playback.ActivePlayback;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
@@ -67,10 +66,6 @@ public final class ApiEvents implements PlaybackStateListener {
                 Emote.LOGGER.warn("An emote playback listener failed while handling stop", exception);
             }
         }
-    }
-
-    public static EmoteInfo toInfo(RegisteredEmote emote) {
-        return toInfo((EmoteDefinition) emote);
     }
 
     public static EmoteInfo toInfo(EmoteDefinition emote) {

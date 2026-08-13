@@ -19,11 +19,11 @@ class EmoteRegistryTest {
     @Test
     void findsDefinitionsByExactAnimationId() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("demo:idle", "Idle")));
+        registry.replace(List.of(create("demo:idle", "Idle")), List.of());
 
-        assertNotNull(registry.find("demo:idle"));
-        assertNull(registry.find("idle"));
-        assertNull(registry.find("DEMO:IDLE"));
+        assertNotNull(registry.findDefinition("demo:idle"));
+        assertNull(registry.findDefinition("idle"));
+        assertNull(registry.findDefinition("DEMO:IDLE"));
     }
 
     @Test
@@ -36,13 +36,13 @@ class EmoteRegistryTest {
         Collections.reverse(emotes);
 
         EmoteRegistry registry = new EmoteRegistry();
-        int ignoredCount = registry.replace(emotes);
+        int ignoredCount = registry.replace(emotes, List.of());
 
         assertEquals(EmoteRegistry.MAX_EMOTE_COUNT, registry.size());
         assertEquals(1, ignoredCount);
-        assertNotNull(registry.find("test:0000"));
-        assertNotNull(registry.find("test:0511"));
-        assertNull(registry.find("test:0512"));
+        assertNotNull(registry.findDefinition("test:0000"));
+        assertNotNull(registry.findDefinition("test:0511"));
+        assertNull(registry.findDefinition("test:0512"));
     }
 
     @Test
@@ -54,11 +54,11 @@ class EmoteRegistryTest {
         int ignoredCount = registry.replace(List.of(
             create("api:wave", "File Wave"),
             create("file:dance", "Dance")
-        ));
+        ), List.of());
 
         assertEquals(1, ignoredCount);
-        assertSame(apiEmote, registry.find("api:wave"));
-        assertNotNull(registry.find("file:dance"));
+        assertSame(apiEmote, registry.findDefinition("api:wave"));
+        assertNotNull(registry.findDefinition("file:dance"));
     }
 
     @Test
@@ -67,21 +67,21 @@ class EmoteRegistryTest {
         UUID registrationId = registry.registerApi(create("api:wave", "Wave"));
 
         assertFalse(registry.unregisterApi("api:wave", UUID.randomUUID()));
-        assertNotNull(registry.find("api:wave"));
+        assertNotNull(registry.findDefinition("api:wave"));
         assertTrue(registry.unregisterApi("api:wave", registrationId));
-        assertNull(registry.find("api:wave"));
+        assertNull(registry.findDefinition("api:wave"));
     }
 
     @Test
     void restoresFileEmoteWhenApiCollisionIsRemoved() {
         EmoteRegistry registry = new EmoteRegistry();
         UUID registrationId = registry.registerApi(create("api:wave", "API Wave"));
-        registry.replace(List.of(create("api:wave", "File Wave")));
+        registry.replace(List.of(create("api:wave", "File Wave")), List.of());
 
         registry.unregisterApi("api:wave", registrationId);
 
-        assertEquals("File Wave", registry.find("api:wave").name());
-        assertEquals(1, registry.getFileEntries().size());
+        assertEquals("File Wave", registry.findDefinition("api:wave").name());
+        assertEquals(1, registry.getFileDefinitions().size());
     }
 
     @Test
@@ -92,23 +92,23 @@ class EmoteRegistryTest {
             fileEmotes.add(create(id, id));
         }
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(fileEmotes);
+        registry.replace(fileEmotes, List.of());
 
         UUID registrationId = registry.registerApi(create("api:wave", "Wave"));
 
         assertEquals(EmoteRegistry.MAX_EMOTE_COUNT, registry.size());
-        assertNotNull(registry.find("api:wave"));
-        assertNull(registry.find("file:0511"));
+        assertNotNull(registry.findDefinition("api:wave"));
+        assertNull(registry.findDefinition("file:0511"));
 
         registry.unregisterApi("api:wave", registrationId);
 
-        assertNotNull(registry.find("file:0511"));
+        assertNotNull(registry.findDefinition("file:0511"));
     }
 
     @Test
     void clearingApiRegistrationsKeepsFileEmotesAndInvalidatesRegistrationIds() {
         EmoteRegistry registry = new EmoteRegistry();
-        registry.replace(List.of(create("file:dance", "Dance")));
+        registry.replace(List.of(create("file:dance", "Dance")), List.of());
         UUID firstRegistrationId = registry.registerApi(create("api:wave", "Wave"));
         UUID secondRegistrationId = registry.registerApi(create("api:clap", "Clap"));
 
@@ -117,9 +117,9 @@ class EmoteRegistryTest {
         assertEquals(2, removedCount);
         assertFalse(registry.isApiRegistrationActive("api:wave", firstRegistrationId));
         assertFalse(registry.isApiRegistrationActive("api:clap", secondRegistrationId));
-        assertNull(registry.find("api:wave"));
-        assertNull(registry.find("api:clap"));
-        assertNotNull(registry.find("file:dance"));
+        assertNull(registry.findDefinition("api:wave"));
+        assertNull(registry.findDefinition("api:clap"));
+        assertNotNull(registry.findDefinition("file:dance"));
         assertEquals(1, registry.size());
     }
 

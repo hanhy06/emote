@@ -1,11 +1,8 @@
 {
     "key.emote.wheel": "Rueda de gestos",
     "screen.emote.wheel.title": "Rueda de gestos",
-    "screen.emote.wheel.center.no_usable": "No hay gestos",
-    "screen.emote.wheel.center.emotes": "disponibles",
     "screen.emote.wheel.center.release": "Suelta para",
     "screen.emote.wheel.center.to_play": "reproducir",
-    "screen.emote.wheel.footer.no_usable": "La rueda está sincronizada, pero no puedes usar ningún gesto.",
     "screen.emote.wheel.footer.release_to_play": "Suelta %s para reproducirlo.",
     "screen.emote.wheel.footer.close": "Suelta fuera de una ranura o pulsa Esc para cerrar.",
     "screen.emote.wheel.footer.page_click": "Clic izquierdo: página anterior; clic derecho: página siguiente."

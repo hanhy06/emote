@@ -11,10 +11,6 @@ public class EmoteRegistry {
     private Map<String, RegisteredEmote> fileEmotes = Map.of();
     private Map<String, RegisteredSequence> fileSequences = Map.of();
 
-    public synchronized int replace(Collection<RegisteredEmote> emotes) {
-        return replace(emotes, List.of());
-    }
-
     public synchronized int replace(Collection<RegisteredEmote> emotes, Collection<RegisteredSequence> sequences) {
         List<RegisteredEmote> sorted = new ArrayList<>(emotes);
         sorted.sort(Comparator.comparing(RegisteredEmote::id));
@@ -94,25 +90,12 @@ public class EmoteRegistry {
         return this.state.definitions();
     }
 
-    public List<RegisteredEmote> getFileEntries() {
-        return this.state.fileAnimations();
-    }
-
     public List<EmoteDefinition> getFileDefinitions() {
         return this.state.fileDefinitions();
     }
 
-    public RegisteredEmote find(String id) {
-        return this.state.animationsById().get(id);
-    }
-
     public EmoteDefinition findDefinition(String id) {
         return this.state.definitionsById().get(id);
-    }
-
-    public RegisteredEmote findFile(String id) {
-        EmoteDefinition definition = findFileDefinition(id);
-        return definition instanceof RegisteredEmote animation ? animation : null;
     }
 
     public EmoteDefinition findFileDefinition(String id) {
@@ -146,20 +129,14 @@ public class EmoteRegistry {
         combined.sort(Comparator.comparing(EmoteDefinition::id));
 
         LinkedHashMap<String, EmoteDefinition> definitionsById = new LinkedHashMap<>();
-        LinkedHashMap<String, RegisteredEmote> animationsById = new LinkedHashMap<>();
         for (EmoteDefinition definition : combined) {
             definitionsById.put(definition.id(), definition);
-            if (definition instanceof RegisteredEmote animation) {
-                animationsById.put(animation.id(), animation);
-            }
         }
         this.state = new RegistryState(
             Map.copyOf(definitionsById),
-            Map.copyOf(animationsById),
             List.copyOf(combined),
             combined.stream().filter(RegisteredEmote.class::isInstance).map(RegisteredEmote.class::cast).toList(),
-            List.copyOf(fileList),
-            fileList.stream().filter(RegisteredEmote.class::isInstance).map(RegisteredEmote.class::cast).toList()
+            List.copyOf(fileList)
         );
     }
 
@@ -168,14 +145,12 @@ public class EmoteRegistry {
 
     private record RegistryState(
         Map<String, EmoteDefinition> definitionsById,
-        Map<String, RegisteredEmote> animationsById,
         List<EmoteDefinition> definitions,
         List<RegisteredEmote> animations,
-        List<EmoteDefinition> fileDefinitions,
-        List<RegisteredEmote> fileAnimations
+        List<EmoteDefinition> fileDefinitions
     ) {
         private static RegistryState empty() {
-            return new RegistryState(Map.of(), Map.of(), List.of(), List.of(), List.of(), List.of());
+            return new RegistryState(Map.of(), List.of(), List.of(), List.of());
         }
     }
 }

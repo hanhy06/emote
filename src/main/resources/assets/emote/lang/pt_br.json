@@ -1,11 +1,8 @@
 {
     "key.emote.wheel": "Roda de emotes",
     "screen.emote.wheel.title": "Roda de emotes",
-    "screen.emote.wheel.center.no_usable": "Nenhum emote",
-    "screen.emote.wheel.center.emotes": "disponível",
     "screen.emote.wheel.center.release": "Solte para",
     "screen.emote.wheel.center.to_play": "reproduzir",
-    "screen.emote.wheel.footer.no_usable": "A roda foi sincronizada, mas você não pode usar nenhum emote.",
     "screen.emote.wheel.footer.release_to_play": "Solte %s para reproduzir.",
     "screen.emote.wheel.footer.close": "Solte fora de um espaço ou pressione Esc para fechar.",
     "screen.emote.wheel.footer.page_click": "Clique esquerdo: página anterior; clique direito: próxima página."
