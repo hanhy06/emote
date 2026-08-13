@@ -25,7 +25,7 @@ public final class MineSkinPipeline {
     private final MineSkinTaskQueue generationQueue;
     private final Consumer<UUID> readyNotifier;
     private final Consumer<UUID> failureNotifier;
-    private final Map<String, BakeTask> bakeTasks = new HashMap<>();
+    private final Map<String, MineSkinBakeTask> bakeTasks = new HashMap<>();
 
     private volatile String apiKey = "";
     private volatile int cacheRetentionDays;
@@ -81,8 +81,8 @@ public final class MineSkinPipeline {
             );
         }
 
-        BakeStage stage = scheduleBake(source, requiredTextureKeys);
-        PlayerSkinManager.SkinPreparationState preparationState = stage == BakeStage.FAILED
+        MineSkinBakeTask.Stage stage = scheduleBake(source, requiredTextureKeys);
+        PlayerSkinManager.SkinPreparationState preparationState = stage == MineSkinBakeTask.Stage.FAILED
             ? PlayerSkinManager.SkinPreparationState.FAILED
             : PlayerSkinManager.SkinPreparationState.PREPARING;
         return new PlayerSkinManager.SkinPreparation(
@@ -96,19 +96,19 @@ public final class MineSkinPipeline {
         return Math.min(100, completedParts * 100 / totalParts);
     }
 
-    private void notifyCompleted(BakeTask bakeTask) {
+    private void notifyCompleted(MineSkinBakeTask bakeTask) {
         for (UUID playerUuid : bakeTask.subscribers()) {
             this.readyNotifier.accept(playerUuid);
         }
     }
 
-    private void notifyFailed(BakeTask bakeTask) {
+    private void notifyFailed(MineSkinBakeTask bakeTask) {
         for (UUID playerUuid : bakeTask.subscribers()) {
             this.failureNotifier.accept(playerUuid);
         }
     }
 
-    private void fail(BakeTask bakeTask) {
+    private void fail(MineSkinBakeTask bakeTask) {
         if (bakeTask.fail()) {
             notifyFailed(bakeTask);
             this.generationQueue.schedule(
@@ -120,23 +120,23 @@ public final class MineSkinPipeline {
         }
     }
 
-    private void complete(BakeTask bakeTask) {
+    private void complete(MineSkinBakeTask bakeTask) {
         if (!bakeTask.complete()) {
             return;
         }
         this.generationQueue.cancelScheduled(cleanupKey(bakeTask));
         notifyCompleted(bakeTask);
         synchronized (this.bakeTasks) {
-            if (this.bakeTasks.get(bakeTask.key()) == bakeTask && bakeTask.stage() == BakeStage.COMPLETE) {
+            if (this.bakeTasks.get(bakeTask.key()) == bakeTask && bakeTask.stage() == MineSkinBakeTask.Stage.COMPLETE) {
                 this.bakeTasks.remove(bakeTask.key());
             }
         }
     }
 
-    private void evictFailedTask(BakeTask bakeTask) {
+    private void evictFailedTask(MineSkinBakeTask bakeTask) {
         long remainingMillis;
         synchronized (this.bakeTasks) {
-            if (this.bakeTasks.get(bakeTask.key()) != bakeTask || bakeTask.stage() != BakeStage.FAILED) {
+            if (this.bakeTasks.get(bakeTask.key()) != bakeTask || bakeTask.stage() != MineSkinBakeTask.Stage.FAILED) {
                 return;
             }
             remainingMillis = bakeTask.failedAtEpochMillis()
@@ -156,7 +156,7 @@ public final class MineSkinPipeline {
         }
     }
 
-    private static String cleanupKey(BakeTask bakeTask) {
+    private static String cleanupKey(MineSkinBakeTask bakeTask) {
         return "cleanup:" + bakeTask.key();
     }
 
@@ -168,10 +168,10 @@ public final class MineSkinPipeline {
 
     private void scheduleIfNeeded(
         String pendingKey,
-        BakeTask bakeTask,
+        MineSkinBakeTask bakeTask,
         boolean addedKeys
     ) {
-        if (addedKeys || bakeTask.canRestart(System.currentTimeMillis())) {
+        if (addedKeys || bakeTask.canRestart(System.currentTimeMillis(), FAILED_JOB_RETRY_DELAY_MILLIS)) {
             bakeTask.queue();
             this.generationQueue.submit(pendingKey, () -> bakeAndSave(bakeTask));
         }
@@ -179,7 +179,7 @@ public final class MineSkinPipeline {
 
     public void cancelPendingBakes() {
         synchronized (this.bakeTasks) {
-            for (BakeTask bakeTask : this.bakeTasks.values()) {
+            for (MineSkinBakeTask bakeTask : this.bakeTasks.values()) {
                 bakeTask.cancel();
             }
             this.bakeTasks.clear();
@@ -231,37 +231,37 @@ public final class MineSkinPipeline {
         return Map.copyOf(result);
     }
 
-    private BakeStage scheduleBake(
+    private MineSkinBakeTask.Stage scheduleBake(
         PlayerSkinManager.PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredKeys
     ) {
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-        BakeTask bakeTask;
+        MineSkinBakeTask bakeTask;
         boolean addedKeys;
         synchronized (this.bakeTasks) {
             bakeTask = this.bakeTasks.computeIfAbsent(
                 pendingKey,
-                ignored -> new BakeTask(source, this.generationQueue.currentGeneration())
+                ignored -> new MineSkinBakeTask(source, this.generationQueue.currentGeneration())
             );
             bakeTask.addSubscriber(source.playerUuid());
-            addedKeys = bakeTask.addRequiredKeys(requiredKeys);
+            addedKeys = bakeTask.addRequiredRegions(requiredKeys);
         }
         scheduleIfNeeded(pendingKey, bakeTask, addedKeys);
         return bakeTask.stage();
     }
 
-    private void bakeAndSave(BakeTask bakeTask) {
+    private void bakeAndSave(MineSkinBakeTask bakeTask) {
         PlayerSkinManager.PlayerSkinSource source = bakeTask.source();
         try {
             Map<PlayerSkinRegion, String> stored = this.cache.load(source.textureHash(), source.slimModel());
-            Set<PlayerSkinRegion> missingKeys = new LinkedHashSet<>(bakeTask.requiredKeys());
+            Set<PlayerSkinRegion> missingKeys = new LinkedHashSet<>(bakeTask.requiredRegions());
             missingKeys.removeAll(stored.keySet());
             if (missingKeys.isEmpty()) {
                 complete(bakeTask);
                 return;
             }
 
-            bakeTask.updateStage(BakeStage.DOWNLOADING_SKIN);
+            bakeTask.updateStage(MineSkinBakeTask.Stage.DOWNLOADING_SKIN);
             BufferedImage sourceImage = this.client.downloadSkinImage(source.textureUrl());
             PlayerSkinBaker.PreparedSkin preparedSkin = this.playerSkinBaker.prepare(
                 sourceImage,
@@ -269,14 +269,14 @@ public final class MineSkinPipeline {
             );
             Map<PlayerSkinRegion, String> saved = new HashMap<>(stored);
             for (PlayerSkinRegion textureKey : missingKeys) {
-                bakeTask.updateStage(BakeStage.BAKING_PART);
+                bakeTask.updateStage(MineSkinBakeTask.Stage.BAKING_PART);
                 byte[] bakedImage = this.playerSkinBaker.bake(
                     preparedSkin,
                     textureKey.skinPart(),
                     textureKey.skinSegment()
                 );
                 String contentHash = MineSkinCache.createContentKey(bakedImage, source.slimModel());
-                bakeTask.updateStage(BakeStage.WAITING_FOR_MINESKIN);
+                bakeTask.updateStage(MineSkinBakeTask.Stage.WAITING_FOR_MINESKIN);
                 TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, bakedImage, source.slimModel());
                 if (resolution.retryAtEpochMillis() > 0L) {
                     int retryAttempt = bakeTask.recordRetry(textureKey, resolution.retryAtEpochMillis());
@@ -406,134 +406,4 @@ public final class MineSkinPipeline {
         }
     }
 
-    enum BakeStage {
-        QUEUED,
-        DOWNLOADING_SKIN,
-        BAKING_PART,
-        WAITING_FOR_MINESKIN,
-        RETRY_WAIT,
-        COMPLETE,
-        FAILED,
-        CANCELLED
-    }
-
-    private static final class BakeTask {
-        private final String key;
-        private final PlayerSkinManager.PlayerSkinSource source;
-        private final long queueGeneration;
-        private final Set<UUID> subscribers = new LinkedHashSet<>();
-        private final Set<PlayerSkinRegion> requiredKeys = new LinkedHashSet<>();
-        private final Map<PlayerSkinRegion, Integer> retryAttempts = new HashMap<>();
-        private final Map<PlayerSkinRegion, Long> retryTimes = new HashMap<>();
-
-        private BakeStage stage = BakeStage.QUEUED;
-        private long failedAtEpochMillis;
-
-        private BakeTask(PlayerSkinManager.PlayerSkinSource source, long queueGeneration) {
-            this.source = source;
-            this.key = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
-            this.queueGeneration = queueGeneration;
-        }
-
-        private String key() {
-            return this.key;
-        }
-
-        private PlayerSkinManager.PlayerSkinSource source() {
-            return this.source;
-        }
-
-        private long queueGeneration() {
-            return this.queueGeneration;
-        }
-
-        private synchronized void addSubscriber(UUID playerUuid) {
-            this.subscribers.add(playerUuid);
-        }
-
-        private synchronized boolean addRequiredKeys(Set<PlayerSkinRegion> keys) {
-            boolean changed = this.requiredKeys.addAll(keys);
-            if (changed && (this.stage == BakeStage.COMPLETE || this.stage == BakeStage.FAILED)) {
-                this.stage = BakeStage.QUEUED;
-            }
-            return changed;
-        }
-
-        private synchronized Set<PlayerSkinRegion> requiredKeys() {
-            return Set.copyOf(this.requiredKeys);
-        }
-
-        private synchronized Set<UUID> subscribers() {
-            return Set.copyOf(this.subscribers);
-        }
-
-        private synchronized BakeStage stage() {
-            return this.stage;
-        }
-
-        private synchronized void queue() {
-            this.stage = BakeStage.QUEUED;
-        }
-
-        private synchronized boolean canRestart(long nowEpochMillis) {
-            return this.stage == BakeStage.FAILED
-                && nowEpochMillis - this.failedAtEpochMillis >= FAILED_JOB_RETRY_DELAY_MILLIS;
-        }
-
-        private synchronized long failedAtEpochMillis() {
-            return this.failedAtEpochMillis;
-        }
-
-        private synchronized void updateStage(BakeStage stage) {
-            if (this.stage != BakeStage.CANCELLED) {
-                this.stage = stage;
-            }
-        }
-
-        private synchronized void markCompleted(PlayerSkinRegion textureKey) {
-            this.retryAttempts.remove(textureKey);
-            this.retryTimes.remove(textureKey);
-        }
-
-        private synchronized int recordRetry(PlayerSkinRegion textureKey, long retryAtEpochMillis) {
-            Long previousRetryAt = this.retryTimes.put(textureKey, retryAtEpochMillis);
-            if (previousRetryAt != null && previousRetryAt == retryAtEpochMillis) {
-                return this.retryAttempts.getOrDefault(textureKey, 1);
-            }
-            return this.retryAttempts.merge(textureKey, 1, Integer::sum);
-        }
-
-        private synchronized void waitForRetry() {
-            if (this.stage != BakeStage.CANCELLED) {
-                this.stage = BakeStage.RETRY_WAIT;
-            }
-        }
-
-        private synchronized boolean isSatisfiedBy(Set<PlayerSkinRegion> availableKeys) {
-            return availableKeys.containsAll(this.requiredKeys);
-        }
-
-        private synchronized boolean complete() {
-            if (this.stage == BakeStage.CANCELLED) {
-                return false;
-            }
-            boolean changed = this.stage != BakeStage.COMPLETE;
-            this.stage = BakeStage.COMPLETE;
-            return changed;
-        }
-
-        private synchronized boolean fail() {
-            if (this.stage == BakeStage.CANCELLED) {
-                return false;
-            }
-            boolean changed = this.stage != BakeStage.FAILED;
-            this.stage = BakeStage.FAILED;
-            this.failedAtEpochMillis = System.currentTimeMillis();
-            return changed;
-        }
-
-        private synchronized void cancel() {
-            this.stage = BakeStage.CANCELLED;
-        }
-    }
 }
