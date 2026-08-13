@@ -55,7 +55,7 @@ export function CommandPanel({ animation, tick, disabled, onAdd, onChange, onRem
               })}
             </ul>
           )}
-          <button className="command-add" type="button" disabled={disabled} onClick={onAdd}>Add command at tick {tick}</button>
+          <button className="command-add" type="button" disabled={disabled} onClick={onAdd}>Add command</button>
         </>
       )}
     </section>
