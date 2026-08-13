@@ -58,7 +58,7 @@ Sequence JSON files are limited to 8 MiB.
 - `player.hidden` controls whether the original player is visible during the sequence.
 - `player.stop_conditions` controls interruptions for the entire sequence.
 
-Time values use Minecraft time units: `d` for Minecraft days, `s` for seconds, `t` for ticks, or a bare tick count.
+Time values use Minecraft time units: `d` for Minecraft days, `s` for seconds, and `t` for ticks. The `t` suffix is optional, so `"20"` and `"20t"` both mean twenty ticks.
 
 ## Animation steps
 

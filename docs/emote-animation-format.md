@@ -64,8 +64,7 @@ Gameplay time values are strings using Minecraft time units:
 |---------|---------|
 | `"1d"` | One Minecraft day. |
 | `"5s"` | Five seconds. |
-| `"20t"` | Twenty ticks. |
-| `"20"` | Twenty ticks. |
+| `"20"` / `"20t"` | Twenty ticks. The `t` suffix is optional. |
 
 This format is used by `cooldown`, `loop_delay`, timeline and event `time`, `duration`, and `interpolation_duration`.
 
