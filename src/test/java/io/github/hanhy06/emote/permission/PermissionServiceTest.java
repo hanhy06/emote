@@ -10,6 +10,28 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PermissionServiceTest {
     @Test
+    void disabledEmotesAreDeniedWithoutRemovingTheirPermissionRule() {
+        PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue);
+        service.onAccessConfigReload(new AccessConfig(
+            List.of("demo:wave"),
+            List.of(entry("emote.default", List.of("demo:wave")))
+        ));
+
+        assertFalse(service.canPlay(null, "demo:wave"));
+    }
+
+    @Test
+    void bypassIgnoresDisabledAndPermissionRules() {
+        PermissionService service = new PermissionService(
+            (ignoredPlayer, permission, ignoredDefaultValue) -> permission.equals(PermissionService.BYPASS_PERMISSION)
+        );
+        service.onAccessConfigReload(new AccessConfig(List.of("demo:wave"), List.of()));
+
+        assertTrue(service.canBypass(null));
+        assertTrue(service.canPlay(null, "demo:wave"));
+    }
+
+    @Test
     void defaultAllowsOnlyConfiguredIds() {
         PermissionService service = new PermissionService((ignoredPlayer, ignoredPermission, defaultValue) -> defaultValue);
         service.onAccessConfigReload(new AccessConfig(
@@ -67,7 +89,7 @@ class PermissionServiceTest {
 
         AccessConfig.IdleSettings idle = service.findIdleSettings(null).orElseThrow();
 
-        assertEquals(300, idle.delaySeconds());
+        assertEquals(300, idle.delayTicks());
         assertEquals(List.of("demo:vip", "demo:dance"), idle.emote());
     }
 

@@ -6,11 +6,55 @@ import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.hanhy06.emote.emote.RegisteredEmoteFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlayServiceTest {
+    @Test
+    void enforcesCooldownAfterSuccessfulPlayback() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replace(List.of(create("minecraft:wave", "Wave", 20)));
+        AtomicLong tick = new AtomicLong();
+        PlayService service = new PlayService(
+            registry,
+            (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredPlayer -> false,
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
+            ignoredPlayer -> new UUID(1L, 1L),
+            ignoredPlayer -> tick.get()
+        );
+
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+        assertEquals("Emote cooldown: 20t remaining.", service.play(null, "minecraft:wave").errorMessage().getString());
+        tick.set(20L);
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+    }
+
+    @Test
+    void bypassIgnoresAnActiveCooldown() {
+        EmoteRegistry registry = new EmoteRegistry();
+        registry.replace(List.of(create("minecraft:wave", "Wave", 20)));
+        AtomicBoolean bypass = new AtomicBoolean();
+        PlayService service = new PlayService(
+            registry,
+            (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredPlayer -> bypass.get(),
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
+            ignoredPlayer -> new UUID(1L, 1L),
+            ignoredPlayer -> 0L
+        );
+
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+        bypass.set(true);
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+    }
+
     @Test
     void playReturnsSuccess() {
         PlayService service = new PlayService(

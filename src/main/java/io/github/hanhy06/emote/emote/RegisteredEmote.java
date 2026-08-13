@@ -75,6 +75,11 @@ public record RegisteredEmote(
     }
 
     @Override
+    public int cooldownTicks() {
+        return animation().settings().cooldownTicks();
+    }
+
+    @Override
     public EmoteAnimation.LoopMode loopMode() {
         return animation().settings().playback().mode();
     }

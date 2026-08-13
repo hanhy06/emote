@@ -29,6 +29,10 @@ public final class RegisteredEmoteFixture {
         return create(id, name, standalone, EmotePlayerBehavior.createDefault());
     }
 
+    public static RegisteredEmote create(String id, String name, int cooldownTicks) {
+        return create(id, name, true, EmotePlayerBehavior.createDefault(), cooldownTicks);
+    }
+
     public static RegisteredEmote create(
         String id,
         String name,
@@ -43,10 +47,20 @@ public final class RegisteredEmoteFixture {
         boolean standalone,
         EmotePlayerBehavior playerBehavior
     ) {
+        return create(id, name, standalone, playerBehavior, 0);
+    }
+
+    private static RegisteredEmote create(
+        String id,
+        String name,
+        boolean standalone,
+        EmotePlayerBehavior playerBehavior,
+        int cooldownTicks
+    ) {
         EmoteAnimation animation = new EmoteAnimation(
             Objects.requireNonNull(Identifier.tryParse(id)),
             new EmoteMetadata(name, name + " description"),
-            new EmoteAnimation.Settings(standalone, 0, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
+            new EmoteAnimation.Settings(standalone, cooldownTicks, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
             Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)),
             new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
         );

@@ -54,10 +54,12 @@ class ConfigManagerTest {
         String accessJson = Files.readString(accessPath);
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
+        assertTrue(accessJson.contains("\"schema_version\": 2"));
+        assertTrue(accessJson.contains("\"delay\": \"6000t\""));
         assertTrue(accessJson.contains("\"emote.default\""));
         AccessConfig.IdleSettings idle = manager.getAccessConfig()
             .permissions().getFirst().idle().orElseThrow();
-        assertEquals(300, idle.delaySeconds());
+        assertEquals(6_000, idle.delayTicks());
         assertEquals(List.of("drink:default"), idle.emote());
         assertTrue(accessJson.contains("\"drink:default\""));
         assertEquals(1, manager.getConfig().schemaVersion());
@@ -105,13 +107,14 @@ class ConfigManagerTest {
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
+              "schema_version": 2,
               "disabled": ["demo:wave"],
               "permissions": [
                 {"permission":"emote.default","emotes":["demo:wave"]},
                 {
                   "permission":"emote.vip",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":600,"emote":["demo:wave","demo:sit"]}
+                  "idle":{"delay":"600s","emote":["demo:wave","demo:sit"]}
                 }
               ]
             }
@@ -124,7 +127,7 @@ class ConfigManagerTest {
         assertEquals(List.of("demo:wave"), manager.getAccessConfig().permissions().getFirst().emotes());
         assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().get(1).idle().orElseThrow();
-        assertEquals(600, idle.delaySeconds());
+        assertEquals(12_000, idle.delayTicks());
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
     }
 
@@ -134,11 +137,12 @@ class ConfigManagerTest {
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
+              "schema_version":2,
               "permissions":[
                 {
                   "permission":"emote.default",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":300,"emote":["demo:wave",30,"demo:sit",70]}
+                  "idle":{"delay":"300s","emote":["demo:wave",30,"demo:sit",70]}
                 }
               ]
             }
@@ -161,11 +165,12 @@ class ConfigManagerTest {
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
+              "schema_version":2,
               "permissions":[
                 {
                   "permission":"emote.default",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":300,"emote":["demo:wave",30,"demo:sit",60]}
+                  "idle":{"delay":"300s","emote":["demo:wave",30,"demo:sit",60]}
                 }
               ]
             }
@@ -181,12 +186,13 @@ class ConfigManagerTest {
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
+              "schema_version":2,
               "disabled":[],
               "permissions":[
                 {
                   "permission":"emote.vip",
                   "emotes":["demo:wave"],
-                  "idle":{"delay_seconds":300,"emote":["demo:wave"]}
+                  "idle":{"delay":"300s","emote":["demo:wave"]}
                 }
               ]
             }
@@ -208,7 +214,7 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
-            {"disabled":["   "]}
+            {"schema_version":2,"disabled":["   "]}
             """);
 
         assertFalse(manager.readAccessConfig());
@@ -233,11 +239,23 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
-            {"disabled":{"invalid":true}}
+            {"schema_version":2,"disabled":{"invalid":true}}
             """);
 
         assertFalse(manager.readAccessConfig());
         assertTrue(manager.getAccessConfig().disabled().isEmpty());
+    }
+
+    @Test
+    void rejectsUnsupportedAccessConfigSchema(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {"schema_version":1,"disabled":[],"permissions":[]}
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertFalse(manager.getAccessConfig().permissions().isEmpty());
     }
 
     @Test
@@ -288,11 +306,12 @@ class ConfigManagerTest {
         manager.configure();
         Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
             {
+              "schema_version":2,
               "permissions":[
                 {
                   "permission":"emote.default",
                   "emotes":["*"],
-                  "idle":{"delay_seconds":0,"emote":["demo:wave"]}
+                  "idle":{"delay":"0t","emote":["demo:wave"]}
                 }
               ]
             }

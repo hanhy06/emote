@@ -22,6 +22,7 @@ class EmoteInfoTest {
             metadata,
             EmotePlayerBehavior.createDefault(),
             20,
+            0,
             EmoteAnimation.LoopMode.ONCE
         );
 

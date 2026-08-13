@@ -5,19 +5,24 @@ import io.github.hanhy06.emote.config.AccessConfigListener;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Predicate;
 
 public class PermissionService implements AccessConfigListener {
+    public static final String MANAGE_PERMISSION = "emote.manage";
+    public static final String BYPASS_PERMISSION = "emote.bypass";
     private static final String DEFAULT_PERMISSION = "emote.default";
     private static final String ALL_IDS = "*";
 
     private final PermissionChecker permissionChecker;
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
+    private Set<String> disabled = Set.of();
 
     public PermissionService() {
         this(Permissions::check);
@@ -30,17 +35,24 @@ public class PermissionService implements AccessConfigListener {
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.permissionEntries = newConfig.permissions();
-    }
-
-    public boolean canReload(CommandSourceStack source) {
-        return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_ADMIN);
+        this.disabled = Set.copyOf(newConfig.disabled());
     }
 
     public boolean canManage(CommandSourceStack source) {
-        return source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER);
+        return Permissions.check(source, MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
+    }
+
+    public boolean canBypass(ServerPlayer player) {
+        return this.permissionChecker.test(player, BYPASS_PERMISSION, false);
     }
 
     public boolean canPlay(ServerPlayer player, String id) {
+        if (canBypass(player)) {
+            return true;
+        }
+        if (this.disabled.contains(id)) {
+            return false;
+        }
         for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
             String permission = entry.permission();
             boolean grantedByDefault = permission.equals(DEFAULT_PERMISSION);
@@ -67,11 +79,7 @@ public class PermissionService implements AccessConfigListener {
         return Optional.empty();
     }
 
-    public Predicate<CommandSourceStack> requireReload() {
-        return this::canReload;
-    }
-
-    public Predicate<CommandSourceStack> requireGameMaster() {
+    public Predicate<CommandSourceStack> requireManage() {
         return this::canManage;
     }
 

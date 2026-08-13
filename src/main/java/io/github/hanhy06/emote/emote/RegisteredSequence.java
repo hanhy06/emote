@@ -141,6 +141,11 @@ public record RegisteredSequence(
     }
 
     @Override
+    public int cooldownTicks() {
+        return this.source.settings().cooldownTicks();
+    }
+
+    @Override
     public EmoteAnimation.LoopMode loopMode() {
         return EmoteAnimation.LoopMode.ONCE;
     }

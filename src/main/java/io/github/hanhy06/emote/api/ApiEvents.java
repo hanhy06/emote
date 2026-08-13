@@ -79,6 +79,7 @@ public final class ApiEvents implements PlaybackStateListener {
             emote.metadata(),
             emote.playerBehavior(),
             emote.durationTicks(),
+            emote.cooldownTicks(),
             emote.loopMode()
         );
     }

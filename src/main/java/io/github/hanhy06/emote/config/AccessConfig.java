@@ -3,6 +3,8 @@ package io.github.hanhy06.emote.config;
 import java.util.*;
 
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
+    public static final int CURRENT_SCHEMA_VERSION = 2;
+
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank", false);
 
@@ -23,7 +25,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             List.of(new PermissionEntry(
                 "emote.default",
                 List.of("*"),
-                Optional.of(new IdleSettings(300, List.of("drink:default")))
+                Optional.of(new IdleSettings(6_000, List.of("drink:default")))
             ))
         );
     }
@@ -49,10 +51,10 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         }
     }
 
-    public record IdleSettings(int delaySeconds, List<Choice> choices) {
+    public record IdleSettings(int delayTicks, List<Choice> choices) {
         public IdleSettings {
-            if (delaySeconds < 1) {
-                throw new IllegalArgumentException("idle delay_seconds must be at least 1");
+            if (delayTicks < 1) {
+                throw new IllegalArgumentException("idle delay must be at least 1 tick");
             }
             choices = List.copyOf(choices);
             if (choices.isEmpty()) {
@@ -73,8 +75,8 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             }
         }
 
-        public IdleSettings(int delaySeconds, Collection<String> emotes) {
-            this(delaySeconds, normalizeIds(
+        public IdleSettings(int delayTicks, Collection<String> emotes) {
+            this(delayTicks, normalizeIds(
                 List.copyOf(emotes),
                 "idle emote",
                 "idle emote id must not be blank",

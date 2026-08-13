@@ -10,6 +10,7 @@ public record EmoteInfo(
     EmoteMetadata metadata,
     EmotePlayerBehavior player,
     int durationTicks,
+    int cooldownTicks,
     EmoteAnimation.LoopMode loopMode
 ) {
     public EmoteInfo {

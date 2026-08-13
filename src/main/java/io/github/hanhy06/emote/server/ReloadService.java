@@ -13,7 +13,7 @@ import io.github.hanhy06.emote.playback.PlaybackManager;
 public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteRegistry emoteRegistry;
-    private final AnimationDirectoryLoader directoryLoader;
+    private final DirectoryContentsLoader directoryLoader;
     private final PlaybackManager playbackManager;
     private final WheelSyncService wheelSyncService;
 
@@ -21,6 +21,16 @@ public final class ReloadService {
         ConfigManager configManager,
         EmoteRegistry emoteRegistry,
         AnimationDirectoryLoader directoryLoader,
+        PlaybackManager playbackManager,
+        WheelSyncService wheelSyncService
+    ) {
+        this(configManager, emoteRegistry, directoryLoader::loadAll, playbackManager, wheelSyncService);
+    }
+
+    ReloadService(
+        ConfigManager configManager,
+        EmoteRegistry emoteRegistry,
+        DirectoryContentsLoader directoryLoader,
         PlaybackManager playbackManager,
         WheelSyncService wheelSyncService
     ) {
@@ -54,18 +64,15 @@ public final class ReloadService {
     }
 
     private int reloadRegistry() {
-        var accessConfig = this.configManager.getAccessConfig();
-        var contents = this.directoryLoader.loadAll(this.configManager.getAnimationDirectory());
+        var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
         var emotes = contents.animations().stream()
             .map(RegisteredEmote::from)
-            .filter(emote -> accessConfig.isEnabled(emote.id()))
             .toList();
         var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
             RegisteredEmote::id,
             java.util.function.Function.identity()
         ));
         var sequences = contents.sequences().stream()
-            .filter(sequence -> accessConfig.isEnabled(sequence.id().toString()))
             .map(sequence -> resolveSequence(sequence, animationsById))
             .filter(java.util.Objects::nonNull)
             .toList();
@@ -90,5 +97,10 @@ public final class ReloadService {
             Emote.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;
         }
+    }
+
+    @FunctionalInterface
+    interface DirectoryContentsLoader {
+        AnimationDirectoryLoader.DirectoryContents load(java.nio.file.Path directory);
     }
 }

@@ -27,6 +27,8 @@ public sealed interface EmoteDefinition permits RegisteredEmote, RegisteredSeque
 
     int durationTicks();
 
+    int cooldownTicks();
+
     EmoteAnimation.LoopMode loopMode();
 
     int nodeCount();

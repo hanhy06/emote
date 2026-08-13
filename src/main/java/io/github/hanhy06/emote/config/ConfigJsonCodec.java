@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.config;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.time.MinecraftTime;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -23,6 +24,7 @@ final class ConfigJsonCodec {
 
     JsonObject writeAccessConfig(AccessConfig config) {
         JsonObject object = new JsonObject();
+        object.addProperty("schema_version", AccessConfig.CURRENT_SCHEMA_VERSION);
         JsonArray disabledJson = new JsonArray();
         config.disabled().forEach(disabledJson::add);
         object.add("disabled", disabledJson);
@@ -35,7 +37,7 @@ final class ConfigJsonCodec {
             entryJson.add("emotes", idsJson);
             entry.idle().ifPresent(idle -> {
                 JsonObject idleJson = new JsonObject();
-                idleJson.addProperty("delay_seconds", idle.delaySeconds());
+                idleJson.addProperty("delay", idle.delayTicks() + "t");
                 JsonArray idleEmotesJson = new JsonArray();
                 for (AccessConfig.IdleSettings.Choice choice : idle.choices()) {
                     idleEmotesJson.add(choice.id());
@@ -75,6 +77,18 @@ final class ConfigJsonCodec {
 
     AccessConfig readAccessConfig(JsonObject object) {
         if (object == null) {
+            return null;
+        }
+
+        JsonElement schemaElement = object.get("schema_version");
+        if (schemaElement == null || !schemaElement.isJsonPrimitive() || !schemaElement.getAsJsonPrimitive().isNumber()) {
+            return null;
+        }
+        try {
+            if (schemaElement.getAsBigDecimal().intValueExact() != AccessConfig.CURRENT_SCHEMA_VERSION) {
+                return null;
+            }
+        } catch (ArithmeticException exception) {
             return null;
         }
 
@@ -133,10 +147,10 @@ final class ConfigJsonCodec {
         }
 
         JsonObject object = element.getAsJsonObject();
-        JsonElement delayElement = object.get("delay_seconds");
+        JsonElement delayElement = object.get("delay");
         JsonElement emoteElement = object.get("emote");
         if (delayElement == null || !delayElement.isJsonPrimitive()
-            || !delayElement.getAsJsonPrimitive().isNumber()
+            || !delayElement.getAsJsonPrimitive().isString()
             || emoteElement == null || !emoteElement.isJsonArray()) {
             return null;
         }
@@ -145,7 +159,13 @@ final class ConfigJsonCodec {
         if (choices == null) {
             return null;
         }
-        return new AccessConfig.IdleSettings(delayElement.getAsInt(), choices);
+        int delayTicks;
+        try {
+            delayTicks = MinecraftTime.parse(delayElement.getAsString(), 1);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+        return new AccessConfig.IdleSettings(delayTicks, choices);
     }
 
     private List<AccessConfig.IdleSettings.Choice> readIdleChoices(JsonArray array) {

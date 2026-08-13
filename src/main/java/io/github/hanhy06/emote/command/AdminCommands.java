@@ -48,25 +48,25 @@ final class AdminCommands {
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {
         return Commands.literal("reload")
-            .requires(this.permissionService.requireReload())
+            .requires(this.permissionService.requireManage())
             .executes(context -> reload(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createListCommand() {
         return Commands.literal("list")
-            .requires(this.permissionService.requireReload())
+            .requires(this.permissionService.requireManage())
             .executes(context -> list(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStopAllCommand() {
         return Commands.literal("stop-all")
-            .requires(this.permissionService.requireGameMaster())
+            .requires(this.permissionService.requireManage())
             .executes(context -> stopAll(context.getSource()));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStressTestCommand() {
         return Commands.literal("stress-test")
-            .requires(this.permissionService.requireGameMaster())
+            .requires(this.permissionService.requireManage())
             .executes(context -> startStressTest(context.getSource(), DEFAULT_STRESS_TEST_INSTANCE_COUNT))
             .then(Commands.argument(
                     "count",
@@ -82,7 +82,7 @@ final class AdminCommands {
 
     LiteralArgumentBuilder<CommandSourceStack> createEnableCommand() {
         return Commands.literal("enable")
-            .requires(this.permissionService.requireGameMaster())
+            .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.configManager.getAccessConfig().disabled(),
@@ -97,7 +97,7 @@ final class AdminCommands {
 
     LiteralArgumentBuilder<CommandSourceStack> createDisableCommand() {
         return Commands.literal("disable")
-            .requires(this.permissionService.requireGameMaster())
+            .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
                     this.emoteRegistry.getFileDefinitions().stream().map(EmoteDefinition::id),

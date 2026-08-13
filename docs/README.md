@@ -83,13 +83,14 @@ Controls emote availability and play permissions.
 
 ```json
 {
+  "schema_version": 2,
   "disabled": ["example:disabled"],
   "permissions": [
     {
       "permission": "emote.vip",
       "emotes": ["example:dance", "example:cry"],
       "idle": {
-        "delay_seconds": 300,
+        "delay": "300s",
         "emote": ["example:dance", 70, "example:cry", 30]
       }
     },
@@ -105,12 +106,14 @@ Controls emote availability and play permissions.
 }
 ```
 
-- `disabled` contains the exact IDs of emotes that should not be loaded.
+- `disabled` contains exact IDs blocked by the server access policy. Disabled emotes remain loaded so administrators can inspect them and players with `emote.bypass` can still use them.
 - `permissions` preserves the listed order, which determines idle emote selection.
 - `permission` is the permission node for the entry. `emote.default` is granted to every player by default.
 - `emotes` contains the emotes granted by the permission.
-- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay_seconds` of inactivity, then repeats at the same interval while the player remains idle. String-only arrays use equal chances. Alternating ID and integer chance arrays use explicit chances that must total `100`. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available; the remaining chances are normalized automatically.
+- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay`, then repeats at the same interval while the player remains idle. Time values are strings parsed with Minecraft units (`d`, `s`, `t`, or bare ticks). String-only arrays use equal chances. Alternating ID and integer chance arrays use explicit chances that must total `100`. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available; the remaining chances are normalized automatically.
 - `*` grants access to every enabled emote.
+
+`emote.manage` grants every administrative `/emote` subcommand, including reload, list, enable/disable, stop-all, and stress-test. It defaults to game-master operators. `emote.bypass` defaults to false and ignores disabled IDs, play permission rules, and cooldowns; it does not bypass sequence-only restrictions, invalid files, runtime safety limits, or cancellations from other mods.
 
 Run `/emote reload` after editing the file manually.
 

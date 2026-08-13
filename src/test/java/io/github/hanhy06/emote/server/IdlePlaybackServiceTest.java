@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 class IdlePlaybackServiceTest {
     private static final UUID PLAYER_UUID = UUID.fromString("c50d1f70-28d0-4e46-8f8a-334036755c36");
     private static final AccessConfig.IdleSettings IDLE = new AccessConfig.IdleSettings(
-        10,
+        200,
         List.of("demo:sit")
     );
 
@@ -95,7 +95,7 @@ class IdlePlaybackServiceTest {
     @Test
     void avoidsRepeatingTheLastSuccessfulEmote() {
         AccessConfig.IdleSettings randomIdle = new AccessConfig.IdleSettings(
-            10,
+            200,
             List.of("demo:sit", "demo:sleep")
         );
         AtomicLong clock = new AtomicLong(15_000L);
@@ -122,7 +122,7 @@ class IdlePlaybackServiceTest {
     @Test
     void usesWeightedChancesAfterExcludingTheLastSuccessfulEmote() {
         AccessConfig.IdleSettings weightedIdle = new AccessConfig.IdleSettings(
-            10,
+            200,
             List.of(
                 new AccessConfig.IdleSettings.Choice("demo:first", 10),
                 new AccessConfig.IdleSettings.Choice("demo:second", 20),
