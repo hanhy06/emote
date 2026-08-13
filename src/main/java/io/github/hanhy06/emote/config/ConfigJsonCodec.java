@@ -37,7 +37,12 @@ final class ConfigJsonCodec {
                 JsonObject idleJson = new JsonObject();
                 idleJson.addProperty("delay_seconds", idle.delaySeconds());
                 JsonArray idleEmotesJson = new JsonArray();
-                idle.emote().forEach(idleEmotesJson::add);
+                for (AccessConfig.IdleSettings.Choice choice : idle.choices()) {
+                    idleEmotesJson.add(choice.id());
+                    if (choice.chance() > 0) {
+                        idleEmotesJson.add(choice.chance());
+                    }
+                }
                 idleJson.add("emote", idleEmotesJson);
                 entryJson.add("idle", idleJson);
             });
@@ -136,11 +141,57 @@ final class ConfigJsonCodec {
             return null;
         }
 
-        List<String> emotes = readRequiredStringList(emoteElement);
-        if (emotes == null) {
+        List<AccessConfig.IdleSettings.Choice> choices = readIdleChoices(emoteElement.getAsJsonArray());
+        if (choices == null) {
             return null;
         }
-        return new AccessConfig.IdleSettings(delayElement.getAsInt(), emotes);
+        return new AccessConfig.IdleSettings(delayElement.getAsInt(), choices);
+    }
+
+    private List<AccessConfig.IdleSettings.Choice> readIdleChoices(JsonArray array) {
+        if (array.isEmpty()) {
+            return null;
+        }
+        boolean weighted = array.size() > 1
+            && array.get(1).isJsonPrimitive()
+            && array.get(1).getAsJsonPrimitive().isNumber();
+        int stride = weighted ? 2 : 1;
+        if (weighted && array.size() % 2 != 0) {
+            return null;
+        }
+
+        List<AccessConfig.IdleSettings.Choice> choices = new ArrayList<>();
+        int totalChance = 0;
+        for (int index = 0; index < array.size(); index += stride) {
+            String id = readRequiredString(array.get(index));
+            if (id == null || choices.stream().anyMatch(choice -> choice.id().equals(id))) {
+                return null;
+            }
+            int chance = 0;
+            if (weighted) {
+                chance = readChance(array.get(index + 1));
+                if (chance < 1) {
+                    return null;
+                }
+                totalChance += chance;
+            }
+            choices.add(new AccessConfig.IdleSettings.Choice(id, chance));
+        }
+        if (weighted && totalChance != 100) {
+            return null;
+        }
+        return List.copyOf(choices);
+    }
+
+    private int readChance(JsonElement element) {
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isNumber()) {
+            return -1;
+        }
+        try {
+            return element.getAsBigDecimal().intValueExact();
+        } catch (ArithmeticException exception) {
+            return -1;
+        }
     }
 
     private List<String> readRequiredStringList(JsonElement element) {

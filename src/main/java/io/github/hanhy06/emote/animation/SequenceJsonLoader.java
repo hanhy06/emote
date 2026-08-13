@@ -75,23 +75,23 @@ public final class SequenceJsonLoader {
         for (int index = 0; index < stepsArray.size(); index++) {
             String path = "$.steps[" + index + "]";
             JsonObject stepObject = reader.requireObject(stepsArray.get(index), path);
-            List<Identifier> emoteIds = readEmoteIds(stepObject, path, reader);
+            List<EmoteSequence.Choice> choices = readEmoteChoices(stepObject, path, reader);
             int repeat = stepObject.has("repeat")
                 ? reader.requireInt(stepObject, "repeat", path)
                 : 1;
             if (repeat < 1) {
                 throw reader.error(path + ".repeat", "must be at least 1");
             }
-            steps.add(new EmoteSequence.Step(emoteIds, repeat));
+            steps.add(new EmoteSequence.Step(choices, repeat));
         }
         return new EmoteSequence(sourcePath, id, metadata, player, steps);
     }
 
-    private List<Identifier> readEmoteIds(JsonObject stepObject, String path, AnimationJsonReader reader)
+    private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, AnimationJsonReader reader)
         throws EmoteAnimationLoadException {
         JsonElement element = reader.requireElement(stepObject, "emote", path);
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-            return List.of(parseId(element.getAsString(), path + ".emote", reader));
+            return List.of(new EmoteSequence.Choice(parseId(element.getAsString(), path + ".emote", reader), 0));
         }
         if (!element.isJsonArray()) {
             throw reader.error(path + ".emote", "must be a string or a non-empty array of strings");
@@ -101,20 +101,42 @@ public final class SequenceJsonLoader {
         if (array.isEmpty()) {
             throw reader.error(path + ".emote", "must not be empty");
         }
-        List<Identifier> emoteIds = new ArrayList<>(array.size());
-        for (int index = 0; index < array.size(); index++) {
+        boolean weighted = array.size() > 1
+            && array.get(1).isJsonPrimitive()
+            && array.get(1).getAsJsonPrimitive().isNumber();
+        int stride = weighted ? 2 : 1;
+        if (weighted && array.size() % 2 != 0) {
+            throw reader.error(path + ".emote", "must contain complete id and chance pairs");
+        }
+
+        List<EmoteSequence.Choice> choices = new ArrayList<>(weighted ? array.size() / 2 : array.size());
+        int totalChance = 0;
+        for (int index = 0; index < array.size(); index += stride) {
             JsonElement candidate = array.get(index);
             String candidatePath = path + ".emote[" + index + "]";
             if (reader.isNotString(candidate)) {
                 throw reader.error(candidatePath, "must be a string");
             }
             Identifier emoteId = parseId(candidate.getAsString(), candidatePath, reader);
-            if (emoteIds.contains(emoteId)) {
+            if (choices.stream().anyMatch(choice -> choice.emoteId().equals(emoteId))) {
                 throw reader.error(candidatePath, "must not duplicate an earlier candidate");
             }
-            emoteIds.add(emoteId);
+            int chance = 0;
+            if (weighted) {
+                chance = reader.requireFiniteDouble(array.get(index + 1), path + ".emote[" + (index + 1) + "]") % 1.0D == 0.0D
+                    ? array.get(index + 1).getAsInt()
+                    : -1;
+                if (chance < 1 || chance > 100) {
+                    throw reader.error(path + ".emote[" + (index + 1) + "]", "must be an integer between 1 and 100");
+                }
+                totalChance += chance;
+            }
+            choices.add(new EmoteSequence.Choice(emoteId, chance));
         }
-        return emoteIds;
+        if (weighted && totalChance != 100) {
+            throw reader.error(path + ".emote", "chances must total 100");
+        }
+        return choices;
     }
 
     private Identifier parseId(String value, String path, AnimationJsonReader reader)

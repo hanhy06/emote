@@ -89,6 +89,71 @@ class SequenceJsonLoaderTest {
     }
 
     @Test
+    void loadsWeightedEmoteCandidates(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("weighted-idle.json");
+        Files.writeString(path, """
+            {
+              "type": "sequence",
+              "schema_version": 1,
+              "id": "example:weighted_idle",
+              "metadata": {"name": "Weighted Idle", "description": ""},
+              "player": {
+                "hidden": true,
+                "stop_conditions": {
+                  "movement_distance": 0.1,
+                  "jump": true,
+                  "submerge": true,
+                  "ride": true,
+                  "damage": true,
+                  "attack": true,
+                  "game_mode_change": true
+                }
+              },
+              "steps": [
+                {"emote": ["example:idle_1", 30, "example:idle_2", 70], "repeat": 4}
+              ]
+            }
+            """);
+
+        EmoteSequence.Step step = this.loader.load(path).steps().getFirst();
+
+        assertEquals(List.of("example:idle_1", "example:idle_2"), step.emoteIds().stream().map(Object::toString).toList());
+        assertEquals(List.of(30, 70), step.choices().stream().map(EmoteSequence.Choice::chance).toList());
+    }
+
+    @Test
+    void rejectsWeightedEmoteCandidatesWhoseChancesDoNotTotalOneHundred(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("invalid-weighted-idle.json");
+        Files.writeString(path, """
+            {
+              "type": "sequence",
+              "schema_version": 1,
+              "id": "example:weighted_idle",
+              "metadata": {"name": "Weighted Idle", "description": ""},
+              "player": {
+                "hidden": true,
+                "stop_conditions": {
+                  "movement_distance": 0.1,
+                  "jump": true,
+                  "submerge": true,
+                  "ride": true,
+                  "damage": true,
+                  "attack": true,
+                  "game_mode_change": true
+                }
+              },
+              "steps": [
+                {"emote": ["example:idle_1", 30, "example:idle_2", 60]}
+              ]
+            }
+            """);
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+
+        assertEquals("$.steps[0].emote", exception.fieldPath());
+    }
+
+    @Test
     void rejectsEmptySteps(@TempDir Path tempDir) throws Exception {
         Path path = tempDir.resolve("empty.json");
         Files.writeString(path, """

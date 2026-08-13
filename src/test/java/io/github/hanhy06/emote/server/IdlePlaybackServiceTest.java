@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -116,6 +117,46 @@ class IdlePlaybackServiceTest {
 
         assertEquals(2, playedIds.size());
         assertNotEquals(playedIds.getFirst(), playedIds.getLast());
+    }
+
+    @Test
+    void usesWeightedChancesAfterExcludingTheLastSuccessfulEmote() {
+        AccessConfig.IdleSettings weightedIdle = new AccessConfig.IdleSettings(
+            10,
+            List.of(
+                new AccessConfig.IdleSettings.Choice("demo:first", 10),
+                new AccessConfig.IdleSettings.Choice("demo:second", 20),
+                new AccessConfig.IdleSettings.Choice("demo:third", 70)
+            )
+        );
+        AtomicLong clock = new AtomicLong(15_000L);
+        List<String> playedIds = new ArrayList<>();
+        int[] randomValues = {15, 0, 89, 0};
+        AtomicInteger randomIndex = new AtomicInteger();
+        Random random = new Random() {
+            @Override
+            public int nextInt(int bound) {
+                return randomValues[randomIndex.getAndIncrement()];
+            }
+        };
+        IdlePlaybackService service = new IdlePlaybackService(
+            ignoredPlayer -> Optional.of(weightedIdle),
+            (ignoredPlayer, id) -> {
+                playedIds.add(id);
+                return PlayResult.SUCCESS;
+            },
+            ignoredPlayer -> false,
+            clock::get,
+            random
+        );
+
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(25_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        clock.set(35_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+
+        assertEquals(List.of("demo:second", "demo:first", "demo:third"), playedIds);
     }
 
     @Test

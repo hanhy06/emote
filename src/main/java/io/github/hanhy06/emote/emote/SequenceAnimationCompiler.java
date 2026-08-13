@@ -73,9 +73,10 @@ final class SequenceAnimationCompiler {
     }
 
     static void validateCompatibleAnimations(List<RegisteredSequence.Step> steps) {
-        RegisteredEmote first = steps.getFirst().candidates().getFirst();
+        RegisteredEmote first = steps.getFirst().candidates().getFirst().animation();
         for (RegisteredSequence.Step step : steps) {
-            for (RegisteredEmote animation : step.candidates()) {
+            for (RegisteredSequence.Choice choice : step.candidates()) {
+                RegisteredEmote animation = choice.animation();
                 if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()

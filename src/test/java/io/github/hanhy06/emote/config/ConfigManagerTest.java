@@ -129,6 +129,53 @@ class ConfigManagerTest {
     }
 
     @Test
+    void readsWeightedIdleEmotes(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay_seconds":300,"emote":["demo:wave",30,"demo:sit",70]}
+                }
+              ]
+            }
+            """);
+
+        assertTrue(manager.readAccessConfig());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
+        assertEquals(List.of(30, 70), idle.choices().stream().map(AccessConfig.IdleSettings.Choice::chance).toList());
+
+        assertTrue(manager.setEmoteEnabled("demo:wave", false));
+        assertTrue(manager.readAccessConfig());
+        AccessConfig.IdleSettings rewrittenIdle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(List.of(30, 70), rewrittenIdle.choices().stream().map(AccessConfig.IdleSettings.Choice::chance).toList());
+    }
+
+    @Test
+    void rejectsWeightedIdleEmotesWhoseChancesDoNotTotalOneHundred(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay_seconds":300,"emote":["demo:wave",30,"demo:sit",60]}
+                }
+              ]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertEquals(List.of("drink:default"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
+    }
+
+    @Test
     void updatesDisabledIdsAndPreservesPermissions(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();

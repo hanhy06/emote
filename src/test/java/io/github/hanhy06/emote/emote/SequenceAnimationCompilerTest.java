@@ -12,6 +12,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -227,6 +228,37 @@ class SequenceAnimationCompilerTest {
         for (int index = 1; index < selectedIds.size(); index++) {
             org.junit.jupiter.api.Assertions.assertNotEquals(selectedIds.get(index - 1), selectedIds.get(index));
         }
+    }
+
+    @Test
+    void selectsWeightedCandidatesAfterExcludingThePreviousCandidate() {
+        RegisteredEmote first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)));
+        RegisteredEmote second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)));
+        RegisteredEmote third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)));
+        EmoteSequence source = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("demo:sequence"),
+            new EmoteSequence.Metadata("Sequence", "Weighted sequence"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
+            List.of(new EmoteSequence.Step(List.of(
+                new EmoteSequence.Choice(Identifier.parse(first.id()), 10),
+                new EmoteSequence.Choice(Identifier.parse(second.id()), 20),
+                new EmoteSequence.Choice(Identifier.parse(third.id()), 70)
+            ), 3))
+        );
+        RegisteredSequence sequence = RegisteredSequence.resolve(source, Map.of(first.id(), first, second.id(), second, third.id(), third));
+        int[] randomValues = {15, 0, 89};
+        AtomicInteger randomIndex = new AtomicInteger();
+        Random random = new Random() {
+            @Override
+            public int nextInt(int bound) {
+                return randomValues[randomIndex.getAndIncrement()];
+            }
+        };
+
+        List<String> selectedIds = sequence.selectSteps(random).stream().map(step -> step.animation().id()).toList();
+
+        assertEquals(List.of("demo:second", "demo:first", "demo:third"), selectedIds);
     }
 
     private static EmoteSequence sequence(EmoteSequence.Step... steps) {

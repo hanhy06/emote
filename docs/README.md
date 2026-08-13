@@ -90,7 +90,7 @@ Controls emote availability and play permissions.
       "emotes": ["example:dance", "example:cry"],
       "idle": {
         "delay_seconds": 300,
-        "emote": ["example:dance", "example:cry"]
+        "emote": ["example:dance", 70, "example:cry", 30]
       }
     },
     {
@@ -109,7 +109,7 @@ Controls emote availability and play permissions.
 - `permissions` preserves the listed order, which determines idle emote selection.
 - `permission` is the permission node for the entry. `emote.default` is granted to every player by default.
 - `emotes` contains the emotes granted by the permission.
-- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay_seconds` of inactivity, then repeats at the same interval while the player remains idle. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available.
+- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay_seconds` of inactivity, then repeats at the same interval while the player remains idle. String-only arrays use equal chances. Alternating ID and integer chance arrays use explicit chances that must total `100`. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available; the remaining chances are normalized automatically.
 - `*` grants access to every enabled emote.
 
 Run `/emote reload` after editing the file manually.
@@ -168,7 +168,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
   },
   "steps": [
     {"emote": "example:sit_down"},
-    {"emote": ["example:sit_idle_1", "example:sit_idle_2", "example:sit_idle_3"], "repeat": 3},
+    {"emote": ["example:sit_idle_1", 30, "example:sit_idle_2", 40, "example:sit_idle_3", 30], "repeat": 3},
     {"emote": "example:stand_up"}
   ]
 }
@@ -176,7 +176,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 
 - `steps` must contain at least one animation.
 - `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
-- `emote` accepts either one animation ID or a non-empty list. Lists select a random candidate for every repeat and exclude the immediately previous candidate when alternatives are available.
+- `emote` accepts one animation ID, a string-only list with equal chances, or an alternating ID and integer chance list whose chances total `100`. Lists select a random candidate for every repeat, exclude the immediately previous candidate when alternatives are available, and normalize the remaining chances automatically.
 - Sequences may reference animations but not other sequences.
 - Referenced animations must be loaded and enabled.
 - `player` uses the same format as animation files and controls player visibility and stop conditions for the entire sequence.

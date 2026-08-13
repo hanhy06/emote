@@ -4,7 +4,6 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -33,17 +32,24 @@ public record EmoteSequence(
         }
     }
 
-    public record Step(List<Identifier> emoteIds, int repeat) {
+    public record Step(List<Choice> choices, int repeat) {
         public Step {
-            emoteIds = List.copyOf(emoteIds);
-            if (emoteIds.isEmpty()) {
+            choices = List.copyOf(choices);
+            if (choices.isEmpty()) {
                 throw new IllegalArgumentException("sequence emote candidates must not be empty");
             }
-            if (emoteIds.stream().anyMatch(Objects::isNull)) {
-                throw new NullPointerException("emoteIds");
+            if (choices.stream().anyMatch(Objects::isNull)) {
+                throw new NullPointerException("choices");
             }
-            if (new HashSet<>(emoteIds).size() != emoteIds.size()) {
+            if (choices.stream().map(Choice::emoteId).distinct().count() != choices.size()) {
                 throw new IllegalArgumentException("sequence emote candidates must not contain duplicates");
+            }
+            boolean weighted = choices.getFirst().chance() > 0;
+            if (choices.stream().anyMatch(choice -> (choice.chance() > 0) != weighted)) {
+                throw new IllegalArgumentException("sequence emote candidates must use either equal or explicit chances");
+            }
+            if (weighted && choices.stream().mapToInt(Choice::chance).sum() != 100) {
+                throw new IllegalArgumentException("sequence emote candidate chances must total 100");
             }
             if (repeat < 1) {
                 throw new IllegalArgumentException("sequence repeat must be at least 1");
@@ -51,7 +57,24 @@ public record EmoteSequence(
         }
 
         public Step(Identifier emoteId, int repeat) {
-            this(List.of(Objects.requireNonNull(emoteId, "emoteId")), repeat);
+            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat);
+        }
+
+        public Step(java.util.Collection<Identifier> emoteIds, int repeat) {
+            this(emoteIds.stream().map(emoteId -> new Choice(emoteId, 0)).toList(), repeat);
+        }
+
+        public List<Identifier> emoteIds() {
+            return this.choices.stream().map(Choice::emoteId).toList();
+        }
+    }
+
+    public record Choice(Identifier emoteId, int chance) {
+        public Choice {
+            Objects.requireNonNull(emoteId, "emoteId");
+            if (chance < 0 || chance > 100) {
+                throw new IllegalArgumentException("sequence emote candidate chance must be between 1 and 100");
+            }
         }
     }
 }

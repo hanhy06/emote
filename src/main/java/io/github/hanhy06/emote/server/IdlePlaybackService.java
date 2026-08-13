@@ -81,7 +81,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         AccessConfig.IdleSettings idle = resolvedIdle.get();
         if (state == null || state.lastActionTime() != lastActionTime || !state.idle().equals(idle)) {
             long firstAttemptTime = lastActionTime + TimeUnit.SECONDS.toMillis(idle.delaySeconds());
-            String selectedEmote = selectEmote(playerUuid, idle.emote());
+            String selectedEmote = selectEmote(playerUuid, idle.choices());
             state = new IdleState(lastActionTime, idle, selectedEmote, firstAttemptTime);
             this.playerStates.put(playerUuid, state);
         }
@@ -95,7 +95,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         long nextAttemptTime;
         if (result.isSuccess()) {
             this.lastPlayedEmotes.put(playerUuid, state.selectedEmote());
-            selectedEmote = selectEmote(playerUuid, idle.emote());
+            selectedEmote = selectEmote(playerUuid, idle.choices());
             long intervalMillis = TimeUnit.SECONDS.toMillis(idle.delaySeconds());
             long elapsedIntervals = (now - state.nextAttemptTime()) / intervalMillis + 1L;
             nextAttemptTime = state.nextAttemptTime() + elapsedIntervals * intervalMillis;
@@ -129,21 +129,49 @@ public final class IdlePlaybackService implements AccessConfigListener {
         return idle;
     }
 
-    private String selectEmote(UUID playerUuid, List<String> emotes) {
-        if (emotes.size() == 1) {
-            return emotes.getFirst();
+    private String selectEmote(UUID playerUuid, List<AccessConfig.IdleSettings.Choice> choices) {
+        if (choices.size() == 1) {
+            return choices.getFirst().id();
         }
 
-        int previousIndex = emotes.indexOf(this.lastPlayedEmotes.get(playerUuid));
-        if (previousIndex < 0) {
-            return emotes.get(this.random.nextInt(emotes.size()));
+        int previousIndex = -1;
+        String previousId = this.lastPlayedEmotes.get(playerUuid);
+        for (int index = 0; index < choices.size(); index++) {
+            if (choices.get(index).id().equals(previousId)) {
+                previousIndex = index;
+                break;
+            }
         }
 
-        int selectedIndex = this.random.nextInt(emotes.size() - 1);
-        if (selectedIndex >= previousIndex) {
-            selectedIndex++;
+        if (choices.getFirst().chance() == 0) {
+            if (previousIndex < 0) {
+                return choices.get(this.random.nextInt(choices.size())).id();
+            }
+            int selectedIndex = this.random.nextInt(choices.size() - 1);
+            if (selectedIndex >= previousIndex) {
+                selectedIndex++;
+            }
+            return choices.get(selectedIndex).id();
         }
-        return emotes.get(selectedIndex);
+
+        int totalChance = 0;
+        for (int index = 0; index < choices.size(); index++) {
+            if (index != previousIndex) {
+                totalChance += choices.get(index).chance();
+            }
+        }
+        int selectedChance = this.random.nextInt(totalChance);
+        for (int index = 0; index < choices.size(); index++) {
+            if (index == previousIndex) {
+                continue;
+            }
+            AccessConfig.IdleSettings.Choice choice = choices.get(index);
+            selectedChance -= choice.chance();
+            if (selectedChance < 0) {
+                return choice.id();
+            }
+        }
+        throw new IllegalStateException("Failed to select an idle emote candidate");
     }
 
     public void removePlayer(ServerPlayer player) {

@@ -49,12 +49,53 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         }
     }
 
-    public record IdleSettings(int delaySeconds, List<String> emote) {
+    public record IdleSettings(int delaySeconds, List<Choice> choices) {
         public IdleSettings {
             if (delaySeconds < 1) {
                 throw new IllegalArgumentException("idle delay_seconds must be at least 1");
             }
-            emote = normalizeIds(emote, "idle emote", "idle emote id must not be blank", true);
+            choices = List.copyOf(choices);
+            if (choices.isEmpty()) {
+                throw new IllegalArgumentException("idle emote must not be empty");
+            }
+            if (choices.stream().anyMatch(Objects::isNull)) {
+                throw new NullPointerException("idle emote choices");
+            }
+            if (choices.stream().map(Choice::id).distinct().count() != choices.size()) {
+                throw new IllegalArgumentException("idle emote must not contain duplicate ids");
+            }
+            boolean weighted = choices.getFirst().chance() > 0;
+            if (choices.stream().anyMatch(choice -> (choice.chance() > 0) != weighted)) {
+                throw new IllegalArgumentException("idle emote must use either equal or explicit chances");
+            }
+            if (weighted && choices.stream().mapToInt(Choice::chance).sum() != 100) {
+                throw new IllegalArgumentException("idle emote chances must total 100");
+            }
+        }
+
+        public IdleSettings(int delaySeconds, Collection<String> emotes) {
+            this(delaySeconds, normalizeIds(
+                List.copyOf(emotes),
+                "idle emote",
+                "idle emote id must not be blank",
+                true
+            ).stream().map(id -> new Choice(id, 0)).toList());
+        }
+
+        public List<String> emote() {
+            return this.choices.stream().map(Choice::id).toList();
+        }
+
+        public record Choice(String id, int chance) {
+            public Choice {
+                if (id == null || id.isBlank()) {
+                    throw new IllegalArgumentException("idle emote id must not be blank");
+                }
+                id = id.trim();
+                if (chance < 0 || chance > 100) {
+                    throw new IllegalArgumentException("idle emote chance must be between 1 and 100");
+                }
+            }
         }
     }
 
