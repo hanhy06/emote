@@ -11,7 +11,7 @@ final class AnimationComplexityValidator {
         if (timeline.durationTicks() > MAX_DURATION_TICKS) {
             throw new EmoteAnimationLoadException(
                 loaded.sourcePath(),
-                "$.timeline.duration_ticks",
+                "$.timeline.duration",
                 "must not exceed " + MAX_DURATION_TICKS
             );
         }

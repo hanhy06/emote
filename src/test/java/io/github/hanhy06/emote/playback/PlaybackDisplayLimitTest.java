@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import org.junit.jupiter.api.Test;
 
@@ -23,7 +24,7 @@ class PlaybackDisplayLimitTest {
 
     @Test
     void appliesOnlyEnabledEventDrivenStopConditions() {
-        EmoteAnimation.StopConditions conditions = new EmoteAnimation.StopConditions(
+        EmotePlayerBehavior.StopConditions conditions = new EmotePlayerBehavior.StopConditions(
             0.1D,
             true,
             false,

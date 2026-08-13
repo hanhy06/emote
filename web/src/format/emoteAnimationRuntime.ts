@@ -1,7 +1,6 @@
 import type { EmoteAnimation } from "./emoteAnimation";
 import {
   optionalBoolean,
-  optionalNumber,
   optionalRecord,
   optionalString,
   requireArray,
@@ -21,13 +20,11 @@ const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_
 
 export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   const root = requireRecord(value, "animation");
+  requireStringValue(root.type, ["animation"] as const, "type");
   requireNumber(root.schema_version, "schema_version");
-  requireString(root.minecraft_version, "minecraft_version");
-  requireNumber(root.tick_rate, "tick_rate");
   requireString(root.id, "id");
   requireMetadata(root.metadata);
-  requirePlayer(root.player);
-  requireTransformSpace(root.transform_space);
+  requireSettings(root.settings);
   requireNodes(root.nodes);
   requireTimeline(root.timeline);
   return value as EmoteAnimation;
@@ -39,24 +36,23 @@ function requireMetadata(value: unknown): void {
   requireString(metadata.description, "metadata.description");
 }
 
-function requirePlayer(value: unknown): void {
-  const player = requireRecord(value, "player");
-  requireBoolean(player.hidden, "player.hidden");
-  const stopConditions = requireRecord(player.stop_conditions, "player.stop_conditions");
-  requireNumber(stopConditions.movement_distance, "player.stop_conditions.movement_distance");
-  requireBoolean(stopConditions.jump, "player.stop_conditions.jump");
-  requireBoolean(stopConditions.submerge, "player.stop_conditions.submerge");
-  requireBoolean(stopConditions.ride, "player.stop_conditions.ride");
-  requireBoolean(stopConditions.damage, "player.stop_conditions.damage");
-  requireBoolean(stopConditions.attack, "player.stop_conditions.attack");
-  requireBoolean(stopConditions.game_mode_change, "player.stop_conditions.game_mode_change");
-}
-
-function requireTransformSpace(value: unknown): void {
-  const transformSpace = requireRecord(value, "transform_space");
-  requireString(transformSpace.coordinate_space, "transform_space.coordinate_space");
-  requireString(transformSpace.matrix_layout, "transform_space.matrix_layout");
-  requireNumber(transformSpace.matrix_size, "transform_space.matrix_size");
+function requireSettings(value: unknown): void {
+  const settings = requireRecord(value, "settings");
+  requireBoolean(settings.standalone, "settings.standalone");
+  requireString(settings.cooldown, "settings.cooldown");
+  const player = requireRecord(settings.player, "settings.player");
+  requireBoolean(player.hidden, "settings.player.hidden");
+  const stopConditions = requireRecord(player.stop_conditions, "settings.player.stop_conditions");
+  requireNumber(stopConditions.movement_distance, "settings.player.stop_conditions.movement_distance");
+  requireBoolean(stopConditions.jump, "settings.player.stop_conditions.jump");
+  requireBoolean(stopConditions.submerge, "settings.player.stop_conditions.submerge");
+  requireBoolean(stopConditions.ride, "settings.player.stop_conditions.ride");
+  requireBoolean(stopConditions.damage, "settings.player.stop_conditions.damage");
+  requireBoolean(stopConditions.attack, "settings.player.stop_conditions.attack");
+  requireBoolean(stopConditions.game_mode_change, "settings.player.stop_conditions.game_mode_change");
+  const playback = requireRecord(settings.playback, "settings.playback");
+  requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
+  requireString(playback.loop_delay, "settings.playback.loop_delay");
 }
 
 function requireNodes(value: unknown): void {
@@ -98,9 +94,7 @@ function requireSkin(value: unknown, path: string): void {
 
 function requireTimeline(value: unknown): void {
   const timeline = requireRecord(value, "timeline");
-  requireNumber(timeline.duration_ticks, "timeline.duration_ticks");
-  requireStringValue(timeline.loop, LOOP_TYPES, "timeline.loop");
-  requireNumber(timeline.loop_delay_ticks, "timeline.loop_delay_ticks");
+  requireString(timeline.duration, "timeline.duration");
   requireArray(timeline.keyframes, "timeline.keyframes").forEach(requireKeyframe);
   const events = optionalRecord(timeline.events, "timeline.events");
   if (!events) return;
@@ -113,14 +107,14 @@ function requireTimeline(value: unknown): void {
 function requireKeyframe(value: unknown, index: number): void {
   const path = `timeline.keyframes[${index}]`;
   const keyframe = requireRecord(value, path);
-  requireNumber(keyframe.tick, `${path}.tick`);
-  optionalNumber(keyframe.interpolation_duration_ticks, `${path}.interpolation_duration_ticks`);
+  requireString(keyframe.time, `${path}.time`);
+  optionalString(keyframe.interpolation_duration, `${path}.interpolation_duration`);
   const transforms = optionalRecord(keyframe.node_transforms, `${path}.node_transforms`);
   for (const [nodeId, transformValue] of Object.entries(transforms ?? {})) {
     const transformPath = `${path}.node_transforms.${nodeId}`;
     const transform = requireRecord(transformValue, transformPath);
     requireNumberArray(transform.matrix, `${transformPath}.matrix`);
-    optionalNumber(transform.interpolation_duration_ticks, `${transformPath}.interpolation_duration_ticks`);
+    optionalString(transform.interpolation_duration, `${transformPath}.interpolation_duration`);
   }
   const states = optionalRecord(keyframe.node_states, `${path}.node_states`);
   for (const [nodeId, stateValue] of Object.entries(states ?? {})) {
@@ -134,7 +128,7 @@ function requireEvents(value: unknown, path: string, timeline: boolean): void {
   requireArray(value, path).forEach((eventValue, index) => {
     const eventPath = `${path}[${index}]`;
     const event = requireRecord(eventValue, eventPath);
-    if (timeline) requireNumber(event.tick, `${eventPath}.tick`);
+    if (timeline) requireString(event.time, `${eventPath}.time`);
     requireEventSource(event.source, `${eventPath}.source`);
     requireEventOrigin(event.origin, `${eventPath}.origin`);
     requireStringArray(event.commands, `${eventPath}.commands`);

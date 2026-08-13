@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.playback.PlaybackPlan;
 import io.github.hanhy06.emote.skin.AnimationSkinPart;
 import io.github.hanhy06.emote.skin.AnimationSkinPartFactory;
@@ -48,11 +49,11 @@ public record RegisteredEmote(
 
     @Override
     public boolean standalone() {
-        return animation().standalone();
+        return animation().settings().standalone();
     }
 
-    public EmoteAnimation.PlayerBehavior playerBehavior() {
-        return animation().player();
+    public EmotePlayerBehavior playerBehavior() {
+        return animation().settings().player();
     }
 
     public Path sourcePath() {
@@ -70,7 +71,7 @@ public record RegisteredEmote(
 
     @Override
     public EmoteAnimation.LoopMode loopMode() {
-        return animation().timeline().loop();
+        return animation().settings().playback().mode();
     }
 
     public int displayNodeCount() {

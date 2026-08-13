@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -49,10 +51,10 @@ class AnimationSkinPartFactoryTest {
     private EmoteAnimation animation(Map<String, EmoteAnimation.Node> nodes) {
         return new EmoteAnimation(
             Identifier.parse("test:skin"),
-            new EmoteAnimation.Metadata("Skin", "Skin"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Skin", "Skin"),
+            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
             nodes,
-            new EmoteAnimation.Timeline(1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty())
+            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
         );
     }
 }

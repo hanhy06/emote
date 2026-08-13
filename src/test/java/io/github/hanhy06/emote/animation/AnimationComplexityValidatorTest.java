@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.animation;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.nbt.CompoundTag;
@@ -33,7 +35,7 @@ class AnimationComplexityValidatorTest {
         AnimationJsonLoader loader = new AnimationJsonLoader();
         try (var paths = Files.list(Path.of("docs/example"))) {
             for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
-                EmoteAnimation.Loaded loaded = loader.load(path, MINECRAFT_VERSION);
+                EmoteAnimation.Loaded loaded = loader.load(path);
                 assertDoesNotThrow(() -> this.validator.validate(loaded), path.toString());
             }
         }
@@ -90,13 +92,11 @@ class AnimationComplexityValidatorTest {
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse("test:complexity"),
-            new EmoteAnimation.Metadata("Complexity", "Complexity"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Complexity", "Complexity"),
+            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
             nodes,
             new EmoteAnimation.Timeline(
                 durationTicks,
-                EmoteAnimation.LoopMode.ONCE,
-                0,
                 keyframes,
                 events
             )

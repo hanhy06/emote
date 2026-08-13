@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -127,8 +129,8 @@ class EmoteRegistryTest {
         EmoteSequence source = new EmoteSequence(
             Path.of("sit.json"),
             Identifier.parse("demo:sit"),
-            new EmoteSequence.Metadata("Sit", "Sit sequence"),
-            io.github.hanhy06.emote.api.animation.EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Sit", "Sit sequence"),
+            EmotePlayerBehavior.createDefault(),
             List.of(new EmoteSequence.Step(Identifier.parse(animation.id()), 1))
         );
         RegisteredSequence sequence = RegisteredSequence.resolve(source, java.util.Map.of(animation.id(), animation));

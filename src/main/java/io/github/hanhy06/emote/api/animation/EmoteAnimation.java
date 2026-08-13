@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.api.animation;
 
 import com.google.gson.JsonElement;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
@@ -15,64 +17,43 @@ import java.util.Objects;
 
 public record EmoteAnimation(
     Identifier id,
-    Metadata metadata,
-    boolean standalone,
-    PlayerBehavior player,
+    EmoteMetadata metadata,
+    Settings settings,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
-    public EmoteAnimation(
-        Identifier id,
-        Metadata metadata,
-        PlayerBehavior player,
-        Map<String, Node> nodes,
-        Timeline timeline
-    ) {
-        this(id, metadata, true, player, nodes, timeline);
-    }
-
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
-        Objects.requireNonNull(player, "player");
+        Objects.requireNonNull(settings, "settings");
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
     }
 
-    public record Metadata(String name, String description) {
-        public Metadata {
-            Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(description, "description");
-        }
-    }
-
-    public record PlayerBehavior(boolean hidden, StopConditions stopConditions) {
-        public PlayerBehavior {
-            Objects.requireNonNull(stopConditions, "stopConditions");
-        }
-
-        public static PlayerBehavior createDefault() {
-            return new PlayerBehavior(true, StopConditions.createDefault());
-        }
-    }
-
-    public record StopConditions(
-        double movementDistance,
-        boolean jump,
-        boolean submerge,
-        boolean ride,
-        boolean damage,
-        boolean attack,
-        boolean gameModeChange
+    public record Settings(
+        boolean standalone,
+        int cooldownTicks,
+        EmotePlayerBehavior player,
+        PlaybackSettings playback
     ) {
-        public StopConditions {
-            if (!Double.isFinite(movementDistance) || movementDistance < 0.0D) {
-                throw new IllegalArgumentException("movement distance must be a finite non-negative number");
+        public Settings {
+            if (cooldownTicks < 0) {
+                throw new IllegalArgumentException("cooldown must not be negative");
             }
+            Objects.requireNonNull(player, "player");
+            Objects.requireNonNull(playback, "playback");
         }
+    }
 
-        public static StopConditions createDefault() {
-            return new StopConditions(0.1D, true, true, true, true, true, true);
+    public record PlaybackSettings(LoopMode mode, int loopDelayTicks) {
+        public PlaybackSettings {
+            Objects.requireNonNull(mode, "mode");
+            if (loopDelayTicks < 0) {
+                throw new IllegalArgumentException("loop delay must not be negative");
+            }
+            if (mode == LoopMode.ONCE && loopDelayTicks != 0) {
+                throw new IllegalArgumentException("loop delay must be zero when playback mode is once");
+            }
         }
     }
 
@@ -174,13 +155,10 @@ public record EmoteAnimation(
 
     public record Timeline(
         int durationTicks,
-        LoopMode loop,
-        int loopDelayTicks,
         List<Keyframe> keyframes,
         Events events
     ) {
         public Timeline {
-            Objects.requireNonNull(loop, "loop");
             keyframes = List.copyOf(keyframes);
             Objects.requireNonNull(events, "events");
         }

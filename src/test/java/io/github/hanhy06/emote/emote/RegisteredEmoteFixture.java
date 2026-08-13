@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
@@ -20,17 +22,17 @@ public final class RegisteredEmoteFixture {
     }
 
     public static RegisteredEmote create(String id, String name) {
-        return create(id, name, true, EmoteAnimation.PlayerBehavior.createDefault());
+        return create(id, name, true, EmotePlayerBehavior.createDefault());
     }
 
     public static RegisteredEmote create(String id, String name, boolean standalone) {
-        return create(id, name, standalone, EmoteAnimation.PlayerBehavior.createDefault());
+        return create(id, name, standalone, EmotePlayerBehavior.createDefault());
     }
 
     public static RegisteredEmote create(
         String id,
         String name,
-        EmoteAnimation.PlayerBehavior playerBehavior
+        EmotePlayerBehavior playerBehavior
     ) {
         return create(id, name, true, playerBehavior);
     }
@@ -39,15 +41,14 @@ public final class RegisteredEmoteFixture {
         String id,
         String name,
         boolean standalone,
-        EmoteAnimation.PlayerBehavior playerBehavior
+        EmotePlayerBehavior playerBehavior
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Objects.requireNonNull(Identifier.tryParse(id)),
-            new EmoteAnimation.Metadata(name, name + " description"),
-            standalone,
-            playerBehavior,
+            new EmoteMetadata(name, name + " description"),
+            new EmoteAnimation.Settings(standalone, 0, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
             Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)),
-            new EmoteAnimation.Timeline(1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty())
+            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
         );
         return RegisteredEmote.from(new EmoteAnimation.Loaded(
             Path.of(id.replace(':', '_') + ".json"),

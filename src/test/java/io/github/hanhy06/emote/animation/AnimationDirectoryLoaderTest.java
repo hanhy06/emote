@@ -16,8 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnimationDirectoryLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
-    private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
-
     private final AnimationDirectoryLoader loader = new AnimationDirectoryLoader();
 
     @Test
@@ -27,7 +25,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(nestedDirectory.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -40,7 +38,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("second.json"), "same:wave");
         writeAnimation(tempDir.resolve("valid.json"), "other:wave");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
 
         assertEquals(List.of("other:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
@@ -52,7 +50,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("valid.json"), "valid:wave");
         Files.writeString(tempDir.resolve("broken.json"), "{");
 
-        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, MINECRAFT_VERSION, animation -> animation);
+        List<EmoteAnimation.Loaded> loaded = this.loader.load(tempDir, animation -> animation);
 
         assertEquals(1, loaded.size());
         assertEquals("valid:wave", loaded.getFirst().animation().id().toString());
@@ -62,7 +60,7 @@ class AnimationDirectoryLoaderTest {
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        assertTrue(this.loader.load(directory, MINECRAFT_VERSION, animation -> animation).isEmpty());
+        assertTrue(this.loader.load(directory, animation -> animation).isEmpty());
         assertTrue(Files.isDirectory(directory));
     }
 
@@ -93,7 +91,6 @@ class AnimationDirectoryLoaderTest {
 
         AnimationDirectoryLoader.DirectoryContents contents = this.loader.loadAll(
             tempDir,
-            MINECRAFT_VERSION,
             animation -> animation
         );
 
@@ -110,7 +107,6 @@ class AnimationDirectoryLoaderTest {
             .parseString(Files.readString(REFERENCE_PATH))
             .getAsJsonObject();
 
-        root.addProperty("minecraft_version", MINECRAFT_VERSION);
         root.addProperty("id", id);
 
         Files.createDirectories(path.getParent());

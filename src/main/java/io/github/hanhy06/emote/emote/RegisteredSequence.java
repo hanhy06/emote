@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 
 import java.nio.file.Path;
@@ -132,7 +133,7 @@ public record RegisteredSequence(
     }
 
     @Override
-    public EmoteAnimation.PlayerBehavior playerBehavior() {
+    public EmotePlayerBehavior playerBehavior() {
         return this.source.player();
     }
 

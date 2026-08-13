@@ -51,7 +51,7 @@ public final class TimelinePlayer {
         if (this.started) {
             throw new IllegalStateException("Timeline already started");
         }
-        if (this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
+        if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
             throw new IllegalStateException("Timeline is not server synchronized");
         }
 
@@ -69,7 +69,7 @@ public final class TimelinePlayer {
         this.started = true;
         clearState();
         int duration = this.animation.timeline().durationTicks();
-        long cycleLength = (long) duration + this.animation.timeline().loopDelayTicks();
+        long cycleLength = (long) duration + this.animation.settings().playback().loopDelayTicks();
         long phase = Math.floorMod(cycleTick, cycleLength);
         int timelineTick = (int) Math.min(phase, duration);
         this.currentTick = timelineTick;
@@ -80,7 +80,7 @@ public final class TimelinePlayer {
     }
 
     public void resumeSynchronizedInterpolation() {
-        if (!this.started || this.animation.timeline().loop() != EmoteAnimation.LoopMode.SERVER_SYNC) {
+        if (!this.started || this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
             throw new IllegalStateException("Synchronized timeline has not started");
         }
         resumeInitialInterpolation();
@@ -138,7 +138,7 @@ public final class TimelinePlayer {
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
         }
-        if (this.animation.timeline().loop() == EmoteAnimation.LoopMode.ONCE) {
+        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             this.finished = true;
             return AdvanceResult.FINISHED;
         }
@@ -151,7 +151,7 @@ public final class TimelinePlayer {
             throw new IllegalStateException("Timeline is not at a loop boundary");
         }
         this.awaitingLoopContinuation = false;
-        int loopDelay = this.animation.timeline().loopDelayTicks();
+        int loopDelay = this.animation.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
             resetToTickZero();
             return AdvanceResult.RESTARTED;

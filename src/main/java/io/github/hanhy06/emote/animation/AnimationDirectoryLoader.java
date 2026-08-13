@@ -39,18 +39,18 @@ public final class AnimationDirectoryLoader {
     }
 
     public List<Loaded> load(Path directory) {
-        return load(directory, Emote.SERVER.getServerVersion(), this.serverValidator::prepare);
+        return load(directory, this.serverValidator::prepare);
     }
 
-    List<Loaded> load(Path directory, String minecraftVersion, LoadedValidator validator) {
-        return loadAll(directory, minecraftVersion, validator).animations();
+    List<Loaded> load(Path directory, LoadedValidator validator) {
+        return loadAll(directory, validator).animations();
     }
 
     public DirectoryContents loadAll(Path directory) {
-        return loadAll(directory, Emote.SERVER.getServerVersion(), this.serverValidator::prepare);
+        return loadAll(directory, this.serverValidator::prepare);
     }
 
-    DirectoryContents loadAll(Path directory, String minecraftVersion, LoadedValidator validator) {
+    DirectoryContents loadAll(Path directory, LoadedValidator validator) {
         List<Loaded> candidates = new ArrayList<>();
         List<EmoteSequence> sequenceCandidates = new ArrayList<>();
         for (Path path : findJsonFiles(directory)) {
@@ -58,7 +58,7 @@ public final class AnimationDirectoryLoader {
                 if (fileType(path).equals("sequence")) {
                     sequenceCandidates.add(this.sequenceJsonLoader.load(path));
                 } else {
-                    Loaded loaded = this.jsonLoader.load(path, minecraftVersion);
+                    Loaded loaded = this.jsonLoader.load(path);
                     candidates.add(validator.validate(loaded));
                 }
             } catch (EmoteAnimationLoadException exception) {

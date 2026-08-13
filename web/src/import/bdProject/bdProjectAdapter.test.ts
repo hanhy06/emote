@@ -27,7 +27,7 @@ describe("bdProjectAdapter", () => {
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "dance" });
     expect(Object.keys(animation.nodes)).toEqual(["display_0"]);
     expect(animation.timeline.keyframes).toHaveLength(1);
-    expect(animation.timeline.duration_ticks).toBe(2);
+    expect(animation.timeline.duration).toBe("2t");
     expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix).toEqual(IDENTITY_MATRIX);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
@@ -115,7 +115,7 @@ describe("bdProjectAdapter", () => {
       sourcePath: "scene.listAnim",
     }]);
     expect(animation.metadata.name).toBe("Multiple animations");
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 2, 4, 6]);
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t"]);
     expect(animation.timeline.keyframes.at(-1)?.node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
@@ -142,16 +142,16 @@ describe("bdProjectAdapter", () => {
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "sound" });
 
-    expect(animation.timeline.duration_ticks).toBe(9);
+    expect(animation.timeline.duration).toBe("9t");
     expect(animation.timeline.events?.timeline).toEqual([
       {
-        tick: 0,
+        time: "0t",
         source: { type: "server" },
         origin: { type: "root" },
         commands: ["playsound minecraft:block.note_block.harp block @a ~ ~ ~ 0.88 1.123"],
       },
       {
-        tick: 8,
+        time: "8t",
         source: { type: "server" },
         origin: { type: "root" },
         commands: ["playsound minecraft:entity.player.levelup block @a ~ ~ ~ 1 1"],
@@ -212,10 +212,10 @@ describe("bdProjectAdapter", () => {
 
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "sparse" });
-    expect(animation.timeline.duration_ticks).toBe(22);
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.tick)).toEqual([0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20]);
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.display_0?.interpolation_duration_ticks))
-      .toEqual([0, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]);
+    expect(animation.timeline.duration).toBe("22t");
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t", "8t", "10t", "12t", "14t", "16t", "18t", "20t"]);
+    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.display_0?.interpolation_duration))
+      .toEqual(["0t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t"]);
     expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
     expect(animation.timeline.keyframes[1].node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
     expect(animation.timeline.keyframes[5].node_transforms?.display_0?.matrix[3]).toBeCloseTo(13);

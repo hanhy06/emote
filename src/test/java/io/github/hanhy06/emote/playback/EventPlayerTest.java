@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -38,10 +40,10 @@ class EventPlayerTest {
         );
         return new EmoteAnimation(
             Identifier.parse("test:events"),
-            new EmoteAnimation.Metadata("Events", "Events"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Events", "Events"),
+            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.LOOP, 0)),
             Map.of(),
-            new EmoteAnimation.Timeline(2, EmoteAnimation.LoopMode.LOOP, 0, List.of(), events)
+            new EmoteAnimation.Timeline(2, List.of(), events)
         );
     }
 

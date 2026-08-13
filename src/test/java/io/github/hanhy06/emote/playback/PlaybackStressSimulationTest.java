@@ -23,7 +23,7 @@ class PlaybackStressSimulationTest {
     @Test
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
         EmoteAnimation animation = new AnimationJsonLoader()
-            .load(Path.of("docs/example/emote.dance.json"), MINECRAFT_VERSION)
+            .load(Path.of("docs/example/emote.dance.json"))
             .animation();
         PlaybackPlan plan = PlaybackPlan.compile(animation);
         int durationTicks = animation.timeline().durationTicks();

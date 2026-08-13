@@ -1,30 +1,30 @@
 {
     "type": "animation",
-    "standalone": true,
-    "schema_version": 1,
-    "minecraft_version": "26.2",
-    "tick_rate": 20,
+    "schema_version": 2,
     "id": "emote:format_reference",
     "metadata": {
         "name": "Format Reference",
         "description": "Reference emote containing every runtime feature supported by the format draft."
     },
-    "player": {
-        "hidden": true,
-        "stop_conditions": {
-            "movement_distance": 0.1,
-            "jump": true,
-            "submerge": true,
-            "ride": true,
-            "damage": true,
-            "attack": true,
-            "game_mode_change": true
+    "settings": {
+        "standalone": true,
+        "cooldown": "0t",
+        "player": {
+            "hidden": true,
+            "stop_conditions": {
+                "movement_distance": 0.1,
+                "jump": true,
+                "submerge": true,
+                "ride": true,
+                "damage": true,
+                "attack": true,
+                "game_mode_change": true
+            }
+        },
+        "playback": {
+            "mode": "loop",
+            "loop_delay": "0t"
         }
-    },
-    "transform_space": {
-        "coordinate_space": "root_local",
-        "matrix_layout": "row_major",
-        "matrix_size": 16
     },
     "nodes": {
         "player_head": {
@@ -38,10 +38,22 @@
                 "order": 0
             },
             "default_matrix": [
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 1.75,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1.75,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
             ]
         },
         "enchanted_sword": {
@@ -51,10 +63,22 @@
             "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:sharpness\":5}}}",
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
             "default_matrix": [
-                1.0, 0.0, 0.0, 0.5,
-                0.0, 1.0, 0.0, 1.0,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                1,
+                0,
+                0,
+                0.5,
+                0,
+                1,
+                0,
+                1,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
             ]
         },
         "stage": {
@@ -63,10 +87,22 @@
             "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
             "default_matrix": [
-                2.0, 0.0, 0.0, -1.0,
-                0.0, 0.1, 0.0, 0.0,
-                0.0, 0.0, 2.0, -1.0,
-                0.0, 0.0, 0.0, 1.0
+                2,
+                0,
+                0,
+                -1,
+                0,
+                0.1,
+                0,
+                0,
+                0,
+                0,
+                2,
+                -1,
+                0,
+                0,
+                0,
+                1
             ]
         },
         "caption": {
@@ -77,45 +113,91 @@
             },
             "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
             "default_matrix": [
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 2.4,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                2.4,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
             ]
         },
         "effect_anchor": {
             "type": "anchor",
             "default_matrix": [
-                1.0, 0.0, 0.0, 0.0,
-                0.0, 1.0, 0.0, 1.5,
-                0.0, 0.0, 1.0, 0.0,
-                0.0, 0.0, 0.0, 1.0
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1.5,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
             ]
         }
     },
     "timeline": {
-        "duration_ticks": 80,
-        "loop": "loop",
-        "loop_delay_ticks": 0,
+        "duration": "80t",
         "keyframes": [
             {
-                "tick": 0,
-                "interpolation_duration_ticks": 0,
+                "time": "0t",
+                "interpolation_duration": "0t",
                 "node_transforms": {
                     "player_head": {
                         "matrix": [
-                            1.0, 0.0, 0.0, 0.0,
-                            0.0, 1.0, 0.0, 1.75,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            1.75,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
                         ]
                     },
                     "enchanted_sword": {
                         "matrix": [
-                            1.0, 0.0, 0.0, 0.5,
-                            0.0, 1.0, 0.0, 1.0,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0
+                            1,
+                            0,
+                            0,
+                            0.5,
+                            0,
+                            1,
+                            0,
+                            1,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
                         ]
                     }
                 },
@@ -129,46 +211,94 @@
                 }
             },
             {
-                "tick": 1,
-                "interpolation_duration_ticks": 1,
+                "time": "1t",
+                "interpolation_duration": "1t",
                 "node_transforms": {
                     "player_head": {
                         "matrix": [
-                            0.9962, 0.0, 0.0872, 0.0,
-                            0.0, 1.0, 0.0, 1.76,
-                            -0.0872, 0.0, 0.9962, 0.0,
-                            0.0, 0.0, 0.0, 1.0
+                            0.9962,
+                            0,
+                            0.0872,
+                            0,
+                            0,
+                            1,
+                            0,
+                            1.76,
+                            -0.0872,
+                            0,
+                            0.9962,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
                         ]
                     },
                     "enchanted_sword": {
-                        "interpolation_duration_ticks": 0,
                         "matrix": [
-                            0.9848, -0.1736, 0.0, 0.52,
-                            0.1736, 0.9848, 0.0, 1.02,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0
-                        ]
+                            0.9848,
+                            -0.1736,
+                            0,
+                            0.52,
+                            0.1736,
+                            0.9848,
+                            0,
+                            1.02,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
+                        ],
+                        "interpolation_duration": "0t"
                     },
                     "effect_anchor": {
                         "matrix": [
-                            1.0, 0.0, 0.0, 0.52,
-                            0.0, 1.0, 0.0, 1.45,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0
+                            1,
+                            0,
+                            0,
+                            0.52,
+                            0,
+                            1,
+                            0,
+                            1.45,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
                         ]
                     }
                 }
             },
             {
-                "tick": 40,
-                "interpolation_duration_ticks": 0,
+                "time": "40t",
+                "interpolation_duration": "0t",
                 "node_transforms": {
                     "caption": {
                         "matrix": [
-                            1.0, 0.0, 0.0, 0.0,
-                            0.0, 1.0, 0.0, 2.6,
-                            0.0, 0.0, 1.0, 0.0,
-                            0.0, 0.0, 0.0, 1.0
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1,
+                            0,
+                            2.6,
+                            0,
+                            0,
+                            1,
+                            0,
+                            0,
+                            0,
+                            0,
+                            1
                         ]
                     }
                 },
@@ -179,8 +309,8 @@
                 }
             },
             {
-                "tick": 60,
-                "interpolation_duration_ticks": 0,
+                "time": "60t",
+                "interpolation_duration": "0t",
                 "node_states": {
                     "enchanted_sword": {
                         "visible": false
@@ -196,7 +326,11 @@
                     },
                     "origin": {
                         "type": "root",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "playsound minecraft:entity.player.levelup player @a[distance=..32] ~ ~ ~ 1.0 1.0",
@@ -206,35 +340,43 @@
             ],
             "timeline": [
                 {
-                    "tick": 10,
+                    "time": "10t",
                     "source": {
                         "type": "server"
                     },
                     "origin": {
                         "type": "node",
                         "node": "effect_anchor",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "particle minecraft:flame ~ ~ ~ 0.2 0.2 0.2 0.02 12 normal"
                     ]
                 },
                 {
-                    "tick": 20,
+                    "time": "20t",
                     "source": {
                         "type": "server"
                     },
                     "origin": {
                         "type": "node",
                         "node": "enchanted_sword",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "playsound minecraft:item.trident.throw player @a[distance=..32] ~ ~ ~ 0.8 1.2"
                     ]
                 },
                 {
-                    "tick": 30,
+                    "time": "30t",
                     "source": {
                         "type": "node",
                         "node": "enchanted_sword"
@@ -242,7 +384,11 @@
                     "origin": {
                         "type": "node",
                         "node": "enchanted_sword",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "data merge entity @s {glowing:0b}",
@@ -250,7 +396,7 @@
                     ]
                 },
                 {
-                    "tick": 40,
+                    "time": "40t",
                     "source": {
                         "type": "node",
                         "node": "stage"
@@ -258,14 +404,18 @@
                     "origin": {
                         "type": "node",
                         "node": "stage",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "data modify entity @s block_state set value {Name:\"minecraft:diamond_block\"}"
                     ]
                 },
                 {
-                    "tick": 50,
+                    "time": "50t",
                     "source": {
                         "type": "node",
                         "node": "caption"
@@ -273,21 +423,29 @@
                     "origin": {
                         "type": "node",
                         "node": "caption",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "data merge entity @s {text:{text:\"Runtime event\",color:\"gold\",bold:true},glowing:1b}"
                     ]
                 },
                 {
-                    "tick": 60,
+                    "time": "60t",
                     "source": {
                         "type": "server"
                     },
                     "origin": {
                         "type": "node",
                         "node": "effect_anchor",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "execute if entity @a[distance=..16] run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.0 8 normal"
@@ -301,7 +459,11 @@
                     },
                     "origin": {
                         "type": "root",
-                        "offset": [0.0, 0.0, 0.0]
+                        "offset": [
+                            0,
+                            0,
+                            0
+                        ]
                     },
                     "commands": [
                         "playsound minecraft:block.note_block.hat player @a[distance=..32] ~ ~ ~ 0.4 1.0"
@@ -315,7 +477,11 @@
                     },
                     "origin": {
                         "type": "root",
-                        "offset": [0.0, 1.0, 0.0]
+                        "offset": [
+                            0,
+                            1,
+                            0
+                        ]
                     },
                     "commands": [
                         "particle minecraft:poof ~ ~ ~ 0.3 0.5 0.3 0.02 16 normal",

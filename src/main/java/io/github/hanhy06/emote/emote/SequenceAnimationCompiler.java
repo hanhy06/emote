@@ -44,21 +44,23 @@ final class SequenceAnimationCompiler {
             }
 
             offset += animation.timeline().durationTicks();
-            if (step.loopDelayAfter() && animation.timeline().loop() == EmoteAnimation.LoopMode.LOOP) {
-                offset += animation.timeline().loopDelayTicks();
+            if (step.loopDelayAfter() && animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP) {
+                offset += animation.settings().playback().loopDelayTicks();
             }
         }
 
         EmoteAnimation compiledAnimation = new EmoteAnimation(
             sequence.id(),
-            new EmoteAnimation.Metadata(sequence.metadata().name(), sequence.metadata().description()),
-            true,
-            sequence.player(),
+            sequence.metadata(),
+            new EmoteAnimation.Settings(
+                true,
+                0,
+                sequence.player(),
+                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)
+            ),
             first.animation().nodes(),
             new EmoteAnimation.Timeline(
                 requireTick(offset, sequence),
-                EmoteAnimation.LoopMode.ONCE,
-                0,
                 keyframes,
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
             )

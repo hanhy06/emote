@@ -5,18 +5,14 @@ export type Matrix16 = readonly [
   number, number, number, number,
 ];
 
+export type MinecraftTime = string;
+
 export interface EmoteAnimation {
-  schema_version: 1;
-  minecraft_version: string;
-  tick_rate: 20;
+  type: "animation";
+  schema_version: 2;
   id: string;
   metadata: EmoteMetadata;
-  player: EmotePlayerBehavior;
-  transform_space: {
-    coordinate_space: "root_local";
-    matrix_layout: "row_major";
-    matrix_size: 16;
-  };
+  settings: EmoteAnimationSettings;
   nodes: Record<string, EmoteNode>;
   timeline: EmoteTimeline;
 }
@@ -25,6 +21,16 @@ export interface EmoteMetadata {
   name: string;
   description: string;
   [key: string]: unknown;
+}
+
+export interface EmoteAnimationSettings {
+  standalone: boolean;
+  cooldown: MinecraftTime;
+  player: EmotePlayerBehavior;
+  playback: {
+    mode: "once" | "loop" | "server_sync";
+    loop_delay: MinecraftTime;
+  };
 }
 
 export interface EmotePlayerBehavior {
@@ -73,9 +79,7 @@ export type EmoteNode =
   | { type: "anchor"; default_matrix: Matrix16 };
 
 export interface EmoteTimeline {
-  duration_ticks: number;
-  loop: "once" | "loop" | "server_sync";
-  loop_delay_ticks: number;
+  duration: MinecraftTime;
   keyframes: EmoteKeyframe[];
   events?: {
     start?: EmoteEvent[];
@@ -86,9 +90,9 @@ export interface EmoteTimeline {
 }
 
 export interface EmoteKeyframe {
-  tick: number;
-  interpolation_duration_ticks?: number;
-  node_transforms?: Record<string, { matrix: Matrix16; interpolation_duration_ticks?: number }>;
+  time: MinecraftTime;
+  interpolation_duration?: MinecraftTime;
+  node_transforms?: Record<string, { matrix: Matrix16; interpolation_duration?: MinecraftTime }>;
   node_states?: Record<string, { visible: boolean }>;
 }
 
@@ -100,5 +104,5 @@ export interface EmoteEvent {
 }
 
 export interface EmoteTimelineEvent extends EmoteEvent {
-  tick: number;
+  time: MinecraftTime;
 }

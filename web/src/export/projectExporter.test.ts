@@ -50,9 +50,9 @@ describe("exportAnimation", () => {
 
     expect(animation.nodes.body.skin).toEqual({ part: "body", order: 9 });
     expect(animation.metadata).toEqual({ name: "Test", description: "Test emote." });
-    expect(animation.player).toEqual(project.suggestedPlayer);
-    expect(animation.schema_version).toBe(1);
-    expect(animation.timeline.loop).toBe("server_sync");
+    expect(animation.settings.player).toEqual(project.suggestedPlayer);
+    expect(animation.schema_version).toBe(2);
+    expect(animation.settings.playback.mode).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
   });
 

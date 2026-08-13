@@ -3,7 +3,7 @@ import type { EmoteAnimation, EmotePlayerBehavior } from "../format/emoteAnimati
 export interface ExportOptions {
   minecraftVersion: string;
   namespace: string;
-  playbackMode: "source" | EmoteAnimation["timeline"]["loop"];
+  playbackMode: "source" | EmoteAnimation["settings"]["playback"]["mode"];
   name: string;
   description: string;
   player: EmotePlayerBehavior;

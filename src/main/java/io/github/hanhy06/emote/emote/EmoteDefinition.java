@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
 import java.nio.file.Path;
@@ -13,7 +14,7 @@ public sealed interface EmoteDefinition permits RegisteredEmote, RegisteredSeque
 
     boolean standalone();
 
-    EmoteAnimation.PlayerBehavior playerBehavior();
+    EmotePlayerBehavior playerBehavior();
 
     Path sourcePath();
 

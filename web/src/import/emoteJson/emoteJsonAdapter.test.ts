@@ -9,13 +9,16 @@ const encoder = new TextEncoder();
 describe("emoteJsonAdapter", () => {
   it("reimports converted JSON without losing skin order or interpolation duration", async () => {
     const source: EmoteAnimation = {
-      schema_version: 1,
-      minecraft_version: "26.2",
-      tick_rate: 20,
+      type: "animation",
+      schema_version: 2,
       id: "demo:wave",
       metadata: { name: "Wave", description: "Wave emote." },
-      player: createDefaultPlayerBehavior(),
-      transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
+      settings: {
+        standalone: true,
+        cooldown: "0t",
+        player: createDefaultPlayerBehavior(),
+        playback: { mode: "server_sync", loop_delay: "2t" },
+      },
       nodes: {
         arm: {
           type: "item_display",
@@ -26,12 +29,10 @@ describe("emoteJsonAdapter", () => {
         },
       },
       timeline: {
-        duration_ticks: 4,
-        loop: "server_sync",
-        loop_delay_ticks: 2,
+        duration: "4t",
         keyframes: [
-          { tick: 0, node_transforms: { arm: { matrix: IDENTITY } } },
-          { tick: 4, node_transforms: { arm: { matrix: IDENTITY, interpolation_duration_ticks: 2 } } },
+          { time: "0t", node_transforms: { arm: { matrix: IDENTITY } } },
+          { time: "4t", node_transforms: { arm: { matrix: IDENTITY, interpolation_duration: "2t" } } },
         ],
       },
     };
@@ -40,22 +41,21 @@ describe("emoteJsonAdapter", () => {
     expect((await emoteJsonAdapter.probe(input)).confidence).toBe(100);
     const project = await emoteJsonAdapter.import(input);
     const [recompiled] = compileImportedProject(project, {
-      minecraftVersion: project.suggestedMinecraftVersion!,
+      minecraftVersion: "26.2",
       namespace: project.suggestedNamespace,
     });
 
     expect(project.nodes.arm.type === "item_display" && project.nodes.arm.skin).toEqual({ part: "right_arm", order: 1 });
-    expect(recompiled.player).toEqual(source.player);
+    expect(recompiled.settings.player).toEqual(source.settings.player);
     expect(recompiled.id).toBe(source.id);
-    expect(recompiled.timeline.loop).toBe("server_sync");
-    expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration_ticks).toBe(2);
+    expect(recompiled.settings.playback.mode).toBe("server_sync");
+    expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration).toBe("2t");
   });
 
   it("reports the path of malformed runtime input", async () => {
     const malformed = {
-      schema_version: 1,
-      minecraft_version: "26.2",
-      tick_rate: 20,
+      type: "animation",
+      schema_version: 2,
       id: "demo:broken",
       metadata: null,
     };

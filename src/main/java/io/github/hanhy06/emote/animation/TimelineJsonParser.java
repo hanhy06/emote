@@ -10,26 +10,9 @@ import java.util.*;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 final class TimelineJsonParser {
-    Timeline parse(JsonObject object, Map<String, Node> nodes, AnimationJsonReader reader)
+    Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
-        int durationTicks = reader.requireInt(object, "duration_ticks", "$.timeline");
-        if (durationTicks <= 0) {
-            throw reader.error("$.timeline.duration_ticks", "must be greater than zero");
-        }
-        String loopText = reader.requireString(object, "loop", "$.timeline");
-        LoopMode loop = switch (loopText) {
-            case "once" -> LoopMode.ONCE;
-            case "loop" -> LoopMode.LOOP;
-            case "server_sync" -> LoopMode.SERVER_SYNC;
-            default -> throw reader.error("$.timeline.loop", "unsupported loop mode: " + loopText);
-        };
-        int loopDelayTicks = reader.requireInt(object, "loop_delay_ticks", "$.timeline");
-        if (loopDelayTicks < 0) {
-            throw reader.error("$.timeline.loop_delay_ticks", "must not be negative");
-        }
-        if (loop == LoopMode.ONCE && loopDelayTicks != 0) {
-            throw reader.error("$.timeline.loop_delay_ticks", "must be zero when loop is once");
-        }
+        int durationTicks = reader.requireTime(object, "duration", "$.timeline", 1);
         List<Keyframe> keyframes = parseKeyframes(
             reader.requireArray(object, "keyframes", "$.timeline"),
             durationTicks,
@@ -42,14 +25,14 @@ final class TimelineJsonParser {
             nodes,
             reader
         );
-        return new Timeline(durationTicks, loop, loopDelayTicks, keyframes, events);
+        return new Timeline(durationTicks, keyframes, events);
     }
 
     private List<Keyframe> parseKeyframes(
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
         List<Keyframe> keyframes = new ArrayList<>();
         Map<String, Integer> previousTransformTicks = new HashMap<>();
@@ -57,17 +40,17 @@ final class TimelineJsonParser {
         for (int index = 0; index < array.size(); index++) {
             String path = "$.timeline.keyframes[" + index + "]";
             JsonObject object = reader.requireObject(array.get(index), path);
-            int tick = reader.requireInt(object, "tick", path);
+            int tick = reader.requireTime(object, "time", path, 0);
             if (tick < 0 || tick > durationTicks) {
-                throw reader.error(path + ".tick", "must be between 0 and duration_ticks");
+                throw reader.error(path + ".time", "must be between 0t and timeline duration");
             }
             if (tick <= previousTick) {
-                throw reader.error(path + ".tick", "keyframes must be strictly ordered by tick");
+                throw reader.error(path + ".time", "keyframes must be strictly ordered by time");
             }
             previousTick = tick;
             int defaultInterpolation = optionalInterpolationDuration(object, path, 0, reader);
             if (defaultInterpolation < 0) {
-                throw reader.error(path + ".interpolation_duration_ticks", "must not be negative");
+                throw reader.error(path + ".interpolation_duration", "must not be negative");
             }
             Map<String, NodeTransform> transforms = parseNodeTransforms(
                 reader.optionalObject(object, "node_transforms", path),
@@ -96,7 +79,7 @@ final class TimelineJsonParser {
         int defaultInterpolation,
         Map<String, Integer> previousTransformTicks,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (object == null) {
             return Map.of();
@@ -116,7 +99,7 @@ final class TimelineJsonParser {
             int previousTransformTick = previousTransformTicks.getOrDefault(nodeId, 0);
             if (interpolation < 0 || interpolation > tick - previousTransformTick) {
                 throw reader.error(
-                    path + ".interpolation_duration_ticks",
+                    path + ".interpolation_duration",
                     "must fit between the previous transform tick and the current tick"
                 );
             }
@@ -134,7 +117,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String keyframePath,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (object == null) {
             return Map.of();
@@ -157,7 +140,7 @@ final class TimelineJsonParser {
         JsonObject object,
         int durationTicks,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         if (object == null) {
@@ -195,7 +178,7 @@ final class TimelineJsonParser {
         JsonArray array,
         String path,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         if (array == null) {
@@ -213,7 +196,7 @@ final class TimelineJsonParser {
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -223,12 +206,12 @@ final class TimelineJsonParser {
         for (int index = 0; index < array.size(); index++) {
             String path = "$.timeline.events.timeline[" + index + "]";
             JsonObject object = reader.requireObject(array.get(index), path);
-            int tick = reader.requireInt(object, "tick", path);
+            int tick = reader.requireTime(object, "time", path, 0);
             if (tick < 0 || tick >= durationTicks) {
-                throw reader.error(path + ".tick", "must be between 0 and duration_ticks - 1");
+                throw reader.error(path + ".time", "must be before timeline duration");
             }
             if (tick < previousTick) {
-                throw reader.error(path + ".tick", "timeline events must be ordered by tick");
+                throw reader.error(path + ".time", "timeline events must be ordered by time");
             }
             previousTick = tick;
             Event event = parseEvent(object, path, nodes, reader);
@@ -241,7 +224,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         CommandSource source = parseCommandSource(
@@ -280,7 +263,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
@@ -303,7 +286,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
@@ -319,7 +302,7 @@ final class TimelineJsonParser {
         };
     }
 
-    private Vec3 parseOffset(JsonArray array, String path, AnimationJsonReader reader)
+    private Vec3 parseOffset(JsonArray array, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         if (array == null) {
             return Vec3.ZERO;
@@ -338,7 +321,7 @@ final class TimelineJsonParser {
         Map<String, Node> nodes,
         String nodeId,
         String path,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         Node node = nodes.get(nodeId);
@@ -352,12 +335,12 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         int defaultValue,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
-        String key = "interpolation_duration_ticks";
+        String key = "interpolation_duration";
         if (!object.has(key) || object.get(key).isJsonNull()) {
             return defaultValue;
         }
-        return reader.requireInt(object, key, path);
+        return reader.requireTime(object, key, path, 0);
     }
 }

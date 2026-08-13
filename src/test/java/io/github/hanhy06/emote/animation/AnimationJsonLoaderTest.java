@@ -17,12 +17,10 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationJsonLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
-    private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");
-
     private final AnimationJsonLoader loader = new AnimationJsonLoader();
 
     @Test
-    void loadsFormatReferenceAndIgnoresUnknownMetadataFields() throws Exception {
+    void loadsFormatReferenceAndPreservesUnknownMetadataFields() throws Exception {
         JsonObject root = readReference();
         root.getAsJsonObject("metadata").addProperty("future_metadata", "ignored");
 
@@ -30,44 +28,46 @@ class AnimationJsonLoaderTest {
 
         assertEquals("emote:format_reference", loaded.animation().id().toString());
         assertEquals("Format Reference", loaded.animation().metadata().name());
-        assertTrue(loaded.animation().standalone());
-        assertTrue(loaded.animation().player().hidden());
-        assertEquals(0.1D, loaded.animation().player().stopConditions().movementDistance());
-        assertTrue(loaded.animation().player().stopConditions().jump());
+        assertEquals("ignored", loaded.animation().metadata().additional().get("future_metadata").getAsString());
+        assertTrue(loaded.animation().settings().standalone());
+        assertTrue(loaded.animation().settings().player().hidden());
+        assertEquals(0.1D, loaded.animation().settings().player().stopConditions().movementDistance());
+        assertTrue(loaded.animation().settings().player().stopConditions().jump());
         assertEquals(5, loaded.animation().nodes().size());
         assertEquals(80, loaded.animation().timeline().durationTicks());
         assertEquals(64, loaded.sha256().length());
     }
 
     @Test
-    void defaultsStandaloneToTrueAndReadsExplicitFalse() throws Exception {
+    void readsExplicitStandaloneSetting() throws Exception {
         JsonObject root = readReference();
-        root.remove("standalone");
-        assertTrue(parse(root).animation().standalone());
+        assertTrue(parse(root).animation().settings().standalone());
 
-        root.addProperty("standalone", false);
-        assertFalse(parse(root).animation().standalone());
+        root.getAsJsonObject("settings").addProperty("standalone", false);
+        assertFalse(parse(root).animation().settings().standalone());
     }
 
     @Test
     void loadsServerSynchronizedLoopWithoutChangingSchemaVersion() throws Exception {
         JsonObject root = readReference();
-        root.getAsJsonObject("timeline").addProperty("loop", "server_sync");
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
 
         EmoteAnimation.Loaded loaded = parse(root);
 
-        assertEquals(1, root.get("schema_version").getAsInt());
-        assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().timeline().loop());
+        assertEquals(2, root.get("schema_version").getAsInt());
+        assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().settings().playback().mode());
     }
 
     @Test
-    void acceptsWildcardMinecraftVersion() throws Exception {
+    void parsesMinecraftTimeStringsAtLoadBoundary() throws Exception {
         JsonObject root = readReference();
-        root.addProperty("minecraft_version", "*");
+        root.getAsJsonObject("settings").addProperty("cooldown", "1.5s");
+        root.getAsJsonObject("timeline").addProperty("duration", "4s");
 
         EmoteAnimation.Loaded loaded = parse(root);
 
-        assertEquals("emote:format_reference", loaded.animation().id().toString());
+        assertEquals(30, loaded.animation().settings().cooldownTicks());
+        assertEquals(80, loaded.animation().timeline().durationTicks());
     }
 
     @Test
@@ -79,9 +79,9 @@ class AnimationJsonLoaderTest {
 
         assertEquals(6, examplePaths.size());
         for (Path examplePath : examplePaths) {
-            EmoteAnimation.Loaded loaded = this.loader.load(examplePath, MINECRAFT_VERSION);
+            EmoteAnimation.Loaded loaded = this.loader.load(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
-            assertTrue(loaded.animation().player().hidden(), examplePath.toString());
+            assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
         }
     }
 
@@ -104,7 +104,7 @@ class AnimationJsonLoaderTest {
     @Test
     void rejectsNegativeMovementStopDistanceAtExactFieldPath() throws Exception {
         JsonObject root = readReference();
-        root.getAsJsonObject("player")
+        root.getAsJsonObject("settings").getAsJsonObject("player")
             .getAsJsonObject("stop_conditions")
             .addProperty("movement_distance", -0.1D);
 
@@ -113,7 +113,7 @@ class AnimationJsonLoaderTest {
             () -> parse(root)
         );
 
-        assertEquals("$.player.stop_conditions.movement_distance", exception.fieldPath());
+        assertEquals("$.settings.player.stop_conditions.movement_distance", exception.fieldPath());
     }
 
     @Test
@@ -170,7 +170,7 @@ class AnimationJsonLoaderTest {
             .get(1).getAsJsonObject()
             .getAsJsonObject("node_transforms")
             .getAsJsonObject("player_head");
-        transform.addProperty("interpolation_duration_ticks", 2);
+        transform.addProperty("interpolation_duration", "2t");
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
@@ -178,22 +178,22 @@ class AnimationJsonLoaderTest {
         );
 
         assertEquals(
-            "$.timeline.keyframes[1].node_transforms.player_head.interpolation_duration_ticks",
+            "$.timeline.keyframes[1].node_transforms.player_head.interpolation_duration",
             exception.fieldPath()
         );
     }
 
     @Test
-    void rejectsMinecraftVersionMismatch() {
+    void rejectsNumericTimeValues() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("timeline").addProperty("duration", 80);
+
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> this.loader.load(
-                REFERENCE_PATH,
-                MINECRAFT_VERSION + "-mismatch"
-            )
+            () -> parse(root)
         );
 
-        assertEquals("$.minecraft_version", exception.fieldPath());
+        assertEquals("$.timeline.duration", exception.fieldPath());
     }
 
     @Test
@@ -202,7 +202,7 @@ class AnimationJsonLoaderTest {
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> this.loader.parse(REFERENCE_PATH, bytes, MINECRAFT_VERSION)
+            () -> this.loader.parse(REFERENCE_PATH, bytes)
         );
 
         assertEquals("$", exception.fieldPath());
@@ -213,15 +213,13 @@ class AnimationJsonLoaderTest {
             .parseString(Files.readString(REFERENCE_PATH))
             .getAsJsonObject();
 
-        root.addProperty("minecraft_version", MINECRAFT_VERSION);
         return root;
     }
 
     private EmoteAnimation.Loaded parse(JsonObject root) throws EmoteAnimationLoadException {
         return this.loader.parse(
             REFERENCE_PATH,
-            root.toString().getBytes(StandardCharsets.UTF_8),
-            MINECRAFT_VERSION
+            root.toString().getBytes(StandardCharsets.UTF_8)
         );
     }
 

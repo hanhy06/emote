@@ -1,6 +1,7 @@
 import type { EmoteAnimation, EmoteEvent, Matrix16 } from "./emoteAnimation";
 import { isResourceLocation } from "./resourceLocation";
-import { MAX_ANIMATION_DURATION_TICKS, TICKS_PER_SECOND } from "./time";
+import { MAX_ANIMATION_DURATION_TICKS } from "./time";
+import { parseMinecraftTime } from "./minecraftTime";
 
 const JAVA_INT_MAX = 2_147_483_647;
 const ITEM_DISPLAY_VALUES = new Set([
@@ -23,28 +24,22 @@ export interface ValidationIssue {
 
 export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
-  if (animation.schema_version !== 1) add(issues, "schema_version", "must be 1");
-  if (animation.tick_rate !== TICKS_PER_SECOND) add(issues, "tick_rate", `must be ${TICKS_PER_SECOND}`);
-  if (!animation.minecraft_version.trim()) add(issues, "minecraft_version", "must not be empty");
+  if (animation.type !== "animation") add(issues, "type", "must be animation");
+  if (animation.schema_version !== 2) add(issues, "schema_version", "must be 2");
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
-  if (!Number.isFinite(animation.player.stop_conditions.movement_distance)
-    || animation.player.stop_conditions.movement_distance < 0) {
-    add(issues, "player.stop_conditions.movement_distance", "must be a finite non-negative number");
+  if (!Number.isFinite(animation.settings.player.stop_conditions.movement_distance)
+    || animation.settings.player.stop_conditions.movement_distance < 0) {
+    add(issues, "settings.player.stop_conditions.movement_distance", "must be a finite non-negative number");
   }
-  if (animation.transform_space.coordinate_space !== "root_local") add(issues, "transform_space.coordinate_space", "must be root_local");
-  if (animation.transform_space.matrix_layout !== "row_major") add(issues, "transform_space.matrix_layout", "must be row_major");
-  if (animation.transform_space.matrix_size !== 16) add(issues, "transform_space.matrix_size", "must be 16");
-  if (!isPositiveInt32(animation.timeline.duration_ticks)) {
-    add(issues, "timeline.duration_ticks", "must be a positive Java integer");
-  } else if (animation.timeline.duration_ticks > MAX_ANIMATION_DURATION_TICKS) {
-    add(issues, "timeline.duration_ticks", `must not exceed ${MAX_ANIMATION_DURATION_TICKS}`);
+  validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
+  const durationTicks = validateTime(animation.timeline.duration, 1, "timeline.duration", issues);
+  if (durationTicks !== null && durationTicks > MAX_ANIMATION_DURATION_TICKS) {
+    add(issues, "timeline.duration", `must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks`);
   }
-  if (!isNonNegativeInt32(animation.timeline.loop_delay_ticks)) {
-    add(issues, "timeline.loop_delay_ticks", "must be a non-negative Java integer");
-  }
-  if (animation.timeline.loop === "once" && animation.timeline.loop_delay_ticks !== 0) {
-    add(issues, "timeline.loop_delay_ticks", "must be 0 when loop is once");
+  const loopDelayTicks = validateTime(animation.settings.playback.loop_delay, 0, "settings.playback.loop_delay", issues);
+  if (animation.settings.playback.mode === "once" && loopDelayTicks !== null && loopDelayTicks !== 0) {
+    add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once");
   }
 
   const nodeIds = new Set(Object.keys(animation.nodes));
@@ -68,24 +63,25 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   const lastTransformTick = new Map<string, number>();
   animation.timeline.keyframes.forEach((keyframe, index) => {
     const path = `timeline.keyframes[${index}]`;
-    if (!isNonNegativeInt32(keyframe.tick) || keyframe.tick > animation.timeline.duration_ticks) {
-      add(issues, `${path}.tick`, "must be within 0..duration_ticks");
-    }
-    if (keyframe.tick <= previousTick) add(issues, `${path}.tick`, "must be strictly ascending");
-    previousTick = keyframe.tick;
-    const defaultDuration = keyframe.interpolation_duration_ticks ?? 0;
-    if (!isNonNegativeInt32(defaultDuration)) {
-      add(issues, `${path}.interpolation_duration_ticks`, "must be a non-negative Java integer");
-    }
+    const tick = validateTime(keyframe.time, 0, `${path}.time`, issues);
+    if (tick === null) return;
+    if (durationTicks !== null && tick > durationTicks) add(issues, `${path}.time`, "must be within 0..duration");
+    if (tick <= previousTick) add(issues, `${path}.time`, "must be strictly ascending");
+    previousTick = tick;
+    const defaultDuration = keyframe.interpolation_duration === undefined
+      ? 0
+      : validateTime(keyframe.interpolation_duration, 0, `${path}.interpolation_duration`, issues);
     for (const [nodeId, transform] of Object.entries(keyframe.node_transforms ?? {})) {
       if (!nodeIds.has(nodeId)) add(issues, `${path}.node_transforms.${nodeId}`, "references an unknown node");
       validateMatrix(transform.matrix, `${path}.node_transforms.${nodeId}.matrix`, issues);
-      const duration = transform.interpolation_duration_ticks ?? defaultDuration;
+      const duration = transform.interpolation_duration === undefined
+        ? defaultDuration
+        : validateTime(transform.interpolation_duration, 0, `${path}.node_transforms.${nodeId}.interpolation_duration`, issues);
       const previous = lastTransformTick.get(nodeId) ?? 0;
-      if (!isNonNegativeInt32(duration) || duration > keyframe.tick - previous) {
-        add(issues, `${path}.node_transforms.${nodeId}.interpolation_duration_ticks`, "exceeds the time since the previous node transform");
+      if (duration !== null && duration > tick - previous) {
+        add(issues, `${path}.node_transforms.${nodeId}.interpolation_duration`, "exceeds the time since the previous node transform");
       }
-      lastTransformTick.set(nodeId, keyframe.tick);
+      lastTransformTick.set(nodeId, tick);
     }
     for (const nodeId of Object.keys(keyframe.node_states ?? {})) {
       if (!nodeIds.has(nodeId)) add(issues, `${path}.node_states.${nodeId}`, "references an unknown node");
@@ -102,11 +98,10 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   let previousEventTick = -1;
   events?.timeline?.forEach((event, index) => {
     const path = `timeline.events.timeline[${index}]`;
-    if (!isNonNegativeInt32(event.tick) || event.tick >= animation.timeline.duration_ticks) {
-      add(issues, `${path}.tick`, "must be within 0..duration_ticks - 1");
-    }
-    if (event.tick < previousEventTick) add(issues, `${path}.tick`, "timeline events must be ordered by tick");
-    previousEventTick = event.tick;
+    const tick = validateTime(event.time, 0, `${path}.time`, issues);
+    if (tick !== null && durationTicks !== null && tick >= durationTicks) add(issues, `${path}.time`, "must be within 0..duration - 1 tick");
+    if (tick !== null && tick < previousEventTick) add(issues, `${path}.time`, "timeline events must be ordered by time");
+    if (tick !== null) previousEventTick = tick;
     validateEvent(event, path, animation, issues);
   });
   return issues;
@@ -139,8 +134,13 @@ function isNonNegativeInt32(value: number): boolean {
   return Number.isInteger(value) && value >= 0 && value <= JAVA_INT_MAX;
 }
 
-function isPositiveInt32(value: number): boolean {
-  return value > 0 && isNonNegativeInt32(value);
+function validateTime(value: string, minimumTicks: number, path: string, issues: ValidationIssue[]): number | null {
+  try {
+    return parseMinecraftTime(value, minimumTicks);
+  } catch (error) {
+    add(issues, path, error instanceof Error ? error.message : "is not a valid Minecraft time");
+    return null;
+  }
 }
 
 function add(issues: ValidationIssue[], path: string, message: string): void {

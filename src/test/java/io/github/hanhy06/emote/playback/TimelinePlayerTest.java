@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -237,10 +239,10 @@ class TimelinePlayerTest {
     ) {
         return new EmoteAnimation(
             Identifier.parse("test:timeline"),
-            new EmoteAnimation.Metadata("Timeline", "Timeline"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Timeline", "Timeline"),
+            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, delay)),
             Map.of("node", new EmoteAnimation.AnchorNode(matrix(0.0D))),
-            new EmoteAnimation.Timeline(duration, loop, delay, keyframes, EmoteAnimation.Events.empty())
+            new EmoteAnimation.Timeline(duration, keyframes, EmoteAnimation.Events.empty())
         );
     }
 

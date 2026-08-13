@@ -9,7 +9,7 @@ public record EmoteInfo(
     Identifier id,
     String name,
     String description,
-    EmoteAnimation.PlayerBehavior player,
+    EmotePlayerBehavior player,
     int durationTicks,
     EmoteAnimation.LoopMode loopMode
 ) {

@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.sequence;
 
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
@@ -10,8 +11,8 @@ import java.util.Objects;
 public record EmoteSequence(
     Path sourcePath,
     Identifier id,
-    Metadata metadata,
-    EmoteAnimation.PlayerBehavior player,
+    EmoteMetadata metadata,
+    EmotePlayerBehavior player,
     List<Step> steps
 ) {
     public EmoteSequence {
@@ -22,13 +23,6 @@ public record EmoteSequence(
         steps = List.copyOf(steps);
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("sequence steps must not be empty");
-        }
-    }
-
-    public record Metadata(String name, String description) {
-        public Metadata {
-            Objects.requireNonNull(name, "name");
-            Objects.requireNonNull(description, "description");
         }
     }
 

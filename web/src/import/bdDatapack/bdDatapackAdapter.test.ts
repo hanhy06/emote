@@ -34,10 +34,10 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
       visible: false,
       item_stack_snbt: "{id:\"minecraft:dirt\",Count:1}",
     });
-    expect(animation.timeline.duration_ticks).toBe(4);
-    expect(animation.timeline.keyframes.map((frame) => frame.tick)).toEqual([0, 2]);
+    expect(animation.timeline.duration).toBe("4t");
+    expect(animation.timeline.keyframes.map((frame) => frame.time)).toEqual(["0t", "2t"]);
     expect(animation.timeline.keyframes[1].node_transforms?.display_0).toMatchObject({
-      interpolation_duration_ticks: 2,
+      interpolation_duration: "2t",
       matrix: [1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
     });
     expect(animation.timeline.keyframes[1].node_states).toEqual({

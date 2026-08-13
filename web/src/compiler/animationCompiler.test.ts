@@ -10,9 +10,9 @@ describe("compileImportedProject time handling", () => {
     const project = importedProject();
 
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
-    const durations = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.anchor.interpolation_duration_ticks);
+    const durations = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.anchor.interpolation_duration);
 
-    expect(durations).toEqual([0, 2, 3]);
+    expect(durations).toEqual(["0t", "2t", "3t"]);
   });
 
   it("uses the animation's tick-zero pose as the node default", () => {
@@ -33,7 +33,7 @@ describe("compileImportedProject time handling", () => {
     const project = importedProject();
     project.animations.push({ ...project.animations[0], id: "broken", durationTicks: -1 });
 
-    expect(compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "test" }, 0).timeline.duration_ticks).toBe(10);
+    expect(compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "test" }, 0).timeline.duration).toBe("10t");
   });
 
   it("rejects ids that collide after resource path normalization", () => {

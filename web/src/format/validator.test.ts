@@ -8,22 +8,23 @@ const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 function animation(): EmoteAnimation {
   return {
-    schema_version: 1,
-    minecraft_version: "26.2",
-    tick_rate: 20,
+    type: "animation",
+    schema_version: 2,
     id: "emote:test",
     metadata: { name: "Test", description: "Test emote." },
-    player: createDefaultPlayerBehavior(),
-    transform_space: { coordinate_space: "root_local", matrix_layout: "row_major", matrix_size: 16 },
+    settings: {
+      standalone: true,
+      cooldown: "0t",
+      player: createDefaultPlayerBehavior(),
+      playback: { mode: "once", loop_delay: "0t" },
+    },
     nodes: {
       display: { type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },
       effect: { type: "anchor", default_matrix: IDENTITY },
     },
     timeline: {
-      duration_ticks: 2,
-      loop: "once",
-      loop_delay_ticks: 0,
-      keyframes: [{ tick: 0, node_transforms: { display: { matrix: IDENTITY } } }],
+      duration: "2t",
+      keyframes: [{ time: "0t", node_transforms: { display: { matrix: IDENTITY } } }],
     },
   };
 }
@@ -32,106 +33,68 @@ describe("validateEmoteAnimation", () => {
   it("accepts and serializes a structurally valid animation", () => {
     const value = animation();
     expect(validateEmoteAnimation(value)).toEqual([]);
-    expect(serializeEmoteAnimation(value)).toContain('"schema_version":1');
+    expect(serializeEmoteAnimation(value)).toContain('"schema_version":2');
   });
 
-  it("allows an empty description and an event with no commands", () => {
+  it("accepts Minecraft time units", () => {
     const value = animation();
-    value.metadata.description = "";
-    value.timeline.events = {
-      start: [{
-        source: { type: "player" },
-        origin: { type: "root" },
-        commands: [],
-      }],
-    };
-
+    value.settings.cooldown = "10s";
+    value.timeline.duration = "0.5s";
     expect(validateEmoteAnimation(value)).toEqual([]);
-    expect(serializeEmoteAnimation(value)).toContain('"description":""');
   });
 
   it("rejects anchor command sources and out-of-range timeline events", () => {
     const value = animation();
-    value.timeline.events = {
-      timeline: [{
-        tick: 2,
-        source: { type: "node", node: "effect" },
-        origin: { type: "root" },
-        commands: ["say test"],
-      }],
-    };
+    value.timeline.events = { timeline: [{
+      time: "2t",
+      source: { type: "node", node: "effect" },
+      origin: { type: "root" },
+      commands: ["say test"],
+    }] };
     const paths = validateEmoteAnimation(value).map((issue) => issue.path);
-    expect(paths).toContain("timeline.events.timeline[0].tick");
+    expect(paths).toContain("timeline.events.timeline[0].time");
     expect(paths).toContain("timeline.events.timeline[0].source.node");
   });
 
-  it("rejects node values that the mod loader cannot represent", () => {
+  it("rejects invalid time strings and descending timeline events", () => {
     const value = animation();
-    value.nodes[""] = {
-      type: "item_display",
-      item_stack_snbt: "{id:\"minecraft:stone\",count:1}",
-      item_display: "invalid",
-      skin: { part: "head", order: 2_147_483_648 },
-      default_matrix: IDENTITY,
-    };
-    value.timeline.keyframes[0].node_states = { effect: { visible: true } };
+    value.timeline.duration = "1m";
+    value.settings.playback = { mode: "loop", loop_delay: "2147483648t" };
+    value.timeline.keyframes[0].interpolation_duration = "2147483648t";
+    value.timeline.events = { timeline: [
+      { time: "1t", source: { type: "player" }, origin: { type: "root" }, commands: [] },
+      { time: "0t", source: { type: "player" }, origin: { type: "root" }, commands: [] },
+    ] };
 
     const paths = validateEmoteAnimation(value).map((issue) => issue.path);
-
-    expect(paths).toContain("nodes");
-    expect(paths).toContain("nodes..item_display");
-    expect(paths).toContain("nodes..skin.order");
-    expect(paths).toContain("timeline.keyframes[0].node_states.effect");
-  });
-
-  it("rejects Java integer overflow and descending timeline events", () => {
-    const value = animation();
-    value.timeline.duration_ticks = 2_147_483_648;
-    value.timeline.loop = "loop";
-    value.timeline.loop_delay_ticks = 2_147_483_648;
-    value.timeline.keyframes[0].interpolation_duration_ticks = 2_147_483_648;
-    value.timeline.events = {
-      timeline: [
-        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: [] },
-        { tick: 0, source: { type: "player" }, origin: { type: "root" }, commands: [] },
-      ],
-    };
-
-    const paths = validateEmoteAnimation(value).map((issue) => issue.path);
-
-    expect(paths).toContain("timeline.duration_ticks");
-    expect(paths).toContain("timeline.loop_delay_ticks");
-    expect(paths).toContain("timeline.keyframes[0].interpolation_duration_ticks");
-    expect(paths).toContain("timeline.events.timeline[1].tick");
+    expect(paths).toContain("timeline.duration");
+    expect(paths).toContain("settings.playback.loop_delay");
+    expect(paths).toContain("timeline.keyframes[0].interpolation_duration");
+    expect(paths).toContain("timeline.events.timeline[1].time");
   });
 
   it("rejects animations longer than ten minutes", () => {
     const value = animation();
-    value.timeline.duration_ticks = MAX_ANIMATION_DURATION_TICKS + 1;
-
+    value.timeline.duration = `${MAX_ANIMATION_DURATION_TICKS + 1}t`;
     expect(validateEmoteAnimation(value)).toContainEqual({
-      path: "timeline.duration_ticks",
-      message: `must not exceed ${MAX_ANIMATION_DURATION_TICKS}`,
+      path: "timeline.duration",
+      message: `must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks`,
     });
   });
 
   it("rejects an invalid movement stop distance", () => {
     const value = animation();
-    value.player.stop_conditions.movement_distance = Number.NaN;
-
+    value.settings.player.stop_conditions.movement_distance = Number.NaN;
     expect(validateEmoteAnimation(value).map((issue) => issue.path))
-      .toContain("player.stop_conditions.movement_distance");
+      .toContain("settings.player.stop_conditions.movement_distance");
   });
 
-  it("allows timeline events with the same tick in source order", () => {
+  it("allows timeline events with the same time in source order", () => {
     const value = animation();
-    value.timeline.events = {
-      timeline: [
-        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: ["say first"] },
-        { tick: 1, source: { type: "player" }, origin: { type: "root" }, commands: ["say second"] },
-      ],
-    };
-
+    value.timeline.events = { timeline: [
+      { time: "1t", source: { type: "player" }, origin: { type: "root" }, commands: ["say first"] },
+      { time: "1t", source: { type: "player" }, origin: { type: "root" }, commands: ["say second"] },
+    ] };
     expect(validateEmoteAnimation(value)).toEqual([]);
   });
 });

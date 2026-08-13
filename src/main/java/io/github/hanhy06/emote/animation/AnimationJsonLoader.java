@@ -5,6 +5,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.nbt.CompoundTag;
@@ -22,10 +24,8 @@ import java.util.*;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class AnimationJsonLoader {
-    private static final int SCHEMA_VERSION = 1;
-    private static final int TICK_RATE = 20;
+    private static final int SCHEMA_VERSION = 2;
     static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
-    private static final String TRANSFORM_SPACE_PATH = "$.transform_space";
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
         "thirdperson_lefthand",
@@ -40,7 +40,7 @@ public final class AnimationJsonLoader {
     );
     private final TimelineJsonParser timelineParser = new TimelineJsonParser();
 
-    public Loaded load(Path sourcePath, String expectedMinecraftVersion) throws EmoteAnimationLoadException {
+    public Loaded load(Path sourcePath) throws EmoteAnimationLoadException {
         byte[] bytes;
         try {
             long fileSize = Files.size(sourcePath);
@@ -55,14 +55,13 @@ public final class AnimationJsonLoader {
         } catch (IOException exception) {
             throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
         }
-        return parse(sourcePath, bytes, expectedMinecraftVersion);
+        return parse(sourcePath, bytes);
     }
 
-    public Loaded parse(Path sourcePath, byte[] bytes, String expectedMinecraftVersion)
+    public Loaded parse(Path sourcePath, byte[] bytes)
         throws EmoteAnimationLoadException {
         Objects.requireNonNull(sourcePath, "sourcePath");
         Objects.requireNonNull(bytes, "bytes");
-        Objects.requireNonNull(expectedMinecraftVersion, "expectedMinecraftVersion");
         if (bytes.length > MAX_JSON_BYTES) {
             throw new EmoteAnimationLoadException(
                 sourcePath,
@@ -71,7 +70,7 @@ public final class AnimationJsonLoader {
             );
         }
 
-        AnimationJsonReader reader = new AnimationJsonReader(sourcePath);
+        EmoteJsonReader reader = new EmoteJsonReader(sourcePath);
         JsonElement rootElement;
         try {
             rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
@@ -83,66 +82,84 @@ public final class AnimationJsonLoader {
         }
 
         JsonObject root = rootElement.getAsJsonObject();
-        reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
-        String minecraftVersion = reader.requireString(root, "minecraft_version", "$");
-        if (!minecraftVersion.equals("*") && !minecraftVersion.equals(expectedMinecraftVersion)) {
-            throw reader.error("$.minecraft_version", "must equal server version " + expectedMinecraftVersion);
+        if (!reader.requireString(root, "type", "$").equals("animation")) {
+            throw reader.error("$.type", "must equal animation");
         }
-        reader.requireExactInt(root, "tick_rate", "$", TICK_RATE);
+        reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
 
         String idText = reader.requireString(root, "id", "$");
         Identifier id = parseId(idText, reader);
-        Metadata metadata = parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
-        boolean standalone = !root.has("standalone")
-            || root.get("standalone").isJsonNull()
-            || reader.requireBoolean(root, "standalone", "$");
-        PlayerBehavior player = parsePlayer(reader.requireObject(root, "player", "$"), reader);
-        parseTransformSpace(reader.requireObject(root, "transform_space", "$"), reader);
+        EmoteMetadata metadata = parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        JsonObject settingsObject = reader.requireObject(root, "settings", "$");
+        Settings settings = parseSettings(settingsObject, reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
-        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, standalone, player, nodes, timeline));
+        return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, settings, nodes, timeline));
     }
 
-    private Metadata parseMetadata(JsonObject object, AnimationJsonReader reader)
+    private EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String name = reader.requireString(object, "name", "$.metadata");
         if (name.isBlank()) {
             throw reader.error("$.metadata.name", "must not be blank");
         }
         String description = reader.requireString(object, "description", "$.metadata");
-        return new Metadata(name, description);
+        LinkedHashMap<String, JsonElement> additional = new LinkedHashMap<>();
+        object.entrySet().stream()
+            .filter(entry -> !entry.getKey().equals("name") && !entry.getKey().equals("description"))
+            .forEach(entry -> additional.put(entry.getKey(), entry.getValue()));
+        return new EmoteMetadata(name, description, additional);
     }
 
-    static PlayerBehavior parsePlayer(JsonObject object, AnimationJsonReader reader)
+    private Settings parseSettings(JsonObject object, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
-        boolean hidden = reader.requireBoolean(object, "hidden", "$.player");
-        JsonObject stopObject = reader.requireObject(object, "stop_conditions", "$.player");
+        boolean standalone = reader.requireBoolean(object, "standalone", "$.settings");
+        int cooldownTicks = reader.requireTime(object, "cooldown", "$.settings", 0);
+        EmotePlayerBehavior player = parsePlayer(
+            reader.requireObject(object, "player", "$.settings"),
+            "$.settings.player",
+            reader
+        );
+        JsonObject playbackObject = reader.requireObject(object, "playback", "$.settings");
+        String modeText = reader.requireString(playbackObject, "mode", "$.settings.playback");
+        LoopMode mode = switch (modeText) {
+            case "once" -> LoopMode.ONCE;
+            case "loop" -> LoopMode.LOOP;
+            case "server_sync" -> LoopMode.SERVER_SYNC;
+            default -> throw reader.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
+        };
+        int loopDelayTicks = reader.requireTime(playbackObject, "loop_delay", "$.settings.playback", 0);
+        try {
+            return new Settings(standalone, cooldownTicks, player, new PlaybackSettings(mode, loopDelayTicks));
+        } catch (IllegalArgumentException exception) {
+            throw reader.error("$.settings.playback.loop_delay", exception.getMessage(), exception);
+        }
+    }
+
+    static EmotePlayerBehavior parsePlayer(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        boolean hidden = reader.requireBoolean(object, "hidden", path);
+        JsonObject stopObject = reader.requireObject(object, "stop_conditions", path);
+        String stopPath = path + ".stop_conditions";
         double movementDistance = reader.requireFiniteDouble(
-            reader.requireElement(stopObject, "movement_distance", "$.player.stop_conditions"),
-            "$.player.stop_conditions.movement_distance"
+            reader.requireElement(stopObject, "movement_distance", stopPath),
+            stopPath + ".movement_distance"
         );
         if (movementDistance < 0.0D) {
-            throw reader.error("$.player.stop_conditions.movement_distance", "must not be negative");
+            throw reader.error(stopPath + ".movement_distance", "must not be negative");
         }
-        return new PlayerBehavior(hidden, new StopConditions(
+        return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
             movementDistance,
-            reader.requireBoolean(stopObject, "jump", "$.player.stop_conditions"),
-            reader.requireBoolean(stopObject, "submerge", "$.player.stop_conditions"),
-            reader.requireBoolean(stopObject, "ride", "$.player.stop_conditions"),
-            reader.requireBoolean(stopObject, "damage", "$.player.stop_conditions"),
-            reader.requireBoolean(stopObject, "attack", "$.player.stop_conditions"),
-            reader.requireBoolean(stopObject, "game_mode_change", "$.player.stop_conditions")
+            reader.requireBoolean(stopObject, "jump", stopPath),
+            reader.requireBoolean(stopObject, "submerge", stopPath),
+            reader.requireBoolean(stopObject, "ride", stopPath),
+            reader.requireBoolean(stopObject, "damage", stopPath),
+            reader.requireBoolean(stopObject, "attack", stopPath),
+            reader.requireBoolean(stopObject, "game_mode_change", stopPath)
         ));
     }
 
-    private void parseTransformSpace(JsonObject object, AnimationJsonReader reader)
-        throws EmoteAnimationLoadException {
-        requireTransformSpaceString(object, "coordinate_space", "root_local", reader);
-        requireTransformSpaceString(object, "matrix_layout", "row_major", reader);
-        reader.requireExactInt(object, "matrix_size", TRANSFORM_SPACE_PATH, 16);
-    }
-
-    private Map<String, Node> parseNodes(JsonObject object, AnimationJsonReader reader)
+    private Map<String, Node> parseNodes(JsonObject object, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
@@ -159,7 +176,7 @@ public final class AnimationJsonLoader {
         return Map.copyOf(nodes);
     }
 
-    private Node parseNode(JsonObject object, String path, AnimationJsonReader reader)
+    private Node parseNode(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
         Matrix defaultMatrix = reader.requireMatrix(object, "default_matrix", path);
@@ -201,7 +218,7 @@ public final class AnimationJsonLoader {
         };
     }
 
-    private String parseItemDisplay(JsonObject object, String path, AnimationJsonReader reader)
+    private String parseItemDisplay(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String value = reader.requireString(object, "item_display", path);
         if (!ITEM_DISPLAY_VALUES.contains(value)) {
@@ -210,7 +227,7 @@ public final class AnimationJsonLoader {
         return value;
     }
 
-    private Skin parseSkin(JsonObject object, String path, AnimationJsonReader reader)
+    private Skin parseSkin(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("skin");
         if (element == null || element.isJsonNull()) {
@@ -237,7 +254,7 @@ public final class AnimationJsonLoader {
         return new Skin(part, order);
     }
 
-    private Identifier parseId(String value, AnimationJsonReader reader) throws EmoteAnimationLoadException {
+    private Identifier parseId(String value, EmoteJsonReader reader) throws EmoteAnimationLoadException {
         int separator = value.indexOf(':');
         if (separator <= 0 || separator == value.length() - 1) {
             throw reader.error("$.id", "must use namespace:path format");
@@ -249,7 +266,7 @@ public final class AnimationJsonLoader {
         return id;
     }
 
-    private CompoundTag optionalEntityNbt(JsonObject object, String path, AnimationJsonReader reader)
+    private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String key = "entity_nbt";
         if (!object.has(key) || object.get(key).isJsonNull()) {
@@ -262,7 +279,7 @@ public final class AnimationJsonLoader {
         JsonObject object,
         String key,
         String path,
-        AnimationJsonReader reader
+        EmoteJsonReader reader
     )
         throws EmoteAnimationLoadException {
         String fieldPath = path + "." + key;
@@ -274,19 +291,7 @@ public final class AnimationJsonLoader {
         }
     }
 
-    private void requireTransformSpaceString(
-        JsonObject object,
-        String key,
-        String expected,
-        AnimationJsonReader reader
-    ) throws EmoteAnimationLoadException {
-        String value = reader.requireString(object, key, TRANSFORM_SPACE_PATH);
-        if (!value.equals(expected)) {
-            throw reader.error(TRANSFORM_SPACE_PATH + "." + key, "must equal " + expected);
-        }
-    }
-
-    private boolean optionalVisible(JsonObject object, String path, AnimationJsonReader reader)
+    private boolean optionalVisible(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         if (!object.has("visible") || object.get("visible").isJsonNull()) {
             return true;

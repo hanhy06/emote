@@ -203,7 +203,7 @@ final class PlaybackStressTest {
 
     private void startAtInitialTick(TimelinePlayer timeline, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
-        if (animation.timeline().loop() == EmoteAnimation.LoopMode.ONCE) {
+        if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             initialTick = Math.clamp(
                 initialTick,
                 0,

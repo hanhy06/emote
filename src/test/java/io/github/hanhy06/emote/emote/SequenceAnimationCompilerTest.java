@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.emote;
 
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 import com.google.gson.JsonPrimitive;
@@ -62,7 +64,7 @@ class SequenceAnimationCompilerTest {
 
         assertEquals("demo:sequence", compiled.id().toString());
         assertEquals(10, compiled.timeline().durationTicks());
-        assertEquals(EmoteAnimation.LoopMode.ONCE, compiled.timeline().loop());
+        assertEquals(EmoteAnimation.LoopMode.ONCE, compiled.settings().playback().mode());
         assertEquals(List.of(0, 2, 7), compiled.timeline().keyframes().stream()
             .filter(keyframe -> !keyframe.nodeStates().isEmpty())
             .map(EmoteAnimation.Keyframe::tick)
@@ -207,8 +209,8 @@ class SequenceAnimationCompilerTest {
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
-            new EmoteSequence.Metadata("Sequence", "Random sequence"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Sequence", "Random sequence"),
+            EmotePlayerBehavior.createDefault(),
             List.of(new EmoteSequence.Step(List.of(
                 Identifier.parse(first.id()),
                 Identifier.parse(second.id()),
@@ -238,8 +240,8 @@ class SequenceAnimationCompilerTest {
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
-            new EmoteSequence.Metadata("Sequence", "Weighted sequence"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Sequence", "Weighted sequence"),
+            EmotePlayerBehavior.createDefault(),
             List.of(new EmoteSequence.Step(List.of(
                 new EmoteSequence.Choice(Identifier.parse(first.id()), 10),
                 new EmoteSequence.Choice(Identifier.parse(second.id()), 20),
@@ -265,8 +267,8 @@ class SequenceAnimationCompilerTest {
         return new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
-            new EmoteSequence.Metadata("Sequence", "Compiled sequence"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Sequence", "Compiled sequence"),
+            EmotePlayerBehavior.createDefault(),
             List.of(steps)
         );
     }
@@ -295,11 +297,10 @@ class SequenceAnimationCompilerTest {
     ) {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
-            new EmoteAnimation.Metadata(id, id),
-            false,
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata(id, id),
+            new EmoteAnimation.Settings(false, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, loopDelay)),
             nodes,
-            new EmoteAnimation.Timeline(duration, loop, loopDelay, keyframes, events)
+            new EmoteAnimation.Timeline(duration, keyframes, events)
         );
         return RegisteredEmote.from(new EmoteAnimation.Loaded(
             Path.of(id.replace(':', '_') + ".json"),

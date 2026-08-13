@@ -5,16 +5,17 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.time.MinecraftTime;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-final class AnimationJsonReader {
+final class EmoteJsonReader {
     private final Path sourcePath;
 
-    AnimationJsonReader(Path sourcePath) {
+    EmoteJsonReader(Path sourcePath) {
         this.sourcePath = Objects.requireNonNull(sourcePath, "sourcePath");
     }
 
@@ -105,6 +106,17 @@ final class AnimationJsonReader {
             return element.getAsBigDecimal().intValueExact();
         } catch (ArithmeticException exception) {
             throw error(path + "." + key, "must be a 32-bit integer");
+        }
+    }
+
+    int requireTime(JsonObject object, String key, String path, int minimumTicks)
+        throws EmoteAnimationLoadException {
+        String fieldPath = path + "." + key;
+        String value = requireString(object, key, path);
+        try {
+            return MinecraftTime.parse(value, minimumTicks);
+        } catch (IllegalArgumentException exception) {
+            throw error(fieldPath, "must be a valid Minecraft time", exception);
         }
     }
 

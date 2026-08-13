@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -89,10 +91,10 @@ class PlaybackManagerEventDispatchTest {
         );
         return new EmoteAnimation(
             Identifier.parse("test:event-dispatch"),
-            new EmoteAnimation.Metadata("Event Dispatch", "Event Dispatch"),
-            EmoteAnimation.PlayerBehavior.createDefault(),
+            new EmoteMetadata("Event Dispatch", "Event Dispatch"),
+            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loopMode, loopDelayTicks)),
             Map.of(),
-            new EmoteAnimation.Timeline(durationTicks, loopMode, loopDelayTicks, List.of(), events)
+            new EmoteAnimation.Timeline(durationTicks, List.of(), events)
         );
     }
 

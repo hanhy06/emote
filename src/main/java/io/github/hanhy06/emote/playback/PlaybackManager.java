@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
@@ -134,7 +135,7 @@ public class PlaybackManager implements ConfigListener {
         ServerPlayer player,
         RegisteredEmote emote,
         String playbackId,
-        EmoteAnimation.PlayerBehavior playerBehavior,
+        EmotePlayerBehavior playerBehavior,
         RootTransform root,
         boolean wasInvisible,
         PreparedPlayerSkin preparedSkin,
@@ -144,7 +145,7 @@ public class PlaybackManager implements ConfigListener {
         try {
             nodes = this.entityController.create(player.level(), root, emote);
             TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
-            if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+            if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
             } else {
                 timeline.start();
@@ -156,7 +157,7 @@ public class PlaybackManager implements ConfigListener {
             );
             timeline.deferInitialVisibility();
             this.entityController.add(player.level(), nodes);
-            if (emote.animation().timeline().loop() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+            if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.resumeSynchronizedInterpolation();
             }
             EventPlayer events = new EventPlayer(
@@ -436,7 +437,7 @@ public class PlaybackManager implements ConfigListener {
         return horizontalDistanceSquared > movementDistance * movementDistance;
     }
 
-    static boolean shouldStopFor(EmoteAnimation.StopConditions conditions, PlaybackStopReason reason) {
+    static boolean shouldStopFor(EmotePlayerBehavior.StopConditions conditions, PlaybackStopReason reason) {
         return switch (reason) {
             case JUMPED -> conditions.jump();
             case MOUNTED -> conditions.ride();

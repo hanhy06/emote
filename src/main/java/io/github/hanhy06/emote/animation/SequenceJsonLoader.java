@@ -6,7 +6,8 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 import net.minecraft.resources.Identifier;
 
@@ -36,7 +37,7 @@ public final class SequenceJsonLoader {
             throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
         }
 
-        AnimationJsonReader reader = new AnimationJsonReader(sourcePath);
+        EmoteJsonReader reader = new EmoteJsonReader(sourcePath);
         JsonElement rootElement;
         try {
             rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
@@ -58,12 +59,13 @@ public final class SequenceJsonLoader {
         if (name.isBlank()) {
             throw reader.error("$.metadata.name", "must not be blank");
         }
-        EmoteSequence.Metadata metadata = new EmoteSequence.Metadata(
+        EmoteMetadata metadata = new EmoteMetadata(
             name,
             reader.requireString(metadataObject, "description", "$.metadata")
         );
-        EmoteAnimation.PlayerBehavior player = AnimationJsonLoader.parsePlayer(
+        EmotePlayerBehavior player = AnimationJsonLoader.parsePlayer(
             reader.requireObject(root, "player", "$"),
+            "$.player",
             reader
         );
 
@@ -87,7 +89,7 @@ public final class SequenceJsonLoader {
         return new EmoteSequence(sourcePath, id, metadata, player, steps);
     }
 
-    private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, AnimationJsonReader reader)
+    private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         JsonElement element = reader.requireElement(stepObject, "emote", path);
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
@@ -139,7 +141,7 @@ public final class SequenceJsonLoader {
         return choices;
     }
 
-    private Identifier parseId(String value, String path, AnimationJsonReader reader)
+    private Identifier parseId(String value, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         Identifier id = Identifier.tryParse(value);
         if (id == null || !id.toString().equals(value) || value.indexOf(':') <= 0) {
