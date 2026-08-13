@@ -54,7 +54,7 @@ const IMPORT_FORMATS = [
   {
     label: "BD Engine",
     extensions: ".bdengine, .zip",
-    description: "The format that works best with the Emote mod. Set the display order and assign each part to the player skin.",
+    description: "Imports BD Engine projects and datapacks with animations, display nodes, commands, and player-skin parts.",
   },
   {
     label: "GeckoLib",
@@ -64,7 +64,7 @@ const IMPORT_FORMATS = [
   {
     label: "Animated Java",
     extensions: ".ajblueprint, .json",
-    description: "Imports Animated Java display nodes and native cube rigs, with player-skin assignment for convertible cubes.",
+    description: "Imports native cube rigs and plugin blueprints, detects player-model cubes, and supports player-skin assignment.",
   },
 ] as const;
 
@@ -303,7 +303,7 @@ export function App() {
         <div>
           <span className="product-label">Emote tools</span>
           <h1>Emote Converter</h1>
-          <p>Convert animation projects into server-ready Emote files.</p>
+          <p>Convert BD Engine, GeckoLib, and Animated Java projects into server-ready Emote files with player-skin support.</p>
         </div>
         {session && filePicker}
       </header>
@@ -315,7 +315,7 @@ export function App() {
           <div className="start-copy">
             <span className="step-label">Start a conversion</span>
             <h2 id="start-title">Open an animation project</h2>
-            <p>Choose a supported project or an existing Emote JSON file. Files are processed locally in your browser.</p>
+            <p>Open any supported model project or an existing Emote JSON file. Models, animations, and skin parts are processed locally in your browser.</p>
             {filePicker}
           </div>
           <div className="start-details">

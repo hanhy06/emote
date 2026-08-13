@@ -37,7 +37,7 @@ interface AjSkinCandidate {
 
 export const animatedJavaJsonAdapter: ImportAdapter = {
   id: "animated_java_json",
-  label: "Animated Java plugin blueprint",
+  label: "Animated Java project",
   extensions: ["ajblueprint", "json"],
 
   probe(input: ImportInput): ProbeResult {
