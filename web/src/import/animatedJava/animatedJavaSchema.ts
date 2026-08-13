@@ -1,5 +1,6 @@
 import {
   optionalArray,
+  optionalBoolean,
   optionalRecord,
   optionalString,
   requireNumber,
@@ -33,7 +34,17 @@ export interface AjNode {
 export interface AjElement {
   from: number[];
   to: number[];
-  rotation: unknown;
+  rotation: number[] | {
+    angle: number;
+    axis: "x" | "y" | "z";
+    origin: number[];
+  } | {
+    x: number;
+    y: number;
+    z: number;
+    origin: number[];
+    rescale?: boolean;
+  };
   shade?: boolean;
   light_emission?: number;
   faces: Record<string, {
@@ -122,19 +133,46 @@ function requireAjNode(value: unknown, path: string): void {
   for (const [index, elementValue] of (optionalArray(node.elements, `${path}.elements`) ?? []).entries()) {
     const elementPath = `${path}.elements[${index}]`;
     const element = requireRecord(elementValue, elementPath);
-    requireNumberArray(element.from, `${elementPath}.from`);
-    requireNumberArray(element.to, `${elementPath}.to`);
+    requireVector3(element.from, `${elementPath}.from`);
+    requireVector3(element.to, `${elementPath}.to`);
+    requireElementRotation(element.rotation, `${elementPath}.rotation`);
     const faces = requireRecord(element.faces, `${elementPath}.faces`);
     for (const [direction, faceValue] of Object.entries(faces)) {
       const facePath = `${elementPath}.faces.${direction}`;
       const face = requireRecord(faceValue, facePath);
-      requireNumberArray(face.uv, `${facePath}.uv`);
+      const uv = requireNumberArray(face.uv, `${facePath}.uv`);
+      if (uv.length !== 4) throw new Error(`${facePath}.uv must contain four numbers.`);
       const provider = requireRecord(face.texture_provider, `${facePath}.texture_provider`);
       const providerType = requireStringValue(provider.type, ["texture", "texture_palette"] as const, `${facePath}.texture_provider.type`);
       const property = providerType === "texture" ? "texture" : "texture_palette";
       requireString(provider[property], `${facePath}.texture_provider.${property}`);
     }
   }
+}
+
+function requireElementRotation(value: unknown, path: string): void {
+  if (Array.isArray(value)) {
+    const rotation = requireNumberArray(value, path);
+    if (rotation.length !== 3) throw new Error(`${path} must contain three numbers.`);
+    return;
+  }
+  const rotation = requireRecord(value, path);
+  const origin = requireNumberArray(rotation.origin, `${path}.origin`);
+  if (origin.length !== 3) throw new Error(`${path}.origin must contain three numbers.`);
+  if (typeof rotation.axis === "string") {
+    requireStringValue(rotation.axis, ["x", "y", "z"] as const, `${path}.axis`);
+    requireNumber(rotation.angle, `${path}.angle`);
+    return;
+  }
+  requireNumber(rotation.x, `${path}.x`);
+  requireNumber(rotation.y, `${path}.y`);
+  requireNumber(rotation.z, `${path}.z`);
+  optionalBoolean(rotation.rescale, `${path}.rescale`);
+}
+
+function requireVector3(value: unknown, path: string): void {
+  const vector = requireNumberArray(value, path);
+  if (vector.length !== 3) throw new Error(`${path} must contain three numbers.`);
 }
 
 function requireAjAnimation(value: unknown, path: string): void {

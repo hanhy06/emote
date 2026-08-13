@@ -188,6 +188,48 @@ describe("animatedJavaJsonAdapter", () => {
     ]);
   });
 
+  it("splits Animated Java bones into independently assignable player-head cubes", async () => {
+    const face = { uv: [0, 0, 4, 12], texture_provider: { type: "texture", texture: "skin" } };
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:rig" },
+      textures: { skin: { type: "custom", base64_string: "iVBORw0KGgo=" } },
+      nodes: {
+        right_arm: {
+          type: "bone",
+          elements: [
+            { from: [8, 0, 6], to: [12, 12, 10], rotation: [0, 0, 0], faces: { north: face } },
+            { from: [0, 0, 0], to: [2, 2, 2], rotation: { angle: 22.5, axis: "z", origin: [1, 1, 1] }, faces: { north: face } },
+          ],
+        },
+      },
+      animations: {
+        wave: {
+          loop_mode: { type: "once" },
+          length: 0.05,
+          node_keyframes: {
+            right_arm: { position: { "0.0": baked(["0", "0", "0"]), "0.05": baked(["1", "0", "0"]) } },
+          },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(Object.keys(project.nodes)).toEqual(["right_arm", "right_arm_2", "right_arm_3"]);
+    expect(project.nodes.right_arm.type === "item_display" && project.nodes.right_arm.suggestedSkin)
+      .toEqual({ part: "right_arm", order: 0 });
+    expect(project.nodes.right_arm_2.type === "item_display" && project.nodes.right_arm_2.suggestedSkin)
+      .toEqual({ part: "right_arm", order: 1 });
+    expect(project.nodes.right_arm_3.type === "item_display" && project.nodes.right_arm_3.suggestedSkin).toBeUndefined();
+    expect(project.nodes.right_arm_3.type === "item_display" && project.nodes.right_arm_3.playerHeadConversion?.matrix.every(Number.isFinite)).toBe(true);
+    expect(project.nodes.right_arm.type === "item_display" && project.nodes.right_arm.playerHeadConversion?.matrix[5]).toBeCloseTo(0.5);
+    expect(project.nodes.right_arm_2.type === "item_display" && project.nodes.right_arm_2.playerHeadConversion?.matrix[5]).toBeCloseTo(1);
+    expect(project.animations[0].tracks.right_arm_2.transforms).toEqual(project.animations[0].tracks.right_arm.transforms);
+    expect(project.animations[0].tracks.right_arm_3.transforms).toEqual(project.animations[0].tracks.right_arm.transforms);
+    expect([...project.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(6);
+  });
+
   it("bakes a numeric blend weight into node transforms", async () => {
     const input = blueprint({ item: { type: "item_display" } }, {
       blended: {

@@ -7,7 +7,7 @@ import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTop
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../types";
 import { ConversionError } from "../errors";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
@@ -21,6 +21,18 @@ import {
 } from "./animatedJavaProjectSchema";
 
 const encoder = new TextEncoder();
+
+interface ImportedAjNodes {
+  nodes: Record<string, ImportedNode>;
+  nodeIdsBySource: Map<string, string[]>;
+}
+
+interface AjSkinCandidate {
+  nodeId: string;
+  part: ImportedSkinPart["part"];
+  centerY: number;
+  sourceOrder: number;
+}
 
 export const animatedJavaJsonAdapter: ImportAdapter = {
   id: "animated_java_json",
@@ -49,8 +61,8 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const resources = new Map<string, Uint8Array>();
-    const nodes = Object.fromEntries(Object.entries(blueprint.nodes ?? {}).map(([id, node]) => [id, importNode(id, node, resource, blueprint, resources)]));
-    const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes));
+    const { nodes, nodeIdsBySource } = importNodes(blueprint, resource, resources);
+    const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes, nodeIdsBySource));
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
     if (animations.length === 0) throw new Error("Animated Java blueprint does not contain animations.");
     const name = prettify(resource.path.split("/").at(-1) ?? resource.path);
@@ -314,37 +326,77 @@ function validateRoot(blueprint: AjBlueprint): void {
   parseResourceLocation(blueprint.settings?.id, "Animated Java settings.id");
 }
 
-function importNode(
-  id: string,
-  node: AjNode,
-  resource: ResourceLocation,
+function importNodes(
   blueprint: AjBlueprint,
+  resource: ResourceLocation,
   resources: Map<string, Uint8Array>,
-): ImportedNode {
+): ImportedAjNodes {
+  const nodes: Record<string, ImportedNode> = {};
+  const nodeIdsBySource = new Map<string, string[]>();
+  const skinCandidates: AjSkinCandidate[] = [];
+  const usedIds = new Set(Object.keys(blueprint.nodes ?? {}));
+  let sourceOrder = 0;
+  for (const [id, node] of Object.entries(blueprint.nodes ?? {})) {
+    if (node.type !== "bone") {
+      nodes[id] = importDisplayNode(id, node);
+      nodeIdsBySource.set(id, [id]);
+      continue;
+    }
+
+    const defaultMatrix = readDefaultMatrix(node, id);
+    const entityNbt = displayPropertiesToNbt(node.display_properties);
+    const part = inferAjSkinPart(id);
+    const elements = (node.elements ?? []).flatMap((element) => splitTallAjSkinElement(element, part));
+    if (elements.length === 0) {
+      nodes[id] = { id, type: "anchor", defaultMatrix };
+      nodeIdsBySource.set(id, [id]);
+      continue;
+    }
+
+    const generatedIds: string[] = [];
+    for (const [elementIndex, element] of elements.entries()) {
+      const nodeId = elementIndex === 0 ? id : uniqueAjElementNodeId(id, elementIndex, usedIds);
+      const modelPath = [resource.path, nodeId].filter(Boolean).join("/");
+      writeBoneResources(modelPath, id, [element], resource, blueprint, resources);
+      const conversionMatrix = ajElementPlayerHeadMatrix(element, `${id}.elements[${elementIndex}]`);
+      nodes[nodeId] = {
+        id: nodeId,
+        type: "item_display",
+        defaultMatrix,
+        visible: true,
+        ...(entityNbt ? { entityNbt } : {}),
+        itemDisplay: "none",
+        itemStackSnbt: serializeSnbtCompound([
+          ["id", serializeSnbtString("minecraft:paper")],
+          ["count", "1"],
+          ["components", serializeSnbtCompound([
+            ["minecraft:item_model", serializeSnbtString(`${resource.namespace}:${modelPath}`)],
+          ])],
+        ]),
+        ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
+      };
+      generatedIds.push(nodeId);
+      if (conversionMatrix && part && isAjSkinSegment(element, part)) {
+        skinCandidates.push({
+          nodeId,
+          part,
+          centerY: (element.from[1] + element.to[1]) / 2,
+          sourceOrder: sourceOrder++,
+        });
+      }
+    }
+    nodeIdsBySource.set(id, generatedIds);
+  }
+  assignSuggestedAjSkinParts(nodes, skinCandidates);
+  return { nodes, nodeIdsBySource };
+}
+
+function importDisplayNode(id: string, node: AjNode): ImportedNode {
   const defaultMatrix = readDefaultMatrix(node, id);
   if (node.type === "locator" || node.type === "structure" || node.type === "camera") {
     return { id, type: "anchor", defaultMatrix };
   }
   const entityNbt = displayPropertiesToNbt(node.display_properties);
-  if (node.type === "bone") {
-    const modelPath = [resource.path, id].filter(Boolean).join("/");
-    writeBoneResources(modelPath, id, node, resource, blueprint, resources);
-    return {
-      id,
-      type: "item_display",
-      defaultMatrix,
-      visible: true,
-      ...(entityNbt ? { entityNbt } : {}),
-      itemDisplay: "none",
-      itemStackSnbt: serializeSnbtCompound([
-        ["id", serializeSnbtString("minecraft:paper")],
-        ["count", "1"],
-        ["components", serializeSnbtCompound([
-          ["minecraft:item_model", serializeSnbtString(`${resource.namespace}:${modelPath}`)],
-        ])],
-      ]),
-    };
-  }
   const properties = node.display_properties ?? {};
   if (node.type === "item_display") {
     return {
@@ -377,7 +429,150 @@ function importNode(
   };
 }
 
-function importAnimation(id: string, animation: AjAnimation, nodes: Record<string, ImportedNode>): ImportedAnimation {
+function uniqueAjElementNodeId(sourceId: string, elementIndex: number, usedIds: Set<string>): string {
+  const base = `${sourceId}_${elementIndex + 1}`;
+  let id = base;
+  for (let suffix = 2; usedIds.has(id); suffix++) id = `${base}_${suffix}`;
+  usedIds.add(id);
+  return id;
+}
+
+function inferAjSkinPart(nodeId: string): ImportedSkinPart["part"] | undefined {
+  const name = nodeId.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
+  if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
+  if (name.includes("right") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "right_arm";
+  if (name.includes("left") && (name.includes("leg") || name.includes("foot"))) return "left_leg";
+  if (name.includes("right") && (name.includes("leg") || name.includes("foot"))) return "right_leg";
+  if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
+  if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
+  return undefined;
+}
+
+function splitTallAjSkinElement(element: AjElement, part: ImportedSkinPart["part"] | undefined): AjElement[] {
+  if (!part || part === "head" || !isStandardAjSkinElement(element, part)) return [element];
+  const height = element.to[1] - element.from[1];
+  const upperHeight = height / 3;
+  const splitY = element.to[1] - upperHeight;
+  const [upperFaces, lowerFaces] = splitAjVerticalFaceUvs(element.faces, upperHeight / height);
+  return [
+    { ...element, from: [element.from[0], splitY, element.from[2]], faces: upperFaces },
+    { ...element, to: [element.to[0], splitY, element.to[2]], faces: lowerFaces },
+  ];
+}
+
+function splitAjVerticalFaceUvs(faces: AjElement["faces"], upperRatio: number): [AjElement["faces"], AjElement["faces"]] {
+  const upperFaces: AjElement["faces"] = {};
+  const lowerFaces: AjElement["faces"] = {};
+  for (const [direction, face] of Object.entries(faces)) {
+    if (!["north", "south", "east", "west"].includes(direction) || face.uv.length !== 4) {
+      upperFaces[direction] = face;
+      lowerFaces[direction] = face;
+      continue;
+    }
+    const [minU, minV, maxU, maxV] = face.uv;
+    const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
+    if (rotation === 90) {
+      const splitU = minU + (maxU - minU) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+    } else if (rotation === 180) {
+      const splitV = maxV - (maxV - minV) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+    } else if (rotation === 270) {
+      const splitU = maxU - (maxU - minU) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+      lowerFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+    } else {
+      const splitV = minV + (maxV - minV) * upperRatio;
+      upperFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+      lowerFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+    }
+  }
+  return [upperFaces, lowerFaces];
+}
+
+function isStandardAjSkinElement(element: AjElement, part: ImportedSkinPart["part"]): boolean {
+  const size = element.to.map((value, axis) => Math.abs(value - element.from[axis]));
+  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
+  if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
+  if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);
+  return (closeTo(size[0], 3) || closeTo(size[0], 4)) && closeTo(size[1], 12) && closeTo(size[2], 4);
+}
+
+function isAjSkinSegment(element: AjElement, part: ImportedSkinPart["part"]): boolean {
+  if (part === "head") return isStandardAjSkinElement(element, part);
+  const size = element.to.map((value, axis) => Math.abs(value - element.from[axis]));
+  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
+  const expectedWidth = part === "body" ? [8] : [3, 4];
+  return expectedWidth.some((width) => closeTo(size[0], width))
+    && (closeTo(size[1], 4) || closeTo(size[1], 8))
+    && closeTo(size[2], 4);
+}
+
+function assignSuggestedAjSkinParts(nodes: Record<string, ImportedNode>, candidates: AjSkinCandidate[]): void {
+  for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
+    candidates
+      .filter((candidate) => candidate.part === part)
+      .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
+      .forEach((candidate, order) => {
+        const node = nodes[candidate.nodeId];
+        if (node?.type === "item_display") node.suggestedSkin = { part, order };
+      });
+  }
+}
+
+function ajElementPlayerHeadMatrix(element: AjElement, path: string): Matrix16 | undefined {
+  if (!Array.isArray(element.rotation) && !("axis" in element.rotation) && element.rotation.rescale) return undefined;
+  const from = element.from.map((value) => (value - 8) / 16);
+  const to = element.to.map((value) => (value - 8) / 16);
+  const size = to.map((value, axis) => value - from[axis]);
+  if (size.some((value) => !Number.isFinite(value) || value <= 0)) return undefined;
+  const center = from.map((value, axis) => (value + to[axis]) / 2);
+  const fit = new Matrix4()
+    .makeTranslation(center[0], center[1], center[2])
+    .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
+    .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
+  const rotation = ajElementRotationMatrix(element);
+  return matrix4ToRowMajor(rotation ? rotation.multiply(fit) : fit, `Animated Java ${path} player head conversion`);
+}
+
+function ajElementRotationMatrix(element: AjElement): Matrix4 | undefined {
+  const rotation = element.rotation;
+  if (Array.isArray(rotation)) {
+    if (rotation.every((value) => Math.abs(value) <= 1e-7)) return undefined;
+    const origin = element.from.map((value, axis) => ((value + element.to[axis]) / 2 - 8) / 16);
+    return rotateAround(origin, rotation);
+  }
+  const origin = rotation.origin.map((value) => (value - 8) / 16);
+  if ("axis" in rotation) {
+    if (Math.abs(rotation.angle) <= 1e-7) return undefined;
+    const axis = rotation.axis === "x" ? new Vector3(1, 0, 0) : rotation.axis === "y" ? new Vector3(0, 1, 0) : new Vector3(0, 0, 1);
+    return new Matrix4().makeTranslation(origin[0], origin[1], origin[2])
+      .multiply(new Matrix4().makeRotationAxis(axis, MathUtils.degToRad(rotation.angle)))
+      .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
+  }
+  return rotateAround(origin, [rotation.x, rotation.y, rotation.z]);
+}
+
+function rotateAround(origin: number[], rotation: number[]): Matrix4 {
+  const quaternion = new Quaternion().setFromEuler(new Euler(
+    MathUtils.degToRad(rotation[0]),
+    MathUtils.degToRad(rotation[1]),
+    MathUtils.degToRad(rotation[2]),
+    "ZYX",
+  ));
+  return new Matrix4().makeTranslation(origin[0], origin[1], origin[2])
+    .multiply(new Matrix4().makeRotationFromQuaternion(quaternion))
+    .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
+}
+
+function importAnimation(
+  id: string,
+  animation: AjAnimation,
+  nodes: Record<string, ImportedNode>,
+  nodeIdsBySource: ReadonlyMap<string, string[]>,
+): ImportedAnimation {
   if (animation.loop_mode.type === "hold") throw new Error(`Animated Java animation ${id} uses hold mode, which the emote format cannot represent.`);
   const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
@@ -389,11 +584,13 @@ function importAnimation(id: string, animation: AjAnimation, nodes: Record<strin
   }
 
   const tracks: ImportedAnimation["tracks"] = {};
-  for (const [nodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
-    const node = nodes[nodeId];
-    if (!node) throw new Error(`Animated Java animation ${id} references unknown node ${nodeId}.`);
-    tracks[nodeId] = {
-      transforms: compileNodeChannels(id, nodeId, channels, node.defaultMatrix, startDelayTicks, animationDurationTicks, blendWeight),
+  for (const [sourceNodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
+    const generatedNodeIds = nodeIdsBySource.get(sourceNodeId);
+    const node = generatedNodeIds?.length ? nodes[generatedNodeIds[0]] : undefined;
+    if (!node || !generatedNodeIds) throw new Error(`Animated Java animation ${id} references unknown node ${sourceNodeId}.`);
+    const transforms = compileNodeChannels(id, sourceNodeId, channels, node.defaultMatrix, startDelayTicks, animationDurationTicks, blendWeight);
+    for (const nodeId of generatedNodeIds) tracks[nodeId] = {
+      transforms,
       visibility: [],
     };
   }
@@ -541,13 +738,13 @@ function readDefaultMatrix(node: AjNode, id: string): Matrix16 {
 function writeBoneResources(
   modelPath: string,
   nodeId: string,
-  node: AjNode,
+  elements: AjElement[],
   resource: ResourceLocation,
   blueprint: AjBlueprint,
   resources: Map<string, Uint8Array>,
 ): void {
   const usedTextures = new Set<string>();
-  const elements = (node.elements ?? []).map((element) => ({
+  const modelElements = elements.map((element) => ({
     from: element.from,
     to: element.to,
     rotation: element.rotation,
@@ -572,7 +769,7 @@ function writeBoneResources(
     addResource(resources, `assets/${resource.namespace}/textures/item/${texturePath}.png`, decodeBase64(source.base64_string, texture));
     return [texture, `${resource.namespace}:item/${texturePath}`];
   }));
-  addResource(resources, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements }));
+  addResource(resources, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements: modelElements }));
   addResource(
     resources,
     `assets/${resource.namespace}/items/${modelPath}.json`,
