@@ -134,9 +134,9 @@ config/emote/animations/
 
 All `.json` files below `animations`, including files in nested directories, are loaded recursively. File names and directory names are only used for storage. The root `id` field is the identifier used by commands, permissions, enable/disable settings, and the UI.
 
-Animation files may declare `"type": "animation"`. Files without `type` are also treated as animations, so existing converter output remains valid.
+Animation files use `"type": "animation"` and `"schema_version": 2`. Metadata and playback behavior are grouped under `metadata` and `settings`; all gameplay time fields are strings parsed with Minecraft time units (`d`, `s`, `t`, or bare ticks).
 
-Animations intended only as sequence steps can set `"standalone": false` at the root. The default is `true`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
+Animations intended only as sequence steps set `"settings": { "standalone": false, ... }`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
 
 See [the animation format](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.md) and [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.json) for details.
 
@@ -151,26 +151,30 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 ```json
 {
   "type": "sequence",
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "example:sit",
   "metadata": {
     "name": "Sit",
     "description": "Sit down, wait, and stand up."
   },
-  "player": {
-    "hidden": true,
-    "stop_conditions": {
-      "movement_distance": 0.1,
-      "jump": true,
-      "submerge": true,
-      "ride": true,
-      "damage": true,
-      "attack": true,
-      "game_mode_change": true
+  "settings": {
+    "cooldown": "5s",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
     }
   },
   "steps": [
     {"emote": "example:sit_down"},
+    {"wait": "10t"},
     {"emote": ["example:sit_idle_1", 30, "example:sit_idle_2", 40, "example:sit_idle_3", 30], "repeat": 2},
     {"emote": "example:stand_up"}
   ]
@@ -180,9 +184,10 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 - `steps` must contain at least one animation.
 - `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
 - `emote` accepts one animation ID, a string-only list with equal chances, or an alternating ID and integer chance list whose chances total `100`. Lists select a random candidate for every repeat, exclude the immediately previous candidate when alternatives are available, and normalize the remaining chances automatically.
+- `wait` accepts Minecraft time strings and may appear only between emote steps. Wait steps cannot be first, last, consecutive, or use `repeat`.
 - Sequences may reference animations but not other sequences.
 - Referenced animations must be loaded and enabled.
-- `player` uses the same format as animation files and controls player visibility and stop conditions for the entire sequence.
+- `settings.cooldown` uses the same Minecraft time format as animation cooldowns. `settings.player` uses the animation player format and controls visibility and stop conditions for the entire sequence.
 - A referenced animation's own `player` settings apply when it is played independently, but are ignored while it is part of a sequence.
 - Sequences are compiled into one in-memory animation during reload. Their display entities are created once and reused until the whole sequence finishes.
 - Referenced animations must use compatible node IDs, node types, display content, and skin layouts. Default transforms and visibility may differ between steps.
@@ -211,7 +216,6 @@ Run `/emote reload` and check the server log.
 An emote may be skipped when:
 
 - its animation JSON is invalid;
-- its Minecraft version does not match the server;
 - its exact ID is listed in `disabled` in `emotes.json`; or
 - another file declares the same ID.
 
