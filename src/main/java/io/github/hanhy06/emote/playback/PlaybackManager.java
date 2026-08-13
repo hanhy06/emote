@@ -89,7 +89,7 @@ public class PlaybackManager implements ConfigListener {
             }
         }
 
-        RegisteredEmote offer = sequence.awaitPartner().offer();
+        RegisteredEmote offer = sequence.compiledAnimation();
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(findActive(player.getUUID())),
@@ -129,7 +129,7 @@ public class PlaybackManager implements ConfigListener {
 
     private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
         RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
-        RegisteredEmote offer = sequence.awaitPartner().offer();
+        RegisteredEmote offer = sequence.compiledAnimation();
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             offer.skinParts(ParticipantRole.PARTNER)

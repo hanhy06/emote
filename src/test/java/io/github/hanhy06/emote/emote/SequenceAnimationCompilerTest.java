@@ -323,6 +323,8 @@ class SequenceAnimationCompilerTest {
         EmoteAnimation compiled = compiledEmote.animation();
         String partnerId = compiled.nodes().keySet().stream().filter(id -> !id.equals("body")).findFirst().orElseThrow();
 
+        assertEquals(sequence.compiledAnimation().animation().nodes().keySet(), compiled.nodes().keySet());
+        assertEquals(1, sequence.compiledAnimation().skinParts(ParticipantRole.PARTNER).size());
         assertEquals(EmoteAnimation.NodeSpace.PARTNER, compiled.nodes().get(partnerId).space());
         assertEquals(1, compiledEmote.skinParts(ParticipantRole.PARTNER).size());
         assertEquals(
