@@ -81,7 +81,7 @@ class AnimationComplexityValidatorTest {
             ))
         );
 
-        assertEquals("$.timeline.duration_ticks", exception.fieldPath());
+        assertEquals("$.timeline.duration", exception.fieldPath());
     }
 
     private EmoteAnimation.Loaded loaded(
