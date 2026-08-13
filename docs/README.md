@@ -117,7 +117,7 @@ Controls emote availability and play permissions.
 
 Run `/emote reload` after editing the file manually.
 
-## Animation Files
+## Animation and Sequence Files
 
 Put `.json` files exported by the converter in `config/emote/animations`:
 
@@ -132,70 +132,47 @@ config/emote/animations/
     └── sit-sequence.json
 ```
 
-All `.json` files below `animations`, including files in nested directories, are loaded recursively. File names and directory names are only used for storage. The root `id` field is the identifier used by commands, permissions, enable/disable settings, and the UI.
+All `.json` files below `animations`, including files in nested directories, are loaded recursively. File and directory names are only used for organization. Commands, permissions, enable/disable settings, and the UI use the root `id` field as the identifier.
 
-Animation files use `"type": "animation"` and `"schema_version": 2`. Metadata and playback behavior are grouped under `metadata` and `settings`; all gameplay time fields are strings parsed with Minecraft time units (`d`, `s`, `t`, or bare ticks).
+Animations and sequences use `"schema_version": 2`. Names and descriptions are stored in `metadata`, while playback behavior is stored in `settings`. Time values accept Minecraft time units (`d`, `s`, `t`, or bare ticks).
+
+Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
+
+### Animations
+
+Animations use `"type": "animation"`.
 
 Animations intended only as sequence steps set `"settings": { "standalone": false, ... }`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
 
 See [the animation format](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.md) and [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.json) for details.
 
-Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
+### Sequences
 
-Animation JSON files are limited to 8 MiB and timelines to 10 minutes. Node, display, transform, visibility-change, and command counts are controlled by animation creators rather than rejected by the loader. Runtime load is managed with the server-wide `max_active_display_entities` setting when playback starts; this also applies to runtime API registrations.
-
-### Sequence Files
-
-A sequence is a playable emote that runs existing animations in order. Put it anywhere below `config/emote/animations` with `"type": "sequence"`:
+A sequence uses `"type": "sequence"` to play existing animations in order:
 
 ```json
 {
   "type": "sequence",
   "schema_version": 2,
   "id": "example:sit",
-  "metadata": {
-    "name": "Sit",
-    "description": "Sit down, wait, and stand up."
-  },
-  "settings": {
-    "cooldown": "5s",
-    "player": {
-      "hidden": true,
-      "stop_conditions": {
-        "movement_distance": 0.1,
-        "jump": true,
-        "submerge": true,
-        "ride": true,
-        "damage": true,
-        "attack": true,
-        "game_mode_change": true
-      }
-    }
-  },
   "steps": [
     {"emote": "example:sit_down"},
     {"wait": "10t"},
-    {"emote": ["example:sit_idle_1", 30, "example:sit_idle_2", 40, "example:sit_idle_3", 30], "repeat": 2},
+    {"emote": "example:sit_idle", "repeat": 2},
     {"emote": "example:stand_up"}
   ]
 }
 ```
 
-- `steps` must contain at least one animation.
-- `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
-- `emote` accepts one animation ID, a string-only list with equal chances, or an alternating ID and integer chance list whose chances total `100`. Lists select a random candidate for every repeat, exclude the immediately previous candidate when alternatives are available, and normalize the remaining chances automatically.
-- `wait` accepts Minecraft time strings and may appear only between emote steps. Wait steps cannot be first, last, consecutive, or use `repeat`.
-- Sequences may reference animations but not other sequences.
-- Referenced animations must be loaded and enabled.
-- `settings.cooldown` uses the same Minecraft time format as animation cooldowns. `settings.player` uses the animation player format and controls visibility and stop conditions for the entire sequence.
-- A referenced animation's own `player` settings apply when it is played independently, but are ignored while it is part of a sequence.
-- Sequences are compiled into one in-memory animation during reload. Their display entities are created once and reused until the whole sequence finishes.
-- Referenced animations must use compatible node IDs, node types, display content, and skin layouts. Default transforms and visibility may differ between steps.
-- Timeline command events are preserved. Start, loop, and stop command events are not currently supported in animations referenced by a sequence.
-- Server-synchronized animations cannot be used in a sequence.
-- A sequence appears in commands, permissions, and the emote UI under its own `id`. Stopping or interrupting it cancels all remaining steps.
+- `emote` selects an animation. It can also be a list for random selection.
+- `wait` adds a delay between animation steps.
+- `repeat` repeats an animation step and defaults to `1`.
+- Sequences cannot reference other sequences or server-synchronized animations.
+- Referenced animations must use compatible nodes, displays, and skin layouts.
+- Sequence player settings apply to the entire sequence and replace the referenced animations' player settings.
+- Timeline commands are preserved, but start, loop, and stop commands are not supported within a sequence.
 
-See the [sequence reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for a complete example.
+See the [sequence reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for weighted random selection and a complete example.
 
 ## Mod API
 
