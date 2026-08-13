@@ -13,6 +13,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { conversionErrorMessage } from "./import/errors";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart } from "./import/types";
+import { convertSequenceInput } from "./import/emoteJson/sequenceJsonConverter";
 import { isVisibleAtTick, type PlayerHeadPart } from "./preview/playerHeadPart";
 import {
   assignSkinPart,
@@ -112,6 +113,14 @@ export function App() {
     try {
       await showLoadingScreen();
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+      const sequence = convertSequenceInput(input);
+      if (sequence) {
+        downloadExport({
+          blob: new Blob([JSON.stringify(sequence)], { type: "application/json" }),
+          fileName: file.name,
+        });
+        return;
+      }
       const detected = await detectAdapter(IMPORT_ADAPTERS, input);
       const imported = await importDetected(detected, input);
       const candidates = findSkinCandidates(imported);
