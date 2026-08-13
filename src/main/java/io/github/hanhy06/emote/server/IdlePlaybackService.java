@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
+import io.github.hanhy06.emote.selection.WeightedChoiceSelector;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
@@ -143,35 +144,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
             }
         }
 
-        if (choices.getFirst().chance() == 0) {
-            if (previousIndex < 0) {
-                return choices.get(this.random.nextInt(choices.size())).id();
-            }
-            int selectedIndex = this.random.nextInt(choices.size() - 1);
-            if (selectedIndex >= previousIndex) {
-                selectedIndex++;
-            }
-            return choices.get(selectedIndex).id();
-        }
-
-        int totalChance = 0;
-        for (int index = 0; index < choices.size(); index++) {
-            if (index != previousIndex) {
-                totalChance += choices.get(index).chance();
-            }
-        }
-        int selectedChance = this.random.nextInt(totalChance);
-        for (int index = 0; index < choices.size(); index++) {
-            if (index == previousIndex) {
-                continue;
-            }
-            AccessConfig.IdleSettings.Choice choice = choices.get(index);
-            selectedChance -= choice.chance();
-            if (selectedChance < 0) {
-                return choice.id();
-            }
-        }
-        throw new IllegalStateException("Failed to select an idle emote candidate");
+        return choices.get(WeightedChoiceSelector.selectIndex(this.random, choices, AccessConfig.IdleSettings.Choice::chance, previousIndex)).id();
     }
 
     public void removePlayer(ServerPlayer player) {

@@ -1,26 +1,32 @@
 {
     "type": "sequence",
-    "schema_version": 1,
+    "schema_version": 2,
     "id": "emote:sit",
     "metadata": {
         "name": "Sit",
         "description": "Sit down, wait for three cycles, and stand up."
     },
-    "player": {
-        "hidden": true,
-        "stop_conditions": {
-            "movement_distance": 0.1,
-            "jump": true,
-            "submerge": true,
-            "ride": true,
-            "damage": true,
-            "attack": true,
-            "game_mode_change": true
+    "settings": {
+        "cooldown": "5s",
+        "player": {
+            "hidden": true,
+            "stop_conditions": {
+                "movement_distance": 0.1,
+                "jump": true,
+                "submerge": true,
+                "ride": true,
+                "damage": true,
+                "attack": true,
+                "game_mode_change": true
+            }
         }
     },
     "steps": [
         {
             "emote": "emote:sit_down"
+        },
+        {
+            "wait": "10t"
         },
         {
             "emote": [

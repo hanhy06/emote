@@ -130,8 +130,8 @@ class EmoteRegistryTest {
             Path.of("sit.json"),
             Identifier.parse("demo:sit"),
             new EmoteMetadata("Sit", "Sit sequence"),
-            EmotePlayerBehavior.createDefault(),
-            List.of(new EmoteSequence.Step(Identifier.parse(animation.id()), 1))
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
         );
         RegisteredSequence sequence = RegisteredSequence.resolve(source, java.util.Map.of(animation.id(), animation));
         EmoteRegistry registry = new EmoteRegistry();

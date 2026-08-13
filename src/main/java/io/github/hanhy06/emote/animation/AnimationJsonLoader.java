@@ -97,7 +97,7 @@ public final class AnimationJsonLoader {
         return new Loaded(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, settings, nodes, timeline));
     }
 
-    private EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
+    static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String name = reader.requireString(object, "name", "$.metadata");
         if (name.isBlank()) {

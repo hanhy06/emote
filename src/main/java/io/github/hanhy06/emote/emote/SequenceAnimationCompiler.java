@@ -18,12 +18,22 @@ final class SequenceAnimationCompiler {
     }
 
     static RegisteredEmote compile(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
-        RegisteredEmote first = steps.getFirst().animation();
+        RegisteredEmote first = steps.stream()
+            .filter(RegisteredSequence.SelectedEmoteStep.class::isInstance)
+            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
+            .map(RegisteredSequence.SelectedEmoteStep::animation)
+            .findFirst()
+            .orElseThrow();
 
         List<EmoteAnimation.Keyframe> keyframes = new ArrayList<>();
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         long offset = 0L;
-        for (RegisteredSequence.SelectedStep step : steps) {
+        for (RegisteredSequence.SelectedStep selectedStep : steps) {
+            if (selectedStep instanceof RegisteredSequence.SelectedWaitStep waitStep) {
+                offset += waitStep.ticks();
+                continue;
+            }
+            RegisteredSequence.SelectedEmoteStep step = (RegisteredSequence.SelectedEmoteStep) selectedStep;
             EmoteAnimation animation = step.animation().animation();
             int segmentOffset = requireTick(offset, sequence);
             keyframes.add(createResetKeyframe(animation, segmentOffset));
@@ -54,8 +64,8 @@ final class SequenceAnimationCompiler {
             sequence.metadata(),
             new EmoteAnimation.Settings(
                 true,
-                0,
-                sequence.player(),
+                sequence.settings().cooldownTicks(),
+                sequence.settings().player(),
                 new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)
             ),
             first.animation().nodes(),
@@ -75,9 +85,17 @@ final class SequenceAnimationCompiler {
     }
 
     static void validateCompatibleAnimations(List<RegisteredSequence.Step> steps) {
-        RegisteredEmote first = steps.getFirst().candidates().getFirst().animation();
+        RegisteredEmote first = steps.stream()
+            .filter(RegisteredSequence.EmoteStep.class::isInstance)
+            .map(RegisteredSequence.EmoteStep.class::cast)
+            .map(step -> step.candidates().getFirst().animation())
+            .findFirst()
+            .orElseThrow();
         for (RegisteredSequence.Step step : steps) {
-            for (RegisteredSequence.Choice choice : step.candidates()) {
+            if (!(step instanceof RegisteredSequence.EmoteStep emoteStep)) {
+                continue;
+            }
+            for (RegisteredSequence.Choice choice : emoteStep.candidates()) {
                 RegisteredEmote animation = choice.animation();
                 if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
                     throw new IllegalArgumentException(
@@ -151,7 +169,12 @@ final class SequenceAnimationCompiler {
     private static String fingerprint(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
         StringBuilder input = new StringBuilder(sequence.id().toString());
         for (RegisteredSequence.SelectedStep step : steps) {
-            input.append('|').append(step.animation().source().sha256()).append(':').append(step.loopDelayAfter());
+            if (step instanceof RegisteredSequence.SelectedWaitStep waitStep) {
+                input.append("|wait:").append(waitStep.ticks());
+            } else {
+                RegisteredSequence.SelectedEmoteStep emoteStep = (RegisteredSequence.SelectedEmoteStep) step;
+                input.append('|').append(emoteStep.animation().source().sha256()).append(':').append(emoteStep.loopDelayAfter());
+            }
         }
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(input.toString().getBytes(StandardCharsets.UTF_8));

@@ -23,6 +23,25 @@ class SequenceAnimationCompilerTest {
     private static final EmoteAnimation.Matrix IDENTITY = matrix(0.0D);
 
     @Test
+    void keepsThePreviousPoseDuringAnExplicitWaitStep() {
+        RegisteredEmote first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)));
+        RegisteredEmote second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)));
+        RegisteredSequence sequence = RegisteredSequence.resolve(
+            sequence(
+                new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
+                new EmoteSequence.WaitStep(5),
+                new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
+            ),
+            Map.of(first.id(), first, second.id(), second)
+        );
+
+        EmoteAnimation compiled = sequence.compiledAnimation().animation();
+
+        assertEquals(10, compiled.timeline().durationTicks());
+        assertEquals(List.of(0, 7), compiled.timeline().keyframes().stream().map(EmoteAnimation.Keyframe::tick).toList());
+    }
+
+    @Test
     void compilesStepsRepeatsLoopDelayAndTimelineEventsIntoOneAnimation() {
         RegisteredEmote enter = animation(
             "demo:enter",
@@ -54,8 +73,8 @@ class SequenceAnimationCompilerTest {
         );
         RegisteredSequence sequence = RegisteredSequence.resolve(
             sequence(
-                new EmoteSequence.Step(Identifier.parse("demo:enter"), 1),
-                new EmoteSequence.Step(Identifier.parse("demo:idle"), 2)
+                new EmoteSequence.EmoteStep(Identifier.parse("demo:enter"), 1),
+                new EmoteSequence.EmoteStep(Identifier.parse("demo:idle"), 2)
             ),
             Map.of(enter.id(), enter, idle.id(), idle)
         );
@@ -97,8 +116,8 @@ class SequenceAnimationCompilerTest {
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> RegisteredSequence.resolve(
             sequence(
-                new EmoteSequence.Step(Identifier.parse(first.id()), 1),
-                new EmoteSequence.Step(Identifier.parse(second.id()), 1)
+                new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
+                new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
             ),
             Map.of(first.id(), first, second.id(), second)
         ));
@@ -127,7 +146,7 @@ class SequenceAnimationCompilerTest {
         );
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> RegisteredSequence.resolve(
-            sequence(new EmoteSequence.Step(Identifier.parse(animation.id()), 1)),
+            sequence(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1)),
             Map.of(animation.id(), animation)
         ));
 
@@ -168,8 +187,8 @@ class SequenceAnimationCompilerTest {
 
         RegisteredSequence sequence = RegisteredSequence.resolve(
             sequence(
-                new EmoteSequence.Step(Identifier.parse(first.id()), 1),
-                new EmoteSequence.Step(Identifier.parse(second.id()), 1)
+                new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
+                new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
             ),
             Map.of(first.id(), first, second.id(), second)
         );
@@ -210,8 +229,8 @@ class SequenceAnimationCompilerTest {
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Random sequence"),
-            EmotePlayerBehavior.createDefault(),
-            List.of(new EmoteSequence.Step(List.of(
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.EmoteStep(List.of(
                 Identifier.parse(first.id()),
                 Identifier.parse(second.id()),
                 Identifier.parse(third.id())
@@ -223,6 +242,7 @@ class SequenceAnimationCompilerTest {
         );
 
         List<String> selectedIds = sequence.selectSteps(new Random(7L)).stream()
+            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
             .map(step -> step.animation().id())
             .toList();
 
@@ -241,8 +261,8 @@ class SequenceAnimationCompilerTest {
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Weighted sequence"),
-            EmotePlayerBehavior.createDefault(),
-            List.of(new EmoteSequence.Step(List.of(
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.EmoteStep(List.of(
                 new EmoteSequence.Choice(Identifier.parse(first.id()), 10),
                 new EmoteSequence.Choice(Identifier.parse(second.id()), 20),
                 new EmoteSequence.Choice(Identifier.parse(third.id()), 70)
@@ -258,7 +278,10 @@ class SequenceAnimationCompilerTest {
             }
         };
 
-        List<String> selectedIds = sequence.selectSteps(random).stream().map(step -> step.animation().id()).toList();
+        List<String> selectedIds = sequence.selectSteps(random).stream()
+            .map(RegisteredSequence.SelectedEmoteStep.class::cast)
+            .map(step -> step.animation().id())
+            .toList();
 
         assertEquals(List.of("demo:second", "demo:first", "demo:third"), selectedIds);
     }
@@ -268,7 +291,7 @@ class SequenceAnimationCompilerTest {
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
             new EmoteMetadata("Sequence", "Compiled sequence"),
-            EmotePlayerBehavior.createDefault(),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             List.of(steps)
         );
     }

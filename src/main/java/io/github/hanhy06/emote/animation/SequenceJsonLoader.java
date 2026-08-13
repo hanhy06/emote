@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SequenceJsonLoader {
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
 
     public EmoteSequence load(Path sourcePath) throws EmoteAnimationLoadException {
         byte[] bytes;
@@ -54,20 +54,15 @@ public final class SequenceJsonLoader {
         }
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = parseId(reader.requireString(root, "id", "$"), "$.id", reader);
-        JsonObject metadataObject = reader.requireObject(root, "metadata", "$");
-        String name = reader.requireString(metadataObject, "name", "$.metadata");
-        if (name.isBlank()) {
-            throw reader.error("$.metadata.name", "must not be blank");
-        }
-        EmoteMetadata metadata = new EmoteMetadata(
-            name,
-            reader.requireString(metadataObject, "description", "$.metadata")
-        );
+        EmoteMetadata metadata = AnimationJsonLoader.parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        JsonObject settingsObject = reader.requireObject(root, "settings", "$");
+        int cooldownTicks = reader.requireTime(settingsObject, "cooldown", "$.settings", 0);
         EmotePlayerBehavior player = AnimationJsonLoader.parsePlayer(
-            reader.requireObject(root, "player", "$"),
-            "$.player",
+            reader.requireObject(settingsObject, "player", "$.settings"),
+            "$.settings.player",
             reader
         );
+        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
 
         var stepsArray = reader.requireArray(root, "steps", "$");
         if (stepsArray.isEmpty()) {
@@ -77,6 +72,24 @@ public final class SequenceJsonLoader {
         for (int index = 0; index < stepsArray.size(); index++) {
             String path = "$.steps[" + index + "]";
             JsonObject stepObject = reader.requireObject(stepsArray.get(index), path);
+            boolean hasEmote = stepObject.has("emote") && !stepObject.get("emote").isJsonNull();
+            boolean hasWait = stepObject.has("wait") && !stepObject.get("wait").isJsonNull();
+            if (hasEmote == hasWait) {
+                throw reader.error(path, "must contain exactly one of emote or wait");
+            }
+            if (hasWait) {
+                if (stepObject.has("repeat")) {
+                    throw reader.error(path + ".repeat", "is not supported on a wait step");
+                }
+                if (index == 0 || index == stepsArray.size() - 1) {
+                    throw reader.error(path + ".wait", "must be between emote steps");
+                }
+                if (!steps.isEmpty() && steps.getLast() instanceof EmoteSequence.WaitStep) {
+                    throw reader.error(path + ".wait", "must not follow another wait step");
+                }
+                steps.add(new EmoteSequence.WaitStep(reader.requireTime(stepObject, "wait", path, 1)));
+                continue;
+            }
             List<EmoteSequence.Choice> choices = readEmoteChoices(stepObject, path, reader);
             int repeat = stepObject.has("repeat")
                 ? reader.requireInt(stepObject, "repeat", path)
@@ -84,9 +97,9 @@ public final class SequenceJsonLoader {
             if (repeat < 1) {
                 throw reader.error(path + ".repeat", "must be at least 1");
             }
-            steps.add(new EmoteSequence.Step(choices, repeat));
+            steps.add(new EmoteSequence.EmoteStep(choices, repeat));
         }
-        return new EmoteSequence(sourcePath, id, metadata, player, steps);
+        return new EmoteSequence(sourcePath, id, metadata, settings, steps);
     }
 
     private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonReader reader)

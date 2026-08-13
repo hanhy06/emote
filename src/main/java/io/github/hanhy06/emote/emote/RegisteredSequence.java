@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.emote;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.selection.WeightedChoiceSelector;
 import io.github.hanhy06.emote.sequence.EmoteSequence;
 
 import java.nio.file.Path;
@@ -27,7 +28,12 @@ public record RegisteredSequence(
 
     public static RegisteredSequence resolve(EmoteSequence source, Map<String, RegisteredEmote> animations) {
         List<Step> resolvedSteps = new ArrayList<>(source.steps().size());
-        for (EmoteSequence.Step step : source.steps()) {
+        for (EmoteSequence.Step sourceStep : source.steps()) {
+            if (sourceStep instanceof EmoteSequence.WaitStep waitStep) {
+                resolvedSteps.add(new WaitStep(waitStep.ticks()));
+                continue;
+            }
+            EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
                 RegisteredEmote animation = animations.get(choice.emoteId().toString());
@@ -39,7 +45,7 @@ public record RegisteredSequence(
                 }
                 candidates.add(new Choice(animation, choice.chance()));
             }
-            resolvedSteps.add(new Step(candidates, step.repeat()));
+            resolvedSteps.add(new EmoteStep(candidates, step.repeat()));
         }
         SequenceAnimationCompiler.validateCompatibleAnimations(resolvedSteps);
         return new RegisteredSequence(
@@ -57,12 +63,17 @@ public record RegisteredSequence(
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
         for (Step step : this.steps) {
+            if (step instanceof WaitStep waitStep) {
+                selectedSteps.add(new SelectedWaitStep(waitStep.ticks()));
+                continue;
+            }
+            EmoteStep emoteStep = (EmoteStep) step;
             int previousIndex = -1;
-            for (int repeat = 0; repeat < step.repeat(); repeat++) {
-                int selectedIndex = selectCandidateIndex(random, step.candidates(), previousIndex);
-                selectedSteps.add(new SelectedStep(
-                    step.candidates().get(selectedIndex).animation(),
-                    repeat + 1 < step.repeat()
+            for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
+                int selectedIndex = WeightedChoiceSelector.selectIndex(random, emoteStep.candidates(), Choice::chance, previousIndex);
+                selectedSteps.add(new SelectedEmoteStep(
+                    emoteStep.candidates().get(selectedIndex).animation(),
+                    repeat + 1 < emoteStep.repeat()
                 ));
                 previousIndex = selectedIndex;
             }
@@ -73,43 +84,19 @@ public record RegisteredSequence(
     private static List<SelectedStep> selectFirstCandidates(List<Step> steps) {
         List<SelectedStep> selectedSteps = new ArrayList<>();
         for (Step step : steps) {
-            for (int repeat = 0; repeat < step.repeat(); repeat++) {
-                selectedSteps.add(new SelectedStep(step.candidates().getFirst().animation(), repeat + 1 < step.repeat()));
+            if (step instanceof WaitStep waitStep) {
+                selectedSteps.add(new SelectedWaitStep(waitStep.ticks()));
+                continue;
+            }
+            EmoteStep emoteStep = (EmoteStep) step;
+            for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
+                selectedSteps.add(new SelectedEmoteStep(
+                    emoteStep.candidates().getFirst().animation(),
+                    repeat + 1 < emoteStep.repeat()
+                ));
             }
         }
         return selectedSteps;
-    }
-
-    private static int selectCandidateIndex(RandomGenerator random, List<Choice> choices, int previousIndex) {
-        int size = choices.size();
-        if (size == 1) {
-            return 0;
-        }
-        if (choices.getFirst().chance() == 0 && previousIndex < 0) {
-            return random.nextInt(size);
-        }
-        if (choices.getFirst().chance() == 0) {
-            int selectedIndex = random.nextInt(size - 1);
-            return selectedIndex >= previousIndex ? selectedIndex + 1 : selectedIndex;
-        }
-
-        int totalChance = 0;
-        for (int index = 0; index < choices.size(); index++) {
-            if (index != previousIndex) {
-                totalChance += choices.get(index).chance();
-            }
-        }
-        int selectedChance = random.nextInt(totalChance);
-        for (int index = 0; index < choices.size(); index++) {
-            if (index == previousIndex) {
-                continue;
-            }
-            selectedChance -= choices.get(index).chance();
-            if (selectedChance < 0) {
-                return index;
-            }
-        }
-        throw new IllegalStateException("Failed to select a sequence emote candidate");
     }
 
     @Override
@@ -134,7 +121,7 @@ public record RegisteredSequence(
 
     @Override
     public EmotePlayerBehavior playerBehavior() {
-        return this.source.player();
+        return this.source.settings().player();
     }
 
     @Override
@@ -161,8 +148,11 @@ public record RegisteredSequence(
         return this.compiledAnimation.displayNodeCount();
     }
 
-    public record Step(List<Choice> candidates, int repeat) {
-        public Step {
+    public sealed interface Step permits EmoteStep, WaitStep {
+    }
+
+    public record EmoteStep(List<Choice> candidates, int repeat) implements Step {
+        public EmoteStep {
             candidates = List.copyOf(candidates);
             if (candidates.isEmpty()) {
                 throw new IllegalArgumentException("sequence emote candidates must not be empty");
@@ -176,15 +166,34 @@ public record RegisteredSequence(
         }
     }
 
+    public record WaitStep(int ticks) implements Step {
+        public WaitStep {
+            if (ticks < 1) {
+                throw new IllegalArgumentException("sequence wait must be at least 1 tick");
+            }
+        }
+    }
+
     public record Choice(RegisteredEmote animation, int chance) {
         public Choice {
             Objects.requireNonNull(animation, "animation");
         }
     }
 
-    record SelectedStep(RegisteredEmote animation, boolean loopDelayAfter) {
-        SelectedStep {
+    sealed interface SelectedStep permits SelectedEmoteStep, SelectedWaitStep {
+    }
+
+    record SelectedEmoteStep(RegisteredEmote animation, boolean loopDelayAfter) implements SelectedStep {
+        SelectedEmoteStep {
             Objects.requireNonNull(animation, "animation");
+        }
+    }
+
+    record SelectedWaitStep(int ticks) implements SelectedStep {
+        SelectedWaitStep {
+            if (ticks < 1) {
+                throw new IllegalArgumentException("sequence wait must be at least 1 tick");
+            }
         }
     }
 }

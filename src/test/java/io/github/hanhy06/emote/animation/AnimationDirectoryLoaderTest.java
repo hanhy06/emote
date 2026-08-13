@@ -70,19 +70,22 @@ class AnimationDirectoryLoaderTest {
         Files.writeString(tempDir.resolve("sequence.json"), """
             {
               "type": "sequence",
-              "schema_version": 1,
+              "schema_version": 2,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence"},
-              "player": {
-                "hidden": true,
-                "stop_conditions": {
-                  "movement_distance": 0.1,
-                  "jump": true,
-                  "submerge": true,
-                  "ride": true,
-                  "damage": true,
-                  "attack": true,
-                  "game_mode_change": true
+              "settings": {
+                "cooldown": "0t",
+                "player": {
+                  "hidden": true,
+                  "stop_conditions": {
+                    "movement_distance": 0.1,
+                    "jump": true,
+                    "submerge": true,
+                    "ride": true,
+                    "damage": true,
+                    "attack": true,
+                    "game_mode_change": true
+                  }
                 }
               },
               "steps": [{"emote": "example:sit_down"}]
