@@ -65,7 +65,14 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public PlayResult start(ServerPlayer player, RegisteredEmote emote) {
-        return startResolved(player, emote, emote.id(), emote.playerBehavior());
+        return startResolved(
+            player,
+            emote,
+            emote.id(),
+            emote.playerBehavior(),
+            singlePlayerRoots(RootTransform.fromPlayer(player)),
+            null
+        );
     }
 
     private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
@@ -76,7 +83,9 @@ public class PlaybackManager implements ConfigListener {
             player,
             sequence.compileRandom(this.random),
             sequence.id(),
-            sequence.playerBehavior()
+            sequence.playerBehavior(),
+            singlePlayerRoots(RootTransform.fromPlayer(player)),
+            null
         );
     }
 
@@ -88,40 +97,16 @@ public class PlaybackManager implements ConfigListener {
             }
         }
 
-        RegisteredEmote offer = sequence.compiledAnimation();
-        int projectedDisplayEntities = projectedDisplayEntityCount(
-            activeDisplayEntityCount(),
-            displayEntityCount(findActive(player.getUUID())),
-            offer.displayNodeCount()
-        );
-        if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
-            return PlayResult.failure(
-                "Active emote parts would exceed the server limit ("
-                    + projectedDisplayEntities + "/" + this.maxActiveDisplayEntities + ")."
-            );
-        }
-
-        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            offer.skinParts(ParticipantRole.INITIATOR)
-        );
-        if (skinPreparation.preparing()) {
-            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
-        }
-
-        stop(player, PlaybackStopReason.REPLACED);
         Map<EmoteAnimation.NodeSpace, RootTransform> roots = this.sceneRootResolver.resolve(
             player,
             Objects.requireNonNull(sequence.source().participants(), "participants")
         );
-        return startPrepared(
+        return startResolved(
             player,
-            offer,
+            sequence.compiledAnimation(),
             sequence.id(),
             sequence.playerBehavior(),
             roots,
-            player.isInvisible(),
-            skinPreparation.preparedPlayerSkin(),
             sequence
         );
     }
@@ -161,7 +146,9 @@ public class PlaybackManager implements ConfigListener {
         ServerPlayer player,
         RegisteredEmote emote,
         String playbackId,
-        EmotePlayerBehavior playerBehavior
+        EmotePlayerBehavior playerBehavior,
+        Map<EmoteAnimation.NodeSpace, RootTransform> roots,
+        @Nullable RegisteredSequence collaborativeSequence
     ) {
         PlaybackSession currentSession = findActive(player.getUUID());
         int projectedDisplayEntities = projectedDisplayEntityCount(
@@ -183,18 +170,15 @@ public class PlaybackManager implements ConfigListener {
         if (skinPreparation.preparing()) {
             return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
         }
-        PreparedPlayerSkin preparedSkin = skinPreparation.preparedPlayerSkin();
-
         stop(player, PlaybackStopReason.REPLACED);
         return startPrepared(
             player,
             emote,
             playbackId,
             playerBehavior,
-            singlePlayerRoots(RootTransform.fromPlayer(player)),
-            player.isInvisible(),
-            preparedSkin,
-            null
+            roots,
+            skinPreparation.preparedPlayerSkin(),
+            collaborativeSequence
         );
     }
 
@@ -204,7 +188,6 @@ public class PlaybackManager implements ConfigListener {
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
-        boolean wasInvisible,
         PreparedPlayerSkin preparedSkin,
         @Nullable RegisteredSequence collaborativeSequence
     ) {
@@ -237,7 +220,7 @@ public class PlaybackManager implements ConfigListener {
                 ParticipantRole.INITIATOR,
                 roots.get(EmoteAnimation.NodeSpace.SCENE).position(),
                 emote.skinParts(ParticipantRole.INITIATOR),
-                wasInvisible
+                player.isInvisible()
             );
             session = new PlaybackSession(
                 UUID.randomUUID(),
@@ -429,16 +412,11 @@ public class PlaybackManager implements ConfigListener {
 
         RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
         RegisteredEmote matched = sequence.compileMatchedRandom(this.random);
-        TimelinePlayer timeline = new TimelinePlayer(matched.playbackPlan(), session.nodes(), this.entityController);
-        timeline.start();
-        EventPlayer events = new EventPlayer(
-            matched.playbackPlan(),
-            new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
-        );
-        PlaybackParticipant partner = session.activateReservedPartner(timeline, events);
+        BranchPlayback playback = createBranchPlayback(session, matched);
+        PlaybackParticipant partner = session.activateReservedPartner(playback.timeline(), playback.events());
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
-        startEvents(timeline, events);
+        startEvents(playback.timeline(), playback.events());
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
@@ -449,14 +427,19 @@ public class PlaybackManager implements ConfigListener {
     private void activateTimeout(PlaybackSession session) {
         RegisteredSequence sequence = Objects.requireNonNull(session.collaborativeSequence(), "collaborativeSequence");
         RegisteredEmote timeout = sequence.compileTimeoutRandom(this.random);
-        TimelinePlayer timeline = new TimelinePlayer(timeout.playbackPlan(), session.nodes(), this.entityController);
+        BranchPlayback playback = createBranchPlayback(session, timeout);
+        session.beginTimeout(playback.timeline(), playback.events());
+        startEvents(playback.timeline(), playback.events());
+    }
+
+    private BranchPlayback createBranchPlayback(PlaybackSession session, RegisteredEmote emote) {
+        TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), session.nodes(), this.entityController);
         timeline.start();
         EventPlayer events = new EventPlayer(
-            timeout.playbackPlan(),
+            emote.playbackPlan(),
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
-        session.beginTimeout(timeline, events);
-        startEvents(timeline, events);
+        return new BranchPlayback(timeline, events);
     }
 
     private void releaseReservedPartner(PlaybackSession session) {
@@ -671,5 +654,8 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {
+    }
+
+    private record BranchPlayback(TimelinePlayer timeline, EventPlayer events) {
     }
 }
