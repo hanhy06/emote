@@ -20,14 +20,12 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.random.RandomGenerator;
 
 public class PlaybackManager implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
-    private final Map<UUID, PlaybackSession> sessions = new ConcurrentHashMap<>();
-    private final Map<UUID, UUID> playerSessions = new ConcurrentHashMap<>();
+    private final PlaybackSessionRegistry sessionRegistry = new PlaybackSessionRegistry();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
     private final PlayerSkinManager playerSkinManager;
@@ -59,6 +57,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public PlayResult start(ServerPlayer player, EmoteDefinition definition) {
+        releasePlayerReservation(player.getUUID());
         return switch (definition) {
             case RegisteredEmote animation -> start(player, animation);
             case RegisteredSequence sequence -> start(player, sequence);
@@ -83,7 +82,7 @@ public class PlaybackManager implements ConfigListener {
 
     private PlayResult startCollaborative(ServerPlayer player, RegisteredSequence sequence) {
         if (findActive(player.getUUID()) == null) {
-            PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessions.values());
+            PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessionRegistry.sessions());
             if (waitingSession != null) {
                 return reservePartner(player, waitingSession);
             }
@@ -146,7 +145,7 @@ public class PlaybackManager implements ConfigListener {
             player.isInvisible()
         );
         session.reservePartner(partner);
-        this.playerSessions.put(player.getUUID(), session.sessionId());
+        this.sessionRegistry.reservePartner(session, player.getUUID());
         this.playerSkinManager.applySkinParts(
             session.nodes().nodes(),
             partner.skinParts(),
@@ -252,8 +251,7 @@ public class PlaybackManager implements ConfigListener {
                 initiator,
                 collaborativeSequence
             );
-            this.sessions.put(session.sessionId(), session);
-            this.playerSessions.put(player.getUUID(), session.sessionId());
+            this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
             startEvents(timeline, events);
             if (playbackChanged(session)) {
@@ -317,7 +315,10 @@ public class PlaybackManager implements ConfigListener {
         @Nullable ServerPlayer knownPlayer
     ) {
         PlaybackSession session = findActive(playerUuid);
-        if (session == null || !removeSession(session)) {
+        if (session == null) {
+            return releasePlayerReservation(playerUuid);
+        }
+        if (!removeSession(session)) {
             return null;
         }
         cleanupSession(session, true, reason, knownPlayer);
@@ -325,23 +326,17 @@ public class PlaybackManager implements ConfigListener {
     }
 
     public PlaybackSession findActive(UUID playerUuid) {
-        UUID sessionId = this.playerSessions.get(playerUuid);
-        return sessionId == null ? null : this.sessions.get(sessionId);
-    }
-
-    boolean isActiveParticipant(UUID playerUuid) {
-        PlaybackSession session = findActive(playerUuid);
-        return session != null && session.participant(playerUuid) != null;
+        return this.sessionRegistry.findParticipant(playerUuid);
     }
 
     public void tick() {
         this.stressTest.tick();
-        if (this.sessions.isEmpty()) {
+        if (this.sessionRegistry.isEmpty()) {
             return;
         }
 
         List<StopRequest> stopRequests = null;
-        for (PlaybackSession session : this.sessions.values()) {
+        for (PlaybackSession session : this.sessionRegistry.sessions()) {
             PlaybackParticipant initiator = session.initiator();
             ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
@@ -441,6 +436,7 @@ public class PlaybackManager implements ConfigListener {
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
         PlaybackParticipant partner = session.activateReservedPartner(timeline, events);
+        this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
         startEvents(timeline, events);
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
@@ -466,8 +462,21 @@ public class PlaybackManager implements ConfigListener {
     private void releaseReservedPartner(PlaybackSession session) {
         PlaybackParticipant partner = session.releaseReservedPartner();
         if (partner != null) {
-            this.playerSessions.remove(partner.playerUuid(), session.sessionId());
+            this.sessionRegistry.releasePartner(session, partner.playerUuid());
         }
+    }
+
+    private @Nullable PlaybackSession releasePlayerReservation(UUID playerUuid) {
+        PlaybackSession session = this.sessionRegistry.findReservation(playerUuid);
+        if (session == null) {
+            return null;
+        }
+        PlaybackParticipant partner = session.reservedPartner();
+        if (partner == null || !partner.playerUuid().equals(playerUuid)) {
+            throw new IllegalStateException("Partner reservation does not match its session");
+        }
+        releaseReservedPartner(session);
+        return session;
     }
 
     private ServerPlayer sessionInitiatorPlayer(PlaybackSession session) {
@@ -517,7 +526,7 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
-        for (PlaybackSession session : List.copyOf(this.sessions.values())) {
+        for (PlaybackSession session : List.copyOf(this.sessionRegistry.sessions())) {
             stopIfCurrent(session, reason);
         }
     }
@@ -542,7 +551,7 @@ public class PlaybackManager implements ConfigListener {
 
     public void stopById(String id, PlaybackStopReason reason) {
         this.stressTest.stopById(id);
-        List<PlaybackSession> matchingPlaybacks = this.sessions.values().stream()
+        List<PlaybackSession> matchingPlaybacks = this.sessionRegistry.sessions().stream()
             .filter(session -> session.id().equals(id) || session.animationId().equals(id))
             .toList();
         for (PlaybackSession session : matchingPlaybacks) {
@@ -551,7 +560,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private boolean playbackChanged(PlaybackSession session) {
-        return this.sessions.get(session.sessionId()) != session;
+        return !this.sessionRegistry.contains(session);
     }
 
     private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
@@ -562,17 +571,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private boolean removeSession(PlaybackSession session) {
-        if (!this.sessions.remove(session.sessionId(), session)) {
-            return false;
-        }
-        for (PlaybackParticipant participant : session.participants()) {
-            this.playerSessions.remove(participant.playerUuid(), session.sessionId());
-        }
-        PlaybackParticipant reservedPartner = session.reservedPartner();
-        if (reservedPartner != null) {
-            this.playerSessions.remove(reservedPartner.playerUuid(), session.sessionId());
-        }
-        return true;
+        return this.sessionRegistry.remove(session);
     }
 
     private void cleanupSession(
@@ -641,7 +640,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     int activeDisplayEntityCount() {
-        return this.stressTest.displayEntityCount() + this.sessions.values().stream()
+        return this.stressTest.displayEntityCount() + this.sessionRegistry.sessions().stream()
             .mapToInt(this::displayEntityCount)
             .sum();
     }
