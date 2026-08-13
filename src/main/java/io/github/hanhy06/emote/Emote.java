@@ -16,7 +16,7 @@ import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
@@ -39,7 +39,7 @@ public class Emote implements ModInitializer {
         PermissionService permissionService = new PermissionService();
 
         PlayerSkinManager playerSkinManager = new PlayerSkinManager();
-        PlaybackManager playbackManager = new PlaybackManager(playerSkinManager);
+        PlaybackEngine playbackEngine = new PlaybackEngine(playerSkinManager);
         PlaybackStateService playbackStateService = new PlaybackStateService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
 
@@ -47,23 +47,23 @@ public class Emote implements ModInitializer {
         EmotePlayService playService = new EmotePlayService(
             emoteRegistry,
             permissionService,
-            playbackManager,
+            playbackEngine,
             apiEvents
         );
-        IdlePlaybackService idlePlaybackService = new IdlePlaybackService(permissionService, playService, playbackManager);
+        IdlePlaybackService idlePlaybackService = new IdlePlaybackService(permissionService, playService, playbackEngine);
 
         EmoteMenu emoteMenu = new EmoteMenu(
             configManager,
             emoteRegistry,
             playableEmoteService,
-            playbackManager
+            playbackEngine
         );
         WheelSyncService wheelSyncService = new WheelSyncService(playableEmoteService);
 
         new EmoteApiImpl(
             emoteRegistry,
             playService,
-            playbackManager,
+            playbackEngine,
             apiEvents,
             wheelSyncService,
             new AnimationServerPreparer()
@@ -72,27 +72,27 @@ public class Emote implements ModInitializer {
             configManager,
             emoteRegistry,
             new AnimationDirectoryLoader(),
-            playbackManager,
+            playbackEngine,
             wheelSyncService
         );
 
         ServerLifecycle serverLifecycle = new ServerLifecycle(
             playerSkinManager,
             emoteRegistry,
-            playbackManager,
+            playbackEngine,
             reloadService,
             wheelSyncService,
             idlePlaybackService
         );
         UserCommand userCommand = new UserCommand(
-            playbackManager,
+            playbackEngine,
             emoteMenu,
             playableEmoteService,
             playService
         );
         AdminCommand adminCommand = new AdminCommand(
             emoteRegistry,
-            playbackManager,
+            playbackEngine,
             permissionService,
             reloadService,
             configManager
@@ -102,11 +102,11 @@ public class Emote implements ModInitializer {
         configManager.addAccessConfigListener(permissionService);
         configManager.addAccessConfigListener(idlePlaybackService);
         configManager.addListener(playerSkinManager);
-        configManager.addListener(playbackManager);
+        configManager.addListener(playbackEngine);
 
-        playbackManager.addStateListener(playbackStateService);
-        playbackManager.addStateListener(apiEvents);
-        playbackManager.registerVisibilityService();
+        playbackEngine.addStateListener(playbackStateService);
+        playbackEngine.addStateListener(apiEvents);
+        playbackEngine.registerVisibilityService();
 
         PayloadRegistry.register();
         serverLifecycle.register();

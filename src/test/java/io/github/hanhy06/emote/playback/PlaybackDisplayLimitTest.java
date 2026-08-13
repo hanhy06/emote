@@ -12,14 +12,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PlaybackDisplayLimitTest {
     @Test
     void rejectsPlaybackOnlyWhenProjectedPartsExceedPositiveLimit() {
-        assertFalse(PlaybackManager.exceedsDisplayEntityLimit(512, 512));
-        assertTrue(PlaybackManager.exceedsDisplayEntityLimit(513, 512));
-        assertFalse(PlaybackManager.exceedsDisplayEntityLimit(10_000, 0));
+        assertFalse(PlaybackEngine.exceedsDisplayEntityLimit(512, 512));
+        assertTrue(PlaybackEngine.exceedsDisplayEntityLimit(513, 512));
+        assertFalse(PlaybackEngine.exceedsDisplayEntityLimit(10_000, 0));
     }
 
     @Test
     void replacesCurrentPlaybackPartsBeforeCheckingRequestedParts() {
-        assertEquals(500, PlaybackManager.projectedDisplayEntityCount(480, 80, 100));
+        assertEquals(500, PlaybackEngine.projectedDisplayEntityCount(480, 80, 100));
     }
 
     @Test
@@ -34,11 +34,11 @@ class PlaybackDisplayLimitTest {
             false
         );
 
-        assertTrue(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
-        assertTrue(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
-        assertTrue(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
-        assertFalse(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
-        assertFalse(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
-        assertFalse(PlaybackManager.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
+        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.JUMPED));
+        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MOUNTED));
+        assertTrue(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.ATTACKED));
+        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.DAMAGED));
+        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
+        assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
     }
 }

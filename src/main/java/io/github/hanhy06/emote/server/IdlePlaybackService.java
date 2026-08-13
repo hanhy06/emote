@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
@@ -33,12 +33,12 @@ public final class IdlePlaybackService implements AccessConfigListener {
     public IdlePlaybackService(
         PermissionService permissionService,
         EmotePlayService playService,
-        PlaybackManager playbackManager
+        PlaybackEngine playbackEngine
     ) {
         this(
             permissionService::findIdleSettings,
             (player, id) -> playService.play(player, id, PlaySource.IDLE),
-            player -> playbackManager.findActive(player.getUUID()) != null,
+            player -> playbackEngine.findActive(player.getUUID()) != null,
             Util::getMillis,
             RandomGenerator.getDefault()
         );

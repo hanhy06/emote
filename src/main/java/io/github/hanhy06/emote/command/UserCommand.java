@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -22,18 +22,18 @@ import net.minecraft.world.entity.Entity;
 import java.util.List;
 
 public final class UserCommand {
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
     private final EmoteMenu menu;
     private final EmoteQueryService emoteQueryService;
     private final EmotePlayService playService;
 
     public UserCommand(
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         EmoteMenu menu,
         EmoteQueryService emoteQueryService,
         EmotePlayService playService
     ) {
-        this.playbackManager = playbackManager;
+        this.playbackEngine = playbackEngine;
         this.menu = menu;
         this.emoteQueryService = emoteQueryService;
         this.playService = playService;
@@ -140,7 +140,7 @@ public final class UserCommand {
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        PlaybackSession session = this.playbackManager.stop(player);
+        PlaybackSession session = this.playbackEngine.stop(player);
         if (session == null) {
             source.sendFailure(Component.literal("No active emote."));
             return 0;

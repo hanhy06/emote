@@ -20,8 +20,7 @@ public final class PlaybackSession {
     private final String id;
     private final String animationId;
     private final PlaybackNodes nodes;
-    private TimelinePlayer timeline;
-    private EventPlayer events;
+    private PlaybackTrack track;
     private final EmotePlayerBehavior playerBehavior;
     private final @Nullable PreparedSequence collaborativeSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
@@ -36,8 +35,7 @@ public final class PlaybackSession {
         String id,
         String animationId,
         PlaybackNodes nodes,
-        TimelinePlayer timeline,
-        EventPlayer events,
+        PlaybackTrack track,
         EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator,
         @Nullable PreparedSequence collaborativeSequence
@@ -47,8 +45,7 @@ public final class PlaybackSession {
         this.id = Objects.requireNonNull(id, "id");
         this.animationId = Objects.requireNonNull(animationId, "animationId");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
-        this.timeline = Objects.requireNonNull(timeline, "timeline");
-        this.events = Objects.requireNonNull(events, "events");
+        this.track = Objects.requireNonNull(track, "track");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
         this.collaborativeSequence = collaborativeSequence;
         this.state = collaborativeSequence == null ? State.SOLO : State.OFFERING;
@@ -86,12 +83,8 @@ public final class PlaybackSession {
         return this.nodes;
     }
 
-    public TimelinePlayer timeline() {
-        return this.timeline;
-    }
-
-    public EventPlayer events() {
-        return this.events;
+    public PlaybackTrack track() {
+        return this.track;
     }
 
     public EmotePlayerBehavior playerBehavior() {
@@ -158,14 +151,14 @@ public final class PlaybackSession {
         return this.reservedPartner;
     }
 
-    PlaybackParticipant activateReservedPartner(TimelinePlayer timeline, EventPlayer events) {
+    PlaybackParticipant activateReservedPartner(PlaybackTrack track) {
         if (this.state != State.OFFERING && this.state != State.WAITING) {
             throw new IllegalStateException("Session cannot activate a partner in state " + this.state);
         }
         PlaybackParticipant participant = Objects.requireNonNull(this.reservedPartner, "reservedPartner");
         this.reservedPartner = null;
         addParticipant(participant);
-        replacePlayback(timeline, events, State.MATCHED);
+        replaceTrack(track, State.MATCHED);
         return participant;
     }
 
@@ -175,16 +168,15 @@ public final class PlaybackSession {
         return participant;
     }
 
-    void beginTimeout(TimelinePlayer timeline, EventPlayer events) {
+    void beginTimeout(PlaybackTrack track) {
         if (this.state != State.WAITING || this.reservedPartner != null) {
             throw new IllegalStateException("Only an unreserved waiting session can time out");
         }
-        replacePlayback(timeline, events, State.TIMEOUT);
+        replaceTrack(track, State.TIMEOUT);
     }
 
-    private void replacePlayback(TimelinePlayer timeline, EventPlayer events, State state) {
-        this.timeline = Objects.requireNonNull(timeline, "timeline");
-        this.events = Objects.requireNonNull(events, "events");
+    private void replaceTrack(PlaybackTrack track, State state) {
+        this.track = Objects.requireNonNull(track, "track");
         this.state = Objects.requireNonNull(state, "state");
     }
 

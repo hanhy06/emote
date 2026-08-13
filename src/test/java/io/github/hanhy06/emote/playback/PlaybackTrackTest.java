@@ -15,13 +15,13 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class PlaybackManagerEventDispatchTest {
+class PlaybackTrackTest {
     @Test
     void startsTickZeroEventAtTimelineStart() {
         PlaybackFixture fixture = fixture(4, EmoteAnimation.LoopMode.LOOP, 0);
-        fixture.timeline().start();
+        fixture.track().timeline().start();
 
-        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+        fixture.track().startEvents();
 
         assertEquals(List.of("start", "tick-0"), fixture.executed());
     }
@@ -29,9 +29,9 @@ class PlaybackManagerEventDispatchTest {
     @Test
     void skipsTickZeroEventWhenServerSynchronizedTimelineStartsMidCycle() {
         PlaybackFixture fixture = fixture(4, EmoteAnimation.LoopMode.SERVER_SYNC, 0);
-        fixture.timeline().startSynchronized(2L);
+        fixture.track().timeline().startSynchronized(2L);
 
-        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+        fixture.track().startEvents();
 
         assertEquals(List.of("start"), fixture.executed());
     }
@@ -39,12 +39,12 @@ class PlaybackManagerEventDispatchTest {
     @Test
     void runsTickZeroEventOnceAfterDelayedLoopRestart() {
         PlaybackFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 2);
-        fixture.timeline().start();
-        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+        fixture.track().timeline().start();
+        fixture.track().startEvents();
 
-        PlaybackManager.advanceTimeline(fixture.timeline(), fixture.events());
-        PlaybackManager.advanceTimeline(fixture.timeline(), fixture.events());
-        PlaybackManager.advanceTimeline(fixture.timeline(), fixture.events());
+        fixture.track().advance();
+        fixture.track().advance();
+        fixture.track().advance();
 
         assertEquals(List.of("start", "tick-0", "loop", "tick-0"), fixture.executed());
     }
@@ -52,10 +52,10 @@ class PlaybackManagerEventDispatchTest {
     @Test
     void runsTickZeroEventOnceAfterImmediateLoopRestart() {
         PlaybackFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 0);
-        fixture.timeline().start();
-        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+        fixture.track().timeline().start();
+        fixture.track().startEvents();
 
-        PlaybackManager.advanceTimeline(fixture.timeline(), fixture.events());
+        fixture.track().advance();
 
         assertEquals(List.of("start", "tick-0", "loop", "tick-0"), fixture.executed());
     }
@@ -63,14 +63,10 @@ class PlaybackManagerEventDispatchTest {
     @Test
     void canHoldAtLoopBoundaryForSequenceRepeatCounting() {
         PlaybackFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 0);
-        fixture.timeline().start();
-        PlaybackManager.startEvents(fixture.timeline(), fixture.events());
+        fixture.track().timeline().start();
+        fixture.track().startEvents();
 
-        TimelinePlayer.AdvanceResult result = PlaybackManager.advanceTimeline(
-            fixture.timeline(),
-            fixture.events(),
-            false
-        );
+        TimelinePlayer.AdvanceResult result = fixture.track().advance(false);
 
         assertEquals(TimelinePlayer.AdvanceResult.LOOP_BOUNDARY, result);
         assertEquals(List.of("start", "tick-0", "loop"), fixture.executed());
@@ -81,7 +77,7 @@ class PlaybackManagerEventDispatchTest {
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
         TimelinePlayer timeline = new TimelinePlayer(animation, new EmptyTimelineTarget());
         EventPlayer events = new EventPlayer(animation, event -> executed.addAll(event.commands()));
-        return new PlaybackFixture(timeline, events, executed);
+        return new PlaybackFixture(new PlaybackTrack(timeline, events), executed);
     }
 
     private EmoteAnimation animation(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
@@ -113,7 +109,7 @@ class PlaybackManagerEventDispatchTest {
         return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands());
     }
 
-    private record PlaybackFixture(TimelinePlayer timeline, EventPlayer events, List<String> executed) {
+    private record PlaybackFixture(PlaybackTrack track, List<String> executed) {
     }
 
     private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {

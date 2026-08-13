@@ -10,7 +10,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.resources.Identifier;
@@ -25,7 +25,7 @@ import java.util.UUID;
 public final class EmoteApiImpl extends EmoteApi {
     private final EmoteCatalog emoteRegistry;
     private final EmotePlayService playService;
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
     private final WheelSyncService wheelSyncService;
     private final AnimationServerPreparer animationValidator;
@@ -33,14 +33,14 @@ public final class EmoteApiImpl extends EmoteApi {
     public EmoteApiImpl(
         EmoteCatalog emoteRegistry,
         EmotePlayService playService,
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
         WheelSyncService wheelSyncService,
         AnimationServerPreparer animationValidator
     ) {
         this.emoteRegistry = Objects.requireNonNull(emoteRegistry, "emoteRegistry");
         this.playService = Objects.requireNonNull(playService, "playService");
-        this.playbackManager = Objects.requireNonNull(playbackManager, "playbackManager");
+        this.playbackEngine = Objects.requireNonNull(playbackEngine, "playbackEngine");
         this.events = Objects.requireNonNull(events, "events");
         this.wheelSyncService = Objects.requireNonNull(wheelSyncService, "wheelSyncService");
         this.animationValidator = Objects.requireNonNull(animationValidator, "animationValidator");
@@ -58,7 +58,7 @@ public final class EmoteApiImpl extends EmoteApi {
     public boolean stop(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
         requireServerThread();
-        return this.playbackManager.stop(player, PlaybackStopReason.MANUAL) != null;
+        return this.playbackEngine.stop(player, PlaybackStopReason.MANUAL) != null;
     }
 
     @Override
@@ -94,7 +94,7 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
-        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
         if (session == null) {
             return Optional.empty();
         }
@@ -146,7 +146,7 @@ public final class EmoteApiImpl extends EmoteApi {
             if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
-            EmoteApiImpl.this.playbackManager.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
+            EmoteApiImpl.this.playbackEngine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);
             EmoteApiImpl.this.wheelSyncService.syncAll();
             return true;
         }

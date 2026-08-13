@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -26,14 +26,14 @@ public class EmotePlayService {
     public EmotePlayService(
         EmoteCatalog emoteRegistry,
         PermissionService permissionService,
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         ApiEventDispatcher apiEvents
     ) {
         this(
             emoteRegistry,
             (player, emote) -> permissionService.canPlay(player, emote.id()),
             permissionService::canBypass,
-            playbackManager::start,
+            playbackEngine::start,
             apiEvents::beforePlay,
             ServerPlayer::getUUID,
             player -> player.level().getGameTime()

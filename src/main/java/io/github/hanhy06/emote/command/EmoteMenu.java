@@ -7,7 +7,7 @@ import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.application.EmoteQueryService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackSession;
 import net.minecraft.core.Holder;
 import net.minecraft.network.chat.ClickEvent;
@@ -37,18 +37,18 @@ public final class EmoteMenu {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteRegistry;
     private final EmoteQueryService playableEmoteService;
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
 
     public EmoteMenu(
         ConfigManager configManager,
         EmoteCatalog emoteRegistry,
         EmoteQueryService playableEmoteService,
-        PlaybackManager playbackManager
+        PlaybackEngine playbackEngine
     ) {
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.playableEmoteService = playableEmoteService;
-        this.playbackManager = playbackManager;
+        this.playbackEngine = playbackEngine;
     }
 
     public void open(ServerPlayer player, int pageNumber) {
@@ -188,7 +188,7 @@ public final class EmoteMenu {
             return "No emotes.";
         }
 
-        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
         String activeEmoteText = session == null
             ? ""
             : createActivePlaybackText(session);

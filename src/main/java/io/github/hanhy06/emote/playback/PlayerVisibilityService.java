@@ -28,10 +28,10 @@ final class PlayerVisibilityService {
         .map(slot -> Pair.of(slot, ItemStack.EMPTY))
         .toList();
 
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
 
-    PlayerVisibilityService(PlaybackManager playbackManager) {
-        this.playbackManager = playbackManager;
+    PlayerVisibilityService(PlaybackEngine playbackEngine) {
+        this.playbackEngine = playbackEngine;
     }
 
     void register() {
@@ -69,7 +69,7 @@ final class PlayerVisibilityService {
         if (!(entity instanceof ServerPlayer emotePlayer)) {
             return;
         }
-        PlaybackSession session = this.playbackManager.findActive(emotePlayer.getUUID());
+        PlaybackSession session = this.playbackEngine.findActive(emotePlayer.getUUID());
         if (session != null && session.playerBehavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
@@ -79,7 +79,7 @@ final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        PlaybackSession session = this.playbackManager.findActive(player.getUUID());
+        PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
         if (session != null && session.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }

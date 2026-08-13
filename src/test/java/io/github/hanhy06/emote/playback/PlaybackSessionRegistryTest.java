@@ -45,7 +45,7 @@ class PlaybackSessionRegistryTest {
         assertNull(registry.findParticipant(partner.playerUuid()));
         assertSame(session, registry.findReservation(partner.playerUuid()));
 
-        session.activateReservedPartner(timeline(emote), events(emote));
+        session.activateReservedPartner(new PlaybackTrack(timeline(emote), events(emote)));
         registry.activatePartner(session, partner.playerUuid());
 
         assertSame(session, registry.findParticipant(partner.playerUuid()));
@@ -91,8 +91,7 @@ class PlaybackSessionRegistryTest {
             sequence.id(),
             emote.id(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
-            timeline(emote),
-            events(emote),
+            new PlaybackTrack(timeline(emote), events(emote)),
             EmotePlayerBehavior.createDefault(),
             participant(ParticipantRole.INITIATOR),
             sequence

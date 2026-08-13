@@ -9,36 +9,36 @@ import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.network.WheelSyncService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 
 public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteRegistry;
     private final DirectoryContentsLoader directoryLoader;
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
     private final WheelSyncService wheelSyncService;
 
     public ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteRegistry,
         AnimationDirectoryLoader directoryLoader,
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
-        this(configManager, emoteRegistry, directoryLoader::load, playbackManager, wheelSyncService);
+        this(configManager, emoteRegistry, directoryLoader::load, playbackEngine, wheelSyncService);
     }
 
     ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteRegistry,
         DirectoryContentsLoader directoryLoader,
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
         this.configManager = configManager;
         this.emoteRegistry = emoteRegistry;
         this.directoryLoader = directoryLoader;
-        this.playbackManager = playbackManager;
+        this.playbackEngine = playbackEngine;
         this.wheelSyncService = wheelSyncService;
     }
 
@@ -57,7 +57,7 @@ public final class ReloadService {
     }
 
     private int reloadLoadedConfig() {
-        this.playbackManager.stopAll(PlaybackStopReason.RELOAD);
+        this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
         int emoteCount = reloadRegistry();
         this.wheelSyncService.syncAll();
         Emote.LOGGER.info("reload emotes={}", emoteCount);

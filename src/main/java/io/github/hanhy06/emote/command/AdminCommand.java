@@ -8,7 +8,7 @@ import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackStressTestReport;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -22,25 +22,25 @@ import net.minecraft.network.chat.Component;
 import java.util.List;
 import java.util.Locale;
 
-import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_STRESS_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteRegistry;
-    private final PlaybackManager playbackManager;
+    private final PlaybackEngine playbackEngine;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
 
     public AdminCommand(
         EmoteCatalog emoteRegistry,
-        PlaybackManager playbackManager,
+        PlaybackEngine playbackEngine,
         PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager
     ) {
         this.emoteRegistry = emoteRegistry;
-        this.playbackManager = playbackManager;
+        this.playbackEngine = playbackEngine;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
@@ -193,7 +193,7 @@ public final class AdminCommand {
     }
 
     private int stopAll(CommandSourceStack source) {
-        this.playbackManager.stopAll();
+        this.playbackEngine.stopAll();
         source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
         return 1;
     }
@@ -207,7 +207,7 @@ public final class AdminCommand {
 
         int instanceCount;
         try {
-            instanceCount = this.playbackManager.startStressTest(
+            instanceCount = this.playbackEngine.startStressTest(
                 source.getLevel(),
                 source.getPosition(),
                 source.getRotation().y,
@@ -233,7 +233,7 @@ public final class AdminCommand {
     }
 
     private int stopStressTest(CommandSourceStack source) {
-        PlaybackStressTestReport report = this.playbackManager.stopStressTest();
+        PlaybackStressTestReport report = this.playbackEngine.stopStressTest();
         if (report == null) {
             source.sendFailure(Component.literal("No emote stress test is running."));
             return 0;
@@ -301,7 +301,7 @@ public final class AdminCommand {
             return 0;
         }
         if (!enabled) {
-            this.playbackManager.stopById(id);
+            this.playbackEngine.stopById(id);
         }
 
         ReloadResult reloadResult = this.reloadService.reloadFromCommand();

@@ -22,7 +22,7 @@ import org.jspecify.annotations.Nullable;
 import java.util.*;
 import java.util.random.RandomGenerator;
 
-public class PlaybackManager implements ConfigListener {
+public class PlaybackEngine implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
     private final PlaybackSessionRegistry sessionRegistry = new PlaybackSessionRegistry();
@@ -37,7 +37,7 @@ public class PlaybackManager implements ConfigListener {
     private final RandomGenerator random = RandomGenerator.getDefault();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
-    public PlaybackManager(PlayerSkinManager playerSkinManager) {
+    public PlaybackEngine(PlayerSkinManager playerSkinManager) {
         this.playerSkinManager = playerSkinManager;
         this.playerVisibilityService = new PlayerVisibilityService(this);
         this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
@@ -228,15 +228,14 @@ public class PlaybackManager implements ConfigListener {
                 playbackId,
                 emote.id(),
                 nodes,
-                timeline,
-                events,
+                new PlaybackTrack(timeline, events),
                 playerBehavior,
                 initiator,
                 collaborativeSequence
             );
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
-            startEvents(timeline, events);
+            session.track().startEvents();
             if (playbackChanged(session)) {
                 return PlayResult.SUCCESS;
             }
@@ -340,7 +339,7 @@ public class PlaybackManager implements ConfigListener {
             }
             if (stopReason == null) {
                 try {
-                    session.timeline().restoreDeferredVisibility();
+                    session.track().timeline().restoreDeferredVisibility();
                     if (session.state() == PlaybackSession.State.SOLO) {
                         this.entityController.updateViewRotation(session.nodes(), player.getYRot());
                     }
@@ -352,7 +351,7 @@ public class PlaybackManager implements ConfigListener {
                             activateTimeout(session);
                         }
                     } else {
-                        TimelinePlayer.AdvanceResult result = advanceTimeline(session.timeline(), session.events());
+                        TimelinePlayer.AdvanceResult result = session.track().advance();
                         if (playbackChanged(session)) {
                             continue;
                         }
@@ -412,11 +411,11 @@ public class PlaybackManager implements ConfigListener {
 
         PreparedSequence sequence = session.collaborativeSequence();
         PreparedEmote matched = sequence.compileMatchedRandom(this.random);
-        BranchPlayback playback = createBranchPlayback(session, matched);
-        PlaybackParticipant partner = session.activateReservedPartner(playback.timeline(), playback.events());
+        PlaybackTrack track = createBranchTrack(session, matched);
+        PlaybackParticipant partner = session.activateReservedPartner(track);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
-        startEvents(playback.timeline(), playback.events());
+        track.startEvents();
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
@@ -427,19 +426,19 @@ public class PlaybackManager implements ConfigListener {
     private void activateTimeout(PlaybackSession session) {
         PreparedSequence sequence = session.collaborativeSequence();
         PreparedEmote timeout = sequence.compileTimeoutRandom(this.random);
-        BranchPlayback playback = createBranchPlayback(session, timeout);
-        session.beginTimeout(playback.timeline(), playback.events());
-        startEvents(playback.timeline(), playback.events());
+        PlaybackTrack track = createBranchTrack(session, timeout);
+        session.beginTimeout(track);
+        track.startEvents();
     }
 
-    private BranchPlayback createBranchPlayback(PlaybackSession session, PreparedEmote emote) {
+    private PlaybackTrack createBranchTrack(PlaybackSession session, PreparedEmote emote) {
         TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), session.nodes(), this.entityController);
         timeline.start();
         EventPlayer events = new EventPlayer(
             emote.playbackPlan(),
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
-        return new BranchPlayback(timeline, events);
+        return new PlaybackTrack(timeline, events);
     }
 
     private void releaseReservedPartner(PlaybackSession session) {
@@ -468,39 +467,6 @@ public class PlaybackManager implements ConfigListener {
             throw new IllegalStateException("Initiator is unavailable");
         }
         return initiator;
-    }
-
-    static void startEvents(TimelinePlayer timeline, EventPlayer events) {
-        events.start();
-        if (timeline.currentTick() == 0) {
-            events.timelineTick(0);
-        }
-    }
-
-    static TimelinePlayer.AdvanceResult advanceTimeline(TimelinePlayer timeline, EventPlayer events) {
-        return advanceTimeline(timeline, events, true);
-    }
-
-    static TimelinePlayer.AdvanceResult advanceTimeline(
-        TimelinePlayer timeline,
-        EventPlayer events,
-        boolean continueAfterLoopBoundary
-    ) {
-        int previousTick = timeline.currentTick();
-        TimelinePlayer.AdvanceResult result = timeline.advance();
-        if (result != TimelinePlayer.AdvanceResult.RESTARTED && timeline.currentTick() != previousTick) {
-            events.timelineTick(timeline.currentTick());
-        }
-        if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
-            events.loop();
-            if (continueAfterLoopBoundary) {
-                result = timeline.continueAfterLoopEvent();
-            }
-        }
-        if (result == TimelinePlayer.AdvanceResult.RESTARTED) {
-            events.timelineTick(0);
-        }
-        return result;
     }
 
     public void stopAll() {
@@ -580,7 +546,7 @@ public class PlaybackManager implements ConfigListener {
             }
         } finally {
             try {
-                session.events().stop();
+                session.track().stop();
             } catch (RuntimeException exception) {
                 Emote.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
             } finally {
@@ -648,6 +614,4 @@ public class PlaybackManager implements ConfigListener {
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {
     }
 
-    private record BranchPlayback(TimelinePlayer timeline, EventPlayer events) {
-    }
 }

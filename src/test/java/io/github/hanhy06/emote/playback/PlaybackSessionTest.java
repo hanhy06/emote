@@ -54,11 +54,11 @@ class PlaybackSessionTest {
 
         TimelinePlayer timeoutTimeline = timeline(fixture.offer());
         EventPlayer timeoutEvents = events(fixture.offer());
-        session.beginTimeout(timeoutTimeline, timeoutEvents);
+        session.beginTimeout(new PlaybackTrack(timeoutTimeline, timeoutEvents));
 
         assertEquals(PlaybackSession.State.TIMEOUT, session.state());
-        assertSame(timeoutTimeline, session.timeline());
-        assertSame(timeoutEvents, session.events());
+        assertSame(timeoutTimeline, session.track().timeline());
+        assertSame(timeoutEvents, session.track().events());
         assertFalse(session.acceptsPartner());
     }
 
@@ -71,14 +71,14 @@ class PlaybackSessionTest {
         EventPlayer matchedEvents = events(fixture.offer());
 
         session.reservePartner(partner);
-        PlaybackParticipant activated = session.activateReservedPartner(matchedTimeline, matchedEvents);
+        PlaybackParticipant activated = session.activateReservedPartner(new PlaybackTrack(matchedTimeline, matchedEvents));
 
         assertSame(partner, activated);
         assertSame(partner, session.participant(partner.playerUuid()));
         assertNull(session.reservedPartner());
         assertEquals(PlaybackSession.State.MATCHED, session.state());
-        assertSame(matchedTimeline, session.timeline());
-        assertSame(matchedEvents, session.events());
+        assertSame(matchedTimeline, session.track().timeline());
+        assertSame(matchedEvents, session.track().events());
     }
 
     @Test
@@ -126,8 +126,7 @@ class PlaybackSessionTest {
             sequence.id(),
             offer.id(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
-            timeline(offer),
-            events(offer),
+            new PlaybackTrack(timeline(offer), events(offer)),
             sequence.playerBehavior(),
             participant(ParticipantRole.INITIATOR),
             sequence
