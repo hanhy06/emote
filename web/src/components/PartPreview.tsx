@@ -100,17 +100,18 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
     const bounds = new THREE.Box3().setFromObject(partGroup);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
-    const initialPosition = center.clone().add(new THREE.Vector3(size * 4.3, size * 1.9, size * 5));
+    const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
+    const initialPosition = initialTarget.clone().add(new THREE.Vector3(size * 4.3, size * 1.9, size * 5));
     const previousCamera = cameraStateRef.current;
     if (previousCamera) {
       controls.target.copy(previousCamera.target);
       camera.position.copy(previousCamera.position);
     } else {
-      controls.target.copy(center);
+      controls.target.copy(initialTarget);
       camera.position.copy(initialPosition);
     }
     resetViewRef.current = () => {
-      controls.target.copy(center);
+      controls.target.copy(initialTarget);
       camera.position.copy(initialPosition);
       camera.up.set(0, 1, 0);
       controls.update();
