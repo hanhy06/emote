@@ -18,6 +18,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.random.RandomGenerator;
 
 public class PlaybackManager implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
@@ -29,6 +30,7 @@ public class PlaybackManager implements ConfigListener {
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
+    private final RandomGenerator random = RandomGenerator.getDefault();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
     public PlaybackManager(PlayerSkinManager playerSkinManager) {
@@ -93,7 +95,7 @@ public class PlaybackManager implements ConfigListener {
     }
 
     private PlayResult start(ServerPlayer player, RegisteredSequence sequence) {
-        RegisteredEmote animation = sequence.compiledAnimation();
+        RegisteredEmote animation = sequence.compileRandom(this.random);
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(this.activePlaybacks.get(player.getUUID())),

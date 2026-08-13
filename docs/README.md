@@ -168,7 +168,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
   },
   "steps": [
     {"emote": "example:sit_down"},
-    {"emote": "example:sit_idle", "repeat": 3},
+    {"emote": ["example:sit_idle_1", "example:sit_idle_2", "example:sit_idle_3"], "repeat": 3},
     {"emote": "example:stand_up"}
   ]
 }
@@ -176,6 +176,7 @@ A sequence is a playable emote that runs existing animations in order. Put it an
 
 - `steps` must contain at least one animation.
 - `repeat` is optional and defaults to `1`. It counts complete animation cycles, including cycles of a looping animation.
+- `emote` accepts either one animation ID or a non-empty list. Lists select a random candidate for every repeat and exclude the immediately previous candidate when alternatives are available.
 - Sequences may reference animations but not other sequences.
 - Referenced animations must be loaded and enabled.
 - `player` uses the same format as animation files and controls player visibility and stop conditions for the entire sequence.

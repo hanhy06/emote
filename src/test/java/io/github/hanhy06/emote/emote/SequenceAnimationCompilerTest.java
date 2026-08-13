@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -171,6 +172,61 @@ class SequenceAnimationCompilerTest {
         );
 
         assertEquals(2, sequence.durationTicks());
+    }
+
+    @Test
+    void randomCandidatesDoNotRepeatConsecutively() {
+        RegisteredEmote first = animation(
+            "demo:first",
+            1,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY))
+        );
+        RegisteredEmote second = animation(
+            "demo:second",
+            1,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY))
+        );
+        RegisteredEmote third = animation(
+            "demo:third",
+            1,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            List.of(),
+            EmoteAnimation.Events.empty(),
+            Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY))
+        );
+        EmoteSequence source = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("demo:sequence"),
+            new EmoteSequence.Metadata("Sequence", "Random sequence"),
+            EmoteAnimation.PlayerBehavior.createDefault(),
+            List.of(new EmoteSequence.Step(List.of(
+                Identifier.parse(first.id()),
+                Identifier.parse(second.id()),
+                Identifier.parse(third.id())
+            ), 20))
+        );
+        RegisteredSequence sequence = RegisteredSequence.resolve(
+            source,
+            Map.of(first.id(), first, second.id(), second, third.id(), third)
+        );
+
+        List<String> selectedIds = sequence.selectSteps(new Random(7L)).stream()
+            .map(step -> step.animation().id())
+            .toList();
+
+        assertEquals(20, selectedIds.size());
+        for (int index = 1; index < selectedIds.size(); index++) {
+            org.junit.jupiter.api.Assertions.assertNotEquals(selectedIds.get(index - 1), selectedIds.get(index));
+        }
     }
 
     private static EmoteSequence sequence(EmoteSequence.Step... steps) {

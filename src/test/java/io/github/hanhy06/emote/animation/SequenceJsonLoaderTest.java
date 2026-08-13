@@ -7,6 +7,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -49,6 +50,42 @@ class SequenceJsonLoaderTest {
         assertEquals(true, sequence.player().stopConditions().damage());
         assertEquals(1, sequence.steps().get(0).repeat());
         assertEquals(3, sequence.steps().get(1).repeat());
+    }
+
+    @Test
+    void loadsRandomEmoteCandidates(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("random-idle.json");
+        Files.writeString(path, """
+            {
+              "type": "sequence",
+              "schema_version": 1,
+              "id": "example:random_idle",
+              "metadata": {"name": "Random Idle", "description": ""},
+              "player": {
+                "hidden": true,
+                "stop_conditions": {
+                  "movement_distance": 0.1,
+                  "jump": true,
+                  "submerge": true,
+                  "ride": true,
+                  "damage": true,
+                  "attack": true,
+                  "game_mode_change": true
+                }
+              },
+              "steps": [
+                {"emote": ["example:idle_1", "example:idle_2", "example:idle_3"], "repeat": 4}
+              ]
+            }
+            """);
+
+        EmoteSequence.Step step = this.loader.load(path).steps().getFirst();
+
+        assertEquals(
+            List.of("example:idle_1", "example:idle_2", "example:idle_3"),
+            step.emoteIds().stream().map(Object::toString).toList()
+        );
+        assertEquals(4, step.repeat());
     }
 
     @Test

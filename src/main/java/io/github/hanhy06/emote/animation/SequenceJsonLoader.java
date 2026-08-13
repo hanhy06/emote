@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.animation;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
@@ -74,16 +75,46 @@ public final class SequenceJsonLoader {
         for (int index = 0; index < stepsArray.size(); index++) {
             String path = "$.steps[" + index + "]";
             JsonObject stepObject = reader.requireObject(stepsArray.get(index), path);
-            Identifier emoteId = parseId(reader.requireString(stepObject, "emote", path), path + ".emote", reader);
+            List<Identifier> emoteIds = readEmoteIds(stepObject, path, reader);
             int repeat = stepObject.has("repeat")
                 ? reader.requireInt(stepObject, "repeat", path)
                 : 1;
             if (repeat < 1) {
                 throw reader.error(path + ".repeat", "must be at least 1");
             }
-            steps.add(new EmoteSequence.Step(emoteId, repeat));
+            steps.add(new EmoteSequence.Step(emoteIds, repeat));
         }
         return new EmoteSequence(sourcePath, id, metadata, player, steps);
+    }
+
+    private List<Identifier> readEmoteIds(JsonObject stepObject, String path, AnimationJsonReader reader)
+        throws EmoteAnimationLoadException {
+        JsonElement element = reader.requireElement(stepObject, "emote", path);
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return List.of(parseId(element.getAsString(), path + ".emote", reader));
+        }
+        if (!element.isJsonArray()) {
+            throw reader.error(path + ".emote", "must be a string or a non-empty array of strings");
+        }
+
+        JsonArray array = element.getAsJsonArray();
+        if (array.isEmpty()) {
+            throw reader.error(path + ".emote", "must not be empty");
+        }
+        List<Identifier> emoteIds = new ArrayList<>(array.size());
+        for (int index = 0; index < array.size(); index++) {
+            JsonElement candidate = array.get(index);
+            String candidatePath = path + ".emote[" + index + "]";
+            if (reader.isNotString(candidate)) {
+                throw reader.error(candidatePath, "must be a string");
+            }
+            Identifier emoteId = parseId(candidate.getAsString(), candidatePath, reader);
+            if (emoteIds.contains(emoteId)) {
+                throw reader.error(candidatePath, "must not duplicate an earlier candidate");
+            }
+            emoteIds.add(emoteId);
+        }
+        return emoteIds;
     }
 
     private Identifier parseId(String value, String path, AnimationJsonReader reader)

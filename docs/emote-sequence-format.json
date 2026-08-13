@@ -23,7 +23,11 @@
             "emote": "emote:sit_down"
         },
         {
-            "emote": "emote:sit_idle",
+            "emote": [
+                "emote:sit_idle",
+                "emote:sit_idle_2",
+                "emote:sit_idle_3"
+            ],
             "repeat": 3
         },
         {

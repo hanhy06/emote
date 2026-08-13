@@ -17,38 +17,35 @@ final class SequenceAnimationCompiler {
     private SequenceAnimationCompiler() {
     }
 
-    static RegisteredEmote compile(EmoteSequence sequence, List<RegisteredSequence.Step> steps) {
+    static RegisteredEmote compile(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
         RegisteredEmote first = steps.getFirst().animation();
-        validateCompatibleAnimations(first, steps);
 
         List<EmoteAnimation.Keyframe> keyframes = new ArrayList<>();
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         long offset = 0L;
-        for (RegisteredSequence.Step step : steps) {
+        for (RegisteredSequence.SelectedStep step : steps) {
             EmoteAnimation animation = step.animation().animation();
-            for (int repeat = 0; repeat < step.repeat(); repeat++) {
-                int segmentOffset = requireTick(offset, sequence);
-                keyframes.add(createResetKeyframe(animation, segmentOffset));
-                for (EmoteAnimation.Keyframe keyframe : animation.timeline().keyframes()) {
-                    keyframes.add(new EmoteAnimation.Keyframe(
-                        requireTick(offset + keyframe.tick(), sequence),
-                        keyframe.nodeTransforms(),
-                        keyframe.nodeStates()
-                    ));
-                }
-                for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
-                    timelineEvents.add(new EmoteAnimation.TimelineEvent(
-                        requireTick(offset + event.tick(), sequence),
-                        event.source(),
-                        event.origin(),
-                        event.commands()
-                    ));
-                }
+            int segmentOffset = requireTick(offset, sequence);
+            keyframes.add(createResetKeyframe(animation, segmentOffset));
+            for (EmoteAnimation.Keyframe keyframe : animation.timeline().keyframes()) {
+                keyframes.add(new EmoteAnimation.Keyframe(
+                    requireTick(offset + keyframe.tick(), sequence),
+                    keyframe.nodeTransforms(),
+                    keyframe.nodeStates()
+                ));
+            }
+            for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
+                timelineEvents.add(new EmoteAnimation.TimelineEvent(
+                    requireTick(offset + event.tick(), sequence),
+                    event.source(),
+                    event.origin(),
+                    event.commands()
+                ));
+            }
 
-                offset += animation.timeline().durationTicks();
-                if (repeat + 1 < step.repeat() && animation.timeline().loop() == EmoteAnimation.LoopMode.LOOP) {
-                    offset += animation.timeline().loopDelayTicks();
-                }
+            offset += animation.timeline().durationTicks();
+            if (step.loopDelayAfter() && animation.timeline().loop() == EmoteAnimation.LoopMode.LOOP) {
+                offset += animation.timeline().loopDelayTicks();
             }
         }
 
@@ -75,24 +72,26 @@ final class SequenceAnimationCompiler {
         return new RegisteredEmote(loaded, first.skinParts(), PlaybackPlan.compile(compiledAnimation));
     }
 
-    private static void validateCompatibleAnimations(RegisteredEmote first, List<RegisteredSequence.Step> steps) {
+    static void validateCompatibleAnimations(List<RegisteredSequence.Step> steps) {
+        RegisteredEmote first = steps.getFirst().candidates().getFirst();
         for (RegisteredSequence.Step step : steps) {
-            RegisteredEmote animation = step.animation();
-            if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
-                throw new IllegalArgumentException(
-                    "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
-                );
-            }
-            if (!first.skinParts().equals(animation.skinParts())) {
-                throw new IllegalArgumentException(
-                    "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
-                );
-            }
-            EmoteAnimation.Events events = animation.animation().timeline().events();
-            if (!events.start().isEmpty() || !events.loop().isEmpty() || !events.stop().isEmpty()) {
-                throw new IllegalArgumentException(
-                    "Sequence animation lifecycle events are not supported by compiled sequences: " + animation.id()
-                );
+            for (RegisteredEmote animation : step.candidates()) {
+                if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
+                    throw new IllegalArgumentException(
+                        "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
+                    );
+                }
+                if (!first.skinParts().equals(animation.skinParts())) {
+                    throw new IllegalArgumentException(
+                        "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
+                    );
+                }
+                EmoteAnimation.Events events = animation.animation().timeline().events();
+                if (!events.start().isEmpty() || !events.loop().isEmpty() || !events.stop().isEmpty()) {
+                    throw new IllegalArgumentException(
+                        "Sequence animation lifecycle events are not supported by compiled sequences: " + animation.id()
+                    );
+                }
             }
         }
     }
@@ -146,10 +145,10 @@ final class SequenceAnimationCompiler {
         return (int) tick;
     }
 
-    private static String fingerprint(EmoteSequence sequence, List<RegisteredSequence.Step> steps) {
+    private static String fingerprint(EmoteSequence sequence, List<RegisteredSequence.SelectedStep> steps) {
         StringBuilder input = new StringBuilder(sequence.id().toString());
-        for (RegisteredSequence.Step step : steps) {
-            input.append('|').append(step.animation().source().sha256()).append(':').append(step.repeat());
+        for (RegisteredSequence.SelectedStep step : steps) {
+            input.append('|').append(step.animation().source().sha256()).append(':').append(step.loopDelayAfter());
         }
         try {
             byte[] digest = MessageDigest.getInstance("SHA-256").digest(input.toString().getBytes(StandardCharsets.UTF_8));

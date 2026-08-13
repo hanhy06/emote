@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 
@@ -32,12 +33,25 @@ public record EmoteSequence(
         }
     }
 
-    public record Step(Identifier emoteId, int repeat) {
+    public record Step(List<Identifier> emoteIds, int repeat) {
         public Step {
-            Objects.requireNonNull(emoteId, "emoteId");
+            emoteIds = List.copyOf(emoteIds);
+            if (emoteIds.isEmpty()) {
+                throw new IllegalArgumentException("sequence emote candidates must not be empty");
+            }
+            if (emoteIds.stream().anyMatch(Objects::isNull)) {
+                throw new NullPointerException("emoteIds");
+            }
+            if (new HashSet<>(emoteIds).size() != emoteIds.size()) {
+                throw new IllegalArgumentException("sequence emote candidates must not contain duplicates");
+            }
             if (repeat < 1) {
                 throw new IllegalArgumentException("sequence repeat must be at least 1");
             }
+        }
+
+        public Step(Identifier emoteId, int repeat) {
+            this(List.of(Objects.requireNonNull(emoteId, "emoteId")), repeat);
         }
     }
 }
