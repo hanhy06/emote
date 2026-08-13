@@ -1,11 +1,10 @@
 package io.github.hanhy06.emote.animation;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.emote.EmoteSequence;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 
 import java.io.IOException;
 import java.nio.file.Files;

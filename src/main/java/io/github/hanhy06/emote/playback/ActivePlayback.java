@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.skin.AnimationSkinPart;
 import net.minecraft.resources.ResourceKey;

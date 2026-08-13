@@ -1,10 +1,6 @@
 package io.github.hanhy06.emote.client;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.emote.PlayableEmote;
@@ -12,12 +8,7 @@ import io.github.hanhy06.emote.emote.PlayableEmote;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class WheelShortcutSettings {
     private static final int CURRENT_SCHEMA_VERSION = 1;

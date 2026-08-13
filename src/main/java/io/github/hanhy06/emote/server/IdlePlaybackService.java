@@ -7,8 +7,8 @@ import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.emote.PlayService;
 import io.github.hanhy06.emote.permission.PermissionService;
-import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import io.github.hanhy06.emote.playback.PlaybackManager;
+import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Util;
 
