@@ -23,10 +23,11 @@ export function CommandPanel({ animation, tick, disabled, onAdd, onChange, onRem
         <span className="command-frame">{tick === null ? "Create pose" : `Tick ${tick}`}</span>
       </div>
 
-      {tick === null ? (
-        <p className="command-empty">Select a playback frame above to review or add commands.</p>
-      ) : (
-        <>
+      <div className="command-editor-body">
+        {tick === null ? (
+          <p className="command-empty">Select a playback frame above to review or add commands.</p>
+        ) : (
+          <>
           {commands.length === 0 ? (
             <p className="command-empty">No commands run at this frame.</p>
           ) : (
@@ -56,8 +57,9 @@ export function CommandPanel({ animation, tick, disabled, onAdd, onChange, onRem
             </ul>
           )}
           <button className="command-add" type="button" disabled={disabled} onClick={onAdd}>Add command</button>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </section>
   );
 }
