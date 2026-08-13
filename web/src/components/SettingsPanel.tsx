@@ -29,27 +29,29 @@ export function SettingsPanel({ metadata, disabled, onMetadataChange }: Settings
       <div className="section-heading export-heading">
         <div><span className="step-label">Page 2</span><h2>Metadata, settings &amp; other</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
       </div>
-      <h3>Metadata</h3>
-      <div className="fields">
-        <label>Namespace<input value={metadata.namespace} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
-        <label>Display name<input value={metadata.name} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
-        <label>Description<input value={metadata.description} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
-      </div>
+      <section className="settings-section" aria-labelledby="metadata-heading">
+        <h3 id="metadata-heading">Metadata</h3>
+        <div className="fields">
+          <label>Namespace<input value={metadata.namespace} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
+          <label>Display name<input value={metadata.name} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
+          <label>Description<input value={metadata.description} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
+        </div>
+      </section>
       <AdditionalMetadataEditor value={metadata.additionalMetadata} disabled={disabled} onChange={(additionalMetadata) => onMetadataChange({ ...metadata, additionalMetadata })} />
       <section className="playback-behavior" aria-labelledby="playback-behavior-heading">
         <h3 id="playback-behavior-heading">Settings</h3>
         <p>Minecraft time accepts d, s, t, or bare ticks. Export is normalized to ticks.</p>
-        <div className="fields">
+        <div className="fields settings-selectors">
           <label>Playback mode<select value={metadata.playbackMode} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, playbackMode: event.currentTarget.value as ExportOptions["playbackMode"] })}>
             <option value="source">Source setting</option><option value="once">Play once</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
           </select></label>
           <label>Cooldown<input value={metadata.cooldown ?? "0t"} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, cooldown: event.currentTarget.value })} /></label>
           <label>Loop delay<input value={metadata.loopDelay ?? "0t"} disabled={disabled || metadata.playbackMode === "once"} onChange={(event) => onMetadataChange({ ...metadata, loopDelay: event.currentTarget.value })} /></label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.standalone ?? true} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, standalone: event.currentTarget.checked })} />Standalone animation</label>
-          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
           <label>Movement distance<input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} /></label>
         </div>
-        <div className="fields playback-behavior-options">
+        <div className="fields settings-toggles">
+          <label className="checkbox"><input type="checkbox" checked={metadata.standalone ?? true} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, standalone: event.currentTarget.checked })} />Standalone animation</label>
+          <label className="checkbox"><input type="checkbox" checked={metadata.player.hidden} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, player: { ...metadata.player, hidden: event.currentTarget.checked } })} />Hide original player</label>
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
       </section>

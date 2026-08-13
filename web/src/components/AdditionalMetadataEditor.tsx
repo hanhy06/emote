@@ -11,11 +11,8 @@ export function AdditionalMetadataEditor({ value, disabled, onChange }: Addition
   return (
     <section className="additional-metadata" aria-labelledby="additional-metadata-heading">
       <div className="additional-metadata-heading">
-        <div>
-          <h3 id="additional-metadata-heading">Additional metadata</h3>
-          <p>Custom fields are preserved as JSON and can be added, renamed, changed, or removed.</p>
-        </div>
-        <button type="button" disabled={disabled} onClick={() => onChange(addMetadataEntry(value))}>Add field</button>
+        <h3 id="additional-metadata-heading">Additional metadata</h3>
+        <p>Custom fields are preserved as JSON and can be added, renamed, changed, or removed.</p>
       </div>
       {Object.entries(value).length === 0
         ? <p className="empty-metadata">No additional metadata.</p>
@@ -31,6 +28,7 @@ export function AdditionalMetadataEditor({ value, disabled, onChange }: Addition
             />
           ))}
         </div>}
+      <button className="metadata-add-button" type="button" disabled={disabled} onClick={() => onChange(addMetadataEntry(value))}>Add field</button>
     </section>
   );
 }
