@@ -57,6 +57,51 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(1);
   });
 
+  it("imports Animated Java 1.10 native cube rigs", async () => {
+    const cube = {
+      uuid: "arm_cube",
+      name: "Right Arm",
+      type: "cube",
+      from: [4, 12, -2],
+      to: [8, 24, 2],
+      origin: [0, 0, 0],
+      faces: { north: { uv: [0, 0, 4, 12], texture: "skin_uuid" } },
+    };
+    const input = {
+      name: "unnamed.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 64, height: 64 },
+        elements: [cube, { ...cube, uuid: "arm_layer", name: "Right Arm Layer", inflate: 0.25 }],
+        groups: [
+          { uuid: "waist_uuid", name: "waist", origin: [0, 12, 0], rotation: [0, 0, 0] },
+          { uuid: "arm_uuid", name: "right_arm", origin: [5, 22, 0], rotation: [10, 0, 0] },
+        ],
+        outliner: [{ uuid: "waist_uuid", children: [{ uuid: "arm_uuid", children: ["arm_cube", "arm_layer"] }] }],
+        textures: [{ uuid: "skin_uuid", source: "data:image/png;base64,iVBORw0KGgo=" }],
+        animations: [{
+          name: "wave",
+          loop: "once",
+          length: 0.05,
+          animators: {
+            arm_uuid: { name: "right_arm", type: "bone", keyframes: [projectFrame("rotation", 0, ["0", "0", "0"])] },
+          },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(project.source).toBe("animated_java_json");
+    expect(project.sourceName).toBe("unnamed.ajblueprint");
+    expect(project.nodes.right_arm.type === "item_display" && project.nodes.right_arm.suggestedSkin)
+      .toEqual({ part: "right_arm", order: 0 });
+    expect(project.nodes.right_arm_right_arm_lower.type === "item_display" && project.nodes.right_arm_right_arm_lower.suggestedSkin)
+      .toEqual({ part: "right_arm", order: 1 });
+    expect(project.animations[0].tracks.right_arm_right_arm_lower.transforms)
+      .toEqual(project.animations[0].tracks.right_arm.transforms);
+  });
+
   it("rejects native projects longer than ten minutes before baking transforms", async () => {
     const element = {
       name: "block_display",

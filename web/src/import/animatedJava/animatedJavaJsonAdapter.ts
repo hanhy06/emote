@@ -1,7 +1,7 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
-import { normalizeResourceLocation, parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
+import { normalizeResourceLocation, parseResourceLocation, sanitizeNamespace, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
@@ -9,6 +9,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../types";
 import { ConversionError } from "../errors";
+import { geckoLibBbmodelAdapter } from "../geckoLibBbmodel/geckoLibBbmodelAdapter";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 import {
@@ -16,7 +17,7 @@ import {
   requireAnimatedJavaProject,
   type AjProject,
   type AjProjectAnimation,
-  type AjProjectElement,
+  type AjProjectDisplayElement,
   type AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 
@@ -80,12 +81,16 @@ export const animatedJavaJsonAdapter: ImportAdapter = {
   },
 };
 
-function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
+async function importAnimatedJavaProject(input: ImportInput, project: AjProject): Promise<ImportedProject> {
   if (project.meta.format !== "animated-java:format/blueprint") {
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
   }
   if (!project.meta.format_version.startsWith("1.")) {
     throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
+  }
+  const cubeElements = project.elements.filter((element) => element.type === "cube");
+  if (cubeElements.length > 0 && cubeElements.length === project.elements.length) {
+    return importAnimatedJavaCubeProject(input, project);
   }
   if (project.groups.length > 0 || project.elements.some((element) => !isDirectDisplay(element.type))) {
     throw new ConversionError(
@@ -97,8 +102,9 @@ function importAnimatedJavaProject(input: ImportInput, project: AjProject): Impo
   if (project.elements.length === 0) throw new Error("Animated Java project does not contain display nodes.");
   if (project.animations.length === 0) throw new Error("Animated Java project does not contain animations.");
 
-  const nodes = Object.fromEntries(project.elements.map((element) => [element.uuid, importProjectElement(element)]));
-  const animations = project.animations.map((animation, index) => importProjectAnimation(animation, index, project.elements));
+  const displayElements = project.elements as AjProjectDisplayElement[];
+  const nodes = Object.fromEntries(displayElements.map((element) => [element.uuid, importProjectElement(element)]));
+  const animations = project.animations.map((animation, index) => importProjectAnimation(animation, index, displayElements));
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || "Animated Java";
   return {
     source: "animated_java_json",
@@ -112,6 +118,26 @@ function importAnimatedJavaProject(input: ImportInput, project: AjProject): Impo
   };
 }
 
+async function importAnimatedJavaCubeProject(input: ImportInput, project: AjProject): Promise<ImportedProject> {
+  const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
+  const geckoInput: ImportInput = {
+    name: `${sourceStem}.bbmodel`,
+    bytes: encoder.encode(JSON.stringify({
+      ...project,
+      meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
+      name: project.name?.trim() || sourceStem,
+      geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
+    })),
+  };
+  const imported = await geckoLibBbmodelAdapter.import(geckoInput);
+  return {
+    ...imported,
+    source: "animated_java_json",
+    sourceName: input.name,
+    suggestedMetadata: { name: prettify(sourceStem), description: `${prettify(sourceStem)} emote.` },
+  };
+}
+
 function isDirectDisplay(type: string): boolean {
   return [
     "animated_java:vanilla_block_display",
@@ -120,7 +146,7 @@ function isDirectDisplay(type: string): boolean {
   ].includes(type);
 }
 
-function importProjectElement(element: AjProjectElement): ImportedNode {
+function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
   ensureEmptyProjectConfigs(element);
   const defaultMatrix = composeProjectMatrix(element.position, element.rotation, element.scale, `Animated Java node ${element.name}`);
   if (element.type === "animated_java:vanilla_block_display") {
@@ -151,7 +177,7 @@ function importProjectElement(element: AjProjectElement): ImportedNode {
   };
 }
 
-function ensureEmptyProjectConfigs(element: AjProjectElement): void {
+function ensureEmptyProjectConfigs(element: AjProjectDisplayElement): void {
   const defaults = Object.keys(element.configs?.default ?? {});
   const variants = Object.keys(element.configs?.variants ?? {});
   if (defaults.length || variants.length) {
@@ -166,7 +192,7 @@ function ensureEmptyProjectConfigs(element: AjProjectElement): void {
 function importProjectAnimation(
   animation: AjProjectAnimation,
   animationIndex: number,
-  elements: AjProjectElement[],
+  elements: AjProjectDisplayElement[],
 ): ImportedAnimation {
   if (animation.loop === "hold") throw new Error(`Animated Java animation ${animation.name} uses hold mode, which the emote format cannot represent.`);
   if (animation.loop !== "once" && animation.loop !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);

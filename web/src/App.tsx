@@ -64,7 +64,7 @@ const IMPORT_FORMATS = [
   {
     label: "Animated Java",
     extensions: ".ajblueprint, .json",
-    description: "Imports Animated Java animations and generated resources. Player skin assignment is available only for parts that use player heads.",
+    description: "Imports Animated Java display nodes and native cube rigs, with player-skin assignment for convertible cubes.",
   },
 ] as const;
 
