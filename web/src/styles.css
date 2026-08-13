@@ -100,7 +100,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .command-editor-heading h3 { margin: 0; font-size: 15px; }
 .command-editor-heading p { margin: 4px 0 0; color: #666; font-size: 12px; line-height: 1.45; }
 .command-frame { flex: 0 0 auto; padding: 5px 8px; border: 1px solid #c8c8c8; background: #fff; font-size: 12px; font-variant-numeric: tabular-nums; }
-.command-editor-body { height: 128px; overflow-y: auto; overflow-anchor: none; }
+.command-editor-body { height: 232px; overflow-y: auto; overflow-anchor: none; }
 .command-empty { margin: 0; padding: 18px 16px; color: #666; font-size: 13px; }
 .command-list { display: grid; gap: 8px; margin: 0; padding: 12px 16px 0; list-style: none; }
 .command-list li { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #e4e4e4; }
