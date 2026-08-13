@@ -7,15 +7,10 @@ import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
-import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
-import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackManager;
 import io.github.hanhy06.emote.playback.PlaybackSession;
-import io.github.hanhy06.emote.server.ReloadService;
-import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
@@ -26,43 +21,25 @@ import net.minecraft.world.entity.Entity;
 
 import java.util.List;
 
-public final class RootCommand {
+public final class UserCommand {
     private final PlaybackManager playbackManager;
-    private final DialogManager dialogManager;
-    private final EmoteQueryService playableEmoteService;
+    private final EmoteMenu menu;
+    private final EmoteQueryService emoteQueryService;
     private final EmotePlayService playService;
-    private final AdminCommands adminCommands;
 
-    public RootCommand(
-        EmoteCatalog emoteRegistry,
+    public UserCommand(
         PlaybackManager playbackManager,
-        DialogManager dialogManager,
-        EmoteQueryService playableEmoteService,
-        EmotePlayService playService,
-        PermissionService permissionService,
-        ReloadService reloadService,
-        ConfigManager configManager
+        EmoteMenu menu,
+        EmoteQueryService emoteQueryService,
+        EmotePlayService playService
     ) {
         this.playbackManager = playbackManager;
-        this.dialogManager = dialogManager;
-        this.playableEmoteService = playableEmoteService;
+        this.menu = menu;
+        this.emoteQueryService = emoteQueryService;
         this.playService = playService;
-        this.adminCommands = new AdminCommands(
-            emoteRegistry,
-            playbackManager,
-            permissionService,
-            reloadService,
-            configManager
-        );
     }
 
-    public void register() {
-        CommandRegistrationCallback.EVENT.register((dispatcher, ignoredRegistryAccess, ignoredEnvironment) ->
-            dispatcher.register(createRootCommand())
-        );
-    }
-
-    private LiteralArgumentBuilder<CommandSourceStack> createRootCommand() {
+    LiteralArgumentBuilder<CommandSourceStack> createRoot() {
         return Commands.literal("emote")
             .executes(context -> openMenu(context.getSource()))
             .then(Commands.argument("page", IntegerArgumentType.integer(1))
@@ -71,14 +48,8 @@ public final class RootCommand {
                     IntegerArgumentType.getInteger(context, "page")
                 )))
             .then(createSearchCommand())
-            .then(this.adminCommands.createListCommand())
-            .then(this.adminCommands.createReloadCommand())
             .then(createPlayCommand())
-            .then(createStopCommand())
-            .then(this.adminCommands.createStopAllCommand())
-            .then(this.adminCommands.createStressTestCommand())
-            .then(this.adminCommands.createEnableCommand())
-            .then(this.adminCommands.createDisableCommand());
+            .then(createStopCommand());
     }
 
     private LiteralArgumentBuilder<CommandSourceStack> createSearchCommand() {
@@ -116,8 +87,8 @@ public final class RootCommand {
     private List<String> getSuggestedPlayIds(CommandSourceStack source) {
         ServerPlayer player = findPlayer(source);
         return player == null
-            ? this.playableEmoteService.getAllIds()
-            : this.playableEmoteService.getPlayableIds(player);
+            ? this.emoteQueryService.getAllIds()
+            : this.emoteQueryService.getPlayableIds(player);
     }
 
     private int openMenu(CommandSourceStack source) throws CommandSyntaxException {
@@ -129,13 +100,13 @@ public final class RootCommand {
         int pageNumber
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        this.dialogManager.openDialog(player, pageNumber);
+        this.menu.open(player, pageNumber);
         return 1;
     }
 
     private int openSearch(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        this.dialogManager.openSearchDialog(player);
+        this.menu.openSearch(player);
         return 1;
     }
 
@@ -145,7 +116,7 @@ public final class RootCommand {
         String query
     ) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        this.dialogManager.openDialog(player, pageNumber, query);
+        this.menu.open(player, pageNumber, query);
         return 1;
     }
 

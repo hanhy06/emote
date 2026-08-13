@@ -4,8 +4,10 @@ import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
 import io.github.hanhy06.emote.application.ApiEventDispatcher;
 import io.github.hanhy06.emote.application.EmoteApiImpl;
-import io.github.hanhy06.emote.command.DialogManager;
-import io.github.hanhy06.emote.command.RootCommand;
+import io.github.hanhy06.emote.command.AdminCommand;
+import io.github.hanhy06.emote.command.CommandRegistrar;
+import io.github.hanhy06.emote.command.EmoteMenu;
+import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.application.EmotePlayService;
@@ -50,7 +52,7 @@ public class Emote implements ModInitializer {
         );
         IdlePlaybackService idlePlaybackService = new IdlePlaybackService(permissionService, playService, playbackManager);
 
-        DialogManager dialogManager = new DialogManager(
+        EmoteMenu emoteMenu = new EmoteMenu(
             configManager,
             emoteRegistry,
             playableEmoteService,
@@ -82,16 +84,20 @@ public class Emote implements ModInitializer {
             wheelSyncService,
             idlePlaybackService
         );
-        RootCommand rootCommand = new RootCommand(
+        UserCommand userCommand = new UserCommand(
+            playbackManager,
+            emoteMenu,
+            playableEmoteService,
+            playService
+        );
+        AdminCommand adminCommand = new AdminCommand(
             emoteRegistry,
             playbackManager,
-            dialogManager,
-            playableEmoteService,
-            playService,
             permissionService,
             reloadService,
             configManager
         );
+        CommandRegistrar commandRegistrar = new CommandRegistrar(userCommand, adminCommand);
 
         configManager.addAccessConfigListener(permissionService);
         configManager.addAccessConfigListener(idlePlaybackService);
@@ -104,7 +110,7 @@ public class Emote implements ModInitializer {
 
         PayloadRegistry.register();
         serverLifecycle.register();
-        rootCommand.register();
+        commandRegistrar.register();
 
         LOGGER.info("{} ready", MOD_ID);
     }

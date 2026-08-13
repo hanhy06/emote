@@ -26,7 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-public class DialogManager {
+public final class EmoteMenu {
     private static final int SMALL_BUTTON_WIDTH = 150;
     private static final int WIDE_BUTTON_WIDTH = 310;
     static final String SEARCH_COMMAND_TEMPLATE = "/emote search \"$(query)\"";
@@ -39,7 +39,7 @@ public class DialogManager {
     private final EmoteQueryService playableEmoteService;
     private final PlaybackManager playbackManager;
 
-    public DialogManager(
+    public EmoteMenu(
         ConfigManager configManager,
         EmoteCatalog emoteRegistry,
         EmoteQueryService playableEmoteService,
@@ -51,17 +51,17 @@ public class DialogManager {
         this.playbackManager = playbackManager;
     }
 
-    public void openDialog(ServerPlayer player, int pageNumber) {
-        openDialog(player, pageNumber, "");
+    public void open(ServerPlayer player, int pageNumber) {
+        open(player, pageNumber, "");
     }
 
-    public void openDialog(ServerPlayer player, int pageNumber, String query) {
+    public void open(ServerPlayer player, int pageNumber, String query) {
         String dialogQuery = query == null ? "" : query.trim();
         Dialog dialog = createRootDialog(player, pageNumber, dialogQuery);
         player.openDialog(Holder.direct(dialog));
     }
 
-    public void openSearchDialog(ServerPlayer player) {
+    public void openSearch(ServerPlayer player) {
         List<Input> inputs = List.of(new Input("query", new TextInput(
             310,
             Component.literal("Search"),

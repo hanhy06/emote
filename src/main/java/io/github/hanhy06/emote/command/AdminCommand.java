@@ -25,14 +25,14 @@ import java.util.Locale;
 import static io.github.hanhy06.emote.playback.PlaybackManager.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
 import static io.github.hanhy06.emote.playback.PlaybackManager.MAX_STRESS_TEST_INSTANCE_COUNT;
 
-final class AdminCommands {
+public final class AdminCommand {
     private final EmoteCatalog emoteRegistry;
     private final PlaybackManager playbackManager;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
 
-    AdminCommands(
+    public AdminCommand(
         EmoteCatalog emoteRegistry,
         PlaybackManager playbackManager,
         PermissionService permissionService,
@@ -44,6 +44,15 @@ final class AdminCommands {
         this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
+    }
+
+    void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
+        root.then(createListCommand())
+            .then(createReloadCommand())
+            .then(createStopAllCommand())
+            .then(createStressTestCommand())
+            .then(createEnableCommand())
+            .then(createDisableCommand());
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {

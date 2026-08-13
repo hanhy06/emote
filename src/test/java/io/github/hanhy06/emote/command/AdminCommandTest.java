@@ -5,10 +5,10 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-final class AdminCommandsTest {
+final class AdminCommandTest {
     @Test
     void listEntrySeparatesFieldsAcrossReadableLines() {
-        var entry = AdminCommands.createListEntry(
+        var entry = AdminCommand.createListEntry(
             "emote:dance",
             "Dance",
             "A looping dance",
