@@ -48,8 +48,8 @@ export function exportAnimationBundle(
     const sequence = {
       type: "sequence",
       schema_version: 3,
-      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(`${options.name}_sequence`)}`,
-      metadata: { ...options.additionalMetadata, name: `${options.name} Sequence`, description: options.description },
+      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(options.name)}`,
+      metadata: { ...options.additionalMetadata, name: options.name, description: options.description },
       settings: { cooldown: first.settings.cooldown, player: options.player },
       steps: animations.map((animation) => ({ emote: animation.id })),
     };
@@ -57,7 +57,7 @@ export function exportAnimationBundle(
   }
   return {
     blob: new Blob([zipSync(files)], { type: "application/zip" }),
-    fileName: `emote.${sanitizeAnimationFileName(options.name)}.${includeSequence ? "sequence" : "animations"}.zip`,
+    fileName: `emote.${sanitizeAnimationFileName(options.name)}${includeSequence ? "" : ".animations"}.zip`,
   };
 }
 

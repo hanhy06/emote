@@ -31,9 +31,12 @@ describe("exportAnimation", () => {
     const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
     const sequence = JSON.parse(strFromU8(files[sequenceName]));
     expect(sequence.schema_version).toBe(3);
+    expect(sequence.id).toBe("demo:demo");
+    expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");
     expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
     expect(Object.keys(files).filter((name) => !name.endsWith(".sequence.json"))).toHaveLength(2);
+    expect(result.fileName).toBe("emote.demo.zip");
   });
 
   it("writes a manually assigned order without replacing it with zero", async () => {
