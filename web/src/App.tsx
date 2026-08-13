@@ -4,7 +4,6 @@ import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
-import { NodeSpacePanel } from "./components/NodeSpacePanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
 import { downloadExport } from "./export/download";
@@ -274,22 +273,6 @@ export function App() {
     }));
   }
 
-  function assignNodeSpace(nodeId: string, space: NodeSpace) {
-    updateSession((current) => ({
-      ...current,
-      spaces: { ...current.spaces, [nodeId]: space },
-      ...(space === "scene" && current.assignments[nodeId] != null
-        ? assignSkinPart(
-          current.assignments,
-          current.orders,
-          [nodeId],
-          null,
-          skinAssignmentGroups(skinCandidates),
-        )
-        : {}),
-    }));
-  }
-
   function assignOrder(order: number) {
     const groups = skinAssignmentGroups(skinCandidates);
     const selectedGroups = new Set([...selectedParts].map((nodeId) => groups[nodeId]));
@@ -476,7 +459,6 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            <NodeSpacePanel nodes={project.nodes} spaces={spaces} onChange={assignNodeSpace} />
             <CommandPanel
               animation={animation}
               tick={previewTick}
