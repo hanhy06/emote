@@ -172,7 +172,7 @@ A sequence uses `"type": "sequence"` to play existing animations in order:
 - Sequence player settings apply to the entire sequence and replace the referenced animations' player settings.
 - Timeline commands are preserved, but start, loop, and stop commands are not supported within a sequence.
 
-See the [sequence reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for weighted random selection and a complete example.
+See [the sequence format](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.md) for detailed rules and the [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for a complete example.
 
 ## Mod API
 
