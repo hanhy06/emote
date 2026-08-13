@@ -11,6 +11,7 @@ import io.github.hanhy06.emote.emote.EmoteDefinition;
 import io.github.hanhy06.emote.emote.RegisteredEmote;
 import io.github.hanhy06.emote.emote.RegisteredSequence;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -91,7 +92,7 @@ public class PlaybackManager implements ConfigListener {
             );
         }
 
-        PlayerSkinManager.SkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
+        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinParts()
         );
@@ -188,7 +189,7 @@ public class PlaybackManager implements ConfigListener {
         if (player == null) {
             return;
         }
-        PlayerSkinManager.SkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
+        PlayerSkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
             player,
             activeEmote.skinParts()
         );

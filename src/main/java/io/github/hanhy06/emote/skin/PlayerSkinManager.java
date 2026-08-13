@@ -7,8 +7,10 @@ import io.github.hanhy06.emote.skin.mineskin.MineSkinPipeline;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
@@ -75,9 +77,9 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public SkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinBinding> skinParts) {
+    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<AnimationSkinBinding> skinParts) {
         if (skinParts.isEmpty()) {
-            return new SkinPreparation(null, SkinPreparationState.READY, 100);
+            return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
         Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
         for (AnimationSkinBinding skinPart : skinParts) {
@@ -85,7 +87,7 @@ public class PlayerSkinManager implements ConfigListener {
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {
-            return new SkinPreparation(null, SkinPreparationState.UNAVAILABLE, 0);
+            return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0);
         }
         return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
     }
@@ -163,30 +165,6 @@ public class PlayerSkinManager implements ConfigListener {
         });
     }
 
-    public enum SkinPreparationState {
-        READY,
-        PREPARING,
-        FAILED,
-        UNAVAILABLE
-    }
-
-    public record SkinPreparation(
-        PreparedPlayerSkin preparedPlayerSkin,
-        SkinPreparationState state,
-        int progressPercent
-    ) {
-        public SkinPreparation {
-            Objects.requireNonNull(state, "state");
-            if (progressPercent < 0 || progressPercent > 100) {
-                throw new IllegalArgumentException("progressPercent must be between 0 and 100");
-            }
-        }
-
-        public boolean preparing() {
-            return this.state == SkinPreparationState.PREPARING;
-        }
-    }
-
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
         MinecraftServer server = Emote.SERVER;
         Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
@@ -208,13 +186,4 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl,
-                                   boolean slimModel) {
-        public PlayerSkinSource {
-            Objects.requireNonNull(playerUuid, "playerUuid");
-            Objects.requireNonNull(playerName, "playerName");
-            Objects.requireNonNull(textureHash, "textureHash");
-            Objects.requireNonNull(textureUrl, "textureUrl");
-        }
-    }
 }

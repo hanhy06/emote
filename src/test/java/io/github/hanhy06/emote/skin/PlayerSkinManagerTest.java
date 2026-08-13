@@ -6,8 +6,10 @@ import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import io.github.hanhy06.emote.config.Config;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
@@ -39,10 +41,10 @@ class PlayerSkinManagerTest {
                 textureStore,
                 new MineSkinClient(httpClient),
                 new MineSkinTaskQueue(),
-                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
+            PlayerSkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
 
             assertFalse(result.preparing());
             assertEquals(100, result.progressPercent());
@@ -55,24 +57,24 @@ class PlayerSkinManagerTest {
 
     @Test
     void onlyPreparingStateWaitsForSkinPreparation() {
-        assertTrue(new PlayerSkinManager.SkinPreparation(
+        assertTrue(new PlayerSkinPreparation(
             null,
-            PlayerSkinManager.SkinPreparationState.PREPARING,
+            PlayerSkinPreparation.State.PREPARING,
             0
         ).preparing());
-        assertFalse(new PlayerSkinManager.SkinPreparation(
+        assertFalse(new PlayerSkinPreparation(
             null,
-            PlayerSkinManager.SkinPreparationState.READY,
+            PlayerSkinPreparation.State.READY,
             100
         ).preparing());
-        assertFalse(new PlayerSkinManager.SkinPreparation(
+        assertFalse(new PlayerSkinPreparation(
             null,
-            PlayerSkinManager.SkinPreparationState.FAILED,
+            PlayerSkinPreparation.State.FAILED,
             0
         ).preparing());
-        assertFalse(new PlayerSkinManager.SkinPreparation(
+        assertFalse(new PlayerSkinPreparation(
             null,
-            PlayerSkinManager.SkinPreparationState.UNAVAILABLE,
+            PlayerSkinPreparation.State.UNAVAILABLE,
             0
         ).preparing());
     }
@@ -86,12 +88,12 @@ class PlayerSkinManagerTest {
                 new MineSkinCache(tempDir),
                 new MineSkinClient(httpClient),
                 bakeExecutor,
-                new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
+                new PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
-            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
+            PlayerSkinPreparation result = manager.preparePlayerSkin(null, createSkinParts());
 
-            assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
+            assertEquals(PlayerSkinPreparation.State.PREPARING, result.state());
             assertEquals(0, result.progressPercent());
             assertNull(result.preparedPlayerSkin());
             assertNotNull(executorService.command);
@@ -113,7 +115,7 @@ class PlayerSkinManagerTest {
                 textureStore,
                 new MineSkinClient(httpClient),
                 new MineSkinTaskQueue(() -> executorService),
-                new PlayerSkinManager.PlayerSkinSource(
+                new PlayerSkinSource(
                     UUID.randomUUID(),
                     "player",
                     "skin-hash",
@@ -122,12 +124,12 @@ class PlayerSkinManagerTest {
                 )
             );
 
-            PlayerSkinManager.SkinPreparation result = manager.preparePlayerSkin(null, List.of(
+            PlayerSkinPreparation result = manager.preparePlayerSkin(null, List.of(
                 new AnimationSkinBinding("head", PlayerSkinPart.HEAD, PlayerSkinSegment.FULL),
                 new AnimationSkinBinding("body", bodyTextureKey.skinPart(), bodyTextureKey.skinSegment())
             ));
 
-            assertEquals(PlayerSkinManager.SkinPreparationState.PREPARING, result.state());
+            assertEquals(PlayerSkinPreparation.State.PREPARING, result.state());
             assertEquals(50, result.progressPercent());
             manager.cancelPendingBakes();
         }
@@ -137,7 +139,7 @@ class PlayerSkinManagerTest {
         MineSkinCache textureStore,
         MineSkinClient apiClient,
         MineSkinTaskQueue bakeExecutor,
-        PlayerSkinManager.PlayerSkinSource skinSource
+        PlayerSkinSource skinSource
     ) {
         PlayerSkinManager manager = new PlayerSkinManager(
             new PlayerSkinBaker(),

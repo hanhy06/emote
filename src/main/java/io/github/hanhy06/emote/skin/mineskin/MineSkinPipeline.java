@@ -1,8 +1,9 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 
 import java.awt.image.BufferedImage;
@@ -61,31 +62,31 @@ public final class MineSkinPipeline {
         this.generationQueue.submit(CACHE_CLEANUP_KEY, () -> cleanupCache(queueGeneration));
     }
 
-    public PlayerSkinManager.SkinPreparation prepare(
-        PlayerSkinManager.PlayerSkinSource source,
+    public PlayerSkinPreparation prepare(
+        PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredTextureKeys
     ) {
         Map<PlayerSkinRegion, String> savedTextureUrls = loadTextureSet(source, requiredTextureKeys);
         if (savedTextureUrls.size() == requiredTextureKeys.size()) {
-            return new PlayerSkinManager.SkinPreparation(
+            return new PlayerSkinPreparation(
                 new PreparedPlayerSkin(savedTextureUrls),
-                PlayerSkinManager.SkinPreparationState.READY,
+                PlayerSkinPreparation.State.READY,
                 100
             );
         }
         if (!MineSkinClient.hasApiKey(this.apiKey)) {
-            return new PlayerSkinManager.SkinPreparation(
+            return new PlayerSkinPreparation(
                 savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls),
-                PlayerSkinManager.SkinPreparationState.UNAVAILABLE,
+                PlayerSkinPreparation.State.UNAVAILABLE,
                 progressPercent(savedTextureUrls.size(), requiredTextureKeys.size())
             );
         }
 
         MineSkinBakeTask.Stage stage = scheduleBake(source, requiredTextureKeys);
-        PlayerSkinManager.SkinPreparationState preparationState = stage == MineSkinBakeTask.Stage.FAILED
-            ? PlayerSkinManager.SkinPreparationState.FAILED
-            : PlayerSkinManager.SkinPreparationState.PREPARING;
-        return new PlayerSkinManager.SkinPreparation(
+        PlayerSkinPreparation.State preparationState = stage == MineSkinBakeTask.Stage.FAILED
+            ? PlayerSkinPreparation.State.FAILED
+            : PlayerSkinPreparation.State.PREPARING;
+        return new PlayerSkinPreparation(
             savedTextureUrls.isEmpty() ? null : new PreparedPlayerSkin(savedTextureUrls),
             preparationState,
             progressPercent(savedTextureUrls.size(), requiredTextureKeys.size())
@@ -217,7 +218,7 @@ public final class MineSkinPipeline {
     }
 
     private Map<PlayerSkinRegion, String> loadTextureSet(
-        PlayerSkinManager.PlayerSkinSource source,
+        PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredTextureKeys
     ) {
         Map<PlayerSkinRegion, String> stored = this.cache.load(source.textureHash(), source.slimModel());
@@ -232,7 +233,7 @@ public final class MineSkinPipeline {
     }
 
     private MineSkinBakeTask.Stage scheduleBake(
-        PlayerSkinManager.PlayerSkinSource source,
+        PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredKeys
     ) {
         String pendingKey = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
@@ -251,7 +252,7 @@ public final class MineSkinPipeline {
     }
 
     private void bakeAndSave(MineSkinBakeTask bakeTask) {
-        PlayerSkinManager.PlayerSkinSource source = bakeTask.source();
+        PlayerSkinSource source = bakeTask.source();
         try {
             Map<PlayerSkinRegion, String> stored = this.cache.load(source.textureHash(), source.slimModel());
             Set<PlayerSkinRegion> missingKeys = new LinkedHashSet<>(bakeTask.requiredRegions());

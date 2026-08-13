@@ -1,9 +1,9 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
-import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -41,7 +41,7 @@ class MineSkinPipelineTest {
                 }
             );
             manager.configure("api-key", 3, 30, 256);
-            PlayerSkinManager.PlayerSkinSource source = new PlayerSkinManager.PlayerSkinSource(
+            PlayerSkinSource source = new PlayerSkinSource(
                 UUID.randomUUID(),
                 "player",
                 "skin-hash",
@@ -80,7 +80,7 @@ class MineSkinPipelineTest {
                 }
             );
             manager.configure("api-key", 3, 30, 256);
-            PlayerSkinManager.PlayerSkinSource source = new PlayerSkinManager.PlayerSkinSource(
+            PlayerSkinSource source = new PlayerSkinSource(
                 UUID.randomUUID(),
                 "player",
                 "skin-hash",

@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
-import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 
 import java.util.HashMap;
 import java.util.LinkedHashSet;
@@ -11,7 +11,7 @@ import java.util.UUID;
 
 final class MineSkinBakeTask {
     private final String key;
-    private final PlayerSkinManager.PlayerSkinSource source;
+    private final PlayerSkinSource source;
     private final long queueGeneration;
     private final Set<UUID> subscribers = new LinkedHashSet<>();
     private final Set<PlayerSkinRegion> requiredRegions = new LinkedHashSet<>();
@@ -21,7 +21,7 @@ final class MineSkinBakeTask {
     private Stage stage = Stage.QUEUED;
     private long failedAtEpochMillis;
 
-    MineSkinBakeTask(PlayerSkinManager.PlayerSkinSource source, long queueGeneration) {
+    MineSkinBakeTask(PlayerSkinSource source, long queueGeneration) {
         this.source = source;
         this.key = source.textureHash() + ":" + (source.slimModel() ? "slim" : "classic");
         this.queueGeneration = queueGeneration;
@@ -31,7 +31,7 @@ final class MineSkinBakeTask {
         return this.key;
     }
 
-    PlayerSkinManager.PlayerSkinSource source() {
+    PlayerSkinSource source() {
         return this.source;
     }
 
