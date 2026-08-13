@@ -1,0 +1,55 @@
+{
+    "type": "sequence",
+    "schema_version": 3,
+    "id": "emote:handshake",
+    "metadata": {
+        "name": "Handshake",
+        "description": "Offer a handshake and play the matching two-player animation."
+    },
+    "participants": {
+        "initiator": {
+            "position": "~ ~ ~",
+            "rotation": "~ 0"
+        },
+        "partner": {
+            "position": "^ ^ ^1.2",
+            "rotation": "~180 0"
+        }
+    },
+    "settings": {
+        "cooldown": "5s",
+        "player": {
+            "hidden": true,
+            "stop_conditions": {
+                "movement_distance": 0.1,
+                "jump": true,
+                "submerge": true,
+                "ride": true,
+                "damage": true,
+                "attack": true,
+                "game_mode_change": true
+            }
+        }
+    },
+    "steps": [
+        {
+            "await_partner": {
+                "emote": "emote:handshake_offer",
+                "timeout": "3s"
+            },
+            "matched": [
+                {
+                    "emote": [
+                        "emote:handshake_left", 50,
+                        "emote:handshake_right", 50
+                    ]
+                }
+            ],
+            "timeout": [
+                {
+                    "emote": "emote:handshake_withdraw"
+                }
+            ]
+        }
+    ]
+}
