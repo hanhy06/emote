@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MineSkinGenerationQueueTest {
+class MineSkinTaskQueueTest {
     @Test
     void failedTaskReleasesPendingKey() throws InterruptedException {
         CountDownLatch failureObserved = new CountDownLatch(1);
@@ -20,7 +20,7 @@ class MineSkinGenerationQueueTest {
             thread.setUncaughtExceptionHandler((ignoredThread, ignoredException) -> failureObserved.countDown());
             return thread;
         });
-        MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
+        MineSkinTaskQueue queue = new MineSkinTaskQueue(() -> executorService);
 
         assertTrue(queue.submit("skin", () -> {
             throw new IllegalStateException("failed");
@@ -36,7 +36,7 @@ class MineSkinGenerationQueueTest {
     @Test
     void cancelAllInterruptsRunningTaskAndAllowsNewTasks() {
         assertTimeoutPreemptively(Duration.ofSeconds(3), () -> {
-            MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+            MineSkinTaskQueue executor = new MineSkinTaskQueue();
             CountDownLatch started = new CountDownLatch(1);
             CountDownLatch interrupted = new CountDownLatch(1);
             executor.submit("skin", () -> {
@@ -61,7 +61,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void submitRequestsOneRerunForPendingSkinKey() throws InterruptedException {
-        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+        MineSkinTaskQueue executor = new MineSkinTaskQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch release = new CountDownLatch(1);
         CountDownLatch reran = new CountDownLatch(1);
@@ -89,7 +89,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void scheduledRetryDoesNotOccupyWorker() throws InterruptedException {
-        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+        MineSkinTaskQueue executor = new MineSkinTaskQueue();
         CountDownLatch workerRan = new CountDownLatch(1);
         CountDownLatch retryRan = new CountDownLatch(1);
 
@@ -103,7 +103,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void cancelAllDropsRequestedRerunForRunningTask() throws InterruptedException {
-        MineSkinGenerationQueue executor = new MineSkinGenerationQueue();
+        MineSkinTaskQueue executor = new MineSkinTaskQueue();
         CountDownLatch started = new CountDownLatch(1);
         CountDownLatch reran = new CountDownLatch(1);
         AtomicInteger runCount = new AtomicInteger();
@@ -131,7 +131,7 @@ class MineSkinGenerationQueueTest {
 
     @Test
     void cancelledGenerationCannotScheduleNewTask() throws InterruptedException {
-        MineSkinGenerationQueue queue = new MineSkinGenerationQueue();
+        MineSkinTaskQueue queue = new MineSkinTaskQueue();
         long cancelledGeneration = queue.currentGeneration();
         queue.cancelAll();
         CountDownLatch ran = new CountDownLatch(1);

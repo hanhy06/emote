@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;

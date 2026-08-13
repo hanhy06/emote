@@ -11,10 +11,10 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.UUID;
 
-final class PlayerSkinTextureHelper {
+final class PlayerHeadProfileFactory {
     private static final String PROFILE_NAME = "emote";
 
-    private PlayerSkinTextureHelper() {
+    private PlayerHeadProfileFactory() {
     }
 
     static ResolvableProfile createProfile(String textureUrl) {

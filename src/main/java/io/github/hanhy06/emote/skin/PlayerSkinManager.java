@@ -1,6 +1,11 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinPipeline;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
+import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -28,7 +33,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
-    private final MineSkinManager mineSkinManager;
+    private final MineSkinPipeline mineSkinManager;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
 
@@ -37,7 +42,7 @@ public class PlayerSkinManager implements ConfigListener {
             new PlayerSkinBaker(),
             new MineSkinCache(),
             new MineSkinClient(),
-            new MineSkinGenerationQueue(),
+            new MineSkinTaskQueue(),
             PlayerSkinManager::readPlayerSkinSource
         );
     }
@@ -46,11 +51,11 @@ public class PlayerSkinManager implements ConfigListener {
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache mineSkinCache,
         MineSkinClient mineSkinClient,
-        MineSkinGenerationQueue generationQueue,
+        MineSkinTaskQueue generationQueue,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
-        this.mineSkinManager = new MineSkinManager(
+        this.mineSkinManager = new MineSkinPipeline(
             Objects.requireNonNull(playerSkinBaker, "playerSkinBaker"),
             Objects.requireNonNull(mineSkinCache, "mineSkinCache"),
             Objects.requireNonNull(mineSkinClient, "mineSkinClient"),
@@ -125,7 +130,7 @@ public class PlayerSkinManager implements ConfigListener {
             return;
         }
         ItemStack profileStack = itemStack.copy();
-        profileStack.set(DataComponents.PROFILE, PlayerSkinTextureHelper.createProfile(textureUrl));
+        profileStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
         node.setItemStack(profileStack);
 
         SlotAccess itemSlot = itemDisplay.getSlot(0);
@@ -203,9 +208,9 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl,
-                            boolean slimModel) {
-        PlayerSkinSource {
+    public record PlayerSkinSource(UUID playerUuid, String playerName, String textureHash, String textureUrl,
+                                   boolean slimModel) {
+        public PlayerSkinSource {
             Objects.requireNonNull(playerUuid, "playerUuid");
             Objects.requireNonNull(playerName, "playerName");
             Objects.requireNonNull(textureHash, "textureHash");

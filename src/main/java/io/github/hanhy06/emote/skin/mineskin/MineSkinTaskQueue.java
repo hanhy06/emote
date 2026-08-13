@@ -1,11 +1,11 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
 
-final class MineSkinGenerationQueue {
+public final class MineSkinTaskQueue {
     private final Supplier<ExecutorService> executorFactory;
     private final Map<String, PendingTask> pendingTasks = new HashMap<>();
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new HashMap<>();
@@ -14,11 +14,11 @@ final class MineSkinGenerationQueue {
     private ScheduledExecutorService scheduler;
     private long generation;
 
-    MineSkinGenerationQueue() {
-        this(MineSkinGenerationQueue::createExecutor);
+    public MineSkinTaskQueue() {
+        this(MineSkinTaskQueue::createExecutor);
     }
 
-    MineSkinGenerationQueue(Supplier<ExecutorService> executorFactory) {
+    public MineSkinTaskQueue(Supplier<ExecutorService> executorFactory) {
         this.executorFactory = executorFactory;
     }
 
@@ -37,14 +37,14 @@ final class MineSkinGenerationQueue {
                 try {
                     while (true) {
                         newTask.task().run();
-                        synchronized (MineSkinGenerationQueue.this) {
+                        synchronized (MineSkinTaskQueue.this) {
                             if (taskGeneration != generation || !newTask.takeRerunRequest()) {
                                 return;
                             }
                         }
                     }
                 } finally {
-                    synchronized (MineSkinGenerationQueue.this) {
+                    synchronized (MineSkinTaskQueue.this) {
                         pendingTasks.remove(key, newTask);
                     }
                 }
@@ -87,7 +87,7 @@ final class MineSkinGenerationQueue {
         long scheduledGeneration = this.generation;
         ensureScheduler();
         ScheduledFuture<?> scheduledTask = this.scheduler.schedule(() -> {
-            synchronized (MineSkinGenerationQueue.this) {
+            synchronized (MineSkinTaskQueue.this) {
                 if (scheduledGeneration != generation) {
                     return;
                 }

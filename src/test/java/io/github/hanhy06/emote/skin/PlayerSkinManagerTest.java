@@ -1,6 +1,10 @@
 package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.animation.AnimationSkinBinding;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
+import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -34,7 +38,7 @@ class PlayerSkinManagerTest {
             PlayerSkinManager manager = createManager(
                 textureStore,
                 new MineSkinClient(httpClient),
-                new MineSkinGenerationQueue(),
+                new MineSkinTaskQueue(),
                 new PlayerSkinManager.PlayerSkinSource(UUID.randomUUID(), "player", "skin-hash", "https://textures.example/skin", false)
             );
 
@@ -77,7 +81,7 @@ class PlayerSkinManagerTest {
     void preparePlayerSkinSchedulesMissingTextures(@TempDir Path tempDir) {
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            MineSkinGenerationQueue bakeExecutor = new MineSkinGenerationQueue(() -> executorService);
+            MineSkinTaskQueue bakeExecutor = new MineSkinTaskQueue(() -> executorService);
             PlayerSkinManager manager = createManager(
                 new MineSkinCache(tempDir),
                 new MineSkinClient(httpClient),
@@ -108,7 +112,7 @@ class PlayerSkinManagerTest {
             PlayerSkinManager manager = createManager(
                 textureStore,
                 new MineSkinClient(httpClient),
-                new MineSkinGenerationQueue(() -> executorService),
+                new MineSkinTaskQueue(() -> executorService),
                 new PlayerSkinManager.PlayerSkinSource(
                     UUID.randomUUID(),
                     "player",
@@ -132,7 +136,7 @@ class PlayerSkinManagerTest {
     private PlayerSkinManager createManager(
         MineSkinCache textureStore,
         MineSkinClient apiClient,
-        MineSkinGenerationQueue bakeExecutor,
+        MineSkinTaskQueue bakeExecutor,
         PlayerSkinManager.PlayerSkinSource skinSource
     ) {
         PlayerSkinManager manager = new PlayerSkinManager(

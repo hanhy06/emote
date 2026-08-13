@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -10,7 +10,7 @@ import java.io.IOException;
 import java.util.EnumMap;
 import java.util.Map;
 
-final class PlayerSkinBaker {
+public final class PlayerSkinBaker {
     private static final Map<PlayerSkinPart, PartAtlas> PARTS = Map.of(
         PlayerSkinPart.HEAD, new PartAtlas(
             faces(8, 0, 8, 8, 0, 8, 8, 8),

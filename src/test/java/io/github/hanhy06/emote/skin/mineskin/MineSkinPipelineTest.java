@@ -1,5 +1,6 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -20,7 +21,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class MineSkinManagerTest {
+class MineSkinPipelineTest {
     @Test
     void completedBakeTaskIsRemoved(@TempDir Path tempDir) {
         PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
@@ -28,8 +29,8 @@ class MineSkinManagerTest {
 
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
-            MineSkinManager manager = new MineSkinManager(
+            MineSkinTaskQueue queue = new MineSkinTaskQueue(() -> executorService);
+            MineSkinPipeline manager = new MineSkinPipeline(
                 new PlayerSkinBaker(),
                 cache,
                 new MineSkinClient(httpClient),
@@ -68,8 +69,8 @@ class MineSkinManagerTest {
 
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            MineSkinGenerationQueue queue = new MineSkinGenerationQueue(() -> executorService);
-            MineSkinManager manager = new MineSkinManager(
+            MineSkinTaskQueue queue = new MineSkinTaskQueue(() -> executorService);
+            MineSkinPipeline manager = new MineSkinPipeline(
                 new PlayerSkinBaker(),
                 cache,
                 new MineSkinClient(httpClient),

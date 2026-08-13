@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-final class MineSkinCache {
+public final class MineSkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
     private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
@@ -40,11 +40,11 @@ final class MineSkinCache {
         .disableHtmlEscaping()
         .create();
 
-    MineSkinCache() {
+    public MineSkinCache() {
         this(resolveDefaultSkinDirPath());
     }
 
-    MineSkinCache(Path skinDirPath) {
+    public MineSkinCache(Path skinDirPath) {
         this.skinDirPath = Objects.requireNonNull(skinDirPath, "skinDirPath");
     }
 
@@ -105,7 +105,7 @@ final class MineSkinCache {
         }
     }
 
-    void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
+    public void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
         if (textureUrlMap.isEmpty()) {
             return;
         }

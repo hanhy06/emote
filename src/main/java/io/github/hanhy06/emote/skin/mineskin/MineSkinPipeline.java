@@ -1,6 +1,7 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 
@@ -10,7 +11,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
-final class MineSkinManager {
+public final class MineSkinPipeline {
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -21,7 +22,7 @@ final class MineSkinManager {
     private final PlayerSkinBaker playerSkinBaker;
     private final MineSkinCache cache;
     private final MineSkinClient client;
-    private final MineSkinGenerationQueue generationQueue;
+    private final MineSkinTaskQueue generationQueue;
     private final Consumer<UUID> readyNotifier;
     private final Consumer<UUID> failureNotifier;
     private final Map<String, BakeTask> bakeTasks = new HashMap<>();
@@ -30,11 +31,11 @@ final class MineSkinManager {
     private volatile int cacheRetentionDays;
     private volatile int cacheMaxMiB;
 
-    MineSkinManager(
+    public MineSkinPipeline(
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache cache,
         MineSkinClient client,
-        MineSkinGenerationQueue generationQueue,
+        MineSkinTaskQueue generationQueue,
         Consumer<UUID> readyNotifier,
         Consumer<UUID> failureNotifier
     ) {
@@ -46,7 +47,7 @@ final class MineSkinManager {
         this.failureNotifier = failureNotifier;
     }
 
-    void configure(
+    public void configure(
         String apiKey,
         int pollIntervalSeconds,
         int cacheRetentionDays,
@@ -60,7 +61,7 @@ final class MineSkinManager {
         this.generationQueue.submit(CACHE_CLEANUP_KEY, () -> cleanupCache(queueGeneration));
     }
 
-    PlayerSkinManager.SkinPreparation prepare(
+    public PlayerSkinManager.SkinPreparation prepare(
         PlayerSkinManager.PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredTextureKeys
     ) {
@@ -176,7 +177,7 @@ final class MineSkinManager {
         }
     }
 
-    void cancelPendingBakes() {
+    public void cancelPendingBakes() {
         synchronized (this.bakeTasks) {
             for (BakeTask bakeTask : this.bakeTasks.values()) {
                 bakeTask.cancel();

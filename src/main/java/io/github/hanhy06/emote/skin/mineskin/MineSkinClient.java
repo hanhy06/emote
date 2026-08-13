@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin;
+package io.github.hanhy06.emote.skin.mineskin;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -24,7 +24,7 @@ import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Consumer;
 
-final class MineSkinClient {
+public final class MineSkinClient {
     private static final URI QUEUE_URI = URI.create("https://api.mineskin.org/v2/queue");
     private static final int MAX_SKIN_DOWNLOAD_BYTES = 1_048_576;
     private static final int SKIN_DOWNLOAD_TIMEOUT_MILLIS = 5000;
@@ -36,15 +36,15 @@ final class MineSkinClient {
 
     private volatile long jobPollIntervalMillis = 3000L;
 
-    MineSkinClient() {
+    public MineSkinClient() {
         this(createHttpClient());
     }
 
-    MineSkinClient(HttpClient httpClient) {
+    public MineSkinClient(HttpClient httpClient) {
         this.httpClient = Objects.requireNonNull(httpClient, "httpClient");
     }
 
-    static HttpClient createHttpClient() {
+    public static HttpClient createHttpClient() {
         return HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
