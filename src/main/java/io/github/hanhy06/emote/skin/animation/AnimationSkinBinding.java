@@ -10,10 +10,6 @@ public record AnimationSkinBinding(
     ParticipantRole participant,
     PlayerSkinRegion region
 ) {
-    public AnimationSkinBinding(String nodeId, PlayerSkinRegion region) {
-        this(nodeId, ParticipantRole.INITIATOR, region);
-    }
-
     public AnimationSkinBinding {
         Objects.requireNonNull(nodeId, "nodeId");
         Objects.requireNonNull(participant, "participant");

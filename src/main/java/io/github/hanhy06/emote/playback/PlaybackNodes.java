@@ -24,10 +24,6 @@ public final class PlaybackNodes {
 
     private float viewYaw;
 
-    public PlaybackNodes(RootTransform root, Map<String, NodeInstance> nodes) {
-        this(SceneRootResolver.single(Objects.requireNonNull(root, "root")), nodes);
-    }
-
     public PlaybackNodes(Map<EmoteAnimation.NodeSpace, RootTransform> spaces, Map<String, NodeInstance> nodes) {
         EnumMap<EmoteAnimation.NodeSpace, RootTransform> requiredSpaces = new EnumMap<>(EmoteAnimation.NodeSpace.class);
         requiredSpaces.putAll(spaces);

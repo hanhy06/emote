@@ -39,20 +39,6 @@ public final class PlaybackSession {
         TimelinePlayer timeline,
         EventPlayer events,
         EmotePlayerBehavior playerBehavior,
-        PlaybackParticipant initiator
-    ) {
-        this(sessionId, levelKey, id, animationId, nodes, timeline, events, playerBehavior, initiator, null);
-    }
-
-    public PlaybackSession(
-        UUID sessionId,
-        ResourceKey<Level> levelKey,
-        String id,
-        String animationId,
-        PlaybackNodes nodes,
-        TimelinePlayer timeline,
-        EventPlayer events,
-        EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator,
         @Nullable RegisteredSequence collaborativeSequence
     ) {

@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.skin.animation;
 
 import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -39,13 +40,26 @@ public final class AnimationSkinBindingFactory {
         PlayerSkinPart skinPart = participantSkinPart.skinPart();
         if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), participantSkinPart.participant(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
+                .map(part -> new AnimationSkinBinding(
+                    part.nodeId(),
+                    participantSkinPart.participant(),
+                    new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
+                ))
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
-            Emote.LOGGER.warn("Too many vertical JSON skin segments for {}: {}", skinPart.id(), parts.size());
+            Emote.LOGGER.warn(
+                "Too many vertical JSON skin segments for {} {}: {}",
+                participantSkinPart.participant(),
+                skinPart.id(),
+                parts.size()
+            );
             return parts.stream()
-                .map(part -> new AnimationSkinBinding(part.nodeId(), participantSkinPart.participant(), new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)))
+                .map(part -> new AnimationSkinBinding(
+                    part.nodeId(),
+                    participantSkinPart.participant(),
+                    new PlayerSkinRegion(skinPart, PlayerSkinSegment.FULL)
+                ))
                 .toList();
         }
 
@@ -95,7 +109,6 @@ public final class AnimationSkinBindingFactory {
     private record RawPart(String nodeId, int order, double localYScale) {
     }
 
-    private record ParticipantSkinPart(io.github.hanhy06.emote.api.ParticipantRole participant,
-                                       PlayerSkinPart skinPart) {
+    private record ParticipantSkinPart(ParticipantRole participant, PlayerSkinPart skinPart) {
     }
 }

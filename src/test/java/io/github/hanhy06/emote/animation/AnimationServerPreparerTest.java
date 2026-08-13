@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.animation;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.Bootstrap;
@@ -30,7 +31,11 @@ class AnimationServerPreparerTest {
 
     @Test
     void rejectsSkinMetadataOnNonPlayerHeadItem() {
-        EmoteAnimation.ItemNode itemNode = itemNode(new EmoteAnimation.Skin(EmoteAnimation.SkinPart.HEAD, 0));
+        EmoteAnimation.ItemNode itemNode = itemNode(new EmoteAnimation.Skin(
+            ParticipantRole.INITIATOR,
+            EmoteAnimation.SkinPart.HEAD,
+            0
+        ));
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
@@ -58,6 +63,7 @@ class AnimationServerPreparerTest {
     private EmoteAnimation.ItemNode itemNode(EmoteAnimation.Skin skin) {
         return new EmoteAnimation.ItemNode(
             true,
+            EmoteAnimation.NodeSpace.INITIATOR,
             IDENTITY,
             new CompoundTag(),
             new CompoundTag(),

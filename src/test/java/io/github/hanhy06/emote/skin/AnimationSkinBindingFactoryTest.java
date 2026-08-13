@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -40,6 +41,7 @@ class AnimationSkinBindingFactoryTest {
     private EmoteAnimation.ItemNode itemNode(double yScale, EmoteAnimation.SkinPart part, int order) {
         return new EmoteAnimation.ItemNode(
             true,
+            EmoteAnimation.NodeSpace.INITIATOR,
             new EmoteAnimation.Matrix(List.of(
                 1.0D, 0.0D, 0.0D, 0.0D,
                 0.0D, yScale, 0.0D, 0.0D,
@@ -49,7 +51,7 @@ class AnimationSkinBindingFactoryTest {
             new CompoundTag(),
             new CompoundTag(),
             "none",
-            new EmoteAnimation.Skin(part, order)
+            new EmoteAnimation.Skin(ParticipantRole.INITIATOR, part, order)
         );
     }
 

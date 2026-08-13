@@ -94,17 +94,6 @@ public record EmoteAnimation(
         String itemDisplay,
         Skin skin
     ) implements Node {
-        public ItemNode(
-            boolean visible,
-            Matrix defaultMatrix,
-            CompoundTag entityNbt,
-            CompoundTag itemStackNbt,
-            String itemDisplay,
-            Skin skin
-        ) {
-            this(visible, skin == null ? NodeSpace.SCENE : NodeSpace.forParticipant(skin.participant()), defaultMatrix, entityNbt, itemStackNbt, itemDisplay, skin);
-        }
-
         public ItemNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
@@ -121,10 +110,6 @@ public record EmoteAnimation(
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
-        public BlockNode(boolean visible, Matrix defaultMatrix, CompoundTag entityNbt, CompoundTag blockStateNbt) {
-            this(visible, NodeSpace.SCENE, defaultMatrix, entityNbt, blockStateNbt);
-        }
-
         public BlockNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
@@ -140,10 +125,6 @@ public record EmoteAnimation(
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
-        public TextNode(boolean visible, Matrix defaultMatrix, CompoundTag entityNbt, JsonElement text) {
-            this(visible, NodeSpace.SCENE, defaultMatrix, entityNbt, text);
-        }
-
         public TextNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
@@ -158,10 +139,6 @@ public record EmoteAnimation(
     }
 
     public record AnchorNode(NodeSpace space, Matrix defaultMatrix) implements Node {
-        public AnchorNode(Matrix defaultMatrix) {
-            this(NodeSpace.SCENE, defaultMatrix);
-        }
-
         public AnchorNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
@@ -182,10 +159,6 @@ public record EmoteAnimation(
     }
 
     public record Skin(ParticipantRole participant, SkinPart part, int order) {
-        public Skin(SkinPart part, int order) {
-            this(ParticipantRole.INITIATOR, part, order);
-        }
-
         public Skin {
             Objects.requireNonNull(participant, "participant");
             Objects.requireNonNull(part, "part");

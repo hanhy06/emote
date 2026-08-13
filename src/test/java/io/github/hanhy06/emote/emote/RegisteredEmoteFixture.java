@@ -61,7 +61,7 @@ public final class RegisteredEmoteFixture {
             Objects.requireNonNull(Identifier.tryParse(id)),
             new EmoteMetadata(name, name + " description"),
             new EmoteAnimation.Settings(standalone, cooldownTicks, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
-            Map.of("root", new EmoteAnimation.AnchorNode(IDENTITY)),
+            Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, IDENTITY)),
             new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
         );
         return RegisteredEmote.from(new EmoteAnimation.Loaded(

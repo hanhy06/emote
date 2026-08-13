@@ -105,6 +105,12 @@ class AnimationComplexityValidatorTest {
     }
 
     private EmoteAnimation.BlockNode blockNode() {
-        return new EmoteAnimation.BlockNode(true, IDENTITY, new CompoundTag(), new CompoundTag());
+        return new EmoteAnimation.BlockNode(
+            true,
+            EmoteAnimation.NodeSpace.SCENE,
+            IDENTITY,
+            new CompoundTag(),
+            new CompoundTag()
+        );
     }
 }

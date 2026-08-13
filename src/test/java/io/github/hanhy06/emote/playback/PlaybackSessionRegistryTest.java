@@ -90,7 +90,7 @@ class PlaybackSessionRegistryTest {
             Level.OVERWORLD,
             sequence.id(),
             emote.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
+            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             timeline(emote),
             events(emote),
             EmotePlayerBehavior.createDefault(),
@@ -102,7 +102,7 @@ class PlaybackSessionRegistryTest {
     private static TimelinePlayer timeline(RegisteredEmote emote) {
         return new TimelinePlayer(
             emote.playbackPlan(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
+            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             new PlaybackEntityController()
         );
     }

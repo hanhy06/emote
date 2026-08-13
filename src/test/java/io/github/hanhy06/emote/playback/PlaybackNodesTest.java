@@ -15,7 +15,7 @@ class PlaybackNodesTest {
     @Test
     void keepsViewYawInsideThresholdAndFollowsOnlyTheExcess() {
         PlaybackNodes nodes = new PlaybackNodes(
-            RootTransform.create(Vec3.ZERO, 0.0F),
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
             Map.of()
         );
 
@@ -27,7 +27,7 @@ class PlaybackNodesTest {
     @Test
     void appliesViewYawThresholdAcrossDegreeWrap() {
         PlaybackNodes nodes = new PlaybackNodes(
-            RootTransform.create(Vec3.ZERO, 170.0F),
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 170.0F)),
             Map.of()
         );
 
@@ -38,7 +38,7 @@ class PlaybackNodesTest {
     @Test
     void updatesDisplayRotationOnlyWhenPackedYawChanges() {
         PlaybackNodes nodes = new PlaybackNodes(
-            RootTransform.create(Vec3.ZERO, 0.0F),
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
             Map.of()
         );
         PlaybackEntityController controller = new PlaybackEntityController();
@@ -52,6 +52,7 @@ class PlaybackNodesTest {
     void itemNodeKeepsReplacementStackForVisibilityRestores() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
+            EmoteAnimation.NodeSpace.SCENE,
             new EmoteAnimation.Matrix(List.of(
                 1.0D, 0.0D, 0.0D, 0.0D,
                 0.0D, 1.0D, 0.0D, 0.0D,
@@ -84,7 +85,7 @@ class PlaybackNodesTest {
             identityMatrix()
         );
         PlaybackNodes nodes = new PlaybackNodes(
-            RootTransform.create(Vec3.ZERO, 0.0F),
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
             Map.of("partner", new PlaybackNodes.NodeInstance("partner", partnerNode, null, null))
         );
 

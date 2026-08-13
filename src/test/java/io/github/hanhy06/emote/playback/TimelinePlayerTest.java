@@ -241,7 +241,7 @@ class TimelinePlayerTest {
             Identifier.parse("test:timeline"),
             new EmoteMetadata("Timeline", "Timeline"),
             new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, delay)),
-            Map.of("node", new EmoteAnimation.AnchorNode(matrix(0.0D))),
+            Map.of("node", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, matrix(0.0D))),
             new EmoteAnimation.Timeline(duration, keyframes, EmoteAnimation.Events.empty())
         );
     }

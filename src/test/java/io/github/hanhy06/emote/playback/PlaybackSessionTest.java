@@ -123,7 +123,7 @@ class PlaybackSessionTest {
             Level.OVERWORLD,
             sequence.id(),
             offer.id(),
-            new PlaybackNodes(RootTransform.create(Vec3.ZERO, 0.0F), Map.of()),
+            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             timeline(offer),
             events(offer),
             sequence.playerBehavior(),
