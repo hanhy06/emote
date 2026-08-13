@@ -108,12 +108,6 @@ public final class PlaybackSession {
         return this.events;
     }
 
-    void replacePlayback(TimelinePlayer timeline, EventPlayer events, State state) {
-        this.timeline = Objects.requireNonNull(timeline, "timeline");
-        this.events = Objects.requireNonNull(events, "events");
-        this.state = Objects.requireNonNull(state, "state");
-    }
-
     public EmotePlayerBehavior playerBehavior() {
         return this.playerBehavior;
     }
@@ -131,7 +125,7 @@ public final class PlaybackSession {
         return null;
     }
 
-    public @Nullable RegisteredSequence collaborativeSequence() {
+    @Nullable RegisteredSequence collaborativeSequence() {
         return this.collaborativeSequence;
     }
 
@@ -140,6 +134,9 @@ public final class PlaybackSession {
     }
 
     void enterWaiting() {
+        if (this.state != State.OFFERING || this.reservedPartner != null) {
+            throw new IllegalStateException("Only an unreserved offer can start waiting for a partner");
+        }
         this.state = State.WAITING;
     }
 
@@ -151,33 +148,51 @@ public final class PlaybackSession {
     }
 
     void reservePartner(PlaybackParticipant participant) {
-        if (this.state != State.OFFERING && this.state != State.WAITING) {
+        if (!acceptsPartner()) {
             throw new IllegalStateException("Session is not accepting a partner");
         }
         if (participant.role() != ParticipantRole.PARTNER) {
             throw new IllegalArgumentException("Reserved participant must use the partner role");
         }
-        if (this.reservedPartner != null) {
-            throw new IllegalStateException("A partner is already reserved");
-        }
         this.reservedPartner = participant;
+    }
+
+    boolean acceptsPartner() {
+        return (this.state == State.OFFERING || this.state == State.WAITING) && this.reservedPartner == null;
     }
 
     public @Nullable PlaybackParticipant reservedPartner() {
         return this.reservedPartner;
     }
 
-    PlaybackParticipant activateReservedPartner() {
+    PlaybackParticipant activateReservedPartner(TimelinePlayer timeline, EventPlayer events) {
+        if (this.state != State.OFFERING && this.state != State.WAITING) {
+            throw new IllegalStateException("Session cannot activate a partner in state " + this.state);
+        }
         PlaybackParticipant participant = Objects.requireNonNull(this.reservedPartner, "reservedPartner");
         this.reservedPartner = null;
         addParticipant(participant);
+        replacePlayback(timeline, events, State.MATCHED);
         return participant;
     }
 
-    PlaybackParticipant clearReservedPartner() {
+    @Nullable PlaybackParticipant releaseReservedPartner() {
         PlaybackParticipant participant = this.reservedPartner;
         this.reservedPartner = null;
         return participant;
+    }
+
+    void beginTimeout(TimelinePlayer timeline, EventPlayer events) {
+        if (this.state != State.WAITING || this.reservedPartner != null) {
+            throw new IllegalStateException("Only an unreserved waiting session can time out");
+        }
+        replacePlayback(timeline, events, State.TIMEOUT);
+    }
+
+    private void replacePlayback(TimelinePlayer timeline, EventPlayer events, State state) {
+        this.timeline = Objects.requireNonNull(timeline, "timeline");
+        this.events = Objects.requireNonNull(events, "events");
+        this.state = Objects.requireNonNull(state, "state");
     }
 
     public Collection<PlaybackParticipant> participants() {

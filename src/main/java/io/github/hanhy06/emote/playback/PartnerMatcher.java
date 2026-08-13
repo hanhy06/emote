@@ -15,7 +15,7 @@ final class PartnerMatcher {
         PlaybackSession nearest = null;
         double nearestDistanceSquared = Double.MAX_VALUE;
         for (PlaybackSession session : sessions) {
-            if (!acceptsPartner(session, sequenceId) || session.reservedPartner() != null) {
+            if (!acceptsPartner(session, sequenceId)) {
                 continue;
             }
             PlaybackParticipant initiatorState = session.initiator();
@@ -78,7 +78,7 @@ final class PartnerMatcher {
     private static boolean acceptsPartner(PlaybackSession session, String sequenceId) {
         return session.id().equals(sequenceId)
             && session.collaborativeSequence() != null
-            && (session.state() == PlaybackSession.State.OFFERING || session.state() == PlaybackSession.State.WAITING);
+            && session.acceptsPartner();
     }
 
     private static Vec3 horizontalForward(float yaw) {

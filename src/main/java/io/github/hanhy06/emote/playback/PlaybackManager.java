@@ -440,8 +440,7 @@ public class PlaybackManager implements ConfigListener {
             matched.playbackPlan(),
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
-        PlaybackParticipant partner = session.activateReservedPartner();
-        session.replacePlayback(timeline, events, PlaybackSession.State.MATCHED);
+        PlaybackParticipant partner = session.activateReservedPartner(timeline, events);
         this.playerVisibilityService.start(player, session, partner);
         startEvents(timeline, events);
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
@@ -460,12 +459,12 @@ public class PlaybackManager implements ConfigListener {
             timeout.playbackPlan(),
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
-        session.replacePlayback(timeline, events, PlaybackSession.State.TIMEOUT);
+        session.beginTimeout(timeline, events);
         startEvents(timeline, events);
     }
 
     private void releaseReservedPartner(PlaybackSession session) {
-        PlaybackParticipant partner = session.clearReservedPartner();
+        PlaybackParticipant partner = session.releaseReservedPartner();
         if (partner != null) {
             this.playerSessions.remove(partner.playerUuid(), session.sessionId());
         }
