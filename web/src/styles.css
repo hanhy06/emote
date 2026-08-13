@@ -105,6 +105,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .command-list li { display: grid; grid-template-columns: minmax(260px, 1fr) auto; align-items: end; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid #e4e4e4; }
 .command-list label { display: grid; gap: 4px; min-width: 0; font-size: 12px; }
 .command-list input { width: 100%; font-family: Consolas, monospace; }
+.command-list li > button { height: 30px; margin-bottom: 1px; padding: 4px 10px; font-size: 13px; }
 .command-list input[aria-invalid="true"] { border-color: #c42b1c; }
 .command-label-heading { display: flex; align-items: baseline; gap: 8px; }
 .command-label-heading small { color: #666; font-weight: 400; }
@@ -135,7 +136,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .metadata-editor-row label { display: grid; min-width: 0; gap: 4px; font-size: 13px; }
   .metadata-editor-row input { width: 100%; min-height: 30px; height: 30px; padding: 4px 7px; }
   .metadata-editor-row .metadata-json-value { font-family: Consolas, monospace; }
-  .metadata-editor-row > button { height: 30px; margin-bottom: 1px; padding: 4px 10px; }
+  .metadata-editor-row > button { height: 30px; margin-bottom: 1px; padding: 4px 10px; font-size: 13px; }
   .metadata-editor-row .error { grid-column: 1 / -1; margin: 0; }
 .export-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 12px; }
 .download-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
