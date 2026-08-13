@@ -54,7 +54,7 @@ export function exportAnimationBundle(
       settings: { cooldown: first.settings.cooldown, player: options.player },
       steps: animations.map((animation) => ({ emote: animation.id })),
     };
-    files[`emote.${sanitizeAnimationFileName(options.name)}.sequence.json`] = strToU8(JSON.stringify(sequence));
+    files[`emote.${sanitizeAnimationFileName(options.name)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
   }
   return {
     blob: new Blob([zipSync(files)], { type: "application/zip" }),

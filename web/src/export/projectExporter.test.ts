@@ -29,7 +29,9 @@ describe("exportAnimation", () => {
 
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
     const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
-    const sequence = JSON.parse(strFromU8(files[sequenceName]));
+    const sequenceJson = strFromU8(files[sequenceName]);
+    const sequence = JSON.parse(sequenceJson);
+    expect(sequenceJson).toContain('\n  "steps": [\n');
     expect(sequence.schema_version).toBe(3);
     expect(sequence.id).toBe("demo:demo");
     expect(sequence.metadata.name).toBe("Demo");
@@ -38,7 +40,9 @@ describe("exportAnimation", () => {
     const animationNames = Object.keys(files).filter((name) => !name.endsWith(".sequence.json"));
     expect(animationNames).toHaveLength(2);
     for (const animationName of animationNames) {
-      expect(JSON.parse(strFromU8(files[animationName])).settings.standalone).toBe(false);
+      const animationJson = strFromU8(files[animationName]);
+      expect(animationJson).not.toContain("\n");
+      expect(JSON.parse(animationJson).settings.standalone).toBe(false);
     }
     expect(result.fileName).toBe("emote.demo.zip");
   });
