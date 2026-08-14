@@ -61,7 +61,7 @@ const EASINGS: Readonly<Record<string, EasingFunction>> = {
   easeinoutbounce: easeInOut(bounce),
 };
 
-export function geckoLibEasingProgress(name: string, progress: number): number | undefined {
+export function cubeEasingProgress(name: string, progress: number): number | undefined {
   return EASINGS[name.toLowerCase()]?.(progress);
 }
 

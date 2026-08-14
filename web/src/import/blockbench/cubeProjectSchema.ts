@@ -92,7 +92,7 @@ export interface BbDataPoint {
   z: number | string;
 }
 
-export function requireGeckoLibBbmodel(value: unknown): BbmodelProject {
+export function requireBlockbenchCubeProject(value: unknown): BbmodelProject {
   const root = requireRecord(value, "GeckoLib bbmodel");
   const meta = requireRecord(root.meta, "meta");
   requireString(meta.format_version, "meta.format_version");

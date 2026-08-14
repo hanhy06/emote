@@ -6,8 +6,8 @@ import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTop
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importGeckoLibProject } from "../geckoLibBbmodel/geckoLibBbmodelAdapter";
-import { requireGeckoLibBbmodel } from "../geckoLibBbmodel/geckoLibBbmodelSchema";
+import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
+import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
 import type {
   AjProject,
@@ -61,13 +61,13 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
 
 function importAnimatedJavaCubeProject(input: ImportInput, project: AjProject): ImportedProject {
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
-  const geckoProject = requireGeckoLibBbmodel({
+  const cubeProject = requireBlockbenchCubeProject({
     ...project,
     meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
     name: project.name?.trim() || sourceStem,
     geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
   });
-  const imported = importGeckoLibProject(geckoProject, `${sourceStem}.bbmodel`);
+  const imported = importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
   const name = prettify(sourceStem);
   return {
     ...imported,
