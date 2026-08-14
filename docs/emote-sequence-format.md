@@ -45,8 +45,9 @@ See [emote-sequence-format.json](./emote-sequence-format.json) for a complete ex
 | `schema_version` | Must be `3`. |
 | `id` | Lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and optional custom metadata. |
+| `participants` | Required participant placements for a two-player sequence; omitted for a single-player sequence. |
 | `settings` | Cooldown and player behavior for the whole sequence. |
-| `steps` | Animation and wait steps in playback order. |
+| `steps` | Animation and wait steps, or one `await_partner` step. |
 
 Sequence JSON files are limited to 8 MiB.
 
@@ -134,8 +135,55 @@ The sequence's `player` settings replace the referenced animations' player setti
 
 A two-player sequence adds top-level `participants` and contains one `await_partner` step. See [emote-two-player-sequence-format.json](./emote-two-player-sequence-format.json) for a complete example.
 
-Participant positions use Minecraft relative coordinates. Absolute positions are rejected. `~` is relative to the scene origin and `^` is relative to the initiator's horizontal view direction. Participant rotations use Minecraft relative rotation syntax.
+```json
+{
+  "participants": {
+    "initiator": {
+      "position": "~ ~ ~",
+      "rotation": "~ 0"
+    },
+    "partner": {
+      "position": "^ ^ ^1.2",
+      "rotation": "~180 0"
+    }
+  },
+  "steps": [
+    {
+      "await_partner": {
+        "emote": "example:handshake_offer",
+        "timeout": "3s"
+      },
+      "matched": [{"emote": "example:handshake"}],
+      "timeout": [{"emote": "example:handshake_withdraw"}]
+    }
+  ]
+}
+```
 
-The offer animation plays for the initiator while the partner space remains hidden. A nearby player joins by starting the same sequence. The matched branch begins at the end of the offer, or immediately when the offer is already holding. If no player joins before the timeout, the timeout branch begins.
+`participants` must define both `initiator` and `partner`. Participant positions use Minecraft relative coordinates: all three components must use `~` or `^`, and absolute components are rejected. `~` is relative to the scene origin and `^` is relative to the initiator's horizontal view direction. Participant rotations use Minecraft rotation syntax. These placements determine the roots used by `initiator` and `partner` animation nodes after a match.
+
+The sequence must contain exactly one top-level step, and that step must be `await_partner`. Its fields are:
+
+| Field | Description |
+|-------|-------------|
+| `await_partner.emote` | Offer animation played by the initiator while waiting. |
+| `await_partner.timeout` | Positive time before the offer takes the timeout branch. |
+| `matched` | Non-empty animation/wait branch played after a partner joins. |
+| `timeout` | Non-empty animation/wait branch played if nobody joins. |
+
+`repeat` is not supported on the `await_partner` step. The `matched` and `timeout` arrays follow the normal animation-step and wait-step rules, but cannot contain another `await_partner` step.
+
+### Partner matching
+
+The offer animation plays for the initiator while the partner space remains hidden. Another player joins by starting the same sequence while all of these conditions hold:
+
+- both players are alive and in the same dimension;
+- they are no more than 2 blocks apart horizontally and 1 block apart vertically;
+- each player faces the other within 45 degrees; and
+- the initiator has line of sight to the partner.
+
+If more than one compatible offer is nearby, the nearest initiator is selected. A partner is reserved when they join and must still satisfy the matching conditions when the offer finishes. The matched branch begins at the end of the offer, or immediately when the offer is already holding. If the reservation becomes invalid, the initiator continues waiting until another partner joins or the timeout expires.
+
+### Symmetric and asymmetric animations
 
 If compatible animations contain no `partner` nodes, every `initiator` node, skin binding, transform track, and visibility track is duplicated automatically for the partner. The duplicate uses the partner root, so a partner rotation such as `~180 0` turns the same local animation to face the initiator. If any `partner` node exists, the sequence is treated as explicitly asymmetric and no automatic partner nodes are generated.

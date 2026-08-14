@@ -134,7 +134,7 @@ config/emote/animations/
 
 All `.json` files below `animations`, including files in nested directories, are loaded recursively. File and directory names are only used for organization. Commands, permissions, enable/disable settings, and the UI use the root `id` field as the identifier.
 
-Animations and sequences use `"schema_version": 2`. Names and descriptions are stored in `metadata`, while playback behavior is stored in `settings`. Time values accept Minecraft time units (`d`, `s`, `t`, or bare ticks).
+Animations and sequences use `"schema_version": 3`. Names and descriptions are stored in `metadata`, while playback behavior is stored in `settings`. Time values accept Minecraft time units (`d`, `s`, `t`, or bare ticks).
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
@@ -153,7 +153,7 @@ A sequence uses `"type": "sequence"` to play existing animations in order:
 ```json
 {
   "type": "sequence",
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "example:sit",
   "steps": [
     {"emote": "example:sit_down"},
@@ -172,7 +172,9 @@ A sequence uses `"type": "sequence"` to play existing animations in order:
 - Sequence player settings apply to the entire sequence and replace the referenced animations' player settings.
 - Timeline commands are preserved, but start, loop, and stop commands are not supported within a sequence.
 
-See [the sequence format](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.md) for detailed rules and the [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json) for a complete example.
+Sequences can also coordinate two players. A collaborative sequence plays an offer animation while waiting for a nearby player to start the same sequence, then follows either its matched or timeout branch. Participant-relative node spaces let the animation place and skin each player independently; animations containing only initiator nodes are mirrored automatically for the partner.
+
+See [the sequence format](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.md) for detailed rules, the [single-player reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json), and the [two-player reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-two-player-sequence-format.json).
 
 ## Mod API
 
