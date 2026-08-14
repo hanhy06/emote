@@ -25,6 +25,7 @@ import { geckoLibEasingProgress } from "./geckoLibEasing";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
+const PLAYER_RENDER_SCALE = 0.9375;
 
 interface BoneNodeEntry {
   id: string;
@@ -191,7 +192,9 @@ function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>): Matrix1
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
   const local = bindLocalMatrix(bone);
-  const world = bone.parent ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache)).multiply(local) : local;
+  const world = bone.parent
+    ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache)).multiply(local)
+    : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   const result = matrix4ToRowMajor(world, `GeckoLib bone ${bone.id}`);
   cache.set(bone.uuid, result);
   return result;
@@ -427,7 +430,7 @@ function animatedWorldMatrix(
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
     ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex).clone().multiply(local)
-    : local;
+    : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;
 }

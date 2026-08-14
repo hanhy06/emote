@@ -26,9 +26,9 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.root.type).toBe("item_display");
     expect(imported.nodes.child.type).toBe("anchor");
     expect(imported.nodes.root.defaultMatrix).toEqual([
-      1, 0, 0, 0,
-      0, 1, 0, 0,
-      0, 0, 1, 0,
+      0.9375, 0, 0, 0,
+      0, 0.9375, 0, 0,
+      0, 0, 0.9375, 0,
       0, 0, 0, 1,
     ]);
     expect(imported.nodes.root.type === "item_display" && imported.nodes.root.playerHeadConversion?.matrix).toEqual([
@@ -56,9 +56,9 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(animation.loop).toBe("loop");
     expect(animation.loopDelayTicks).toBe(1);
     expect(animation.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
-    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(1);
-    expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(1);
-    expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(1);
+    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(0.9375);
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
@@ -153,7 +153,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(1);
+    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
   });
 
   it("rejects interpolation that would otherwise be silently lost", async () => {
@@ -169,7 +169,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75));
+    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
   });
 
   it("rejects unknown GeckoLib easing names", async () => {
