@@ -52,19 +52,25 @@ final class SequenceNodeLayout {
         return new Expansion(expanded, expandedPreparedData, true);
     }
 
-    static void validateCompatibleAnimations(List<PreparedSequence.Step> steps) {
+    static PreparedEmote validateAndFindLayoutAnchor(List<PreparedSequence.Step> steps) {
         PreparedEmote first = steps.stream()
             .filter(PreparedSequence.EmoteStep.class::isInstance)
             .map(PreparedSequence.EmoteStep.class::cast)
-            .map(step -> step.candidates().getFirst().animation())
+            .flatMap(step -> step.candidates().stream())
+            .filter(PreparedSequence.AnimationChoice.class::isInstance)
+            .map(PreparedSequence.AnimationChoice.class::cast)
+            .map(PreparedSequence.AnimationChoice::animation)
             .findFirst()
-            .orElseThrow();
+            .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
         for (PreparedSequence.Step step : steps) {
             if (!(step instanceof PreparedSequence.EmoteStep emoteStep)) {
                 continue;
             }
             for (PreparedSequence.Choice choice : emoteStep.candidates()) {
-                PreparedEmote animation = choice.animation();
+                if (!(choice instanceof PreparedSequence.AnimationChoice animationChoice)) {
+                    continue;
+                }
+                PreparedEmote animation = animationChoice.animation();
                 if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
@@ -83,6 +89,7 @@ final class SequenceNodeLayout {
                 }
             }
         }
+        return first;
     }
 
     private static Map<String, String> partnerNodeIds(Map<String, EmoteAnimation.Node> nodes) {

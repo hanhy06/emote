@@ -163,6 +163,9 @@ public final class SequenceJsonLoader {
             path + ".await_partner.emote",
             reader
         );
+        if (EmoteSequence.Control.fromId(offer) != null) {
+            throw reader.error(path + ".await_partner.emote", "must reference an animation");
+        }
         int timeoutTicks = reader.requireTime(await, "timeout", path + ".await_partner", 1);
         List<EmoteSequence.Step> matched = parseSteps(
             reader.requireArray(stepObject, "matched", path),

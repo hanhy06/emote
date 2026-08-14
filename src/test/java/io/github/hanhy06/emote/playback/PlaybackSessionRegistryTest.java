@@ -86,11 +86,12 @@ class PlaybackSessionRegistryTest {
             List.of(new EmoteSequence.EmoteStep(emote.animation().id(), 1))
         );
         PreparedSequence.Branch branch = new PreparedSequence.Branch(List.of(
-            new PreparedSequence.EmoteStep(List.of(new PreparedSequence.Choice(emote, 0)), 1)
+            new PreparedSequence.EmoteStep(List.of(new PreparedSequence.AnimationChoice(emote, 0)), 1)
         ));
         PreparedSequence sequence = new PreparedSequence(
             source,
             new PreparedSequence.CollaborativePlayback(emote, 20, branch, branch),
+            emote,
             emote
         );
         return new PlaybackSession(

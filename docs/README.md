@@ -169,6 +169,7 @@ A sequence uses `"type": "sequence"` to play existing animations in order:
 - `emote` selects an animation. It can also be a list for random selection.
 - `wait` adds a delay between animation steps.
 - `repeat` repeats an animation step and defaults to `1`.
+- `emote:continue` skips one repeat, while `emote:break` ends the current repeat loop and continues with the next sequence step.
 - Sequences cannot reference other sequences or server-synchronized animations.
 - Referenced animations must use compatible nodes, displays, and skin layouts.
 - Sequence player settings apply to the entire sequence and replace the referenced animations' player settings.

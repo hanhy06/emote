@@ -135,7 +135,32 @@ To assign explicit chances, alternate each ID with an integer weight. The weight
 }
 ```
 
-A candidate is selected again for every repeat. When alternatives are available, the previous candidate is excluded and the remaining chances are normalized automatically.
+A candidate is selected again for every repeat. When multiple animation candidates are available, the previously selected animation is excluded and the remaining chances are normalized automatically. Sequence controls are not counted as animation alternatives.
+
+## Repeat controls
+
+Two reserved IDs control the current animation step's `repeat` loop:
+
+| ID | Behavior |
+|---|---|
+| `emote:continue` | Consumes the current repeat without adding an animation or `loop_delay`, then selects the next repeat. |
+| `emote:break` | Stops the current repeat loop and continues with the next sequence step. |
+
+Controls can be used anywhere an animation candidate is accepted, including equal and weighted random arrays:
+
+```json
+{
+  "emote": [
+    "example:sit_idle_1", 50,
+    "example:sit_idle_2", 30,
+    "emote:continue", 15,
+    "emote:break", 5
+  ],
+  "repeat": 10
+}
+```
+
+`emote:continue` may be selected consecutively. `emote:break` exits only the current animation step; it does not end the entire sequence or collaboration branch. With the default `repeat` of `1`, both controls skip the current animation step. A sequence must contain at least one real animation candidate, and collaboration offer animations cannot use a control ID.
 
 ## Wait steps
 
@@ -149,7 +174,7 @@ Wait steps cannot be first, last, consecutive, or combined with `repeat`.
 
 ## Animation compatibility
 
-Every candidate used by a sequence must have the same node IDs and compatible node content:
+Every animation candidate used by a sequence must have the same node IDs and compatible node content. Control candidates are ignored by compatibility checks:
 
 - node types must match;
 - item stacks, item display contexts, block states, text, and display entity NBT must match; and

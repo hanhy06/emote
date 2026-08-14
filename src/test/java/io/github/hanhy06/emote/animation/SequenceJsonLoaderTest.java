@@ -87,6 +87,33 @@ class SequenceJsonLoaderTest {
     }
 
     @Test
+    void loadsSequenceRepeatControlsAsReservedIds(@TempDir Path tempDir) throws Exception {
+        EmoteSequence sequence = load(tempDir, "controls.json", baseJson("""
+            {"emote": ["example:idle", 70, "emote:continue", 20, "emote:break", 10], "repeat": 5}
+            """));
+
+        EmoteSequence.EmoteStep step = assertInstanceOf(EmoteSequence.EmoteStep.class, sequence.steps().getFirst());
+
+        assertEquals(List.of("example:idle", "emote:continue", "emote:break"), step.emoteIds().stream().map(Object::toString).toList());
+        assertEquals(EmoteSequence.Control.CONTINUE, EmoteSequence.Control.fromId(step.emoteIds().get(1)));
+        assertEquals(EmoteSequence.Control.BREAK, EmoteSequence.Control.fromId(step.emoteIds().get(2)));
+    }
+
+    @Test
+    void rejectsASequenceControlAsTheCollaborationOffer(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("control-offer.json");
+        Files.writeString(path, collaborativeJson(
+            "^ ^ ^1.2",
+            "{\"emote\":\"example:handshake\"}",
+            "{\"emote\":\"example:withdraw\"}"
+        ).replace("example:handshake_offer", "emote:break"));
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+
+        assertEquals("$.steps[0].await_partner.emote", exception.fieldPath());
+    }
+
+    @Test
     void rejectsInvalidWeightedCandidates(@TempDir Path tempDir) throws Exception {
         Path path = tempDir.resolve("invalid-weighted.json");
         Files.writeString(path, baseJson("""

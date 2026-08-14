@@ -16,16 +16,16 @@ final class SequenceCompiler {
     private SequenceCompiler() {
     }
 
-    static PreparedEmote compile(EmoteSequence sequence, List<PreparedSequence.SelectedStep> steps) {
-        PreparedEmote first = steps.stream()
-            .filter(PreparedSequence.SelectedEmoteStep.class::isInstance)
-            .map(PreparedSequence.SelectedEmoteStep.class::cast)
-            .map(PreparedSequence.SelectedEmoteStep::animation)
-            .findFirst()
-            .orElseThrow();
-
+    static PreparedEmote compile(
+        EmoteSequence sequence,
+        List<PreparedSequence.SelectedStep> steps,
+        PreparedEmote layoutAnchor
+    ) {
         List<EmoteAnimation.Keyframe> keyframes = new ArrayList<>();
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
+        if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
+            keyframes.add(createHiddenKeyframe(layoutAnchor.animation(), 0));
+        }
         long offset = 0L;
         for (PreparedSequence.SelectedStep selectedStep : steps) {
             if (selectedStep instanceof PreparedSequence.SelectedWaitStep(int ticks)) {
@@ -67,9 +67,9 @@ final class SequenceCompiler {
                 sequence.settings().player(),
                 new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)
             ),
-            first.animation().nodes(),
+            layoutAnchor.animation().nodes(),
             new EmoteAnimation.Timeline(
-                requireTick(offset, sequence),
+                Math.max(requireTick(offset, sequence), 1),
                 keyframes,
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
             )
@@ -77,7 +77,7 @@ final class SequenceCompiler {
         SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandCollaborativeLayout(
             sequence.participants() != null,
             compiledAnimation,
-            first.source().preparedDisplayData()
+            layoutAnchor.source().preparedDisplayData()
         );
         compiledAnimation = layout.animation();
         LoadedAnimation loaded = new LoadedAnimation(
@@ -88,7 +88,13 @@ final class SequenceCompiler {
         );
         return layout.generatedPartner()
             ? PreparedEmote.from(loaded)
-            : new PreparedEmote(loaded, first.skinParts(), CompiledTimeline.compile(compiledAnimation));
+            : new PreparedEmote(loaded, layoutAnchor.skinParts(), CompiledTimeline.compile(compiledAnimation));
+    }
+
+    private static EmoteAnimation.Keyframe createHiddenKeyframe(EmoteAnimation animation, int tick) {
+        Map<String, EmoteAnimation.NodeState> states = new LinkedHashMap<>();
+        animation.nodes().keySet().forEach(nodeId -> states.put(nodeId, new EmoteAnimation.NodeState(false)));
+        return new EmoteAnimation.Keyframe(tick, Map.of(), states);
     }
 
     private static EmoteAnimation.Keyframe createResetKeyframe(EmoteAnimation animation, int tick) {

@@ -15,17 +15,19 @@ import java.util.random.RandomGenerator;
 public record PreparedSequence(
     EmoteSequence source,
     Playback playback,
+    PreparedEmote layoutAnchor,
     PreparedEmote compiledAnimation
 ) implements PreparedDefinition {
     public PreparedSequence {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(playback, "playback");
+        Objects.requireNonNull(layoutAnchor, "layoutAnchor");
         Objects.requireNonNull(compiledAnimation, "compiledAnimation");
     }
 
     public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedEmote> animations) {
         Playback playback = resolvePlayback(source, animations);
-        SequenceNodeLayout.validateCompatibleAnimations(playback.validationSteps());
+        PreparedEmote layoutAnchor = SequenceNodeLayout.validateAndFindLayoutAnchor(playback.validationSteps());
         List<SelectedStep> initialSteps = switch (playback) {
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
             case CollaborativePlayback collaborative -> List.of(new SelectedEmoteStep(collaborative.offer(), false));
@@ -33,7 +35,8 @@ public record PreparedSequence(
         return new PreparedSequence(
             source,
             playback,
-            SequenceCompiler.compile(source, initialSteps)
+            layoutAnchor,
+            SequenceCompiler.compile(source, initialSteps, layoutAnchor)
         );
     }
 
@@ -59,8 +62,13 @@ public record PreparedSequence(
             EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
+                EmoteSequence.Control control = EmoteSequence.Control.fromId(choice.emoteId());
+                if (control != null) {
+                    candidates.add(new ControlChoice(control, choice.chance()));
+                    continue;
+                }
                 PreparedEmote animation = resolveAnimation(choice.emoteId().toString(), animations);
-                candidates.add(new Choice(animation, choice.chance()));
+                candidates.add(new AnimationChoice(animation, choice.chance()));
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat()));
         }
@@ -82,15 +90,15 @@ public record PreparedSequence(
         if (!(this.playback instanceof LinearPlayback linear)) {
             throw new IllegalStateException("Collaborative sequence branches must be compiled separately: " + id());
         }
-        return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random));
+        return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random), this.layoutAnchor);
     }
 
     public PreparedEmote compileMatchedRandom(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(collaboration().matched(), random));
+        return SequenceCompiler.compile(this.source, selectSteps(collaboration().matched(), random), this.layoutAnchor);
     }
 
     public PreparedEmote compileTimeoutRandom(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(collaboration().timeout(), random));
+        return SequenceCompiler.compile(this.source, selectSteps(collaboration().timeout(), random), this.layoutAnchor);
     }
 
     public boolean collaborative() {
@@ -120,15 +128,21 @@ public record PreparedSequence(
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
-            int previousIndex = -1;
+            List<PreparedEmote> selectedAnimations = new ArrayList<>();
+            int animationCandidateCount = (int) emoteStep.candidates().stream().filter(AnimationChoice.class::isInstance).count();
+            int previousAnimationIndex = -1;
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
-                int selectedIndex = WeightedChoiceSelector.selectIndex(random, emoteStep.candidates(), Choice::chance, previousIndex);
-                selectedSteps.add(new SelectedEmoteStep(
-                    emoteStep.candidates().get(selectedIndex).animation(),
-                    repeat + 1 < emoteStep.repeat()
-                ));
-                previousIndex = selectedIndex;
+                int excludedIndex = animationCandidateCount > 1 ? previousAnimationIndex : -1;
+                int selectedIndex = WeightedChoiceSelector.selectIndex(random, emoteStep.candidates(), Choice::chance, excludedIndex);
+                Choice selected = emoteStep.candidates().get(selectedIndex);
+                if (selected instanceof AnimationChoice animation) {
+                    selectedAnimations.add(animation.animation());
+                    previousAnimationIndex = selectedIndex;
+                } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
+                    break;
+                }
             }
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
     }
@@ -141,14 +155,24 @@ public record PreparedSequence(
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
+            List<PreparedEmote> selectedAnimations = new ArrayList<>();
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
-                selectedSteps.add(new SelectedEmoteStep(
-                    emoteStep.candidates().getFirst().animation(),
-                    repeat + 1 < emoteStep.repeat()
-                ));
+                Choice selected = emoteStep.candidates().getFirst();
+                if (selected instanceof AnimationChoice animation) {
+                    selectedAnimations.add(animation.animation());
+                } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
+                    break;
+                }
             }
+            appendSelectedAnimations(selectedSteps, selectedAnimations);
         }
         return selectedSteps;
+    }
+
+    private static void appendSelectedAnimations(List<SelectedStep> selectedSteps, List<PreparedEmote> animations) {
+        for (int index = 0; index < animations.size(); index++) {
+            selectedSteps.add(new SelectedEmoteStep(animations.get(index), index + 1 < animations.size()));
+        }
     }
 
     @Override
@@ -229,7 +253,7 @@ public record PreparedSequence(
         @Override
         public List<Step> validationSteps() {
             List<Step> steps = new ArrayList<>(1 + this.matched.steps().size() + this.timeout.steps().size());
-            steps.add(new EmoteStep(List.of(new Choice(this.offer, 0)), 1));
+            steps.add(new EmoteStep(List.of(new AnimationChoice(this.offer, 0)), 1));
             steps.addAll(this.matched.steps());
             steps.addAll(this.timeout.steps());
             return List.copyOf(steps);
@@ -271,9 +295,19 @@ public record PreparedSequence(
         }
     }
 
-    public record Choice(PreparedEmote animation, int chance) {
-        public Choice {
+    public sealed interface Choice permits AnimationChoice, ControlChoice {
+        int chance();
+    }
+
+    public record AnimationChoice(PreparedEmote animation, int chance) implements Choice {
+        public AnimationChoice {
             Objects.requireNonNull(animation, "animation");
+        }
+    }
+
+    public record ControlChoice(EmoteSequence.Control control, int chance) implements Choice {
+        public ControlChoice {
+            Objects.requireNonNull(control, "control");
         }
     }
 

@@ -19,6 +19,30 @@ public record EmoteSequence(
     @Nullable Participants participants,
     List<Step> steps
 ) {
+    public enum Control {
+        CONTINUE(Identifier.parse("emote:continue")),
+        BREAK(Identifier.parse("emote:break"));
+
+        private final Identifier id;
+
+        Control(Identifier id) {
+            this.id = id;
+        }
+
+        public Identifier id() {
+            return this.id;
+        }
+
+        public static @Nullable Control fromId(Identifier id) {
+            for (Control control : values()) {
+                if (control.id.equals(id)) {
+                    return control;
+                }
+            }
+            return null;
+        }
+    }
+
     public EmoteSequence(Path sourcePath, Identifier id, EmoteMetadata metadata, Settings settings, List<Step> steps) {
         this(sourcePath, id, metadata, settings, null, steps);
     }
@@ -125,6 +149,9 @@ public record EmoteSequence(
     ) implements Step {
         public AwaitPartnerStep {
             Objects.requireNonNull(offerEmoteId, "offerEmoteId");
+            if (Control.fromId(offerEmoteId) != null) {
+                throw new IllegalArgumentException("await_partner offer must reference an animation");
+            }
             if (timeoutTicks < 1) {
                 throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
             }
