@@ -117,8 +117,8 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
       output: {
         namespace,
         playbackMode: "source",
-        displayName: project.suggestedMetadata.name,
-        description: project.suggestedMetadata.description,
+        displayName: animation.name,
+        description: `${animation.name} emote.`,
         player: project.suggestedPlayer,
         additionalMetadata,
         standalone: project.suggestedStandalone ?? true,

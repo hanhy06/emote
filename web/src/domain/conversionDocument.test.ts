@@ -27,6 +27,19 @@ describe("ConversionDocument", () => {
     expect(document.nodes.head).not.toHaveProperty("suggestedSkin");
   });
 
+  it("initializes metadata from each animation while keeping the suggested namespace", () => {
+    const source = project();
+    source.suggestedMetadata = { name: "Project name", description: "Project description" };
+    source.animations.push({ ...source.animations[0], id: "second", name: "Second animation" });
+
+    const document = createConversionDocument(source, "Test adapter");
+
+    expect(document.animations.map(({ output }) => output)).toMatchObject([
+      { namespace: "test", displayName: "Test", description: "Test emote." },
+      { namespace: "test", displayName: "Second animation", description: "Second animation emote." },
+    ]);
+  });
+
   it("keeps grouped skin edits and node spaces in one document", () => {
     const initial = createConversionDocument(project(), "Test adapter");
     const selected = new Set(["head_variant"]);
