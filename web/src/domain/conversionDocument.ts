@@ -16,6 +16,8 @@ type ImportedBlockNode = Extract<ImportedNode, { type: "block_display" }>;
 type ImportedTextNode = Extract<ImportedNode, { type: "text_display" }>;
 type ImportedAnchorNode = Extract<ImportedNode, { type: "anchor" }>;
 
+export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.2";
+
 export type ConversionNode =
   | (Omit<ImportedItemNode, "id" | "skin" | "suggestedSkin" | "skinAssignmentGroup" | "space"> & {
     space: NodeSpace;
@@ -109,7 +111,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel },
-    targetMinecraftVersion: project.suggestedMinecraftVersion ?? "26.2",
+    targetMinecraftVersion: project.suggestedMinecraftVersion ?? DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes,
     skinGroups,
     animations: project.animations.map((animation) => ({

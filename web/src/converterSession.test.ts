@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
 import type { ImportedProject } from "./domain/conversionSeed";
-import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
+import {
+  DEFAULT_TARGET_MINECRAFT_VERSION,
+  documentNodeSpaces,
+  documentPartAssignments,
+  documentPartOrders,
+} from "./domain/conversionDocument";
 import {
   assignSessionOrder,
   assignSessionSkinPart,
@@ -20,7 +25,7 @@ describe("converter session skin assignment", () => {
     expect(documentPartOrders(session.document)).toEqual({ head: 2, head_variant: 2 });
     expect(documentNodeSpaces(session.document)).toEqual({ head: "partner", head_variant: "initiator" });
     expect(session.document.animations[0].output).toMatchObject({ namespace: "test", displayName: "Test" });
-    expect(session.document.targetMinecraftVersion).toBe("26.2");
+    expect(session.document.targetMinecraftVersion).toBe(DEFAULT_TARGET_MINECRAFT_VERSION);
   });
 
   it("caches metadata and settings for each selected animation", () => {

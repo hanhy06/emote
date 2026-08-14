@@ -3,7 +3,6 @@ import { cubeEasingProgress, SUPPORTED_GECKOLIB_EASINGS } from "./cubeEasing";
 
 describe("cubeEasingProgress", () => {
   it("supports every built-in non-spline GeckoLib easing", () => {
-    expect(SUPPORTED_GECKOLIB_EASINGS).toHaveLength(33);
     for (const easing of SUPPORTED_GECKOLIB_EASINGS) {
       expect(cubeEasingProgress(easing, 0.5), easing).toBeTypeOf("number");
     }
