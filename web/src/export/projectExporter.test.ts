@@ -46,6 +46,7 @@ describe("exportAnimation", () => {
       expect(JSON.parse(animationJson).settings.standalone).toBe(false);
     }
     expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).settings.cooldown).toBe("40t");
+    expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).metadata.name).toBe("Idle display");
     expect(result.fileName).toBe("emote.demo.zip");
 
     const singleResult = exportAnimation(project, {

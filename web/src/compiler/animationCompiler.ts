@@ -39,7 +39,6 @@ interface CompileContext {
   namespace: string;
   baseMetadata: EmoteMetadata;
   player: EmotePlayerBehavior;
-  multiple: boolean;
   loop?: EmoteAnimation["settings"]["playback"]["mode"];
   standalone: boolean;
   cooldown: string;
@@ -52,7 +51,6 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
   const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.name ?? project.suggestedMetadata.name);
   const baseMetadata = options.metadata ?? project.suggestedMetadata;
   const player = options.player ?? project.suggestedPlayer;
-  const multiple = project.animations.length > 1;
   const ids = new Set<string>();
   for (const animation of project.animations) {
     const id = `${namespace}:${sanitizeResourcePath(animation.id)}`;
@@ -63,7 +61,6 @@ function prepareCompile(project: ImportedProject, options: CompileOptions): Comp
     namespace,
     baseMetadata,
     player,
-    multiple,
     loop: options.loop,
     standalone: options.standalone ?? true,
     cooldown: formatMinecraftTime(parseMinecraftTime(options.cooldown ?? "0t")),
@@ -80,10 +77,7 @@ function compileAnimation(
     type: "animation",
     schema_version: 3,
     id: `${context.namespace}:${sanitizeResourcePath(animation.id)}`,
-    metadata: {
-      ...context.baseMetadata,
-      name: context.multiple ? `${context.baseMetadata.name} ${animation.name}` : context.baseMetadata.name,
-    },
+    metadata: context.baseMetadata,
     settings: {
       standalone: context.standalone,
       cooldown: context.cooldown,
