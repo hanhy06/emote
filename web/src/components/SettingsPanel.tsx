@@ -1,4 +1,4 @@
-import type { ExportOptions } from "../export/types";
+import type { AnimationOutputSettings } from "../domain/conversionDocument";
 import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 
 const STOP_CONDITION_OPTIONS = [
@@ -11,13 +11,15 @@ const STOP_CONDITION_OPTIONS = [
 ] as const;
 
 interface SettingsPanelProps {
-  metadata: ExportOptions;
+  metadata: AnimationOutputSettings;
+  minecraftVersion: string;
   disabled: boolean;
-  onMetadataChange: (metadata: ExportOptions) => void;
+  onMetadataChange: (metadata: AnimationOutputSettings) => void;
+  onMinecraftVersionChange: (minecraftVersion: string) => void;
 }
 
-export function SettingsPanel({ metadata, disabled, onMetadataChange }: SettingsPanelProps) {
-  function updatePlayerStopCondition(key: keyof ExportOptions["player"]["stop_conditions"], value: number | boolean) {
+export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadataChange, onMinecraftVersionChange }: SettingsPanelProps) {
+  function updatePlayerStopCondition(key: keyof AnimationOutputSettings["player"]["stop_conditions"], value: number | boolean) {
     onMetadataChange({
       ...metadata,
       player: { ...metadata.player, stop_conditions: { ...metadata.player.stop_conditions, [key]: value } },
@@ -33,7 +35,7 @@ export function SettingsPanel({ metadata, disabled, onMetadataChange }: Settings
         <h3 id="metadata-heading">Metadata</h3>
         <div className="fields">
           <label>Namespace<input value={metadata.namespace} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, namespace: event.currentTarget.value })} /></label>
-          <label>Display name<input value={metadata.name} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, name: event.currentTarget.value })} /></label>
+          <label>Display name<input value={metadata.displayName} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, displayName: event.currentTarget.value })} /></label>
           <label>Description<input value={metadata.description} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, description: event.currentTarget.value })} /></label>
         </div>
       </section>
@@ -44,7 +46,7 @@ export function SettingsPanel({ metadata, disabled, onMetadataChange }: Settings
         <div className="fields settings-selectors">
           <div className="playback-settings-group">
             <label>Playback mode<select value={metadata.playbackMode} disabled={disabled} onChange={(event) => {
-              const playbackMode = event.currentTarget.value as ExportOptions["playbackMode"];
+              const playbackMode = event.currentTarget.value as AnimationOutputSettings["playbackMode"];
               onMetadataChange({ ...metadata, playbackMode, loopDelay: playbackMode === "once" ? "0t" : metadata.loopDelay });
             }}>
               <option value="source">Source setting</option><option value="once">Play once</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
@@ -60,7 +62,7 @@ export function SettingsPanel({ metadata, disabled, onMetadataChange }: Settings
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
       </section>
-      <section className="playback-behavior"><h3>Other</h3><div className="fields"><label>Minecraft version <small>Used only for generated resource packs.</small><input value={metadata.minecraftVersion} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, minecraftVersion: event.currentTarget.value })} /></label></div></section>
+      <section className="playback-behavior"><h3>Other</h3><div className="fields"><label>Minecraft version <small>Used only for generated resource packs.</small><input value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)} /></label></div></section>
     </section>
   );
 }

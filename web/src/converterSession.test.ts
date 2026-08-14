@@ -2,12 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
 import type { ImportedProject } from "./import/types";
+import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import {
   assignSessionOrder,
   assignSessionSkinPart,
   assignSessionSpace,
   createConverterSession,
-  findSkinCandidates,
   selectSessionAnimation,
   updateSessionAnimationOptions,
 } from "./converterSession";
@@ -16,48 +16,47 @@ describe("converter session skin assignment", () => {
   it("initializes suggested assignments, coordinate spaces, and metadata", () => {
     const session = createConverterSession(project(), "Test adapter");
 
-    expect(session.assignments).toEqual({ head: "head", head_variant: "head" });
-    expect(session.orders).toEqual({ head: 2, head_variant: 2 });
-    expect(session.spaces).toEqual({ head: "partner", head_variant: "initiator" });
-    expect(session.animationOptions[0]).toMatchObject({ minecraftVersion: "26.2", namespace: "test", name: "Test" });
+    expect(documentPartAssignments(session.document)).toEqual({ head: "head", head_variant: "head" });
+    expect(documentPartOrders(session.document)).toEqual({ head: 2, head_variant: 2 });
+    expect(documentNodeSpaces(session.document)).toEqual({ head: "partner", head_variant: "initiator" });
+    expect(session.document.animations[0].output).toMatchObject({ namespace: "test", displayName: "Test" });
+    expect(session.document.targetMinecraftVersion).toBe("26.2");
   });
 
   it("caches metadata and settings for each selected animation", () => {
     const source = project();
     source.animations.push({ ...source.animations[0], id: "second", name: "Second", loopDelayTicks: 4 });
     const initial = createConverterSession(source, "Test adapter");
-    const editedFirst = updateSessionAnimationOptions(initial, { ...initial.animationOptions[0], name: "First edited", cooldown: "2s" });
+    const editedFirst = updateSessionAnimationOptions(initial, { ...initial.document.animations[0].output, displayName: "First edited", cooldown: "2s" });
     const selectedSecond = selectSessionAnimation(editedFirst, 1);
-    const editedSecond = updateSessionAnimationOptions(selectedSecond, { ...selectedSecond.animationOptions[1], name: "Second edited", cooldown: "3s" });
+    const editedSecond = updateSessionAnimationOptions(selectedSecond, { ...selectedSecond.document.animations[1].output, displayName: "Second edited", cooldown: "3s" });
     const selectedFirst = selectSessionAnimation(editedSecond, 0);
 
-    expect(selectedFirst.animationOptions[0]).toMatchObject({ name: "First edited", cooldown: "2s", loopDelay: "0t" });
-    expect(selectedFirst.animationOptions[1]).toMatchObject({ name: "Second edited", cooldown: "3s", loopDelay: "4t" });
+    expect(selectedFirst.document.animations[0].output).toMatchObject({ displayName: "First edited", cooldown: "2s", loopDelay: "0t" });
+    expect(selectedFirst.document.animations[1].output).toMatchObject({ displayName: "Second edited", cooldown: "3s", loopDelay: "4t" });
     expect(selectedFirst.previewFrameIndex).toBe(0);
   });
 
   it("moves assigned scene parts to initiator space", () => {
     const session = createConverterSession(project(), "Test adapter");
     session.selectedParts = new Set(["head_variant"]);
-    session.spaces.head_variant = "scene";
+    session.document.nodes.head_variant.space = "scene";
 
-    const result = assignSessionSkinPart(session, findSkinCandidates(session.project), "body");
+    const result = assignSessionSkinPart(session, "body");
 
-    expect(result.assignments).toEqual({ head: "body", head_variant: "body" });
-    expect(result.spaces.head_variant).toBe("initiator");
+    expect(documentPartAssignments(result.document)).toEqual({ head: "body", head_variant: "body" });
+    expect(result.document.nodes.head_variant.space).toBe("initiator");
   });
 
   it("clears a logical skin group in scene space and updates its order together", () => {
     const session = createConverterSession(project(), "Test adapter");
     session.selectedParts = new Set(["head_variant"]);
-    const candidates = findSkinCandidates(session.project);
+    const ordered = assignSessionOrder(session, 5);
+    const cleared = assignSessionSpace(ordered, "scene");
 
-    const ordered = assignSessionOrder(session, candidates, 5);
-    const cleared = assignSessionSpace(ordered, candidates, "scene");
-
-    expect(ordered.orders).toEqual({ head: 5, head_variant: 5 });
-    expect(cleared.assignments).toEqual({ head: null, head_variant: null });
-    expect(cleared.orders).toEqual({ head: null, head_variant: null });
+    expect(documentPartOrders(ordered.document)).toEqual({ head: 5, head_variant: 5 });
+    expect(documentPartAssignments(cleared.document)).toEqual({ head: null, head_variant: null });
+    expect(documentPartOrders(cleared.document)).toEqual({ head: null, head_variant: null });
   });
 });
 

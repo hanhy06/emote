@@ -1,8 +1,11 @@
-import type { ImportedProject } from "../import/types";
+interface GeneratedResourceSource {
+  resources: Map<string, Uint8Array>;
+  resourceMinecraftVersion?: string;
+}
 
 const GENERATED_RESOURCE_PATH_PATTERN = /^assets\/[a-z0-9_.-]+\/[a-z0-9_./-]+$/;
 
-export function generatedResourceFiles(project: ImportedProject, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
+export function generatedResourceFiles(project: GeneratedResourceSource, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
   if (project.resources.size === 0) throw new Error("This emote does not contain generated resources.");
   validateResourceVersion(project, minecraftVersion);
   for (const path of project.resources.keys()) {
@@ -19,7 +22,7 @@ export function generatedResourceFiles(project: ImportedProject, minecraftVersio
   return project.resources;
 }
 
-export function validateResourceVersion(project: ImportedProject, minecraftVersion: string): void {
+export function validateResourceVersion(project: GeneratedResourceSource, minecraftVersion: string): void {
   if (project.resourceMinecraftVersion && minecraftVersion !== project.resourceMinecraftVersion) {
     throw new Error(`Generated resources require Minecraft ${project.resourceMinecraftVersion}.`);
   }

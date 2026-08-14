@@ -11,17 +11,16 @@ import {
   assignSessionOrder,
   assignSessionSkinPart,
   assignSessionSpace,
-  buildSkinAssignments,
   createConverterSession,
   createPreviewParts,
-  EMPTY_ASSIGNMENTS,
-  EMPTY_ORDERS,
   EMPTY_SELECTION,
   findSkinCandidates,
   selectSessionAnimation,
+  updateSessionAnimation,
   updateSessionAnimationOptions,
   type ConverterSession,
 } from "./converterSession";
+import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import { downloadExport } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { NodeSpace } from "./format/emoteAnimation";
@@ -71,15 +70,15 @@ export function App() {
     updateSession((current) => ({ ...current, conversionError }));
   }, [updateSession]);
 
-  const project = session?.project ?? null;
+  const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const assignments = session?.assignments ?? EMPTY_ASSIGNMENTS;
-  const orders = session?.orders ?? EMPTY_ORDERS;
-  const spaces = session?.spaces ?? {};
+  const assignments = useMemo(() => project ? documentPartAssignments(project) : {}, [project]);
+  const orders = useMemo(() => project ? documentPartOrders(project) : {}, [project]);
+  const spaces = useMemo(() => project ? documentNodeSpaces(project) : {}, [project]);
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
-  const animation = project?.animations[animationIndex];
-  const animationOptions = session?.animationOptions[animationIndex];
+  const animation = project?.animations[animationIndex]?.source;
+  const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTick = previewFrameIndex === 0
@@ -147,16 +146,16 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.project, session.animationOptions[index], buildSkinAssignments(session, skinCandidates), index, session.spaces);
+      const { exportDocumentAnimation } = await import("./export/projectExporter");
+      return exportDocumentAnimation(session.document, index);
     }, "Conversion failed.", "Creating animation file");
   }
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
     await runExport(async () => {
-      const { exportAnimationBundle } = await import("./export/projectExporter");
-      return exportAnimationBundle(session.project, session.animationOptions, buildSkinAssignments(session, skinCandidates), includeSequence, session.spaces);
+      const { exportDocumentAnimationBundle } = await import("./export/projectExporter");
+      return exportDocumentAnimationBundle(session.document, includeSequence);
     }, "Bundle export failed.", includeSequence ? "Creating sequence ZIP" : "Creating animation ZIP");
   }
 
@@ -164,8 +163,8 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { exportResourcePack } = await import("./export/resourcePackExporter");
-      return exportResourcePack(session.project, session.animationOptions[index], buildSkinAssignments(session, skinCandidates), index, session.spaces);
+      const { exportDocumentResourcePack } = await import("./export/resourcePackExporter");
+      return exportDocumentResourcePack(session.document, index);
     }, "Resource export failed.", "Creating resource pack");
   }
 
@@ -173,8 +172,8 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { mergeResourcePackZip } = await import("./export/resourcePackMerger");
-      return mergeResourcePackZip(session.project, session.animationOptions[session.animationIndex], file);
+      const { mergeDocumentResourcePackZip } = await import("./export/resourcePackMerger");
+      return mergeDocumentResourcePackZip(session.document, file);
     }, "Resource pack merge failed.", "Merging resource pack");
   }
 
@@ -182,8 +181,8 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { mergeResourcePackFolder } = await import("./export/resourcePackMerger");
-      return mergeResourcePackFolder(session.project, session.animationOptions[session.animationIndex], files);
+      const { mergeDocumentResourcePackFolder } = await import("./export/resourcePackMerger");
+      return mergeDocumentResourcePackFolder(session.document, files);
     }, "Resource pack merge failed.", "Merging resource pack");
   }
 
@@ -197,26 +196,20 @@ export function App() {
 
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => assignSessionSkinPart(current, skinCandidates, part));
+    updateSession((current) => assignSessionSkinPart(current, part));
   }
 
   function assignSelectedSpace(space: NodeSpace) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => assignSessionSpace(current, skinCandidates, space));
+    updateSession((current) => assignSessionSpace(current, space));
   }
 
   function assignOrder(order: number) {
-    updateSession((current) => assignSessionOrder(current, skinCandidates, order));
+    updateSession((current) => assignSessionOrder(current, order));
   }
 
   function editCurrentAnimation(edit: (current: ImportedAnimation) => ImportedAnimation) {
-    updateSession((current) => ({
-      ...current,
-      project: {
-        ...current.project,
-        animations: current.project.animations.map((item, index) => index === current.animationIndex ? edit(item) : item),
-      },
-    }));
+    updateSession((current) => updateSessionAnimation(current, edit));
   }
 
   function addCommandAtPreviewTick() {
@@ -297,18 +290,18 @@ export function App() {
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
               <span>Imported file</span>
-              <strong>{project.sourceName}</strong>
+              <strong>{project.origin.sourceName}</strong>
             </div>
             <label className="project-animation">
               <span>Animation</span>
               <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
                 updateSession((current) => selectSessionAnimation(current, Number(event.currentTarget.value)));
               }}>
-                {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
+                {project.animations.map((item, index) => <option value={index} key={`${item.source.id}:${index}`}>{item.source.name}</option>)}
               </select>
             </label>
             <dl>
-              <div><dt>Format</dt><dd>{session.adapterLabel}</dd></div>
+              <div><dt>Format</dt><dd>{project.origin.adapterLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
               <div><dt>Animations</dt><dd>{project.animations.length}</dd></div>
             </dl>
@@ -360,7 +353,7 @@ export function App() {
               <div className="editor">
                 <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
                   <PartPreview
-                    key={project.sourceName}
+                    key={project.origin.sourceName}
                     parts={previewParts}
                     assignments={assignments}
                     selectedParts={selectedParts}
@@ -396,13 +389,18 @@ export function App() {
 
           {page === 1 && animationOptions && <SettingsPanel
             metadata={animationOptions}
+            minecraftVersion={project.targetMinecraftVersion}
             disabled={busy}
             onMetadataChange={(metadata) => updateSession((current) => updateSessionAnimationOptions(current, metadata))}
+            onMinecraftVersionChange={(minecraftVersion) => updateSession((current) => ({
+              ...current,
+              document: { ...current.document, targetMinecraftVersion: minecraftVersion },
+            }))}
           />}
 
           {page === 2 && <ExportPanel
-            assignmentSummary={assignmentSummary(skinCandidates, assignments, project.resources.size)}
-            animations={project.animations.map((item) => ({ label: item.name, detail: item.id }))}
+            assignmentSummary={assignmentSummary(project)}
+            animations={project.animations.map((item) => ({ label: item.output.displayName, detail: item.source.id }))}
             hasResources={project.resources.size > 0}
             error={session.conversionError}
             disabled={busy}

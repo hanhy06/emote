@@ -1,4 +1,5 @@
 import { unzip, zip } from "fflate";
+import type { ConversionDocument } from "../domain/conversionDocument";
 import type { ImportedProject } from "../import/types";
 import { generatedResourceFiles } from "./generatedResources";
 import type { ExportOptions, ExportResult } from "./types";
@@ -7,6 +8,41 @@ interface FolderFile {
   name: string;
   webkitRelativePath?: string;
   arrayBuffer(): Promise<ArrayBuffer>;
+}
+
+export async function mergeDocumentResourcePackZip(document: ConversionDocument, file: File): Promise<ExportResult> {
+  if (file.size > MAX_COMPRESSED_BYTES) throw new Error("The selected ZIP exceeds the supported size limit.");
+  const entries = await unzipResourcePack(new Uint8Array(await file.arrayBuffer()));
+  return mergeDocumentEntries(document, entries, stripZipExtension(file.name));
+}
+
+export async function mergeDocumentResourcePackFolder(
+  document: ConversionDocument,
+  selectedFiles: readonly FolderFile[],
+): Promise<ExportResult> {
+  if (selectedFiles.length === 0) throw new Error("The selected resource pack folder is empty.");
+  const budget = new ResourcePackBudget();
+  const entries: Record<string, Uint8Array> = {};
+  for (const file of selectedFiles) {
+    const path = normalizePath(file.webkitRelativePath || file.name);
+    const data = new Uint8Array(await file.arrayBuffer());
+    budget.add(path, data.byteLength);
+    entries[path] = data;
+  }
+  const folderName = normalizePath(selectedFiles[0].webkitRelativePath || selectedFiles[0].name).split("/")[0];
+  return mergeDocumentEntries(document, entries, folderName);
+}
+
+async function mergeDocumentEntries(
+  document: ConversionDocument,
+  sourceEntries: Readonly<Record<string, Uint8Array>>,
+  sourceName: string,
+): Promise<ExportResult> {
+  return mergeNormalizedEntries(
+    sourceEntries,
+    generatedResourceFiles(document, document.targetMinecraftVersion),
+    sourceName,
+  );
 }
 
 const MAX_COMPRESSED_BYTES = 256 * 1024 * 1024;
@@ -66,6 +102,14 @@ async function mergeEntries(
   sourceEntries: Readonly<Record<string, Uint8Array>>,
   sourceName: string,
 ): Promise<ExportResult> {
+  return mergeNormalizedEntries(sourceEntries, generatedResourceFiles(project, options.minecraftVersion), sourceName);
+}
+
+async function mergeNormalizedEntries(
+  sourceEntries: Readonly<Record<string, Uint8Array>>,
+  generatedResources: ReadonlyMap<string, Uint8Array>,
+  sourceName: string,
+): Promise<ExportResult> {
   const normalizedEntries = new Map<string, Uint8Array>();
   for (const [rawPath, data] of Object.entries(sourceEntries)) {
     const path = normalizePath(rawPath);
@@ -81,7 +125,7 @@ async function mergeEntries(
     const packPath = path.slice(packRoot.length);
     if (packPath) files[packPath] = data;
   }
-  for (const [path, data] of generatedResourceFiles(project, options.minecraftVersion)) {
+  for (const [path, data] of generatedResources) {
     files[path] = data;
   }
 

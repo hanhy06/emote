@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
+import { createConversionDocument } from "../domain/conversionDocument";
 import type { ImportedProject } from "../import/types";
 import { generatedResourceFiles } from "./generatedResources";
-import { exportAnimation, exportAnimationBundle } from "./projectExporter";
+import { exportAnimation, exportDocumentAnimation, exportDocumentAnimationBundle } from "./projectExporter";
 import { exportResourcePack } from "./resourcePackExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -22,11 +23,10 @@ describe("exportAnimation", () => {
       })),
       diagnostics: [], resources: new Map(),
     };
-    const options = {
-      minecraftVersion: "26.2", namespace: "demo", playbackMode: "source", name: "Demo", description: "Sequence demo",
-      player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s", standalone: true,
-    } as const;
-    const result = exportAnimationBundle(project, [options, { ...options, name: "Idle display", cooldown: "2s" }], {}, true);
+    const document = createConversionDocument(project, "Test adapter");
+    document.animations[0].output.cooldown = "1s";
+    document.animations[1].output = { ...document.animations[1].output, displayName: "Idle display", cooldown: "2s" };
+    const result = exportDocumentAnimationBundle(document, true);
 
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
     const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
@@ -49,10 +49,7 @@ describe("exportAnimation", () => {
     expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).metadata.name).toBe("Idle display");
     expect(result.fileName).toBe("emote.demo.zip");
 
-    const singleResult = exportAnimation(project, {
-      minecraftVersion: "26.2", namespace: "demo", playbackMode: "source", name: "Demo", description: "Sequence demo",
-      player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s", standalone: true,
-    }, {}, 0);
+    const singleResult = exportDocumentAnimation(document, 0);
     expect(singleResult.fileName).toBe("emote.demo.json");
   });
 

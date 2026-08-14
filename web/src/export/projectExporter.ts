@@ -1,5 +1,6 @@
 import { strToU8, zipSync } from "fflate";
-import { compileImportedAnimation } from "../compiler/animationCompiler";
+import { compileConversionAnimation, compileImportedAnimation } from "../compiler/animationCompiler";
+import type { ConversionDocument } from "../domain/conversionDocument";
 import type { EmoteAnimation, NodeSpace } from "../format/emoteAnimation";
 import { multiplyMatrix16 } from "../format/matrix";
 import { sanitizeResourcePath } from "../format/resourceLocation";
@@ -13,6 +14,48 @@ const PLAYER_HEAD_SNBT = serializeSnbtCompound([
   ["id", serializeSnbtString("minecraft:player_head")],
   ["count", "1"],
 ]);
+
+export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
+  validateResourceVersion(document, document.targetMinecraftVersion);
+  const animation = compileConversionAnimation(document, animationIndex);
+  const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
+  return {
+    blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
+    fileName: `emote.${sanitizeAnimationFileName(displayName)}.json`,
+  };
+}
+
+export function exportDocumentAnimationBundle(document: ConversionDocument, includeSequence: boolean): ExportResult {
+  validateResourceVersion(document, document.targetMinecraftVersion);
+  const firstEntry = document.animations[0];
+  if (!firstEntry) throw new Error("The project does not contain animations.");
+  const animations = document.animations.map((_, index) => compileConversionAnimation(
+    document,
+    index,
+    includeSequence ? { standalone: false } : undefined,
+  ));
+  const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
+    `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
+    strToU8(serializeEmoteAnimation(animation)),
+  ]));
+  if (includeSequence) {
+    const first = animations[0];
+    const firstOutput = firstEntry.output;
+    const sequence = {
+      type: "sequence",
+      schema_version: 3,
+      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(firstOutput.displayName)}`,
+      metadata: { ...firstOutput.additionalMetadata, name: firstOutput.displayName, description: firstOutput.description },
+      settings: { cooldown: first.settings.cooldown, player: firstOutput.player },
+      steps: animations.map((animation) => ({ emote: animation.id })),
+    };
+    files[`emote.${sanitizeAnimationFileName(firstOutput.displayName)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
+  }
+  return {
+    blob: new Blob([zipSync(files)], { type: "application/zip" }),
+    fileName: `emote.${sanitizeAnimationFileName(firstEntry.output.displayName)}${includeSequence ? "" : ".animations"}.zip`,
+  };
+}
 
 export function exportAnimation(
   project: ImportedProject,
