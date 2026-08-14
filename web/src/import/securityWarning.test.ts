@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ImportedAnimation, ImportedProject } from "./types";
+import type { ImportedAnimation, ImportedProject } from "../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { countImportedCommands } from "./securityWarning";
 

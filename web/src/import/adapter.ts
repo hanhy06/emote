@@ -1,4 +1,4 @@
-import type { ImportedProject, ImportSource } from "./types";
+import type { ImportedProject, ImportSource } from "../domain/conversionSeed";
 import type { EmoteSequence } from "./emoteJson/sequenceJsonConverter";
 
 export interface ImportInput {

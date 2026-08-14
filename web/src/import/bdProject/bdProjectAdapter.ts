@@ -5,7 +5,7 @@ import { normalizeResourceLocation, sanitizeResourcePath } from "../../format/re
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe } from "../../domain/conversionSeed";
 import { requireBdSceneNode, type BdAnimationSample, type BdSceneNode, type BdSound, type BdTransform, type VectorLike } from "./bdProjectSchema";
 import { hasGzipHeader, readPrj2 } from "./prj2";
 

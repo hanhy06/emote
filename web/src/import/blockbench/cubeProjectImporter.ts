@@ -5,7 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../../domain/conversionSeed";
 import {
   type BbAnimation,
   type BbAnimator,

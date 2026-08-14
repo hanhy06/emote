@@ -12,7 +12,7 @@ import {
   type ConversionNode,
 } from "./domain/conversionDocument";
 import type { NodeSpace } from "./format/emoteAnimation";
-import type { ImportedAnimation, ImportedProject } from "./import/types";
+import type { ImportedAnimation, ImportedProject } from "./domain/conversionSeed";
 import { isVisibleAtTick, type PlayerHeadPart } from "./preview/playerHeadPart";
 import type { SkinPartId } from "./preview/skinAssignment";
 

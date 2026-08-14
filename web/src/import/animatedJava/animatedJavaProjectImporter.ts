@@ -8,7 +8,7 @@ import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
 import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,

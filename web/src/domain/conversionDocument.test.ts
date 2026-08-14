@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { IDENTITY_MATRIX } from "../format/matrix";
-import type { ImportedProject } from "../import/types";
+import type { ImportedProject } from "./conversionSeed";
 import { assignDocumentNodeSpace, assignDocumentSkinOrder, assignDocumentSkinPart } from "./conversionEditor";
 import {
   createConversionDocument,

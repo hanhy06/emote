@@ -1,5 +1,5 @@
 import type { NodeSpace } from "../format/emoteAnimation";
-import type { ImportedAnimation } from "../import/types";
+import type { ImportedAnimation } from "./conversionSeed";
 import type { SkinPartId } from "../preview/skinAssignment";
 import type { AnimationOutputSettings, ConversionDocument } from "./conversionDocument";
 

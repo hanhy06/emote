@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import type { ImportedAnimation } from "../import/types";
+import type { ImportedAnimation } from "../domain/conversionSeed";
 import { addFrameCommand, frameCommands, removeFrameCommand, updateFrameCommand } from "./frameCommands";
 
 function animation(): ImportedAnimation {

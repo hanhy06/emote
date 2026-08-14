@@ -1,4 +1,4 @@
-import type { ImportedAnimation, ImportedTimelineEvent } from "../import/types";
+import type { ImportedAnimation, ImportedTimelineEvent } from "../domain/conversionSeed";
 import { frameCommands } from "./frameCommands";
 
 interface CommandPanelProps {

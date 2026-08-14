@@ -29,7 +29,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
-import type { ImportedAnimation } from "./import/types";
+import type { ImportedAnimation } from "./domain/conversionSeed";
 import {
   selectPart,
   selectParts,

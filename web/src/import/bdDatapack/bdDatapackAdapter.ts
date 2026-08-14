@@ -14,7 +14,7 @@ import {
 } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { cachedInputValue } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedProject } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedProject } from "../../domain/conversionSeed";
 
 const decoder = new TextDecoder();
 const TICKS_PER_BD_FRAME = 2;

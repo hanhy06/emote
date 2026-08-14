@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createConversionDocument } from "../domain/conversionDocument";
-import type { ImportedProject } from "../import/types";
+import type { ImportedProject } from "../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { mergeDocumentResourcePackFolder, mergeDocumentResourcePackZip } from "./resourcePackMerger";
 

@@ -17,7 +17,7 @@ import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import { requireTick } from "../format/time";
-import type { ImportedAnimation } from "../import/types";
+import type { ImportedAnimation } from "../domain/conversionSeed";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([
   ["id", serializeSnbtString("minecraft:player_head")],

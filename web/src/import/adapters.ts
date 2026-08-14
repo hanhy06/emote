@@ -1,5 +1,5 @@
 import type { ImportAdapter, ImportAdapterLoader } from "./adapter";
-import type { ImportSource } from "./types";
+import type { ImportSource } from "../domain/conversionSeed";
 
 export const IMPORT_ADAPTERS: readonly ImportAdapterLoader[] = [
   lazyAdapter("emote_sequence", "Emote sequence JSON", ["json"], () => import("./emoteJson/sequenceJsonAdapter").then((module) => module.sequenceJsonAdapter)),

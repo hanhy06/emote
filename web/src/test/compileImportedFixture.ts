@@ -1,7 +1,7 @@
 import { compileConversionAnimation } from "../compiler/animationCompiler";
 import { createConversionDocument, type ConversionDocument } from "../domain/conversionDocument";
 import type { EmoteAnimation, EmoteMetadata, EmotePlayerBehavior } from "../format/emoteAnimation";
-import type { ImportedProject } from "../import/types";
+import type { ImportedProject } from "../domain/conversionSeed";
 
 interface FixtureCompileOptions {
   minecraftVersion?: string;

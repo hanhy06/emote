@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import type { ImportAdapter, ImportAdapterLoader } from "./adapter";
-import type { ImportSource } from "./types";
+import type { ImportSource } from "../domain/conversionSeed";
 import { detectAdapter, importDetected } from "./adapterRegistry";
 import { ConversionError } from "../foundation/diagnostics";
 

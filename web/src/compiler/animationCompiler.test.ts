@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
-import type { ImportedProject } from "../import/types";
+import type { ImportedProject } from "../domain/conversionSeed";
 import { compileImportedAnimation, compileImportedProject } from "../test/compileImportedFixture";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];

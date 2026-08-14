@@ -1,4 +1,4 @@
-import type { ImportedNodeTrack } from "../import/types";
+import type { ImportedNodeTrack } from "../domain/conversionSeed";
 
 export interface PlayerHeadPart {
   nodeId: string;

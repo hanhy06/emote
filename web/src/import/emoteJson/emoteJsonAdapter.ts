@@ -7,7 +7,7 @@ import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
+import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 
 export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {

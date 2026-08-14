@@ -1,4 +1,4 @@
-import type { ImportedAnimation, ImportedProject } from "./types";
+import type { ImportedAnimation, ImportedProject } from "../domain/conversionSeed";
 
 type CommandSource = ImportedProject | { animations: ReadonlyArray<{ source: ImportedAnimation }> };
 

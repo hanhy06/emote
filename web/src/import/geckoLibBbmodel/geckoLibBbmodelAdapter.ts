@@ -2,7 +2,7 @@ import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
 import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
 import { parseInputJson } from "../inputCache";
-import type { ImportedProject } from "../types";
+import type { ImportedProject } from "../../domain/conversionSeed";
 
 export const geckoLibBbmodelAdapter: ImportAdapter<ImportedProject> = {
   id: "geckolib_bbmodel",

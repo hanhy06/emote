@@ -8,7 +8,7 @@ import type {
   ImportedProject,
   ImportedSkinPart,
   ImportSource,
-} from "../import/types";
+} from "./conversionSeed";
 import type { SkinPartId } from "../preview/skinAssignment";
 
 type ImportedItemNode = Extract<ImportedNode, { type: "item_display" }>;

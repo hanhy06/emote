@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
 import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
-import type { ImportedProject, ImportedSkinPart } from "../import/types";
+import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
 import { exportDocumentAnimation, exportDocumentAnimationBundle } from "./projectExporter";
 import { exportDocumentResourcePack } from "./resourcePackExporter";
