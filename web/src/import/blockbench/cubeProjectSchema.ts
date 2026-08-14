@@ -83,6 +83,11 @@ export interface BbKeyframe {
   time: number;
   interpolation?: string;
   easing?: string;
+  easingArgs?: number[];
+  bezier_left_time?: number[];
+  bezier_left_value?: number[];
+  bezier_right_time?: number[];
+  bezier_right_value?: number[];
   data_points: BbDataPoint[];
 }
 
@@ -184,6 +189,11 @@ function requireAnimation(value: unknown, path: string): void {
       requireNumber(keyframe.time, `${keyframePath}.time`);
       optionalString(keyframe.interpolation, `${keyframePath}.interpolation`);
       optionalString(keyframe.easing, `${keyframePath}.easing`);
+      for (const property of ["easingArgs", "bezier_left_time", "bezier_left_value", "bezier_right_time", "bezier_right_value"] as const) {
+        if (keyframe[property] === undefined) continue;
+        const values = requireNumberArray(keyframe[property], `${keyframePath}.${property}`);
+        if (property !== "easingArgs" && values.length !== 3) throw new Error(`${keyframePath}.${property} must contain three numbers.`);
+      }
       requireArray(keyframe.data_points, `${keyframePath}.data_points`).forEach((pointValue, pointIndex) => {
         const pointPath = `${keyframePath}.data_points[${pointIndex}]`;
         const point = requireRecord(pointValue, pointPath);

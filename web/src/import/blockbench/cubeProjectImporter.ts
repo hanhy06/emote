@@ -10,15 +10,13 @@ import {
   type BbAnimation,
   type BbAnimator,
   type BbCube,
-  type BbDataPoint,
   type BbGroup,
-  type BbKeyframe,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
   type BbTexture,
   type BbmodelProject,
 } from "./cubeProjectSchema";
-import { cubeEasingProgress } from "./cubeEasing";
+import { evaluateGeckoChannel } from "./cubeAnimationBaker";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -396,9 +394,10 @@ function animatedWorldMatrix(
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
   const animator = boneAnimators.get(bone.uuid);
-  const position = evaluateChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationIndex, bone.uuid).map((value) => value / 16);
-  const rotationDelta = evaluateChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationIndex, bone.uuid);
-  const scale = evaluateChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationIndex, bone.uuid);
+  const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
+  const position = evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath).map((value) => value / 16);
+  const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath);
+  const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = bone.group.origin.map((value, index) => (value - parentOrigin[index]) / 16);
   const baseRotation = bone.group.rotation.map((value, index) => value + rotationDelta[index]);
@@ -408,57 +407,6 @@ function animatedWorldMatrix(
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;
-}
-
-function evaluateChannel(
-  keyframes: BbKeyframe[],
-  channel: string,
-  time: number,
-  fallback: number[],
-  animationIndex: number,
-  animatorId: string,
-): number[] {
-  const frames = keyframes.filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
-  if (frames.length === 0) return [...fallback];
-  const nextIndex = frames.findIndex((frame) => frame.time > time);
-  if (nextIndex === 0) return [...fallback];
-  if (nextIndex < 0) return keyframeVector(frames[frames.length - 1], animationIndex, animatorId);
-  const previous = frames[nextIndex - 1];
-  const next = frames[nextIndex];
-  const previousValue = keyframeVector(previous, animationIndex, animatorId);
-  const nextValue = keyframeVector(next, animationIndex, animatorId);
-  const interpolation = next.interpolation ?? "linear";
-  const easing = next.easing ?? "linear";
-  if (interpolation === "step") return previousValue;
-  if (interpolation !== "linear") {
-    throw new ConversionError(
-      "unsupported_geckolib_interpolation",
-      `GeckoLib ${channel} keyframe uses unsupported ${interpolation} interpolation; only linear and step interpolation are supported.`,
-      `animations[${animationIndex}].animators.${animatorId}`,
-    );
-  }
-  const progress = (time - previous.time) / (next.time - previous.time);
-  const easedProgress = cubeEasingProgress(easing, progress);
-  if (easedProgress === undefined) {
-    throw new ConversionError(
-      "unsupported_geckolib_easing",
-      `GeckoLib ${channel} keyframe uses unsupported easing ${easing}.`,
-      `animations[${animationIndex}].animators.${animatorId}`,
-    );
-  }
-  return previousValue.map((value, index) => value + (nextValue[index] - value) * easedProgress);
-}
-
-function keyframeVector(keyframe: BbKeyframe, animationIndex: number, animatorId: string): number[] {
-  if (keyframe.data_points.length !== 1) {
-    throw new ConversionError(
-      "unsupported_geckolib_keyframe",
-      "GeckoLib pre/post keyframes are not supported in the first adapter version.",
-      `animations[${animationIndex}].animators.${animatorId}`,
-    );
-  }
-  const point: BbDataPoint = keyframe.data_points[0];
-  return [point.x, point.y, point.z].map((value, axis) => numericValue(value, `animations[${animationIndex}].animators.${animatorId}.${keyframe.channel}[${axis}]`));
 }
 
 function composeTransform(position: number[], rotation: number[], scale: number[]): Matrix4 {

@@ -156,11 +156,46 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
   });
 
-  it("rejects interpolation that would otherwise be silently lost", async () => {
+  it("bakes Catmull-Rom interpolation", async () => {
     const value = project();
     value.animations[0].animators.root.keyframes[1].interpolation = "catmullrom";
 
-    await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("only linear and step interpolation are supported");
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+  });
+
+  it("bakes Bezier handles, pre/post values, easing arguments, and time-based Molang", async () => {
+    const value = project();
+    value.animations[0].length = 0.2;
+    Object.assign(value.animations[0].animators.root, { keyframes: [
+      {
+        channel: "position",
+        time: 0,
+        interpolation: "bezier",
+        bezier_right_time: [0.05, 0.05, 0.05],
+        bezier_right_value: [4, 0, 0],
+        data_points: [{ x: 0, y: 0, z: 0 }, { x: 4, y: 0, z: 0 }],
+      },
+      {
+        channel: "position",
+        time: 0.2,
+        interpolation: "linear",
+        easing: "step",
+        easingArgs: [4],
+        bezier_left_time: [-0.05, -0.05, -0.05],
+        bezier_left_value: [-4, 0, 0],
+        data_points: [{ x: "query.anim_time * 80", y: 0, z: 0 }, { x: 20, y: 0, z: 0 }],
+      },
+    ] });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    const transforms = imported.animations[0].tracks.root.transforms;
+    expect(transforms).toHaveLength(5);
+    expect(transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+    expect(transforms[0].matrix[3]).toBeCloseTo(0.234375);
+    expect(transforms[4].matrix[3]).toBeCloseTo(1.171875);
   });
 
   it("bakes GeckoLib easing into transform tracks", async () => {

@@ -23,12 +23,9 @@ const bounce: EasingFunction = (progress) => {
   const four = 484 * Math.pow(bounciness, 3) * Math.pow(progress - 10.5 / 11, 2) + 1 - Math.pow(bounciness, 3);
   return Math.min(one, two, three, four);
 };
-const step: EasingFunction = (progress) => progress > 0.5 ? 0.5 : 0;
-
 const EASINGS: Readonly<Record<string, EasingFunction>> = {
   linear: (progress) => progress,
   none: (progress) => progress,
-  step,
   easeinsine: sine,
   easeoutsine: easeOut(sine),
   easeinoutsine: easeInOut(sine),
@@ -61,8 +58,12 @@ const EASINGS: Readonly<Record<string, EasingFunction>> = {
   easeinoutbounce: easeInOut(bounce),
 };
 
-export function cubeEasingProgress(name: string, progress: number): number | undefined {
+export function cubeEasingProgress(name: string, progress: number, args?: number[]): number | undefined {
+  if (name.toLowerCase() === "step") {
+    const steps = Math.max(2, Math.floor(args?.[0] ?? 5));
+    return Math.floor(progress * steps) / steps;
+  }
   return EASINGS[name.toLowerCase()]?.(progress);
 }
 
-export const SUPPORTED_GECKOLIB_EASINGS = Object.freeze(Object.keys(EASINGS));
+export const SUPPORTED_GECKOLIB_EASINGS = Object.freeze([...Object.keys(EASINGS), "step"]);
