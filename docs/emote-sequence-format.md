@@ -60,7 +60,7 @@ The web converter can import a released schema 1 sequence and export it as schem
 | `schema_version: 1` | `schema_version: 3` |
 | Root `player` | `settings.player` |
 | No cooldown | `settings.cooldown`; migration uses `"0t"`. |
-| Schema 1 animation references | Convert each animation using the [animation migration guide](./emote-animation-format.md#migrating-from-schema-1). |
+| Schema 1 animation references | Convert each animation using “Migrating from schema 1” in the [animation format](./emote-animation-format.md). |
 
 Existing animation steps, repeats, and equal or weighted random choices keep the same structure. Schema 3 additionally supports wait steps using Minecraft time strings. The sequence's player settings now apply to the whole sequence and replace the referenced animations' player settings.
 
@@ -93,7 +93,7 @@ This format is used by `cooldown`, `wait`, and `await_partner.timeout`.
 ### Player behavior
 
 - `hidden` controls whether the original player is visible during the sequence.
-- `stop_conditions` controls interruptions for the entire sequence using the same fields as an [animation](./emote-animation-format.md#player-behavior).
+- `stop_conditions` controls interruptions for the entire sequence using the fields under “Player behavior” in the [animation format](./emote-animation-format.md).
 
 ## Animation steps
 
