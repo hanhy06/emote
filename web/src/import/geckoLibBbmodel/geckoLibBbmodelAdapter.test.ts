@@ -234,6 +234,23 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.resourceMinecraftVersion).toBeUndefined();
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
+
+  it("moves arbitrary multi-axis cube rotation into the display transform", async () => {
+    const value = project();
+    value.elements[0].origin = [2, 2, 2];
+    value.elements[0].rotation = [17, 31, -13];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.nodes.root.defaultMatrix.slice(0, 12).some((entry, index) => index % 5 !== 0 && Math.abs(entry) > 1e-5)).toBe(true);
+    const model = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/models/item/test_model/root.json"))) as {
+      elements: { rotation?: unknown }[];
+    };
+    expect(model.elements[0].rotation).toBeUndefined();
+    expect(imported.animations[0].tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
+    expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
+  });
 });
 
 function project() {

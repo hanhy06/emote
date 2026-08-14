@@ -24,6 +24,7 @@ const PLAYER_RENDER_SCALE = 0.9375;
 
 interface BoneNodeEntry {
   id: string;
+  localMatrix: Matrix4;
 }
 
 interface BoneEntry {
@@ -67,11 +68,11 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
-    const defaultMatrix = boneWorldMatrix(bone, new Map());
+    const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map()));
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
-      nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix };
-      bone.nodes.push({ id: bone.id });
+      nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`) };
+      bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
       continue;
     }
     for (const [cubeIndex, cube] of playableCubes.entries()) {
@@ -79,13 +80,14 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
       if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const skin = skinAssignments.get(cube.uuid);
-      bone.nodes.push({ id: nodeId });
+      const localMatrix = cubeLocalMatrix(cube, bone);
+      bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
       writeCubeResources(project, bone, cube, namespace, modelPath, resources);
       nodes[nodeId] = {
         id: nodeId,
         type: "item_display",
-        defaultMatrix,
+        defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
         visible: true,
         itemDisplay: "none",
         itemStackSnbt: serializeSnbtCompound([
@@ -206,7 +208,15 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    for (const node of bone.nodes) tracks[node.id] = { transforms, visibility: [] };
+    for (const node of bone.nodes) {
+      tracks[node.id] = {
+        transforms: transforms.map((transform) => ({
+          ...transform,
+          matrix: matrix4ToRowMajor(new Matrix4().set(...transform.matrix).multiply(node.localMatrix), `${animation.name}/${node.id}/${transform.tick}`),
+        })),
+        visibility: [],
+      };
+    }
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
@@ -450,16 +460,15 @@ function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | undefin
     .makeTranslation(center[0], center[1], center[2])
     .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
     .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
-  const rotation = cube.rotation ?? [0, 0, 0];
-  if (rotation.every((value) => Math.abs(value) <= 1e-7)) {
-    return matrix4ToRowMajor(fit, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
-  }
+  return matrix4ToRowMajor(fit, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
+}
 
+function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
+  const rotation = cube.rotation ?? [0, 0, 0];
+  if (rotation.every((value) => Math.abs(value) <= 1e-7)) return new Matrix4();
   const origin = (cube.origin ?? bone.group.origin).map((value, axis) => (value - bone.group.origin[axis]) / 16);
-  const rotated = composeTransform(origin, rotation, [1, 1, 1])
-    .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]))
-    .multiply(fit);
-  return matrix4ToRowMajor(rotated, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
+  return composeTransform(origin, rotation, [1, 1, 1])
+    .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
 }
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {
@@ -478,29 +487,10 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
       ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
     }]];
   }));
-  const rotation = cubeRotation(cube, boneOrigin);
   return {
     from: cube.from.map((value, axis) => offset(value, axis, -1)),
     to: cube.to.map((value, axis) => offset(value, axis, 1)),
-    ...(rotation ? { rotation } : {}),
     faces,
-  };
-}
-
-function cubeRotation(cube: BbCube, boneOrigin: number[]): Record<string, unknown> | undefined {
-  const values = cube.rotation ?? [0, 0, 0];
-  const axes = values.map((value, index) => ({ value, index })).filter(({ value }) => Math.abs(value) > 1e-7);
-  if (axes.length === 0) return undefined;
-  if (axes.length > 1) throw new ConversionError("unsupported_geckolib_cube_rotation", `Cube ${cube.name ?? cube.uuid} rotates around multiple axes.`, cube.uuid);
-  const { value, index } = axes[0];
-  if (![22.5, -22.5, 45, -45].includes(value)) {
-    throw new ConversionError("unsupported_geckolib_cube_rotation", `Cube ${cube.name ?? cube.uuid} uses unsupported item-model rotation ${value}.`, cube.uuid);
-  }
-  const origin = cube.origin ?? boneOrigin;
-  return {
-    origin: origin.map((coordinate, axis) => coordinate - boneOrigin[axis] + 8),
-    axis: ["x", "y", "z"][index],
-    angle: value,
   };
 }
 
