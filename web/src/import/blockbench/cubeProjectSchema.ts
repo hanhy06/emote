@@ -15,7 +15,7 @@ export interface BbmodelProject {
   name?: string;
   geckolib_modid?: string;
   resolution: { width: number; height: number };
-  elements: BbCube[];
+  elements: BbElement[];
   groups: BbGroup[];
   outliner: BbOutlinerEntry[];
   textures: BbTexture[];
@@ -47,6 +47,17 @@ export interface BbCube {
   inflate?: number;
   faces: Record<string, BbFace>;
 }
+
+export interface BbLocator {
+  uuid: string;
+  name: string;
+  type: "locator";
+  position: number[];
+  rotation: number[];
+  ignore_inherited_scale?: boolean;
+}
+
+export type BbElement = BbCube | BbLocator;
 
 export interface BbFace {
   uv?: number[];
@@ -110,7 +121,7 @@ export function requireBlockbenchCubeProject(value: unknown): BbmodelProject {
   const height = requireNumber(resolution.height, "resolution.height");
   if (width <= 0 || height <= 0) throw new Error("GeckoLib texture resolution must be positive.");
 
-  requireArray(root.elements, "elements").forEach((entry, index) => requireCube(entry, `elements[${index}]`));
+  requireArray(root.elements, "elements").forEach((entry, index) => requireElement(entry, `elements[${index}]`));
   (optionalArray(root.groups, "groups") ?? []).forEach((entry, index) => requireGroup(entry, `groups[${index}]`));
   requireArray(root.outliner, "outliner").forEach((entry, index) => requireOutlinerEntry(entry, `outliner[${index}]`));
   requireArray(root.textures, "textures").forEach((entry, index) => {
@@ -140,6 +151,21 @@ function requireOutlinerEntry(value: unknown, path: string): void {
   if (group.origin !== undefined) requireVector(group.origin, `${path}.origin`);
   if (group.rotation !== undefined) requireVector(group.rotation, `${path}.rotation`);
   requireArray(group.children, `${path}.children`).forEach((entry, index) => requireOutlinerEntry(entry, `${path}.children[${index}]`));
+}
+
+function requireElement(value: unknown, path: string): void {
+  const element = requireRecord(value, path);
+  if (element.type === "locator") {
+    requireString(element.uuid, `${path}.uuid`);
+    requireString(element.name, `${path}.name`);
+    requireVector(element.position, `${path}.position`);
+    requireVector(element.rotation, `${path}.rotation`);
+    if (element.ignore_inherited_scale !== undefined && typeof element.ignore_inherited_scale !== "boolean") {
+      throw new Error(`${path}.ignore_inherited_scale must be a boolean.`);
+    }
+    return;
+  }
+  requireCube(element, path);
 }
 
 function requireCube(value: unknown, path: string): void {

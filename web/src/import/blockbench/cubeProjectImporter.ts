@@ -11,6 +11,7 @@ import {
   type BbAnimator,
   type BbCube,
   type BbGroup,
+  type BbLocator,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
   type BbTexture,
@@ -25,6 +26,7 @@ const PLAYER_RENDER_SCALE = 0.9375;
 interface BoneNodeEntry {
   id: string;
   localMatrix: Matrix4;
+  ignoreInheritedScale?: boolean;
 }
 
 interface BoneEntry {
@@ -33,12 +35,13 @@ interface BoneEntry {
   group: BbGroup;
   parent?: BoneEntry;
   cubes: BbCube[];
+  locators: BbLocator[];
   nodes: BoneNodeEntry[];
 }
 
 export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
-  if (project.elements.some((element) => element.type && element.type !== "cube")) {
+  if (project.elements.some((element) => element.type && element.type !== "cube" && element.type !== "locator")) {
     throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
   }
 
@@ -73,9 +76,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     if (playableCubes.length === 0) {
       nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`) };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
-      continue;
-    }
-    for (const [cubeIndex, cube] of playableCubes.entries()) {
+    } else for (const [cubeIndex, cube] of playableCubes.entries()) {
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
       const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
       if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
@@ -101,6 +102,17 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
         ...(skin ? { suggestedSkin: skin } : {}),
       };
     }
+    for (const [locatorIndex, locator] of bone.locators.entries()) {
+      const nodeId = uniqueLocatorNodeId(bone, locator, locatorIndex, nodeIds);
+      const localMatrix = locatorLocalMatrix(locator, bone);
+      const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
+      bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale });
+      nodes[nodeId] = {
+        id: nodeId,
+        type: "anchor",
+        defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
+      };
+    }
   }
 
   if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
@@ -121,15 +133,16 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
   const groups = new Map(project.groups.map((group) => [group.uuid, group]));
-  const cubes = new Map(project.elements.map((cube) => [cube.uuid, cube]));
+  const elements = new Map(project.elements.map((element) => [element.uuid, element]));
   const entries: BoneEntry[] = [];
   const ids = new Set<string>();
   const visit = (entry: BbOutlinerEntry, parent?: BoneEntry) => {
     if (typeof entry === "string") {
       if (!parent) throw new Error(`GeckoLib cube ${entry} is not parented to a bone.`);
-      const cube = cubes.get(entry);
-      if (!cube) throw new Error(`GeckoLib outliner references unknown element ${entry}.`);
-      parent.cubes.push(cube);
+      const element = elements.get(entry);
+      if (!element) throw new Error(`GeckoLib outliner references unknown element ${entry}.`);
+      if (isLocator(element)) parent.locators.push(element);
+      else parent.cubes.push(element);
       return;
     }
     const saved = groups.get(entry.uuid);
@@ -138,12 +151,16 @@ function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
     const base = id;
     for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
     ids.add(id);
-    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [], nodes: [] };
+    const bone: BoneEntry = { id, uuid: group.uuid, group, parent, cubes: [], locators: [], nodes: [] };
     entries.push(bone);
     entry.children.forEach((child) => visit(child, bone));
   };
   project.outliner.forEach((entry) => visit(entry));
   return entries;
+}
+
+function isLocator(element: BbmodelProject["elements"][number]): element is BbLocator {
+  return element.type === "locator";
 }
 
 function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGroup {
@@ -157,6 +174,15 @@ function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGr
 function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: number, ids: Set<string>): string {
   const cubeName = sanitizeResourcePath(cube.name?.trim() || `cube_${cubeIndex + 1}`, `cube_${cubeIndex + 1}`).replaceAll("/", "_");
   const base = `${bone.id}_${cubeName}`;
+  let id = base;
+  for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
+  ids.add(id);
+  return id;
+}
+
+function uniqueLocatorNodeId(bone: BoneEntry, locator: BbLocator, locatorIndex: number, ids: Set<string>): string {
+  const name = sanitizeResourcePath(locator.name?.trim() || `locator_${locatorIndex + 1}`, `locator_${locatorIndex + 1}`).replaceAll("/", "_");
+  const base = `${bone.id}_${name}`;
   let id = base;
   for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
   ids.add(id);
@@ -212,7 +238,10 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       tracks[node.id] = {
         transforms: transforms.map((transform) => ({
           ...transform,
-          matrix: matrix4ToRowMajor(new Matrix4().set(...transform.matrix).multiply(node.localMatrix), `${animation.name}/${node.id}/${transform.tick}`),
+          matrix: matrix4ToRowMajor(
+            (node.ignoreInheritedScale ? matrixWithoutScale(new Matrix4().set(...transform.matrix)) : new Matrix4().set(...transform.matrix)).multiply(node.localMatrix),
+            `${animation.name}/${node.id}/${transform.tick}`,
+          ),
         })),
         visibility: [],
       };
@@ -469,6 +498,21 @@ function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
   const origin = (cube.origin ?? bone.group.origin).map((value, axis) => (value - bone.group.origin[axis]) / 16);
   return composeTransform(origin, rotation, [1, 1, 1])
     .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
+}
+
+function locatorLocalMatrix(locator: BbLocator, bone: BoneEntry): Matrix4 {
+  return composeTransform(
+    locator.position.map((value, axis) => (value - bone.group.origin[axis]) / 16),
+    locator.rotation,
+    [1, 1, 1],
+  );
+}
+
+function matrixWithoutScale(matrix: Matrix4): Matrix4 {
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  matrix.decompose(position, rotation, new Vector3());
+  return new Matrix4().compose(position, rotation, new Vector3(1, 1, 1));
 }
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {

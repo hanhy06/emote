@@ -251,6 +251,26 @@ describe("geckoLibBbmodelAdapter", () => {
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
+
+  it("imports locators as animated anchors", async () => {
+    const value = project();
+    value.elements.push({
+      uuid: "hand_locator",
+      name: "Hand Socket",
+      type: "locator",
+      position: [0, 16, 0],
+      rotation: [10, 20, 30],
+      ignore_inherited_scale: true,
+    } as unknown as typeof value.elements[number]);
+    value.outliner[0].children.push("hand_locator");
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.nodes.root_hand_socket.type).toBe("anchor");
+    expect(imported.nodes.root_hand_socket.defaultMatrix[7]).toBeCloseTo(1);
+    expect(imported.animations[0].tracks.root_hand_socket.transforms).toHaveLength(3);
+    expect(imported.animations[0].tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+  });
 });
 
 function project() {
