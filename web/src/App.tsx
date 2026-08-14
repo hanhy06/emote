@@ -1,6 +1,6 @@
 import type { TargetedEvent } from "preact";
 import { lazy, Suspense } from "preact/compat";
-import { useCallback, useMemo, useRef, useState } from "preact/hooks";
+import { useCallback, useMemo, useReducer } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
@@ -35,6 +35,7 @@ import {
   selectParts,
   type SkinPartId,
 } from "./preview/skinAssignment";
+import { INITIAL_WORKSPACE, workspaceReducer, type WorkspacePage } from "./workspace";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -58,17 +59,13 @@ const IMPORT_FORMATS = [
 ] as const;
 
 export function App() {
-  const [session, setSession] = useState<ConverterSession | null>(null);
-  const [error, setError] = useState("");
-  const [busyMessage, setBusyMessage] = useState<string | null>(null);
-  const [page, setPage] = useState<0 | 1 | 2>(0);
-  const busyRef = useRef(false);
+  const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
+  const { session, page, openError, exportError, operation } = workspace;
+  const busy = operation.type !== "idle";
+  const busyMessage = operation.type === "idle" ? null : operation.message;
   const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
-    setSession((current) => current ? update(current) : current);
+    dispatch({ type: "update_session", update });
   }, []);
-  const setConversionError = useCallback((conversionError: string) => {
-    updateSession((current) => ({ ...current, conversionError }));
-  }, [updateSession]);
 
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
@@ -93,14 +90,11 @@ export function App() {
     const inputElement = event.currentTarget;
     const file = inputElement.files?.[0];
     if (!file) return;
-    if (busyRef.current) {
+    if (busy) {
       inputElement.value = "";
       return;
     }
-    busyRef.current = true;
-    setBusyMessage("Opening animation project");
-    setError("");
-    setSession(null);
+    dispatch({ type: "begin_open", message: "Opening animation project" });
     try {
       await showLoadingScreen();
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
@@ -113,31 +107,26 @@ export function App() {
         });
         return;
       }
-      setSession(createConverterSession(imported, detected.adapter.label));
-      setPage(0);
+      dispatch({ type: "finish_open", session: createConverterSession(imported, detected.adapter.label) });
     } catch (reason) {
-      setError(conversionErrorMessage(reason, "Could not import the file."));
+      dispatch({ type: "fail_open", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
-      busyRef.current = false;
-      setBusyMessage(null);
+      dispatch({ type: "finish_operation" });
       inputElement.value = "";
     }
   }
 
   async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string, progressMessage: string) {
-    if (busyRef.current) return;
-    busyRef.current = true;
-    setConversionError("");
-    setBusyMessage(progressMessage);
+    if (busy) return;
+    dispatch({ type: "begin_export", message: progressMessage });
 
     try {
       await showLoadingScreen();
       downloadExport(await action());
     } catch (reason) {
-      setConversionError(conversionErrorMessage(reason, fallbackMessage));
+      dispatch({ type: "fail_export", message: conversionErrorMessage(reason, fallbackMessage) });
     } finally {
-      busyRef.current = false;
-      setBusyMessage(null);
+      dispatch({ type: "finish_operation" });
     }
   }
 
@@ -224,7 +213,6 @@ export function App() {
   }
 
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
-  const busy = busyMessage !== null;
   const filePicker = (
     <label className={`file-input${busy ? " disabled" : ""}`}>
       <span>{session ? "Open another file" : "Choose animation file"}</span>
@@ -254,7 +242,7 @@ export function App() {
         {session && filePicker}
       </header>
 
-      {error && <p className="message error" role="alert"><strong>Could not open the file.</strong><span>{error}</span></p>}
+      {openError && <p className="message error" role="alert"><strong>Could not open the file.</strong><span>{openError}</span></p>}
 
       {!session && (
         <section className="start-panel" aria-labelledby="start-title">
@@ -308,7 +296,7 @@ export function App() {
 
           <nav className="workflow-pages" aria-label="Conversion pages">
             {(["Rigging & commands", "Metadata, settings & other", "Output"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" onClick={() => setPage(index as 0 | 1 | 2)} key={label}>
+              <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "set_page", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -401,7 +389,7 @@ export function App() {
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => ({ label: item.output.displayName, detail: item.source.id }))}
             hasResources={project.resources.size > 0}
-            error={session.conversionError}
+            error={exportError}
             disabled={busy}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadAllAnimations={() => handleAnimationBundle(false)}

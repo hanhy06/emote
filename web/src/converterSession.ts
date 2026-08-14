@@ -29,7 +29,6 @@ export interface ConverterSession {
   animationIndex: number;
   previewFrameIndex: number;
   selectedParts: Set<string>;
-  conversionError: string;
 }
 
 export const EMPTY_SELECTION = new Set<string>();
@@ -40,7 +39,6 @@ export function createConverterSession(project: ImportedProject, adapterLabel: s
     animationIndex: 0,
     previewFrameIndex: 0,
     selectedParts: new Set(),
-    conversionError: "",
   };
 }
 
