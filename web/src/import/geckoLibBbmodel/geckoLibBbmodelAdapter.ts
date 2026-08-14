@@ -4,7 +4,7 @@ import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
 import { parseInputJson } from "../inputCache";
 import type { ImportedProject } from "../types";
 
-export const geckoLibBbmodelAdapter: ImportAdapter = {
+export const geckoLibBbmodelAdapter: ImportAdapter<ImportedProject> = {
   id: "geckolib_bbmodel",
   label: "GeckoLib Blockbench project",
   extensions: ["bbmodel"],

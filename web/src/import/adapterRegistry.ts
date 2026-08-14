@@ -1,6 +1,5 @@
-import type { ImportAdapter, ImportAdapterLoader, ImportInput, ProbeResult } from "./adapter";
+import type { ImportAdapter, ImportAdapterLoader, ImportInput, ImportedSource, ProbeResult } from "./adapter";
 import { ConversionError } from "../foundation/diagnostics";
-import type { ImportedProject } from "./types";
 
 export interface DetectedAdapter {
   adapter: ImportAdapter;
@@ -34,7 +33,7 @@ async function probeAdapters(loaders: readonly ImportAdapterLoader[], input: Imp
     .sort((first, second) => second.probe.confidence - first.probe.confidence);
 }
 
-export async function importDetected(detected: DetectedAdapter, input: ImportInput): Promise<ImportedProject> {
+export async function importDetected(detected: DetectedAdapter, input: ImportInput): Promise<ImportedSource> {
   try {
     return await detected.adapter.import(input);
   } catch (reason) {

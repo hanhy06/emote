@@ -35,7 +35,7 @@ interface IndexedAjKeyframes {
   scale?: AjKeyframe;
 }
 
-export const animatedJavaJsonAdapter: ImportAdapter = {
+export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "animated_java_json",
   label: "Animated Java project",
   extensions: ["ajblueprint", "json"],

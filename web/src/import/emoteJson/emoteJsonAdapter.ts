@@ -10,7 +10,7 @@ import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
 import { migrateSchema1Animation } from "./schema1Migration";
 
-export const emoteJsonAdapter: ImportAdapter = {
+export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "emote_json",
   label: "Emote animation JSON",
   extensions: ["json"],

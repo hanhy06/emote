@@ -13,7 +13,7 @@ import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
 
-interface EmoteSequence {
+export interface EmoteSequence {
   type: "sequence";
   schema_version: 3;
   id: string;

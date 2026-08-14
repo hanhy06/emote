@@ -27,7 +27,7 @@ interface BdCurvePoint {
 
 const BD_CURVE_POINTS_CACHE = new WeakMap<BdAnimationSample, BdCurvePoint[] | null>();
 
-export const bdProjectAdapter: ImportAdapter = {
+export const bdProjectAdapter: ImportAdapter<ImportedProject> = {
   id: "bd_project",
   label: "BD Engine project",
   extensions: ["bdengine"],

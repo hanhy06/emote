@@ -2,6 +2,7 @@ import type { ImportAdapter, ImportAdapterLoader } from "./adapter";
 import type { ImportSource } from "./types";
 
 export const IMPORT_ADAPTERS: readonly ImportAdapterLoader[] = [
+  lazyAdapter("emote_sequence", "Emote sequence JSON", ["json"], () => import("./emoteJson/sequenceJsonAdapter").then((module) => module.sequenceJsonAdapter)),
   lazyAdapter("bd_project", "BD Engine project", ["bdengine"], () => import("./bdProject/bdProjectAdapter").then((module) => module.bdProjectAdapter)),
   lazyAdapter("bd_datapack", "BD Engine datapack", ["zip"], () => import("./bdDatapack/bdDatapackAdapter").then((module) => module.bdDatapackAdapter)),
   lazyAdapter("animated_java_json", "Animated Java project", ["ajblueprint", "json"], () => import("./animatedJava/animatedJavaJsonAdapter").then((module) => module.animatedJavaJsonAdapter)),

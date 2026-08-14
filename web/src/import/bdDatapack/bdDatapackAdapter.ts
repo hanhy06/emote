@@ -40,7 +40,7 @@ interface ImportedDisplays {
   payloadByNodeId: Map<string, string>;
 }
 
-export const bdDatapackAdapter: ImportAdapter = {
+export const bdDatapackAdapter: ImportAdapter<ImportedProject> = {
   id: "bd_datapack",
   label: "BD Engine datapack",
   extensions: ["zip"],

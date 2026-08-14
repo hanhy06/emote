@@ -26,10 +26,10 @@ import type { ExportResult } from "./export/types";
 import type { NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
+import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation } from "./import/types";
-import { convertSequenceInput } from "./import/emoteJson/sequenceJsonConverter";
 import {
   selectPart,
   selectParts,
@@ -104,16 +104,15 @@ export function App() {
     try {
       await showLoadingScreen();
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-      const sequence = convertSequenceInput(input);
-      if (sequence) {
+      const detected = await detectAdapter(IMPORT_ADAPTERS, input);
+      const imported = await importDetected(detected, input);
+      if (isImportedSequence(imported)) {
         downloadExport({
-          blob: new Blob([JSON.stringify(sequence)], { type: "application/json" }),
-          fileName: file.name,
+          blob: new Blob([JSON.stringify(imported.sequence)], { type: "application/json" }),
+          fileName: imported.fileName,
         });
         return;
       }
-      const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-      const imported = await importDetected(detected, input);
       setSession(createConverterSession(imported, detected.adapter.label));
       setPage(0);
     } catch (reason) {
