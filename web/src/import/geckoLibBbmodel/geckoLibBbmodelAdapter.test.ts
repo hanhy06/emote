@@ -207,6 +207,38 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
   });
 
+  it("preserves an easing key pose that falls between Minecraft ticks", async () => {
+    const value = project();
+    value.animations[0].length = 0.2;
+    value.animations[0].animators.root.keyframes = [
+      { channel: "position", time: 0, interpolation: "linear", data_points: [{ x: 0, y: 0, z: 0 }] },
+      { channel: "position", time: 0.125, interpolation: "linear", data_points: [{ x: 16, y: 0, z: 0 }] },
+      { channel: "position", time: 0.2, interpolation: "linear", data_points: [{ x: 0, y: 0, z: 0 }] },
+    ];
+    Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "easeInCubic" });
+    Object.assign(value.animations[0].animators.root.keyframes[2], { easing: "easeOutQuart" });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const translations = imported.animations[0].tracks.root.transforms.map((frame) => frame.matrix[3]);
+
+    expect(translations).toContainEqual(expect.closeTo(0.9375));
+  });
+
+  it("keeps GeckoLib step transitions instantaneous after tick placement", async () => {
+    const value = project();
+    value.animations[0].length = 0.2;
+    value.animations[0].animators.root.keyframes = [
+      { channel: "position", time: 0, interpolation: "step", data_points: [{ x: 0, y: 0, z: 0 }] },
+      { channel: "position", time: 0.125, interpolation: "linear", data_points: [{ x: 16, y: 0, z: 0 }] },
+      { channel: "position", time: 0.2, interpolation: "linear", data_points: [{ x: 16, y: 0, z: 0 }] },
+    ];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const transition = imported.animations[0].tracks.root.transforms.find((frame) => Math.abs(frame.matrix[3] - 0.9375) < 1e-8);
+
+    expect(transition?.interpolation).toEqual({ type: "step" });
+  });
+
   it("rejects unknown GeckoLib easing names", async () => {
     const value = project();
     Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "customEasing" });
