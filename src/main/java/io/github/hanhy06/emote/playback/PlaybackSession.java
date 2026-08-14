@@ -24,6 +24,8 @@ public final class PlaybackSession {
     private final EmotePlayerBehavior playerBehavior;
     private final @Nullable PreparedSequence collaborativeSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
+    private final Collection<PlaybackParticipant> participantView = Collections.unmodifiableCollection(this.participants.values());
+    private final Map<ParticipantRole, PlaybackParticipant> participantMapView = Collections.unmodifiableMap(this.participants);
 
     private State state;
     private int remainingTimeoutTicks;
@@ -181,11 +183,11 @@ public final class PlaybackSession {
     }
 
     public Collection<PlaybackParticipant> participants() {
-        return Collections.unmodifiableCollection(this.participants.values());
+        return this.participantView;
     }
 
     public Map<ParticipantRole, PlaybackParticipant> participantsByRole() {
-        return Collections.unmodifiableMap(this.participants);
+        return this.participantMapView;
     }
 
     public enum State {

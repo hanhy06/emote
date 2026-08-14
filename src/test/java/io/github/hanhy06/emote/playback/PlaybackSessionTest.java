@@ -82,6 +82,25 @@ class PlaybackSessionTest {
     }
 
     @Test
+    void reusesReadOnlyParticipantViewsAndReflectsPartnerActivation() throws Exception {
+        SessionFixture fixture = fixture(20);
+        PlaybackSession session = fixture.session();
+        var participantView = session.participants();
+        var participantMapView = session.participantsByRole();
+        PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
+
+        session.reservePartner(partner);
+        session.activateReservedPartner(new PlaybackTrack(timeline(fixture.offer()), events(fixture.offer())));
+
+        assertSame(participantView, session.participants());
+        assertSame(participantMapView, session.participantsByRole());
+        assertTrue(participantView.contains(partner));
+        assertSame(partner, participantMapView.get(ParticipantRole.PARTNER));
+        assertThrows(UnsupportedOperationException.class, participantView::clear);
+        assertThrows(UnsupportedOperationException.class, participantMapView::clear);
+    }
+
+    @Test
     void onlyUnreservedOffersCanEnterWaiting() throws Exception {
         PlaybackSession session = fixture(20).session();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
