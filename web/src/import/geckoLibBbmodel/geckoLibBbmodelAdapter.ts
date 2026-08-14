@@ -21,6 +21,7 @@ import {
   type BbTexture,
   type BbmodelProject,
 } from "./geckoLibBbmodelSchema";
+import { geckoLibEasingProgress } from "./geckoLibEasing";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -451,15 +452,23 @@ function evaluateChannel(
   const interpolation = next.interpolation ?? "linear";
   const easing = next.easing ?? "linear";
   if (interpolation === "step") return previousValue;
-  if (interpolation !== "linear" || easing !== "linear") {
+  if (interpolation !== "linear") {
     throw new ConversionError(
       "unsupported_geckolib_interpolation",
-      `GeckoLib ${channel} keyframe uses ${interpolation}/${easing}; only linear and step are supported in the first adapter version.`,
+      `GeckoLib ${channel} keyframe uses unsupported ${interpolation} interpolation; only linear and step interpolation are supported.`,
       `animations[${animationIndex}].animators.${animatorId}`,
     );
   }
   const progress = (time - previous.time) / (next.time - previous.time);
-  return previousValue.map((value, index) => value + (nextValue[index] - value) * progress);
+  const easedProgress = geckoLibEasingProgress(easing, progress);
+  if (easedProgress === undefined) {
+    throw new ConversionError(
+      "unsupported_geckolib_easing",
+      `GeckoLib ${channel} keyframe uses unsupported easing ${easing}.`,
+      `animations[${animationIndex}].animators.${animatorId}`,
+    );
+  }
+  return previousValue.map((value, index) => value + (nextValue[index] - value) * easedProgress);
 }
 
 function keyframeVector(keyframe: BbKeyframe, animationIndex: number, animatorId: string): number[] {

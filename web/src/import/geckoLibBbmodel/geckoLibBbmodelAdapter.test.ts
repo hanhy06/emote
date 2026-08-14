@@ -160,7 +160,23 @@ describe("geckoLibBbmodelAdapter", () => {
     const value = project();
     value.animations[0].animators.root.keyframes[1].interpolation = "catmullrom";
 
-    await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("only linear and step are supported");
+    await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("only linear and step interpolation are supported");
+  });
+
+  it("bakes GeckoLib easing into transform tracks", async () => {
+    const value = project();
+    Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "easeOutCirc" });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75));
+  });
+
+  it("rejects unknown GeckoLib easing names", async () => {
+    const value = project();
+    Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "customEasing" });
+
+    await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("unsupported easing customEasing");
   });
 
   it("requires the texture to be embedded", async () => {
