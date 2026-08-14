@@ -3,7 +3,8 @@ import { compileConversionAnimation, compileImportedAnimation } from "../compile
 import type { ConversionDocument } from "../domain/conversionDocument";
 import type { EmoteAnimation, NodeSpace } from "../format/emoteAnimation";
 import { multiplyMatrix16 } from "../format/matrix";
-import { sanitizeResourcePath } from "../format/resourceLocation";
+import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
+import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import type { ImportedNode, ImportedProject, ImportedSkinPart } from "../import/types";
@@ -39,21 +40,20 @@ export function exportDocumentAnimationBundle(document: ConversionDocument, incl
     strToU8(serializeEmoteAnimation(animation)),
   ]));
   if (includeSequence) {
-    const first = animations[0];
-    const firstOutput = firstEntry.output;
+    const sequenceOutput = document.sequence;
     const sequence = {
       type: "sequence",
       schema_version: 3,
-      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(firstOutput.displayName)}`,
-      metadata: { ...firstOutput.additionalMetadata, name: firstOutput.displayName, description: firstOutput.description },
-      settings: { cooldown: first.settings.cooldown, player: firstOutput.player },
+      id: `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.displayName)}`,
+      metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
+      settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
       steps: animations.map((animation) => ({ emote: animation.id })),
     };
-    files[`emote.${sanitizeAnimationFileName(firstOutput.displayName)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
+    files[`emote.${sanitizeAnimationFileName(sequenceOutput.displayName)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
   }
   return {
     blob: new Blob([zipSync(files)], { type: "application/zip" }),
-    fileName: `emote.${sanitizeAnimationFileName(firstEntry.output.displayName)}${includeSequence ? "" : ".animations"}.zip`,
+    fileName: `emote.${sanitizeAnimationFileName(includeSequence ? document.sequence.displayName : firstEntry.output.displayName)}${includeSequence ? "" : ".animations"}.zip`,
   };
 }
 

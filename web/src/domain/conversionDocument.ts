@@ -50,6 +50,15 @@ export interface ConversionAnimation {
   output: AnimationOutputSettings;
 }
 
+export interface SequenceOutputSettings {
+  namespace: string;
+  displayName: string;
+  description: string;
+  additionalMetadata: Record<string, unknown>;
+  cooldown: string;
+  player: EmotePlayerBehavior;
+}
+
 export interface ConversionDocument {
   origin: {
     source: ImportSource;
@@ -60,6 +69,7 @@ export interface ConversionDocument {
   nodes: Record<string, ConversionNode>;
   skinGroups: Record<string, SkinGroup>;
   animations: ConversionAnimation[];
+  sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
   resources: Map<string, Uint8Array>;
   resourceMinecraftVersion?: string;
@@ -94,6 +104,9 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     return [nodeId, { ...itemNode, space, skinGroupId }];
   })) as Record<string, ConversionNode>;
 
+  const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
+    .filter(([key]) => key !== "name" && key !== "description"));
+  const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel },
     targetMinecraftVersion: project.suggestedMinecraftVersion ?? "26.2",
@@ -102,18 +115,25 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     animations: project.animations.map((animation) => ({
       source: animation,
       output: {
-        namespace: project.suggestedNamespace ?? project.suggestedMetadata.name,
+        namespace,
         playbackMode: "source",
         displayName: project.suggestedMetadata.name,
         description: project.suggestedMetadata.description,
         player: project.suggestedPlayer,
-        additionalMetadata: Object.fromEntries(Object.entries(project.suggestedMetadata)
-          .filter(([key]) => key !== "name" && key !== "description")),
+        additionalMetadata,
         standalone: project.suggestedStandalone ?? true,
         cooldown: project.suggestedCooldown ?? "0t",
         loopDelay: `${animation.loopDelayTicks}t`,
       },
     })),
+    sequence: {
+      namespace,
+      displayName: project.suggestedMetadata.name,
+      description: project.suggestedMetadata.description,
+      additionalMetadata,
+      cooldown: project.suggestedCooldown ?? "0t",
+      player: project.suggestedPlayer,
+    },
     diagnostics: project.diagnostics,
     resources: project.resources,
     ...(project.resourceMinecraftVersion ? { resourceMinecraftVersion: project.resourceMinecraftVersion } : {}),
