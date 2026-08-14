@@ -26,7 +26,7 @@ class IdlePlaybackServiceTest {
     );
 
     @Test
-    void checksPlayersOnceEveryTwentyTicks() {
+    void checksPlayersOnceEveryTenTicks() {
         IdlePlaybackService service = successfulService(new AtomicLong(), new AtomicInteger());
 
         assertTrue(service.advanceCheckSchedule());

@@ -18,7 +18,7 @@ import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 public final class IdlePlaybackService implements AccessConfigListener {
-    static final int CHECK_INTERVAL_TICKS = 20;
+    static final int CHECK_INTERVAL_TICKS = 10;
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
     private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
