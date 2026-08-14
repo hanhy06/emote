@@ -97,9 +97,15 @@ This format is used by `cooldown`, `loop_delay`, timeline and event `time`, `dur
 
 ## Nodes
 
-Each property in `nodes` is a stable node ID. Every node requires a `space` and a 16-number `default_matrix` in column-major order.
+Each property in `nodes` is a stable node ID. Every node requires a `space` and a 16-number `default_matrix` in row-major order.
 
-`space` is `scene`, `initiator`, or `partner`. Scene nodes use the shared scene root. Participant nodes use their participant root from a collaborative sequence.
+| Space | Root used during two-player playback |
+|-------|--------------------------------------|
+| `scene` | Shared scene root established by the initiator. |
+| `initiator` | Initiator placement from the sequence's `participants`. |
+| `partner` | Partner placement from the sequence's `participants`. |
+
+All three spaces use the same player root during standalone and single-player sequence playback. The distinction becomes visible in a two-player sequence.
 
 | Type | Required fields | Purpose |
 |------|-----------------|---------|
@@ -114,7 +120,40 @@ Display nodes also support:
 - `entity_nbt`, containing additional display entity SNBT; and
 - `skin` on item display nodes, containing `participant`, a player body `part`, and non-negative `order`.
 
-`participant` must match the node's `initiator` or `partner` space. Supported skin parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes with the same part are ordered using `order` when the player's skin is applied.
+`skin.participant` must be `initiator` or `partner` and must match the node's space. Skin bindings are not supported on `scene` nodes. Supported skin parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes with the same participant and part are ordered using `order` when that player's skin is applied.
+
+## Migrating from schema 1
+
+The web converter can import a released schema 1 animation and export it as schema 3. The server itself only loads schema 3 files.
+
+The root and settings fields changed as follows:
+
+| Schema 1 | Schema 3 |
+|----------|----------|
+| No `type` field | `type: "animation"` is required. |
+| `minecraft_version` | Removed from the runtime file. The converter retains it while importing resources. |
+| `tick_rate: 20` | Removed; Minecraft's 20-tick rate is implicit. |
+| `transform_space` | Removed. Matrices remain root-local, 16-number, row-major matrices. |
+| Root `standalone` | `settings.standalone`; a missing schema 1 value migrates to `true`. |
+| No cooldown | `settings.cooldown`; migration uses `"0t"`. |
+| Root `player` | `settings.player`. |
+| `timeline.loop` | `settings.playback.mode`. |
+| `timeline.loop_delay_ticks` | `settings.playback.loop_delay`. |
+
+Timeline tick fields now use Minecraft time strings:
+
+| Schema 1 | Schema 3 |
+|----------|----------|
+| `timeline.duration_ticks: 40` | `timeline.duration: "40t"` |
+| Keyframe `tick: 10` | Keyframe `time: "10t"` |
+| `interpolation_duration_ticks: 2` | `interpolation_duration: "2t"` |
+| Timeline event `tick: 10` | Timeline event `time: "10t"` |
+
+The same conversion applies to per-node transform interpolation. Values can remain equivalent tick strings or use the other supported Minecraft units.
+
+Schema 3 also adds participant ownership to nodes. Add `space: "initiator"` to player-body nodes and `space: "scene"` to shared props and command anchors. Existing skin bindings add `participant: "initiator"`. Use `partner` for both fields only when a node is explicitly authored for the second player.
+
+New files should include these fields explicitly. To make direct schema 1 conversion simpler, the server accepts schema 3 nodes with omitted participant fields: a skinned node defaults to the initiator, while any other node without `space` defaults to the scene. The web converter writes the explicit fields when exporting.
 
 ## Timeline
 

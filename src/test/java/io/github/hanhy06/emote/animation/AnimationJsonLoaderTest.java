@@ -36,7 +36,7 @@ class AnimationJsonLoaderTest {
         assertTrue(loaded.animation().settings().player().hidden());
         assertEquals(0.1D, loaded.animation().settings().player().stopConditions().movementDistance());
         assertTrue(loaded.animation().settings().player().stopConditions().jump());
-        assertEquals(5, loaded.animation().nodes().size());
+        assertEquals(6, loaded.animation().nodes().size());
         assertEquals(80, loaded.animation().timeline().durationTicks());
         assertEquals(64, loaded.sha256().length());
     }
@@ -65,14 +65,17 @@ class AnimationJsonLoaderTest {
     void loadsNodeSpaceAndSkinParticipant() throws Exception {
         EmoteAnimation animation = parse(readReference()).animation();
         EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");
+        EmoteAnimation.ItemNode partnerHead = (EmoteAnimation.ItemNode) animation.nodes().get("partner_head");
 
         assertEquals(EmoteAnimation.NodeSpace.INITIATOR, head.space());
         assertEquals(ParticipantRole.INITIATOR, head.skin().participant());
+        assertEquals(EmoteAnimation.NodeSpace.PARTNER, partnerHead.space());
+        assertEquals(ParticipantRole.PARTNER, partnerHead.skin().participant());
         assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
     }
 
     @Test
-    void loadsSchemaTwoStyleNodesAfterOnlyChangingSchemaVersion() throws Exception {
+    void loadsSchemaOneStyleNodesAfterOnlyChangingSchemaVersion() throws Exception {
         JsonObject root = readReference();
         JsonObject playerHead = root.getAsJsonObject("nodes").getAsJsonObject("player_head");
         playerHead.remove("space");

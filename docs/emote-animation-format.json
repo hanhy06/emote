@@ -58,6 +58,37 @@
             ],
             "space": "initiator"
         },
+        "partner_head": {
+            "type": "item_display",
+            "visible": true,
+            "item_display": "none",
+            "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
+            "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
+            "skin": {
+                "part": "head",
+                "order": 0,
+                "participant": "partner"
+            },
+            "default_matrix": [
+                1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0,
+                1.75,
+                0,
+                0,
+                1,
+                0,
+                0,
+                0,
+                0,
+                1
+            ],
+            "space": "partner"
+        },
         "enchanted_sword": {
             "type": "item_display",
             "visible": true,

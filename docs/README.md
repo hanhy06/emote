@@ -138,9 +138,11 @@ Animations and sequences use `"schema_version": 3`. Names and descriptions are s
 
 Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
 
+Schema 3 replaces the previously released schema 1 format. It reorganizes animation settings, replaces integer tick fields with Minecraft time strings, adds sequence waits and cooldowns, and introduces participant-aware animations and two-player sequences. The server only loads schema 3 animation and sequence files. The web converter can import schema 1 files and exports them as schema 3.
+
 ### Animations
 
-Animations use `"type": "animation"`.
+Animations use `"type": "animation"`. Every node can declare `space` as `scene`, `initiator`, or `partner`. A skinned item node also declares whether its skin belongs to the `initiator` or `partner`; that participant must match the node space.
 
 Animations intended only as sequence steps set `"settings": { "standalone": false, ... }`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
 
