@@ -5,12 +5,27 @@ import type {
   EmoteNode,
   EmotePlayerBehavior,
   EmoteTimelineEvent,
+  Matrix16,
 } from "../format/emoteAnimation";
-import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import/types";
-import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { requireTick } from "../format/time";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
 import { ConversionError } from "../foundation/diagnostics";
+import {
+  createConversionDocument,
+  documentMetadata,
+  type AnimationOutputSettings,
+  type ConversionDocument,
+  type ConversionNode,
+} from "../domain/conversionDocument";
+import { multiplyMatrix16 } from "../format/matrix";
+import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
+import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
+import { requireTick } from "../format/time";
+import type { ImportedAnimation, ImportedProject } from "../import/types";
+
+const PLAYER_HEAD_SNBT = serializeSnbtCompound([
+  ["id", serializeSnbtString("minecraft:player_head")],
+  ["count", "1"],
+]);
 
 export interface CompileOptions {
   minecraftVersion: string;
@@ -23,100 +38,74 @@ export interface CompileOptions {
   loopDelay?: string;
 }
 
-export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
-  const context = prepareCompile(project, options);
-  return project.animations.map((animation) => compileAnimation(project, animation, context));
-}
-
-export function compileImportedAnimation(project: ImportedProject, options: CompileOptions, animationIndex: number): EmoteAnimation {
-  const context = prepareCompile(project, options);
-  const animation = project.animations[animationIndex];
-  if (!animation) throw new ConversionError("unknown_animation", `Animation ${animationIndex + 1} does not exist.`);
-  return compileAnimation(project, animation, context);
-}
-
-interface CompileContext {
-  namespace: string;
-  baseMetadata: EmoteMetadata;
-  player: EmotePlayerBehavior;
-  loop?: EmoteAnimation["settings"]["playback"]["mode"];
-  standalone: boolean;
-  cooldown: string;
-  loopDelay?: string;
-}
-
-function prepareCompile(project: ImportedProject, options: CompileOptions): CompileContext {
-  const importError = project.diagnostics.find((diagnostic) => diagnostic.severity === "error");
-  if (importError) throw ConversionError.fromIssue(importError);
-  const namespace = sanitizeNamespace(options.namespace ?? options.metadata?.name ?? project.suggestedMetadata.name);
-  const baseMetadata = options.metadata ?? project.suggestedMetadata;
-  const player = options.player ?? project.suggestedPlayer;
-  const ids = new Set<string>();
-  for (const animation of project.animations) {
-    const id = `${namespace}:${sanitizeResourcePath(animation.id)}`;
-    if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
-    ids.add(id);
-  }
-  return {
-    namespace,
-    baseMetadata,
-    player,
-    loop: options.loop,
-    standalone: options.standalone ?? true,
-    cooldown: formatMinecraftTime(parseMinecraftTime(options.cooldown ?? "0t")),
-    loopDelay: options.loopDelay,
-  };
-}
-
-function compileAnimation(
-  project: ImportedProject,
-  animation: ImportedAnimation,
-  context: CompileContext,
+export function compileConversionAnimation(
+  document: ConversionDocument,
+  animationIndex: number,
+  outputOverride?: Partial<AnimationOutputSettings>,
 ): EmoteAnimation {
+  const entry = document.animations[animationIndex];
+  if (!entry) throw new ConversionError("unknown_animation", `Animation ${animationIndex + 1} does not exist.`);
+  const importError = document.diagnostics.find((diagnostic) => diagnostic.severity === "error");
+  if (importError) throw ConversionError.fromIssue(importError);
+  validateAnimationIds(document);
+
+  const output = { ...entry.output, ...outputOverride };
+  const namespace = sanitizeNamespace(output.namespace || output.displayName);
+  const animation = entry.source;
+  const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
   return {
     type: "animation",
     schema_version: 3,
-    id: `${context.namespace}:${sanitizeResourcePath(animation.id)}`,
-    metadata: context.baseMetadata,
+    id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
+    metadata: documentMetadata(output),
     settings: {
-      standalone: context.standalone,
-      cooldown: context.cooldown,
-      player: context.player,
+      standalone: output.standalone,
+      cooldown: formatMinecraftTime(parseMinecraftTime(output.cooldown)),
+      player: output.player,
       playback: {
-        mode: context.loop ?? animation.loop,
-        loop_delay: formatMinecraftTime((context.loop ?? animation.loop) === "once"
-          ? 0
-          : context.loopDelay === undefined
-            ? requireTick(animation.loopDelayTicks, `${animation.id} loop delay`)
-            : parseMinecraftTime(context.loopDelay)),
+        mode,
+        loop_delay: formatMinecraftTime(mode === "once" ? 0 : parseMinecraftTime(output.loopDelay)),
       },
     },
-    nodes: compileNodes(project.nodes, animation),
-    timeline: compileTimeline(animation),
+    nodes: compileNodes(document, animation),
+    timeline: compileTimeline(document, animation),
   };
 }
 
-function compileNodes(nodes: Record<string, ImportedNode>, animation: ImportedAnimation): Record<string, EmoteNode> {
-  return Object.fromEntries(Object.entries(nodes).map(([id, node]) => {
-    const defaultMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix
-      ?? node.defaultMatrix;
-    const space = node.space ?? (node.type === "item_display" && node.skin
-      ? node.skin.participant ?? "initiator"
-      : "scene");
-    if (node.type === "anchor") return [id, { type: "anchor", space, default_matrix: defaultMatrix }];
+function validateAnimationIds(document: ConversionDocument): void {
+  const ids = new Set<string>();
+  for (const animation of document.animations) {
+    const id = `${sanitizeNamespace(animation.output.namespace || animation.output.displayName)}:${sanitizeResourcePath(animation.source.id)}`;
+    if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
+    ids.add(id);
+  }
+}
+
+function compileNodes(document: ConversionDocument, animation: ImportedAnimation): Record<string, EmoteNode> {
+  return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
+    const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
+    const defaultMatrix = compileNodeMatrix(document, id, node, sourceMatrix);
+    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, default_matrix: defaultMatrix }];
     const common = {
-      space,
+      space: node.space,
       ...(node.visible ? {} : { visible: false }),
       default_matrix: defaultMatrix,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
     };
     if (node.type === "item_display") {
+      const assignment = node.skinGroupId ? document.skinGroups[node.skinGroupId]?.assignment : null;
       return [id, {
         ...common,
         type: "item_display",
-        item_stack_snbt: node.itemStackSnbt,
+        item_stack_snbt: assignment && node.playerHeadConversion ? PLAYER_HEAD_SNBT : node.itemStackSnbt,
         item_display: node.itemDisplay,
-        ...(node.skin ? { skin: { ...node.skin, participant: node.skin.participant ?? "initiator" } } : {}),
+        ...(assignment ? {
+          skin: {
+            participant: node.space === "partner" ? "partner" : "initiator",
+            part: assignment.part,
+            order: assignment.order,
+          },
+        } : {}),
       }];
     }
     if (node.type === "block_display") return [id, { ...common, type: "block_display", block_state_snbt: node.blockStateSnbt }];
@@ -124,17 +113,27 @@ function compileNodes(nodes: Record<string, ImportedNode>, animation: ImportedAn
   }));
 }
 
-function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline"] {
+function compileNodeMatrix(
+  document: ConversionDocument,
+  nodeId: string,
+  node: ConversionNode,
+  matrix: Matrix16,
+): Matrix16 {
+  if (node.type !== "item_display" || !node.skinGroupId || !node.playerHeadConversion) return matrix;
+  if (!document.skinGroups[node.skinGroupId]?.assignment) return matrix;
+  return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
+}
+
+function compileTimeline(document: ConversionDocument, animation: ImportedAnimation): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const keyframes = new Map<number, EmoteKeyframe>();
   for (const [nodeId, track] of Object.entries(animation.tracks)) {
+    const node = document.nodes[nodeId];
     let previousTick = 0;
     for (const transform of track.transforms) {
       const tick = requireTick(transform.tick, `${animation.id}/${nodeId} transform`);
       const keyframe = keyframes.get(tick) ?? { time: formatMinecraftTime(tick) };
-      const explicitDuration = transform.interpolation.type === "linear"
-        ? transform.interpolation.durationTicks
-        : undefined;
+      const explicitDuration = transform.interpolation.type === "linear" ? transform.interpolation.durationTicks : undefined;
       const duration = transform.interpolation.type === "step"
         ? 0
         : explicitDuration == null
@@ -142,7 +141,10 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
           : requireTick(explicitDuration, `${animation.id}/${nodeId} interpolation`);
       keyframe.node_transforms = {
         ...keyframe.node_transforms,
-        [nodeId]: { matrix: transform.matrix, interpolation_duration: formatMinecraftTime(duration) },
+        [nodeId]: {
+          matrix: node ? compileNodeMatrix(document, nodeId, node, transform.matrix) : transform.matrix,
+          interpolation_duration: formatMinecraftTime(duration),
+        },
       };
       keyframes.set(tick, keyframe);
       previousTick = tick;
@@ -168,5 +170,38 @@ function compileTimeline(animation: ImportedAnimation): EmoteAnimation["timeline
       ...(animation.events.loop.length ? { loop: animation.events.loop } : {}),
       ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
     },
+  };
+}
+
+// Removed after source-adapter integration tests move to ConversionDocument.
+export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
+  const document = applyLegacyOptions(createConversionDocument(project, "Imported project"), options);
+  return document.animations.map((_, index) => compileConversionAnimation(document, index));
+}
+
+export function compileImportedAnimation(project: ImportedProject, options: CompileOptions, animationIndex: number): EmoteAnimation {
+  return compileConversionAnimation(applyLegacyOptions(createConversionDocument(project, "Imported project"), options), animationIndex);
+}
+
+function applyLegacyOptions(document: ConversionDocument, options: CompileOptions): ConversionDocument {
+  return {
+    ...document,
+    animations: document.animations.map((animation) => ({
+      ...animation,
+      output: {
+        ...animation.output,
+        namespace: options.namespace ?? options.metadata?.name ?? animation.output.namespace,
+        displayName: options.metadata?.name ?? animation.output.displayName,
+        description: options.metadata?.description ?? animation.output.description,
+        additionalMetadata: options.metadata
+          ? Object.fromEntries(Object.entries(options.metadata).filter(([key]) => key !== "name" && key !== "description"))
+          : animation.output.additionalMetadata,
+        player: options.player ?? animation.output.player,
+        playbackMode: options.loop ?? "source",
+        standalone: options.standalone ?? true,
+        cooldown: options.cooldown ?? "0t",
+        loopDelay: options.loopDelay ?? animation.output.loopDelay,
+      },
+    })),
   };
 }
