@@ -164,7 +164,7 @@ public final class PlaybackEntityController {
         }
         applyTransformation(
             node,
-            playbackNodes.root(node.node().space()).displayTransformation(transform),
+            playbackNodes.displayTransformation(node.node().space(), transform),
             interpolationDurationTicks
         );
     }

@@ -311,7 +311,7 @@ public final class TimelinePlayer {
         @Override
         public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-            return this.nodes.root(node.node().space()).displayTransformation(transform);
+            return this.nodes.displayTransformation(node.node().space(), transform);
         }
 
         @Override

@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -141,6 +142,30 @@ class PlaybackNodesTest {
         nodes.updateViewYaw(90.0F, 50.0F);
         assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
         assertEquals(180.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.PARTNER));
+    }
+
+    @Test
+    void cachesPreparedTransformationsPerNodeSpace() {
+        RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
+        RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
+        PlaybackNodes nodes = new PlaybackNodes(
+            Map.of(
+                EmoteAnimation.NodeSpace.SCENE, scene,
+                EmoteAnimation.NodeSpace.INITIATOR, scene,
+                EmoteAnimation.NodeSpace.PARTNER, partner
+            ),
+            Map.of()
+        );
+        CompiledTimeline.PreparedTransform transform = CompiledTimeline.PreparedTransform.create(identityMatrix(), false);
+
+        var firstScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
+        var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
+        var partnerResult = nodes.displayTransformation(EmoteAnimation.NodeSpace.PARTNER, transform);
+
+        assertSame(firstScene, secondScene);
+        assertNotSame(firstScene, partnerResult);
+        assertEquals(scene.displayTransformation(transform), firstScene);
+        assertEquals(partner.displayTransformation(transform), partnerResult);
     }
 
     private EmoteAnimation.Matrix identityMatrix() {

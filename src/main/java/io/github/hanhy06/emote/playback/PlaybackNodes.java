@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
+import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
@@ -10,6 +12,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
 
@@ -17,6 +20,8 @@ public final class PlaybackNodes {
     private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
+    private final EnumMap<EmoteAnimation.NodeSpace, IdentityHashMap<CompiledTimeline.PreparedTransform, Transformation>> displayTransformations =
+        new EnumMap<>(EmoteAnimation.NodeSpace.class);
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
         EmoteAnimation.NodeSpace.SCENE,
         EmoteAnimation.NodeSpace.INITIATOR
@@ -30,6 +35,7 @@ public final class PlaybackNodes {
         requiredSpaces.putAll(spaces);
         for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
             Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
+            this.displayTransformations.put(space, new IdentityHashMap<>());
         }
         this.spaces = Map.copyOf(requiredSpaces);
         this.nodes = Map.copyOf(nodes);
@@ -54,6 +60,15 @@ public final class PlaybackNodes {
 
     int displayEntityCount() {
         return this.displayEntityCount;
+    }
+
+    Transformation displayTransformation(
+        EmoteAnimation.NodeSpace space,
+        CompiledTimeline.PreparedTransform transform
+    ) {
+        Objects.requireNonNull(transform, "transform");
+        return this.displayTransformations.get(Objects.requireNonNull(space, "space"))
+            .computeIfAbsent(transform, ignored -> root(space).displayTransformation(transform));
     }
 
     boolean requestVisibility(String nodeId, boolean visible) {
