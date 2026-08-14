@@ -23,7 +23,11 @@
         ]
     },
     "mixins": [
-        "emote.mixins.json"
+        "emote.mixins.json",
+        {
+            "config": "emote.client.mixins.json",
+            "environment": "client"
+        }
     ],
     "depends": {
         "fabricloader": ">=0.19",
