@@ -1,11 +1,10 @@
 {
-    "type": "sequence",
-    "schema_version": 3,
     "id": "emote:handshake",
     "metadata": {
-        "name": "Handshake",
-        "description": "Offer a handshake and play the matching two-player animation."
+        "name": "handshake",
+        "description": "handshake emote."
     },
+    "schema_version": 3,
     "participants": {
         "initiator": {
             "position": "~ ~ ~",
@@ -17,7 +16,7 @@
         }
     },
     "settings": {
-        "cooldown": "5s",
+        "cooldown": "0t",
         "player": {
             "hidden": true,
             "stop_conditions": {
@@ -35,21 +34,26 @@
         {
             "await_partner": {
                 "emote": "emote:handshake_offer",
-                "timeout": "3s"
+                "timeout": "10s"
             },
             "matched": [
                 {
-                    "emote": [
-                        "emote:handshake_left", 50,
-                        "emote:handshake_right", 50
-                    ]
+                    "emote": "emote:handshake",
+                    "repeat": 2
+                },
+                {
+                    "wait": "1s"
+                },
+                {
+                    "emote": "emote:handshake_close"
                 }
             ],
             "timeout": [
                 {
-                    "emote": "emote:handshake_withdraw"
+                    "emote": "emote:handshake_close"
                 }
             ]
         }
-    ]
+    ],
+    "type": "sequence"
 }

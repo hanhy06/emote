@@ -163,11 +163,15 @@ A two-player sequence adds top-level `participants` and contains one `await_part
   "steps": [
     {
       "await_partner": {
-        "emote": "example:handshake_offer",
-        "timeout": "3s"
+        "emote": "emote:handshake_offer",
+        "timeout": "10s"
       },
-      "matched": [{"emote": "example:handshake"}],
-      "timeout": [{"emote": "example:handshake_withdraw"}]
+      "matched": [
+        {"emote": "emote:handshake", "repeat": 2},
+        {"wait": "1s"},
+        {"emote": "emote:handshake_close"}
+      ],
+      "timeout": [{"emote": "emote:handshake_close"}]
     }
   ]
 }
