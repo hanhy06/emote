@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileImportedProject } from "../../compiler/animationCompiler";
+import { compileImportedProject } from "../../test/compileImportedFixture";
 import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "../../format/emoteAnimation";
 import { emoteJsonAdapter } from "./emoteJsonAdapter";
 

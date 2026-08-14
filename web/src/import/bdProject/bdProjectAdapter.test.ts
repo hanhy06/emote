@@ -1,6 +1,6 @@
 import { gzipSync } from "node:zlib";
 import { describe, expect, it } from "vitest";
-import { compileImportedProject } from "../../compiler/animationCompiler";
+import { compileImportedProject } from "../../test/compileImportedFixture";
 import { IDENTITY_MATRIX } from "../../format/matrix";
 import { serializeEmoteAnimation } from "../../format/serializer";
 import { bdProjectAdapter } from "./bdProjectAdapter";

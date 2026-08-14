@@ -1,13 +1,77 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
-import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
-import { createConversionDocument } from "../domain/conversionDocument";
-import type { ImportedProject } from "../import/types";
+import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
+import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
+import type { ImportedProject, ImportedSkinPart } from "../import/types";
 import { generatedResourceFiles } from "./generatedResources";
-import { exportAnimation, exportDocumentAnimation, exportDocumentAnimationBundle } from "./projectExporter";
-import { exportResourcePack } from "./resourcePackExporter";
+import { exportDocumentAnimation, exportDocumentAnimationBundle } from "./projectExporter";
+import { exportDocumentResourcePack } from "./resourcePackExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+interface FixtureExportOptions {
+  minecraftVersion: string;
+  namespace: string;
+  playbackMode: AnimationOutputSettings["playbackMode"];
+  name: string;
+  description: string;
+  player: AnimationOutputSettings["player"];
+  additionalMetadata: Record<string, unknown>;
+  standalone?: boolean;
+  cooldown?: string;
+  loopDelay?: string;
+}
+
+function exportAnimation(
+  project: ImportedProject,
+  options: FixtureExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  animationIndex: number,
+  spaces: Readonly<Record<string, NodeSpace>> = {},
+) {
+  return exportDocumentAnimation(exportDocument(project, options, skinAssignments, spaces), animationIndex);
+}
+
+function exportResourcePack(
+  project: ImportedProject,
+  options: FixtureExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  animationIndex: number,
+  spaces: Readonly<Record<string, NodeSpace>> = {},
+) {
+  return exportDocumentResourcePack(exportDocument(project, options, skinAssignments, spaces), animationIndex);
+}
+
+function exportDocument(
+  project: ImportedProject,
+  options: FixtureExportOptions,
+  skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
+  spaces: Readonly<Record<string, NodeSpace>>,
+) {
+  const document = createConversionDocument(project, "Test adapter");
+  document.targetMinecraftVersion = options.minecraftVersion;
+  document.animations[0].output = {
+    namespace: options.namespace,
+    playbackMode: options.playbackMode,
+    displayName: options.name,
+    description: options.description,
+    player: options.player,
+    additionalMetadata: options.additionalMetadata,
+    standalone: options.standalone ?? true,
+    cooldown: options.cooldown ?? "0t",
+    loopDelay: options.loopDelay ?? document.animations[0].output.loopDelay,
+  };
+  for (const [nodeId, space] of Object.entries(spaces)) {
+    if (document.nodes[nodeId]) document.nodes[nodeId].space = space;
+  }
+  for (const [nodeId, skin] of Object.entries(skinAssignments)) {
+    const node = document.nodes[nodeId];
+    if (node?.type !== "item_display" || !node.skinGroupId) continue;
+    document.skinGroups[node.skinGroupId].assignment = skin ? { part: skin.part, order: skin.order } : null;
+    if (skin) node.space = skin.participant ?? (node.space === "scene" ? "initiator" : node.space);
+  }
+  return document;
+}
 
 describe("exportAnimation", () => {
   it("exports multiple animations with a schema 3 sequence in one ZIP", async () => {

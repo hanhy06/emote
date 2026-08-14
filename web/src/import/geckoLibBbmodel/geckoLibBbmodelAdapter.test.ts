@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileImportedProject } from "../../compiler/animationCompiler";
+import { compileImportedProject } from "../../test/compileImportedFixture";
 import { serializeEmoteAnimation } from "../../format/serializer";
 import { geckoLibBbmodelAdapter } from "./geckoLibBbmodelAdapter";
 

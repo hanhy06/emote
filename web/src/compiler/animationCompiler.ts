@@ -1,15 +1,12 @@
 import type {
   EmoteAnimation,
   EmoteKeyframe,
-  EmoteMetadata,
   EmoteNode,
-  EmotePlayerBehavior,
   EmoteTimelineEvent,
   Matrix16,
 } from "../format/emoteAnimation";
 import { ConversionError } from "../foundation/diagnostics";
 import {
-  createConversionDocument,
   documentMetadata,
   type AnimationOutputSettings,
   type ConversionDocument,
@@ -20,23 +17,12 @@ import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import { requireTick } from "../format/time";
-import type { ImportedAnimation, ImportedProject } from "../import/types";
+import type { ImportedAnimation } from "../import/types";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([
   ["id", serializeSnbtString("minecraft:player_head")],
   ["count", "1"],
 ]);
-
-export interface CompileOptions {
-  minecraftVersion: string;
-  namespace?: string;
-  metadata?: EmoteMetadata;
-  player?: EmotePlayerBehavior;
-  loop?: EmoteAnimation["settings"]["playback"]["mode"];
-  standalone?: boolean;
-  cooldown?: string;
-  loopDelay?: string;
-}
 
 export function compileConversionAnimation(
   document: ConversionDocument,
@@ -170,38 +156,5 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
       ...(animation.events.loop.length ? { loop: animation.events.loop } : {}),
       ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
     },
-  };
-}
-
-// Removed after source-adapter integration tests move to ConversionDocument.
-export function compileImportedProject(project: ImportedProject, options: CompileOptions): EmoteAnimation[] {
-  const document = applyLegacyOptions(createConversionDocument(project, "Imported project"), options);
-  return document.animations.map((_, index) => compileConversionAnimation(document, index));
-}
-
-export function compileImportedAnimation(project: ImportedProject, options: CompileOptions, animationIndex: number): EmoteAnimation {
-  return compileConversionAnimation(applyLegacyOptions(createConversionDocument(project, "Imported project"), options), animationIndex);
-}
-
-function applyLegacyOptions(document: ConversionDocument, options: CompileOptions): ConversionDocument {
-  return {
-    ...document,
-    animations: document.animations.map((animation) => ({
-      ...animation,
-      output: {
-        ...animation.output,
-        namespace: options.namespace ?? options.metadata?.name ?? animation.output.namespace,
-        displayName: options.metadata?.name ?? animation.output.displayName,
-        description: options.metadata?.description ?? animation.output.description,
-        additionalMetadata: options.metadata
-          ? Object.fromEntries(Object.entries(options.metadata).filter(([key]) => key !== "name" && key !== "description"))
-          : animation.output.additionalMetadata,
-        player: options.player ?? animation.output.player,
-        playbackMode: options.loop ?? "source",
-        standalone: options.standalone ?? true,
-        cooldown: options.cooldown ?? "0t",
-        loopDelay: options.loopDelay ?? animation.output.loopDelay,
-      },
-    })),
   };
 }

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { createConversionDocument } from "../domain/conversionDocument";
 import type { ImportedProject } from "../import/types";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
-import type { ExportOptions } from "./types";
-import { mergeResourcePackFolder, mergeResourcePackZip } from "./resourcePackMerger";
+import { mergeDocumentResourcePackFolder, mergeDocumentResourcePackZip } from "./resourcePackMerger";
 
 const project = {
   source: "animated_java_json",
@@ -20,15 +20,7 @@ const project = {
   ]),
 } satisfies ImportedProject;
 
-const options: ExportOptions = {
-  minecraftVersion: "26.2",
-  namespace: "emote",
-  name: "Emote",
-  description: "",
-  player: project.suggestedPlayer,
-  playbackMode: "source",
-  additionalMetadata: {},
-};
+const document = createConversionDocument(project, "Test adapter");
 
 describe("resource pack merger", () => {
   it("preserves a ZIP pack and overwrites conflicts with generated emote resources", async () => {
@@ -40,7 +32,7 @@ describe("resource pack merger", () => {
     });
     const file = new File([source], "original.zip");
 
-    const result = await mergeResourcePackZip(project, options, file);
+    const result = await mergeDocumentResourcePackZip(document, file);
     const merged = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
 
     expect(result.fileName).toBe("original.emote-merged.zip");
@@ -57,7 +49,7 @@ describe("resource pack merger", () => {
       folderFile("My Pack/assets/base/file.txt", "base"),
     ];
 
-    const result = await mergeResourcePackFolder(project, options, folderFiles);
+    const result = await mergeDocumentResourcePackFolder(document, folderFiles);
     const merged = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
 
     expect(result.fileName).toBe("My Pack.emote-merged.zip");
@@ -67,7 +59,7 @@ describe("resource pack merger", () => {
   });
 
   it("rejects a selection that does not contain a resource pack", async () => {
-    await expect(mergeResourcePackFolder(project, options, [folderFile("folder/readme.txt", "no pack")]))
+    await expect(mergeDocumentResourcePackFolder(document, [folderFile("folder/readme.txt", "no pack")]))
       .rejects.toThrow("Could not find pack.mcmeta");
   });
 
@@ -77,14 +69,14 @@ describe("resource pack merger", () => {
       "C:/escape.txt": strToU8("unsafe"),
     });
 
-    await expect(mergeResourcePackZip(project, options, new File([Uint8Array.from(source)], "unsafe.zip")))
+    await expect(mergeDocumentResourcePackZip(document, new File([Uint8Array.from(source)], "unsafe.zip")))
       .rejects.toThrow("unsafe path: C:/escape.txt");
   });
 
   it("rejects packs whose declared expanded size exceeds the total limit", async () => {
     const source = declareFirstEntrySize(zipSync({ "pack.mcmeta": strToU8("metadata") }), 0x7fff_ffff);
 
-    await expect(mergeResourcePackZip(project, options, new File([Uint8Array.from(source)], "oversized.zip")))
+    await expect(mergeDocumentResourcePackZip(document, new File([Uint8Array.from(source)], "oversized.zip")))
       .rejects.toThrow("expands beyond the supported size limit");
   });
 });

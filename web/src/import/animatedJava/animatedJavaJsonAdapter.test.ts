@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compileImportedProject } from "../../compiler/animationCompiler";
+import { compileImportedProject } from "../../test/compileImportedFixture";
 import { serializeEmoteAnimation } from "../../format/serializer";
 import { MAX_ANIMATION_DURATION_TICKS, TICKS_PER_SECOND } from "../../format/time";
 import { animatedJavaJsonAdapter } from "./animatedJavaJsonAdapter";

@@ -1,8 +1,7 @@
 import { unzip, zip } from "fflate";
 import type { ConversionDocument } from "../domain/conversionDocument";
-import type { ImportedProject } from "../import/types";
 import { generatedResourceFiles } from "./generatedResources";
-import type { ExportOptions, ExportResult } from "./types";
+import type { ExportResult } from "./types";
 
 interface FolderFile {
   name: string;
@@ -66,43 +65,6 @@ class ResourcePackBudget {
       throw new Error("The resource pack expands beyond the supported size limit.");
     }
   }
-}
-
-export async function mergeResourcePackZip(
-  project: ImportedProject,
-  options: ExportOptions,
-  file: File,
-): Promise<ExportResult> {
-  if (file.size > MAX_COMPRESSED_BYTES) throw new Error("The selected ZIP exceeds the supported size limit.");
-  const entries = await unzipResourcePack(new Uint8Array(await file.arrayBuffer()));
-  return mergeEntries(project, options, entries, stripZipExtension(file.name));
-}
-
-export async function mergeResourcePackFolder(
-  project: ImportedProject,
-  options: ExportOptions,
-  selectedFiles: readonly FolderFile[],
-): Promise<ExportResult> {
-  if (selectedFiles.length === 0) throw new Error("The selected resource pack folder is empty.");
-  const budget = new ResourcePackBudget();
-  const entries: Record<string, Uint8Array> = {};
-  for (const file of selectedFiles) {
-    const path = normalizePath(file.webkitRelativePath || file.name);
-    const data = new Uint8Array(await file.arrayBuffer());
-    budget.add(path, data.byteLength);
-    entries[path] = data;
-  }
-  const folderName = normalizePath(selectedFiles[0].webkitRelativePath || selectedFiles[0].name).split("/")[0];
-  return mergeEntries(project, options, entries, folderName);
-}
-
-async function mergeEntries(
-  project: ImportedProject,
-  options: ExportOptions,
-  sourceEntries: Readonly<Record<string, Uint8Array>>,
-  sourceName: string,
-): Promise<ExportResult> {
-  return mergeNormalizedEntries(sourceEntries, generatedResourceFiles(project, options.minecraftVersion), sourceName);
 }
 
 async function mergeNormalizedEntries(
