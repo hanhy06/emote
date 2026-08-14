@@ -3,14 +3,9 @@
     "package": "io.github.hanhy06.emote.mixin",
     "compatibilityLevel": "JAVA_25",
     "mixins": [
-        "BlockDisplayAccessor",
-        "DisplayAccessor",
         "EntityMixin",
-        "EntitySharedFlagsAccessor",
-        "ItemDisplayAccessor",
         "LivingEntityMixin",
-        "ServerPlayerMixin",
-        "TextDisplayAccessor"
+        "ServerPlayerMixin"
     ],
     "injectors": {
         "defaultRequire": 1

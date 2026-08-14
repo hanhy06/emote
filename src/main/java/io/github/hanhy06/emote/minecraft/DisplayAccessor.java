@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.mixin;
+package io.github.hanhy06.emote.minecraft;
 
 import com.mojang.math.Transformation;
 import net.minecraft.world.entity.Display;
