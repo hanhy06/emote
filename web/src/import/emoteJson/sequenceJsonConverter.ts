@@ -34,7 +34,7 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
   if (value.schema_version === 1) return migrateSchema1Sequence(value);
-  if (value.schema_version === 2 || value.schema_version === 3) return requireSchema3Sequence(value);
+  if (value.schema_version === 3) return requireSchema3Sequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
 }
 
@@ -52,7 +52,7 @@ function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
 function requireSchema3Sequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
-  if (root.schema_version !== 2 && root.schema_version !== 3) throw invalid("schema_version", "must be 2 or 3");
+  if (root.schema_version !== 3) throw invalid("schema_version", "must be 3");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
   const metadata = requireRecord(root.metadata, "metadata");

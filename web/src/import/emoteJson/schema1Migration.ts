@@ -59,7 +59,7 @@ export function migrateSchema1Animation(value: unknown): MigratedSchema1Animatio
   return { animation: migrated, minecraftVersion };
 }
 
-export function migrateLegacyNodes(value: unknown): RuntimeRecord {
+function migrateLegacyNodes(value: unknown): RuntimeRecord {
   const nodes = requireRecord(value, "nodes");
   return Object.fromEntries(Object.entries(nodes).map(([nodeId, nodeValue]) => {
     const node = requireRecord(nodeValue, `nodes.${nodeId}`);

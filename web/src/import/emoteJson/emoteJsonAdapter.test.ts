@@ -57,13 +57,37 @@ describe("emoteJsonAdapter", () => {
   it("reports the path of malformed runtime input", async () => {
     const malformed = {
       type: "animation",
-      schema_version: 2,
+      schema_version: 3,
       id: "demo:broken",
       metadata: null,
     };
 
     await expect(emoteJsonAdapter.import({ name: "broken.json", bytes: encoder.encode(JSON.stringify(malformed)) }))
       .rejects.toThrow("metadata must be an object");
+  });
+
+  it("does not accept unreleased schema 2 animations", async () => {
+    const animation = {
+      type: "animation",
+      schema_version: 2,
+      id: "demo:unreleased",
+      metadata: { name: "Unreleased", description: "" },
+      settings: {
+        standalone: true,
+        cooldown: "0t",
+        player: createDefaultPlayerBehavior(),
+        playback: { mode: "once", loop_delay: "0t" },
+      },
+      nodes: {},
+      timeline: { duration: "1t", keyframes: [] },
+    };
+    const input = {
+      name: "emote.unreleased.json",
+      bytes: encoder.encode(JSON.stringify(animation)),
+    };
+
+    expect((await emoteJsonAdapter.probe(input)).confidence).toBe(0);
+    await expect(emoteJsonAdapter.import(input)).rejects.toThrow("schema_version: must be 3");
   });
 
   it("automatically migrates schema 1 animations", async () => {

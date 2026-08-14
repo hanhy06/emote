@@ -36,7 +36,7 @@ describe("convertSequenceInput", () => {
     });
   });
 
-  it("accepts and migrates schema 2 sequences", () => {
+  it("rejects unreleased schema 2 sequences", () => {
     const sequence = {
       type: "sequence",
       schema_version: 2,
@@ -46,10 +46,8 @@ describe("convertSequenceInput", () => {
       steps: [{ emote: "emote:sit_down" }, { wait: "10t" }, { emote: ["emote:idle", 100], repeat: 3 }],
     };
 
-    expect(convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) })).toEqual({
-      ...sequence,
-      schema_version: 3,
-    });
+    expect(() => convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) }))
+      .toThrow("Unsupported sequence schema: 2");
   });
 
   it("ignores non-sequence JSON", () => {
