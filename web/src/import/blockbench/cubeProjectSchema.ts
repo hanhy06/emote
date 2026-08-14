@@ -103,9 +103,14 @@ export interface BbKeyframe {
 }
 
 export interface BbDataPoint {
-  x: number | string;
-  y: number | string;
-  z: number | string;
+  x?: number | string;
+  y?: number | string;
+  z?: number | string;
+  effect?: string;
+  locator?: string;
+  script?: string;
+  file?: string;
+  bind_to_actor?: boolean;
 }
 
 export function requireBlockbenchCubeProject(value: unknown): BbmodelProject {
@@ -211,7 +216,7 @@ function requireAnimation(value: unknown, path: string): void {
       const keyframePath = `${animatorPath}.keyframes[${index}]`;
       const keyframe = requireRecord(keyframeValue, keyframePath);
       optionalString(keyframe.uuid, `${keyframePath}.uuid`);
-      requireString(keyframe.channel, `${keyframePath}.channel`);
+      const channel = requireString(keyframe.channel, `${keyframePath}.channel`);
       requireNumber(keyframe.time, `${keyframePath}.time`);
       optionalString(keyframe.interpolation, `${keyframePath}.interpolation`);
       optionalString(keyframe.easing, `${keyframePath}.easing`);
@@ -223,9 +228,17 @@ function requireAnimation(value: unknown, path: string): void {
       requireArray(keyframe.data_points, `${keyframePath}.data_points`).forEach((pointValue, pointIndex) => {
         const pointPath = `${keyframePath}.data_points[${pointIndex}]`;
         const point = requireRecord(pointValue, pointPath);
-        requireExpression(point.x, `${pointPath}.x`);
-        requireExpression(point.y, `${pointPath}.y`);
-        requireExpression(point.z, `${pointPath}.z`);
+        if (["position", "rotation", "scale"].includes(channel)) {
+          requireExpression(point.x, `${pointPath}.x`);
+          requireExpression(point.y, `${pointPath}.y`);
+          requireExpression(point.z, `${pointPath}.z`);
+        } else {
+          optionalString(point.effect, `${pointPath}.effect`);
+          optionalString(point.locator, `${pointPath}.locator`);
+          optionalString(point.script, `${pointPath}.script`);
+          optionalString(point.file, `${pointPath}.file`);
+          if (point.bind_to_actor !== undefined && typeof point.bind_to_actor !== "boolean") throw new Error(`${pointPath}.bind_to_actor must be a boolean.`);
+        }
       });
     }
   }

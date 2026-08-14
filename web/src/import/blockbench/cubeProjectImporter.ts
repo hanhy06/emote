@@ -1,11 +1,11 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteEvent, type Matrix16 } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -27,6 +27,7 @@ interface BoneNodeEntry {
   id: string;
   localMatrix: Matrix4;
   ignoreInheritedScale?: boolean;
+  locatorName?: string;
 }
 
 interface BoneEntry {
@@ -106,7 +107,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       const nodeId = uniqueLocatorNodeId(bone, locator, locatorIndex, nodeIds);
       const localMatrix = locatorLocalMatrix(locator, bone);
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
-      bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale });
+      bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
         id: nodeId,
         type: "anchor",
@@ -116,7 +117,8 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   }
 
   if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
-  const animations = project.animations.map((animation, index) => importAnimation(animation, index, bones));
+  const diagnostics: ImportDiagnostic[] = [];
+  const animations = project.animations.map((animation, index) => importAnimation(animation, index, bones, diagnostics));
   return {
     source: "geckolib_bbmodel",
     sourceName,
@@ -125,7 +127,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     suggestedNamespace: namespace,
     nodes,
     animations,
-    diagnostics: [],
+    diagnostics,
     resources,
     ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
   };
@@ -210,15 +212,16 @@ function bindLocalMatrix(bone: BoneEntry): Matrix4 {
   );
 }
 
-function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[]): ImportedAnimation {
+function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const loop = animation.loop ?? "once";
   if (loop === "hold" || loop === "hold_on_last_frame") {
     throw new ConversionError("unsupported_geckolib_loop", `GeckoLib animation ${animation.name} uses hold mode.`, `animations[${index}].loop`);
   }
   if (loop !== "once" && loop !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
+  const effectEvents = importEffectEvents(animation, index, bones, diagnostics);
   const durationTicks = requireAnimationDurationTicks(
-    Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
+    Math.max(1, Math.round(animation.length * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones);
@@ -256,7 +259,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,
     tracks,
-    events: { start: [], timeline: [], loop: [], stop: [] },
+    events: { start: [], timeline: effectEvents, loop: [], stop: [] },
   };
 }
 
@@ -268,7 +271,7 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
   }
 
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
-    if (boneByUuid.has(animatorId) || (animator.keyframes?.length ?? 0) === 0) continue;
+    if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || (animator.keyframes?.length ?? 0) === 0) continue;
     const normalizedName = normalizeBoneName(animator.name);
     const matchingBones = normalizedName
       ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBoneName(bone.group.name) === normalizedName)
@@ -284,6 +287,72 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
     );
   }
   return result;
+}
+
+function isEffectAnimator(animatorId: string, animator: BbAnimator): boolean {
+  return animatorId === "effects" || animator.type === "effect" || (animator.keyframes ?? []).every((keyframe) => ["sound", "particle", "timeline"].includes(keyframe.channel));
+}
+
+function importEffectEvents(
+  animation: BbAnimation,
+  animationIndex: number,
+  bones: BoneEntry[],
+  diagnostics: ImportDiagnostic[],
+): ImportedTimelineEvent[] {
+  const events: ImportedTimelineEvent[] = [];
+  for (const [animatorId, animator] of Object.entries(animation.animators)) {
+    if (!isEffectAnimator(animatorId, animator)) continue;
+    for (const [keyframeIndex, keyframe] of (animator.keyframes ?? []).entries()) {
+      const tick = Math.round(keyframe.time * TICKS_PER_SECOND);
+      const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
+      if (tick < 0) throw new ConversionError("invalid_geckolib_event", "GeckoLib effect keyframe time must not be negative.", sourcePath);
+      for (const point of keyframe.data_points) {
+        const origin = effectOrigin(point.locator, bones);
+        if (keyframe.channel === "sound" && point.effect?.trim()) {
+          appendTimelineEvent(events, tick, { source: { type: "player" }, origin, commands: [`playsound ${point.effect.trim()} master @s ~ ~ ~`] });
+        } else if (keyframe.channel === "particle" && point.effect?.trim()) {
+          appendTimelineEvent(events, tick, { source: { type: "server" }, origin, commands: [`particle ${point.effect.trim()} ~ ~ ~`] });
+          if (point.script?.trim()) diagnostics.push({
+            severity: "warning",
+            code: "geckolib_particle_script_ignored",
+            message: `Particle pre-effect script was not converted: ${point.script.trim()}`,
+            sourcePath,
+          });
+        } else if (keyframe.channel === "timeline") {
+          const lines = (point.script ?? "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+          const commands = lines.filter((line) => line.startsWith("/")).map((line) => line.slice(1).trim()).filter(Boolean);
+          if (commands.length) appendTimelineEvent(events, tick, { source: { type: "player" }, origin, commands });
+          const ignored = lines.filter((line) => !line.startsWith("/"));
+          if (ignored.length) diagnostics.push({
+            severity: "warning",
+            code: "geckolib_custom_instruction_ignored",
+            message: `Custom instruction was not converted because it is not a slash command: ${ignored.join("; ")}`,
+            sourcePath,
+          });
+        }
+      }
+    }
+  }
+  return events.sort((first, second) => first.tick - second.tick);
+}
+
+function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EmoteEvent["origin"] {
+  const name = normalizeBoneName(locator);
+  if (!name) return { type: "root" };
+  for (const bone of bones) {
+    const locatorNode = bone.nodes.find((node) => normalizeBoneName(node.locatorName) === name);
+    if (locatorNode) return { type: "node", node: locatorNode.id };
+  }
+  const bone = bones.find((candidate) => normalizeBoneName(candidate.group.name) === name);
+  return bone?.nodes[0] ? { type: "node", node: bone.nodes[0].id } : { type: "root" };
+}
+
+function appendTimelineEvent(events: ImportedTimelineEvent[], tick: number, event: EmoteEvent): void {
+  const matching = events.find((candidate) => candidate.tick === tick
+    && JSON.stringify(candidate.source) === JSON.stringify(event.source)
+    && JSON.stringify(candidate.origin) === JSON.stringify(event.origin));
+  if (matching) matching.commands.push(...event.commands);
+  else events.push({ ...event, tick });
 }
 
 function normalizeBoneName(name: string | undefined): string | undefined {

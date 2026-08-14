@@ -271,6 +271,34 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root_hand_socket.transforms).toHaveLength(3);
     expect(imported.animations[0].tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(0.9375);
   });
+
+  it("converts GeckoLib sound, particle, and slash-command effect keyframes", async () => {
+    const value = project();
+    value.animations[0].length = 0.2;
+    Object.assign(value.animations[0].animators, {
+      effects: {
+        type: "effect",
+        keyframes: [
+          { channel: "sound", time: 0.05, data_points: [{ effect: "minecraft:block.note_block.harp" }] },
+          { channel: "particle", time: 0.1, data_points: [{ effect: "minecraft:happy_villager", script: "variable.size = 2" }] },
+          { channel: "timeline", time: 0.2, data_points: [{ script: "/say hello\ncustom_instruction" }] },
+        ],
+      },
+    });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].durationTicks).toBe(5);
+    expect(imported.animations[0].events.timeline.map((event) => event.commands).flat()).toEqual([
+      "playsound minecraft:block.note_block.harp master @s ~ ~ ~",
+      "particle minecraft:happy_villager ~ ~ ~",
+      "say hello",
+    ]);
+    expect(imported.diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      "geckolib_particle_script_ignored",
+      "geckolib_custom_instruction_ignored",
+    ]);
+  });
 });
 
 function project() {

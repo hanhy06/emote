@@ -122,6 +122,9 @@ function requiredPoint(keyframe: BbKeyframe, index: number): BbDataPoint {
 }
 
 function evaluatePoint(point: BbDataPoint, parser: MolangParser, context: MolangContext, path: string): Vector3Tuple {
+  if (point.x === undefined || point.y === undefined || point.z === undefined) {
+    throw new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.", path);
+  }
   return [point.x, point.y, point.z].map((value) => evaluateMolang(value, parser, context, path)) as Vector3Tuple;
 }
 
