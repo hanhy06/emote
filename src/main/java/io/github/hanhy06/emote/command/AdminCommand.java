@@ -2,6 +2,8 @@ package io.github.hanhy06.emote.command;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.PreparedDefinition;
@@ -16,8 +18,10 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.Locale;
@@ -49,6 +53,7 @@ public final class AdminCommand {
     void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
         root.then(createListCommand())
             .then(createReloadCommand())
+            .then(createStopPlayerCommand())
             .then(createStopAllCommand())
             .then(createStressTestCommand())
             .then(createEnableCommand())
@@ -71,6 +76,13 @@ public final class AdminCommand {
         return Commands.literal("stop-all")
             .requires(this.permissionService.requireManage())
             .executes(context -> stopAll(context.getSource()));
+    }
+
+    LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
+        return Commands.literal("stop")
+            .then(Commands.argument("player", EntityArgument.player())
+                .requires(this.permissionService.requireManage())
+                .executes(this::stopPlayer));
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createStressTestCommand() {
@@ -195,6 +207,22 @@ public final class AdminCommand {
     private int stopAll(CommandSourceStack source) {
         this.playbackEngine.stopAll();
         source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
+        return 1;
+    }
+
+    private int stopPlayer(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
+        CommandSourceStack source = context.getSource();
+        ServerPlayer player = EntityArgument.getPlayer(context, "player");
+        var session = this.playbackEngine.stop(player);
+        if (session == null) {
+            source.sendFailure(Component.literal("No active emote: " + player.getName().getString()));
+            return 0;
+        }
+
+        source.sendSuccess(
+            () -> Component.literal("Stopped emote for " + player.getName().getString() + ": " + session.id()),
+            true
+        );
         return 1;
     }
 
