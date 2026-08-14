@@ -1,10 +1,11 @@
 {
+    "type": "sequence",
+    "schema_version": 3,
     "id": "emote:handshake",
     "metadata": {
-        "name": "handshake",
-        "description": "handshake emote."
+        "name": "Handshake",
+        "description": "Offer a handshake and play the matching two-player animation."
     },
-    "schema_version": 3,
     "participants": {
         "initiator": {
             "position": "~ ~ ~",
@@ -54,6 +55,5 @@
                 }
             ]
         }
-    ],
-    "type": "sequence"
+    ]
 }

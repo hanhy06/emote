@@ -16,7 +16,7 @@ Compatible emotes can use the playing player’s skin. The web converter convert
 
 Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSebW) and share them with the community!
 
-## User Commands
+## User commands
 
 | Command            | Description                                                                        |
 |--------------------|------------------------------------------------------------------------------------|
@@ -26,7 +26,7 @@ Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSe
 
 When the client mod is installed, the wheel's Order button can add, remove, and reorder its entries. The first six shortcuts appear on the first wheel page. Shortcut order is stored per server in the client's `config/emote/wheel-shortcuts.json`; server syncs refresh availability and append newly discovered emotes without changing the existing order.
 
-## Admin Commands
+## Admin commands
 
 | Command                      | Description                                               |
 |------------------------------|-----------------------------------------------------------|
@@ -37,7 +37,7 @@ When the client mod is installed, the wheel's Order button can add, remove, and 
 | `/emote stop-all`            | Stops every active emote.                                 |
 | `/emote stress-test <count>` | Runs an emote stress test and reports server performance. |
 
-## Server Configuration
+## Server configuration
 
 The following files and directories are created in `config/emote` when the server starts for the first time:
 
@@ -71,7 +71,7 @@ config/emote/
 | `mineskin_cache_max_mib`         | Maximum MineSkin disk cache size before the oldest files are removed. Defaults to `256`. |
 | `max_active_display_entities`    | Maximum display entities used by active emotes across the server. Playback is rejected before spawning entities when the projected total exceeds this value. `0` disables the limit. Defaults to `512`. |
 
-#### Player Skin Support
+#### Player skin support
 
 To apply the playing player’s skin to compatible emotes, set `mineskin_api_key` in `config/emote/config.json` to an API key from [MineSkin](https://account.mineskin.org/).
 
@@ -117,7 +117,7 @@ Controls emote availability and play permissions.
 
 Run `/emote reload` after editing the file manually.
 
-## Animation and Sequence Files
+## Animation and sequence files
 
 Put `.json` files exported by the converter in `config/emote/animations`:
 

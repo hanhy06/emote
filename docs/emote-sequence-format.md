@@ -53,26 +53,47 @@ Sequence JSON files are limited to 8 MiB.
 
 ## Migrating from schema 1
 
-The web converter can import a released schema 1 sequence and export it as schema 3. The server itself only loads schema 3 files. For manual conversion:
+The web converter can import a released schema 1 sequence and export it as schema 3. The server itself only loads schema 3 files.
 
-- change `schema_version` from `1` to `3`;
-- move the root `player` object to `settings.player`;
-- add `settings.cooldown`, using `"0t"` to preserve schema 1 behavior; and
-- convert every referenced animation to schema 3 as described in the [animation migration guide](./emote-animation-format.md#migrating-from-schema-1).
+| Schema 1 | Schema 3 |
+|----------|----------|
+| `schema_version: 1` | `schema_version: 3` |
+| Root `player` | `settings.player` |
+| No cooldown | `settings.cooldown`; migration uses `"0t"`. |
+| Schema 1 animation references | Convert each animation using the [animation migration guide](./emote-animation-format.md#migrating-from-schema-1). |
 
 Existing animation steps, repeats, and equal or weighted random choices keep the same structure. Schema 3 additionally supports wait steps using Minecraft time strings. The sequence's player settings now apply to the whole sequence and replace the referenced animations' player settings.
 
 Two-player sequences are entirely new in schema 3. They add `participants`, participant-relative animation node spaces, and the `await_partner`, `matched`, and `timeout` branches described below.
 
-## Metadata and settings
+## Time values
 
-`metadata` uses the same `name`, `description`, and optional custom fields as an [animation](./emote-animation-format.md#metadata).
+Gameplay time values are strings using Minecraft time units:
+
+| Example | Meaning |
+|---------|---------|
+| `"1d"` | One Minecraft day. |
+| `"5s"` | Five seconds. |
+| `"20"` / `"20t"` | Twenty ticks. The `t` suffix is optional. |
+
+This format is used by `cooldown`, `wait`, and `await_partner.timeout`.
+
+## Metadata
+
+- `name` is the name shown in commands and the emote UI.
+- `description` is the description shown to players.
+- Additional fields are preserved and exposed through the API and web converter.
+
+## Settings
+
+### Cooldown
 
 - `cooldown` is applied to the player after the sequence starts successfully.
-- `player.hidden` controls whether the original player is visible during the sequence.
-- `player.stop_conditions` controls interruptions for the entire sequence.
 
-Time values use Minecraft time units: `d` for Minecraft days, `s` for seconds, and `t` for ticks. The `t` suffix is optional, so `"20"` and `"20t"` both mean twenty ticks.
+### Player behavior
+
+- `hidden` controls whether the original player is visible during the sequence.
+- `stop_conditions` controls interruptions for the entire sequence using the same fields as an [animation](./emote-animation-format.md#player-behavior).
 
 ## Animation steps
 

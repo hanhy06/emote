@@ -4,7 +4,7 @@
     "id": "emote:format_reference",
     "metadata": {
         "name": "Format Reference",
-        "description": "Reference emote containing every runtime feature supported by the format draft."
+        "description": "Reference emote containing every runtime feature supported by schema 3."
     },
     "settings": {
         "standalone": true,
