@@ -55,7 +55,10 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   if (bones.some((bone) => bone.cubes.length > 0)) {
     const texture = requireEmbeddedTexture(project.textures);
     const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-    resources.set(texturePath, decodeTexture(texture));
+    const textureBytes = decodeTexture(texture);
+    resources.set(texturePath, textureBytes);
+    const textureMetadata = animatedTextureMetadata(texture, textureBytes);
+    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, jsonBytes(textureMetadata));
     const resourceNodeIds = new Set(bones.map((bone) => bone.id));
     for (const bone of bones) {
       for (const [cubeIndex, cube] of bone.cubes.entries()) {
@@ -623,6 +626,53 @@ function decodeTexture(texture: BbTexture): Uint8Array {
   } catch (error) {
     throw new ConversionError("invalid_geckolib_texture", "GeckoLib embedded texture is not valid base64.", "textures[0].source", { cause: error });
   }
+}
+
+function animatedTextureMetadata(texture: BbTexture, bytes: Uint8Array): Record<string, unknown> | undefined {
+  const configured = texture.frame_time !== undefined
+    || texture.frame_interpolate !== undefined
+    || texture.frame_order_type !== undefined
+    || texture.frame_order !== undefined;
+  if (!configured) return undefined;
+  const frameTime = texture.frame_time ?? 1;
+  if (!Number.isInteger(frameTime) || frameTime < 1) throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib texture frame time must be a positive integer.");
+  const orderType = texture.frame_order_type ?? "loop";
+  const frames = textureFrames(orderType, texture.frame_order, pngFrameCount(bytes));
+  return {
+    animation: {
+      frametime: frameTime,
+      ...(texture.frame_interpolate ? { interpolate: true } : {}),
+      ...(frames ? { frames } : {}),
+    },
+  };
+}
+
+function textureFrames(orderType: NonNullable<BbTexture["frame_order_type"]>, frameOrder: string | undefined, frameCount: number | undefined): number[] | undefined {
+  if (orderType === "loop") return undefined;
+  if (orderType === "custom") {
+    const frames = (frameOrder ?? "").trim().split(/\s+/).filter(Boolean).map(Number);
+    if (frames.length === 0 || frames.some((frame) => !Number.isInteger(frame) || frame < 0)) {
+      throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib custom texture frame order must contain non-negative frame numbers.");
+    }
+    return frames;
+  }
+  if (frameCount === undefined || frameCount < 2) {
+    throw new ConversionError("invalid_geckolib_texture_animation", `GeckoLib ${orderType} texture animation requires a vertical PNG sprite sheet.`);
+  }
+  const forward = Array.from({ length: frameCount }, (_, index) => index);
+  if (orderType === "backwards") return forward.reverse();
+  return [...forward, ...forward.slice(1, -1).reverse()];
+}
+
+function pngFrameCount(bytes: Uint8Array): number | undefined {
+  if (bytes.length < 24 || bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) return undefined;
+  const width = readUint32(bytes, 16);
+  const height = readUint32(bytes, 20);
+  return width > 0 && height >= width && height % width === 0 ? height / width : undefined;
+}
+
+function readUint32(bytes: Uint8Array, offset: number): number {
+  return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
 }
 
 function numericValue(value: string | number, path: string): number {

@@ -299,6 +299,21 @@ describe("geckoLibBbmodelAdapter", () => {
       "geckolib_custom_instruction_ignored",
     ]);
   });
+
+  it("writes configured animated texture metadata into the resource pack", async () => {
+    const value = project();
+    Object.assign(value.textures[0], {
+      frame_time: 3,
+      frame_interpolate: true,
+      frame_order_type: "custom",
+      frame_order: "0 2 1",
+    });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    const metadata = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/textures/item/test_model/texture.png.mcmeta")));
+    expect(metadata).toEqual({ animation: { frametime: 3, interpolate: true, frames: [0, 2, 1] } });
+  });
 });
 
 function project() {

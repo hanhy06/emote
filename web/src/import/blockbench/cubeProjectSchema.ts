@@ -71,6 +71,10 @@ export interface BbTexture {
   uuid?: string;
   name?: string;
   source?: string;
+  frame_time?: number;
+  frame_interpolate?: boolean;
+  frame_order_type?: "loop" | "backwards" | "back_and_forth" | "custom";
+  frame_order?: string;
 }
 
 export interface BbAnimation {
@@ -135,6 +139,12 @@ export function requireBlockbenchCubeProject(value: unknown): BbmodelProject {
     optionalString(texture.uuid, `textures[${index}].uuid`);
     optionalString(texture.name, `textures[${index}].name`);
     optionalString(texture.source, `textures[${index}].source`);
+    optionalNumber(texture.frame_time, `textures[${index}].frame_time`);
+    if (texture.frame_interpolate !== undefined && typeof texture.frame_interpolate !== "boolean") throw new Error(`textures[${index}].frame_interpolate must be a boolean.`);
+    if (texture.frame_order_type !== undefined && !["loop", "backwards", "back_and_forth", "custom"].includes(requireString(texture.frame_order_type, `textures[${index}].frame_order_type`))) {
+      throw new Error(`textures[${index}].frame_order_type is invalid.`);
+    }
+    optionalString(texture.frame_order, `textures[${index}].frame_order`);
   });
   (optionalArray(root.animations, "animations") ?? []).forEach((entry, index) => requireAnimation(entry, `animations[${index}]`));
   return value as BbmodelProject;
