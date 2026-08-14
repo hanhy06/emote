@@ -46,10 +46,12 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .loading-copy small { color: #666; line-height: 1.4; }
 @keyframes loading-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .loading-spinner { animation-duration: 1.8s; } }
-.project-summary { display: flex; align-items: center; justify-content: space-between; gap: 32px; margin-bottom: 22px; padding: 14px 16px; border-left: 3px solid #0067c0; background: #f6f6f6; }
+.project-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 32px; margin-bottom: 22px; padding: 14px 16px; border-left: 3px solid #0067c0; background: #f6f6f6; }
 .project-file { display: grid; gap: 4px; min-width: 0; }
-.project-file span, .project-summary dt { color: #666; font-size: 12px; }
+.project-file span, .project-animation span, .project-summary dt { color: #666; font-size: 12px; }
 .project-file strong { overflow-wrap: anywhere; font-size: 16px; font-weight: 600; }
+.project-animation { display: grid; gap: 4px; min-width: 200px; margin-left: auto; }
+.project-animation select { width: 100%; min-height: 28px; padding: 3px 7px; font-size: 14px; }
 .project-summary dl { display: flex; gap: 32px; margin: 0; }
 .project-summary dl div { display: grid; gap: 4px; min-width: 80px; }
 .project-summary dd { margin: 0; font-size: 14px; }
@@ -63,12 +65,11 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .section-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 14px; }
 .section-heading p { margin: 7px 0 0; color: #606060; line-height: 1.45; }
 .preview-controls { display: flex; align-items: flex-end; gap: 18px; }
-.frame-slider, .animation-select { display: grid; gap: 5px; color: #555; font-size: 12px; }
+.frame-slider { display: grid; gap: 5px; color: #555; font-size: 12px; }
 .frame-slider { grid-template-columns: 220px 86px; }
 .frame-slider span { grid-column: 1 / -1; }
 .frame-slider input { width: 220px; min-height: 30px; padding: 0; }
 .frame-slider output { align-self: center; color: #333; font-variant-numeric: tabular-nums; }
-.animation-select select { min-width: 160px; }
 .editor { display: grid; grid-template-columns: minmax(0, 1fr) 320px; border: 1px solid #aaa; }
 .part-preview { position: relative; min-width: 0; height: 540px; overflow: hidden; background: #f4f4f4; cursor: grab; }
 .part-preview:active { cursor: grabbing; }
@@ -168,6 +169,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .start-copy { padding: 32px 26px; }
   .start-details { padding: 26px; border-top: 1px solid #e0e0e0; border-left: 0; }
   .project-summary dl { gap: 16px; }
+  .project-animation { width: 100%; margin-left: 0; }
   .workflow-pages { grid-template-columns: 1fr; }
   .workflow-pages button { border-right: 0; border-bottom: 1px solid #d2d2d2; }
   .preview-controls { align-items: stretch; flex-direction: column; }

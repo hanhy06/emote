@@ -22,10 +22,11 @@ describe("exportAnimation", () => {
       })),
       diagnostics: [], resources: new Map(),
     };
-    const result = exportAnimationBundle(project, {
+    const options = {
       minecraftVersion: "26.2", namespace: "demo", playbackMode: "source", name: "Demo", description: "Sequence demo",
       player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s", standalone: true,
-    }, {}, true);
+    } as const;
+    const result = exportAnimationBundle(project, [options, { ...options, name: "Idle display", cooldown: "2s" }], {}, true);
 
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
     const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
@@ -38,13 +39,20 @@ describe("exportAnimation", () => {
     expect(sequence.settings.cooldown).toBe("20t");
     expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
     const animationNames = Object.keys(files).filter((name) => !name.endsWith(".sequence.json"));
-    expect(animationNames).toHaveLength(2);
+    expect(animationNames).toEqual(["emote.1.demo.json", "emote.2.idle_display.json"]);
     for (const animationName of animationNames) {
       const animationJson = strFromU8(files[animationName]);
       expect(animationJson).not.toContain("\n");
       expect(JSON.parse(animationJson).settings.standalone).toBe(false);
     }
+    expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).settings.cooldown).toBe("40t");
     expect(result.fileName).toBe("emote.demo.zip");
+
+    const singleResult = exportAnimation(project, {
+      minecraftVersion: "26.2", namespace: "demo", playbackMode: "source", name: "Demo", description: "Sequence demo",
+      player: project.suggestedPlayer, additionalMetadata: {}, cooldown: "1s", standalone: true,
+    }, {}, 0);
+    expect(singleResult.fileName).toBe("emote.demo.json");
   });
 
   it("writes a manually assigned order without replacing it with zero", async () => {

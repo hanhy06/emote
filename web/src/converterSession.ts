@@ -25,7 +25,7 @@ export interface ConverterSession {
   orders: PartOrders;
   spaces: Record<string, NodeSpace>;
   selectedParts: Set<string>;
-  metadata: ExportOptions;
+  animationOptions: ExportOptions[];
   conversionError: string;
 }
 
@@ -47,7 +47,7 @@ export function createConverterSession(project: ImportedProject, adapterLabel: s
       const skin = node.type === "item_display" ? node.suggestedSkin ?? node.skin : null;
       return [nodeId, node.space ?? skin?.participant ?? (skin ? "initiator" : "scene")];
     })),
-    metadata: {
+    animationOptions: project.animations.map((animation) => ({
       minecraftVersion: project.suggestedMinecraftVersion ?? "26.2",
       namespace: project.suggestedNamespace ?? project.suggestedMetadata.name,
       playbackMode: "source",
@@ -58,9 +58,21 @@ export function createConverterSession(project: ImportedProject, adapterLabel: s
         .filter(([key]) => key !== "name" && key !== "description")),
       standalone: project.suggestedStandalone ?? true,
       cooldown: project.suggestedCooldown ?? "0t",
-      loopDelay: `${project.animations[0]?.loopDelayTicks ?? 0}t`,
-    },
+      loopDelay: `${animation.loopDelayTicks}t`,
+    })),
     conversionError: "",
+  };
+}
+
+export function selectSessionAnimation(session: ConverterSession, animationIndex: number): ConverterSession {
+  if (!session.animationOptions[animationIndex]) return session;
+  return { ...session, animationIndex, previewFrameIndex: 0, selectedParts: new Set() };
+}
+
+export function updateSessionAnimationOptions(session: ConverterSession, options: ExportOptions): ConverterSession {
+  return {
+    ...session,
+    animationOptions: session.animationOptions.map((current, index) => index === session.animationIndex ? options : current),
   };
 }
 

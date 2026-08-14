@@ -25,22 +25,27 @@ export function exportAnimation(
   const animation = compileExportAnimation(project, options, skinAssignments, animationIndex, nodeSpaces);
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-    fileName: `emote.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
+    fileName: `emote.${sanitizeAnimationFileName(options.name)}.json`,
   };
 }
 
 export function exportAnimationBundle(
   project: ImportedProject,
-  options: ExportOptions,
+  optionsByAnimation: readonly ExportOptions[],
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
   includeSequence: boolean,
   nodeSpaces: Readonly<Record<string, NodeSpace>> = {},
 ): ExportResult {
-  validateResourceVersion(project, options.minecraftVersion);
-  const animationOptions = includeSequence ? { ...options, standalone: false } : options;
-  const animations = project.animations.map((_, index) => compileExportAnimation(project, animationOptions, skinAssignments, index, nodeSpaces));
+  const firstOptions = optionsByAnimation[0];
+  if (!firstOptions) throw new Error("The project does not contain animations.");
+  optionsByAnimation.forEach((options) => validateResourceVersion(project, options.minecraftVersion));
+  const animations = project.animations.map((_, index) => {
+    const options = optionsByAnimation[index];
+    if (!options) throw new Error(`Animation ${index + 1} does not have export settings.`);
+    return compileExportAnimation(project, includeSequence ? { ...options, standalone: false } : options, skinAssignments, index, nodeSpaces);
+  });
   const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
-    `emote.${index + 1}.${sanitizeAnimationFileName(animation.metadata.name)}.json`,
+    `emote.${index + 1}.${sanitizeAnimationFileName(optionsByAnimation[index].name)}.json`,
     strToU8(serializeEmoteAnimation(animation)),
   ]));
   if (includeSequence) {
@@ -49,16 +54,16 @@ export function exportAnimationBundle(
     const sequence = {
       type: "sequence",
       schema_version: 3,
-      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(options.name)}`,
-      metadata: { ...options.additionalMetadata, name: options.name, description: options.description },
-      settings: { cooldown: first.settings.cooldown, player: options.player },
+      id: `${first.id.slice(0, first.id.indexOf(":"))}:${sanitizeResourcePath(firstOptions.name)}`,
+      metadata: { ...firstOptions.additionalMetadata, name: firstOptions.name, description: firstOptions.description },
+      settings: { cooldown: first.settings.cooldown, player: firstOptions.player },
       steps: animations.map((animation) => ({ emote: animation.id })),
     };
-    files[`emote.${sanitizeAnimationFileName(options.name)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
+    files[`emote.${sanitizeAnimationFileName(firstOptions.name)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
   }
   return {
     blob: new Blob([zipSync(files)], { type: "application/zip" }),
-    fileName: `emote.${sanitizeAnimationFileName(options.name)}${includeSequence ? "" : ".animations"}.zip`,
+    fileName: `emote.${sanitizeAnimationFileName(firstOptions.name)}${includeSequence ? "" : ".animations"}.zip`,
   };
 }
 

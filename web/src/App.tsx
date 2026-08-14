@@ -18,6 +18,8 @@ import {
   EMPTY_ORDERS,
   EMPTY_SELECTION,
   findSkinCandidates,
+  selectSessionAnimation,
+  updateSessionAnimationOptions,
   type ConverterSession,
 } from "./converterSession";
 import { downloadExport } from "./export/download";
@@ -77,6 +79,7 @@ export function App() {
   const spaces = session?.spaces ?? {};
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex];
+  const animationOptions = session?.animationOptions[animationIndex];
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTick = previewFrameIndex === 0
@@ -145,7 +148,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportAnimation } = await import("./export/projectExporter");
-      return exportAnimation(session.project, session.metadata, buildSkinAssignments(session, skinCandidates), index, session.spaces);
+      return exportAnimation(session.project, session.animationOptions[index], buildSkinAssignments(session, skinCandidates), index, session.spaces);
     }, "Conversion failed.", "Creating animation file");
   }
 
@@ -153,7 +156,7 @@ export function App() {
     if (!session) return;
     await runExport(async () => {
       const { exportAnimationBundle } = await import("./export/projectExporter");
-      return exportAnimationBundle(session.project, session.metadata, buildSkinAssignments(session, skinCandidates), includeSequence, session.spaces);
+      return exportAnimationBundle(session.project, session.animationOptions, buildSkinAssignments(session, skinCandidates), includeSequence, session.spaces);
     }, "Bundle export failed.", includeSequence ? "Creating sequence ZIP" : "Creating animation ZIP");
   }
 
@@ -162,7 +165,7 @@ export function App() {
 
     await runExport(async () => {
       const { exportResourcePack } = await import("./export/resourcePackExporter");
-      return exportResourcePack(session.project, session.metadata, buildSkinAssignments(session, skinCandidates), index, session.spaces);
+      return exportResourcePack(session.project, session.animationOptions[index], buildSkinAssignments(session, skinCandidates), index, session.spaces);
     }, "Resource export failed.", "Creating resource pack");
   }
 
@@ -171,7 +174,7 @@ export function App() {
 
     await runExport(async () => {
       const { mergeResourcePackZip } = await import("./export/resourcePackMerger");
-      return mergeResourcePackZip(session.project, session.metadata, file);
+      return mergeResourcePackZip(session.project, session.animationOptions[session.animationIndex], file);
     }, "Resource pack merge failed.", "Merging resource pack");
   }
 
@@ -180,7 +183,7 @@ export function App() {
 
     await runExport(async () => {
       const { mergeResourcePackFolder } = await import("./export/resourcePackMerger");
-      return mergeResourcePackFolder(session.project, session.metadata, files);
+      return mergeResourcePackFolder(session.project, session.animationOptions[session.animationIndex], files);
     }, "Resource pack merge failed.", "Merging resource pack");
   }
 
@@ -296,6 +299,14 @@ export function App() {
               <span>Imported file</span>
               <strong>{project.sourceName}</strong>
             </div>
+            <label className="project-animation">
+              <span>Animation</span>
+              <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
+                updateSession((current) => selectSessionAnimation(current, Number(event.currentTarget.value)));
+              }}>
+                {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
+              </select>
+            </label>
             <dl>
               <div><dt>Format</dt><dd>{session.adapterLabel}</dd></div>
               <div><dt>Nodes</dt><dd>{Object.keys(project.nodes).length}</dd></div>
@@ -343,13 +354,6 @@ export function App() {
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
                   </label>
                 )}
-                {project.animations.length > 1 && (
-                  <label className="animation-select"><span>Animation</span><select value={animationIndex} onChange={(event) => {
-                    updateSession((current) => ({ ...current, animationIndex: Number(event.currentTarget.value), previewFrameIndex: 0, selectedParts: new Set() }));
-                  }}>
-                    {project.animations.map((item, index) => <option value={index} key={item.id}>{item.name}</option>)}
-                  </select></label>
-                )}
               </div>
             </div>
             {skinCandidates.length > 0 ? (
@@ -390,10 +394,10 @@ export function App() {
             />
           </section>}
 
-          {page === 1 && <SettingsPanel
-            metadata={session.metadata}
+          {page === 1 && animationOptions && <SettingsPanel
+            metadata={animationOptions}
             disabled={busy}
-            onMetadataChange={(metadata) => updateSession((current) => ({ ...current, metadata }))}
+            onMetadataChange={(metadata) => updateSession((current) => updateSessionAnimationOptions(current, metadata))}
           />}
 
           {page === 2 && <ExportPanel

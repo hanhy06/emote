@@ -28,7 +28,7 @@ export function exportResourcePack(
   const bytes = zipSync(files, { level: 9 });
   return {
     blob: new Blob([bytes], { type: "application/zip" }),
-    fileName: `emote.${sanitizeAnimationFileName(animation.metadata.name)}.zip`,
+    fileName: `emote.${sanitizeAnimationFileName(options.name)}.zip`,
   };
 }
 

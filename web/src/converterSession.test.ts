@@ -8,6 +8,8 @@ import {
   assignSessionSpace,
   createConverterSession,
   findSkinCandidates,
+  selectSessionAnimation,
+  updateSessionAnimationOptions,
 } from "./converterSession";
 
 describe("converter session skin assignment", () => {
@@ -17,7 +19,21 @@ describe("converter session skin assignment", () => {
     expect(session.assignments).toEqual({ head: "head", head_variant: "head" });
     expect(session.orders).toEqual({ head: 2, head_variant: 2 });
     expect(session.spaces).toEqual({ head: "partner", head_variant: "initiator" });
-    expect(session.metadata).toMatchObject({ minecraftVersion: "26.2", namespace: "test", name: "Test" });
+    expect(session.animationOptions[0]).toMatchObject({ minecraftVersion: "26.2", namespace: "test", name: "Test" });
+  });
+
+  it("caches metadata and settings for each selected animation", () => {
+    const source = project();
+    source.animations.push({ ...source.animations[0], id: "second", name: "Second", loopDelayTicks: 4 });
+    const initial = createConverterSession(source, "Test adapter");
+    const editedFirst = updateSessionAnimationOptions(initial, { ...initial.animationOptions[0], name: "First edited", cooldown: "2s" });
+    const selectedSecond = selectSessionAnimation(editedFirst, 1);
+    const editedSecond = updateSessionAnimationOptions(selectedSecond, { ...selectedSecond.animationOptions[1], name: "Second edited", cooldown: "3s" });
+    const selectedFirst = selectSessionAnimation(editedSecond, 0);
+
+    expect(selectedFirst.animationOptions[0]).toMatchObject({ name: "First edited", cooldown: "2s", loopDelay: "0t" });
+    expect(selectedFirst.animationOptions[1]).toMatchObject({ name: "Second edited", cooldown: "3s", loopDelay: "4t" });
+    expect(selectedFirst.previewFrameIndex).toBe(0);
   });
 
   it("moves assigned scene parts to initiator space", () => {
