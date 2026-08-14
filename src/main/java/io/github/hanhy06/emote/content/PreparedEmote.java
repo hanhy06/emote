@@ -80,9 +80,7 @@ public record PreparedEmote(
     }
 
     public int displayNodeCount() {
-        return (int) animation().nodes().values().stream()
-            .filter(node -> !(node instanceof EmoteAnimation.AnchorNode))
-            .count();
+        return this.compiledTimeline.displayNodeCount();
     }
 
     public List<SkinBinding> skinParts(ParticipantRole participant) {

@@ -3,11 +3,13 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedEmoteFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import net.minecraft.SharedConstants;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.Level;
@@ -21,6 +23,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -38,6 +41,8 @@ class PlaybackSessionRegistryTest {
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
         registry.register(session);
+
+        assertEquals(1, registry.activeDisplayEntityCount());
 
         session.reservePartner(partner);
         registry.reservePartner(session, partner.playerUuid());
@@ -67,6 +72,9 @@ class PlaybackSessionRegistryTest {
         assertNull(registry.findParticipant(session.initiator().playerUuid()));
         assertNull(registry.findReservation(partner.playerUuid()));
         assertTrue(registry.isEmpty());
+        assertEquals(0, registry.activeDisplayEntityCount());
+        assertTrue(!registry.remove(session));
+        assertEquals(0, registry.activeDisplayEntityCount());
     }
 
     private static PlaybackSession session(PreparedEmote emote) {
@@ -90,7 +98,7 @@ class PlaybackSessionRegistryTest {
             Level.OVERWORLD,
             sequence.id(),
             emote.id(),
-            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
+            playbackNodes(),
             new PlaybackTrack(timeline(emote), events(emote)),
             EmotePlayerBehavior.createDefault(),
             participant(ParticipantRole.INITIATOR),
@@ -113,5 +121,30 @@ class PlaybackSessionRegistryTest {
 
     private static PlaybackParticipant participant(ParticipantRole role) {
         return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
+    }
+
+    private static PlaybackNodes playbackNodes() {
+        EmoteAnimation.ItemNode node = new EmoteAnimation.ItemNode(
+            true,
+            EmoteAnimation.NodeSpace.SCENE,
+            identityMatrix(),
+            new CompoundTag(),
+            new CompoundTag(),
+            "none",
+            null
+        );
+        return new PlaybackNodes(
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            Map.of("display", new PlaybackNodes.NodeInstance("display", node, null, null))
+        );
+    }
+
+    private static EmoteAnimation.Matrix identityMatrix() {
+        return new EmoteAnimation.Matrix(List.of(
+            1.0D, 0.0D, 0.0D, 0.0D,
+            0.0D, 1.0D, 0.0D, 0.0D,
+            0.0D, 0.0D, 1.0D, 0.0D,
+            0.0D, 0.0D, 0.0D, 1.0D
+        ));
     }
 }

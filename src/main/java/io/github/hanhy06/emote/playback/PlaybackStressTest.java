@@ -60,9 +60,7 @@ final class PlaybackStressTest {
                 try {
                     timeline.resumeInitialInterpolation();
                     instances.add(new StressTestInstance(emote, nodes, timeline));
-                    displayEntityCount += (int) nodes.nodes().values().stream()
-                        .filter(node -> !node.isAnchor())
-                        .count();
+                    displayEntityCount += nodes.displayEntityCount();
                 } catch (RuntimeException exception) {
                     this.entityController.remove(level, nodes);
                     throw exception;
@@ -107,9 +105,7 @@ final class PlaybackStressTest {
         if (current == null) {
             return 0;
         }
-        return current.instances().stream()
-            .mapToInt(instance -> displayEntityCount(instance.nodes))
-            .sum();
+        return current.activeDisplayEntities();
     }
 
     void stopById(String id) {
@@ -123,6 +119,7 @@ final class PlaybackStressTest {
                 return false;
             }
             this.entityController.remove(current.level(), instance.nodes);
+            current.removeDisplayEntities(instance.nodes.displayEntityCount());
             return true;
         });
     }
@@ -152,6 +149,7 @@ final class PlaybackStressTest {
                     Emote.LOGGER.warn("Failed while running stress-test emote {}", instance.emote.id(), exception);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
+                    current.removeDisplayEntities(instance.nodes.displayEntityCount());
                     current.failedInstances++;
                 }
             }
@@ -222,12 +220,6 @@ final class PlaybackStressTest {
         }
     }
 
-    private static int displayEntityCount(PlaybackNodes nodes) {
-        return (int) nodes.nodes().values().stream()
-            .filter(node -> !node.isAnchor())
-            .count();
-    }
-
     static double estimatedTps(double mspt, double targetTps) {
         if (mspt <= 0.0D) {
             return targetTps;
@@ -247,6 +239,7 @@ final class PlaybackStressTest {
         private final long creationNanos;
 
         private int lastSampledServerTick = Integer.MIN_VALUE;
+        private int activeDisplayEntities;
         private int failedInstances;
         private int serverTickSamples;
         private long serverTickNanos;
@@ -270,6 +263,7 @@ final class PlaybackStressTest {
             this.instances = instances;
             this.requestedInstances = requestedInstances;
             this.peakDisplayEntities = peakDisplayEntities;
+            this.activeDisplayEntities = peakDisplayEntities;
             this.startedNanos = startedNanos;
             this.startedServerTick = startedServerTick;
             this.baselineTickNanos = baselineTickNanos;
@@ -283,6 +277,14 @@ final class PlaybackStressTest {
 
         private List<StressTestInstance> instances() {
             return this.instances;
+        }
+
+        private int activeDisplayEntities() {
+            return this.activeDisplayEntities;
+        }
+
+        private void removeDisplayEntities(int count) {
+            this.activeDisplayEntities -= count;
         }
 
         private void recordManagerCpu(long elapsedNanos) {

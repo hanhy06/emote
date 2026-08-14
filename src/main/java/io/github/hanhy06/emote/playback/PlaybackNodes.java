@@ -16,6 +16,7 @@ import java.util.Objects;
 public final class PlaybackNodes {
     private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
+    private final int displayEntityCount;
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
         EmoteAnimation.NodeSpace.SCENE,
         EmoteAnimation.NodeSpace.INITIATOR
@@ -32,6 +33,9 @@ public final class PlaybackNodes {
         }
         this.spaces = Map.copyOf(requiredSpaces);
         this.nodes = Map.copyOf(nodes);
+        this.displayEntityCount = (int) nodes.values().stream()
+            .filter(node -> !(node.node() instanceof EmoteAnimation.AnchorNode))
+            .count();
         initializeVisibility();
         this.viewYaw = root().yaw();
     }
@@ -46,6 +50,10 @@ public final class PlaybackNodes {
 
     public Map<String, NodeInstance> nodes() {
         return this.nodes;
+    }
+
+    int displayEntityCount() {
+        return this.displayEntityCount;
     }
 
     boolean requestVisibility(String nodeId, boolean visible) {

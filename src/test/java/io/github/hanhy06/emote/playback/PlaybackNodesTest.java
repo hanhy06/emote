@@ -79,6 +79,32 @@ class PlaybackNodesTest {
     }
 
     @Test
+    void countsDisplayNodesOnceWithoutIncludingAnchors() {
+        EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
+            true,
+            EmoteAnimation.NodeSpace.SCENE,
+            identityMatrix(),
+            new CompoundTag(),
+            new CompoundTag(),
+            "none",
+            null
+        );
+        EmoteAnimation.AnchorNode anchorNode = new EmoteAnimation.AnchorNode(
+            EmoteAnimation.NodeSpace.SCENE,
+            identityMatrix()
+        );
+        PlaybackNodes nodes = new PlaybackNodes(
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            Map.of(
+                "item", new PlaybackNodes.NodeInstance("item", itemNode, null, null),
+                "anchor", new PlaybackNodes.NodeInstance("anchor", anchorNode, null, null)
+            )
+        );
+
+        assertEquals(1, nodes.displayEntityCount());
+    }
+
+    @Test
     void masksPartnerVisibilityUntilPartnerSpaceIsActivated() {
         EmoteAnimation.AnchorNode partnerNode = new EmoteAnimation.AnchorNode(
             EmoteAnimation.NodeSpace.PARTNER,

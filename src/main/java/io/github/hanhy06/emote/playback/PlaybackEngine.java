@@ -589,9 +589,7 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     int activeDisplayEntityCount() {
-        return this.stressTest.displayEntityCount() + this.sessionRegistry.sessions().stream()
-            .mapToInt(this::displayEntityCount)
-            .sum();
+        return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount();
     }
 
     static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {
@@ -603,12 +601,7 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private int displayEntityCount(@Nullable PlaybackSession session) {
-        if (session == null) {
-            return 0;
-        }
-        return (int) session.nodes().nodes().values().stream()
-            .filter(node -> !node.isAnchor())
-            .count();
+        return session == null ? 0 : session.nodes().displayEntityCount();
     }
 
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {

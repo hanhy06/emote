@@ -14,19 +14,22 @@ public final class CompiledTimeline {
     private final Map<String, List<TransformActivation>> nodeTransformActivations;
     private final Map<String, List<StateActivation>> nodeStateActivations;
     private final Map<String, PreparedTransform> defaultTransforms;
+    private final int displayNodeCount;
 
     private CompiledTimeline(
         EmoteAnimation animation,
         Map<Integer, TickActions> tickActions,
         Map<String, List<TransformActivation>> nodeTransformActivations,
         Map<String, List<StateActivation>> nodeStateActivations,
-        Map<String, PreparedTransform> defaultTransforms
+        Map<String, PreparedTransform> defaultTransforms,
+        int displayNodeCount
     ) {
         this.animation = animation;
         this.tickActions = tickActions;
         this.nodeTransformActivations = nodeTransformActivations;
         this.nodeStateActivations = nodeStateActivations;
         this.defaultTransforms = defaultTransforms;
+        this.displayNodeCount = displayNodeCount;
     }
 
     public static CompiledTimeline compile(EmoteAnimation animation) {
@@ -90,7 +93,8 @@ public final class CompiledTimeline {
             copyTickActions(actionsByTick),
             copyListMap(transformsByNode),
             copyListMap(statesByNode),
-            Map.copyOf(defaultTransforms)
+            Map.copyOf(defaultTransforms),
+            (int) animation.nodes().values().stream().filter(node -> !(node instanceof EmoteAnimation.AnchorNode)).count()
         );
     }
 
@@ -112,6 +116,10 @@ public final class CompiledTimeline {
 
     public TickActions tickActions(int tick) {
         return this.tickActions.getOrDefault(tick, TickActions.EMPTY);
+    }
+
+    public int displayNodeCount() {
+        return this.displayNodeCount;
     }
 
     public PreparedTransform defaultTransform(String nodeId) {

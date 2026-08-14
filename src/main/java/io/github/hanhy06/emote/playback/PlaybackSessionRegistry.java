@@ -11,6 +11,7 @@ final class PlaybackSessionRegistry {
     private final Map<UUID, PlaybackSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> participantSessions = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> partnerReservations = new ConcurrentHashMap<>();
+    private int activeDisplayEntityCount;
 
     void register(PlaybackSession session) {
         PlaybackSession previous = this.sessions.putIfAbsent(session.sessionId(), session);
@@ -20,6 +21,7 @@ final class PlaybackSessionRegistry {
         for (PlaybackParticipant participant : session.participants()) {
             registerParticipant(session, participant.playerUuid());
         }
+        this.activeDisplayEntityCount += session.nodes().displayEntityCount();
     }
 
     void reservePartner(PlaybackSession session, UUID playerUuid) {
@@ -58,6 +60,10 @@ final class PlaybackSessionRegistry {
         return this.sessions.isEmpty();
     }
 
+    int activeDisplayEntityCount() {
+        return this.activeDisplayEntityCount;
+    }
+
     boolean contains(PlaybackSession session) {
         return this.sessions.get(session.sessionId()) == session;
     }
@@ -66,6 +72,7 @@ final class PlaybackSessionRegistry {
         if (!this.sessions.remove(session.sessionId(), session)) {
             return false;
         }
+        this.activeDisplayEntityCount -= session.nodes().displayEntityCount();
         for (PlaybackParticipant participant : session.participants()) {
             this.participantSessions.remove(participant.playerUuid(), session.sessionId());
         }
