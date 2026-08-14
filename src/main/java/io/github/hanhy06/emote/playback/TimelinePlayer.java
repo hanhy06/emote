@@ -136,6 +136,11 @@ public final class TimelinePlayer {
             return AdvanceResult.CONTINUE;
         }
 
+        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD
+            && this.currentTick >= this.animation.timeline().durationTicks()) {
+            return AdvanceResult.CONTINUE;
+        }
+
         this.currentTick++;
         resumePendingInterpolations();
         applyTick(this.currentTick);
@@ -145,6 +150,9 @@ public final class TimelinePlayer {
         if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             this.finished = true;
             return AdvanceResult.FINISHED;
+        }
+        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
+            return AdvanceResult.CONTINUE;
         }
         this.awaitingLoopContinuation = true;
         return AdvanceResult.LOOP_BOUNDARY;

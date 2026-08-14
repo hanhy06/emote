@@ -314,6 +314,17 @@ describe("geckoLibBbmodelAdapter", () => {
     const metadata = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/textures/item/test_model/texture.png.mcmeta")));
     expect(metadata).toEqual({ animation: { frametime: 3, interpolate: true, frames: [0, 2, 1] } });
   });
+
+  it("preserves GeckoLib hold-on-last-frame playback", async () => {
+    const value = project();
+    value.animations[0].loop = "hold_on_last_frame";
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].loop).toBe("hold");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
+    expect(compiled.settings.playback).toEqual({ mode: "hold", loop_delay: "0t" });
+  });
 });
 
 function project() {

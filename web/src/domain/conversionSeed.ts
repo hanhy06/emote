@@ -53,7 +53,7 @@ export interface ImportedAnimation {
   id: string;
   name: string;
   durationTicks: number;
-  loop: "once" | "loop" | "server_sync";
+  loop: "once" | "hold" | "loop" | "server_sync";
   loopDelayTicks: number;
   tracks: Record<string, ImportedNodeTrack>;
   events: {

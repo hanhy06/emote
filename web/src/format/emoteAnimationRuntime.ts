@@ -15,7 +15,7 @@ import {
 } from "./runtimeValue";
 
 const NODE_TYPES = ["anchor", "item_display", "block_display", "text_display"] as const;
-const LOOP_TYPES = ["once", "loop", "server_sync"] as const;
+const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const;
 const NODE_SPACES = ["scene", "initiator", "partner"] as const;
 const PARTICIPANTS = ["initiator", "partner"] as const;

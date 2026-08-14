@@ -73,6 +73,23 @@ class TimelinePlayerTest {
     }
 
     @Test
+    void holdModeKeepsTheLastFrameWithoutFinishingOrAdvancing() {
+        FakeTarget target = new FakeTarget();
+        TimelinePlayer player = new TimelinePlayer(
+            animation(2, EmoteAnimation.LoopMode.HOLD, 0, List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))),
+            target
+        );
+
+        player.start();
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(2, player.currentTick());
+        assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
+        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(2, player.currentTick());
+    }
+
+    @Test
     void appliesVisibilityOnlyAtStateKeyframeTick() {
         FakeTarget target = new FakeTarget();
         EmoteAnimation animation = animation(

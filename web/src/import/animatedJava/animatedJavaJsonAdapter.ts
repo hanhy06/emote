@@ -333,7 +333,6 @@ function importAnimation(
   nodes: Record<string, ImportedNode>,
   nodeIdsBySource: ReadonlyMap<string, string[]>,
 ): ImportedAnimation {
-  if (animation.loop_mode.type === "hold") throw new Error(`Animated Java animation ${id} uses hold mode, which the emote format cannot represent.`);
   const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const animationDurationTicks = secondsToTicks(animation.length, `${id}.length`);

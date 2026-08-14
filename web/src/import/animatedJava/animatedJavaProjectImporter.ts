@@ -133,7 +133,6 @@ function importProjectAnimation(
   animationIndex: number,
   elements: AjProjectDisplayElement[],
 ): ImportedAnimation {
-  if (animation.loop === "hold") throw new Error(`Animated Java animation ${animation.name} uses hold mode, which the emote format cannot represent.`);
   if (animation.loop !== "once" && animation.loop !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
   const durationTicks = requireAnimationDurationTicks(
     secondsToTicks(animation.length, `${animation.name}.length`),

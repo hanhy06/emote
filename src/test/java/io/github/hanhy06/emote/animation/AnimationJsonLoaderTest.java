@@ -62,6 +62,14 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
+    void loadsHoldPlaybackMode() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "hold");
+
+        assertEquals(EmoteAnimation.LoopMode.HOLD, parse(root).animation().settings().playback().mode());
+    }
+
+    @Test
     void loadsNodeSpaceAndSkinParticipant() throws Exception {
         EmoteAnimation animation = parse(readReference()).animation();
         EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");

@@ -38,8 +38,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     add(issues, "timeline.duration", `must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks`);
   }
   const loopDelayTicks = validateTime(animation.settings.playback.loop_delay, 0, "settings.playback.loop_delay", issues);
-  if (animation.settings.playback.mode === "once" && loopDelayTicks !== null && loopDelayTicks !== 0) {
-    add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once");
+  if (["once", "hold"].includes(animation.settings.playback.mode) && loopDelayTicks !== null && loopDelayTicks !== 0) {
+    add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once or hold");
   }
 
   const nodeIds = new Set(Object.keys(animation.nodes));

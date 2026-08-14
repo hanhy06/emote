@@ -127,6 +127,7 @@ public final class AnimationJsonLoader {
         String modeText = reader.requireString(playbackObject, "mode", "$.settings.playback");
         LoopMode mode = switch (modeText) {
             case "once" -> LoopMode.ONCE;
+            case "hold" -> LoopMode.HOLD;
             case "loop" -> LoopMode.LOOP;
             case "server_sync" -> LoopMode.SERVER_SYNC;
             default -> throw reader.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);

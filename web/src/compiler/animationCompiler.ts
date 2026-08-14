@@ -50,7 +50,7 @@ export function compileConversionAnimation(
       player: output.player,
       playback: {
         mode,
-        loop_delay: formatMinecraftTime(mode === "once" ? 0 : parseMinecraftTime(output.loopDelay)),
+        loop_delay: formatMinecraftTime(mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay)),
       },
     },
     nodes: compileNodes(document, animation),

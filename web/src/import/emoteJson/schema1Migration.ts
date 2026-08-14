@@ -13,7 +13,7 @@ import {
 import { ConversionError } from "../../foundation/diagnostics";
 
 const JAVA_INT_MAX = 2_147_483_647;
-const LOOP_TYPES = ["once", "loop", "server_sync"] as const;
+const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 
 export interface MigratedSchema1Animation {
   animation: EmoteAnimation;

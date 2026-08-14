@@ -43,6 +43,14 @@ describe("validateEmoteAnimation", () => {
     expect(validateEmoteAnimation(value)).toEqual([]);
   });
 
+  it("accepts hold mode only with zero loop delay", () => {
+    const value = animation();
+    value.settings.playback = { mode: "hold", loop_delay: "0t" };
+    expect(validateEmoteAnimation(value)).toEqual([]);
+    value.settings.playback.loop_delay = "1t";
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_delay");
+  });
+
   it("rejects anchor command sources and out-of-range timeline events", () => {
     const value = animation();
     value.timeline.events = { timeline: [{

@@ -47,8 +47,8 @@ public record EmoteAnimation(
             if (loopDelayTicks < 0) {
                 throw new IllegalArgumentException("loop delay must not be negative");
             }
-            if (mode == LoopMode.ONCE && loopDelayTicks != 0) {
-                throw new IllegalArgumentException("loop delay must be zero when playback mode is once");
+            if ((mode == LoopMode.ONCE || mode == LoopMode.HOLD) && loopDelayTicks != 0) {
+                throw new IllegalArgumentException("loop delay must be zero when playback mode is once or hold");
             }
         }
     }
@@ -185,6 +185,7 @@ public record EmoteAnimation(
 
     public enum LoopMode {
         ONCE,
+        HOLD,
         LOOP,
         SERVER_SYNC
     }

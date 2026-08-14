@@ -125,6 +125,7 @@ This format is used by `cooldown`, `loop_delay`, timeline and event `time`, `dur
 | Mode | Description |
 |------|-------------|
 | `once` | Plays the timeline once. `loop_delay` must be `0t`. |
+| `hold` | Plays once and holds the last frame until playback is stopped. `loop_delay` must be `0t` and it cannot be used in a sequence. |
 | `loop` | Repeats the timeline after `loop_delay`. |
 | `server_sync` | Synchronizes playback to server time. It cannot be used in a sequence. |
 

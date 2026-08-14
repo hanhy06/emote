@@ -28,7 +28,7 @@ export interface EmoteAnimationSettings {
   cooldown: MinecraftTime;
   player: EmotePlayerBehavior;
   playback: {
-    mode: "once" | "loop" | "server_sync";
+    mode: "once" | "hold" | "loop" | "server_sync";
     loop_delay: MinecraftTime;
   };
 }

@@ -217,10 +217,8 @@ function bindLocalMatrix(bone: BoneEntry): Matrix4 {
 
 function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const loop = animation.loop ?? "once";
-  if (loop === "hold" || loop === "hold_on_last_frame") {
-    throw new ConversionError("unsupported_geckolib_loop", `GeckoLib animation ${animation.name} uses hold mode.`, `animations[${index}].loop`);
-  }
-  if (loop !== "once" && loop !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
+  const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
+  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
   const effectEvents = importEffectEvents(animation, index, bones, diagnostics);
   const durationTicks = requireAnimationDurationTicks(
@@ -257,8 +255,8 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
     durationTicks,
-    loop,
-    loopDelayTicks: loop === "loop"
+    loop: playbackMode,
+    loopDelayTicks: playbackMode === "loop"
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,
     tracks,
