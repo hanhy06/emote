@@ -5,7 +5,7 @@ import { parseMinecraftTime } from "../../format/minecraftTime";
 import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { ConversionError } from "../errors";
+import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../types";
 import { migrateSchema1Animation } from "./schema1Migration";

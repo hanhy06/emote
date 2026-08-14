@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConversionError, conversionErrorMessage } from "./errors";
+import { ConversionError, conversionErrorMessage } from "./diagnostics";
 
 describe("ConversionError", () => {
   it("preserves diagnostic code and source path", () => {

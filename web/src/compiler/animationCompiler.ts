@@ -10,7 +10,7 @@ import type { ImportedAnimation, ImportedNode, ImportedProject } from "../import
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { requireTick } from "../format/time";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
-import { ConversionError } from "../import/errors";
+import { ConversionError } from "../foundation/diagnostics";
 
 export interface CompileOptions {
   minecraftVersion: string;

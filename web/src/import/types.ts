@@ -1,5 +1,5 @@
 import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
-import type { ConversionIssue } from "./errors";
+import type { ConversionIssue } from "../foundation/diagnostics";
 
 export type ImportSource = "bd_project" | "bd_datapack" | "animated_java_json" | "geckolib_bbmodel" | "emote_json";
 

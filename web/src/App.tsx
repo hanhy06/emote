@@ -27,7 +27,7 @@ import type { ExportResult } from "./export/types";
 import type { NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
-import { conversionErrorMessage } from "./import/errors";
+import { conversionErrorMessage } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation } from "./import/types";
 import { convertSequenceInput } from "./import/emoteJson/sequenceJsonConverter";

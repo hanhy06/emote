@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ImportAdapter, ImportAdapterLoader } from "./adapter";
 import type { ImportSource } from "./types";
 import { detectAdapter, importDetected } from "./adapterRegistry";
-import { ConversionError } from "./errors";
+import { ConversionError } from "../foundation/diagnostics";
 
 function adapter(id: string, confidence: number, extensions: readonly string[] = []): ImportAdapter {
   return {

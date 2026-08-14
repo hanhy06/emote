@@ -1,5 +1,5 @@
 import type { EmoteAnimation } from "./emoteAnimation";
-import { ConversionError } from "../import/errors";
+import { ConversionError } from "../foundation/diagnostics";
 import { validateEmoteAnimation } from "./validator";
 
 export function serializeEmoteAnimation(animation: EmoteAnimation): string {

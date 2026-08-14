@@ -1,4 +1,4 @@
-import { ConversionError } from "../import/errors";
+import { ConversionError } from "../foundation/diagnostics";
 
 export type RuntimeRecord = Record<string, unknown>;
 

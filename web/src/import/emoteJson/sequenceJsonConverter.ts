@@ -10,7 +10,7 @@ import {
   type RuntimeRecord,
 } from "../../format/runtimeValue";
 import type { ImportInput } from "../adapter";
-import { ConversionError } from "../errors";
+import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
 
 interface EmoteSequence {

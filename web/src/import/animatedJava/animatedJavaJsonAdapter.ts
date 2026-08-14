@@ -8,7 +8,7 @@ import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../types";
-import { ConversionError } from "../errors";
+import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 import { isAnimatedJavaProject, requireAnimatedJavaProject } from "./animatedJavaProjectSchema";

@@ -10,7 +10,7 @@ import {
   requireStringValue,
   type RuntimeRecord,
 } from "../../format/runtimeValue";
-import { ConversionError } from "../errors";
+import { ConversionError } from "../../foundation/diagnostics";
 
 const JAVA_INT_MAX = 2_147_483_647;
 const LOOP_TYPES = ["once", "loop", "server_sync"] as const;

@@ -5,7 +5,7 @@ import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } fr
 import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
-import { ConversionError } from "../errors";
+import { ConversionError } from "../../foundation/diagnostics";
 import { importGeckoLibProject } from "../geckoLibBbmodel/geckoLibBbmodelAdapter";
 import { requireGeckoLibBbmodel } from "../geckoLibBbmodel/geckoLibBbmodelSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../types";
