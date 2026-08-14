@@ -195,7 +195,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
-            TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), nodes, this.entityController);
+            TimelinePlayer timeline = new TimelinePlayer(emote.compiledTimeline(), nodes, this.entityController);
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
             } else {
@@ -212,7 +212,7 @@ public class PlaybackEngine implements ConfigListener {
                 timeline.resumeSynchronizedInterpolation();
             }
             EventPlayer events = new EventPlayer(
-                emote.playbackPlan(),
+                emote.compiledTimeline(),
                 new EventCommandExecutor(player, nodes, timeline)
             );
             PlaybackParticipant initiator = new PlaybackParticipant(
@@ -432,10 +432,10 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private PlaybackTrack createBranchTrack(PlaybackSession session, PreparedEmote emote) {
-        TimelinePlayer timeline = new TimelinePlayer(emote.playbackPlan(), session.nodes(), this.entityController);
+        TimelinePlayer timeline = new TimelinePlayer(emote.compiledTimeline(), session.nodes(), this.entityController);
         timeline.start();
         EventPlayer events = new EventPlayer(
-            emote.playbackPlan(),
+            emote.compiledTimeline(),
             new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
         );
         return new PlaybackTrack(timeline, events);

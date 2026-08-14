@@ -11,20 +11,20 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 public class EmoteQueryService {
-    private final EmoteCatalog emoteRegistry;
+    private final EmoteCatalog emoteCatalog;
     private final PlayPermissionChecker playPermissionChecker;
 
-    public EmoteQueryService(EmoteCatalog emoteRegistry, PermissionService permissionService) {
-        this(emoteRegistry, (player, emote) -> permissionService.canPlay(player, emote.id()));
+    public EmoteQueryService(EmoteCatalog emoteCatalog, PermissionService permissionService) {
+        this(emoteCatalog, (player, emote) -> permissionService.canPlay(player, emote.id()));
     }
 
-    EmoteQueryService(EmoteCatalog emoteRegistry, PlayPermissionChecker playPermissionChecker) {
-        this.emoteRegistry = emoteRegistry;
+    EmoteQueryService(EmoteCatalog emoteCatalog, PlayPermissionChecker playPermissionChecker) {
+        this.emoteCatalog = emoteCatalog;
         this.playPermissionChecker = playPermissionChecker;
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
-        return this.emoteRegistry.getAllDefinitions().stream()
+        return this.emoteCatalog.getAllDefinitions().stream()
             .filter(PreparedDefinition::standalone)
             .filter(emote -> canPlay(player, emote))
             .sorted(Comparator.comparing(PreparedDefinition::name).thenComparing(PreparedDefinition::id))
@@ -71,7 +71,7 @@ public class EmoteQueryService {
 
     private List<String> collectPlayIds(Predicate<PreparedDefinition> filter) {
         List<String> ids = new java.util.ArrayList<>();
-        for (PreparedDefinition emote : this.emoteRegistry.getAllDefinitions()) {
+        for (PreparedDefinition emote : this.emoteCatalog.getAllDefinitions()) {
             if (emote.standalone() && filter.test(emote)) {
                 ids.add(emote.id());
             }

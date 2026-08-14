@@ -8,7 +8,7 @@ import java.util.*;
 
 public final class TimelinePlayer {
     private final EmoteAnimation animation;
-    private final CompiledTimeline playbackPlan;
+    private final CompiledTimeline compiledTimeline;
     private final TimelineTarget target;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
@@ -23,20 +23,20 @@ public final class TimelinePlayer {
     private boolean initialVisibilityDeferred;
 
     public TimelinePlayer(
-        CompiledTimeline playbackPlan,
+        CompiledTimeline compiledTimeline,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
-        this(playbackPlan, new EntityTimelineTarget(playbackPlan, nodes, entityController));
+        this(compiledTimeline, new EntityTimelineTarget(compiledTimeline, nodes, entityController));
     }
 
     TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
         this(CompiledTimeline.compile(animation), target);
     }
 
-    TimelinePlayer(CompiledTimeline playbackPlan, TimelineTarget target) {
-        this.playbackPlan = Objects.requireNonNull(playbackPlan, "playbackPlan");
-        this.animation = playbackPlan.animation();
+    TimelinePlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
+        this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
+        this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
     }
 
@@ -102,7 +102,7 @@ public final class TimelinePlayer {
         this.initialVisibilityDeferred = false;
         this.animation.nodes().forEach((nodeId, node) -> this.target.setVisible(
             nodeId,
-            this.playbackPlan.visible(nodeId, this.currentTick, node.visible())
+            this.compiledTimeline.visible(nodeId, this.currentTick, node.visible())
         ));
     }
 
@@ -168,7 +168,7 @@ public final class TimelinePlayer {
     public Transformation currentTransformation(String nodeId) {
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {
-            return this.target.createTransformation(nodeId, this.playbackPlan.defaultTransform(nodeId));
+            return this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
         }
         return state.at(this.currentTick);
     }
@@ -192,10 +192,10 @@ public final class TimelinePlayer {
         for (Map.Entry<String, EmoteAnimation.Node> entry : this.animation.nodes().entrySet()) {
             String nodeId = entry.getKey();
             EmoteAnimation.Node node = entry.getValue();
-            CompiledTimeline.TransformActivation activation = this.playbackPlan.activeTransform(nodeId, tick);
+            CompiledTimeline.TransformActivation activation = this.compiledTimeline.activeTransform(nodeId, tick);
             Transformation currentTransformation;
             if (activation == null) {
-                currentTransformation = this.target.createTransformation(nodeId, this.playbackPlan.defaultTransform(nodeId));
+                currentTransformation = this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
             } else {
                 Transformation previous = this.target.createTransformation(nodeId, activation.previousTransform());
                 Transformation targetTransformation = this.target.createTransformation(nodeId, activation.transform());
@@ -213,7 +213,7 @@ public final class TimelinePlayer {
                 }
             }
             this.target.setTransformation(nodeId, currentTransformation);
-            this.target.setVisible(nodeId, this.playbackPlan.visible(nodeId, tick, node.visible()));
+            this.target.setVisible(nodeId, this.compiledTimeline.visible(nodeId, tick, node.visible()));
         }
         this.pendingInterpolations = List.copyOf(activeInterpolations);
     }
@@ -233,7 +233,7 @@ public final class TimelinePlayer {
     }
 
     private void applyTick(int tick) {
-        for (CompiledTimeline.TransformActivation activation : this.playbackPlan.transformActivations(tick)) {
+        for (CompiledTimeline.TransformActivation activation : this.compiledTimeline.transformActivations(tick)) {
             EmoteAnimation.Matrix matrix = activation.transform().matrix();
             if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
                 continue;
@@ -251,7 +251,7 @@ public final class TimelinePlayer {
                 activation.interpolationDurationTicks()
             );
         }
-        for (CompiledTimeline.StateActivation activation : this.playbackPlan.stateActivations(tick)) {
+        for (CompiledTimeline.StateActivation activation : this.compiledTimeline.stateActivations(tick)) {
             this.target.setVisible(activation.nodeId(), activation.state().visible());
         }
     }
@@ -295,7 +295,7 @@ public final class TimelinePlayer {
     }
 
     private record EntityTimelineTarget(
-        CompiledTimeline playbackPlan,
+        CompiledTimeline compiledTimeline,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
@@ -335,7 +335,7 @@ public final class TimelinePlayer {
                 this.entityController.applyTransformation(
                     this.nodes,
                     node,
-                    this.playbackPlan.defaultTransform(nodeId),
+                    this.compiledTimeline.defaultTransform(nodeId),
                     0
                 );
                 this.entityController.setVisible(node, this.nodes.requestVisibility(nodeId, node.node().visible()));

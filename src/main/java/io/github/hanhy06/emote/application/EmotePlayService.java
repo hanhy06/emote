@@ -14,7 +14,7 @@ import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
 public class EmotePlayService {
-    private final EmoteCatalog emoteRegistry;
+    private final EmoteCatalog emoteCatalog;
     private final PlayPermissionChecker playPermissionChecker;
     private final BypassChecker bypassChecker;
     private final PlaybackStarter emoteStarter;
@@ -24,13 +24,13 @@ public class EmotePlayService {
     private final EmoteCooldowns cooldowns = new EmoteCooldowns();
 
     public EmotePlayService(
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         PermissionService permissionService,
         PlaybackEngine playbackEngine,
         ApiEventDispatcher apiEvents
     ) {
         this(
-            emoteRegistry,
+            emoteCatalog,
             (player, emote) -> permissionService.canPlay(player, emote.id()),
             permissionService::canBypass,
             playbackEngine::start,
@@ -41,13 +41,13 @@ public class EmotePlayService {
     }
 
     EmotePlayService(
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         PlayPermissionChecker playPermissionChecker,
         PlaybackStarter emoteStarter,
         PlayEventDispatcher eventDispatcher
     ) {
         this(
-            emoteRegistry,
+            emoteCatalog,
             playPermissionChecker,
             ignored -> false,
             emoteStarter,
@@ -58,7 +58,7 @@ public class EmotePlayService {
     }
 
     EmotePlayService(
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         PlayPermissionChecker playPermissionChecker,
         BypassChecker bypassChecker,
         PlaybackStarter emoteStarter,
@@ -66,7 +66,7 @@ public class EmotePlayService {
         Function<ServerPlayer, UUID> playerIdResolver,
         ToLongFunction<ServerPlayer> tickSource
     ) {
-        this.emoteRegistry = emoteRegistry;
+        this.emoteCatalog = emoteCatalog;
         this.playPermissionChecker = playPermissionChecker;
         this.bypassChecker = bypassChecker;
         this.emoteStarter = emoteStarter;
@@ -80,7 +80,7 @@ public class EmotePlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        PreparedDefinition emote = this.emoteRegistry.findDefinition(id);
+        PreparedDefinition emote = this.emoteCatalog.findDefinition(id);
         if (emote == null) {
             return PlayResult.failure("Unknown: " + id);
         }

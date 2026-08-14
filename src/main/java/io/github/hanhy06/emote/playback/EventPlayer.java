@@ -9,7 +9,7 @@ import java.util.Objects;
 public final class EventPlayer {
     private final EmoteAnimation.Events events;
     private final EventExecutor executor;
-    private final CompiledTimeline playbackPlan;
+    private final CompiledTimeline compiledTimeline;
 
     private boolean started;
     private boolean stopped;
@@ -18,9 +18,9 @@ public final class EventPlayer {
         this(CompiledTimeline.compile(animation), executor);
     }
 
-    public EventPlayer(CompiledTimeline playbackPlan, EventExecutor executor) {
-        this.playbackPlan = Objects.requireNonNull(playbackPlan, "playbackPlan");
-        this.events = playbackPlan.animation().timeline().events();
+    public EventPlayer(CompiledTimeline compiledTimeline, EventExecutor executor) {
+        this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
+        this.events = compiledTimeline.animation().timeline().events();
         this.executor = Objects.requireNonNull(executor, "executor");
     }
 
@@ -36,7 +36,7 @@ public final class EventPlayer {
         if (!this.started) {
             throw new IllegalStateException("Events have not started");
         }
-        execute(this.playbackPlan.timelineEvents(tick));
+        execute(this.compiledTimeline.timelineEvents(tick));
     }
 
     public void loop() {

@@ -22,7 +22,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public final class EmoteApiImpl extends EmoteApi {
-    private final EmoteCatalog emoteRegistry;
+    private final EmoteCatalog emoteCatalog;
     private final EmotePlayService playService;
     private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
@@ -30,14 +30,14 @@ public final class EmoteApiImpl extends EmoteApi {
     private final AnimationServerPreparer animationValidator;
 
     public EmoteApiImpl(
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         EmotePlayService playService,
         PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
         EmoteChangeNotifier changeNotifier,
         AnimationServerPreparer animationValidator
     ) {
-        this.emoteRegistry = Objects.requireNonNull(emoteRegistry, "emoteRegistry");
+        this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playbackEngine = Objects.requireNonNull(playbackEngine, "playbackEngine");
         this.events = Objects.requireNonNull(events, "events");
@@ -71,7 +71,7 @@ public final class EmoteApiImpl extends EmoteApi {
             animation
         );
         PreparedEmote emote = PreparedEmote.from(this.animationValidator.prepare(loaded));
-        UUID registrationId = this.emoteRegistry.registerApi(emote);
+        UUID registrationId = this.emoteCatalog.registerApi(emote);
         this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);
     }
@@ -79,13 +79,13 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public Optional<EmoteInfo> find(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
-        return Optional.ofNullable(this.emoteRegistry.findDefinition(emoteId.toString()))
+        return Optional.ofNullable(this.emoteCatalog.findDefinition(emoteId.toString()))
             .map(ApiEventDispatcher::toInfo);
     }
 
     @Override
     public List<EmoteInfo> getAll() {
-        return this.emoteRegistry.getAllDefinitions().stream()
+        return this.emoteCatalog.getAllDefinitions().stream()
             .map(ApiEventDispatcher::toInfo)
             .toList();
     }
@@ -133,7 +133,7 @@ public final class EmoteApiImpl extends EmoteApi {
 
         @Override
         public boolean isRegistered() {
-            return EmoteApiImpl.this.emoteRegistry.isApiRegistrationActive(
+            return EmoteApiImpl.this.emoteCatalog.isApiRegistrationActive(
                 this.id.toString(),
                 this.registrationId
             );
@@ -142,7 +142,7 @@ public final class EmoteApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
-            if (!EmoteApiImpl.this.emoteRegistry.unregisterApi(this.id.toString(), this.registrationId)) {
+            if (!EmoteApiImpl.this.emoteCatalog.unregisterApi(this.id.toString(), this.registrationId)) {
                 return false;
             }
             EmoteApiImpl.this.playbackEngine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);

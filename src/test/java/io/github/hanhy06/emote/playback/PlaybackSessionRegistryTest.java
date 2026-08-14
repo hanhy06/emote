@@ -100,14 +100,14 @@ class PlaybackSessionRegistryTest {
 
     private static TimelinePlayer timeline(PreparedEmote emote) {
         return new TimelinePlayer(
-            emote.playbackPlan(),
+            emote.compiledTimeline(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             new PlaybackEntityController()
         );
     }
 
     private static EventPlayer events(PreparedEmote emote) {
-        return new EventPlayer(emote.playbackPlan(), ignored -> {
+        return new EventPlayer(emote.compiledTimeline(), ignored -> {
         });
     }
 

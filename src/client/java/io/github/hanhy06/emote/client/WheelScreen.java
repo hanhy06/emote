@@ -108,9 +108,9 @@ public class WheelScreen extends Screen {
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             SlotGeometry slot = this.slotGeometries.get(slotIndex);
-            EmoteSummary playableEmote = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
+            EmoteSummary emoteSummary = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
             boolean hovered = slotIndex == this.hoveredSlotIndex;
-            drawSlot(graphics, slot, playableEmote, hovered);
+            drawSlot(graphics, slot, emoteSummary, hovered);
         }
 
         drawCenterHex(graphics, metrics);
@@ -196,19 +196,19 @@ public class WheelScreen extends Screen {
         updateHoveredSlot(mouseX, mouseY);
     }
 
-    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, EmoteSummary playableEmote, boolean hovered) {
-        int fillColor = playableEmote == null
+    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, EmoteSummary emoteSummary, boolean hovered) {
+        int fillColor = emoteSummary == null
             ? SLOT_EMPTY_FILL_COLOR
             : hovered
             ? SLOT_HIGHLIGHT_FILL_COLOR
             : SLOT_FILL_COLOR;
         drawHex(graphics, slot.xPoints(), slot.yPoints(), fillColor, SLOT_BORDER_COLOR);
 
-        if (playableEmote == null) {
+        if (emoteSummary == null) {
             return;
         }
 
-        List<FormattedCharSequence> lines = this.font.split(Component.literal(playableEmote.displayName()), slot.textWidth());
+        List<FormattedCharSequence> lines = this.font.split(Component.literal(emoteSummary.displayName()), slot.textWidth());
         int visibleLineCount = Math.min(2, lines.size());
         int lineStartY = slot.centerY() - (visibleLineCount * this.font.lineHeight) / 2;
         for (int lineIndex = 0; lineIndex < visibleLineCount; lineIndex++) {
@@ -275,13 +275,13 @@ public class WheelScreen extends Screen {
     }
 
     private boolean selectHoveredSlot() {
-        EmoteSummary playableEmote = getEntryAt(this.hoveredSlotIndex);
-        if (playableEmote == null) {
+        EmoteSummary emoteSummary = getEntryAt(this.hoveredSlotIndex);
+        if (emoteSummary == null) {
             return false;
         }
 
         this.onClose();
-        this.controller.play(playableEmote);
+        this.controller.play(emoteSummary);
         return true;
     }
 

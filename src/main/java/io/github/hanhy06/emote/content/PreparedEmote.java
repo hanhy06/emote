@@ -17,14 +17,14 @@ import java.util.Objects;
 public record PreparedEmote(
     LoadedAnimation source,
     List<SkinBinding> skinParts,
-    CompiledTimeline playbackPlan
+    CompiledTimeline compiledTimeline
 ) implements PreparedDefinition {
     private static final SkinBindingCompiler SKIN_PART_FACTORY = new SkinBindingCompiler();
 
     public PreparedEmote {
         Objects.requireNonNull(source, "source");
         skinParts = List.copyOf(skinParts);
-        Objects.requireNonNull(playbackPlan, "playbackPlan");
+        Objects.requireNonNull(compiledTimeline, "compiledTimeline");
     }
 
     public static PreparedEmote from(LoadedAnimation source) {

@@ -7,10 +7,10 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
 public class WheelSyncService {
-    private final EmoteQueryService playableEmoteService;
+    private final EmoteQueryService emoteQueryService;
 
-    public WheelSyncService(EmoteQueryService playableEmoteService) {
-        this.playableEmoteService = playableEmoteService;
+    public WheelSyncService(EmoteQueryService emoteQueryService) {
+        this.emoteQueryService = emoteQueryService;
     }
 
     public void syncPlayer(ServerPlayer player) {
@@ -18,7 +18,7 @@ public class WheelSyncService {
             return;
         }
 
-        ServerPlayNetworking.send(player, new WheelSyncPayload(this.playableEmoteService.getAll(player)));
+        ServerPlayNetworking.send(player, new WheelSyncPayload(this.emoteQueryService.getAll(player)));
     }
 
     public void syncAll() {

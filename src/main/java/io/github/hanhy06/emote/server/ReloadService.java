@@ -13,30 +13,30 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 
 public final class ReloadService {
     private final ConfigManager configManager;
-    private final EmoteCatalog emoteRegistry;
+    private final EmoteCatalog emoteCatalog;
     private final DirectoryContentsLoader directoryLoader;
     private final PlaybackEngine playbackEngine;
     private final WheelSyncService wheelSyncService;
 
     public ReloadService(
         ConfigManager configManager,
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         AnimationDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
-        this(configManager, emoteRegistry, directoryLoader::load, playbackEngine, wheelSyncService);
+        this(configManager, emoteCatalog, directoryLoader::load, playbackEngine, wheelSyncService);
     }
 
     ReloadService(
         ConfigManager configManager,
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         DirectoryContentsLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
         this.configManager = configManager;
-        this.emoteRegistry = emoteRegistry;
+        this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
         this.playbackEngine = playbackEngine;
         this.wheelSyncService = wheelSyncService;
@@ -77,7 +77,7 @@ public final class ReloadService {
             .map(sequence -> resolveSequence(sequence, animationsById))
             .filter(java.util.Objects::nonNull)
             .toList();
-        int ignoredCount = this.emoteRegistry.replace(emotes, sequences);
+        int ignoredCount = this.emoteCatalog.replace(emotes, sequences);
         if (ignoredCount > 0) {
             Emote.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
@@ -85,7 +85,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return this.emoteRegistry.size();
+        return this.emoteCatalog.size();
     }
 
     private PreparedSequence resolveSequence(

@@ -48,14 +48,14 @@ public class WheelController {
         client.gui.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
     }
 
-    public void play(EmoteSummary playableEmote) {
+    public void play(EmoteSummary emoteSummary) {
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
 
-        this.lastSelectedId = playableEmote.id();
-        player.connection.sendUnattendedCommand(playableEmote.createPlayCommand(), null);
+        this.lastSelectedId = emoteSummary.id();
+        player.connection.sendUnattendedCommand(emoteSummary.createPlayCommand(), null);
     }
 
     public void openShortcutEditor() {

@@ -26,20 +26,20 @@ import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TES
 import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
 
 public final class AdminCommand {
-    private final EmoteCatalog emoteRegistry;
+    private final EmoteCatalog emoteCatalog;
     private final PlaybackEngine playbackEngine;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
 
     public AdminCommand(
-        EmoteCatalog emoteRegistry,
+        EmoteCatalog emoteCatalog,
         PlaybackEngine playbackEngine,
         PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager
     ) {
-        this.emoteRegistry = emoteRegistry;
+        this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
@@ -109,7 +109,7 @@ public final class AdminCommand {
             .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteRegistry.getFileDefinitions().stream().map(PreparedDefinition::id),
+                    this.emoteCatalog.getFileDefinitions().stream().map(PreparedDefinition::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -133,7 +133,7 @@ public final class AdminCommand {
     }
 
     private int list(CommandSourceStack source) {
-        List<PreparedDefinition> emotes = this.emoteRegistry.getAllDefinitions();
+        List<PreparedDefinition> emotes = this.emoteCatalog.getAllDefinitions();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
@@ -199,7 +199,7 @@ public final class AdminCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int requestedInstanceCount) {
-        List<PreparedEmote> emotes = this.emoteRegistry.getAll();
+        List<PreparedEmote> emotes = this.emoteCatalog.getAll();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;
@@ -291,7 +291,7 @@ public final class AdminCommand {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteRegistry.findFileDefinition(id) == null) {
+        } else if (this.emoteCatalog.findFileDefinition(id) == null) {
             source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }

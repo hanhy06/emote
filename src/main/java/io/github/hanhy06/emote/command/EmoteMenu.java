@@ -35,19 +35,19 @@ public final class EmoteMenu {
         .getOrThrow();
 
     private final ConfigManager configManager;
-    private final EmoteCatalog emoteRegistry;
-    private final EmoteQueryService playableEmoteService;
+    private final EmoteCatalog emoteCatalog;
+    private final EmoteQueryService emoteQueryService;
     private final PlaybackEngine playbackEngine;
 
     public EmoteMenu(
         ConfigManager configManager,
-        EmoteCatalog emoteRegistry,
-        EmoteQueryService playableEmoteService,
+        EmoteCatalog emoteCatalog,
+        EmoteQueryService emoteQueryService,
         PlaybackEngine playbackEngine
     ) {
         this.configManager = configManager;
-        this.emoteRegistry = emoteRegistry;
-        this.playableEmoteService = playableEmoteService;
+        this.emoteCatalog = emoteCatalog;
+        this.emoteQueryService = emoteQueryService;
         this.playbackEngine = playbackEngine;
     }
 
@@ -84,15 +84,15 @@ public final class EmoteMenu {
     }
 
     private Dialog createRootDialog(ServerPlayer player, int requestedPageNumber, String query) {
-        List<EmoteSummary> playableEmoteList = this.playableEmoteService.search(player, query);
-        DialogPage dialogPage = createDialogPage(playableEmoteList.size(), requestedPageNumber);
+        List<EmoteSummary> emoteSummaryList = this.emoteQueryService.search(player, query);
+        DialogPage dialogPage = createDialogPage(emoteSummaryList.size(), requestedPageNumber);
 
         List<ActionButton> actionButtons = new ArrayList<>();
-        for (EmoteSummary playableEmote : playableEmoteList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
-            String command = "/" + playableEmote.createPlayCommand();
+        for (EmoteSummary emoteSummary : emoteSummaryList.subList(dialogPage.startIndex(), dialogPage.endIndex())) {
+            String command = "/" + emoteSummary.createPlayCommand();
             actionButtons.add(createRunCommandButton(
-                playableEmote.displayName(),
-                playableEmote.description(),
+                emoteSummary.displayName(),
+                emoteSummary.description(),
                 command
             ));
         }
@@ -184,7 +184,7 @@ public final class EmoteMenu {
     }
 
     private String createBodyText(DialogPage dialogPage, ServerPlayer player, String query) {
-        if (this.emoteRegistry.size() == 0) {
+        if (this.emoteCatalog.size() == 0) {
             return "No emotes.";
         }
 
@@ -215,7 +215,7 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PreparedDefinition emote = this.emoteRegistry.findDefinition(session.id());
+        PreparedDefinition emote = this.emoteCatalog.findDefinition(session.id());
         String displayName = emote == null
             ? session.id()
             : emote.name();
