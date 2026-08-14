@@ -14,6 +14,7 @@ public final class TimelinePlayer {
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
 
     private List<CompiledTimeline.TransformActivation> pendingInterpolations = List.of();
+    private CompiledTimeline.TickActions currentTickActions;
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -38,6 +39,7 @@ public final class TimelinePlayer {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
+        this.currentTickActions = compiledTimeline.tickActions(0);
     }
 
     public void start() {
@@ -74,6 +76,7 @@ public final class TimelinePlayer {
         long phase = Math.floorMod(cycleTick, cycleLength);
         int timelineTick = (int) Math.min(phase, duration);
         this.currentTick = timelineTick;
+        this.currentTickActions = this.compiledTimeline.tickActions(timelineTick);
         applySynchronizedSnapshot(timelineTick);
         if (phase >= duration) {
             this.remainingLoopDelay = (int) (cycleLength - phase);
@@ -165,6 +168,10 @@ public final class TimelinePlayer {
         return this.currentTick;
     }
 
+    List<EmoteAnimation.Event> currentTimelineEvents() {
+        return this.currentTickActions.events();
+    }
+
     public Transformation currentTransformation(String nodeId) {
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {
@@ -183,6 +190,7 @@ public final class TimelinePlayer {
         this.transformStates.clear();
         this.appliedMatrices.clear();
         this.pendingInterpolations = List.of();
+        this.currentTickActions = this.compiledTimeline.tickActions(0);
         this.currentTick = 0;
         this.remainingLoopDelay = 0;
     }
@@ -233,7 +241,8 @@ public final class TimelinePlayer {
     }
 
     private void applyTick(int tick) {
-        for (CompiledTimeline.TransformActivation activation : this.compiledTimeline.transformActivations(tick)) {
+        this.currentTickActions = this.compiledTimeline.tickActions(tick);
+        for (CompiledTimeline.TransformActivation activation : this.currentTickActions.transforms()) {
             EmoteAnimation.Matrix matrix = activation.transform().matrix();
             if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
                 continue;
@@ -251,7 +260,7 @@ public final class TimelinePlayer {
                 activation.interpolationDurationTicks()
             );
         }
-        for (CompiledTimeline.StateActivation activation : this.compiledTimeline.stateActivations(tick)) {
+        for (CompiledTimeline.StateActivation activation : this.currentTickActions.states()) {
             this.target.setVisible(activation.nodeId(), activation.state().visible());
         }
     }

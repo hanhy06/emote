@@ -26,7 +26,7 @@ public final class PlaybackTrack {
     public void startEvents() {
         this.events.start();
         if (this.timeline.currentTick() == 0) {
-            this.events.timelineTick(0);
+            this.events.timelineEvents(this.timeline.currentTimelineEvents());
         }
     }
 
@@ -38,7 +38,7 @@ public final class PlaybackTrack {
         int previousTick = this.timeline.currentTick();
         TimelinePlayer.AdvanceResult result = this.timeline.advance();
         if (result != TimelinePlayer.AdvanceResult.RESTARTED && this.timeline.currentTick() != previousTick) {
-            this.events.timelineTick(this.timeline.currentTick());
+            this.events.timelineEvents(this.timeline.currentTimelineEvents());
         }
         if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
             this.events.loop();
@@ -47,7 +47,7 @@ public final class PlaybackTrack {
             }
         }
         if (result == TimelinePlayer.AdvanceResult.RESTARTED) {
-            this.events.timelineTick(0);
+            this.events.timelineEvents(this.timeline.currentTimelineEvents());
         }
         return result;
     }

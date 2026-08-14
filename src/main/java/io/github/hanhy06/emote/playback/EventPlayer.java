@@ -39,6 +39,13 @@ public final class EventPlayer {
         execute(this.compiledTimeline.timelineEvents(tick));
     }
 
+    void timelineEvents(List<EmoteAnimation.Event> events) {
+        if (!this.started) {
+            throw new IllegalStateException("Events have not started");
+        }
+        execute(events);
+    }
+
     public void loop() {
         if (!this.started || this.stopped) {
             throw new IllegalStateException("Events are not active");

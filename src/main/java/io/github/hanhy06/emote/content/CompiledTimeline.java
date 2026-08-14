@@ -10,35 +10,28 @@ import java.util.*;
 
 public final class CompiledTimeline {
     private final EmoteAnimation animation;
-    private final Map<Integer, List<TransformActivation>> transformActivations;
-    private final Map<Integer, List<StateActivation>> stateActivations;
+    private final Map<Integer, TickActions> tickActions;
     private final Map<String, List<TransformActivation>> nodeTransformActivations;
     private final Map<String, List<StateActivation>> nodeStateActivations;
-    private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
     private final Map<String, PreparedTransform> defaultTransforms;
 
     private CompiledTimeline(
         EmoteAnimation animation,
-        Map<Integer, List<TransformActivation>> transformActivations,
-        Map<Integer, List<StateActivation>> stateActivations,
+        Map<Integer, TickActions> tickActions,
         Map<String, List<TransformActivation>> nodeTransformActivations,
         Map<String, List<StateActivation>> nodeStateActivations,
-        Map<Integer, List<EmoteAnimation.Event>> timelineEvents,
         Map<String, PreparedTransform> defaultTransforms
     ) {
         this.animation = animation;
-        this.transformActivations = transformActivations;
-        this.stateActivations = stateActivations;
+        this.tickActions = tickActions;
         this.nodeTransformActivations = nodeTransformActivations;
         this.nodeStateActivations = nodeStateActivations;
-        this.timelineEvents = timelineEvents;
         this.defaultTransforms = defaultTransforms;
     }
 
     public static CompiledTimeline compile(EmoteAnimation animation) {
         Objects.requireNonNull(animation, "animation");
-        Map<Integer, List<TransformActivation>> transformsByTick = new HashMap<>();
-        Map<Integer, List<StateActivation>> statesByTick = new HashMap<>();
+        Map<Integer, TickActionsBuilder> actionsByTick = new HashMap<>();
         Map<String, List<TransformActivation>> transformsByNode = new HashMap<>();
         Map<String, List<StateActivation>> statesByNode = new HashMap<>();
         Map<String, PreparedTransform> defaultTransforms = new HashMap<>();
@@ -70,14 +63,14 @@ public final class CompiledTimeline {
                     preparedTransform,
                     transform.interpolationDurationTicks()
                 );
-                transformsByTick.computeIfAbsent(activationTick, ignored -> new ArrayList<>()).add(activation);
+                actionsByTick.computeIfAbsent(activationTick, ignored -> new TickActionsBuilder()).transforms.add(activation);
                 transformsByNode.computeIfAbsent(nodeId, ignored -> new ArrayList<>()).add(activation);
                 previousTransforms.put(nodeId, preparedTransform);
                 transformedNodes.add(nodeId);
             }
             for (Map.Entry<String, EmoteAnimation.NodeState> entry : keyframe.nodeStates().entrySet()) {
                 StateActivation activation = new StateActivation(keyframe.tick(), entry.getKey(), entry.getValue());
-                statesByTick.computeIfAbsent(keyframe.tick(), ignored -> new ArrayList<>()).add(activation);
+                actionsByTick.computeIfAbsent(keyframe.tick(), ignored -> new TickActionsBuilder()).states.add(activation);
                 statesByNode.computeIfAbsent(entry.getKey(), ignored -> new ArrayList<>()).add(activation);
             }
         }
@@ -85,17 +78,18 @@ public final class CompiledTimeline {
         Comparator<TransformActivation> transformOrder = Comparator
             .comparingInt(TransformActivation::activationTick)
             .thenComparingInt(TransformActivation::targetTick);
-        transformsByTick.values().forEach(values -> values.sort(transformOrder));
+        actionsByTick.values().forEach(actions -> actions.transforms.sort(transformOrder));
         transformsByNode.values().forEach(values -> values.sort(transformOrder));
         statesByNode.values().forEach(values -> values.sort(Comparator.comparingInt(StateActivation::tick)));
+        for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
+            actionsByTick.computeIfAbsent(event.tick(), ignored -> new TickActionsBuilder()).events.add(event.event());
+        }
 
         return new CompiledTimeline(
             animation,
-            copyListMap(transformsByTick),
-            copyListMap(statesByTick),
+            copyTickActions(actionsByTick),
             copyListMap(transformsByNode),
             copyListMap(statesByNode),
-            indexTimelineEvents(animation.timeline().events().timeline()),
             Map.copyOf(defaultTransforms)
         );
     }
@@ -105,15 +99,19 @@ public final class CompiledTimeline {
     }
 
     public List<TransformActivation> transformActivations(int tick) {
-        return this.transformActivations.getOrDefault(tick, List.of());
+        return tickActions(tick).transforms();
     }
 
     public List<StateActivation> stateActivations(int tick) {
-        return this.stateActivations.getOrDefault(tick, List.of());
+        return tickActions(tick).states();
     }
 
     public List<EmoteAnimation.Event> timelineEvents(int tick) {
-        return this.timelineEvents.getOrDefault(tick, List.of());
+        return tickActions(tick).events();
+    }
+
+    public TickActions tickActions(int tick) {
+        return this.tickActions.getOrDefault(tick, TickActions.EMPTY);
     }
 
     public PreparedTransform defaultTransform(String nodeId) {
@@ -141,14 +139,14 @@ public final class CompiledTimeline {
         return activation == null ? defaultValue : activation.state().visible();
     }
 
-    private static Map<Integer, List<EmoteAnimation.Event>> indexTimelineEvents(
-        List<EmoteAnimation.TimelineEvent> events
-    ) {
-        Map<Integer, List<EmoteAnimation.Event>> byTick = new LinkedHashMap<>();
-        for (EmoteAnimation.TimelineEvent event : events) {
-            byTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(event.event());
-        }
-        return copyListMap(byTick);
+    private static Map<Integer, TickActions> copyTickActions(Map<Integer, TickActionsBuilder> source) {
+        Map<Integer, TickActions> copied = new HashMap<>();
+        source.forEach((tick, actions) -> copied.put(tick, new TickActions(
+            List.copyOf(actions.transforms),
+            List.copyOf(actions.states),
+            List.copyOf(actions.events)
+        )));
+        return Map.copyOf(copied);
     }
 
     private static <K, V> Map<K, List<V>> copyListMap(Map<K, List<V>> source) {
@@ -189,6 +187,20 @@ public final class CompiledTimeline {
     }
 
     public record StateActivation(int tick, String nodeId, EmoteAnimation.NodeState state) {
+    }
+
+    public record TickActions(
+        List<TransformActivation> transforms,
+        List<StateActivation> states,
+        List<EmoteAnimation.Event> events
+    ) {
+        private static final TickActions EMPTY = new TickActions(List.of(), List.of(), List.of());
+    }
+
+    private static final class TickActionsBuilder {
+        private final List<TransformActivation> transforms = new ArrayList<>();
+        private final List<StateActivation> states = new ArrayList<>();
+        private final List<EmoteAnimation.Event> events = new ArrayList<>();
     }
 
     public static final class PreparedTransform {
