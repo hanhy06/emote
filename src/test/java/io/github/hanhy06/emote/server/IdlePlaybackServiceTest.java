@@ -14,7 +14,9 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.random.RandomGenerator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class IdlePlaybackServiceTest {
     private static final UUID PLAYER_UUID = UUID.fromString("c50d1f70-28d0-4e46-8f8a-334036755c36");
@@ -22,6 +24,17 @@ class IdlePlaybackServiceTest {
         200,
         List.of("demo:sit")
     );
+
+    @Test
+    void checksPlayersOnceEveryTwentyTicks() {
+        IdlePlaybackService service = successfulService(new AtomicLong(), new AtomicInteger());
+
+        assertTrue(service.advanceCheckSchedule());
+        for (int tick = 1; tick < IdlePlaybackService.CHECK_INTERVAL_TICKS; tick++) {
+            assertFalse(service.advanceCheckSchedule());
+        }
+        assertTrue(service.advanceCheckSchedule());
+    }
 
     @Test
     void playsAtEveryConfiguredIdleInterval() {

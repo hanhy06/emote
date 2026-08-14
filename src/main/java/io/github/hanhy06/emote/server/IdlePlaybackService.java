@@ -18,6 +18,7 @@ import java.util.function.LongSupplier;
 import java.util.random.RandomGenerator;
 
 public final class IdlePlaybackService implements AccessConfigListener {
+    static final int CHECK_INTERVAL_TICKS = 20;
     private static final long RETRY_INTERVAL_MILLIS = TimeUnit.SECONDS.toMillis(1);
     private static final long RESOLUTION_CACHE_MILLIS = TimeUnit.SECONDS.toMillis(1);
 
@@ -29,6 +30,8 @@ public final class IdlePlaybackService implements AccessConfigListener {
     private final Map<UUID, IdleState> playerStates = new HashMap<>();
     private final Map<UUID, String> lastPlayedEmotes = new HashMap<>();
     private final Map<UUID, IdleResolution> idleResolutions = new HashMap<>();
+
+    private int ticksUntilCheck;
 
     public IdlePlaybackService(
         PermissionService permissionService,
@@ -59,9 +62,21 @@ public final class IdlePlaybackService implements AccessConfigListener {
     }
 
     public void tick() {
+        if (!advanceCheckSchedule()) {
+            return;
+        }
         for (ServerPlayer player : Emote.SERVER.getPlayerList().getPlayers()) {
             tickPlayer(player.getUUID(), player.getLastActionTime(), player);
         }
+    }
+
+    boolean advanceCheckSchedule() {
+        if (this.ticksUntilCheck > 0) {
+            this.ticksUntilCheck--;
+            return false;
+        }
+        this.ticksUntilCheck = CHECK_INTERVAL_TICKS - 1;
+        return true;
     }
 
     void tickPlayer(UUID playerUuid, long lastActionTime, ServerPlayer player) {
@@ -114,6 +129,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.idleResolutions.clear();
+        this.ticksUntilCheck = 0;
     }
 
     private Optional<AccessConfig.IdleSettings> resolveIdle(
@@ -158,6 +174,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         this.playerStates.clear();
         this.lastPlayedEmotes.clear();
         this.idleResolutions.clear();
+        this.ticksUntilCheck = 0;
     }
 
     private static long ticksToMillis(int ticks) {
