@@ -4,7 +4,7 @@
 
 > Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
 
-[![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/)
+[![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/converter/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CRWqKbSebW)
@@ -105,7 +105,7 @@ Set `mineskin_api_key` to apply player skins.
 
 ## Web converter
 
-[Emote Converter](https://hanhy06.github.io/emote/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
+[Emote Converter](https://hanhy06.github.io/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
 
 Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export Animation JSON, a sequence ZIP, and a resource pack, or merge the result into an existing resource pack.
 
