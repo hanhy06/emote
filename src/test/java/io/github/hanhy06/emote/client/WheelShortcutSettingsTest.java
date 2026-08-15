@@ -67,6 +67,19 @@ class WheelShortcutSettingsTest {
     }
 
     @Test
+    void restoresSelectionSnapshotAfterEditing(@TempDir Path tempDir) {
+        WheelShortcutSettings settings = new WheelShortcutSettings(tempDir.resolve("emote/wheel-shortcuts.json"));
+        settings.updateServer("server:example.test", emotes("a", "b", "c"));
+        List<String> snapshot = List.copyOf(settings.selectedIds());
+
+        settings.remove("a");
+        settings.moveDown("b");
+        settings.replaceSelectedIds(snapshot);
+
+        assertEquals(List.of("a", "b", "c"), ids(settings.selectedEmotes()));
+    }
+
+    @Test
     void migratesExistingSettingsWithoutRestoringRemovedEmotes(@TempDir Path tempDir) throws IOException {
         Path filePath = tempDir.resolve("emote/wheel-shortcuts.json");
         JsonObject root = new JsonObject();

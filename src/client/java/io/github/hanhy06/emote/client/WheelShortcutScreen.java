@@ -5,7 +5,10 @@ import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
+
+import java.util.List;
 
 @Environment(EnvType.CLIENT)
 public class WheelShortcutScreen extends Screen {
@@ -15,18 +18,21 @@ public class WheelShortcutScreen extends Screen {
     private static final int FOOTER_HEIGHT = 32;
 
     private final WheelController controller;
+    private final List<String> initialShortcutIds;
     private EmoteShortcutList selectedList;
     private EmoteShortcutList availableList;
+    private boolean accepted;
 
     public WheelShortcutScreen(WheelController controller) {
         super(Component.translatable("screen.emote.shortcuts.title"));
         this.controller = controller;
+        this.initialShortcutIds = List.copyOf(controller.getShortcutIds());
     }
 
     @Override
     protected void init() {
         int listWidth = Math.min(LIST_MAX_WIDTH, Math.max(100, (this.width - LIST_GAP) / 2));
-        int listHeight = Math.max(40, this.height - LIST_TOP - FOOTER_HEIGHT);
+        int listHeight = EmoteShortcutList.fitHeight(Math.max(40, this.height - LIST_TOP - FOOTER_HEIGHT));
         int centerX = this.width / 2;
 
         this.selectedList = this.addRenderableWidget(new EmoteShortcutList(
@@ -52,9 +58,24 @@ public class WheelShortcutScreen extends Screen {
         refreshLists();
 
         this.addRenderableWidget(Button.builder(
-            Component.translatable("screen.emote.shortcuts.done"),
+            CommonComponents.GUI_CANCEL,
             ignoredButton -> this.onClose()
-        ).bounds(centerX - 50, this.height - 24, 100, 20).build());
+        ).bounds(this.selectedList.getX(), this.height - 24, listWidth, 20).build());
+        this.addRenderableWidget(Button.builder(
+            CommonComponents.GUI_DONE,
+            ignoredButton -> {
+                this.accepted = true;
+                this.onClose();
+            }
+        ).bounds(this.availableList.getX(), this.height - 24, listWidth, 20).build());
+    }
+
+    @Override
+    public void onClose() {
+        if (!this.accepted) {
+            this.controller.restoreShortcuts(this.initialShortcutIds);
+        }
+        super.onClose();
     }
 
     @Override

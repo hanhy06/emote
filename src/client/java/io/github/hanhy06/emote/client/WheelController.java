@@ -70,6 +70,14 @@ public class WheelController {
         return this.shortcutSettings.availableEmotes();
     }
 
+    List<String> getShortcutIds() {
+        return this.shortcutSettings.selectedIds();
+    }
+
+    void restoreShortcuts(List<String> ids) {
+        this.shortcutSettings.replaceSelectedIds(ids);
+    }
+
     public void addShortcut(String id) {
         this.shortcutSettings.add(id);
     }

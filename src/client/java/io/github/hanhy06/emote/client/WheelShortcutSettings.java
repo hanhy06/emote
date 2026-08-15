@@ -98,6 +98,14 @@ public class WheelShortcutSettings {
             .toList();
     }
 
+    List<String> selectedIds() {
+        return this.selectedIds;
+    }
+
+    void replaceSelectedIds(List<String> ids) {
+        updateSelectedIds(new ArrayList<>(new LinkedHashSet<>(ids)));
+    }
+
     public void add(String id) {
         if (!this.availableById.containsKey(id) || this.selectedIds.contains(id)) {
             return;

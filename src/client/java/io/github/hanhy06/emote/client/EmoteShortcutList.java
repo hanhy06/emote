@@ -27,6 +27,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
     private static final Identifier MOVE_DOWN_SPRITE = Identifier.withDefaultNamespace("transferable_list/move_down");
     private static final int ENTRY_HEIGHT = 36;
     private static final int CONTROL_SIZE = 32;
+    private static final int CONTROL_Y_OFFSET = -1;
     private static final int TEXT_GAP = 4;
 
     private final WheelShortcutScreen screen;
@@ -49,6 +50,11 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         this.selectedList = selectedList;
         this.centerListVertically = false;
         updateSizeAndPosition(width, height, x, y);
+    }
+
+    static int fitHeight(int availableHeight) {
+        int rowCount = Math.max(1, (availableHeight - 4) / ENTRY_HEIGHT);
+        return rowCount * ENTRY_HEIGHT + 4;
     }
 
     @Override
@@ -104,7 +110,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         @Override
         public void extractContent(GuiGraphicsExtractor graphics, int mouseX, int mouseY, boolean hovered, float a) {
             int controlX = getContentX();
-            int controlY = getContentY();
+            int controlY = getContentY() + CONTROL_Y_OFFSET;
             boolean showControls = hovered || EmoteShortcutList.this.getSelected() == this && EmoteShortcutList.this.isFocused();
 
             graphics.fill(controlX, controlY, controlX + CONTROL_SIZE, controlY + CONTROL_SIZE, 0xFF303840);
@@ -124,15 +130,15 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         private void extractControls(GuiGraphicsExtractor graphics, int relX, int relY, int x, int y) {
             if (!selectedList) {
                 Identifier sprite = isInside(relX, relY, 0, 0, CONTROL_SIZE, CONTROL_SIZE)
-                    ? SELECT_HIGHLIGHTED_SPRITE
-                    : SELECT_SPRITE;
+                    ? UNSELECT_HIGHLIGHTED_SPRITE
+                    : UNSELECT_SPRITE;
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
                 return;
             }
 
             Identifier unselectSprite = isInside(relX, relY, 0, 0, CONTROL_SIZE / 2, CONTROL_SIZE)
-                ? UNSELECT_HIGHLIGHTED_SPRITE
-                : UNSELECT_SPRITE;
+                ? SELECT_HIGHLIGHTED_SPRITE
+                : SELECT_SPRITE;
             graphics.blitSprite(RenderPipelines.GUI_TEXTURED, unselectSprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
             if (this.index > 0) {
                 Identifier upSprite = isInside(relX, relY, CONTROL_SIZE / 2, 0, CONTROL_SIZE / 2, CONTROL_SIZE / 2)
@@ -151,7 +157,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         @Override
         public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
             int relX = (int) event.x() - getContentX();
-            int relY = (int) event.y() - getContentY();
+            int relY = (int) event.y() - (getContentY() + CONTROL_Y_OFFSET);
             if (!isInside(relX, relY, 0, 0, CONTROL_SIZE, CONTROL_SIZE)) {
                 return super.mouseClicked(event, doubleClick);
             }
