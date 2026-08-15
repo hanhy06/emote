@@ -80,6 +80,18 @@ class WheelShortcutSettingsTest {
     }
 
     @Test
+    void movesSelectionDirectlyToDroppedIndex(@TempDir Path tempDir) {
+        WheelShortcutSettings settings = new WheelShortcutSettings(tempDir.resolve("emote/wheel-shortcuts.json"));
+        settings.updateServer("server:example.test", emotes("a", "b", "c", "d"));
+
+        settings.moveToIndex("a", 2);
+        assertEquals(List.of("b", "c", "a", "d"), ids(settings.selectedEmotes()));
+
+        settings.moveToIndex("d", 1);
+        assertEquals(List.of("b", "d", "c", "a"), ids(settings.selectedEmotes()));
+    }
+
+    @Test
     void migratesExistingSettingsWithoutRestoringRemovedEmotes(@TempDir Path tempDir) throws IOException {
         Path filePath = tempDir.resolve("emote/wheel-shortcuts.json");
         JsonObject root = new JsonObject();

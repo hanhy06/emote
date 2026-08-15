@@ -134,6 +134,32 @@ public class WheelShortcutSettings {
         move(id, 1);
     }
 
+    public void moveToIndex(String id, int targetVisibleIndex) {
+        List<EmoteSummary> visibleSelection = selectedEmotes();
+        int visibleIndex = -1;
+        for (int index = 0; index < visibleSelection.size(); index++) {
+            if (visibleSelection.get(index).id().equals(id)) {
+                visibleIndex = index;
+                break;
+            }
+        }
+        if (visibleIndex < 0 || visibleSelection.size() <= 1) {
+            return;
+        }
+
+        int clampedTargetIndex = Math.clamp(targetVisibleIndex, 0, visibleSelection.size() - 1);
+        if (visibleIndex == clampedTargetIndex) {
+            return;
+        }
+
+        String targetId = visibleSelection.get(clampedTargetIndex).id();
+        List<String> nextIds = new ArrayList<>(this.selectedIds);
+        nextIds.remove(id);
+        int targetIndex = nextIds.indexOf(targetId);
+        nextIds.add(targetIndex + (clampedTargetIndex > visibleIndex ? 1 : 0), id);
+        updateSelectedIds(nextIds);
+    }
+
     private void move(String id, int direction) {
         List<EmoteSummary> visibleSelection = selectedEmotes();
         if (visibleSelection.size() <= 1) {

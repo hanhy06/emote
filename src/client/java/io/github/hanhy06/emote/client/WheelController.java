@@ -94,6 +94,10 @@ public class WheelController {
         this.shortcutSettings.moveDown(id);
     }
 
+    public void moveShortcutTo(String id, int targetIndex) {
+        this.shortcutSettings.moveToIndex(id, targetIndex);
+    }
+
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
         if (client.gui.screen() != null || client.player == null) {
             return;

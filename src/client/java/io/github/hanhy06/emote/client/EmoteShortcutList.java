@@ -21,10 +21,6 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
     private static final Identifier SELECT_SPRITE = Identifier.withDefaultNamespace("transferable_list/select");
     private static final Identifier UNSELECT_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("transferable_list/unselect_highlighted");
     private static final Identifier UNSELECT_SPRITE = Identifier.withDefaultNamespace("transferable_list/unselect");
-    private static final Identifier MOVE_UP_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("transferable_list/move_up_highlighted");
-    private static final Identifier MOVE_UP_SPRITE = Identifier.withDefaultNamespace("transferable_list/move_up");
-    private static final Identifier MOVE_DOWN_HIGHLIGHTED_SPRITE = Identifier.withDefaultNamespace("transferable_list/move_down_highlighted");
-    private static final Identifier MOVE_DOWN_SPRITE = Identifier.withDefaultNamespace("transferable_list/move_down");
     private static final int ENTRY_HEIGHT = 36;
     private static final int CONTROL_SIZE = 32;
     private static final int CONTROL_Y_OFFSET = -1;
@@ -75,8 +71,8 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
     void updateEntries(List<EmoteSummary> emotes) {
         double previousScroll = scrollAmount();
         clearEntries();
-        for (int index = 0; index < emotes.size(); index++) {
-            addEntry(new Entry(emotes.get(index), index, emotes.size()));
+        for (EmoteSummary emote : emotes) {
+            addEntry(new Entry(emote));
         }
         setScrollAmount(previousScroll);
         refreshScrollAmount();
@@ -86,15 +82,43 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         return children().isEmpty();
     }
 
+    private void dragEntry(Entry entry, double mouseY) {
+        int currentIndex = children().indexOf(entry);
+        if (!this.selectedList || currentIndex < 0) {
+            return;
+        }
+
+        if (mouseY < getY() + 12) {
+            setScrollAmount(scrollAmount() - 4);
+        } else if (mouseY > getBottom() - 12) {
+            setScrollAmount(scrollAmount() + 4);
+        }
+
+        int targetIndex = Math.clamp(
+            (int) ((mouseY - getY() - 2 + scrollAmount()) / ENTRY_HEIGHT),
+            0,
+            children().size() - 1
+        );
+        if (currentIndex == targetIndex) {
+            return;
+        }
+
+        this.controller.moveShortcutTo(entry.emote.id(), targetIndex);
+        while (currentIndex < targetIndex) {
+            swap(currentIndex, currentIndex + 1);
+            currentIndex++;
+        }
+        while (currentIndex > targetIndex) {
+            swap(currentIndex, currentIndex - 1);
+            currentIndex--;
+        }
+    }
+
     final class Entry extends ObjectSelectionList.Entry<Entry> implements SelectableEntry {
         private final EmoteSummary emote;
-        private final int index;
-        private final int entryCount;
 
-        private Entry(EmoteSummary emote, int index, int entryCount) {
+        private Entry(EmoteSummary emote) {
             this.emote = emote;
-            this.index = index;
-            this.entryCount = entryCount;
         }
 
         @Override
@@ -113,13 +137,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             int controlY = getContentY() + CONTROL_Y_OFFSET;
             boolean showControls = hovered || EmoteShortcutList.this.getSelected() == this && EmoteShortcutList.this.isFocused();
 
-            graphics.fill(controlX, controlY, controlX + CONTROL_SIZE, controlY + CONTROL_SIZE, 0xFF303840);
-            if (showControls) {
-                extractControls(graphics, mouseX - controlX, mouseY - controlY, controlX, controlY);
-            } else {
-                Component marker = selectedList ? Component.literal(Integer.toString(this.index + 1)) : Component.literal("+");
-                graphics.centeredText(minecraft.font, marker, controlX + CONTROL_SIZE / 2, controlY + 12, 0xFFE8EEF2);
-            }
+            extractTransferArrow(graphics, showControls, controlX, controlY);
 
             int textX = controlX + CONTROL_SIZE + TEXT_GAP;
             int textWidth = Math.max(0, getContentRight() - textX - TEXT_GAP);
@@ -127,31 +145,11 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
             graphics.text(minecraft.font, fitText(this.emote.description(), textWidth), textX, controlY + 16, 0xFF9DAAB3);
         }
 
-        private void extractControls(GuiGraphicsExtractor graphics, int relX, int relY, int x, int y) {
-            if (!selectedList) {
-                Identifier sprite = isInside(relX, relY, 0, 0, CONTROL_SIZE, CONTROL_SIZE)
-                    ? UNSELECT_HIGHLIGHTED_SPRITE
-                    : UNSELECT_SPRITE;
-                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
-                return;
-            }
-
-            Identifier unselectSprite = isInside(relX, relY, 0, 0, CONTROL_SIZE / 2, CONTROL_SIZE)
-                ? SELECT_HIGHLIGHTED_SPRITE
-                : SELECT_SPRITE;
-            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, unselectSprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
-            if (this.index > 0) {
-                Identifier upSprite = isInside(relX, relY, CONTROL_SIZE / 2, 0, CONTROL_SIZE / 2, CONTROL_SIZE / 2)
-                    ? MOVE_UP_HIGHLIGHTED_SPRITE
-                    : MOVE_UP_SPRITE;
-                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, upSprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
-            }
-            if (this.index + 1 < this.entryCount) {
-                Identifier downSprite = isInside(relX, relY, CONTROL_SIZE / 2, CONTROL_SIZE / 2, CONTROL_SIZE / 2, CONTROL_SIZE / 2)
-                    ? MOVE_DOWN_HIGHLIGHTED_SPRITE
-                    : MOVE_DOWN_SPRITE;
-                graphics.blitSprite(RenderPipelines.GUI_TEXTURED, downSprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
-            }
+        private void extractTransferArrow(GuiGraphicsExtractor graphics, boolean highlighted, int x, int y) {
+            Identifier sprite = selectedList
+                ? highlighted ? SELECT_HIGHLIGHTED_SPRITE : SELECT_SPRITE
+                : highlighted ? UNSELECT_HIGHLIGHTED_SPRITE : UNSELECT_SPRITE;
+            graphics.blitSprite(RenderPipelines.GUI_TEXTURED, sprite, x, y, CONTROL_SIZE, CONTROL_SIZE);
         }
 
         @Override
@@ -164,17 +162,25 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
 
             if (!selectedList) {
                 controller.addShortcut(this.emote.id());
-            } else if (relX < CONTROL_SIZE / 2) {
-                controller.removeShortcut(this.emote.id());
-            } else if (relY < CONTROL_SIZE / 2 && this.index > 0) {
-                controller.moveShortcutUp(this.emote.id());
-            } else if (relY >= CONTROL_SIZE / 2 && this.index + 1 < this.entryCount) {
-                controller.moveShortcutDown(this.emote.id());
             } else {
-                return true;
+                controller.removeShortcut(this.emote.id());
             }
             screen.refreshLists();
             return true;
+        }
+
+        @Override
+        public boolean mouseDragged(MouseButtonEvent event, double dx, double dy) {
+            if (selectedList && event.button() == 0) {
+                EmoteShortcutList.this.dragEntry(this, event.y());
+                return true;
+            }
+            return super.mouseDragged(event, dx, dy);
+        }
+
+        @Override
+        public boolean shouldTakeFocusAfterInteraction() {
+            return EmoteShortcutList.this.children().contains(this);
         }
 
         @Override
@@ -185,16 +191,6 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
                 } else {
                     controller.addShortcut(this.emote.id());
                 }
-                screen.refreshLists();
-                return true;
-            }
-            if (selectedList && event.hasShiftDown() && event.isUp() && this.index > 0) {
-                controller.moveShortcutUp(this.emote.id());
-                screen.refreshLists();
-                return true;
-            }
-            if (selectedList && event.hasShiftDown() && event.isDown() && this.index + 1 < this.entryCount) {
-                controller.moveShortcutDown(this.emote.id());
                 screen.refreshLists();
                 return true;
             }

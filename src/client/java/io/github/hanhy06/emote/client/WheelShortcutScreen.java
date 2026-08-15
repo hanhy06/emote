@@ -13,9 +13,11 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public class WheelShortcutScreen extends Screen {
     private static final int LIST_MAX_WIDTH = 200;
-    private static final int LIST_GAP = 30;
+    private static final int LIST_GAP = 8;
     private static final int LIST_TOP = 42;
     private static final int FOOTER_HEIGHT = 32;
+    private static final int BUTTON_WIDTH = 150;
+    private static final int BUTTON_GAP = 8;
 
     private final WheelController controller;
     private final List<String> initialShortcutIds;
@@ -60,14 +62,14 @@ public class WheelShortcutScreen extends Screen {
         this.addRenderableWidget(Button.builder(
             CommonComponents.GUI_CANCEL,
             ignoredButton -> this.onClose()
-        ).bounds(this.selectedList.getX(), this.height - 24, listWidth, 20).build());
+        ).bounds(centerX - BUTTON_GAP / 2 - BUTTON_WIDTH, this.height - 24, BUTTON_WIDTH, 20).build());
         this.addRenderableWidget(Button.builder(
             CommonComponents.GUI_DONE,
             ignoredButton -> {
                 this.accepted = true;
                 this.onClose();
             }
-        ).bounds(this.availableList.getX(), this.height - 24, listWidth, 20).build());
+        ).bounds(centerX + BUTTON_GAP / 2, this.height - 24, BUTTON_WIDTH, 20).build());
     }
 
     @Override
