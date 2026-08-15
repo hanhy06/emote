@@ -72,7 +72,10 @@ export const bdProjectAdapter: ImportAdapter<ImportedProject> = {
       })),
       visibility: [],
     }]));
-    const animationName = root.listAnim?.[0]?.name?.trim() || "Default";
+    const sourceStem = input.name.replace(/\.bdengine$/i, "").trim() || "BD Project";
+    const animationName = (root.listAnim?.length ?? 0) > 1
+      ? sourceStem
+      : root.listAnim?.[0]?.name?.trim() || "Default";
     const animation: ImportedAnimation = {
       id: sanitizeResourcePath(animationName, "default"),
       name: animationName,
@@ -82,7 +85,6 @@ export const bdProjectAdapter: ImportAdapter<ImportedProject> = {
       tracks,
       events: { start: [], timeline: soundEvents, loop: [], stop: [] },
     };
-    const sourceStem = input.name.replace(/\.bdengine$/i, "").trim() || "BD Project";
     const diagnostics = (root.listAnim?.length ?? 0) > 1
       ? [{
           severity: "warning" as const,

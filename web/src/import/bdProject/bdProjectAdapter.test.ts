@@ -108,6 +108,7 @@ describe("bdProjectAdapter", () => {
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "inventory" });
 
     expect(project.animations).toHaveLength(1);
+    expect(project.animations[0].name).toBe("Multiple animations");
     expect(project.diagnostics).toEqual([{
       severity: "warning",
       code: "bd_project_multiple_animations",
