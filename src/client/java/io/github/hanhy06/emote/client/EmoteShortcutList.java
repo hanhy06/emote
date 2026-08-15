@@ -5,6 +5,7 @@ import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.components.SelectableEntry;
 import net.minecraft.client.input.KeyEvent;
@@ -160,6 +161,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
                 return super.mouseClicked(event, doubleClick);
             }
 
+            AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
             if (!selectedList) {
                 controller.addShortcut(this.emote.id());
             } else {
@@ -186,6 +188,7 @@ final class EmoteShortcutList extends ObjectSelectionList<EmoteShortcutList.Entr
         @Override
         public boolean keyPressed(KeyEvent event) {
             if (event.isConfirmation()) {
+                AbstractWidget.playButtonClickSound(minecraft.getSoundManager());
                 if (selectedList) {
                     controller.removeShortcut(this.emote.id());
                 } else {
