@@ -2,44 +2,51 @@
 
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
 
-> Special thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing me to use their animation!
-
-Emote is a server-side emote player that uses Minecraft display entities to play animations created with BD Engine, GeckoLib, and Animated Java.
-
-The mod can be installed on the server only. Installing it on the client also adds an emote wheel and automatic third-person view while an emote is playing.
-
-Compatible emotes can use the playing player’s skin. The web converter converts BD Engine projects and datapacks, GeckoLib Blockbench models, and Animated Java blueprints into Emote animation JSON files.
+> 애니메이션 사용을 허락해 주신 [Popular Vibe](https://block-display.com/bd/77774)에게 감사드립니다!
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CRWqKbSebW)
 
-Want to share your emotes? [Join the Discord server](https://discord.gg/CRWqKbSebW) and share them with the community!
+직접 만든 emote를 공유하고 싶다면 Discord 서버에 참여해 주세요.
 
-## User commands
+## 주요 기능
 
-| Command            | Description                                                                        |
-|--------------------|------------------------------------------------------------------------------------|
-| `/emote`           | Opens the emote menu.                                                              |
-| `/emote stop`      | Stops the currently playing emote.                                                 |
-| `V`                | Opens the client-side emote wheel. The key can be changed in Minecraft’s controls. |
+Emote는 Minecraft display entity로 애니메이션을 재생하는 서버 사이드 emote 모드입니다. 서버에만 설치해도 모든 서버 기능이 동작하며, 선택적으로 클라이언트에 설치하면 emote wheel과 재생 중 자동 3인칭 전환이 추가됩니다.
 
-When the client mod is installed, the wheel's Order button can add, remove, and reorder its entries. The first six shortcuts appear on the first wheel page. Shortcut order is stored per server in the client's `config/emote/wheel-shortcuts.json`; server syncs refresh availability and append newly discovered emotes without changing the existing order.
+웹 변환기는 BD Engine, GeckoLib, Animated Java를 지원합니다. Animation JSON을 직접 편집하지 않고 스킨 부위, metadata, 재생 설정과 command를 구성하고 resource pack까지 내보낼 수 있습니다.
 
-## Admin commands
+서버에서는 LuckPerms의 permission을 사용해 플레이어별 emote와 idle emote를 구성할 수 있습니다. 여러 animation을 연결하는 sequence와 두 플레이어를 연결하는 2인 협동 emote를 지원하며, 호환되는 animation에는 각 플레이어의 스킨이 적용됩니다. 다른 모드에서 emote 등록, 재생 제어와 event를 사용할 수 있는 서버 API도 제공합니다.
 
-| Command                      | Description                                               |
-|------------------------------|-----------------------------------------------------------|
-| `/emote list`                | Lists loaded emotes and their source information.         |
-| `/emote reload`              | Reloads configuration and animation JSON files.           |
-| `/emote enable <id>`         | Enables an emote and reloads the emote list.              |
-| `/emote disable <id>`        | Disables an emote and reloads the emote list.             |
-| `/emote stop-all`            | Stops every active emote.                                 |
-| `/emote stress-test <count>` | Runs an emote stress test and reports server performance. |
+## 명령어
 
-## Server configuration
+### 플레이어
 
-The following files and directories are created in `config/emote` when the server starts for the first time:
+| 명령어 | 설명 |
+|---|---|
+| `/emote` | emote 메뉴를 엽니다. |
+| `/emote <page>` | 지정한 메뉴 페이지를 엽니다. |
+| `/emote search [query] [page]` | emote를 검색합니다. |
+| `/emote play <id>` | ID로 emote를 재생합니다. |
+| `/emote stop` | 현재 emote를 중단합니다. |
+| `V` | 클라이언트 emote wheel을 엽니다. |
+
+Wheel의 Order 버튼으로 항목을 추가, 제거하거나 정렬할 수 있습니다. 순서는 서버별로 클라이언트에 저장됩니다.
+
+### 관리자
+
+| 명령어 | 설명 |
+|---|---|
+| `/emote list` | 불러온 emote와 원본 정보를 표시합니다. |
+| `/emote reload` | 설정과 animation을 다시 불러옵니다. |
+| `/emote enable/disable <id>` | emote를 활성화하거나 비활성화합니다. |
+| `/emote stop <player>`, `/emote stop-all` | 한 플레이어 또는 모든 emote를 중단합니다. |
+| `/emote stress-test [count]` | 여러 emote를 재생해 서버 성능을 측정합니다. |
+
+관리자 명령어는 `emote.manage` 권한을 사용하며 기본적으로 game master operator에게 허용됩니다.
+
+## 서버 관리
 
 ```text
 config/emote/
@@ -47,6 +54,8 @@ config/emote/
 ├── emotes.json
 └── animations/
 ```
+
+변환기에서 내보낸 JSON은 `animations` 아래에 넣습니다. 하위 디렉터리도 불러오며 파일명이 아니라 JSON의 `id`를 사용합니다. 잘못된 파일은 개별적으로 제외되고 중복 ID는 모두 거부됩니다.
 
 ### `config.json`
 
@@ -62,24 +71,9 @@ config/emote/
 }
 ```
 
-| Setting                          | Description                                                                            |
-|----------------------------------|----------------------------------------------------------------------------------------|
-| `menu_page_size`                 | Number of emotes displayed on each menu page.                                          |
-| `mineskin_api_key`               | MineSkin API key used to apply player skins to emotes.                                 |
-| `mineskin_poll_interval_seconds` | Interval between MineSkin job checks. Must be between `1` and `60` seconds.            |
-| `mineskin_cache_retention_days`  | Removes MineSkin cache files unused for this many days. Defaults to `30`.              |
-| `mineskin_cache_max_mib`         | Maximum MineSkin disk cache size before the oldest files are removed. Defaults to `256`. |
-| `max_active_display_entities`    | Maximum display entities used by active emotes across the server. Playback is rejected before spawning entities when the projected total exceeds this value. `0` disables the limit. Defaults to `512`. |
-
-#### Player skin support
-
-To apply the playing player’s skin to compatible emotes, set `mineskin_api_key` in `config/emote/config.json` to an API key from [MineSkin](https://account.mineskin.org/).
-
-Skin parts and their order can be assigned in the web converter. If no API key is configured or MineSkin is unavailable, the textures stored in the animation JSON are used instead.
+플레이어 스킨은 `mineskin_api_key`를 설정해야 적용됩니다.
 
 ### `emotes.json`
-
-Controls emote availability and play permissions.
 
 ```json
 {
@@ -106,51 +100,32 @@ Controls emote availability and play permissions.
 }
 ```
 
-- `disabled` contains exact IDs blocked by the server access policy. Disabled emotes remain loaded so administrators can inspect them and players with `emote.bypass` can still use them.
-- `permissions` preserves the listed order, which determines idle emote selection.
-- `permission` is the permission node for the entry. `emote.default` is granted to every player by default.
-- `emotes` contains the emotes granted by the permission.
-- `idle` is optional. The first matching permission entry with `idle` plays a randomly selected `emote` after `delay`, then repeats at the same interval while the player remains idle. Time values are strings parsed with Minecraft units (`d`, `s`, `t`, or bare ticks). String-only arrays use equal chances. Alternating ID and integer chance arrays use explicit chances that must total `100`. A new candidate is selected after each successful playback without immediately repeating the previous emote when alternatives are available; the remaining chances are normalized automatically.
-- `*` grants access to every enabled emote.
+`disabled`는 emote를 비활성화하고 `permissions`는 사용할 수 있는 emote와 idle emote를 정합니다. `emote.default`는 모든 플레이어에게 주어지며 `*`는 모든 활성 emote를 허용합니다. `emote.bypass`는 비활성화, 권한과 cooldown을 무시합니다.
 
-`emote.manage` grants every administrative `/emote` subcommand, including reload, list, enable/disable, stop-all, and stress-test. It defaults to game-master operators. `emote.bypass` defaults to false and ignores disabled IDs, play permission rules, and cooldowns; it does not bypass sequence-only restrictions, invalid files, runtime safety limits, or cancellations from other mods.
+## 웹 변환기
 
-Run `/emote reload` after editing the file manually.
+[Emote Converter](https://hanhy06.github.io/emote/)에서 animation JSON을 직접 편집하지 않고 프로젝트를 변환하고 설정할 수 있습니다. 모든 작업은 브라우저에서 처리됩니다.
 
-## Animation and sequence files
+3D preview에서 skin part와 coordinate space를 지정하고 metadata, 재생 방식, 중단 조건과 frame command를 설정할 수 있습니다. Animation JSON, sequence ZIP과 resource pack을 내보내거나 기존 resource pack에 병합할 수 있습니다.
 
-Put `.json` files exported by the converter in `config/emote/animations`:
+![프로젝트 열기](mkdocs/assets/images/converter-open.png)
 
-```text
-config/emote/animations/
-├── hello.json
-├── dance.json
-└── sitting/
-    ├── sit-down.json
-    ├── sit-idle.json
-    ├── stand-up.json
-    └── sit-sequence.json
-```
+![Skin part와 command](mkdocs/assets/images/converter-rigging.png)
 
-All `.json` files below `animations`, including files in nested directories, are loaded recursively. File and directory names are only used for organization. Commands, permissions, enable/disable settings, and the UI use the root `id` field as the identifier.
+![Metadata와 재생 설정](mkdocs/assets/images/converter-settings.png)
 
-Animations and sequences use `"schema_version": 3`. Names and descriptions are stored in `metadata`, while playback behavior is stored in `settings`. Time values accept Minecraft time units (`d`, `s`, `t`, or bare ticks).
+### Animation 변환
 
-Invalid files are skipped independently. If multiple files declare the same `id`, every file sharing that ID is rejected.
+웹 변환기는 원본 animation의 easing과 보간 곡선을 Minecraft tick에 맞게 다시 계산합니다. Bézier, Catmull-Rom, bounce와 elastic 같은 움직임의 중요한 지점을 보존하고 위치, 회전과 크기 오차가 가장 작은 keyframe 배치를 선택해 원본 움직임이 가능한 한 자연스럽게 유지되도록 변환합니다.
 
-Schema 3 replaces the previously released schema 1 format. It reorganizes animation settings, replaces integer tick fields with Minecraft time strings, adds sequence waits and cooldowns, and introduces participant-aware animations and two-player sequences. The server only loads schema 3 animation and sequence files. The web converter can import schema 1 files and exports them as schema 3.
+Animation마다 cooldown, player visibility, 이동, 점프, 공격과 피격 등의 중단 조건 및 frame command를 설정할 수 있습니다.
 
-### Animations
+- [Animation format](./emote-animation-format.md)
+- [Animation reference JSON](./emote-animation-format.json)
 
-Animations use `"type": "animation"`. Every node can declare `space` as `scene`, `initiator`, or `partner`. A skinned item node also declares whether its skin belongs to the `initiator` or `partner`; that participant must match the node space.
+### Sequence
 
-Animations intended only as sequence steps set `"settings": { "standalone": false, ... }`. Sequence-only animations remain loaded and can be referenced by sequences, but are omitted from the emote menu, wheel, search, and command suggestions. Direct playback by exact ID is also rejected. Administrator listing and enable/disable management still include them.
-
-See [the animation format](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.md) and [reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-animation-format.json) for details.
-
-### Sequences
-
-A sequence uses `"type": "sequence"` to play existing animations in order:
+짧게 만든 animation clip들을 순서대로 연결하고 대기, 가중치 무작위 선택과 반복을 조합해 하나의 emote로 만들 수 있습니다.
 
 ```json
 {
@@ -160,67 +135,63 @@ A sequence uses `"type": "sequence"` to play existing animations in order:
   "steps": [
     {"emote": "example:sit_down"},
     {"wait": "10t"},
-    {"emote": "example:sit_idle", "repeat": 2},
+    {
+      "emote": [
+        "example:sit_idle_1", 45,
+        "example:sit_idle_2", 45,
+        "emote:break", 10
+      ],
+      "repeat": 3
+    },
     {"emote": "example:stand_up"}
   ]
 }
 ```
 
-- `emote` selects an animation. It can also be a list for random selection.
-- `wait` adds a delay between animation steps.
-- `repeat` repeats an animation step and defaults to `1`.
-- `emote:continue` skips one repeat, while `emote:break` ends the current repeat loop and continues with the next sequence step.
-- Sequences cannot reference other sequences or server-synchronized animations.
-- Referenced animations must use compatible nodes, displays, and skin layouts.
-- Sequence player settings apply to the entire sequence and replace the referenced animations' player settings.
-- Timeline commands are preserved, but start, loop, and stop commands are not supported within a sequence.
+- [Sequence format](./emote-sequence-format.md)
+- [Sequence reference JSON](./emote-sequence-format.json)
 
-Sequences can also coordinate two players. A collaborative sequence plays an offer animation while waiting for a nearby player to start the same sequence, then follows either its matched or timeout branch. Participant-relative node spaces let the animation place and skin each player independently; animations containing only initiator nodes are mirrored automatically for the partner.
+### 협동 emote
 
-See [the sequence format](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.md) for detailed rules, the [single-player reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-sequence-format.json), and the [two-player reference JSON](https://github.com/hanhy06/emote/blob/main/docs/emote-two-player-sequence-format.json).
+Sequence에 두 플레이어의 animation을 결합해 함께 재생하는 협동 emote를 만들 수 있습니다. 가까이에서 서로 마주 보는 플레이어를 연결하고 성공 또는 timeout 연출을 실행하며, 대칭 동작은 상대 플레이어 쪽으로 자동 복제됩니다. `initiator`와 `partner`를 나누면 서로 다른 동작과 스킨을 사용하는 비대칭 연출도 만들 수 있습니다.
+
+```json
+{
+  "type": "sequence",
+  "schema_version": 3,
+  "id": "emote:handshake",
+  "participants": {
+    "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
+    "partner": {"position": "^ ^ ^1.2", "rotation": "~180 0"}
+  },
+  "steps": [{
+    "await_partner": {"emote": "emote:handshake_offer", "timeout": "10s"},
+    "matched": [
+      {"emote": "emote:handshake", "repeat": 2},
+      {"wait": "1s"},
+      {"emote": "emote:handshake_close"}
+    ],
+    "timeout": [{"emote": "emote:handshake_close"}]
+  }]
+}
+```
+
+- [Two-player sequence reference JSON](./emote-two-player-sequence-format.json)
 
 ## Mod API
 
-Emote provides a server-side API under `io.github.hanhy06.emote.api`.
+`EmoteApi.getInstance()`에서 재생 제어, runtime 등록, 상태 조회, 취소 가능한 play listener와 playback lifecycle listener를 사용할 수 있습니다. 상태 변경은 서버 thread에서 실행해야 하며 runtime 등록은 reload 이후에도 유지됩니다.
 
-Access it through `EmoteApi.getInstance()`.
+## 문제 해결
 
-The API supports playback control, runtime emote registration, state queries, cancellable play listeners, and playback lifecycle listeners.
+| 문제 | 확인할 내용 |
+|---|---|
+| Emote가 보이지 않음 | `/emote reload` 결과, 서버 로그, 중복 ID, `disabled`, sequence 전용 animation |
+| 플레이어 스킨이 적용되지 않음 | 변환기의 skin part 지정과 `mineskin_api_key`를 확인합니다. 처음 사용하는 스킨은 준비 완료 후 다시 실행해야 하며, MineSkin을 사용할 수 없으면 기본 texture가 적용됩니다. |
+| 플레이어 스킨이 이상하게 적용됨 | 웹 변환기에서 각 node의 skin part와 order를 다시 지정합니다. 2인 animation은 `initiator`와 `partner` coordinate space도 확인합니다. |
 
-API mutations must run on the server thread. Runtime registrations survive `/emote reload` and are automatically removed when the server stops.
+여기에서 해결되지 않으면 [Discord](https://discord.gg/CRWqKbSebW) 또는 [GitHub Issues](https://github.com/hanhy06/emote/issues)로 제보해 주세요.
 
-## Troubleshooting
+## 라이선스
 
-### An emote does not appear
-
-Run `/emote reload` and check the server log.
-
-An emote may be skipped when:
-
-- its animation JSON is invalid;
-- its exact ID is listed in `disabled` in `emotes.json`; or
-- another file declares the same ID.
-
-### An emote cannot be played
-
-Check that:
-
-- the emote is granted in `emotes.json`;
-- the player has the required permission; and
-- the exact `namespace:path` ID is being used.
-
-### The player’s skin is not applied
-
-Confirm that `mineskin_api_key` is configured and check the server log.
-
-If MineSkin is unavailable, the textures stored in the animation JSON are used instead.
-
-### Configuration changes are ignored
-
-Check that the JSON syntax is valid, then run `/emote reload`.
-
-Invalid configuration is rejected and the previously loaded configuration remains active.
-
-## License
-
-Apache License 2.0
+이 프로젝트는 [Apache License 2.0](../LICENSE)에 따라 배포됩니다.

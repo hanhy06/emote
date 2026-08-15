@@ -1,0 +1,47 @@
+site_name: Emote Wiki
+site_description: Emote 모드와 웹 변환기 문서
+
+repo_url: https://github.com/hanhy06/emote
+repo_name: hanhy06/emote
+
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: ko
+  palette:
+    - scheme: slate
+      primary: blue
+      accent: blue
+  features:
+    - navigation.sections
+    - navigation.instant
+    - navigation.tracking
+    - navigation.path
+    - navigation.top
+    - navigation.indexes
+    - toc.integrate
+    - toc.follow
+    - content.code.copy
+    - search.highlight
+    - search.suggest
+    - search.share
+  custom_dir: overrides
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
