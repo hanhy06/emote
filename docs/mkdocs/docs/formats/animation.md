@@ -56,17 +56,13 @@ Animation 파일은 스키마 버전 `3`을 사용하며 하나의 이모트에 
 
 Animation JSON 파일은 최대 8 MiB, 타임라인은 최대 10분으로 제한됩니다.
 
-## 시간 값
+!!! tip inline end "시간 단위"
+    Emote는 Minecraft 시간 포맷을 사용합니다.<br>
+    `1s`는 `20t`입니다.
 
-게임 시간은 Minecraft 시간 단위를 사용하는 문자열로 작성합니다.
-
-| 예 | 의미 |
-|---|---|
-| `"1d"` | Minecraft 하루 |
-| `"5s"` | 5초 |
-| `"20"`, `"20t"` | 20틱. `t`는 생략할 수 있습니다. |
-
-이 형식은 `cooldown`, `loop_delay`, 타임라인과 이벤트의 `time`, `duration`, `interpolation_duration`에 사용됩니다.
+    `s`: 초<br>
+    `t` 또는 생략: 틱<br>
+    `d`: Minecraft 하루
 
 ## 메타데이터
 
@@ -76,11 +72,9 @@ Animation JSON 파일은 최대 8 MiB, 타임라인은 최대 10분으로 제한
 
 ## 설정
 
-### 선택 노출과 재사용 대기시간
+### 선택 노출
 
 `standalone`은 애니메이션이 메뉴, 휠, 검색 및 명령 제안에 나타나고 직접 재생될 수 있는지를 결정합니다. Sequence 안에서만 사용할 애니메이션은 `false`로 설정합니다.
-
-`cooldown`은 애니메이션이 성공적으로 시작된 뒤 플레이어에게 적용됩니다.
 
 ### 플레이어 동작
 
@@ -168,13 +162,3 @@ Animation JSON 파일은 최대 8 MiB, 타임라인은 최대 10분으로 제한
 | 루트 `player` | `settings.player` |
 | `timeline.loop` | `settings.playback.mode` |
 | `timeline.loop_delay_ticks` | `settings.playback.loop_delay` |
-
-틱 숫자 필드는 Minecraft 시간 문자열로 변경합니다.
-
-| 스키마 1 | 스키마 3 |
-|---|---|
-| `duration_ticks: 40` | `duration: "40t"` |
-| `tick: 10` | `time: "10t"` |
-| `interpolation_duration_ticks: 2` | `interpolation_duration: "2t"` |
-
-스키마 3 노드는 참여자 소유권도 지원합니다. 플레이어 신체 노드는 `space: "initiator"`, 공유 소품과 명령 앵커는 `space: "scene"`을 사용합니다. 기존 스킨 연결에는 `participant: "initiator"`를 지정합니다. 두 번째 플레이어를 위해 명시적으로 제작한 노드만 두 필드에 `partner`를 사용합니다.

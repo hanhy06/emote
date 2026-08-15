@@ -1,5 +1,5 @@
 site_name: Emote 문서
-site_description: Emote 모드와 웹 변환기 사용 설명서
+site_description: Emote 서버 운영 및 포맷 문서
 site_url: https://hanhy06.github.io/emote/
 
 repo_url: https://github.com/hanhy06/emote
@@ -18,14 +18,16 @@ watch:
 
 nav:
   - 홈: index.md
-  - 시작하기: getting-started.md
-  - 서버 관리: server-management.md
-  - 웹 변환기: converter.md
-  - 포맷 명세:
+  - 운영자:
+      - 설치와 설정 파일: server/installation.md
+      - 권한과 접근 제어: server/access-control.md
+      - 쿨다운과 유휴 이모트: server/playback-policy.md
+      - 명령어: server/commands.md
+      - Sequence 사용: server/sequences.md
+  - 개발자:
       - Animation: formats/animation.md
       - Sequence: formats/sequence.md
-  - Mod API: api.md
-  - 문제 해결: troubleshooting.md
+      - Mod API: api.md
 
 theme:
   name: material
@@ -36,12 +38,13 @@ theme:
       accent: blue
   features:
     - navigation.sections
+    - navigation.tabs
+    - navigation.tabs.sticky
     - navigation.instant
     - navigation.tracking
     - navigation.path
     - navigation.top
     - navigation.indexes
-    - toc.integrate
     - toc.follow
     - content.code.copy
     - search.highlight

@@ -51,15 +51,13 @@ Sequence 파일은 스키마 버전 `3`을 사용하며 기존 Animation을 연�
 
 Sequence JSON 파일은 최대 8 MiB로 제한됩니다.
 
-## 시간 값
+!!! tip inline end "시간 단위"
+    Emote는 Minecraft 시간 포맷을 사용합니다.<br>
+    `1s`는 `20t`입니다.
 
-`cooldown`, `wait`, `await_partner.timeout`은 Minecraft 시간 문자열을 사용합니다.
-
-| 예 | 의미 |
-|---|---|
-| `"1d"` | Minecraft 하루 |
-| `"5s"` | 5초 |
-| `"20"`, `"20t"` | 20틱. `t`는 생략할 수 있습니다. |
+    `s`: 초<br>
+    `t` 또는 생략: 틱<br>
+    `d`: Minecraft 하루
 
 ## 메타데이터와 설정
 
