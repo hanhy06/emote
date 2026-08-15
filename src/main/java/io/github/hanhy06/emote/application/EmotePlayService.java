@@ -112,6 +112,10 @@ public class EmotePlayService {
         return result;
     }
 
+    public void clearCooldowns() {
+        this.cooldowns.clear();
+    }
+
     @FunctionalInterface
     interface PlayPermissionChecker {
         boolean canPlay(ServerPlayer player, PreparedDefinition emote);

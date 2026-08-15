@@ -29,4 +29,8 @@ final class EmoteCooldowns {
                 .put(emoteId, currentTick + cooldownTicks);
         }
     }
+
+    void clear() {
+        this.readyTicks.clear();
+    }
 }

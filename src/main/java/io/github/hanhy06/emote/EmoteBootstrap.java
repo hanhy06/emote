@@ -59,7 +59,7 @@ final class EmoteBootstrap {
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
             new AdminCommand(catalog, playback, permissions, reload, configManager)
         );
-        ServerLifecycle lifecycle = new ServerLifecycle(skins, catalog, playback, reload, wheelSync, idlePlayback);
+        ServerLifecycle lifecycle = new ServerLifecycle(skins, play, catalog, playback, reload, wheelSync, idlePlayback);
 
         configManager.addAccessConfigListener(permissions);
         configManager.addAccessConfigListener(idlePlayback);

@@ -38,6 +38,30 @@ class EmotePlayServiceTest {
     }
 
     @Test
+    void clearsCooldownsBetweenServerInstances() {
+        EmoteCatalog registry = new EmoteCatalog();
+        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
+        AtomicLong tick = new AtomicLong(10_000L);
+        EmotePlayService service = new EmotePlayService(
+            registry,
+            (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredPlayer -> false,
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
+            ignoredPlayer -> new UUID(1L, 1L),
+            ignoredPlayer -> tick.get()
+        );
+
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+        tick.set(0L);
+        assertFalse(service.play(null, "minecraft:wave").isSuccess());
+
+        service.clearCooldowns();
+
+        assertTrue(service.play(null, "minecraft:wave").isSuccess());
+    }
+
+    @Test
     void bypassIgnoresAnActiveCooldown() {
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
