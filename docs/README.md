@@ -54,6 +54,7 @@ config/emote/
 ├── emotes.json
 └── animations/
 ```
+The directory and configuration files are created automatically on first startup, along with several example emotes under `animations`.
 
 Place JSON exported by the converter under `animations`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 
