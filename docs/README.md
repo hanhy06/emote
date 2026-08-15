@@ -2,51 +2,51 @@
 
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
 
-> 애니메이션 사용을 허락해 주신 [Popular Vibe](https://block-display.com/bd/77774)에게 감사드립니다!
+> Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
 [![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/hanhy06/emote)
 [![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CRWqKbSebW)
 
-직접 만든 emote를 공유하고 싶다면 Discord 서버에 참여해 주세요.
+Join the Discord server to share emotes you have made.
 
-## 주요 기능
+## Features
 
-Emote는 Minecraft display entity로 애니메이션을 재생하는 서버 사이드 emote 모드입니다. 서버에만 설치해도 모든 서버 기능이 동작하며, 선택적으로 클라이언트에 설치하면 emote wheel과 재생 중 자동 3인칭 전환이 추가됩니다.
+Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-웹 변환기는 BD Engine, GeckoLib, Animated Java를 지원합니다. Animation JSON을 직접 편집하지 않고 스킨 부위, metadata, 재생 설정과 command를 구성하고 resource pack까지 내보낼 수 있습니다.
+The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and commands without editing Animation JSON, then export the resource pack as well.
 
-서버에서는 LuckPerms의 permission을 사용해 플레이어별 emote와 idle emote를 구성할 수 있습니다. 여러 animation을 연결하는 sequence와 두 플레이어를 연결하는 2인 협동 emote를 지원하며, 호환되는 animation에는 각 플레이어의 스킨이 적용됩니다. 다른 모드에서 emote 등록, 재생 제어와 event를 사용할 수 있는 서버 API도 제공합니다.
+On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations or coordinate two players in a collaborative emote, with each player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
-## 명령어
+## Commands
 
-### 플레이어
+### Player
 
-| 명령어 | 설명 |
+| Command | Description |
 |---|---|
-| `/emote` | emote 메뉴를 엽니다. |
-| `/emote <page>` | 지정한 메뉴 페이지를 엽니다. |
-| `/emote search [query] [page]` | emote를 검색합니다. |
-| `/emote play <id>` | ID로 emote를 재생합니다. |
-| `/emote stop` | 현재 emote를 중단합니다. |
-| `V` | 클라이언트 emote wheel을 엽니다. |
+| `/emote` | Opens the emote menu. |
+| `/emote <page>` | Opens a specific menu page. |
+| `/emote search [query] [page]` | Searches for emotes. |
+| `/emote play <id>` | Plays an emote by ID. |
+| `/emote stop` | Stops the current emote. |
+| `V` | Opens the client emote wheel. |
 
-Wheel의 Order 버튼으로 항목을 추가, 제거하거나 정렬할 수 있습니다. 순서는 서버별로 클라이언트에 저장됩니다.
+Use the wheel's Order button to add, remove, or reorder entries. The order is stored on the client separately for each server.
 
-### 관리자
+### Administration
 
-| 명령어 | 설명 |
+| Command | Description |
 |---|---|
-| `/emote list` | 불러온 emote와 원본 정보를 표시합니다. |
-| `/emote reload` | 설정과 animation을 다시 불러옵니다. |
-| `/emote enable/disable <id>` | emote를 활성화하거나 비활성화합니다. |
-| `/emote stop <player>`, `/emote stop-all` | 한 플레이어 또는 모든 emote를 중단합니다. |
-| `/emote stress-test [count]` | 여러 emote를 재생해 서버 성능을 측정합니다. |
+| `/emote list` | Lists loaded emotes and their sources. |
+| `/emote reload` | Reloads configuration and animations. |
+| `/emote enable/disable <id>` | Enables or disables an emote. |
+| `/emote stop <player>`, `/emote stop-all` | Stops one player's emote or all emotes. |
+| `/emote stress-test [count]` | Plays multiple emotes to measure server performance. |
 
-관리자 명령어는 `emote.manage` 권한을 사용하며 기본적으로 game master operator에게 허용됩니다.
+Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
-## 서버 관리
+## Server management
 
 ```text
 config/emote/
@@ -55,7 +55,7 @@ config/emote/
 └── animations/
 ```
 
-변환기에서 내보낸 JSON은 `animations` 아래에 넣습니다. 하위 디렉터리도 불러오며 파일명이 아니라 JSON의 `id`를 사용합니다. 잘못된 파일은 개별적으로 제외되고 중복 ID는 모두 거부됩니다.
+Place JSON exported by the converter under `animations`. Subdirectories are loaded as well, and emotes use the `id` in the JSON rather than the filename. Invalid files are skipped individually, while every file sharing a duplicate ID is rejected.
 
 ### `config.json`
 
@@ -71,7 +71,7 @@ config/emote/
 }
 ```
 
-플레이어 스킨은 `mineskin_api_key`를 설정해야 적용됩니다.
+Set `mineskin_api_key` to apply player skins.
 
 ### `emotes.json`
 
@@ -100,32 +100,32 @@ config/emote/
 }
 ```
 
-`disabled`는 emote를 비활성화하고 `permissions`는 사용할 수 있는 emote와 idle emote를 정합니다. `emote.default`는 모든 플레이어에게 주어지며 `*`는 모든 활성 emote를 허용합니다. `emote.bypass`는 비활성화, 권한과 cooldown을 무시합니다.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Every player receives `emote.default`, and `*` grants every enabled emote. `emote.bypass` ignores disabled IDs, permissions, and cooldowns.
 
-## 웹 변환기
+## Web converter
 
-[Emote Converter](https://hanhy06.github.io/emote/)에서 animation JSON을 직접 편집하지 않고 프로젝트를 변환하고 설정할 수 있습니다. 모든 작업은 브라우저에서 처리됩니다.
+[Emote Converter](https://hanhy06.github.io/emote/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
 
-3D preview에서 skin part와 coordinate space를 지정하고 metadata, 재생 방식, 중단 조건과 frame command를 설정할 수 있습니다. Animation JSON, sequence ZIP과 resource pack을 내보내거나 기존 resource pack에 병합할 수 있습니다.
+Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export Animation JSON, a sequence ZIP, and a resource pack, or merge the result into an existing resource pack.
 
-![프로젝트 열기](mkdocs/assets/images/converter-open.png)
+![Open a project](mkdocs/assets/images/converter-open.png)
 
-![Skin part와 command](mkdocs/assets/images/converter-rigging.png)
+![Skin parts and commands](mkdocs/assets/images/converter-rigging.png)
 
-![Metadata와 재생 설정](mkdocs/assets/images/converter-settings.png)
+![Metadata and playback settings](mkdocs/assets/images/converter-settings.png)
 
-### Animation 변환
+### Animation conversion
 
-웹 변환기는 원본 animation의 easing과 보간 곡선을 Minecraft tick에 맞게 다시 계산합니다. Bézier, Catmull-Rom, bounce와 elastic 같은 움직임의 중요한 지점을 보존하고 위치, 회전과 크기 오차가 가장 작은 keyframe 배치를 선택해 원본 움직임이 가능한 한 자연스럽게 유지되도록 변환합니다.
+The web converter recalculates the source animation's easing and interpolation curves for Minecraft ticks. It preserves important points in Bézier, Catmull-Rom, bounce, and elastic motion, then selects the keyframe placement with the lowest position, rotation, and scale error to keep the result as close to the original movement as possible.
 
-Animation마다 cooldown, player visibility, 이동, 점프, 공격과 피격 등의 중단 조건 및 frame command를 설정할 수 있습니다.
+Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and frame commands.
 
 - [Animation format](./emote-animation-format.md)
 - [Animation reference JSON](./emote-animation-format.json)
 
 ### Sequence
 
-짧게 만든 animation clip들을 순서대로 연결하고 대기, 가중치 무작위 선택과 반복을 조합해 하나의 emote로 만들 수 있습니다.
+Connect short animation clips in order and combine waits, weighted random choices, and repeats to create a single emote.
 
 ```json
 {
@@ -151,9 +151,9 @@ Animation마다 cooldown, player visibility, 이동, 점프, 공격과 피격 �
 - [Sequence format](./emote-sequence-format.md)
 - [Sequence reference JSON](./emote-sequence-format.json)
 
-### 협동 emote
+#### Collaborative emotes
 
-Sequence에 두 플레이어의 animation을 결합해 함께 재생하는 협동 emote를 만들 수 있습니다. 가까이에서 서로 마주 보는 플레이어를 연결하고 성공 또는 timeout 연출을 실행하며, 대칭 동작은 상대 플레이어 쪽으로 자동 복제됩니다. `initiator`와 `partner`를 나누면 서로 다른 동작과 스킨을 사용하는 비대칭 연출도 만들 수 있습니다.
+Combine animations for two players in a sequence to create a collaborative emote. Nearby players facing each other are connected, then the matched or timeout branch is played. Symmetrical motion is automatically mirrored for the other player, while separate `initiator` and `partner` nodes can create asymmetric performances with different motion and skins.
 
 ```json
 {
@@ -180,18 +180,18 @@ Sequence에 두 플레이어의 animation을 결합해 함께 재생하는 협�
 
 ## Mod API
 
-`EmoteApi.getInstance()`에서 재생 제어, runtime 등록, 상태 조회, 취소 가능한 play listener와 playback lifecycle listener를 사용할 수 있습니다. 상태 변경은 서버 thread에서 실행해야 하며 runtime 등록은 reload 이후에도 유지됩니다.
+`EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, and playback lifecycle listeners. State changes must run on the server thread, and runtime registrations survive reloads.
 
-## 문제 해결
+## Troubleshooting
 
-| 문제 | 확인할 내용 |
+| Problem | Check |
 |---|---|
-| Emote가 보이지 않음 | `/emote reload` 결과, 서버 로그, 중복 ID, `disabled`, sequence 전용 animation |
-| 플레이어 스킨이 적용되지 않음 | 변환기의 skin part 지정과 `mineskin_api_key`를 확인합니다. 처음 사용하는 스킨은 준비 완료 후 다시 실행해야 하며, MineSkin을 사용할 수 없으면 기본 texture가 적용됩니다. |
-| 플레이어 스킨이 이상하게 적용됨 | 웹 변환기에서 각 node의 skin part와 order를 다시 지정합니다. 2인 animation은 `initiator`와 `partner` coordinate space도 확인합니다. |
+| An emote does not appear | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only. |
+| A player skin is not applied | Check the converter's skin part assignments and `mineskin_api_key`. Run the emote again after a new skin finishes processing. If MineSkin is unavailable, the animation's default texture is used. |
+| A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces. |
 
-여기에서 해결되지 않으면 [Discord](https://discord.gg/CRWqKbSebW) 또는 [GitHub Issues](https://github.com/hanhy06/emote/issues)로 제보해 주세요.
+If the problem is not covered here, report it on [Discord](https://discord.gg/CRWqKbSebW) or [GitHub Issues](https://github.com/hanhy06/emote/issues).
 
-## 라이선스
+## License
 
-이 프로젝트는 [Apache License 2.0](../LICENSE)에 따라 배포됩니다.
+This project is distributed under the [Apache License 2.0](../LICENSE).

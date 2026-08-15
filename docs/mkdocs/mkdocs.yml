@@ -1,5 +1,5 @@
 site_name: Emote Wiki
-site_description: Emote 모드와 웹 변환기 문서
+site_description: Documentation for the Emote mod and web converter
 
 repo_url: https://github.com/hanhy06/emote
 repo_name: hanhy06/emote
@@ -9,7 +9,7 @@ site_dir: site
 
 theme:
   name: material
-  language: ko
+  language: en
   palette:
     - scheme: slate
       primary: blue
