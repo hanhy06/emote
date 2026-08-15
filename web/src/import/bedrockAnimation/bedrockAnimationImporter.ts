@@ -4,7 +4,8 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject } from "../../domain/conversionSeed";
-import type { BedrockAnimation, BedrockAnimationDocument, BedrockChannel, BedrockExpression } from "./bedrockAnimationSchema";
+import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
+import { bedrockAnimationDurationSeconds, evaluateBedrockChannel, planBedrockAnimationSamples } from "./bedrockAnimationBaker";
 import {
   BEDROCK_PLAYER_BONES,
   BEDROCK_PLAYER_RENDER_SCALE,
@@ -34,20 +35,27 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
 
 function importAnimation(name: string, animation: BedrockAnimation, index: number): ImportedAnimation {
   const durationTicks = requireAnimationDurationTicks(
-    Math.max(1, Math.round((animation.animation_length ?? 0) * TICKS_PER_SECOND)),
+    Math.max(1, Math.round(bedrockAnimationDurationSeconds(animation) * TICKS_PER_SECOND)),
     `${name}.animation_length`,
   );
-  const transforms = collectStaticTransforms(name, animation);
-  const worldMatrices = buildWorldMatrices(transforms);
-  const tracks: ImportedAnimation["tracks"] = {};
-  for (const bone of BEDROCK_PLAYER_BONES) {
-    if (!bone.cube) continue;
-    const matrix = worldMatrices.get(bone.id);
-    if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${bone.id}.`);
-    tracks[bone.id] = {
-      transforms: [{ tick: 0, matrix: matrix4ToRowMajor(matrix, `${name}/${bone.id}/0`), interpolation: { type: "step" } }],
-      visibility: [],
-    };
+  const samplePlan = planBedrockAnimationSamples(animation, durationTicks);
+  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
+    transforms: [],
+    visibility: [],
+  }]));
+  for (let tick = 0; tick <= durationTicks; tick++) {
+    const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
+    const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
+    for (const bone of BEDROCK_PLAYER_BONES) {
+      if (!bone.cube) continue;
+      const matrix = worldMatrices.get(bone.id);
+      if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${bone.id}.`);
+      tracks[bone.id].transforms.push({
+        tick,
+        matrix: matrix4ToRowMajor(matrix, `${name}/${bone.id}/${tick}`),
+        interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
+      });
+    }
   }
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
@@ -60,31 +68,18 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   };
 }
 
-function collectStaticTransforms(name: string, animation: BedrockAnimation): Map<string, Transform> {
+function collectTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, Transform> {
   const transforms = new Map<string, Transform>();
   for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
     const bone = resolveBedrockPlayerBone(sourceBoneName);
     if (!bone) continue;
     transforms.set(bone.id, {
-      position: evaluateStaticChannel(sourceBone.position, [0, 0, 0], `${name}.${sourceBoneName}.position`),
-      rotation: evaluateStaticChannel(sourceBone.rotation, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
-      scale: evaluateStaticChannel(sourceBone.scale, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
+      position: evaluateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
+      rotation: evaluateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
+      scale: evaluateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
     });
   }
   return transforms;
-}
-
-function evaluateStaticChannel(channel: BedrockChannel | undefined, fallback: number[], path: string): number[] {
-  if (channel === undefined) return fallback;
-  if (typeof channel === "object" && channel !== null && !Array.isArray(channel)) {
-    throw new Error(`${path} uses keyframes; animated Bedrock channels are not available in this experimental stage.`);
-  }
-  const values = Array.isArray(channel) ? channel : [channel];
-  if (values.length === 1) {
-    const value = evaluateConstant(values[0], `${path}[0]`);
-    return [value, value, value];
-  }
-  return values.map((value, axis) => evaluateConstant(value, `${path}[${axis}]`));
 }
 
 function evaluateConstant(expression: BedrockExpression, path: string): number {

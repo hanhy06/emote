@@ -46,6 +46,35 @@ describe("bedrockAnimationAdapter", () => {
     expect(compiled).toHaveLength(1);
     expect(compiled[0].nodes.body.type === "item_display" && compiled[0].nodes.body.skin).toEqual({ participant: "initiator", part: "body", order: 0 });
   });
+
+  it("bakes linear, Catmull-Rom, pre/post, and off-grid keyframes at 20 TPS", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        "animation.emote.motion": {
+          animation_length: 0.2,
+          bones: {
+            body: {
+              position: {
+                "0": [0, 0, 0],
+                "0.075": { pre: [0, 2, 0], post: [0, 4, 0], lerp_mode: "catmullrom" },
+                "0.2": [0, 0, 0],
+              },
+            },
+            rightArm: { rotation: { "0": [0, 0, 0], "0.2": [90, 0, 0] } },
+          },
+        },
+      },
+    })));
+
+    const animation = imported.animations[0];
+    expect(animation.durationTicks).toBe(4);
+    expect(animation.tracks.body.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2, 3, 4]);
+    const preserved = animation.tracks.body.transforms.find((frame) => frame.interpolation.type === "step" && frame.tick > 0);
+    expect([1, 2]).toContain(preserved?.tick);
+    expect(preserved?.matrix[7]).toBeCloseTo(1.640625);
+    expect(animation.tracks.right_arm.transforms[3].matrix.every(Number.isFinite)).toBe(true);
+  });
 });
 
 function input(text: string) {
