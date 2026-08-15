@@ -1,5 +1,6 @@
-site_name: Emote Wiki
-site_description: Documentation for the Emote mod and web converter
+site_name: Emote 문서
+site_description: Emote 모드와 웹 변환기 사용 설명서
+site_url: https://hanhy06.github.io/emote/
 
 repo_url: https://github.com/hanhy06/emote
 repo_name: hanhy06/emote
@@ -15,9 +16,20 @@ watch:
   - ../../web/package.json
   - ../../web/vite.config.ts
 
+nav:
+  - 홈: index.md
+  - 시작하기: getting-started.md
+  - 서버 관리: server-management.md
+  - 웹 변환기: converter.md
+  - 포맷 명세:
+      - Animation: formats/animation.md
+      - Sequence: formats/sequence.md
+  - Mod API: api.md
+  - 문제 해결: troubleshooting.md
+
 theme:
   name: material
-  language: en
+  language: ko
   palette:
     - scheme: slate
       primary: blue
@@ -35,8 +47,6 @@ theme:
     - search.highlight
     - search.suggest
     - search.share
-  custom_dir: overrides
-
 plugins:
   - search
 
