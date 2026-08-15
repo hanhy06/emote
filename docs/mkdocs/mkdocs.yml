@@ -1,5 +1,5 @@
-site_name: Emote 문서
-site_description: Emote 서버 운영 및 포맷 문서
+site_name: Emote Documentation
+site_description: Emote server administration and format documentation
 site_url: https://hanhy06.github.io/emote/
 
 repo_url: https://github.com/hanhy06/emote
@@ -17,21 +17,21 @@ watch:
   - ../../web/vite.config.ts
 
 nav:
-  - 홈: index.md
-  - 운영자:
-      - 설치와 설정 파일: server/installation.md
-      - 권한과 접근 제어: server/access-control.md
-      - 쿨다운과 유휴 이모트: server/playback-policy.md
-      - 명령어: server/commands.md
-      - Sequence 사용: server/sequences.md
-  - 개발자:
+  - Home: index.md
+  - Server Administration:
+      - Installation and Configuration: server/installation.md
+      - Permissions and Access Control: server/access-control.md
+      - Cooldowns and Idle Emotes: server/playback-policy.md
+      - Commands: server/commands.md
+      - Using Sequences: server/sequences.md
+  - Developers:
       - Animation: formats/animation.md
       - Sequence: formats/sequence.md
       - Mod API: api.md
 
 theme:
   name: material
-  language: ko
+  language: en
   palette:
     - scheme: slate
       primary: blue

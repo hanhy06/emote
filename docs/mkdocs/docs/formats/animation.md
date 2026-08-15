@@ -1,6 +1,6 @@
-# Animation 포맷
+# Animation Format
 
-Animation 파일은 스키마 버전 `3`을 사용하며 하나의 이모트에 필요한 디스플레이 엔티티, 변환 행렬 및 명령을 정의합니다.
+Animation files use schema version `3` and define the display entities, transformation matrices, and commands required by one emote.
 
 ```json
 {
@@ -40,125 +40,125 @@ Animation 파일은 스키마 버전 `3`을 사용하며 하나의 이모트에 
 }
 ```
 
-모든 노드와 이벤트 형태를 포함한 [Animation 참조 JSON](reference/animation.json)도 함께 제공합니다.
+A complete [Animation reference JSON](reference/animation.json) containing every node and event type is also provided.
 
-## 루트 필드
+## Root fields
 
-| 필드 | 설명 |
+| Field | Description |
 |---|---|
-| `type` | 반드시 `animation`이어야 합니다. |
-| `schema_version` | 반드시 `3`이어야 합니다. |
-| `id` | `namespace:path` 형식의 소문자 Minecraft 식별자입니다. |
-| `metadata` | 표시 이름, 설명 및 사용자 정의 메타데이터입니다. |
-| `settings` | 선택 노출, 플레이어 동작 및 재생 설정입니다. |
-| `nodes` | 안정적인 노드 ID를 키로 사용하는 디스플레이 엔티티와 명령 앵커입니다. |
-| `timeline` | 재생 시간, 변환, 표시 상태 및 명령 이벤트입니다. |
+| `type` | Must be `animation`. |
+| `schema_version` | Must be `3`. |
+| `id` | A lowercase Minecraft identifier in `namespace:path` form. |
+| `metadata` | Display name, description, and custom metadata. |
+| `settings` | Selection visibility, player behavior, and playback settings. |
+| `nodes` | Display entities and command anchors keyed by stable node IDs. |
+| `timeline` | Duration, transformations, visibility states, and command events. |
 
-Animation JSON 파일은 최대 8 MiB, 타임라인은 최대 10분으로 제한됩니다.
+Animation JSON files are limited to 8 MiB and timelines are limited to 10 minutes.
 
-!!! tip inline end "시간 단위"
-    Emote는 Minecraft 시간 포맷을 사용합니다.<br>
-    `1s`는 `20t`입니다.
+!!! tip inline end "Time units"
+    Emote uses Minecraft time format.<br>
+    `1s` equals `20t`.
 
-    `s`: 초<br>
-    `t` 또는 생략: 틱<br>
-    `d`: Minecraft 하루
+    `s`: seconds<br>
+    `t` or omitted: ticks<br>
+    `d`: Minecraft days
 
-## 메타데이터
+## Metadata
 
-- `name`: 명령과 이모트 UI에 표시할 이름입니다.
-- `description`: 플레이어에게 표시할 설명입니다.
-- 그 밖의 필드는 그대로 보존되어 API와 웹 변환기에 노출됩니다.
+- `name`: Name shown in commands and the emote UI.
+- `description`: Description shown to players.
+- Other fields are preserved and exposed to the API and web converter.
 
-## 설정
+## Settings
 
-### 선택 노출
+### Selection visibility
 
-`standalone`은 애니메이션이 메뉴, 휠, 검색 및 명령 제안에 나타나고 직접 재생될 수 있는지를 결정합니다. Sequence 안에서만 사용할 애니메이션은 `false`로 설정합니다.
+`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly. Set it to `false` for Animations used only inside Sequences.
 
-### 플레이어 동작
+### Player behavior
 
-- `hidden`: 재생 중 원래 플레이어를 숨깁니다.
-- `movement_distance`: 플레이어가 지정한 수평 거리만큼 이동하면 재생을 중단합니다. `0`은 비활성화입니다.
-- `jump`, `submerge`, `ride`, `damage`, `attack`, `game_mode_change`: 해당 행동이 발생하면 재생을 중단합니다.
+- `hidden`: Hides the original player during playback.
+- `movement_distance`: Stops playback after the player moves the specified horizontal distance. `0` disables it.
+- `jump`, `submerge`, `ride`, `damage`, `attack`, `game_mode_change`: Stop playback when the corresponding action occurs.
 
-### 재생 방식
+### Playback mode
 
-| 모드 | 설명 |
+| Mode | Description |
 |---|---|
-| `once` | 타임라인을 한 번 재생합니다. `loop_delay`는 `0t`여야 합니다. |
-| `hold` | 한 번 재생한 뒤 중지될 때까지 마지막 프레임을 유지합니다. `loop_delay`는 `0t`여야 하며 Sequence에서 사용할 수 없습니다. |
-| `loop` | `loop_delay` 후 타임라인을 반복합니다. |
-| `server_sync` | 서버 시간에 맞춰 재생합니다. Sequence에서 사용할 수 없습니다. |
+| `once` | Plays the timeline once. `loop_delay` must be `0t`. |
+| `hold` | Plays once, then holds the last frame until stopped. `loop_delay` must be `0t`; unavailable in Sequences. |
+| `loop` | Repeats the timeline after `loop_delay`. |
+| `server_sync` | Plays in synchronization with server time; unavailable in Sequences. |
 
-## 노드
+## Nodes
 
-`nodes`의 각 속성 이름은 안정적인 노드 ID입니다. 모든 노드는 `space`와 행 우선 순서의 숫자 16개로 이루어진 `default_matrix`를 가져야 합니다.
+Each property name in `nodes` is a stable node ID. Every node must have a `space` and a row-major `default_matrix` containing 16 numbers.
 
-| 공간 | 2인 재생에서 사용하는 루트 |
+| Space | Root used in two-player playback |
 |---|---|
-| `scene` | 시작 플레이어가 만든 공유 장면 루트 |
-| `initiator` | Sequence `participants`에 정의한 시작 플레이어 배치 |
-| `partner` | Sequence `participants`에 정의한 상대 플레이어 배치 |
+| `scene` | Shared scene root created by the initiating player |
+| `initiator` | Initiator placement defined by Sequence `participants` |
+| `partner` | Partner placement defined by Sequence `participants` |
 
-단독 재생과 1인 Sequence에서는 세 공간 모두 같은 플레이어 루트를 사용합니다. 차이는 2인 Sequence에서 나타납니다.
+All three spaces use the same player root in standalone playback and single-player Sequences. Their distinction matters in two-player Sequences.
 
-| 타입 | 필수 필드 | 용도 |
+| Type | Required fields | Purpose |
 |---|---|---|
-| `item_display` | `item_stack_snbt`, `item_display` | 아이템 스택 표시 |
-| `block_display` | `block_state_snbt` | 블록 상태 표시 |
-| `text_display` | `text` | Minecraft 텍스트 컴포넌트 표시 |
-| `anchor` | `type`, `default_matrix` 외 없음 | 엔티티를 만들지 않고 명령 실행 위치 제공 |
+| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack |
+| `block_display` | `block_state_snbt` | Displays a block state |
+| `text_display` | `text` | Displays a Minecraft text component |
+| `anchor` | None beyond `type` and `default_matrix` | Provides a command execution position without creating an entity |
 
-디스플레이 노드는 다음 필드도 지원합니다.
+Display nodes also support:
 
-- `visible`: 기본값은 `true`입니다.
-- `entity_nbt`: 추가 디스플레이 엔티티 SNBT입니다.
-- `skin`: 아이템 디스플레이에 플레이어 스킨을 연결합니다.
+- `visible`: Defaults to `true`.
+- `entity_nbt`: Additional display-entity SNBT.
+- `skin`: Binds a player skin to an item display.
 
-`skin`에는 `participant`, 플레이어 신체 `part`, 0 이상의 `order`가 필요합니다. `participant`는 `initiator` 또는 `partner`이며 노드의 `space`와 일치해야 합니다. `scene` 노드는 스킨 연결을 지원하지 않습니다.
+`skin` requires `participant`, a player-body `part`, and a nonnegative `order`. `participant` must be `initiator` or `partner` and must match the node's `space`. `scene` nodes do not support skin binding.
 
-지원하는 파츠는 `head`, `body`, `left_arm`, `right_arm`, `left_leg`, `right_leg`입니다. 같은 참여자와 파츠에 연결된 노드는 `order` 순서대로 스킨이 적용됩니다.
+Supported parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes bound to the same participant and part receive skin data in `order` order.
 
-## 타임라인
+## Timeline
 
-`duration`은 전체 재생 시간을 지정합니다. `keyframes`는 `time` 순서로 정렬해야 합니다.
+`duration` specifies the total playback time. `keyframes` must be sorted by `time`.
 
-키프레임은 다음 값을 포함할 수 있습니다.
+A keyframe may contain:
 
-- `node_transforms`: 노드 ID와 `matrix`의 매핑
-- `node_states`: 디스플레이 노드 ID와 `visible` 값의 매핑
-- `interpolation_duration`: 개별 변환에서 덮어쓰지 않았을 때 사용할 보간 시간
+- `node_transforms`: Mapping of node IDs to `matrix` values
+- `node_states`: Mapping of display-node IDs to `visible` values
+- `interpolation_duration`: Interpolation time used unless overridden by an individual transform
 
-보간 시간은 해당 노드의 이전 변환과 현재 키프레임 사이를 벗어날 수 없습니다. Anchor 노드는 변환을 지원하지만 표시 상태는 지원하지 않습니다.
+Interpolation cannot extend outside the interval between the node's previous transform and the current keyframe. Anchor nodes support transformations but not visibility states.
 
-## 명령 이벤트
+## Command events
 
-선택적인 `timeline.events`는 네 이벤트 그룹을 지원합니다.
+Optional `timeline.events` supports four event groups.
 
-| 이벤트 | 실행 시점 |
+| Event | Execution time |
 |---|---|
-| `start` | 재생 시작 시 |
-| `timeline` | 지정한 `time` |
-| `loop` | 각 반복 완료 후 |
-| `stop` | 재생 중지 시 |
+| `start` | When playback starts |
+| `timeline` | At the specified `time` |
+| `loop` | After each repetition completes |
+| `stop` | When playback stops |
 
-각 이벤트는 `source`, `origin`, `commands` 배열을 가집니다. `source`는 `player`, `server` 또는 노드 이름입니다. `origin`은 애니메이션 `root` 또는 노드 이름이며, 선택적으로 숫자 3개의 `offset`을 사용할 수 있습니다.
+Each event has `source`, `origin`, and a `commands` array. `source` is `player`, `server`, or a node name. `origin` is the Animation `root` or a node name and may include an optional three-number `offset`.
 
-타임라인 이벤트는 시간순으로 정렬해야 하며 타임라인 종료 시간보다 앞에 있어야 합니다.
+Timeline events must be sorted by time and occur before the end of the timeline.
 
-## 스키마 1에서 이전
+## Migrating from schema 1
 
-웹 변환기는 공개된 스키마 1 Animation을 불러와 스키마 3으로 내보낼 수 있습니다. 서버는 스키마 3만 직접 불러옵니다.
+The web converter can import published schema 1 Animations and export them as schema 3. The server only loads schema 3 directly.
 
-| 스키마 1 | 스키마 3 |
+| Schema 1 | Schema 3 |
 |---|---|
-| `type` 없음 | `type: "animation"` 필수 |
-| `minecraft_version` | 런타임 파일에서 제거 |
-| `tick_rate: 20` | Minecraft의 20 TPS가 암시되므로 제거 |
-| `transform_space` | 제거. 행렬은 루트 로컬, 숫자 16개, 행 우선 순서를 유지 |
-| 루트 `standalone` | `settings.standalone` |
-| 재사용 대기시간 없음 | `settings.cooldown`, 이전 시 `"0t"` 사용 |
-| 루트 `player` | `settings.player` |
+| No `type` | Requires `type: "animation"` |
+| `minecraft_version` | Removed from runtime files |
+| `tick_rate: 20` | Removed because Minecraft's 20 TPS is implicit |
+| `transform_space` | Removed; matrices remain root-local, 16-number, and row-major |
+| Root `standalone` | `settings.standalone` |
+| No cooldown | `settings.cooldown`; use `"0t"` when migrating |
+| Root `player` | `settings.player` |
 | `timeline.loop` | `settings.playback.mode` |
 | `timeline.loop_delay_ticks` | `settings.playback.loop_delay` |

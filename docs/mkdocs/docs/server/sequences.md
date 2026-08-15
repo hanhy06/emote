@@ -1,8 +1,8 @@
-# Sequence 사용
+# Using Sequences
 
-Sequence는 여러 Animation을 순서대로 연결해 플레이어에게는 하나의 이모트처럼 보여 줍니다. 서버 운영자는 Sequence JSON과 그 안에서 참조하는 Animation JSON을 모두 설치해야 합니다.
+A Sequence connects multiple Animations in order and presents them to the player as one emote. Server operators must install both the Sequence JSON and every Animation JSON it references.
 
-## 파일 구성 예
+## Example file layout
 
 ```text
 config/emote/animations/sit/
@@ -46,7 +46,7 @@ config/emote/animations/sit/
 }
 ```
 
-Sequence에 연결할 중간 Animation은 보통 직접 선택되지 않도록 설정합니다.
+Intermediate Animations referenced by a Sequence are usually hidden from direct selection:
 
 ```json
 "settings": {
@@ -55,7 +55,7 @@ Sequence에 연결할 중간 Animation은 보통 직접 선택되지 않도록 �
 }
 ```
 
-플레이어 권한과 쿨다운은 Sequence ID인 `example:sit`에 설정합니다. 내부 Animation ID를 플레이어의 `emotes` 목록에 지급할 필요는 없습니다.
+Assign player permissions and cooldowns to the Sequence ID, `example:sit`. You do not need to grant the internal Animation IDs in the player's `emotes` list.
 
 ```json
 {
@@ -64,15 +64,15 @@ Sequence에 연결할 중간 Animation은 보통 직접 선택되지 않도록 �
 }
 ```
 
-## 설치 확인
+## Verifying the installation
 
-1. 모든 JSON을 같은 서버의 `animations/` 아래에 넣습니다.
-2. 파일을 다시 불러온 뒤 `/emote list`에서 Sequence와 참조 Animation이 모두 로드됐는지 확인합니다.
-3. 일반 플레이어 권한으로 `/emote play example:sit`을 실행합니다.
+1. Place all JSON files under `animations/` on the same server.
+2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
+3. Run `/emote play example:sit` with normal player permissions.
 
-Sequence가 로드되지 않으면 서버 로그에서 없는 Animation ID, 호환되지 않는 노드, 지원하지 않는 재생 모드 또는 잘못된 대기 단계 메시지를 확인합니다.
+If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
-!!! note "완성된 예제 팩"
-    바로 설치해 볼 수 있는 Sequence 예제 팩은 준비되는 대로 기존 `docs/example/` 예제 모음에 추가할 예정입니다. 현재 페이지의 JSON은 구조 설명용이며 참조 Animation 파일이 별도로 필요합니다.
+!!! note "Complete example pack"
+    A ready-to-install Sequence example pack will be added to the existing `docs/example/` collection when it is ready. The JSON on this page only demonstrates the structure and requires separate referenced Animation files.
 
-무작위 선택, 대기, 반복 제어 및 2인 협동 Sequence를 직접 제작하려면 [Sequence 포맷 명세](../formats/sequence.md)를 참고합니다.
+To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../formats/sequence.md).
