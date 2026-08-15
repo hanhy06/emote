@@ -21,9 +21,9 @@ final class WheelGeometry {
         int maximumRingRadius = Math.min(ringRadiusLimitX, ringRadiusLimitY);
         int preferredRingRadius = slotRadius * 3 + 20;
         int ringRadius = Math.clamp(preferredRingRadius, minimumRingRadius, maximumRingRadius);
-        int centerRadius = Math.max(20, slotRadius - 12);
+        int centerRadius = Math.max(28, slotRadius - 4);
         int descriptionWidth = Math.min(280, width - 48);
-        return new WheelMetrics(centerX, centerY, slotRadius, ringRadius, centerRadius, Math.max(52, slotRadius + 24), descriptionWidth);
+        return new WheelMetrics(centerX, centerY, slotRadius, ringRadius, centerRadius, Math.max(36, slotRadius), descriptionWidth);
     }
 
     static SlotGeometry createSlot(int slotIndex, WheelMetrics metrics) {

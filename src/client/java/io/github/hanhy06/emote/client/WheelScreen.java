@@ -12,7 +12,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.jspecify.annotations.NonNull;
 
@@ -208,18 +207,13 @@ public class WheelScreen extends Screen {
             return;
         }
 
-        List<FormattedCharSequence> lines = this.font.split(Component.literal(emoteSummary.displayName()), slot.textWidth());
-        int visibleLineCount = Math.min(2, lines.size());
-        int lineStartY = slot.centerY() - (visibleLineCount * this.font.lineHeight) / 2;
-        for (int lineIndex = 0; lineIndex < visibleLineCount; lineIndex++) {
-            graphics.centeredText(
-                this.font,
-                lines.get(lineIndex),
-                slot.centerX(),
-                lineStartY + lineIndex * this.font.lineHeight,
-                TITLE_COLOR
-            );
-        }
+        graphics.centeredText(
+            this.font,
+            fitText(emoteSummary.displayName(), slot.textWidth()),
+            slot.centerX(),
+            slot.centerY() - this.font.lineHeight / 2,
+            TITLE_COLOR
+        );
     }
 
     private void drawCenterHex(GuiGraphicsExtractor graphics, WheelMetrics metrics) {
@@ -243,7 +237,7 @@ public class WheelScreen extends Screen {
             : null;
 
         if (hoveredEmote != null) {
-            graphics.centeredText(this.font, Component.literal(hoveredEmote.displayName()), metrics.centerX(), footerTop, TITLE_COLOR);
+            graphics.centeredText(this.font, fitText(hoveredEmote.displayName(), metrics.descriptionWidth()), metrics.centerX(), footerTop, TITLE_COLOR);
             graphics.textWithWordWrap(
                 this.font,
                 Component.literal(hoveredEmote.description()),
@@ -333,6 +327,15 @@ public class WheelScreen extends Screen {
             WheelGeometry.createHexagonYPoints(centerY, innerRadius),
             fillColor
         );
+    }
+
+    private Component fitText(String text, int maxWidth) {
+        if (this.font.width(text) <= maxWidth) {
+            return Component.literal(text);
+        }
+
+        String ellipsis = "...";
+        return Component.literal(this.font.plainSubstrByWidth(text, Math.max(0, maxWidth - this.font.width(ellipsis))) + ellipsis);
     }
 
     private void fillPolygon(GuiGraphicsExtractor graphics, int[] xPoints, int[] yPoints, int color) {
