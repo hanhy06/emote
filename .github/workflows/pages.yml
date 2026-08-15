@@ -1,4 +1,4 @@
-name: Deploy web converter to GitHub Pages
+name: Deploy website to GitHub Pages
 
 on:
   push:
@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - "web/**"
+      - "docs/mkdocs/**"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -14,29 +15,38 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 22
+          node-version: 24
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: docs/mkdocs/requirements.txt
+
+      - name: Install web dependencies
         working-directory: web
         run: npm ci
 
-      - name: Build web converter
-        working-directory: web
-        run: npm run build
+      - name: Install documentation dependencies
+        run: python -m pip install -r docs/mkdocs/requirements.txt
+
+      - name: Build website
+        run: python -m mkdocs build --strict --config-file docs/mkdocs/mkdocs.yml
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -44,7 +54,7 @@ jobs:
       - name: Upload GitHub Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
-          path: web/dist
+          path: docs/mkdocs/site
 
   deploy:
     environment:

@@ -35,8 +35,8 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-  converter:
-    name: Web converter
+  website:
+    name: Documentation and web converter
     runs-on: ubuntu-24.04
     defaults:
       run:
@@ -52,8 +52,18 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
-      - name: Install dependencies
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+          cache: pip
+          cache-dependency-path: docs/mkdocs/requirements.txt
+
+      - name: Install web dependencies
         run: npm ci
 
-      - name: Build web converter
-        run: npm run build
+      - name: Install documentation dependencies
+        run: python -m pip install -r ../docs/mkdocs/requirements.txt
+
+      - name: Build website
+        run: python -m mkdocs build --strict --config-file ../docs/mkdocs/mkdocs.yml
