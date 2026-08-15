@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AnimationDirectoryLoaderTest {
-    private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
+    private static final Path REFERENCE_PATH = Path.of("docs/reference/animation.json");
     private final AnimationDirectoryLoader loader = new AnimationDirectoryLoader();
 
     @Test

@@ -35,7 +35,7 @@ Sequence files use schema version `3` and combine existing Animations into one e
 }
 ```
 
-A [Sequence reference JSON](reference/sequence.json) with weighted random selection and a [two-player Sequence reference JSON](reference/two-player-sequence.json) are also provided.
+Sequence reference JSON files, including weighted random selection and a two-player example, are provided separately in the repository's `docs/reference` directory.
 
 ## Root fields
 

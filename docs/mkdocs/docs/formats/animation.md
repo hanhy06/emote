@@ -40,7 +40,7 @@ Animation files use schema version `3` and define the display entities, transfor
 }
 ```
 
-A complete [Animation reference JSON](reference/animation.json) containing every node and event type is also provided.
+A complete Animation reference JSON containing every node and event type is provided separately in the repository's `docs/reference` directory.
 
 ## Root fields
 

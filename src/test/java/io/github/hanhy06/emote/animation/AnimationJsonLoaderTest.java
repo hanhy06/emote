@@ -19,7 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationJsonLoaderTest {
-    private static final Path REFERENCE_PATH = Path.of("docs/emote-animation-format.json");
+    private static final Path REFERENCE_PATH = Path.of("docs/reference/animation.json");
     private final AnimationJsonLoader loader = new AnimationJsonLoader();
 
     @Test
