@@ -7,6 +7,14 @@ repo_name: hanhy06/emote
 docs_dir: docs
 site_dir: site
 
+hooks:
+  - build_converter.py
+
+watch:
+  - ../../web/src
+  - ../../web/package.json
+  - ../../web/vite.config.ts
+
 theme:
   name: material
   language: en
