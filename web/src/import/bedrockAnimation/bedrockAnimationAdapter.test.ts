@@ -75,6 +75,38 @@ describe("bedrockAnimationAdapter", () => {
     expect(preserved?.matrix[7]).toBeCloseTo(1.640625);
     expect(animation.tracks.right_arm.transforms[3].matrix.every(Number.isFinite)).toBe(true);
   });
+
+  it("bakes deterministic Molang time expressions and constant anim_time_update rates", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        "animation.emote.fast": {
+          animation_length: 1,
+          anim_time_update: "q.anim_time + q.delta_time * 2",
+          bones: { root: { rotation: [0, "-query.anim_time * 90", 0] } },
+        },
+      },
+    })));
+
+    expect(imported.animations[0].durationTicks).toBe(10);
+    expect(imported.animations[0].tracks.body.transforms[10].matrix).not.toEqual(imported.nodes.body.defaultMatrix);
+  });
+
+  it("keeps supported animations and reports nondeterministic or unsupported parts", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        supported: { animation_length: 0.1, bones: { hat: { rotation: [0, 10, 0] }, body: { rotation: [0, 0, 0] } } },
+        random: { bones: { body: { position: ["math.random(-1, 1)", 0, 0] } } },
+      },
+    })));
+
+    expect(imported.animations.map((animation) => animation.name)).toEqual(["supported"]);
+    expect(imported.diagnostics).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "bedrock_animation_bone_ignored" }),
+      expect.objectContaining({ code: "bedrock_animation_skipped" }),
+    ]));
+  });
 });
 
 function input(text: string) {

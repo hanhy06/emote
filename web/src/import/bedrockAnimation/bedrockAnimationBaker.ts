@@ -47,11 +47,13 @@ export function bedrockAnimationDurationSeconds(animation: BedrockAnimation): nu
   return duration;
 }
 
-export function planBedrockAnimationSamples(animation: BedrockAnimation, durationTicks: number): BedrockSamplePlan {
-  const anchors = collectAnchors(animation).filter((anchor) => anchor.time * TICKS_PER_SECOND <= durationTicks + 1e-9);
+export function planBedrockAnimationSamples(animation: BedrockAnimation, durationTicks: number, playbackRate: number): BedrockSamplePlan {
+  const anchors = collectAnchors(animation)
+    .map((anchor) => ({ ...anchor, playbackTime: anchor.time / playbackRate }))
+    .filter((anchor) => anchor.playbackTime * TICKS_PER_SECOND <= durationTicks + 1e-9);
   let states = new Map<number, PlanState>([[-1, { lastTick: -1, priority: 0, count: 0, distance: 0 }]]);
   for (const anchor of anchors) {
-    const scaled = anchor.time * TICKS_PER_SECOND;
+    const scaled = anchor.playbackTime * TICKS_PER_SECOND;
     const candidates = [...new Set([Math.floor(scaled), Math.ceil(scaled)])].filter((tick) => tick >= 0 && tick <= durationTicks);
     const next = new Map<number, PlanState>();
     for (const state of states.values()) {
@@ -62,7 +64,7 @@ export function planBedrockAnimationSamples(animation: BedrockAnimation, duratio
           lastTick: tick,
           priority: state.priority + anchor.priority,
           count: state.count + 1,
-          distance: state.distance + Math.abs(tick / TICKS_PER_SECOND - anchor.time),
+          distance: state.distance + Math.abs(tick / TICKS_PER_SECOND - anchor.playbackTime),
           previous: state,
           assignment: { anchor, tick },
         });
@@ -83,27 +85,72 @@ export function planBedrockAnimationSamples(animation: BedrockAnimation, duratio
 
 export function evaluateBedrockChannel(channel: BedrockChannel | undefined, time: number, fallback: number[], path: string): number[] {
   if (channel === undefined) return [...fallback];
-  if (!isKeyframedChannel(channel)) return evaluateVector(channel, path);
+  if (!isKeyframedChannel(channel)) return evaluateVector(channel, path, time, 1);
   const frames = resolveKeyframes(channel);
   const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
-  if (exact) return evaluateVector(exact.post, `${path}.${exact.time}.post`);
+  if (exact) return evaluateVector(exact.post, `${path}.${exact.time}.post`, time, 1);
   const afterIndex = frames.findIndex((frame) => frame.time > time);
   if (afterIndex === 0) return [...fallback];
-  if (afterIndex < 0) return evaluateVector(frames[frames.length - 1].post, `${path}.${frames[frames.length - 1].time}.post`);
+  if (afterIndex < 0) return evaluateVector(frames[frames.length - 1].post, `${path}.${frames[frames.length - 1].time}.post`, time, 1);
 
   const before = frames[afterIndex - 1];
   const after = frames[afterIndex];
   const alpha = (time - before.time) / (after.time - before.time);
-  const start = evaluateVector(before.post, `${path}.${before.time}.post`);
-  const end = evaluateVector(after.pre, `${path}.${after.time}.pre`);
+  const start = evaluateVector(before.post, `${path}.${before.time}.post`, time, alpha);
+  const end = evaluateVector(after.pre, `${path}.${after.time}.pre`, time, alpha);
   if (before.lerpMode === "catmullrom" || after.lerpMode === "catmullrom") {
     const previous = frames[afterIndex - 2];
     const following = frames[afterIndex + 1];
-    const p0 = previous ? evaluateVector(previous.post, `${path}.${previous.time}.post`) : start;
-    const p3 = following ? evaluateVector(following.pre, `${path}.${following.time}.pre`) : end;
+    const p0 = previous ? evaluateVector(previous.post, `${path}.${previous.time}.post`, time, alpha) : start;
+    const p3 = following ? evaluateVector(following.pre, `${path}.${following.time}.pre`, time, alpha) : end;
     return start.map((value, axis) => catmullRom(p0[axis], value, end[axis], p3[axis], alpha));
   }
   return start.map((value, axis) => value + (end[axis] - value) * alpha);
+}
+
+export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: string): number {
+  if (animation.anim_time_update === undefined) return 1;
+  const delta = 1 / TICKS_PER_SECOND;
+  const fromZero = evaluateBedrockExpression(animation.anim_time_update, 0, 1, `${path}.anim_time_update`);
+  const fromOne = evaluateBedrockExpression(animation.anim_time_update, 1, 1, `${path}.anim_time_update`);
+  const rate = fromZero / delta;
+  if (!Number.isFinite(rate) || rate <= 0 || Math.abs((fromOne - 1) - fromZero) > 1e-7) {
+    throw new Error(`${path}.anim_time_update must advance q.anim_time at a constant positive rate.`);
+  }
+  return rate;
+}
+
+export function bedrockAnimationUsesTime(animation: BedrockAnimation): boolean {
+  return Object.values(animation.bones ?? {}).some((bone) => [bone.position, bone.rotation, bone.scale]
+    .some((channel) => channelExpressions(channel).some((expression) => typeof expression === "string" && /(?:q|query)\.anim_time\b/i.test(expression))));
+}
+
+export function evaluateBedrockExpression(expression: BedrockExpression, animationTime: number, keyframeLerpTime: number, path: string): number {
+  if (typeof expression === "number") return expression;
+  const numeric = Number(expression.trim());
+  if (Number.isFinite(numeric)) return numeric;
+  if (/math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i.test(expression)) {
+    throw new Error(`${path} uses nondeterministic Molang and cannot be baked.`);
+  }
+  const parser = new MolangParser();
+  parser.variableHandler = (key) => {
+    throw new Error(`${path} references runtime Molang variable ${key}.`);
+  };
+  try {
+    const result = parser.parse(expression, {
+      "query.anim_time": animationTime,
+      "q.anim_time": animationTime,
+      "query.delta_time": 1 / TICKS_PER_SECOND,
+      "q.delta_time": 1 / TICKS_PER_SECOND,
+      "query.key_frame_lerp_time": keyframeLerpTime,
+      "q.key_frame_lerp_time": keyframeLerpTime,
+      "global.key_frame_lerp_time": keyframeLerpTime,
+    });
+    if (!Number.isFinite(result)) throw new Error("result is not finite");
+    return result;
+  } catch (error) {
+    throw new Error(`${path} contains Molang that cannot be baked.`, { cause: error });
+  }
 }
 
 function collectAnchors(animation: BedrockAnimation): Anchor[] {
@@ -144,20 +191,22 @@ function resolveKeyframes(channel: Record<string, BedrockKeyframe>): ResolvedKey
   }).sort((first, second) => first.time - second.time);
 }
 
-function evaluateVector(vector: BedrockVector, path: string): number[] {
+function evaluateVector(vector: BedrockVector, path: string, animationTime: number, keyframeLerpTime: number): number[] {
   const values = Array.isArray(vector) ? vector : [vector];
   if (values.length === 1) {
-    const value = evaluateConstant(values[0], `${path}[0]`);
+    const value = evaluateBedrockExpression(values[0], animationTime, keyframeLerpTime, `${path}[0]`);
     return [value, value, value];
   }
-  return values.map((value, axis) => evaluateConstant(value, `${path}[${axis}]`));
+  return values.map((value, axis) => evaluateBedrockExpression(value, animationTime, keyframeLerpTime, `${path}[${axis}]`));
 }
 
-function evaluateConstant(expression: BedrockExpression, path: string): number {
-  if (typeof expression === "number") return expression;
-  const value = Number(expression.trim());
-  if (Number.isFinite(value)) return value;
-  throw new Error(`${path} must be constant until Molang baking is enabled.`);
+function channelExpressions(channel: BedrockChannel | undefined): BedrockExpression[] {
+  if (channel === undefined) return [];
+  if (!isKeyframedChannel(channel)) return Array.isArray(channel) ? channel : [channel];
+  return Object.values(channel).flatMap((keyframe) => {
+    if (!isKeyframeValue(keyframe)) return Array.isArray(keyframe) ? keyframe : [keyframe];
+    return [keyframe.pre, keyframe.post].flatMap((vector) => vector === undefined ? [] : Array.isArray(vector) ? vector : [vector]);
+  });
 }
 
 function isKeyframedChannel(channel: BedrockChannel | undefined): channel is Record<string, BedrockKeyframe> {
@@ -184,3 +233,4 @@ function betterThan(candidate: PlanState, current: PlanState): boolean {
   if (candidate.count !== current.count) return candidate.count > current.count;
   return candidate.distance < current.distance;
 }
+import MolangParser from "molangjs/dist/molang.esm.js";

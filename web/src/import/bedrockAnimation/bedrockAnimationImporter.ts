@@ -3,9 +3,16 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
-import type { ImportedAnimation, ImportedProject } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
-import { bedrockAnimationDurationSeconds, evaluateBedrockChannel, planBedrockAnimationSamples } from "./bedrockAnimationBaker";
+import {
+  bedrockAnimationDurationSeconds,
+  bedrockAnimationPlaybackRate,
+  bedrockAnimationUsesTime,
+  evaluateBedrockChannel,
+  evaluateBedrockExpression,
+  planBedrockAnimationSamples,
+} from "./bedrockAnimationBaker";
 import {
   BEDROCK_PLAYER_BONES,
   BEDROCK_PLAYER_RENDER_SCALE,
@@ -19,7 +26,25 @@ type Transform = { position: number[]; rotation: number[]; scale: number[] };
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
   const bindMatrices = buildWorldMatrices(new Map());
-  const animations = Object.entries(document.animations).map(([name, animation], index) => importAnimation(name, animation, index));
+  const diagnostics: ImportDiagnostic[] = [];
+  const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
+    try {
+      collectAnimationDiagnostics(name, animation, diagnostics);
+      return [importAnimation(name, animation, index)];
+    } catch (reason) {
+      diagnostics.push({
+        severity: "warning",
+        code: "bedrock_animation_skipped",
+        message: `${name} was skipped: ${reason instanceof Error ? reason.message : "unsupported animation"}`,
+        sourcePath: `animations.${name}`,
+      });
+      return [];
+    }
+  });
+  if (animations.length === 0) {
+    const reasons = diagnostics.filter((issue) => issue.code === "bedrock_animation_skipped").map((issue) => issue.message).join(" ");
+    throw new Error(`No Bedrock animations in this file can be baked.${reasons ? ` ${reasons}` : ""}`);
+  }
   return {
     source: "bedrock_animation_json",
     sourceName,
@@ -28,23 +53,28 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     suggestedNamespace: sanitizeNamespace(sourceStem),
     nodes: createBedrockPlayerNodes(bindMatrices),
     animations,
-    diagnostics: [],
+    diagnostics,
     resources: new Map(),
   };
 }
 
 function importAnimation(name: string, animation: BedrockAnimation, index: number): ImportedAnimation {
+  const sourceDuration = bedrockAnimationDurationSeconds(animation);
+  if (sourceDuration === 0 && bedrockAnimationUsesTime(animation)) {
+    throw new Error("time-dependent bone expressions require animation_length or timed keyframes.");
+  }
+  const playbackRate = bedrockAnimationPlaybackRate(animation, name);
   const durationTicks = requireAnimationDurationTicks(
-    Math.max(1, Math.round(bedrockAnimationDurationSeconds(animation) * TICKS_PER_SECOND)),
+    Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND)),
     `${name}.animation_length`,
   );
-  const samplePlan = planBedrockAnimationSamples(animation, durationTicks);
+  const samplePlan = planBedrockAnimationSamples(animation, durationTicks, playbackRate);
   const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
     transforms: [],
     visibility: [],
   }]));
   for (let tick = 0; tick <= durationTicks; tick++) {
-    const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
+    const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
     const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
     for (const bone of BEDROCK_PLAYER_BONES) {
       if (!bone.cube) continue;
@@ -62,7 +92,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     name,
     durationTicks,
     loop: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
-    loopDelayTicks: Math.max(0, Math.round(evaluateConstant(animation.loop_delay ?? 0, `${name}.loop_delay`) * TICKS_PER_SECOND)),
+    loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
   };
@@ -80,13 +110,6 @@ function collectTransforms(name: string, animation: BedrockAnimation, time: numb
     });
   }
   return transforms;
-}
-
-function evaluateConstant(expression: BedrockExpression, path: string): number {
-  if (typeof expression === "number") return expression;
-  const value = Number(expression.trim());
-  if (Number.isFinite(value)) return value;
-  throw new Error(`${path} must be constant until Molang baking is enabled.`);
 }
 
 function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<string, Matrix4> {
@@ -110,6 +133,44 @@ function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<str
   };
   BEDROCK_PLAYER_BONES.forEach((bone) => visit(bone.id));
   return result;
+}
+
+function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ImportDiagnostic[]): void {
+  const ignored = [
+    [animation.start_delay, "start_delay"],
+    [animation.blend_weight, "blend_weight"],
+    [animation.override_previous_animation, "override_previous_animation"],
+    [animation.particle_effects, "particle_effects"],
+    [animation.sound_effects, "sound_effects"],
+    [animation.timeline, "timeline"],
+  ] as const;
+  for (const [value, property] of ignored) {
+    if (value === undefined) continue;
+    diagnostics.push({
+      severity: "warning",
+      code: "bedrock_animation_property_ignored",
+      message: `${name}.${property} is not represented by the experimental importer.`,
+      sourcePath: `animations.${name}.${property}`,
+    });
+  }
+  for (const [boneName, bone] of Object.entries(animation.bones ?? {})) {
+    if (!resolveBedrockPlayerBone(boneName)) {
+      diagnostics.push({
+        severity: "warning",
+        code: "bedrock_animation_bone_ignored",
+        message: `${name} bone ${boneName} is not part of the supported player rig and was ignored.`,
+        sourcePath: `animations.${name}.bones.${boneName}`,
+      });
+    }
+    if (bone.relative_to !== undefined) {
+      diagnostics.push({
+        severity: "warning",
+        code: "bedrock_relative_rotation_ignored",
+        message: `${name} bone ${boneName} uses relative_to.rotation, which was treated as normal local rotation.`,
+        sourcePath: `animations.${name}.bones.${boneName}.relative_to`,
+      });
+    }
+  }
 }
 
 function composeTransform(position: number[], rotation: number[], scale: number[]): Matrix4 {
