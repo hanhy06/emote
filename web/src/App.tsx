@@ -295,7 +295,7 @@ export function App() {
           </section>
 
           <nav className="workflow-pages" aria-label="Conversion pages">
-            {(["Rigging & commands", "Metadata, settings & other", "Output"] as const).map((label, index) => (
+            {(["Review", "Settings", "Export"] as const).map((label, index) => (
               <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "set_page", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
