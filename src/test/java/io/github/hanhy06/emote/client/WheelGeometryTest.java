@@ -36,6 +36,7 @@ class WheelGeometryTest {
 
         assertEquals(28, metrics.slotRadius());
         assertEquals(56, metrics.ringRadius());
-        assertEquals(20, metrics.centerRadius());
+        assertEquals(28, metrics.centerRadius());
+        assertEquals(36, metrics.textWidth());
     }
 }
