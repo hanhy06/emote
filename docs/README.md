@@ -32,7 +32,7 @@ On the server, LuckPerms permissions can assign emotes and idle emotes per playe
 | `/emote stop` | Stops the current emote. |
 | `V` | Opens the client emote wheel. |
 
-Use the wheel's Order button to add, remove, or reorder entries. The order is stored on the client separately for each server.
+Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order is stored on the client separately for each server.
 
 ### Administration
 

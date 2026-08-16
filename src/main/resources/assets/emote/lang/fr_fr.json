@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "jouer",
     "screen.emote.wheel.footer.release_to_play": "Relâchez %s pour jouer l’emote.",
     "screen.emote.wheel.footer.close": "Relâchez hors d’un emplacement ou appuyez sur Échap pour fermer.",
-    "screen.emote.wheel.footer.page_click": "Clic gauche : page précédente ; clic droit : page suivante."
+    "screen.emote.wheel.footer.page_click": "Clic gauche : page précédente ; clic droit : page suivante.",
+    "screen.emote.wheel.center.no_shortcuts": "Aucune emote",
+    "screen.emote.wheel.center.selected": "sélectionnée",
+    "screen.emote.wheel.footer.no_shortcuts": "Aucune emote dans la roue. Utilisez Modifier la roue pour en ajouter une.",
+    "screen.emote.wheel.edit": "Modifier la roue",
+    "screen.emote.shortcuts.title": "Personnaliser la roue des emotes",
+    "screen.emote.shortcuts.selected": "Dans la roue",
+    "screen.emote.shortcuts.available": "Disponibles",
+    "screen.emote.shortcuts.selected_help": "Faites glisser pour réorganiser.",
+    "screen.emote.shortcuts.empty_selected": "Aucune emote dans la roue.",
+    "screen.emote.shortcuts.empty_available": "Toutes les emotes disponibles sont dans la roue.",
+    "screen.emote.shortcuts.remove": "Retirer",
+    "screen.emote.shortcuts.add": "Ajouter %s",
+    "screen.emote.shortcuts.previous": "Précédent",
+    "screen.emote.shortcuts.next": "Suivant",
+    "screen.emote.shortcuts.done": "Terminé",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

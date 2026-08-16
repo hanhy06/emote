@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "即可播放",
     "screen.emote.wheel.footer.release_to_play": "松开 %s 即可播放。",
     "screen.emote.wheel.footer.close": "在槽位外松开按键或按 Esc 键关闭。",
-    "screen.emote.wheel.footer.page_click": "左键：上一页，右键：下一页"
+    "screen.emote.wheel.footer.page_click": "左键：上一页，右键：下一页",
+    "screen.emote.wheel.center.no_shortcuts": "未选择表情",
+    "screen.emote.wheel.center.selected": "",
+    "screen.emote.wheel.footer.no_shortcuts": "轮盘中没有表情。使用“编辑轮盘”添加表情。",
+    "screen.emote.wheel.edit": "编辑轮盘",
+    "screen.emote.shortcuts.title": "自定义表情轮盘",
+    "screen.emote.shortcuts.selected": "轮盘中的表情",
+    "screen.emote.shortcuts.available": "可用表情",
+    "screen.emote.shortcuts.selected_help": "拖动以重新排序。",
+    "screen.emote.shortcuts.empty_selected": "轮盘中没有表情。",
+    "screen.emote.shortcuts.empty_available": "所有可用表情都已在轮盘中。",
+    "screen.emote.shortcuts.remove": "移除",
+    "screen.emote.shortcuts.add": "添加 %s",
+    "screen.emote.shortcuts.previous": "上一页",
+    "screen.emote.shortcuts.next": "下一页",
+    "screen.emote.shortcuts.done": "完成",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

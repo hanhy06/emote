@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "再生",
     "screen.emote.wheel.footer.release_to_play": "%s を離すと再生します。",
     "screen.emote.wheel.footer.close": "スロットの外でキーを離すか、Esc キーを押すと閉じます。",
-    "screen.emote.wheel.footer.page_click": "左クリック：前のページ、右クリック：次のページ"
+    "screen.emote.wheel.footer.page_click": "左クリック：前のページ、右クリック：次のページ",
+    "screen.emote.wheel.center.no_shortcuts": "エモート未選択",
+    "screen.emote.wheel.center.selected": "",
+    "screen.emote.wheel.footer.no_shortcuts": "ホイールにエモートがありません。ホイールを編集から追加できます。",
+    "screen.emote.wheel.edit": "ホイールを編集",
+    "screen.emote.shortcuts.title": "エモートホイールを編集",
+    "screen.emote.shortcuts.selected": "ホイールに表示",
+    "screen.emote.shortcuts.available": "利用可能なエモート",
+    "screen.emote.shortcuts.selected_help": "ドラッグして並べ替えます。",
+    "screen.emote.shortcuts.empty_selected": "ホイールにエモートがありません。",
+    "screen.emote.shortcuts.empty_available": "利用可能なエモートはすべてホイールにあります。",
+    "screen.emote.shortcuts.remove": "削除",
+    "screen.emote.shortcuts.add": "%s を追加",
+    "screen.emote.shortcuts.previous": "前へ",
+    "screen.emote.shortcuts.next": "次へ",
+    "screen.emote.shortcuts.done": "完了",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

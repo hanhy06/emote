@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "воспроизведения",
     "screen.emote.wheel.footer.release_to_play": "Отпустите %s, чтобы воспроизвести эмоцию.",
     "screen.emote.wheel.footer.close": "Отпустите клавишу вне ячейки или нажмите Esc, чтобы закрыть.",
-    "screen.emote.wheel.footer.page_click": "Левая кнопка: предыдущая страница; правая кнопка: следующая."
+    "screen.emote.wheel.footer.page_click": "Левая кнопка: предыдущая страница; правая кнопка: следующая.",
+    "screen.emote.wheel.center.no_shortcuts": "Нет эмоций",
+    "screen.emote.wheel.center.selected": "выбрано",
+    "screen.emote.wheel.footer.no_shortcuts": "В колесе нет эмоций. Используйте «Настроить колесо», чтобы добавить эмоцию.",
+    "screen.emote.wheel.edit": "Настроить колесо",
+    "screen.emote.shortcuts.title": "Настройка колеса эмоций",
+    "screen.emote.shortcuts.selected": "В колесе",
+    "screen.emote.shortcuts.available": "Доступные",
+    "screen.emote.shortcuts.selected_help": "Перетащите, чтобы изменить порядок.",
+    "screen.emote.shortcuts.empty_selected": "В колесе нет эмоций.",
+    "screen.emote.shortcuts.empty_available": "Все доступные эмоции уже в колесе.",
+    "screen.emote.shortcuts.remove": "Убрать",
+    "screen.emote.shortcuts.add": "Добавить %s",
+    "screen.emote.shortcuts.previous": "Назад",
+    "screen.emote.shortcuts.next": "Далее",
+    "screen.emote.shortcuts.done": "Готово",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "reproducir",
     "screen.emote.wheel.footer.release_to_play": "Suelta %s para reproducirlo.",
     "screen.emote.wheel.footer.close": "Suelta fuera de una ranura o pulsa Esc para cerrar.",
-    "screen.emote.wheel.footer.page_click": "Clic izquierdo: página anterior; clic derecho: página siguiente."
+    "screen.emote.wheel.footer.page_click": "Clic izquierdo: página anterior; clic derecho: página siguiente.",
+    "screen.emote.wheel.center.no_shortcuts": "Sin gestos",
+    "screen.emote.wheel.center.selected": "seleccionados",
+    "screen.emote.wheel.footer.no_shortcuts": "No hay gestos en la rueda. Usa Editar rueda para añadir uno.",
+    "screen.emote.wheel.edit": "Editar rueda",
+    "screen.emote.shortcuts.title": "Personalizar rueda de gestos",
+    "screen.emote.shortcuts.selected": "En la rueda",
+    "screen.emote.shortcuts.available": "Disponibles",
+    "screen.emote.shortcuts.selected_help": "Arrastra para reordenar.",
+    "screen.emote.shortcuts.empty_selected": "No hay gestos en la rueda.",
+    "screen.emote.shortcuts.empty_available": "Todos los gestos disponibles están en la rueda.",
+    "screen.emote.shortcuts.remove": "Quitar",
+    "screen.emote.shortcuts.add": "Añadir %s",
+    "screen.emote.shortcuts.previous": "Anterior",
+    "screen.emote.shortcuts.next": "Siguiente",
+    "screen.emote.shortcuts.done": "Listo",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

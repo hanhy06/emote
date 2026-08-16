@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "reproduzir",
     "screen.emote.wheel.footer.release_to_play": "Solte %s para reproduzir.",
     "screen.emote.wheel.footer.close": "Solte fora de um espaço ou pressione Esc para fechar.",
-    "screen.emote.wheel.footer.page_click": "Clique esquerdo: página anterior; clique direito: próxima página."
+    "screen.emote.wheel.footer.page_click": "Clique esquerdo: página anterior; clique direito: próxima página.",
+    "screen.emote.wheel.center.no_shortcuts": "Sem emotes",
+    "screen.emote.wheel.center.selected": "selecionados",
+    "screen.emote.wheel.footer.no_shortcuts": "Não há emotes na roda. Use Editar roda para adicionar um.",
+    "screen.emote.wheel.edit": "Editar roda",
+    "screen.emote.shortcuts.title": "Personalizar roda de emotes",
+    "screen.emote.shortcuts.selected": "Na roda",
+    "screen.emote.shortcuts.available": "Disponíveis",
+    "screen.emote.shortcuts.selected_help": "Arraste para reordenar.",
+    "screen.emote.shortcuts.empty_selected": "Não há emotes na roda.",
+    "screen.emote.shortcuts.empty_available": "Todos os emotes disponíveis estão na roda.",
+    "screen.emote.shortcuts.remove": "Remover",
+    "screen.emote.shortcuts.add": "Adicionar %s",
+    "screen.emote.shortcuts.previous": "Anterior",
+    "screen.emote.shortcuts.next": "Próximo",
+    "screen.emote.shortcuts.done": "Concluir",
+    "screen.emote.shortcuts.page": "%s / %s"
 }

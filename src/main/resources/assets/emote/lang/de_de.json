@@ -5,5 +5,21 @@
     "screen.emote.wheel.center.to_play": "Abspielen",
     "screen.emote.wheel.footer.release_to_play": "%s loslassen, um das Emote abzuspielen.",
     "screen.emote.wheel.footer.close": "Außerhalb eines Feldes loslassen oder Esc drücken, um das Rad zu schließen.",
-    "screen.emote.wheel.footer.page_click": "Linksklick: vorherige Seite; Rechtsklick: nächste Seite."
+    "screen.emote.wheel.footer.page_click": "Linksklick: vorherige Seite; Rechtsklick: nächste Seite.",
+    "screen.emote.wheel.center.no_shortcuts": "Keine Emotes",
+    "screen.emote.wheel.center.selected": "ausgewählt",
+    "screen.emote.wheel.footer.no_shortcuts": "Keine Emotes im Rad. Mit „Rad bearbeiten“ kannst du eines hinzufügen.",
+    "screen.emote.wheel.edit": "Rad bearbeiten",
+    "screen.emote.shortcuts.title": "Emote-Rad anpassen",
+    "screen.emote.shortcuts.selected": "Im Rad",
+    "screen.emote.shortcuts.available": "Verfügbar",
+    "screen.emote.shortcuts.selected_help": "Zum Sortieren ziehen.",
+    "screen.emote.shortcuts.empty_selected": "Keine Emotes im Rad.",
+    "screen.emote.shortcuts.empty_available": "Alle verfügbaren Emotes sind im Rad.",
+    "screen.emote.shortcuts.remove": "Entfernen",
+    "screen.emote.shortcuts.add": "%s hinzufügen",
+    "screen.emote.shortcuts.previous": "Zurück",
+    "screen.emote.shortcuts.next": "Weiter",
+    "screen.emote.shortcuts.done": "Fertig",
+    "screen.emote.shortcuts.page": "%s / %s"
 }
