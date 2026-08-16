@@ -142,16 +142,15 @@ public final class AdminCommand {
             ? ChatFormatting.GREEN
             : ChatFormatting.RED;
         return Component.empty()
-            .append(Component.literal("Emote reload").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
-            .append(Component.literal("\n  Disabled: ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(Component.literal(Integer.toString(result.disabledEmoteCount())).withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal("  Permissions: ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(Component.literal(Integer.toString(result.permissionRuleCount())).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal("\n  Emotes: ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal("Emote reload").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n Disabled: ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.disabledEmoteCount())).withStyle(ChatFormatting.RED))
+            .append(Component.literal("  Permissions: ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.permissionRuleCount())).withStyle(ChatFormatting.BLUE))
+            .append(Component.literal("\n Detected: ").withStyle(ChatFormatting.WHITE))
             .append(Component.literal(Integer.toString(result.detectedFileCount())))
-            .append(Component.literal(" detected  ").withStyle(ChatFormatting.DARK_GRAY))
-            .append(Component.literal(Integer.toString(result.loadedEmoteCount())).withStyle(loadedCountColor))
-            .append(Component.literal(" loaded").withStyle(ChatFormatting.DARK_GRAY));
+            .append(Component.literal("  Loaded: ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.loadedEmoteCount())).withStyle(loadedCountColor));
     }
 
     private int list(CommandSourceStack source) {
