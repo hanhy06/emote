@@ -340,7 +340,7 @@ public class PlaybackEngine implements ConfigListener {
             if (stopReason == null) {
                 try {
                     session.track().timeline().restoreDeferredVisibility();
-                    if (session.state() == PlaybackSession.State.SOLO) {
+                    if (followsInitiatorView(session.state())) {
                         this.entityController.updateViewRotation(session.nodes(), player.getYRot());
                     }
 
@@ -585,6 +585,13 @@ public class PlaybackEngine implements ConfigListener {
             case ATTACKED -> conditions.attack();
             case GAME_MODE_CHANGED -> conditions.gameModeChange();
             default -> false;
+        };
+    }
+
+    static boolean followsInitiatorView(PlaybackSession.State state) {
+        return switch (state) {
+            case SOLO, OFFERING, WAITING -> true;
+            case MATCHED, TIMEOUT -> false;
         };
     }
 

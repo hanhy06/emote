@@ -41,4 +41,13 @@ class PlaybackDisplayLimitTest {
         assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.GAME_MODE_CHANGED));
         assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
     }
+
+    @Test
+    void followsInitiatorViewWhileOfferingAndWaitingForPartner() {
+        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.SOLO));
+        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.OFFERING));
+        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.WAITING));
+        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.MATCHED));
+        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.TIMEOUT));
+    }
 }
