@@ -21,7 +21,7 @@ import {
   type ConverterSession,
 } from "./converterSession";
 import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
-import { downloadExport } from "./export/download";
+import { downloadExport, downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
@@ -141,10 +141,18 @@ export function App() {
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
-    await runExport(async () => {
-      const { exportDocumentAnimationBundle } = await import("./export/projectExporter");
-      return exportDocumentAnimationBundle(session.document, includeSequence);
-    }, "Bundle export failed.", includeSequence ? "Creating sequence ZIP" : "Creating animation ZIP");
+    if (busy) return;
+    dispatch({ type: "begin_export", message: includeSequence ? "Creating sequence files" : "Creating animation files" });
+
+    try {
+      await showLoadingScreen();
+      const { exportDocumentAnimationFiles } = await import("./export/projectExporter");
+      downloadExports(exportDocumentAnimationFiles(session.document, includeSequence));
+    } catch (reason) {
+      dispatch({ type: "fail_export", message: conversionErrorMessage(reason, "File export failed.") });
+    } finally {
+      dispatch({ type: "finish_operation" });
+    }
   }
 
   async function handleResourcePackDownload(index: number) {

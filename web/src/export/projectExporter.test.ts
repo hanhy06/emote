@@ -4,7 +4,7 @@ import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../f
 import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
-import { exportDocumentAnimation, exportDocumentAnimationBundle } from "./projectExporter";
+import { exportDocumentAnimation, exportDocumentAnimationFiles } from "./projectExporter";
 import { exportDocumentResourcePack } from "./resourcePackExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -74,7 +74,7 @@ function exportDocument(
 }
 
 describe("exportAnimation", () => {
-  it("exports multiple animations with a schema 3 sequence in one ZIP", async () => {
+  it("exports multiple animations and a schema 3 sequence as individual files", async () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "multi.json",
@@ -91,11 +91,10 @@ describe("exportAnimation", () => {
     document.animations[0].output = { ...document.animations[0].output, displayName: "Entry display", cooldown: "1s" };
     document.animations[1].output = { ...document.animations[1].output, displayName: "Idle display", cooldown: "2s" };
     document.sequence.cooldown = "1s";
-    const result = exportDocumentAnimationBundle(document, true);
+    const files = exportDocumentAnimationFiles(document, true);
 
-    const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
-    const sequenceName = Object.keys(files).find((name) => name.endsWith(".sequence.json"))!;
-    const sequenceJson = strFromU8(files[sequenceName]);
+    const sequenceFile = files.find((file) => file.fileName.endsWith(".sequence.json"))!;
+    const sequenceJson = await sequenceFile.blob.text();
     const sequence = JSON.parse(sequenceJson);
     expect(sequenceJson).toContain('\n  "steps": [\n');
     expect(sequence.schema_version).toBe(3);
@@ -103,16 +102,25 @@ describe("exportAnimation", () => {
     expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");
     expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
-    const animationNames = Object.keys(files).filter((name) => !name.endsWith(".sequence.json"));
+    const animationFiles = files.filter((file) => !file.fileName.endsWith(".sequence.json"));
+    const animationNames = animationFiles.map((file) => file.fileName);
     expect(animationNames).toEqual(["emote.1.entry_display.json", "emote.2.idle_display.json"]);
-    for (const animationName of animationNames) {
-      const animationJson = strFromU8(files[animationName]);
+    for (const animationFile of animationFiles) {
+      const animationJson = await animationFile.blob.text();
       expect(animationJson).not.toContain("\n");
       expect(JSON.parse(animationJson).settings.standalone).toBe(false);
     }
-    expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).settings.cooldown).toBe("40t");
-    expect(JSON.parse(strFromU8(files["emote.2.idle_display.json"])).metadata.name).toBe("Idle display");
-    expect(result.fileName).toBe("emote.demo.zip");
+    const idleJson = await animationFiles[1].blob.text();
+    expect(JSON.parse(idleJson).settings.cooldown).toBe("40t");
+    expect(JSON.parse(idleJson).metadata.name).toBe("Idle display");
+    expect(sequenceFile.fileName).toBe("emote.demo.sequence.json");
+
+    const standaloneFiles = exportDocumentAnimationFiles(document, false);
+    expect(standaloneFiles.map((file) => file.fileName)).toEqual([
+      "emote.1.entry_display.json",
+      "emote.2.idle_display.json",
+    ]);
+    expect(JSON.parse(await standaloneFiles[0].blob.text()).settings.standalone).toBe(true);
 
     const singleResult = exportDocumentAnimation(document, 0);
     expect(singleResult.fileName).toBe("emote.entry_display.json");

@@ -68,14 +68,14 @@ export function ExportPanel({
         <div>
           <span className="step-label">Page 3</span>
           <h2>Output</h2>
-          <p>Download one animation or package all animations together.</p>
+          <p>Download one animation or download every JSON file in sequence.</p>
         </div>
         <span className="summary-badge">{assignmentSummary}</span>
       </div>
       {error && <p className="error" role="alert">{error}</p>}
       {animations.length > 1 && <div className="bundle-actions">
-        <button type="button" disabled={disabled} onClick={onDownloadAllAnimations}>Download all JSON as ZIP</button>
-        <button className="primary-button" type="button" disabled={disabled} onClick={onDownloadSequence}>Download sequence ZIP</button>
+        <button type="button" disabled={disabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
+        <button className="primary-button" type="button" disabled={disabled} onClick={onDownloadSequence}>Download sequence files</button>
       </div>}
       <h3>Animations</h3>
       <ul className="download-list">

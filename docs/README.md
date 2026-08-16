@@ -107,7 +107,7 @@ Set `mineskin_api_key` to apply player skins.
 
 [Emote Converter](https://hanhy06.github.io/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
 
-Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export Animation JSON, a sequence ZIP, and a resource pack, or merge the result into an existing resource pack.
+Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export individual Animation and Sequence JSON files, download a resource pack, or merge the result into an existing resource pack.
 
 ![Open a project](mkdocs/assets/images/converter-open.png)
 

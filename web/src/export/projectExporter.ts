@@ -1,4 +1,3 @@
-import { strToU8, zipSync } from "fflate";
 import { compileConversionAnimation } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
@@ -17,19 +16,18 @@ export function exportDocumentAnimation(document: ConversionDocument, animationI
   };
 }
 
-export function exportDocumentAnimationBundle(document: ConversionDocument, includeSequence: boolean): ExportResult {
+export function exportDocumentAnimationFiles(document: ConversionDocument, includeSequence: boolean): ExportResult[] {
   validateResourceVersion(document, document.targetMinecraftVersion);
-  const firstEntry = document.animations[0];
-  if (!firstEntry) throw new Error("The project does not contain animations.");
+  if (document.animations.length === 0) throw new Error("The project does not contain animations.");
   const animations = document.animations.map((_, index) => compileConversionAnimation(
     document,
     index,
     includeSequence ? { standalone: false } : undefined,
   ));
-  const files: Record<string, Uint8Array> = Object.fromEntries(animations.map((animation, index) => [
-    `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
-    strToU8(serializeEmoteAnimation(animation)),
-  ]));
+  const files: ExportResult[] = animations.map((animation, index) => ({
+    blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
+    fileName: `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
+  }));
   if (includeSequence) {
     const sequenceOutput = document.sequence;
     const sequence = {
@@ -40,12 +38,12 @@ export function exportDocumentAnimationBundle(document: ConversionDocument, incl
       settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
       steps: animations.map((animation) => ({ emote: animation.id })),
     };
-    files[`emote.${sanitizeAnimationFileName(sequenceOutput.displayName)}.sequence.json`] = strToU8(`${JSON.stringify(sequence, null, 2)}\n`);
+    files.push({
+      blob: new Blob([`${JSON.stringify(sequence, null, 2)}\n`], { type: "application/json" }),
+      fileName: `emote.${sanitizeAnimationFileName(sequenceOutput.displayName)}.sequence.json`,
+    });
   }
-  return {
-    blob: new Blob([zipSync(files)], { type: "application/zip" }),
-    fileName: `emote.${sanitizeAnimationFileName(includeSequence ? document.sequence.displayName : firstEntry.output.displayName)}${includeSequence ? "" : ".animations"}.zip`,
-  };
+  return files;
 }
 
 export function sanitizeAnimationFileName(value: string): string {
