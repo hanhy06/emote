@@ -133,15 +133,25 @@ public final class AdminCommand {
 
     private int reload(CommandSourceStack source) {
         ReloadResult result = this.reloadService.reloadFromCommand();
-        source.sendSuccess(
-            () -> Component.literal(
-                "Reloading: cfg=" + result.configLoaded()
-                    + ", access=" + result.accessConfigLoaded()
-                    + ", emotes=" + result.emoteCount()
-            ),
-            true
-        );
-        return result.emoteCount();
+        source.sendSuccess(() -> createReloadSummary(result), true);
+        return result.loadedEmoteCount();
+    }
+
+    static Component createReloadSummary(ReloadResult result) {
+        ChatFormatting loadedCountColor = result.detectedFileCount() == result.loadedEmoteCount()
+            ? ChatFormatting.GREEN
+            : ChatFormatting.RED;
+        return Component.empty()
+            .append(Component.literal("Emote reload").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD))
+            .append(Component.literal("\n  Disabled: ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal(Integer.toString(result.disabledEmoteCount())).withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal("  Permissions: ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal(Integer.toString(result.permissionRuleCount())).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n  Emotes: ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal(Integer.toString(result.detectedFileCount())))
+            .append(Component.literal(" detected  ").withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal(Integer.toString(result.loadedEmoteCount())).withStyle(loadedCountColor))
+            .append(Component.literal(" loaded").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     private int list(CommandSourceStack source) {
@@ -335,7 +345,7 @@ public final class AdminCommand {
         ReloadResult reloadResult = this.reloadService.reloadFromCommand();
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
-            () -> Component.literal(action + " emote: " + id + " (emotes=" + reloadResult.emoteCount() + ")"),
+            () -> Component.literal(action + " emote: " + id + " (loaded files=" + reloadResult.loadedEmoteCount() + ")"),
             true
         );
         return 1;

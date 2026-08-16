@@ -40,7 +40,8 @@ public final class AnimationDirectoryLoader {
     DirectoryContents load(Path directory, LoadedValidator validator) {
         List<LoadedAnimation> candidates = new ArrayList<>();
         List<EmoteSequence> sequenceCandidates = new ArrayList<>();
-        for (Path path : findJsonFiles(directory)) {
+        List<Path> detectedFiles = findJsonFiles(directory);
+        for (Path path : detectedFiles) {
             try {
                 if (fileType(path).equals("sequence")) {
                     sequenceCandidates.add(this.sequenceJsonLoader.load(path));
@@ -52,7 +53,7 @@ public final class AnimationDirectoryLoader {
                 Emote.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
             }
         }
-        return rejectDuplicateIds(candidates, sequenceCandidates);
+        return rejectDuplicateIds(candidates, sequenceCandidates, detectedFiles.size());
     }
 
     private String fileType(Path path) throws EmoteAnimationLoadException {
@@ -105,7 +106,11 @@ public final class AnimationDirectoryLoader {
         }
     }
 
-    private DirectoryContents rejectDuplicateIds(List<LoadedAnimation> candidates, List<EmoteSequence> sequenceCandidates) {
+    private DirectoryContents rejectDuplicateIds(
+        List<LoadedAnimation> candidates,
+        List<EmoteSequence> sequenceCandidates,
+        int detectedFileCount
+    ) {
         Map<String, List<Path>> pathsById = new LinkedHashMap<>();
         for (LoadedAnimation candidate : candidates) {
             pathsById.computeIfAbsent(candidate.animation().id().toString(), ignored -> new ArrayList<>())
@@ -128,13 +133,16 @@ public final class AnimationDirectoryLoader {
             .filter(candidate -> !duplicateIds.contains(candidate.id().toString()))
             .sorted(Comparator.comparing(candidate -> candidate.id().toString()))
             .toList();
-        return new DirectoryContents(loaded, sequences);
+        return new DirectoryContents(loaded, sequences, detectedFileCount);
     }
 
-    public record DirectoryContents(List<LoadedAnimation> animations, List<EmoteSequence> sequences) {
+    public record DirectoryContents(List<LoadedAnimation> animations, List<EmoteSequence> sequences, int detectedFileCount) {
         public DirectoryContents {
             animations = List.copyOf(animations);
             sequences = List.copyOf(sequences);
+            if (detectedFileCount < animations.size() + sequences.size()) {
+                throw new IllegalArgumentException("Detected file count must include every loaded file");
+            }
         }
     }
 

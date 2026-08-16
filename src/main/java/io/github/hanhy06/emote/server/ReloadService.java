@@ -46,25 +46,32 @@ public final class ReloadService {
         this.configManager.configure();
         this.configManager.readConfig();
         this.configManager.readAccessConfig();
-        int emoteCount = reloadRegistry();
-        Emote.LOGGER.info("emotes={}", emoteCount);
+        ReloadStats stats = reloadRegistry();
+        Emote.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
     }
 
     public ReloadResult reloadFromCommand() {
-        boolean configLoaded = this.configManager.readConfig();
-        boolean emoteAccessConfigLoaded = this.configManager.readAccessConfig();
-        return new ReloadResult(configLoaded, emoteAccessConfigLoaded, reloadLoadedConfig());
+        this.configManager.readConfig();
+        this.configManager.readAccessConfig();
+        ReloadStats stats = reloadLoadedConfig();
+        var accessConfig = this.configManager.getAccessConfig();
+        return new ReloadResult(
+            accessConfig.disabled().size(),
+            accessConfig.permissions().size(),
+            stats.detectedFileCount(),
+            stats.loadedEmoteCount()
+        );
     }
 
-    private int reloadLoadedConfig() {
+    private ReloadStats reloadLoadedConfig() {
         this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
-        int emoteCount = reloadRegistry();
+        ReloadStats stats = reloadRegistry();
         this.wheelSyncService.syncAll();
-        Emote.LOGGER.info("reload emotes={}", emoteCount);
-        return emoteCount;
+        Emote.LOGGER.info("reload emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
+        return stats;
     }
 
-    private int reloadRegistry() {
+    private ReloadStats reloadRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
         var emotes = contents.animations().stream()
             .map(PreparedEmote::from)
@@ -85,7 +92,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return this.emoteCatalog.size();
+        return new ReloadStats(contents.detectedFileCount(), this.emoteCatalog.getFileDefinitions().size());
     }
 
     private PreparedSequence resolveSequence(
@@ -103,5 +110,8 @@ public final class ReloadService {
     @FunctionalInterface
     interface DirectoryContentsLoader {
         AnimationDirectoryLoader.DirectoryContents load(java.nio.file.Path directory);
+    }
+
+    private record ReloadStats(int detectedFileCount, int loadedEmoteCount) {
     }
 }

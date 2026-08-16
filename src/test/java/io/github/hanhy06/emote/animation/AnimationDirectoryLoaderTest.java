@@ -27,11 +27,13 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(nestedDirectory.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        List<LoadedAnimation> loaded = this.loader.load(tempDir, animation -> animation).animations();
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
             .toList());
+        assertEquals(2, contents.detectedFileCount());
     }
 
     @Test
@@ -40,11 +42,13 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("second.json"), "same:wave");
         writeAnimation(tempDir.resolve("valid.json"), "other:wave");
 
-        List<LoadedAnimation> loaded = this.loader.load(tempDir, animation -> animation).animations();
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(List.of("other:wave"), loaded.stream()
             .map(animation -> animation.animation().id().toString())
             .toList());
+        assertEquals(3, contents.detectedFileCount());
     }
 
     @Test
@@ -52,17 +56,21 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("valid.json"), "valid:wave");
         Files.writeString(tempDir.resolve("broken.json"), "{");
 
-        List<LoadedAnimation> loaded = this.loader.load(tempDir, animation -> animation).animations();
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(1, loaded.size());
         assertEquals("valid:wave", loaded.getFirst().animation().id().toString());
+        assertEquals(2, contents.detectedFileCount());
     }
 
     @Test
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        assertTrue(this.loader.load(directory, animation -> animation).animations().isEmpty());
+        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(directory, animation -> animation);
+        assertTrue(contents.animations().isEmpty());
+        assertEquals(0, contents.detectedFileCount());
         assertTrue(Files.isDirectory(directory));
     }
 

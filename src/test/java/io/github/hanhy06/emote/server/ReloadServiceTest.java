@@ -42,7 +42,7 @@ class ReloadServiceTest {
         ReloadService service = new ReloadService(
             configManager,
             registry,
-            ignored -> new AnimationDirectoryLoader.DirectoryContents(java.util.List.of(loaded), java.util.List.of()),
+            ignored -> new AnimationDirectoryLoader.DirectoryContents(java.util.List.of(loaded), java.util.List.of(), 1),
             null,
             null
         );

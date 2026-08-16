@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.command;
 
 import io.github.hanhy06.emote.permission.PermissionService;
+import io.github.hanhy06.emote.server.ReloadResult;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class AdminCommandTest {
@@ -70,6 +72,34 @@ final class AdminCommandTest {
         );
         assertEquals(TextColor.DARK_GRAY, entry.getStyle().getColor());
         assertEquals(TextColor.AQUA, entry.getSiblings().getFirst().getStyle().getColor());
+    }
+
+    @Test
+    void reloadSummaryShowsAccessCountsAndHighlightsMismatchedEmoteCounts() {
+        var summary = AdminCommand.createReloadSummary(new ReloadResult(2, 4, 5, 3));
+
+        assertEquals(
+            """
+            Emote reload
+              Disabled: 2  Permissions: 4
+              Emotes: 5 detected  3 loaded
+            """.stripTrailing(),
+            summary.getString()
+        );
+        assertEquals(TextColor.GOLD, summary.getSiblings().getFirst().getStyle().getColor());
+        assertTrue(summary.getSiblings().stream().anyMatch(component -> TextColor.AQUA.equals(component.getStyle().getColor())));
+        assertTrue(summary.getSiblings().stream().anyMatch(component -> TextColor.RED.equals(component.getStyle().getColor())));
+        assertNull(summary.getSiblings().stream().filter(component -> component.getString().equals("5")).findFirst().orElseThrow().getStyle().getColor());
+    }
+
+    @Test
+    void reloadSummaryHighlightsMatchingEmoteCountsInGreen() {
+        var summary = AdminCommand.createReloadSummary(new ReloadResult(0, 1, 5, 5));
+
+        long greenParts = summary.getSiblings().stream()
+            .filter(component -> TextColor.GREEN.equals(component.getStyle().getColor()))
+            .count();
+        assertEquals(1, greenParts);
     }
 
     private AdminCommand createCommand(boolean canManage) {
