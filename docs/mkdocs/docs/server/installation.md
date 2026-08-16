@@ -47,7 +47,7 @@ File names are only for organization. The actual emote ID comes from `id` inside
 | `mineskin_poll_interval_seconds` | Interval for checking MineSkin job status. Range: `1`–`60` seconds. |
 | `mineskin_cache_retention_days` | Skin-cache retention period. Range: `1`–`3650` days. |
 | `mineskin_cache_max_mib` | Maximum skin-cache size in MiB. |
-| `max_active_display_entities` | Server-wide limit on display entities activated by Emote. A value of `0` prevents creation. |
+| `max_active_display_entities` | A value of 0 allows an unlimited number of active display entities. |
 
 ## Reloading
 
