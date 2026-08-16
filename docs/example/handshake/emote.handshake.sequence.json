@@ -1,0 +1,59 @@
+{
+    "type": "sequence",
+    "schema_version": 3,
+    "id": "emote:handshake",
+    "metadata": {
+        "name": "handshake",
+        "description": "handshake emote."
+    },
+    "participants": {
+        "initiator": {
+            "position": "~ ~ ~",
+            "rotation": "~ 0"
+        },
+        "partner": {
+            "position": "^ ^ ^1",
+            "rotation": "~180 0"
+        }
+    },
+    "settings": {
+        "cooldown": "0t",
+        "player": {
+            "hidden": true,
+            "stop_conditions": {
+                "movement_distance": 0.1,
+                "jump": true,
+                "submerge": true,
+                "ride": true,
+                "damage": true,
+                "attack": true,
+                "game_mode_change": true
+            }
+        }
+    },
+    "steps": [
+        {
+            "await_partner": {
+                "emote": "handshake:offer",
+                "timeout": "10s"
+            },
+            "matched": [
+                {
+                    "emote": "handshake:shake",
+                    "repeat": 2
+                },
+                {
+                    "wait": "1s"
+                },
+                {
+                    "emote": "handshake:close"
+                }
+            ],
+            "timeout": [
+                {
+                    "emote": "handshake:close"
+                }
+            ]
+        }
+    ]
+}

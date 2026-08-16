@@ -66,8 +66,6 @@ Reloading performs these operations:
 
 Invalid Animation files are skipped individually. If `config.json` or `emotes.json` is invalid, the last valid in-memory configuration remains active and the cause is written to the server log.
 
-The command result shows the number of disabled IDs and permission groups from `emotes.json`, followed by the detected and loaded emote file counts. The loaded count is green when it matches the detected count and red when it differs. Check the server log for details when the counts differ.
-
 ## Verifying the installation
 
 ```text

@@ -98,7 +98,7 @@ public class EmotePlayService {
             currentTick = this.tickSource.applyAsLong(player);
             long remainingTicks = this.cooldowns.remainingTicks(playerId, emote.id(), currentTick);
             if (remainingTicks > 0L) {
-                return PlayResult.failure("Emote cooldown: " + remainingTicks + "t remaining.");
+                return PlayResult.failure("Emote cooldown: " + (remainingTicks + 19) / 20 + "s remaining.");
             }
         }
         Component cancellationMessage = this.eventDispatcher.beforePlay(player, emote, source);
