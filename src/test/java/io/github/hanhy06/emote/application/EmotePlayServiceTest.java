@@ -135,6 +135,30 @@ class EmotePlayServiceTest {
     }
 
     @Test
+    void idlePlaybackDoesNotRequireEmotePermission() {
+        EmotePlayService service = new EmotePlayService(
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> fail("Idle playback must not check emote permission"),
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertTrue(service.play(null, "minecraft:wave", PlaySource.IDLE).isSuccess());
+    }
+
+    @Test
+    void apiPlaybackStillRequiresEmotePermission() {
+        EmotePlayService service = new EmotePlayService(
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> false,
+            (ignoredPlayer, ignoredDefinition) -> fail("Blocked API playback must not start"),
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertHasErrorMessage(service.play(null, "minecraft:wave", PlaySource.API));
+    }
+
+    @Test
     void rejectsDirectPlaybackOfSequenceOnlyAnimation() {
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)), List.of());
@@ -146,6 +170,7 @@ class EmotePlayServiceTest {
         );
 
         assertHasErrorMessage(service.play(null, "minecraft:sit_idle"));
+        assertHasErrorMessage(service.play(null, "minecraft:sit_idle", PlaySource.IDLE));
     }
 
     @Test

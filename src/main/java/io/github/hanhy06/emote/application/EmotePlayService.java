@@ -88,7 +88,7 @@ public class EmotePlayService {
             return PlayResult.failure("Sequence-only animation: " + id);
         }
         boolean bypass = this.bypassChecker.canBypass(player);
-        if (!bypass && !this.playPermissionChecker.canPlay(player, emote)) {
+        if (source != PlaySource.IDLE && !bypass && !this.playPermissionChecker.canPlay(player, emote)) {
             return PlayResult.failure("No emote permission.");
         }
         UUID playerId = null;
