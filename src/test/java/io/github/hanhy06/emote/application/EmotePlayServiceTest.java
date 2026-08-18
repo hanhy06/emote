@@ -24,6 +24,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredDefinition -> false,
             ignoredPlayer -> false,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
             (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
@@ -45,6 +46,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredDefinition -> false,
             ignoredPlayer -> false,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
             (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
@@ -69,6 +71,7 @@ class EmotePlayServiceTest {
         EmotePlayService service = new EmotePlayService(
             registry,
             (ignoredPlayer, ignoredDefinition) -> true,
+            ignoredDefinition -> false,
             ignoredPlayer -> bypass.get(),
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
             (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
@@ -144,6 +147,22 @@ class EmotePlayServiceTest {
         );
 
         assertTrue(service.play(null, "minecraft:wave", PlaySource.IDLE).isSuccess());
+    }
+
+    @Test
+    void idlePlaybackRejectsDisabledEmote() {
+        EmotePlayService service = new EmotePlayService(
+            createRegistry(),
+            (ignoredPlayer, ignoredDefinition) -> fail("Idle playback must not check emote permission"),
+            ignoredDefinition -> true,
+            ignoredPlayer -> false,
+            (ignoredPlayer, ignoredDefinition) -> fail("Disabled idle emote must not start"),
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
+            ignoredPlayer -> new UUID(0L, 0L),
+            ignoredPlayer -> 0L
+        );
+
+        assertHasErrorMessage(service.play(null, "minecraft:wave", PlaySource.IDLE));
     }
 
     @Test

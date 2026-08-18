@@ -16,6 +16,7 @@ import java.util.function.ToLongFunction;
 public class EmotePlayService {
     private final EmoteCatalog emoteCatalog;
     private final PlayPermissionChecker playPermissionChecker;
+    private final DisabledEmoteChecker disabledEmoteChecker;
     private final BypassChecker bypassChecker;
     private final PlaybackStarter emoteStarter;
     private final PlayEventDispatcher eventDispatcher;
@@ -32,6 +33,7 @@ public class EmotePlayService {
         this(
             emoteCatalog,
             (player, emote) -> permissionService.canPlay(player, emote.id()),
+            emote -> permissionService.isDisabled(emote.id()),
             permissionService::canBypass,
             playbackEngine::start,
             apiEvents::beforePlay,
@@ -50,6 +52,7 @@ public class EmotePlayService {
             emoteCatalog,
             playPermissionChecker,
             ignored -> false,
+            ignored -> false,
             emoteStarter,
             eventDispatcher,
             ignored -> new UUID(0L, 0L),
@@ -60,6 +63,7 @@ public class EmotePlayService {
     EmotePlayService(
         EmoteCatalog emoteCatalog,
         PlayPermissionChecker playPermissionChecker,
+        DisabledEmoteChecker disabledEmoteChecker,
         BypassChecker bypassChecker,
         PlaybackStarter emoteStarter,
         PlayEventDispatcher eventDispatcher,
@@ -68,6 +72,7 @@ public class EmotePlayService {
     ) {
         this.emoteCatalog = emoteCatalog;
         this.playPermissionChecker = playPermissionChecker;
+        this.disabledEmoteChecker = disabledEmoteChecker;
         this.bypassChecker = bypassChecker;
         this.emoteStarter = emoteStarter;
         this.eventDispatcher = eventDispatcher;
@@ -86,6 +91,9 @@ public class EmotePlayService {
         }
         if (!emote.standalone()) {
             return PlayResult.failure("Sequence-only animation: " + id);
+        }
+        if (source == PlaySource.IDLE && this.disabledEmoteChecker.isDisabled(emote)) {
+            return PlayResult.failure("Disabled emote: " + id);
         }
         boolean bypass = this.bypassChecker.canBypass(player);
         if (source != PlaySource.IDLE && !bypass && !this.playPermissionChecker.canPlay(player, emote)) {
@@ -119,6 +127,11 @@ public class EmotePlayService {
     @FunctionalInterface
     interface PlayPermissionChecker {
         boolean canPlay(ServerPlayer player, PreparedDefinition emote);
+    }
+
+    @FunctionalInterface
+    interface DisabledEmoteChecker {
+        boolean isDisabled(PreparedDefinition emote);
     }
 
     @FunctionalInterface

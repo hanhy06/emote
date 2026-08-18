@@ -50,7 +50,7 @@ public class PermissionService implements AccessConfigListener {
         if (canBypass(player)) {
             return true;
         }
-        if (this.disabled.contains(id)) {
+        if (isDisabled(id)) {
             return false;
         }
         for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
@@ -63,6 +63,10 @@ public class PermissionService implements AccessConfigListener {
             }
         }
         return false;
+    }
+
+    public boolean isDisabled(String id) {
+        return this.disabled.contains(id);
     }
 
     public Optional<AccessConfig.IdleSettings> findIdleSettings(ServerPlayer player) {
