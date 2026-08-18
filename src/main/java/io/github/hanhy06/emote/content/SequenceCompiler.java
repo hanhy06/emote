@@ -35,7 +35,7 @@ final class SequenceCompiler {
             PreparedSequence.SelectedEmoteStep step = (PreparedSequence.SelectedEmoteStep) selectedStep;
             EmoteAnimation animation = step.animation().animation();
             int segmentOffset = requireTick(offset, sequence);
-            keyframes.add(createResetKeyframe(animation, segmentOffset));
+            keyframes.add(createResetKeyframe(layoutAnchor.animation(), animation, segmentOffset));
             for (EmoteAnimation.Keyframe keyframe : animation.timeline().keyframes()) {
                 keyframes.add(new EmoteAnimation.Keyframe(
                     requireTick(offset + keyframe.tick(), sequence),
@@ -97,9 +97,14 @@ final class SequenceCompiler {
         return new EmoteAnimation.Keyframe(tick, Map.of(), states);
     }
 
-    private static EmoteAnimation.Keyframe createResetKeyframe(EmoteAnimation animation, int tick) {
+    private static EmoteAnimation.Keyframe createResetKeyframe(
+        EmoteAnimation layout,
+        EmoteAnimation animation,
+        int tick
+    ) {
         Map<String, EmoteAnimation.NodeTransform> transforms = new LinkedHashMap<>();
         Map<String, EmoteAnimation.NodeState> states = new LinkedHashMap<>();
+        layout.nodes().keySet().forEach(nodeId -> states.put(nodeId, new EmoteAnimation.NodeState(false)));
         animation.nodes().forEach((nodeId, node) -> {
             transforms.put(nodeId, new EmoteAnimation.NodeTransform(node.defaultMatrix(), 0));
             states.put(nodeId, new EmoteAnimation.NodeState(node.visible()));

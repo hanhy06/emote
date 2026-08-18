@@ -52,7 +52,7 @@ final class SequenceNodeLayout {
         return new Expansion(expanded, expandedPreparedData, true);
     }
 
-    static PreparedEmote validateAndFindLayoutAnchor(List<PreparedSequence.Step> steps) {
+    static PreparedEmote validateAndCreateLayout(List<PreparedSequence.Step> steps) {
         PreparedEmote first = steps.stream()
             .filter(PreparedSequence.EmoteStep.class::isInstance)
             .map(PreparedSequence.EmoteStep.class::cast)
@@ -62,6 +62,8 @@ final class SequenceNodeLayout {
             .map(PreparedSequence.AnimationChoice::animation)
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Sequence must reference at least one animation"));
+        Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
+        Map<String, PreparedDisplayData> preparedDisplayData = new LinkedHashMap<>();
         for (PreparedSequence.Step step : steps) {
             if (!(step instanceof PreparedSequence.EmoteStep emoteStep)) {
                 continue;
@@ -71,11 +73,6 @@ final class SequenceNodeLayout {
                     continue;
                 }
                 PreparedEmote animation = animationChoice.animation();
-                if (!compatibleNodes(first.animation().nodes(), animation.animation().nodes())) {
-                    throw new IllegalArgumentException(
-                        "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
-                    );
-                }
                 if (!first.skinParts().equals(animation.skinParts())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
@@ -87,9 +84,44 @@ final class SequenceNodeLayout {
                         "Sequence animation lifecycle events are not supported by compiled sequences: " + animation.id()
                     );
                 }
+                mergeNodes(first, animation, nodes, preparedDisplayData);
             }
         }
-        return first;
+
+        EmoteAnimation layoutAnimation = new EmoteAnimation(
+            first.animation().id(),
+            first.animation().metadata(),
+            first.animation().settings(),
+            nodes,
+            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
+        );
+        LoadedAnimation loaded = new LoadedAnimation(
+            first.sourcePath(),
+            first.source().sha256(),
+            layoutAnimation,
+            preparedDisplayData
+        );
+        return new PreparedEmote(loaded, first.skinParts(), CompiledTimeline.compile(layoutAnimation));
+    }
+
+    private static void mergeNodes(
+        PreparedEmote first,
+        PreparedEmote animation,
+        Map<String, EmoteAnimation.Node> nodes,
+        Map<String, PreparedDisplayData> preparedDisplayData
+    ) {
+        animation.animation().nodes().forEach((nodeId, node) -> {
+            EmoteAnimation.Node existing = nodes.putIfAbsent(nodeId, node);
+            if (existing != null && !compatibleNode(existing, node)) {
+                throw new IllegalArgumentException(
+                    "Sequence animations must use compatible nodes: " + first.id() + " and " + animation.id()
+                );
+            }
+            PreparedDisplayData prepared = animation.source().preparedDisplayData().get(nodeId);
+            if (prepared != null) {
+                preparedDisplayData.putIfAbsent(nodeId, prepared);
+            }
+        });
     }
 
     private static Map<String, String> partnerNodeIds(Map<String, EmoteAnimation.Node> nodes) {
@@ -152,21 +184,6 @@ final class SequenceNodeLayout {
             }
         });
         return new EmoteAnimation.Keyframe(keyframe.tick(), transforms, states);
-    }
-
-    private static boolean compatibleNodes(
-        Map<String, EmoteAnimation.Node> first,
-        Map<String, EmoteAnimation.Node> candidate
-    ) {
-        if (!first.keySet().equals(candidate.keySet())) {
-            return false;
-        }
-        for (String nodeId : first.keySet()) {
-            if (!compatibleNode(first.get(nodeId), candidate.get(nodeId))) {
-                return false;
-            }
-        }
-        return true;
     }
 
     private static boolean compatibleNode(EmoteAnimation.Node first, EmoteAnimation.Node candidate) {

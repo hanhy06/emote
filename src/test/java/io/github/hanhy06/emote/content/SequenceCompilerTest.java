@@ -104,7 +104,21 @@ class SequenceCompilerTest {
     }
 
     @Test
-    void rejectsAnimationsWithDifferentNodeLayouts() {
+    void createsAllCandidateNodesAtTheirOwnInitialPositionsAndSwitchesVisibility() {
+        EmoteAnimation.TextNode flowerNode = new EmoteAnimation.TextNode(
+            true,
+            EmoteAnimation.NodeSpace.SCENE,
+            matrix(2.0D),
+            new CompoundTag(),
+            new JsonPrimitive("flower")
+        );
+        EmoteAnimation.TextNode butterflyNode = new EmoteAnimation.TextNode(
+            true,
+            EmoteAnimation.NodeSpace.SCENE,
+            matrix(8.0D),
+            new CompoundTag(),
+            new JsonPrimitive("butterfly")
+        );
         PreparedEmote first = animation(
             "demo:first",
             1,
@@ -112,7 +126,8 @@ class SequenceCompilerTest {
             0,
             List.of(),
             EmoteAnimation.Events.empty(),
-            Map.of("root", sceneAnchor())
+            Map.of("flower", flowerNode),
+            Map.of("flower", new PreparedDisplayData.Text(Component.literal("flower")))
         );
         PreparedEmote second = animation(
             "demo:second",
@@ -121,21 +136,35 @@ class SequenceCompilerTest {
             0,
             List.of(),
             EmoteAnimation.Events.empty(),
-            Map.of("other", sceneAnchor())
+            Map.of("butterfly", butterflyNode),
+            Map.of("butterfly", new PreparedDisplayData.Text(Component.literal("butterfly")))
         );
-
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(
+        PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
-                new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
-                new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1)
+                new EmoteSequence.EmoteStep(List.of(
+                    Identifier.parse(first.id()),
+                    Identifier.parse(second.id())
+                ), 2)
             ),
             Map.of(first.id(), first, second.id(), second)
-        ));
-
-        assertEquals(
-            "Sequence animations must use compatible nodes: demo:first and demo:second",
-            exception.getMessage()
         );
+
+        EmoteAnimation compiled = sequence.compiledAnimation().animation();
+        EmoteAnimation.Keyframe initial = compiled.timeline().keyframes().getFirst();
+
+        assertEquals(Set.of("flower", "butterfly"), compiled.nodes().keySet());
+        assertEquals(matrix(2.0D), compiled.nodes().get("flower").defaultMatrix());
+        assertEquals(matrix(8.0D), compiled.nodes().get("butterfly").defaultMatrix());
+        assertTrue(initial.nodeStates().get("flower").visible());
+        assertFalse(initial.nodeStates().get("butterfly").visible());
+
+        EmoteAnimation alternating = sequence.compileRandom(randomWithValues(0, 0)).animation();
+        EmoteAnimation.Keyframe butterflySegment = alternating.timeline().keyframes().stream()
+            .filter(keyframe -> keyframe.tick() == 1)
+            .findFirst()
+            .orElseThrow();
+        assertFalse(butterflySegment.nodeStates().get("flower").visible());
+        assertTrue(butterflySegment.nodeStates().get("butterfly").visible());
     }
 
     @Test

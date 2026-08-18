@@ -27,7 +27,7 @@ public record PreparedSequence(
 
     public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedEmote> animations) {
         Playback playback = resolvePlayback(source, animations);
-        PreparedEmote layoutAnchor = SequenceNodeLayout.validateAndFindLayoutAnchor(playback.validationSteps());
+        PreparedEmote layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
         List<SelectedStep> initialSteps = switch (playback) {
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
             case CollaborativePlayback collaborative -> List.of(new SelectedEmoteStep(collaborative.offer(), false));
