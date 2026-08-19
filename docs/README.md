@@ -109,11 +109,11 @@ Set `mineskin_api_key` to apply player skins.
 
 Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export individual Animation and Sequence JSON files, download a resource pack, or merge the result into an existing resource pack.
 
-![Open a project](mkdocs/assets/images/converter-open.png)
+![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
-![Skin parts and commands](mkdocs/assets/images/converter-rigging.png)
+![Review](https://cdn.modrinth.com/data/qUF0jygw/images/8f099b4088dca06f6f5f2eb92a77a1d83267c8bb.png)
 
-![Metadata and playback settings](mkdocs/assets/images/converter-settings.png)
+![Settings](https://cdn.modrinth.com/data/qUF0jygw/images/7b83454fe2ddff3e73abe2fc7f858cceb33ebff6.png)
 
 ### Animation conversion
 
