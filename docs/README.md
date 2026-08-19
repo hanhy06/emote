@@ -148,7 +148,7 @@ Connect short animation clips in order and combine waits, weighted random choice
 }
 ```
 
-- [Sequence format](https://hanhy06.github.io/emote/developers/sequence.md)
+- [Sequence format](https://hanhy06.github.io/emote/developers/sequence/)
 
 #### Collaborative emotes
 
