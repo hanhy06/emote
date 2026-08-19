@@ -191,4 +191,4 @@ If the problem is not covered here, report it on [Discord](https://discord.gg/CR
 
 ## License
 
-This project is distributed under the [Apache License 2.0](../LICENSE).
+This project is distributed under the [Apache License 2.0](https://github.com/hanhy06/emote/blob/main/LICENSE).
