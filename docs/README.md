@@ -122,7 +122,6 @@ The web converter recalculates the source animation's easing and interpolation c
 Each animation can define a cooldown, player visibility, stop conditions such as movement, jumping, attacking, and taking damage, and frame commands.
 
 - [Animation format](https://github.com/hanhy06/emote/blob/main/docs/mkdocs/docs/developers/animation.md)
-- [Animation reference JSON](./reference/animation.json)
 
 ### Sequence
 
@@ -150,7 +149,6 @@ Connect short animation clips in order and combine waits, weighted random choice
 ```
 
 - [Sequence format](https://github.com/hanhy06/emote/blob/main/docs/mkdocs/docs/developers/sequence.md)
-- [Sequence reference JSON](./reference/sequence.json)
 
 #### Collaborative emotes
 
@@ -176,8 +174,6 @@ Combine animations for two players in a sequence to create a collaborative emote
   }]
 }
 ```
-
-- [Two-player sequence reference JSON](./reference/two-player-sequence.json)
 
 ## Mod API
 
