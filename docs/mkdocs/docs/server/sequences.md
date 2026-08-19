@@ -75,4 +75,4 @@ If the Sequence does not load, check the server log for missing Animation IDs, i
 !!! note "Complete example pack"
     A ready-to-install Sequence example pack will be added to the existing `docs/example/` collection when it is ready. The JSON on this page only demonstrates the structure and requires separate referenced Animation files.
 
-To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../formats/sequence.md).
+To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).
