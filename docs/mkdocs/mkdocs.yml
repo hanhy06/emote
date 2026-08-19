@@ -25,9 +25,9 @@ nav:
       - Commands: server/commands.md
       - Using Sequences: server/sequences.md
   - Developers:
-      - Animation: formats/animation.md
-      - Sequence: formats/sequence.md
-      - Mod API: api.md
+      - Animation: developers/animation.md
+      - Sequence: developers/sequence.md
+      - Mod API: developers/api.md
 
 theme:
   name: material
