@@ -5,6 +5,8 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 
 import java.util.HashMap;
 import java.util.List;
@@ -16,7 +18,7 @@ public final class AnimationPlayer {
     private final PreparedAnimation emote;
     private final TimelineTarget target;
     private AnimationEvaluator evaluator;
-    private final Map<String, PreparedAnimation.PreparedTransform> appliedTransforms = new HashMap<>();
+    private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
 
     private int currentTick;
@@ -219,11 +221,9 @@ public final class AnimationPlayer {
     }
 
     public Transformation currentTransformation(String nodeId) {
-        PreparedAnimation.PreparedTransform transform = this.evaluator == null ? null : this.evaluator.currentTransform(nodeId);
-        return this.target.createTransformation(
-            nodeId,
-            transform == null ? this.emote.defaultTransform(nodeId) : transform
-        );
+        Matrix4fc matrix = this.evaluator == null ? null : this.evaluator.matrix(nodeId);
+        if (matrix == null) return this.target.createTransformation(nodeId, this.emote.defaultTransform(nodeId));
+        return this.target.createTransformation(nodeId, matrix, this.evaluator.preservesMatrix(nodeId));
     }
 
     private void resetToTickZero() {
@@ -232,7 +232,8 @@ public final class AnimationPlayer {
         if (this.evaluator == null) {
             applyTick(0);
         } else {
-            applyPose(this.evaluator.beginCycle(0, this.loopCount), 0);
+            this.evaluator.beginCycle(0, this.loopCount);
+            applyEvaluator(0, Map.of());
         }
     }
 
@@ -249,7 +250,8 @@ public final class AnimationPlayer {
     }
 
     private void applySynchronizedSnapshot(int tick) {
-        applyPose(this.evaluator.beginCycle(tick, this.loopCount), 0);
+        this.evaluator.beginCycle(tick, this.loopCount);
+        applyEvaluator(0, Map.of());
     }
 
     private void applyTick(int tick) {
@@ -258,7 +260,8 @@ public final class AnimationPlayer {
             applyHiddenNodes(tick);
             return;
         }
-        applyPose(this.evaluator.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
+        this.evaluator.evaluate(tick, this.loopCount);
+        applyEvaluator(tick == 0 ? 0 : 1, Map.of());
     }
 
     private void applyPlaybackSegment(int tick) {
@@ -277,58 +280,50 @@ public final class AnimationPlayer {
         }
         PreparedAnimation.PlaybackSegment segment = segments.get(selected);
         int localTick = tick - segment.startTick();
-        AnimationEvaluator.Pose pose;
         if (selected != this.activePlaybackSegment) {
             this.activePlaybackSegment = selected;
             this.mirroredNodes = segment.mirroredNodes();
             this.evaluator = new AnimationEvaluator(segment.animation());
-            pose = this.evaluator.beginCycle(localTick, 0);
+            this.evaluator.beginCycle(localTick, 0);
         } else {
-            pose = this.evaluator.evaluate(localTick, 0);
+            this.evaluator.evaluate(localTick, 0);
         }
-        applyPose(pose, tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
+        applyEvaluator(tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
     }
 
     private void applyHiddenNodes(int tick) {
         this.emote.hiddenNodes(tick).forEach(nodeId -> applyVisibility(nodeId, false));
     }
 
-    private void applyPose(AnimationEvaluator.Pose pose, int interpolationDurationTicks) {
-        applyPose(pose, interpolationDurationTicks, Map.of());
-    }
-
-    private void applyPose(
-        AnimationEvaluator.Pose pose,
-        int interpolationDurationTicks,
-        Map<String, String> mirroredNodes
-    ) {
-        for (Map.Entry<String, PreparedAnimation.PreparedTransform> entry : pose.transforms().entrySet()) {
-            applyTransform(entry.getKey(), entry.getValue(), interpolationDurationTicks);
-            String mirror = mirroredNodes.get(entry.getKey());
+    private void applyEvaluator(int interpolationDurationTicks, Map<String, String> mirroredNodes) {
+        for (int index = 0; index < this.evaluator.nodeCount(); index++) {
+            String nodeId = this.evaluator.nodeId(index);
+            Matrix4fc matrix = this.evaluator.matrix(index);
+            boolean preserveMatrix = this.evaluator.preservesMatrix(index);
+            applyTransform(nodeId, matrix, preserveMatrix, interpolationDurationTicks);
+            String mirror = mirroredNodes.get(nodeId);
             if (mirror != null) {
-                applyTransform(mirror, entry.getValue(), interpolationDurationTicks);
+                applyTransform(mirror, matrix, preserveMatrix, interpolationDurationTicks);
             }
-        }
-        for (Map.Entry<String, Boolean> entry : pose.visibility().entrySet()) {
-            applyVisibility(entry.getKey(), entry.getValue());
-            String mirror = mirroredNodes.get(entry.getKey());
+            boolean visible = this.evaluator.visible(index);
+            applyVisibility(nodeId, visible);
             if (mirror != null) {
-                applyVisibility(mirror, entry.getValue());
+                applyVisibility(mirror, visible);
             }
         }
     }
 
     private void applyTransform(
         String nodeId,
-        PreparedAnimation.PreparedTransform transform,
+        Matrix4fc matrix,
+        boolean preserveMatrix,
         int interpolationDurationTicks
     ) {
-        PreparedAnimation.PreparedTransform applied = this.appliedTransforms.get(nodeId);
-        if (applied != null && transform.hasSameMatrix(applied)) {
-            return;
-        }
-        this.appliedTransforms.put(nodeId, transform);
-        this.target.applyTransform(nodeId, transform, interpolationDurationTicks);
+        Matrix4f applied = this.appliedTransforms.get(nodeId);
+        if (applied != null && matrix.equals(applied)) return;
+        if (applied == null) this.appliedTransforms.put(nodeId, new Matrix4f(matrix));
+        else applied.set(matrix);
+        this.target.applyTransform(nodeId, matrix, preserveMatrix, interpolationDurationTicks);
     }
 
     private void applyVisibility(String nodeId, boolean visible) {
@@ -362,11 +357,28 @@ public final class AnimationPlayer {
     public interface TimelineTarget {
         Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform);
 
+        default Transformation createTransformation(String nodeId, Matrix4fc matrix, boolean preserveMatrix) {
+            return createTransformation(nodeId, PreparedAnimation.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix));
+        }
+
         void applyTransform(
             String nodeId,
             PreparedAnimation.PreparedTransform transform,
             int interpolationDurationTicks
         );
+
+        default void applyTransform(
+            String nodeId,
+            Matrix4fc matrix,
+            boolean preserveMatrix,
+            int interpolationDurationTicks
+        ) {
+            applyTransform(
+                nodeId,
+                PreparedAnimation.PreparedTransform.create(new Matrix4f(matrix), preserveMatrix),
+                interpolationDurationTicks
+            );
+        }
 
         void setVisible(String nodeId, boolean visible);
 
@@ -385,6 +397,12 @@ public final class AnimationPlayer {
         }
 
         @Override
+        public Transformation createTransformation(String nodeId, Matrix4fc matrix, boolean preserveMatrix) {
+            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
+            return this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix);
+        }
+
+        @Override
         public void applyTransform(
             String nodeId,
             PreparedAnimation.PreparedTransform transform,
@@ -394,6 +412,21 @@ public final class AnimationPlayer {
                 this.nodes,
                 requiredNode(nodeId),
                 transform,
+                interpolationDurationTicks
+            );
+        }
+
+        @Override
+        public void applyTransform(
+            String nodeId,
+            Matrix4fc matrix,
+            boolean preserveMatrix,
+            int interpolationDurationTicks
+        ) {
+            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
+            this.entityController.applyTransformation(
+                node,
+                this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix),
                 interpolationDurationTicks
             );
         }

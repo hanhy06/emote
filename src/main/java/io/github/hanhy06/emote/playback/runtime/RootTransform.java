@@ -48,6 +48,19 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         );
     }
 
+    public Transformation displayTransformation(Matrix4fc matrix, boolean preserveMatrix) {
+        if (preserveMatrix) {
+            return new Transformation(new Matrix4f(this.rotationMatrix).mul(matrix));
+        }
+        Transformation transform = new Transformation(matrix);
+        return new Transformation(
+            this.rotation.transform(transform.translation(), new Vector3f()),
+            new Quaternionf(this.rotation).mul(transform.leftRotation()),
+            new Vector3f(transform.scale()),
+            new Quaternionf(transform.rightRotation())
+        );
+    }
+
     public float relativeYaw(float currentYaw) {
         return Mth.wrapDegrees(currentYaw - this.yaw);
     }

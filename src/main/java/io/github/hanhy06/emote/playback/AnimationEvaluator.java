@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Quaternionf;
 
 import java.util.HashMap;
@@ -17,65 +18,127 @@ import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 final class AnimationEvaluator {
     private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
-    private final Map<String, PreparedAnimation.PreparedTransform> transforms = new HashMap<>();
-    private final Map<String, Boolean> visibility = new HashMap<>();
+    private final NodeState[] nodes;
+    private final Map<String, Integer> nodeIndexes;
+    private final Matrix4f localMatrix = new Matrix4f();
+    private final Quaternionf rotation = new Quaternionf();
+    private final Quaternionf endRotation = new Quaternionf();
+    private final double[] position = new double[3];
+    private final double[] rotationVector = new double[3];
+    private final double[] scale = new double[3];
+    private final double[] endVector = new double[3];
 
     private MolangEngine.Session session;
 
     AnimationEvaluator(PreparedAnimation animation) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
+        this.nodes = new NodeState[this.timeline.nodeOrder().size()];
+        Map<String, Integer> indexes = new HashMap<>();
+        EmoteAnimation source = animation.animation();
+        for (int index = 0; index < this.nodes.length; index++) {
+            String nodeId = this.timeline.nodeOrder().get(index);
+            Node node = source.nodes().get(nodeId);
+            Integer parentIndex = node.parentId() == null ? null : indexes.get(node.parentId());
+            if (node.parentId() != null && parentIndex == null) {
+                throw new IllegalStateException("Parent node was not prepared before child: " + nodeId);
+            }
+            this.nodes[index] = new NodeState(
+                nodeId,
+                node,
+                this.timeline.tracks().get(nodeId),
+                parentIndex == null ? -1 : parentIndex
+            );
+            indexes.put(nodeId, index);
+        }
+        this.nodeIndexes = Map.copyOf(indexes);
     }
 
-    Pose beginCycle(int tick, int loopCount) {
+    void beginCycle(int tick, int loopCount) {
         this.session = MolangEngine.INSTANCE.createSession();
         setQueries(tick, loopCount, 0.0D);
         if (this.timeline.initialize() != null) {
             this.session.evaluate(this.timeline.initialize());
         }
-        return evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
+        for (NodeState node : this.nodes) node.resetCursors(tick);
+        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
     }
 
-    Pose evaluate(int tick, int loopCount) {
-        return evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
+    void evaluate(int tick, int loopCount) {
+        evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
     }
 
-    PreparedAnimation.PreparedTransform currentTransform(String nodeId) {
-        return this.transforms.get(nodeId);
+    int nodeCount() {
+        return this.nodes.length;
     }
 
-    private Pose evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
+    String nodeId(int index) {
+        return this.nodes[index].id;
+    }
+
+    Matrix4fc matrix(int index) {
+        return this.nodes[index].worldMatrix;
+    }
+
+    Matrix4fc matrix(String nodeId) {
+        Integer index = this.nodeIndexes.get(nodeId);
+        return index == null ? null : this.nodes[index].worldMatrix;
+    }
+
+    boolean preservesMatrix(int index) {
+        return this.nodes[index].node instanceof AnchorNode;
+    }
+
+    boolean preservesMatrix(String nodeId) {
+        Integer index = this.nodeIndexes.get(nodeId);
+        return index != null && preservesMatrix(index);
+    }
+
+    boolean visible(int index) {
+        return this.nodes[index].visible;
+    }
+
+    private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
         setQueries(tick, loopCount, deltaTime);
         if (runTick) {
             this.session.evaluate(this.timeline.tick());
         }
 
-        this.transforms.clear();
-        this.visibility.clear();
-        Map<String, Matrix4f> resolved = new HashMap<>();
-        EmoteAnimation source = this.animation.animation();
-        for (String nodeId : this.timeline.nodeOrder()) {
-            Node node = source.nodes().get(nodeId);
-            CompiledNodeTracks tracks = this.timeline.tracks().get(nodeId);
-            LocalTransform defaults = node.transform();
-            double[] position = vector(tracks == null ? List.of() : tracks.position(), tick, defaults.position());
-            double[] scale = vector(tracks == null ? List.of() : tracks.scale(), tick, defaults.scale());
-            Quaternionf rotation = rotation(tracks == null ? List.of() : tracks.rotation(), tick, defaults.rotation());
-            Matrix4f local = new Matrix4f()
-                .translate((float) position[0], (float) position[1], (float) position[2])
-                .rotate(rotation)
-                .scale((float) scale[0], (float) scale[1], (float) scale[2]);
-            Matrix4f matrix = node.parentId() == null
-                ? local
-                : new Matrix4f(resolved.get(node.parentId())).mul(local);
-            resolved.put(nodeId, matrix);
-            this.transforms.put(
-                nodeId,
-                PreparedAnimation.PreparedTransform.create(matrix, node instanceof AnchorNode)
+        for (NodeState state : this.nodes) {
+            CompiledNodeTracks tracks = state.tracks;
+            LocalTransform defaults = state.node.transform();
+            state.positionCursor = vector(
+                tracks == null ? List.of() : tracks.position(),
+                state.positionCursor,
+                tick,
+                defaults.position(),
+                this.position
             );
-            this.visibility.put(nodeId, visible(node, tracks, tick));
+            state.scaleCursor = vector(
+                tracks == null ? List.of() : tracks.scale(),
+                state.scaleCursor,
+                tick,
+                defaults.scale(),
+                this.scale
+            );
+            state.rotationCursor = rotation(
+                tracks == null ? List.of() : tracks.rotation(),
+                state.rotationCursor,
+                tick,
+                defaults.rotation(),
+                this.rotation
+            );
+            this.localMatrix.identity()
+                .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
+                .rotate(this.rotation)
+                .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
+            if (state.parentIndex < 0) {
+                state.worldMatrix.set(this.localMatrix);
+            } else {
+                state.worldMatrix.set(this.nodes[state.parentIndex].worldMatrix).mul(this.localMatrix);
+            }
+            state.visibilityCursor = visible(state, tick);
         }
-        return new Pose(Map.copyOf(this.transforms), Map.copyOf(this.visibility));
     }
 
     private void setQueries(int tick, int loopCount, double deltaTime) {
@@ -87,76 +150,99 @@ final class AnimationEvaluator {
         this.session.setQuery("key_frame_lerp_time", 0.0D);
     }
 
-    private double[] vector(List<CompiledVectorKeyframe> frames, int tick, Vec3 defaults) {
+    private int vector(List<CompiledVectorKeyframe> frames, int currentIndex, int tick, Vec3 defaults, double[] target) {
         if (frames.isEmpty()) {
-            return new double[] {defaults.x(), defaults.y(), defaults.z()};
+            target[0] = defaults.x();
+            target[1] = defaults.y();
+            target[2] = defaults.z();
+            return 0;
         }
-        Segment segment = segment(frames, tick);
-        this.session.setQuery("key_frame_lerp_time", segment.progress());
-        double[] start = segment.current().post().evaluate(this.session);
-        if (segment.next() == null || segment.current().interpolation() == Interpolation.STEP) {
-            return start;
-        }
-        double[] end = segment.next().pre().evaluate(this.session);
-        double progress = easing(segment.current().easing(), segment.progress());
-        return new double[] {
-            lerp(start[0], end[0], progress),
-            lerp(start[1], end[1], progress),
-            lerp(start[2], end[2], progress)
-        };
-    }
-
-    private Quaternionf rotation(List<CompiledVectorKeyframe> frames, int tick, Vec3 defaults) {
-        if (frames.isEmpty()) {
-            return quaternion(new double[] {defaults.x(), defaults.y(), defaults.z()});
-        }
-        Segment segment = segment(frames, tick);
-        this.session.setQuery("key_frame_lerp_time", segment.progress());
-        Quaternionf start = quaternion(segment.current().post().evaluate(this.session));
-        if (segment.next() == null || segment.current().interpolation() == Interpolation.STEP) {
-            return start;
-        }
-        Quaternionf end = quaternion(segment.next().pre().evaluate(this.session));
-        return start.slerp(end, (float) easing(segment.current().easing(), segment.progress()));
-    }
-
-    private boolean visible(Node node, CompiledNodeTracks tracks, int tick) {
-        if (node instanceof AnchorNode) {
-            return true;
-        }
-        if (tracks == null || tracks.visible().isEmpty()) {
-            return node.visible();
-        }
-        CompiledVisibilityKeyframe current = tracks.visible().getFirst();
-        for (CompiledVisibilityKeyframe frame : tracks.visible()) {
-            if (frame.tick() > tick) {
-                break;
-            }
-            current = frame;
-        }
-        this.session.setQuery("key_frame_lerp_time", 0.0D);
-        return current.value().evaluate(this.session);
-    }
-
-    private Segment segment(List<CompiledVectorKeyframe> frames, int tick) {
-        int currentIndex = 0;
-        for (int index = 1; index < frames.size(); index++) {
-            if (frames.get(index).tick() > tick) {
-                break;
-            }
-            currentIndex = index;
-        }
+        currentIndex = advanceCursor(frames, currentIndex, tick);
         CompiledVectorKeyframe current = frames.get(currentIndex);
-        if (currentIndex + 1 >= frames.size()) {
-            return new Segment(current, null, 0.0D);
+        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
+        double progress = progress(current, next, tick);
+        this.session.setQuery("key_frame_lerp_time", progress);
+        current.post().evaluate(this.session, target);
+        if (next == null || current.interpolation() == Interpolation.STEP) {
+            return currentIndex;
         }
-        CompiledVectorKeyframe next = frames.get(currentIndex + 1);
-        double progress = (double) (tick - current.tick()) / (next.tick() - current.tick());
-        return new Segment(current, next, Math.clamp(progress, 0.0D, 1.0D));
+        next.pre().evaluate(this.session, this.endVector);
+        progress = easing(current.easing(), progress);
+        target[0] = lerp(target[0], this.endVector[0], progress);
+        target[1] = lerp(target[1], this.endVector[1], progress);
+        target[2] = lerp(target[2], this.endVector[2], progress);
+        return currentIndex;
     }
 
-    private Quaternionf quaternion(double[] degrees) {
-        return new Quaternionf().rotationXYZ(
+    private int rotation(
+        List<CompiledVectorKeyframe> frames,
+        int currentIndex,
+        int tick,
+        Vec3 defaults,
+        Quaternionf target
+    ) {
+        if (frames.isEmpty()) {
+            target.rotationXYZ(
+                (float) Math.toRadians(defaults.x()),
+                (float) Math.toRadians(defaults.y()),
+                (float) Math.toRadians(defaults.z())
+            );
+            return 0;
+        }
+        currentIndex = advanceCursor(frames, currentIndex, tick);
+        CompiledVectorKeyframe current = frames.get(currentIndex);
+        CompiledVectorKeyframe next = currentIndex + 1 < frames.size() ? frames.get(currentIndex + 1) : null;
+        double progress = progress(current, next, tick);
+        this.session.setQuery("key_frame_lerp_time", progress);
+        current.post().evaluate(this.session, this.rotationVector);
+        quaternion(this.rotationVector, target);
+        if (next == null || current.interpolation() == Interpolation.STEP) {
+            return currentIndex;
+        }
+        next.pre().evaluate(this.session, this.endVector);
+        quaternion(this.endVector, this.endRotation);
+        target.slerp(this.endRotation, (float) easing(current.easing(), progress));
+        return currentIndex;
+    }
+
+    private int visible(NodeState state, int tick) {
+        if (state.node instanceof AnchorNode) {
+            state.visible = true;
+            return 0;
+        }
+        CompiledNodeTracks tracks = state.tracks;
+        if (tracks == null || tracks.visible().isEmpty()) {
+            state.visible = state.node.visible();
+            return 0;
+        }
+        int currentIndex = advanceVisibilityCursor(tracks.visible(), state.visibilityCursor, tick);
+        CompiledVisibilityKeyframe current = tracks.visible().get(currentIndex);
+        this.session.setQuery("key_frame_lerp_time", 0.0D);
+        state.visible = current.value().evaluate(this.session);
+        return currentIndex;
+    }
+
+    private int advanceCursor(List<CompiledVectorKeyframe> frames, int currentIndex, int tick) {
+        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
+            currentIndex++;
+        }
+        return currentIndex;
+    }
+
+    private int advanceVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int currentIndex, int tick) {
+        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
+            currentIndex++;
+        }
+        return currentIndex;
+    }
+
+    private double progress(CompiledVectorKeyframe current, CompiledVectorKeyframe next, int tick) {
+        if (next == null) return 0.0D;
+        return Math.clamp((double) (tick - current.tick()) / (next.tick() - current.tick()), 0.0D, 1.0D);
+    }
+
+    private void quaternion(double[] degrees, Quaternionf target) {
+        target.rotationXYZ(
             (float) Math.toRadians(degrees[0]),
             (float) Math.toRadians(degrees[1]),
             (float) Math.toRadians(degrees[2])
@@ -232,10 +318,58 @@ final class AnimationEvaluator {
         return start + (end - start) * progress;
     }
 
-    record Pose(Map<String, PreparedAnimation.PreparedTransform> transforms, Map<String, Boolean> visibility) {
+    private static int findVectorCursor(List<CompiledVectorKeyframe> frames, int tick) {
+        int low = 1;
+        int high = frames.size();
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            if (frames.get(middle).tick() <= tick) low = middle + 1;
+            else high = middle;
+        }
+        return Math.max(0, low - 1);
     }
 
-    private record Segment(CompiledVectorKeyframe current, CompiledVectorKeyframe next, double progress) {
+    private static int findVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int tick) {
+        int low = 1;
+        int high = frames.size();
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            if (frames.get(middle).tick() <= tick) low = middle + 1;
+            else high = middle;
+        }
+        return Math.max(0, low - 1);
+    }
+
+    private static final class NodeState {
+        private final String id;
+        private final Node node;
+        private final CompiledNodeTracks tracks;
+        private final int parentIndex;
+        private final Matrix4f worldMatrix = new Matrix4f();
+
+        private int positionCursor;
+        private int rotationCursor;
+        private int scaleCursor;
+        private int visibilityCursor;
+        private boolean visible;
+
+        private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
+            this.id = id;
+            this.node = node;
+            this.tracks = tracks;
+            this.parentIndex = parentIndex;
+        }
+
+        private void resetCursors(int tick) {
+            this.positionCursor = this.tracks == null || this.tracks.position().isEmpty()
+                ? 0 : findVectorCursor(this.tracks.position(), tick);
+            this.rotationCursor = this.tracks == null || this.tracks.rotation().isEmpty()
+                ? 0 : findVectorCursor(this.tracks.rotation(), tick);
+            this.scaleCursor = this.tracks == null || this.tracks.scale().isEmpty()
+                ? 0 : findVectorCursor(this.tracks.scale(), tick);
+            this.visibilityCursor = this.tracks == null || this.tracks.visible().isEmpty()
+                ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
+        }
     }
 
     private enum EasingKind {

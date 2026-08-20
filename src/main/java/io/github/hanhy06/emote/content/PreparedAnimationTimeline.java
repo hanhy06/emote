@@ -179,8 +179,10 @@ public final class PreparedAnimationTimeline {
     }
 
     public record CompiledVector(CompiledScalar x, CompiledScalar y, CompiledScalar z) {
-        public double[] evaluate(MolangEngine.Session session) {
-            return new double[] {this.x.evaluate(session), this.y.evaluate(session), this.z.evaluate(session)};
+        public void evaluate(MolangEngine.Session session, double[] target) {
+            target[0] = this.x.evaluate(session);
+            target[1] = this.y.evaluate(session);
+            target[2] = this.z.evaluate(session);
         }
     }
 

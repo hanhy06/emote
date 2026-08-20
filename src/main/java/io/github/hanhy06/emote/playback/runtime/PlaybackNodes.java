@@ -8,6 +8,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import org.joml.Matrix4fc;
 
 import java.util.*;
 
@@ -60,6 +61,15 @@ public final class PlaybackNodes {
     ) {
         Objects.requireNonNull(transform, "transform");
         return root(Objects.requireNonNull(space, "space")).displayTransformation(transform);
+    }
+
+    public Transformation displayTransformation(
+        EmoteAnimation.NodeSpace space,
+        Matrix4fc matrix,
+        boolean preserveMatrix
+    ) {
+        Objects.requireNonNull(matrix, "matrix");
+        return root(Objects.requireNonNull(space, "space")).displayTransformation(matrix, preserveMatrix);
     }
 
     public boolean requestVisibility(String nodeId, boolean visible) {
