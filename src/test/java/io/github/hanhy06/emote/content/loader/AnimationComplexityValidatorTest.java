@@ -23,7 +23,7 @@ class AnimationComplexityValidatorTest {
     @Test
     void acceptsAllBundledAnimations() throws Exception {
         AnimationJsonParser parser = new AnimationJsonParser();
-        try (var paths = Files.list(Path.of("docs/example"))) {
+        try (var paths = Files.list(Path.of("docs/sample"))) {
             for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
                 LoadedAnimation loaded = parser.parse(path);
                 assertDoesNotThrow(() -> this.validator.validate(loaded), path.toString());
