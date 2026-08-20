@@ -89,7 +89,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .assignment-panel > p { flex: 0 0 auto; margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .assignment-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
 .assignment-panel > .assignment-buttons, .assignment-panel > .order-control { flex: 0 0 auto; }
-.assignment-buttons-compact { grid-template-columns: repeat(3, 1fr); }
 .assignment-buttons button { display: flex; align-items: center; gap: 6px; }
 .assignment-buttons i { width: 10px; height: 10px; }
 .order-control { display: grid; grid-template-columns: auto minmax(0, 1fr) 2ch; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }

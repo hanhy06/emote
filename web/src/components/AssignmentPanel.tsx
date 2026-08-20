@@ -122,7 +122,7 @@ export function AssignmentPanel({
         <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
       <p><strong>Item</strong></p>
-      <div className="assignment-buttons assignment-buttons-compact">
+      <div className="assignment-buttons">
         <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}>Right hand</button>
         <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}>Left hand</button>
         <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem(null)}>Unassigned</button>

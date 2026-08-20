@@ -81,7 +81,7 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
     const clickableMeshes: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
-    const pointGeometry = new THREE.SphereGeometry(0.065, 16, 10);
+    const pointGeometry = new THREE.SphereGeometry(0.07, 16, 10);
 
     for (const part of parts) {
       const assignment = assignments[part.nodeId];
@@ -112,11 +112,14 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
         emissive: selectedParts.has(point.nodeId) ? "#ffffff" : "#000000",
         emissiveIntensity: selectedParts.has(point.nodeId) ? 0.75 : 0,
         roughness: 0.65,
+        depthTest: false,
+        depthWrite: false,
       });
       pointMaterialsRef.current.set(point.nodeId, material);
       const marker = new THREE.Mesh(pointGeometry, material);
       marker.matrixAutoUpdate = false;
       marker.matrix.set(...point.matrix as MatrixValues);
+      marker.renderOrder = 2;
       marker.userData.nodeId = point.nodeId;
       partGroup.add(marker);
       clickableMeshes.push(marker);
