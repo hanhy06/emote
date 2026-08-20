@@ -55,6 +55,7 @@ class AnimationJsonLoaderTest {
         LoadedAnimation loaded = parse(root);
 
         assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().settings().playback().mode());
+        assertEquals(4, loaded.animation().schemaVersion());
     }
 
     @Test
@@ -79,18 +80,17 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void loadsSchemaOneStyleNodesAfterOnlyChangingSchemaVersion() throws Exception {
+    void rejectsRootNodeWithoutSpace() throws Exception {
         JsonObject root = readReference();
         JsonObject playerHead = root.getAsJsonObject("nodes").getAsJsonObject("player_head");
         playerHead.remove("space");
-        playerHead.getAsJsonObject("skin").remove("participant");
-        root.getAsJsonObject("nodes").getAsJsonObject("effect_anchor").remove("space");
 
-        EmoteAnimation animation = parse(root).animation();
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> parse(root)
+        );
 
-        assertEquals(EmoteAnimation.NodeSpace.INITIATOR, animation.nodes().get("player_head").space());
-        assertEquals(ParticipantRole.INITIATOR, ((EmoteAnimation.ItemNode) animation.nodes().get("player_head")).skin().participant());
-        assertEquals(EmoteAnimation.NodeSpace.SCENE, animation.nodes().get("effect_anchor").space());
+        assertEquals("$.nodes.player_head.space", exception.fieldPath());
     }
 
     @Test
@@ -135,19 +135,20 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void rejectsMatrixWithWrongSizeAtExactFieldPath() throws Exception {
+    void rejectsTransformVectorWithWrongSizeAtExactFieldPath() throws Exception {
         JsonObject root = readReference();
-        JsonArray matrix = root.getAsJsonObject("nodes")
+        JsonArray position = root.getAsJsonObject("nodes")
             .getAsJsonObject("player_head")
-            .getAsJsonArray("default_matrix");
-        matrix.remove(matrix.size() - 1);
+            .getAsJsonObject("transform")
+            .getAsJsonArray("position");
+        position.remove(position.size() - 1);
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
             () -> parse(root)
         );
 
-        assertEquals("$.nodes.player_head.default_matrix", exception.fieldPath());
+        assertEquals("$.nodes.player_head.transform.position", exception.fieldPath());
     }
 
     @Test
@@ -166,30 +167,25 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void stabilizesDisplayMatricesWithoutChangingAnchorMatrices() throws Exception {
+    void composesDisplayAndAnchorLocalTransforms() throws Exception {
         JsonObject root = readReference();
-        JsonArray shearedMatrix = JsonParser.parseString("""
-            [1,0.25,0,4,0,1,0.2,5,0,0,0.5,6,0,0,0,1]
-            """).getAsJsonArray();
-        root.getAsJsonObject("nodes").getAsJsonObject("player_head")
-            .add("default_matrix", shearedMatrix.deepCopy());
-        root.getAsJsonObject("nodes").getAsJsonObject("effect_anchor")
-            .add("default_matrix", shearedMatrix.deepCopy());
-        root.getAsJsonObject("timeline").getAsJsonArray("keyframes")
-            .get(0).getAsJsonObject()
-            .getAsJsonObject("node_transforms")
-            .getAsJsonObject("player_head")
-            .add("matrix", shearedMatrix.deepCopy());
+        JsonArray position = new JsonArray();
+        position.add(4.0D);
+        position.add(5.0D);
+        position.add(6.0D);
+        root.getAsJsonObject("nodes").getAsJsonObject("player_head").getAsJsonObject("transform")
+            .add("position", position.deepCopy());
+        root.getAsJsonObject("nodes").getAsJsonObject("effect_anchor").getAsJsonObject("transform")
+            .add("position", position.deepCopy());
 
         EmoteAnimation animation = parse(root).animation();
         EmoteAnimation.Matrix displayDefault = animation.nodes().get("player_head").defaultMatrix();
         EmoteAnimation.Matrix anchorDefault = animation.nodes().get("effect_anchor").defaultMatrix();
-        EmoteAnimation.Matrix displayKeyframe = animation.timeline().keyframes().getFirst()
-            .nodeTransforms().get("player_head").matrix();
 
-        assertEquals(0.0D, normalizedColumnDot(displayDefault, 0, 1), 1.0E-8D);
-        assertEquals(0.0D, normalizedColumnDot(displayKeyframe, 0, 1), 1.0E-8D);
-        assertNotEquals(0.0D, normalizedColumnDot(anchorDefault, 0, 1), 1.0E-8D);
+        assertEquals(4.0D, displayDefault.value(3));
+        assertEquals(5.0D, displayDefault.value(7));
+        assertEquals(6.0D, displayDefault.value(11));
+        assertEquals(displayDefault.values(), anchorDefault.values());
     }
 
     @Test
@@ -212,14 +208,13 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void rejectsInterpolationThatStartsBeforePreviousNodeTransform() throws Exception {
+    void rejectsInterpolationOnLastTrackKeyframe() throws Exception {
         JsonObject root = readReference();
-        JsonObject transform = root.getAsJsonObject("timeline")
-            .getAsJsonArray("keyframes")
-            .get(1).getAsJsonObject()
-            .getAsJsonObject("node_transforms")
-            .getAsJsonObject("player_head");
-        transform.addProperty("interpolation_duration", "2t");
+        JsonArray track = root.getAsJsonObject("timeline")
+            .getAsJsonObject("tracks")
+            .getAsJsonObject("player_head")
+            .getAsJsonArray("position");
+        track.get(track.size() - 1).getAsJsonObject().addProperty("interpolation", "linear");
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
@@ -227,7 +222,7 @@ class AnimationJsonLoaderTest {
         );
 
         assertEquals(
-            "$.timeline.keyframes[1].node_transforms.player_head.interpolation_duration",
+            "$.timeline.tracks.player_head.position[1]",
             exception.fieldPath()
         );
     }
@@ -272,17 +267,4 @@ class AnimationJsonLoaderTest {
         );
     }
 
-    private double normalizedColumnDot(EmoteAnimation.Matrix matrix, int first, int second) {
-        double dot = 0.0D;
-        double firstLengthSquared = 0.0D;
-        double secondLengthSquared = 0.0D;
-        for (int row = 0; row < 3; row++) {
-            double firstValue = matrix.value(row * 4 + first);
-            double secondValue = matrix.value(row * 4 + second);
-            dot += firstValue * secondValue;
-            firstLengthSquared += firstValue * firstValue;
-            secondLengthSquared += secondValue * secondValue;
-        }
-        return dot / Math.sqrt(firstLengthSquared * secondLengthSquared);
-    }
 }

@@ -1,10 +1,10 @@
 {
     "type": "animation",
-    "schema_version": 3,
+    "schema_version": 4,
     "id": "emote:format_reference",
     "metadata": {
         "name": "Format Reference",
-        "description": "Reference emote containing every runtime feature supported by schema 3."
+        "description": "Reference emote containing every runtime feature supported by schema 4."
     },
     "settings": {
         "standalone": true,
@@ -38,25 +38,24 @@
                 "order": 0,
                 "participant": "initiator"
             },
-            "default_matrix": [
-                1,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                1.75,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "initiator"
+            "space": "initiator",
+            "transform": {
+                "position": [
+                    0,
+                    1.75,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            }
         },
         "partner_head": {
             "type": "item_display",
@@ -69,25 +68,24 @@
                 "order": 0,
                 "participant": "partner"
             },
-            "default_matrix": [
-                1,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                1.75,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "partner"
+            "space": "partner",
+            "transform": {
+                "position": [
+                    0,
+                    1.75,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            }
         },
         "enchanted_sword": {
             "type": "item_display",
@@ -95,50 +93,48 @@
             "item_display": "fixed",
             "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:sharpness\":5}}}",
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
-            "default_matrix": [
-                1,
-                0,
-                0,
-                0.5,
-                0,
-                1,
-                0,
-                1,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "scene"
+            "space": "scene",
+            "transform": {
+                "position": [
+                    0.5,
+                    1,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            }
         },
         "stage": {
             "type": "block_display",
             "visible": true,
             "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
-            "default_matrix": [
-                2,
-                0,
-                0,
-                -1,
-                0,
-                0.1,
-                0,
-                0,
-                0,
-                0,
-                2,
-                -1,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "scene"
+            "space": "scene",
+            "transform": {
+                "position": [
+                    -1,
+                    0,
+                    -1
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    2,
+                    0.1,
+                    2
+                ]
+            }
         },
         "caption": {
             "type": "text_display",
@@ -147,214 +143,307 @@
                 "text": "Emote"
             },
             "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
-            "default_matrix": [
-                1,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                2.4,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "scene"
+            "space": "scene",
+            "transform": {
+                "position": [
+                    0,
+                    2.4,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            }
         },
         "effect_anchor": {
             "type": "anchor",
-            "default_matrix": [
-                1,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                1.5,
-                0,
-                0,
-                1,
-                0,
-                0,
-                0,
-                0,
-                1
-            ],
-            "space": "scene"
+            "space": "scene",
+            "transform": {
+                "position": [
+                    0,
+                    1.5,
+                    0
+                ],
+                "rotation": [
+                    0,
+                    0,
+                    0
+                ],
+                "scale": [
+                    1,
+                    1,
+                    1
+                ]
+            }
         }
     },
     "timeline": {
         "duration": "80t",
-        "keyframes": [
-            {
-                "time": "0t",
-                "interpolation_duration": "0t",
-                "node_transforms": {
-                    "player_head": {
-                        "matrix": [
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1,
+        "tracks": {
+            "player_head": {
+                "position": [
+                    {
+                        "time": "0t",
+                        "value": [
                             0,
                             1.75,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1
-                        ]
+                            0
+                        ],
+                        "interpolation": "linear"
                     },
-                    "enchanted_sword": {
-                        "matrix": [
-                            1,
-                            0,
-                            0,
-                            0.5,
-                            0,
-                            1,
-                            0,
-                            1,
-                            0,
-                            0,
-                            1,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1
-                        ]
-                    }
-                },
-                "node_states": {
-                    "enchanted_sword": {
-                        "visible": true
-                    },
-                    "caption": {
-                        "visible": false
-                    }
-                }
-            },
-            {
-                "time": "1t",
-                "interpolation_duration": "1t",
-                "node_transforms": {
-                    "player_head": {
-                        "matrix": [
-                            0.9962,
-                            0,
-                            0.0872,
-                            0,
-                            0,
-                            1,
+                    {
+                        "time": "1t",
+                        "value": [
                             0,
                             1.76,
-                            -0.0872,
-                            0,
-                            0.9962,
-                            0,
-                            0,
-                            0,
-                            0,
-                            1
+                            0
                         ]
+                    }
+                ],
+                "rotation": [
+                    {
+                        "time": "0t",
+                        "value": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "interpolation": "linear"
                     },
-                    "enchanted_sword": {
-                        "matrix": [
-                            0.9848,
-                            -0.1736,
+                    {
+                        "time": "1t",
+                        "value": [
                             0,
-                            0.52,
-                            0.1736,
-                            0.9848,
-                            0,
-                            1.02,
-                            0,
-                            0,
+                            5.002499605710734,
+                            0
+                        ]
+                    }
+                ],
+                "scale": [
+                    {
+                        "time": "0t",
+                        "value": [
                             1,
-                            0,
-                            0,
-                            0,
-                            0,
+                            1,
                             1
                         ],
-                        "interpolation_duration": "0t"
+                        "interpolation": "linear"
                     },
-                    "effect_anchor": {
-                        "matrix": [
+                    {
+                        "time": "1t",
+                        "value": [
+                            1.0000091399582305,
                             1,
-                            0,
-                            0,
+                            1.0000091399582305
+                        ]
+                    }
+                ]
+            },
+            "enchanted_sword": {
+                "position": [
+                    {
+                        "time": "0t",
+                        "value": [
+                            0.5,
+                            1,
+                            0
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
                             0.52,
+                            1.02,
+                            0
+                        ]
+                    }
+                ],
+                "rotation": [
+                    {
+                        "time": "0t",
+                        "value": [
                             0,
+                            0,
+                            0
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
+                            0,
+                            0,
+                            9.99735865418825
+                        ]
+                    }
+                ],
+                "scale": [
+                    {
+                        "time": "0t",
+                        "value": [
                             1,
-                            0,
-                            1.45,
-                            0,
-                            0,
                             1,
-                            0,
-                            0,
-                            0,
-                            0,
+                            1
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
+                            0.9999839998719979,
+                            0.9999839998719979,
                             1
                         ]
                     }
-                }
+                ],
+                "visible": [
+                    {
+                        "time": "0t",
+                        "value": true
+                    },
+                    {
+                        "time": "60t",
+                        "value": false
+                    }
+                ]
             },
-            {
-                "time": "40t",
-                "interpolation_duration": "0t",
-                "node_transforms": {
-                    "caption": {
-                        "matrix": [
-                            1,
+            "caption": {
+                "position": [
+                    {
+                        "time": "0t",
+                        "value": [
                             0,
-                            0,
-                            0,
-                            0,
-                            1,
+                            2.4,
+                            0
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "40t",
+                        "value": [
                             0,
                             2.6,
+                            0
+                        ]
+                    }
+                ],
+                "rotation": [
+                    {
+                        "time": "0t",
+                        "value": [
                             0,
                             0,
+                            0
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "40t",
+                        "value": [
+                            0,
+                            0,
+                            0
+                        ]
+                    }
+                ],
+                "scale": [
+                    {
+                        "time": "0t",
+                        "value": [
                             1,
-                            0,
-                            0,
-                            0,
-                            0,
+                            1,
+                            1
+                        ],
+                        "interpolation": "step"
+                    },
+                    {
+                        "time": "40t",
+                        "value": [
+                            1,
+                            1,
                             1
                         ]
                     }
-                },
-                "node_states": {
-                    "caption": {
-                        "visible": true
+                ],
+                "visible": [
+                    {
+                        "time": "0t",
+                        "value": false
+                    },
+                    {
+                        "time": "40t",
+                        "value": true
                     }
-                }
+                ]
             },
-            {
-                "time": "60t",
-                "interpolation_duration": "0t",
-                "node_states": {
-                    "enchanted_sword": {
-                        "visible": false
+            "effect_anchor": {
+                "position": [
+                    {
+                        "time": "0t",
+                        "value": [
+                            0,
+                            1.5,
+                            0
+                        ],
+                        "interpolation": "linear"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
+                            0.52,
+                            1.45,
+                            0
+                        ]
                     }
-                }
+                ],
+                "rotation": [
+                    {
+                        "time": "0t",
+                        "value": [
+                            0,
+                            0,
+                            0
+                        ],
+                        "interpolation": "linear"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
+                            0,
+                            0,
+                            0
+                        ]
+                    }
+                ],
+                "scale": [
+                    {
+                        "time": "0t",
+                        "value": [
+                            1,
+                            1,
+                            1
+                        ],
+                        "interpolation": "linear"
+                    },
+                    {
+                        "time": "1t",
+                        "value": [
+                            1,
+                            1,
+                            1
+                        ]
+                    }
+                ]
             }
-        ],
+        },
         "events": {
             "start": [
                 {

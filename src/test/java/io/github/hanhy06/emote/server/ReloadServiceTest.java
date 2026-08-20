@@ -24,7 +24,7 @@ class ReloadServiceTest {
         Files.writeString(configManager.getAnimationDirectory().resolve("disabled.json"), """
             {
               "type":"animation",
-              "schema_version":3,
+              "schema_version":4,
               "id":"example:disabled",
               "metadata":{"name":"Disabled","description":""},
               "settings":{
@@ -33,8 +33,8 @@ class ReloadServiceTest {
                 "player":{"hidden":true,"stop_conditions":{"movement_distance":0.1,"jump":true,"submerge":true,"ride":true,"damage":true,"attack":true,"game_mode_change":true}},
                 "playback":{"mode":"once","loop_delay":"0t"}
               },
-              "nodes":{"root":{"type":"anchor","space":"scene","default_matrix":[1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1]}},
-              "timeline":{"duration":"1t","keyframes":[]}
+              "nodes":{"root":{"type":"anchor","space":"scene","transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}}},
+              "timeline":{"duration":"1t","tracks":{}}
             }
             """);
         EmoteCatalog registry = new EmoteCatalog();
