@@ -54,7 +54,7 @@ public final class PlaybackStressTest {
                     emote
                 );
                 AnimationPlayer timeline = new AnimationPlayer(
-                    emote.compiledTimeline(),
+                    emote,
                     nodes,
                     this.entityController
                 );
@@ -142,7 +142,7 @@ public final class PlaybackStressTest {
                     AnimationPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
                     if (result == AnimationPlayer.AdvanceResult.FINISHED) {
                         instance.timeline = new AnimationPlayer(
-                            instance.emote.compiledTimeline(),
+                            instance.emote,
                             instance.nodes,
                             this.entityController
                         );

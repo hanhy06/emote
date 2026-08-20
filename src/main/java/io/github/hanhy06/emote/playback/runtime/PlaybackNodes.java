@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
@@ -15,7 +15,7 @@ public final class PlaybackNodes {
     private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
-    private final EnumMap<EmoteAnimation.NodeSpace, IdentityHashMap<CompiledTimeline.PreparedTransform, Transformation>> displayTransformations =
+    private final EnumMap<EmoteAnimation.NodeSpace, IdentityHashMap<PreparedEmote.PreparedTransform, Transformation>> displayTransformations =
         new EnumMap<>(EmoteAnimation.NodeSpace.class);
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
         EmoteAnimation.NodeSpace.SCENE,
@@ -59,7 +59,7 @@ public final class PlaybackNodes {
 
     public Transformation displayTransformation(
         EmoteAnimation.NodeSpace space,
-        CompiledTimeline.PreparedTransform transform
+        PreparedEmote.PreparedTransform transform
     ) {
         Objects.requireNonNull(transform, "transform");
         return this.displayTransformations.get(Objects.requireNonNull(space, "space"))

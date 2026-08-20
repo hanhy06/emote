@@ -111,7 +111,7 @@ class PlaybackSessionRegistryTest {
 
     private static AnimationPlayer timeline(PreparedEmote emote) {
         AnimationPlayer animation = new AnimationPlayer(
-            emote.compiledTimeline(),
+            emote,
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             new PlaybackEntityController()
         );

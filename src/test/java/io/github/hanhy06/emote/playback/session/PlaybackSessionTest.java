@@ -158,12 +158,12 @@ class PlaybackSessionTest {
 
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, CompiledTimeline.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
             throw new UnsupportedOperationException();
         }
 

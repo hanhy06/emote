@@ -83,7 +83,7 @@ final class SequenceCompiler {
         );
         return layout.generatedPartner()
             ? PreparedEmote.from(loaded)
-            : new PreparedEmote(loaded, layoutAnchor.skinParts(), CompiledTimeline.compile(compiledAnimation));
+            : PreparedEmote.from(loaded, layoutAnchor.skinParts());
     }
 
     private static EmoteAnimation.Keyframe createHiddenKeyframe(EmoteAnimation animation, int tick) {

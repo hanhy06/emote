@@ -4,7 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -125,14 +125,14 @@ class AnimationEventTest {
 
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            CompiledTimeline.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             throw new UnsupportedOperationException();

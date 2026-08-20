@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 
@@ -10,13 +10,13 @@ import java.util.*;
 
 public final class AnimationPlayer {
     private final EmoteAnimation animation;
-    private final CompiledTimeline compiledTimeline;
+    private final PreparedEmote compiledTimeline;
     private final TimelineTarget target;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
 
-    private List<CompiledTimeline.TransformActivation> pendingInterpolations = List.of();
-    private CompiledTimeline.TickActions currentTickActions;
+    private List<PreparedEmote.TransformActivation> pendingInterpolations = List.of();
+    private PreparedEmote.TickActions currentTickActions;
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -29,7 +29,7 @@ public final class AnimationPlayer {
     private boolean eventsStopped;
 
     public AnimationPlayer(
-        CompiledTimeline compiledTimeline,
+        PreparedEmote compiledTimeline,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
@@ -37,10 +37,10 @@ public final class AnimationPlayer {
     }
 
     public AnimationPlayer(EmoteAnimation animation, TimelineTarget target) {
-        this(CompiledTimeline.compile(animation), target);
+        this(PreparedEmote.compile(animation), target);
     }
 
-    public AnimationPlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
+    public AnimationPlayer(PreparedEmote compiledTimeline, TimelineTarget target) {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -253,11 +253,11 @@ public final class AnimationPlayer {
     }
 
     private void applySynchronizedSnapshot(int tick) {
-        List<CompiledTimeline.TransformActivation> activeInterpolations = new ArrayList<>();
+        List<PreparedEmote.TransformActivation> activeInterpolations = new ArrayList<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : this.animation.nodes().entrySet()) {
             String nodeId = entry.getKey();
             EmoteAnimation.Node node = entry.getValue();
-            CompiledTimeline.TransformActivation activation = this.compiledTimeline.activeTransform(nodeId, tick);
+            PreparedEmote.TransformActivation activation = this.compiledTimeline.activeTransform(nodeId, tick);
             Transformation currentTransformation;
             if (activation == null) {
                 currentTransformation = this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
@@ -287,7 +287,7 @@ public final class AnimationPlayer {
         if (this.pendingInterpolations.isEmpty()) {
             return;
         }
-        for (CompiledTimeline.TransformActivation activation : this.pendingInterpolations) {
+        for (PreparedEmote.TransformActivation activation : this.pendingInterpolations) {
             this.target.applyTransform(
                 activation.nodeId(),
                 activation.transform(),
@@ -299,7 +299,7 @@ public final class AnimationPlayer {
 
     private void applyTick(int tick) {
         this.currentTickActions = this.compiledTimeline.tickActions(tick);
-        for (CompiledTimeline.TransformActivation activation : this.currentTickActions.transforms()) {
+        for (PreparedEmote.TransformActivation activation : this.currentTickActions.transforms()) {
             EmoteAnimation.Matrix matrix = activation.transform().matrix();
             if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
                 continue;
@@ -317,7 +317,7 @@ public final class AnimationPlayer {
                 activation.interpolationDurationTicks()
             );
         }
-        for (CompiledTimeline.StateActivation activation : this.currentTickActions.states()) {
+        for (PreparedEmote.StateActivation activation : this.currentTickActions.states()) {
             this.target.setVisible(activation.nodeId(), activation.state().visible());
         }
     }
@@ -344,11 +344,11 @@ public final class AnimationPlayer {
     }
 
     public interface TimelineTarget {
-        Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform);
+        Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform);
 
         void applyTransform(
             String nodeId,
-            CompiledTimeline.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         );
 
@@ -375,12 +375,12 @@ public final class AnimationPlayer {
     }
 
     private record EntityTimelineTarget(
-        CompiledTimeline compiledTimeline,
+        PreparedEmote compiledTimeline,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             PlaybackNodes.NodeInstance node = requiredNode(nodeId);
             return this.nodes.displayTransformation(node.node().space(), transform);
         }
@@ -388,7 +388,7 @@ public final class AnimationPlayer {
         @Override
         public void applyTransform(
             String nodeId,
-            CompiledTimeline.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.entityController.applyTransformation(

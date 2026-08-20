@@ -4,7 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -289,14 +289,14 @@ class AnimationPlayerTest {
         private int resetCount;
 
         @Override
-        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             return new Transformation(new org.joml.Matrix4f(transform.localMatrix()));
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            CompiledTimeline.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.transforms.add(new AppliedTransform(transform.matrix().value(3), interpolationDurationTicks));

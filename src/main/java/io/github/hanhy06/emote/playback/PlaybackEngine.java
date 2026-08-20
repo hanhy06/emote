@@ -208,7 +208,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
-            AnimationPlayer timeline = new AnimationPlayer(emote.compiledTimeline(), nodes, this.entityController);
+            AnimationPlayer timeline = new AnimationPlayer(emote, nodes, this.entityController);
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
@@ -442,7 +442,7 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedEmote emote) {
-        AnimationPlayer animation = new AnimationPlayer(emote.compiledTimeline(), session.nodes(), this.entityController);
+        AnimationPlayer animation = new AnimationPlayer(emote, session.nodes(), this.entityController);
         animation.bindEvents(new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), animation));
         animation.start();
         return animation;

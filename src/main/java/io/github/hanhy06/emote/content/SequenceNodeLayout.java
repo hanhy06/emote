@@ -98,7 +98,7 @@ final class SequenceNodeLayout {
             layoutAnimation,
             preparedDisplayData
         );
-        return new PreparedEmote(loaded, first.skinParts(), CompiledTimeline.compile(layoutAnimation));
+        return PreparedEmote.from(loaded, first.skinParts());
     }
 
     private static void mergeNodes(

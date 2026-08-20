@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.playback.stress;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -28,7 +28,7 @@ class PlaybackStressSimulationTest {
         EmoteAnimation animation = new AnimationJsonLoader()
             .load(Path.of("docs/example/emote.dance.json"))
             .animation();
-        CompiledTimeline plan = CompiledTimeline.compile(animation);
+        PreparedEmote plan = PreparedEmote.compile(animation);
         int durationTicks = animation.timeline().durationTicks();
         int[] startTicks = randomizedStartTicks();
         List<SimulatedPlayback> activePlaybacks = new ArrayList<>(INSTANCE_COUNT);
@@ -106,14 +106,14 @@ class PlaybackStressSimulationTest {
         private Transformation lastTransformation;
 
         @Override
-        public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
             return this.rootTransform.displayTransformation(transform);
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            CompiledTimeline.PreparedTransform transform,
+            PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.lastTransformation = this.rootTransform.displayTransformation(transform);
