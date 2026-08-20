@@ -53,12 +53,11 @@ public final class PlaybackEntityController {
                 || !itemStack.is(Items.PLAYER_HEAD)) {
                 continue;
             }
-            ItemStack profileStack = itemStack.copy();
-            profileStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
-            node.setItemStack(profileStack);
+            itemStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+            node.setItemStack(itemStack);
             SlotAccess itemSlot = itemDisplay.getSlot(0);
             if (!itemSlot.get().isEmpty()) {
-                itemSlot.set(profileStack);
+                itemSlot.set(itemStack);
             }
         }
     }
