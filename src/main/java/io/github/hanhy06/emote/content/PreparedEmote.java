@@ -19,6 +19,7 @@ public final class PreparedEmote implements PreparedDefinition {
     private final LoadedAnimation source;
     private final List<SkinBinding> skinParts;
     private final EmoteAnimation animation;
+    private final PreparedAnimationTimeline preparedTimeline;
     private final Map<Integer, TickActions> tickActions;
     private final Map<String, List<TransformActivation>> nodeTransformActivations;
     private final Map<String, List<StateActivation>> nodeStateActivations;
@@ -29,6 +30,7 @@ public final class PreparedEmote implements PreparedDefinition {
         LoadedAnimation source,
         List<SkinBinding> skinParts,
         EmoteAnimation animation,
+        PreparedAnimationTimeline preparedTimeline,
         Map<Integer, TickActions> tickActions,
         Map<String, List<TransformActivation>> nodeTransformActivations,
         Map<String, List<StateActivation>> nodeStateActivations,
@@ -38,6 +40,7 @@ public final class PreparedEmote implements PreparedDefinition {
         this.source = source;
         this.skinParts = skinParts;
         this.animation = animation;
+        this.preparedTimeline = preparedTimeline;
         this.tickActions = tickActions;
         this.nodeTransformActivations = nodeTransformActivations;
         this.nodeStateActivations = nodeStateActivations;
@@ -112,6 +115,7 @@ public final class PreparedEmote implements PreparedDefinition {
             source,
             skinParts,
             animation,
+            PreparedAnimationTimeline.compile(animation),
             copyTickActions(actionsByTick),
             copyListMap(transformsByNode),
             copyListMap(statesByNode),
@@ -130,6 +134,10 @@ public final class PreparedEmote implements PreparedDefinition {
 
     public EmoteAnimation animation() {
         return this.animation;
+    }
+
+    public PreparedAnimationTimeline preparedTimeline() {
+        return this.preparedTimeline;
     }
 
     public List<SkinBinding> skinParts() {
@@ -321,6 +329,28 @@ public final class PreparedEmote implements PreparedDefinition {
             Transformation transformation = new Transformation(localMatrix);
             return new PreparedTransform(
                 matrix,
+                localMatrix,
+                new Vector3f(transformation.translation()),
+                new Quaternionf(transformation.leftRotation()),
+                new Vector3f(transformation.scale()),
+                new Quaternionf(transformation.rightRotation())
+            );
+        }
+
+        public static PreparedTransform create(Matrix4f matrix, boolean preserveMatrix) {
+            Matrix4f localMatrix = new Matrix4f(matrix);
+            EmoteAnimation.Matrix source = new EmoteAnimation.Matrix(List.of(
+                (double) localMatrix.m00(), (double) localMatrix.m10(), (double) localMatrix.m20(), (double) localMatrix.m30(),
+                (double) localMatrix.m01(), (double) localMatrix.m11(), (double) localMatrix.m21(), (double) localMatrix.m31(),
+                (double) localMatrix.m02(), (double) localMatrix.m12(), (double) localMatrix.m22(), (double) localMatrix.m32(),
+                (double) localMatrix.m03(), (double) localMatrix.m13(), (double) localMatrix.m23(), (double) localMatrix.m33()
+            ));
+            if (preserveMatrix) {
+                return new PreparedTransform(source, localMatrix, null, null, null, null);
+            }
+            Transformation transformation = new Transformation(localMatrix);
+            return new PreparedTransform(
+                source,
                 localMatrix,
                 new Vector3f(transformation.translation()),
                 new Quaternionf(transformation.leftRotation()),

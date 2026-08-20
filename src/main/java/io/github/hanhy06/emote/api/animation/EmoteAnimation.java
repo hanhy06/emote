@@ -15,12 +15,24 @@ public record EmoteAnimation(
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
+    int schemaVersion,
     MolangPrograms molang,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
     public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Map<String, Node> nodes, Timeline timeline) {
-        this(id, metadata, settings, MolangPrograms.empty(), nodes, timeline);
+        this(id, metadata, settings, 3, MolangPrograms.empty(), nodes, timeline);
+    }
+
+    public EmoteAnimation(
+        Identifier id,
+        EmoteMetadata metadata,
+        Settings settings,
+        MolangPrograms molang,
+        Map<String, Node> nodes,
+        Timeline timeline
+    ) {
+        this(id, metadata, settings, 4, molang, nodes, timeline);
     }
 
     public EmoteAnimation {

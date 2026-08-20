@@ -15,8 +15,6 @@ public final class PlaybackNodes {
     private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
-    private final EnumMap<EmoteAnimation.NodeSpace, IdentityHashMap<PreparedEmote.PreparedTransform, Transformation>> displayTransformations =
-        new EnumMap<>(EmoteAnimation.NodeSpace.class);
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
         EmoteAnimation.NodeSpace.SCENE,
         EmoteAnimation.NodeSpace.INITIATOR
@@ -30,7 +28,6 @@ public final class PlaybackNodes {
         requiredSpaces.putAll(spaces);
         for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
             Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
-            this.displayTransformations.put(space, new IdentityHashMap<>());
         }
         this.spaces = Map.copyOf(requiredSpaces);
         this.nodes = Map.copyOf(nodes);
@@ -62,8 +59,7 @@ public final class PlaybackNodes {
         PreparedEmote.PreparedTransform transform
     ) {
         Objects.requireNonNull(transform, "transform");
-        return this.displayTransformations.get(Objects.requireNonNull(space, "space"))
-            .computeIfAbsent(transform, ignored -> root(space).displayTransformation(transform));
+        return root(Objects.requireNonNull(space, "space")).displayTransformation(transform);
     }
 
     public boolean requestVisibility(String nodeId, boolean visible) {

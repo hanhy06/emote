@@ -12,14 +12,17 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedEmote compiledTimeline;
     private final TimelineTarget target;
+    private final Schema4AnimationRuntime schema4Runtime;
     private final Map<String, TransformState> transformStates = new HashMap<>();
     private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
+    private final Map<String, Boolean> appliedVisibility = new HashMap<>();
 
     private List<PreparedEmote.TransformActivation> pendingInterpolations = List.of();
     private PreparedEmote.TickActions currentTickActions;
 
     private int currentTick;
     private int remainingLoopDelay;
+    private int loopCount;
     private boolean started;
     private boolean finished;
     private boolean awaitingLoopContinuation;
@@ -44,6 +47,9 @@ public final class AnimationPlayer {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
+        this.schema4Runtime = compiledTimeline.preparedTimeline().schema4()
+            ? new Schema4AnimationRuntime(compiledTimeline)
+            : null;
         this.currentTickActions = compiledTimeline.tickActions(0);
     }
 
@@ -82,6 +88,7 @@ public final class AnimationPlayer {
         int timelineTick = (int) Math.min(phase, duration);
         this.currentTick = timelineTick;
         this.currentTickActions = this.compiledTimeline.tickActions(timelineTick);
+        this.loopCount = (int) Math.min(Integer.MAX_VALUE, Math.floorDiv(cycleTick, cycleLength));
         applySynchronizedSnapshot(timelineTick);
         if (phase >= duration) {
             this.remainingLoopDelay = (int) (cycleLength - phase);
@@ -175,6 +182,7 @@ public final class AnimationPlayer {
         if (this.remainingLoopDelay > 0) {
             this.remainingLoopDelay--;
             if (this.remainingLoopDelay == 0) {
+                this.loopCount++;
                 resetToTickZero();
                 return AdvanceResult.RESTARTED;
             }
@@ -210,6 +218,7 @@ public final class AnimationPlayer {
         this.awaitingLoopContinuation = false;
         int loopDelay = this.animation.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
+            this.loopCount++;
             resetToTickZero();
             return AdvanceResult.RESTARTED;
         }
@@ -230,6 +239,13 @@ public final class AnimationPlayer {
     }
 
     public Transformation currentTransformation(String nodeId) {
+        if (this.schema4Runtime != null) {
+            PreparedEmote.PreparedTransform transform = this.schema4Runtime.currentTransform(nodeId);
+            if (transform == null) {
+                transform = this.compiledTimeline.defaultTransform(nodeId);
+            }
+            return this.target.createTransformation(nodeId, transform);
+        }
         TransformState state = this.transformStates.get(nodeId);
         if (state == null) {
             return this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
@@ -240,12 +256,18 @@ public final class AnimationPlayer {
     private void resetToTickZero() {
         this.target.resetAll();
         clearState();
-        applyTick(0);
+        if (this.schema4Runtime == null) {
+            applyTick(0);
+        } else {
+            this.currentTickActions = this.compiledTimeline.tickActions(0);
+            applySchema4Pose(this.schema4Runtime.beginCycle(0, this.loopCount), 0);
+        }
     }
 
     private void clearState() {
         this.transformStates.clear();
         this.appliedMatrices.clear();
+        this.appliedVisibility.clear();
         this.pendingInterpolations = List.of();
         this.currentTickActions = this.compiledTimeline.tickActions(0);
         this.currentTick = 0;
@@ -253,6 +275,10 @@ public final class AnimationPlayer {
     }
 
     private void applySynchronizedSnapshot(int tick) {
+        if (this.schema4Runtime != null) {
+            applySchema4Pose(this.schema4Runtime.beginCycle(tick, this.loopCount), 0);
+            return;
+        }
         List<PreparedEmote.TransformActivation> activeInterpolations = new ArrayList<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : this.animation.nodes().entrySet()) {
             String nodeId = entry.getKey();
@@ -299,6 +325,10 @@ public final class AnimationPlayer {
 
     private void applyTick(int tick) {
         this.currentTickActions = this.compiledTimeline.tickActions(tick);
+        if (this.schema4Runtime != null) {
+            applySchema4Pose(this.schema4Runtime.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
+            return;
+        }
         for (PreparedEmote.TransformActivation activation : this.currentTickActions.transforms()) {
             EmoteAnimation.Matrix matrix = activation.transform().matrix();
             if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
@@ -319,6 +349,24 @@ public final class AnimationPlayer {
         }
         for (PreparedEmote.StateActivation activation : this.currentTickActions.states()) {
             this.target.setVisible(activation.nodeId(), activation.state().visible());
+        }
+    }
+
+    private void applySchema4Pose(Schema4AnimationRuntime.Pose pose, int interpolationDurationTicks) {
+        for (Map.Entry<String, PreparedEmote.PreparedTransform> entry : pose.transforms().entrySet()) {
+            String nodeId = entry.getKey();
+            PreparedEmote.PreparedTransform transform = entry.getValue();
+            if (transform.matrix().equals(this.appliedMatrices.get(nodeId))) {
+                continue;
+            }
+            this.appliedMatrices.put(nodeId, transform.matrix());
+            this.target.applyTransform(nodeId, transform, interpolationDurationTicks);
+        }
+        for (Map.Entry<String, Boolean> entry : pose.visibility().entrySet()) {
+            if (entry.getValue().equals(this.appliedVisibility.put(entry.getKey(), entry.getValue()))) {
+                continue;
+            }
+            this.target.setVisible(entry.getKey(), entry.getValue());
         }
     }
 
