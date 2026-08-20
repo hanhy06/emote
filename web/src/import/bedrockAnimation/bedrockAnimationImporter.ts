@@ -30,7 +30,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
     try {
       collectAnimationDiagnostics(name, animation, diagnostics);
-      return [importAnimation(name, animation, index)];
+      return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
       diagnostics.push({
         severity: "warning",
@@ -58,14 +58,20 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   };
 }
 
-function importAnimation(name: string, animation: BedrockAnimation, index: number): ImportedAnimation {
+function importAnimation(name: string, animation: BedrockAnimation, index: number, diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
-  if (sourceDuration === 0 && bedrockAnimationUsesTime(animation)) {
-    throw new Error("time-dependent bone expressions require animation_length or timed keyframes.");
+  const assumedDuration = sourceDuration === 0 && bedrockAnimationUsesTime(animation);
+  if (assumedDuration) {
+    diagnostics.push({
+      severity: "warning",
+      code: "bedrock_animation_duration_assumed",
+      message: `${name} uses time-dependent Molang without a duration. Preview and export use 1 second (20 ticks). To fix it, set animations.${name}.animation_length in the source Bedrock JSON.`,
+      sourcePath: `animations.${name}.animation_length`,
+    });
   }
   const playbackRate = bedrockAnimationPlaybackRate(animation, name);
   const durationTicks = requireAnimationDurationTicks(
-    Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND)),
+    assumedDuration ? TICKS_PER_SECOND : Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND)),
     `${name}.animation_length`,
   );
   const samplePlan = planBedrockAnimationSamples(animation, durationTicks, playbackRate);

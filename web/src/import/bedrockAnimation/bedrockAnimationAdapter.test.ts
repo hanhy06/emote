@@ -92,6 +92,26 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations[0].tracks.body.transforms[10].matrix).not.toEqual(imported.nodes.body.defaultMatrix);
   });
 
+  it("uses a warned 20-tick duration for time-dependent Molang without a source duration", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        "animation.emote.missing_length": {
+          bones: { body: { rotation: [0, "q.anim_time * 90", 0] } },
+        },
+      },
+    })));
+
+    expect(imported.animations[0].durationTicks).toBe(20);
+    expect(imported.animations[0].tracks.body.transforms.map((frame) => frame.tick)).toEqual(
+      Array.from({ length: 21 }, (_, tick) => tick),
+    );
+    expect(imported.diagnostics).toContainEqual(expect.objectContaining({
+      code: "bedrock_animation_duration_assumed",
+      message: expect.stringContaining("set animations.animation.emote.missing_length.animation_length"),
+    }));
+  });
+
   it("keeps supported animations and reports nondeterministic or unsupported parts", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
