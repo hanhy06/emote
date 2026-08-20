@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../test/compileImportedFixture";
+import { validateEmoteAnimation } from "../../format/validator";
 import { bedrockAnimationAdapter } from "./bedrockAnimationAdapter";
 
 const encoder = new TextEncoder();
@@ -90,6 +91,9 @@ describe("bedrockAnimationAdapter", () => {
 
     expect(imported.animations[0].durationTicks).toBe(10);
     expect(imported.animations[0].tracks.body.transforms[10].matrix).not.toEqual(imported.nodes.body.defaultMatrix);
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "fast" });
+    expect(compiled.timeline.duration).toBe("10t");
+    expect(compiled.timeline.tracks.root_y.rotation?.[0].value?.[1]).toBe("-(q.anim_time * 2) * 90");
   });
 
   it("uses a warned 20-tick duration for time-dependent Molang without a source duration", async () => {
@@ -102,14 +106,22 @@ describe("bedrockAnimationAdapter", () => {
       },
     })));
 
-    expect(imported.animations[0].durationTicks).toBe(20);
-    expect(imported.animations[0].tracks.body.transforms.map((frame) => frame.tick)).toEqual(
+    expect(imported.animations[0].durationTicks).toBe(12_000);
+    expect(imported.animations[0].preview?.durationTicks).toBe(20);
+    expect(imported.animations[0].preview?.tracks.body.transforms.map((frame) => frame.tick)).toEqual(
       Array.from({ length: 21 }, (_, tick) => tick),
     );
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "bedrock_animation_duration_assumed",
-      message: expect.stringContaining("set animations.animation.emote.missing_length.animation_length"),
+      message: expect.stringContaining("animations.animation.emote.missing_length.animation_length"),
     }));
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length" });
+    expect(compiled.timeline.duration).toBe("12000t");
+    expect(compiled.settings.playback.mode).toBe("once");
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("q.anim_time * 90");
+    expect(validateEmoteAnimation(compiled)).toEqual([]);
+    const [looped] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length", loop: "loop" });
+    expect(looped.settings.playback.mode).toBe("loop");
   });
 
   it("keeps supported animations and retains unsupported Molang as a Create pose", async () => {
@@ -143,9 +155,32 @@ describe("bedrockAnimationAdapter", () => {
       tracks: {},
       availability: { preview: "create_pose", exportable: true },
     });
-    expect(imported.diagnostics[0].message).toContain("replace the expression at runtime.body.rotation[1]");
+    expect(imported.diagnostics[0]).toMatchObject({ sourcePath: "runtime.body.rotation[1]" });
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
-    expect(compiled.timeline).toMatchObject({ duration: "20t", tracks: {} });
+    expect(compiled.timeline.duration).toBe("20t");
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("q.is_on_ground * 45");
+  });
+
+  it("preserves dynamic anim_time_update through a runtime Molang clock", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        dynamic_clock: {
+          animation_length: 2,
+          anim_time_update: "q.anim_time + q.delta_time * q.ground_speed",
+          bones: { body: { rotation: [0, "q.anim_time * 45", 0] } },
+        },
+      },
+    })));
+
+    expect(imported.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dynamic_clock" });
+    expect(compiled.molang).toEqual({
+      initialize: "v.bedrock_anim_time = 0;",
+      tick: "v.bedrock_anim_time = (v.bedrock_anim_time + q.delta_time * q.ground_speed);",
+    });
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("v.bedrock_anim_time * 45");
+    expect(validateEmoteAnimation(compiled)).toEqual([]);
   });
 
   it("silently hides left item, right item, and cape helper bones", async () => {

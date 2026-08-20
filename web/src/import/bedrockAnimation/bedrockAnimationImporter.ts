@@ -2,7 +2,7 @@ import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
-import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
+import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
@@ -22,6 +22,7 @@ import {
   isHiddenBedrockAccessoryBone,
   resolveBedrockPlayerBone,
 } from "./bedrockPlayerRig";
+import { createBedrockRuntime } from "./bedrockAnimationOutput";
 
 type Transform = { position: number[]; rotation: number[]; scale: number[] };
 
@@ -35,7 +36,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
       if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
-        const message = `${name} contains Molang that the converter cannot evaluate. The Create pose will be used for preview and export. To restore the animation, replace the expression at ${reason.sourcePath ?? `animations.${name}`} with constants or q.anim_time-based Molang.`;
+        const message = `${name} contains Molang that the converter cannot evaluate for preview. The Create pose will be shown, while the original Molang is preserved for runtime export.`;
         diagnostics.push({
           severity: "warning",
           code: "bedrock_animation_molang_unavailable",
@@ -72,15 +73,20 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
 
 function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: string): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
+  const durationTicks = sourceDuration === 0 && bedrockAnimationUsesTime(animation)
+    ? MAX_ANIMATION_DURATION_TICKS
+    : sourceDuration > 0 ? Math.max(1, Math.round(sourceDuration * TICKS_PER_SECOND)) : TICKS_PER_SECOND;
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
-    durationTicks: sourceDuration > 0 ? Math.max(1, Math.round(sourceDuration * TICKS_PER_SECOND)) : TICKS_PER_SECOND,
+    durationTicks,
     loop: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
+    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
+    runtime: createBedrockRuntime(animation, durationTicks, null),
   };
 }
 
@@ -91,21 +97,22 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     diagnostics.push({
       severity: "warning",
       code: "bedrock_animation_duration_assumed",
-      message: `${name} uses time-dependent Molang without a duration. Preview and export use 1 second (20 ticks). To fix it, set animations.${name}.animation_length in the source Bedrock JSON.`,
+      message: `${name} uses time-dependent Molang without a duration. The skin preview uses 1 second (20 ticks), and runtime export uses the 10-minute limit (12000 ticks). To set an exact duration, edit animations.${name}.animation_length in the source Bedrock JSON.`,
       sourcePath: `animations.${name}.animation_length`,
     });
   }
   const playbackRate = bedrockAnimationPlaybackRate(animation, name);
   const durationTicks = requireAnimationDurationTicks(
-    assumedDuration ? TICKS_PER_SECOND : Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND)),
+    assumedDuration ? MAX_ANIMATION_DURATION_TICKS : Math.max(1, Math.round(sourceDuration / playbackRate * TICKS_PER_SECOND)),
     `${name}.animation_length`,
   );
-  const samplePlan = planBedrockAnimationSamples(animation, durationTicks, playbackRate);
+  const previewDurationTicks = assumedDuration ? TICKS_PER_SECOND : durationTicks;
+  const samplePlan = planBedrockAnimationSamples(animation, previewDurationTicks, playbackRate);
   const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
     transforms: [],
     visibility: [],
   }]));
-  for (let tick = 0; tick <= durationTicks; tick++) {
+  for (let tick = 0; tick <= previewDurationTicks; tick++) {
     const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
     const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
     for (const bone of BEDROCK_PLAYER_BONES) {
@@ -127,6 +134,8 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
+    preview: { durationTicks: previewDurationTicks, tracks },
+    runtime: createBedrockRuntime(animation, durationTicks, playbackRate),
   };
 }
 

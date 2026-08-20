@@ -58,14 +58,14 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
       visible: true,
       itemDisplay: "none",
       itemStackSnbt: '{id:"minecraft:player_head",count:1}',
-      playerHeadConversion: { matrix: playerHeadConversionMatrix(bone) },
+      playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(bone) },
       suggestedSkin: { part: bone.cube.skin, order: 0 },
     };
   }
   return nodes;
 }
 
-function playerHeadConversionMatrix(bone: BedrockPlayerBone) {
+export function bedrockPlayerHeadConversionMatrix(bone: BedrockPlayerBone) {
   if (!bone.cube) throw new Error(`Bedrock player bone ${bone.id} does not have geometry.`);
   const from = bone.cube.from.map((value, axis) => (value - bone.pivot[axis]) / 16);
   const to = bone.cube.to.map((value, axis) => (value - bone.pivot[axis]) / 16);
