@@ -50,7 +50,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       return importProjectAnimation(animation, index, displayElements);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
-      const message = `${animation.name} contains Molang that the converter cannot evaluate. The Create pose will be used for preview and export. To restore the animation, replace the expression at ${reason.sourcePath ?? `animations[${index}]`} with constants or q.anim_time-based Molang.`;
+      const message = `${animation.name}: preview and export use the Create pose because its Molang cannot be evaluated.`;
       diagnostics.push({
         severity: "warning",
         code: "animated_java_animation_molang_unavailable",

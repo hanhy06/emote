@@ -69,7 +69,7 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
         return importAnimation(id, animation, nodes, nodeIdsBySource);
       } catch (reason) {
         if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
-        const message = `${id} contains Molang that the converter cannot evaluate. The Create pose will be used for preview and export. To restore the animation, replace the expression at ${reason.sourcePath ?? `animations.${id}`} with constants or q.anim_time-based Molang.`;
+        const message = `${id}: preview and export use the Create pose because its Molang cannot be evaluated.`;
         diagnostics.push({
           severity: "warning",
           code: "animated_java_animation_molang_unavailable",

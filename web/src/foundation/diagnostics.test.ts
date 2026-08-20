@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConversionError, conversionErrorMessage } from "./diagnostics";
+import { ConversionError, conversionErrorMessage, groupConversionWarnings } from "./diagnostics";
 
 describe("ConversionError", () => {
   it("preserves diagnostic code and source path", () => {
@@ -19,5 +19,24 @@ describe("ConversionError", () => {
     const error = ConversionError.fromUnknown("failure", "import_failed", "Could not import.", "input.json");
 
     expect(error).toMatchObject({ code: "import_failed", message: "Could not import.", sourcePath: "input.json" });
+  });
+});
+
+describe("groupConversionWarnings", () => {
+  it("groups warnings by code while preserving messages and source paths", () => {
+    const groups = groupConversionWarnings([
+      { severity: "warning", code: "bedrock_animation_molang_unavailable", message: "First", sourcePath: "animations.first" },
+      { severity: "error", code: "broken", message: "Error" },
+      { severity: "warning", code: "bedrock_animation_molang_unavailable", message: "Second", sourcePath: "animations.second" },
+    ]);
+
+    expect(groups).toEqual([{
+      code: "bedrock_animation_molang_unavailable",
+      label: "Bedrock Animation Molang Unavailable",
+      issues: [
+        { severity: "warning", code: "bedrock_animation_molang_unavailable", message: "First", sourcePath: "animations.first" },
+        { severity: "warning", code: "bedrock_animation_molang_unavailable", message: "Second", sourcePath: "animations.second" },
+      ],
+    }]);
   });
 });

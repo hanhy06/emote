@@ -36,7 +36,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
       if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
-        const message = `${name} contains Molang that the converter cannot evaluate for preview. The Create pose will be shown, while the original Molang is preserved for runtime export.`;
+        const message = `${name}: preview uses the Create pose; runtime Molang is preserved.`;
         diagnostics.push({
           severity: "warning",
           code: "bedrock_animation_molang_unavailable",
@@ -97,7 +97,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     diagnostics.push({
       severity: "warning",
       code: "bedrock_animation_duration_assumed",
-      message: `${name} uses time-dependent Molang without a duration. The skin preview uses 1 second (20 ticks), and runtime export uses the 10-minute limit (12000 ticks). To set an exact duration, edit animations.${name}.animation_length in the source Bedrock JSON.`,
+      message: `${name}: no animation_length. Preview: 20 ticks; export: 12000 ticks. To change it, edit animations.${name}.animation_length.`,
       sourcePath: `animations.${name}.animation_length`,
     });
   }

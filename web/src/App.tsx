@@ -27,7 +27,7 @@ import type { NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
-import { conversionErrorMessage } from "./foundation/diagnostics";
+import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation } from "./domain/conversionSeed";
 import { animationAvailability } from "./domain/conversionSeed";
@@ -80,6 +80,7 @@ export function App() {
   const previewDurationTicks = animation?.preview?.durationTicks ?? animation?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
+  const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
@@ -316,8 +317,20 @@ export function App() {
             ))}
           </nav>
 
-          {project.diagnostics.filter((diagnostic) => diagnostic.severity === "warning").map((diagnostic) => (
-            <p className="message warning" key={`${diagnostic.code}:${diagnostic.sourcePath ?? ""}`}>{diagnostic.message}</p>
+          {warningGroups.map((group) => group.issues.length === 1 ? (
+            <p className="message warning" key={group.code}>{group.issues[0].message}</p>
+          ) : (
+            <details className="message warning warning-group" key={group.code}>
+              <summary>{group.label} ({group.issues.length})</summary>
+              <ul>
+                {group.issues.map((diagnostic, index) => (
+                  <li key={`${diagnostic.sourcePath ?? "warning"}:${index}`}>
+                    <span>{diagnostic.message}</span>
+                    {diagnostic.sourcePath && <code>{diagnostic.sourcePath}</code>}
+                  </li>
+                ))}
+              </ul>
+            </details>
           ))}
 
           {importedCommandCount > 0 && (

@@ -85,7 +85,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(imported.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "animated_java_animation_molang_unavailable",
-      message: expect.stringContaining("replace the expression at animations[0]"),
+      sourcePath: "animations[0].animators.block.position[0]",
     }));
   });
 
@@ -435,7 +435,7 @@ describe("animatedJavaJsonAdapter", () => {
     });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "animated_java_animation_molang_unavailable",
-      message: expect.stringContaining("replace the expression at runtime/item"),
+      sourcePath: "runtime/item/position",
     }));
   });
 

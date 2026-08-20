@@ -258,7 +258,7 @@ describe("geckoLibBbmodelAdapter", () => {
     });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "geckolib_animation_molang_unavailable",
-      message: expect.stringContaining("replace the expression at animations[0].animators.root"),
+      sourcePath: "animations[0].animators.root",
     }));
   });
 
