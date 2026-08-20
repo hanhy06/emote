@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -128,7 +128,7 @@ final class TimelineJsonParser {
                 parsed = new ConstantVisibility(value.getAsBoolean());
             } else if (!reader.isNotString(value) && !value.getAsString().isBlank()) {
                 String source = value.getAsString();
-                AnimationJsonLoader.compileMolang(source, keyframePath + ".value", reader);
+                AnimationJsonParser.compileMolang(source, keyframePath + ".value", reader);
                 parsed = new MolangVisibility(source, keyframePath + ".value");
             } else {
                 throw reader.error(keyframePath + ".value", "must be a boolean or Molang string");
@@ -182,7 +182,7 @@ final class TimelineJsonParser {
         }
         if (!reader.isNotString(element) && !element.getAsString().isBlank()) {
             String source = element.getAsString();
-            AnimationJsonLoader.compileMolang(source, path, reader);
+            AnimationJsonParser.compileMolang(source, path, reader);
             return new MolangValue(source, path);
         }
         throw reader.error(path, "must be a finite number or Molang string");

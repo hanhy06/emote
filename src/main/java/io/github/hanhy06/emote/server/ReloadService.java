@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
+import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.*;
@@ -11,14 +11,14 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
-    private final DirectoryContentsLoader directoryLoader;
+    private final LoadResultLoader directoryLoader;
     private final PlaybackEngine playbackEngine;
     private final WheelSyncService wheelSyncService;
 
     public ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
-        AnimationDirectoryLoader directoryLoader,
+        EmoteDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
@@ -28,7 +28,7 @@ public final class ReloadService {
     ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
-        DirectoryContentsLoader directoryLoader,
+        LoadResultLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
@@ -107,8 +107,8 @@ public final class ReloadService {
     }
 
     @FunctionalInterface
-    interface DirectoryContentsLoader {
-        AnimationDirectoryLoader.DirectoryContents load(java.nio.file.Path directory);
+    interface LoadResultLoader {
+        EmoteDirectoryLoader.LoadResult load(java.nio.file.Path directory);
     }
 
     private record ReloadStats(int detectedFileCount, int loadedEmoteCount) {

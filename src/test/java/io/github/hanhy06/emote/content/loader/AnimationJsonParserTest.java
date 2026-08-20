@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -17,9 +17,9 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AnimationJsonLoaderTest {
+class AnimationJsonParserTest {
     private static final Path REFERENCE_PATH = Path.of("docs/reference/animation.json");
-    private final AnimationJsonLoader loader = new AnimationJsonLoader();
+    private final AnimationJsonParser parser = new AnimationJsonParser();
 
     @Test
     void loadsFormatReferenceAndPreservesUnknownMetadataFields() throws Exception {
@@ -131,7 +131,7 @@ class AnimationJsonLoaderTest {
 
         assertFalse(examplePaths.isEmpty());
         for (Path examplePath : examplePaths) {
-            LoadedAnimation loaded = this.loader.load(examplePath);
+            LoadedAnimation loaded = this.parser.parse(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
         }
@@ -247,7 +247,7 @@ class AnimationJsonLoaderTest {
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> this.loader.parse(REFERENCE_PATH, bytes)
+            () -> this.parser.parse(REFERENCE_PATH, bytes)
         );
 
         assertEquals("$", exception.fieldPath());
@@ -262,7 +262,7 @@ class AnimationJsonLoaderTest {
     }
 
     private LoadedAnimation parse(JsonObject root) throws EmoteAnimationLoadException {
-        return this.loader.parse(
+        return this.parser.parse(
             REFERENCE_PATH,
             root.toString().getBytes(StandardCharsets.UTF_8)
         );

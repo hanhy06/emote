@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation.molang;
+package io.github.hanhy06.emote.playback.molang;
 
 import org.junit.jupiter.api.Test;
 

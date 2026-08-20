@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote;
 
-import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
-import io.github.hanhy06.emote.animation.AnimationServerPreparer;
+import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
+import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.application.*;
 import io.github.hanhy06.emote.command.AdminCommand;
 import io.github.hanhy06.emote.command.CommandRegistrar;
@@ -40,7 +40,7 @@ final class EmoteBootstrap {
         ReloadService reload = new ReloadService(
             configManager,
             catalog,
-            new AnimationDirectoryLoader(),
+            new EmoteDirectoryLoader(),
             playback,
             wheelSync
         );
@@ -51,7 +51,7 @@ final class EmoteBootstrap {
             playback,
             apiEvents,
             wheelSync::syncAll,
-            new AnimationServerPreparer()
+            new AnimationContentResolver()
         );
         CommandRegistrar commands = new CommandRegistrar(
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),

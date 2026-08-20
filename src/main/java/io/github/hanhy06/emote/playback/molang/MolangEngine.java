@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation.molang;
+package io.github.hanhy06.emote.playback.molang;
 
 import team.unnamed.mocha.MochaEngine;
 import team.unnamed.mocha.parser.ParseException;

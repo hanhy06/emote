@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.animation.AnimationServerPreparer;
+import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
@@ -26,7 +26,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
     private final EmoteChangeNotifier changeNotifier;
-    private final AnimationServerPreparer animationValidator;
+    private final AnimationContentResolver contentResolver;
 
     public EmoteApiImpl(
         EmoteCatalog emoteCatalog,
@@ -34,14 +34,14 @@ public final class EmoteApiImpl extends EmoteApi {
         PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
         EmoteChangeNotifier changeNotifier,
-        AnimationServerPreparer animationValidator
+        AnimationContentResolver contentResolver
     ) {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playbackEngine = Objects.requireNonNull(playbackEngine, "playbackEngine");
         this.events = Objects.requireNonNull(events, "events");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
-        this.animationValidator = Objects.requireNonNull(animationValidator, "animationValidator");
+        this.contentResolver = Objects.requireNonNull(contentResolver, "contentResolver");
     }
 
     @Override
@@ -69,7 +69,7 @@ public final class EmoteApiImpl extends EmoteApi {
             "api:" + animation.id(),
             animation
         );
-        PreparedAnimation emote = PreparedAnimation.from(this.animationValidator.prepare(loaded));
+        PreparedAnimation emote = PreparedAnimation.from(this.contentResolver.resolve(loaded));
         UUID registrationId = this.emoteCatalog.register(emote);
         this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);

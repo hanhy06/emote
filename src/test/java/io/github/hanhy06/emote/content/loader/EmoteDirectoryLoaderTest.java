@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,9 +14,9 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class AnimationDirectoryLoaderTest {
+class EmoteDirectoryLoaderTest {
     private static final Path REFERENCE_PATH = Path.of("docs/reference/animation.json");
-    private final AnimationDirectoryLoader loader = new AnimationDirectoryLoader();
+    private final EmoteDirectoryLoader loader = new EmoteDirectoryLoader();
 
     @Test
     void loadsMultipleJsonFilesInIdOrder(@TempDir Path tempDir) throws Exception {
@@ -25,7 +25,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(nestedDirectory.resolve("a.json"), "alpha:wave");
         Files.writeString(tempDir.resolve("notes.txt"), "ignored");
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        EmoteDirectoryLoader.LoadResult contents = this.loader.load(tempDir, animation -> animation);
         List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(List.of("alpha:wave", "zeta:wave"), loaded.stream()
@@ -40,7 +40,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("second.json"), "same:wave");
         writeAnimation(tempDir.resolve("valid.json"), "other:wave");
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        EmoteDirectoryLoader.LoadResult contents = this.loader.load(tempDir, animation -> animation);
         List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(List.of("other:wave"), loaded.stream()
@@ -54,7 +54,7 @@ class AnimationDirectoryLoaderTest {
         writeAnimation(tempDir.resolve("valid.json"), "valid:wave");
         Files.writeString(tempDir.resolve("broken.json"), "{");
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(tempDir, animation -> animation);
+        EmoteDirectoryLoader.LoadResult contents = this.loader.load(tempDir, animation -> animation);
         List<LoadedAnimation> loaded = contents.animations();
 
         assertEquals(1, loaded.size());
@@ -66,7 +66,7 @@ class AnimationDirectoryLoaderTest {
     void createsMissingAnimationDirectory(@TempDir Path tempDir) {
         Path directory = tempDir.resolve("animations");
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(directory, animation -> animation);
+        EmoteDirectoryLoader.LoadResult contents = this.loader.load(directory, animation -> animation);
         assertTrue(contents.animations().isEmpty());
         assertEquals(0, contents.detectedFileCount());
         assertTrue(Files.isDirectory(directory));
@@ -100,7 +100,7 @@ class AnimationDirectoryLoaderTest {
             }
             """);
 
-        AnimationDirectoryLoader.DirectoryContents contents = this.loader.load(
+        EmoteDirectoryLoader.LoadResult contents = this.loader.load(
             tempDir,
             animation -> animation
         );

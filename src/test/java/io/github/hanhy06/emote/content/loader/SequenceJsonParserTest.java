@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonPrimitive;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
@@ -12,8 +12,8 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class SequenceJsonLoaderTest {
-    private final SequenceJsonLoader loader = new SequenceJsonLoader();
+class SequenceJsonParserTest {
+    private final SequenceJsonParser parser = new SequenceJsonParser();
 
     @Test
     void loadsSchemaThreeSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
@@ -64,7 +64,7 @@ class SequenceJsonLoaderTest {
             "{\"emote\":\"example:withdraw\"}"
         ));
 
-        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
 
         assertEquals("$.participants.partner.position", exception.fieldPath());
     }
@@ -106,7 +106,7 @@ class SequenceJsonLoaderTest {
             "{\"emote\":\"example:withdraw\"}"
         ).replace("example:handshake_offer", "emote:break"));
 
-        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
 
         assertEquals("$.steps[0].await_partner.emote", exception.fieldPath());
     }
@@ -118,7 +118,7 @@ class SequenceJsonLoaderTest {
             {"emote": ["example:idle_1", 30, "example:idle_2", 60]}
             """));
 
-        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
         assertEquals("$.steps[0].emote", exception.fieldPath());
     }
 
@@ -131,9 +131,9 @@ class SequenceJsonLoaderTest {
         Files.writeString(last, baseJson("{\"emote\":\"example:idle\"}, {\"wait\":\"1t\"}"));
         Files.writeString(consecutive, baseJson("{\"emote\":\"example:idle\"}, {\"wait\":\"1t\"}, {\"wait\":\"2t\"}, {\"emote\":\"example:end\"}"));
 
-        assertEquals("$.steps[0].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(first)).fieldPath());
-        assertEquals("$.steps[1].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(last)).fieldPath());
-        assertEquals("$.steps[2].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(consecutive)).fieldPath());
+        assertEquals("$.steps[0].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(first)).fieldPath());
+        assertEquals("$.steps[1].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(last)).fieldPath());
+        assertEquals("$.steps[2].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(consecutive)).fieldPath());
     }
 
     @Test
@@ -141,14 +141,14 @@ class SequenceJsonLoaderTest {
         Path path = tempDir.resolve("missing-player.json");
         Files.writeString(path, baseJson("{\"emote\":\"example:wave\"}").replace(playerJson(), "\"player\": null"));
 
-        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.loader.load(path));
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
         assertEquals("$.settings.player", exception.fieldPath());
     }
 
     private EmoteSequence load(Path tempDir, String fileName, String json) throws Exception {
         Path path = tempDir.resolve(fileName);
         Files.writeString(path, json);
-        return this.loader.load(path);
+        return this.parser.parse(path);
     }
 
     private static String baseJson(String steps) {

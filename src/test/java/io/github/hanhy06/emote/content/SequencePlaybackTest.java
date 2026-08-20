@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.content;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.animation.AnimationJsonLoader;
+import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -126,7 +126,7 @@ class SequencePlaybackTest {
               }
             }
             """.formatted(id, initialValue);
-        LoadedAnimation loaded = new AnimationJsonLoader().parse(
+        LoadedAnimation loaded = new AnimationJsonParser().parse(
             Path.of(id.replace(':', '_') + ".json"),
             json.getBytes(StandardCharsets.UTF_8)
         );

@@ -1,9 +1,9 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import io.github.hanhy06.emote.animation.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.MolangEngine;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
@@ -21,7 +21,7 @@ import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
-public final class AnimationJsonLoader {
+public final class AnimationJsonParser {
     private static final int SCHEMA_VERSION = 4;
     private static final Set<String> FORBIDDEN_ENTITY_NBT = Set.of(
         "id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
@@ -42,7 +42,7 @@ public final class AnimationJsonLoader {
     );
     private final TimelineJsonParser timelineParser = new TimelineJsonParser();
 
-    public LoadedAnimation load(Path sourcePath) throws EmoteAnimationLoadException {
+    public LoadedAnimation parse(Path sourcePath) throws EmoteAnimationLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
     }
 

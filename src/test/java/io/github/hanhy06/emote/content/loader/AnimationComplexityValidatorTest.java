@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -22,10 +22,10 @@ class AnimationComplexityValidatorTest {
 
     @Test
     void acceptsAllBundledAnimations() throws Exception {
-        AnimationJsonLoader loader = new AnimationJsonLoader();
+        AnimationJsonParser parser = new AnimationJsonParser();
         try (var paths = Files.list(Path.of("docs/example"))) {
             for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
-                LoadedAnimation loaded = loader.load(path);
+                LoadedAnimation loaded = parser.parse(path);
                 assertDoesNotThrow(() -> this.validator.validate(loaded), path.toString());
             }
         }

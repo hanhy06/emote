@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.playback;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.animation.AnimationJsonLoader;
+import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import org.junit.jupiter.api.Test;
 
@@ -96,7 +96,7 @@ class AnimationPlayerTest {
     }
 
     private io.github.hanhy06.emote.content.LoadedAnimation load(JsonObject root) throws Exception {
-        return new AnimationJsonLoader().parse(
+        return new AnimationJsonParser().parse(
             Path.of("schema4-player-test.json"),
             root.toString().getBytes(StandardCharsets.UTF_8)
         );

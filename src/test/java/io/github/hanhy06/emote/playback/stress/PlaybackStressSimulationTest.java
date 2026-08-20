@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.stress;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.animation.AnimationJsonLoader;
+import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -26,7 +26,7 @@ class PlaybackStressSimulationTest {
 
     @Test
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
-        LoadedAnimation loaded = new AnimationJsonLoader().load(Path.of("docs/example/emote.dance.json"));
+        LoadedAnimation loaded = new AnimationJsonParser().parse(Path.of("docs/example/emote.dance.json"));
         EmoteAnimation animation = loaded.animation();
         PreparedAnimation plan = PreparedAnimation.from(loaded);
         int durationTicks = animation.timeline().durationTicks();

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.*;
 
-class AnimationServerPreparerTest {
+class AnimationContentResolverTest {
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
@@ -30,7 +30,7 @@ class AnimationServerPreparerTest {
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> AnimationServerPreparer.validateSkinTarget(
+            () -> AnimationContentResolver.validateSkinTarget(
                 Path.of("invalid-skin.json"),
                 "$.nodes.head",
                 itemNode,
@@ -43,7 +43,7 @@ class AnimationServerPreparerTest {
 
     @Test
     void acceptsNonPlayerHeadItemWithoutSkinMetadata() {
-        assertDoesNotThrow(() -> AnimationServerPreparer.validateSkinTarget(
+        assertDoesNotThrow(() -> AnimationContentResolver.validateSkinTarget(
             Path.of("plain-item.json"),
             "$.nodes.item",
             itemNode(null),

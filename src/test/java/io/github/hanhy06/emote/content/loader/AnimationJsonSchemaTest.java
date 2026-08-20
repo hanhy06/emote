@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationJsonSchemaTest {
     private static final Path SOURCE = Path.of("animation-schema-test.json");
-    private final AnimationJsonLoader loader = new AnimationJsonLoader();
+    private final AnimationJsonParser parser = new AnimationJsonParser();
 
     @Test
     void loadsHierarchyMolangAndIndependentTracks() throws Exception {
@@ -165,7 +165,7 @@ class AnimationJsonSchemaTest {
     }
 
     private LoadedAnimation parse(JsonObject root) throws EmoteAnimationLoadException {
-        return this.loader.parse(SOURCE, root.toString().getBytes(StandardCharsets.UTF_8));
+        return this.parser.parse(SOURCE, root.toString().getBytes(StandardCharsets.UTF_8));
     }
 
     private EmoteAnimationLoadException assertInvalid(JsonObject root) {

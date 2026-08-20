@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.animation.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.MolangEngine;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
 import java.util.*;

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
@@ -11,30 +11,30 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Stream;
 
-public final class AnimationDirectoryLoader {
-    private final AnimationJsonLoader jsonLoader;
-    private final SequenceJsonLoader sequenceJsonLoader;
-    private final AnimationServerPreparer serverValidator;
+public final class EmoteDirectoryLoader {
+    private final AnimationJsonParser animationParser;
+    private final SequenceJsonParser sequenceParser;
+    private final AnimationContentResolver contentResolver;
 
-    public AnimationDirectoryLoader() {
-        this(new AnimationJsonLoader(), new SequenceJsonLoader(), new AnimationServerPreparer());
+    public EmoteDirectoryLoader() {
+        this(new AnimationJsonParser(), new SequenceJsonParser(), new AnimationContentResolver());
     }
 
-    AnimationDirectoryLoader(
-        AnimationJsonLoader jsonLoader,
-        SequenceJsonLoader sequenceJsonLoader,
-        AnimationServerPreparer serverValidator
+    EmoteDirectoryLoader(
+        AnimationJsonParser animationParser,
+        SequenceJsonParser sequenceParser,
+        AnimationContentResolver contentResolver
     ) {
-        this.jsonLoader = jsonLoader;
-        this.sequenceJsonLoader = sequenceJsonLoader;
-        this.serverValidator = serverValidator;
+        this.animationParser = animationParser;
+        this.sequenceParser = sequenceParser;
+        this.contentResolver = contentResolver;
     }
 
-    public DirectoryContents load(Path directory) {
-        return load(directory, this.serverValidator::prepare);
+    public LoadResult load(Path directory) {
+        return load(directory, this.contentResolver::resolve);
     }
 
-    DirectoryContents load(Path directory, LoadedValidator validator) {
+    LoadResult load(Path directory, AnimationResolver resolver) {
         List<LoadedAnimation> candidates = new ArrayList<>();
         List<EmoteSequence> sequenceCandidates = new ArrayList<>();
         List<Path> detectedFiles = findJsonFiles(directory);
@@ -42,8 +42,8 @@ public final class AnimationDirectoryLoader {
             try {
                 EmoteJsonDocument document = EmoteJsonDocument.read(path);
                 switch (document.type()) {
-                    case "animation" -> candidates.add(validator.validate(this.jsonLoader.parse(document)));
-                    case "sequence" -> sequenceCandidates.add(this.sequenceJsonLoader.parse(document));
+                    case "animation" -> candidates.add(resolver.resolve(this.animationParser.parse(document)));
+                    case "sequence" -> sequenceCandidates.add(this.sequenceParser.parse(document));
                     default -> throw document.reader().error(
                         "$.type",
                         "unsupported emote file type: " + document.type()
@@ -76,7 +76,7 @@ public final class AnimationDirectoryLoader {
         }
     }
 
-    private DirectoryContents rejectDuplicateIds(
+    private LoadResult rejectDuplicateIds(
         List<LoadedAnimation> candidates,
         List<EmoteSequence> sequenceCandidates,
         int detectedFileCount
@@ -103,11 +103,11 @@ public final class AnimationDirectoryLoader {
             .filter(candidate -> !duplicateIds.contains(candidate.id().toString()))
             .sorted(Comparator.comparing(candidate -> candidate.id().toString()))
             .toList();
-        return new DirectoryContents(loaded, sequences, detectedFileCount);
+        return new LoadResult(loaded, sequences, detectedFileCount);
     }
 
-    public record DirectoryContents(List<LoadedAnimation> animations, List<EmoteSequence> sequences, int detectedFileCount) {
-        public DirectoryContents {
+    public record LoadResult(List<LoadedAnimation> animations, List<EmoteSequence> sequences, int detectedFileCount) {
+        public LoadResult {
             animations = List.copyOf(animations);
             sequences = List.copyOf(sequences);
             if (detectedFileCount < animations.size() + sequences.size()) {
@@ -117,7 +117,7 @@ public final class AnimationDirectoryLoader {
     }
 
     @FunctionalInterface
-    interface LoadedValidator {
-        LoadedAnimation validate(LoadedAnimation loaded) throws EmoteAnimationLoadException;
+    interface AnimationResolver {
+        LoadedAnimation resolve(LoadedAnimation loaded) throws EmoteAnimationLoadException;
     }
 }

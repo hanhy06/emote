@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
@@ -26,10 +26,10 @@ import java.util.Objects;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
-public final class AnimationServerPreparer {
+public final class AnimationContentResolver {
     private final AnimationComplexityValidator complexityValidator = new AnimationComplexityValidator();
 
-    public LoadedAnimation prepare(LoadedAnimation loaded) throws EmoteAnimationLoadException {
+    public LoadedAnimation resolve(LoadedAnimation loaded) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
         MinecraftServer server = EmoteMod.SERVER;
         Path sourcePath = loaded.sourcePath();

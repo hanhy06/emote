@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.animation;
+package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -13,11 +13,11 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class SequenceJsonLoader {
+public final class SequenceJsonParser {
     private static final int SCHEMA_VERSION = 3;
     private final ParticipantPlacementParser placementParser = new ParticipantPlacementParser();
 
-    public EmoteSequence load(Path sourcePath) throws EmoteAnimationLoadException {
+    public EmoteSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
     }
 
@@ -29,11 +29,11 @@ public final class SequenceJsonLoader {
         }
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
         Identifier id = parseId(reader.requireString(root, "id", "$"), "$.id", reader);
-        EmoteMetadata metadata = AnimationJsonLoader.parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
+        EmoteMetadata metadata = AnimationJsonParser.parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
         EmoteSequence.Participants participants = parseParticipants(root, reader);
         JsonObject settingsObject = reader.requireObject(root, "settings", "$");
         int cooldownTicks = reader.requireTime(settingsObject, "cooldown", "$.settings", 0);
-        EmotePlayerBehavior player = AnimationJsonLoader.parsePlayer(
+        EmotePlayerBehavior player = AnimationJsonParser.parsePlayer(
             reader.requireObject(settingsObject, "player", "$.settings"),
             "$.settings.player",
             reader
