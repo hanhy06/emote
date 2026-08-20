@@ -63,7 +63,7 @@ processResources {
         expand "version": inputs.properties.version
     }
 
-    from("docs/example") {
+    from("docs/sample") {
         include "**/*.json"
         into "default-emote-animations"
     }

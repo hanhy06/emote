@@ -26,7 +26,7 @@ class PlaybackStressSimulationTest {
 
     @Test
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
-        LoadedAnimation loaded = new AnimationJsonParser().parse(Path.of("docs/example/emote.dance.json"));
+        LoadedAnimation loaded = new AnimationJsonParser().parse(Path.of("docs/sample/emote.dance.json"));
         EmoteAnimation animation = loaded.animation();
         PreparedAnimation plan = PreparedAnimation.from(loaded);
         int durationTicks = animation.timeline().durationTicks();
