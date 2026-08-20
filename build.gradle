@@ -29,6 +29,8 @@ sourceSets.test {
 }
 
 repositories {
+    mavenCentral()
+
     // Add repositories to retrieve artifacts from in here.
     // You should only use this when depending on other mods because
     // Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
@@ -46,6 +48,8 @@ dependencies {
     implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
 
     include(implementation("me.lucko:fabric-permissions-api:${fabric_permissions_api_version}"))
+    include(implementation("team.unnamed:mocha:3.0.1"))
+    include(implementation("org.javassist:javassist:3.30.2-GA"))
 
     testImplementation platform("org.junit:junit-bom:5.12.2")
     testImplementation "org.junit.jupiter:junit-jupiter"
