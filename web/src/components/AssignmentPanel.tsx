@@ -123,9 +123,9 @@ export function AssignmentPanel({
       </div>
       <p><strong>Item</strong></p>
       <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}>Right hand</button>
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}>Left hand</button>
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem(null)}>Unassigned</button>
+        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}><i style={{ backgroundColor: "#d66b32" }} />Right hand</button>
+        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}><i style={{ backgroundColor: "#3678b8" }} />Left hand</button>
+        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem(null)}><i style={{ backgroundColor: "#d0a52c" }} />Unassigned</button>
       </div>
       <p><strong>Coordinate space</strong></p>
       <div className="assignment-buttons">

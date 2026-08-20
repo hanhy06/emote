@@ -134,7 +134,7 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
-    const initialPosition = initialTarget.clone().add(new THREE.Vector3(size * 4.65, size * 1.9, size * 4.65));
+    const initialPosition = initialTarget.clone().add(new THREE.Vector3(size * 2.6, size * 1.05, size * 2.6));
     const previousCamera = cameraStateRef.current;
     if (previousCamera) {
       controls.target.copy(previousCamera.target);
