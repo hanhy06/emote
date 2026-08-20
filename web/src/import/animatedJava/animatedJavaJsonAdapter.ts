@@ -13,6 +13,7 @@ import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransfor
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
 import { isAnimatedJavaProject, requireAnimatedJavaProject } from "./animatedJavaProjectSchema";
 import { blockArgumentToSnbt, importAnimatedJavaProject, itemArgumentToSnbt } from "./animatedJavaProjectImporter";
+import { createAjBlueprintRuntime } from "./animatedJavaAnimationOutput";
 
 const encoder = new TextEncoder();
 
@@ -69,14 +70,14 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
         return importAnimation(id, animation, nodes, nodeIdsBySource);
       } catch (reason) {
         if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
-        const message = `${id}: preview and export use the Create pose because its Molang cannot be evaluated.`;
+        const message = `${id}: preview uses the Create pose; runtime Molang is preserved.`;
         diagnostics.push({
           severity: "warning",
           code: "animated_java_animation_molang_unavailable",
           message,
           sourcePath: reason.sourcePath ?? `animations.${id}`,
         });
-        return createPreviewOnlyAnimation(id, animation, message);
+        return createPreviewOnlyAnimation(id, animation, message, nodes, nodeIdsBySource);
       }
     });
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
@@ -96,18 +97,27 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
   },
 };
 
-function createPreviewOnlyAnimation(id: string, animation: AjAnimation, reason: string): ImportedAnimation {
+function createPreviewOnlyAnimation(
+  id: string,
+  animation: AjAnimation,
+  reason: string,
+  nodes: Record<string, ImportedNode>,
+  nodeIdsBySource: ReadonlyMap<string, string[]>,
+): ImportedAnimation {
+  const durationTicks = Number.isFinite(animation.length) && animation.length > 0
+    ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
+    : TICKS_PER_SECOND;
   return {
     id: sanitizeResourcePath(id, "default"),
     name: prettify(id),
-    durationTicks: Number.isFinite(animation.length) && animation.length > 0
-      ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
-      : TICKS_PER_SECOND,
+    durationTicks,
     loop: animation.loop_mode.type,
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
+    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
+    runtime: createAjBlueprintRuntime(animation, durationTicks, nodeIdsBySource, nodes),
   };
 }
 

@@ -1,9 +1,8 @@
 import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { matrixToLocalTransform } from "../../format/localTransform";
 import { formatMinecraftTime } from "../../format/minecraftTime";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
-import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, bedrockPlayerHeadConversionMatrix, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -33,7 +32,7 @@ export function createBedrockRuntime(animation: BedrockAnimation, durationTicks:
       nodes[bone.id] = {
         type: "item_display",
         parent: `${bone.id}_x`,
-        transform: matrixToLocalTransform(bedrockPlayerHeadConversionMatrix(bone), `Bedrock ${bone.id} display transform`),
+        transform: { position: ZERO, rotation: ZERO, scale: ONE },
         item_stack_snbt: '{id:"minecraft:player_head",count:1}',
         item_display: "none",
       };

@@ -1,5 +1,7 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import { createDefaultPlayerBehavior, type EmoteEvent, type Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteNode, type EmoteNodeTracks, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
+import { matrixToLocalTransform } from "../../format/localTransform";
+import { formatMinecraftTime } from "../../format/minecraftTime";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
@@ -19,6 +21,7 @@ import {
   type BbmodelProject,
 } from "./cubeProjectSchema";
 import { evaluateGeckoChannel } from "./cubeAnimationBaker";
+import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -135,14 +138,14 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       return importAnimation(animation, index, bones, diagnostics);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
-      const message = `${animation.name}: preview and export use the Create pose because its Molang cannot be evaluated.`;
+      const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
         code: "geckolib_animation_molang_unavailable",
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyAnimation(animation, index, message);
+      return createPreviewOnlyAnimation(animation, index, message, bones, nodes);
     }
   });
   return {
@@ -159,21 +162,109 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   };
 }
 
-function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string): ImportedAnimation {
+function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string, bones: BoneEntry[], nodes: Record<string, ImportedNode>): ImportedAnimation {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
+  const durationTicks = Number.isFinite(animation.length) && animation.length > 0
+    ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
+    : TICKS_PER_SECOND;
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
-    durationTicks: Number.isFinite(animation.length) && animation.length > 0
-      ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
-      : TICKS_PER_SECOND,
+    durationTicks,
     loop: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
+    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
+    runtime: createGeckoRuntime(animation, index, durationTicks, bones, nodes),
   };
+}
+
+function createGeckoRuntime(
+  animation: BbAnimation,
+  animationIndex: number,
+  durationTicks: number,
+  bones: BoneEntry[],
+  importedNodes: Record<string, ImportedNode>,
+): NonNullable<ImportedAnimation["runtime"]> {
+  const sceneId = "geckolib_scene";
+  const nodes: Record<string, EmoteNode> = {
+    [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
+  };
+  const tracks: Record<string, EmoteNodeTracks> = {};
+  const animators = resolveBoneAnimators(animation, animationIndex, bones);
+  for (const bone of bones) {
+    const parent = bone.parent ? `${bone.parent.id}_x` : sceneId;
+    const parentOrigin = bone.parent?.group.origin ?? ZERO_VECTOR;
+    const basePosition = bone.group.origin.map((value, axis) => (value - parentOrigin[axis]) / 16) as [number, number, number];
+    nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: [0, 0, bone.group.rotation[2]], scale: ONE_VECTOR } };
+    nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO_VECTOR, rotation: [0, bone.group.rotation[1], 0], scale: ONE_VECTOR } };
+    nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO_VECTOR, rotation: [bone.group.rotation[0], 0, 0], scale: ONE_VECTOR } };
+    for (const entry of bone.nodes) {
+      const imported = importedNodes[entry.id];
+      if (imported) nodes[entry.id] = importedNodeToRuntimeNode(imported, matrixToLocalTransform(matrix4ToRowMajor(entry.localMatrix, `GeckoLib runtime node ${entry.id}`), `GeckoLib runtime node ${entry.id}`), `${bone.id}_x`);
+    }
+    const animator = animators.get(bone.uuid);
+    if (!animator) continue;
+    const position = geckoChannelFrames(animator, "position", basePosition, (values) => values.map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
+    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => values);
+    const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
+    if (position) tracks[`${bone.id}_z`] = { position };
+    if (rotation) {
+      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateGeckoAxis(rotation, 2, bone.group.rotation[2]) };
+      tracks[`${bone.id}_y`] = { rotation: isolateGeckoAxis(rotation, 1, bone.group.rotation[1]) };
+      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateGeckoAxis(rotation, 0, bone.group.rotation[0]) };
+    }
+    if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
+  }
+  return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
+}
+
+type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
+
+function geckoChannelFrames(
+  animator: BbAnimator,
+  channel: "position" | "rotation" | "scale",
+  fallback: readonly [number, number, number],
+  transform: (value: MolangVector) => MolangVector,
+): EmoteVectorKeyframe[] | undefined {
+  const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
+  if (source.length === 0) return undefined;
+  const result = source.map((frame): EmoteVectorKeyframe => {
+    const points = frame.data_points;
+    if (points.length < 1 || points.length > 2) throw new ConversionError("unsupported_geckolib_keyframe", "GeckoLib transform keyframes must contain one value or a pre/post pair.");
+    const vectors = points.map((point) => transform(geckoPointVector(point)));
+    const interpolation = frame.interpolation === "step" ? "step" : "linear";
+    return vectors.length === 1
+      ? { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation }
+      : { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), pre: vectors[0], post: vectors[1], interpolation };
+  });
+  if (result[0].time !== "0t") result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
+  return result.map((frame, index) => index + 1 < result.length ? frame : (({ interpolation: _, ...last }) => last)(frame));
+}
+
+function geckoPointVector(point: BbKeyframe["data_points"][number]): MolangVector {
+  if (point.x === undefined || point.y === undefined || point.z === undefined) throw new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.");
+  return [point.x, point.y, point.z].map(molangScalar) as MolangVector;
+}
+
+function isolateGeckoAxis(frames: EmoteVectorKeyframe[], axis: number, base: number): EmoteVectorKeyframe[] {
+  const isolate = (values: readonly MolangScalar[]): MolangVector => values.map((value, index) => index === axis ? affineMolang(value, 1, base) : 0) as MolangVector;
+  return frames.map((frame) => ({ ...frame, ...(frame.value ? { value: isolate(frame.value) } : {}), ...(frame.pre ? { pre: isolate(frame.pre) } : {}), ...(frame.post ? { post: isolate(frame.post) } : {}) }));
+}
+
+function molangScalar(value: string | number): MolangScalar {
+  if (typeof value === "number") return value;
+  const numeric = Number(value.trim());
+  return Number.isFinite(numeric) ? numeric : value.trim();
+}
+
+function affineMolang(value: MolangScalar, factor: number, offset: number): MolangScalar {
+  if (typeof value === "number") return value * factor + offset;
+  const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
+  return offset === 0 ? scaled : `(${scaled} + ${offset})`;
 }
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {

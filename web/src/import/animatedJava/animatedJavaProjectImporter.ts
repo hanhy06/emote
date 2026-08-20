@@ -15,6 +15,7 @@ import type {
   AjProjectDisplayElement,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
+import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
 
 interface ProjectChannelCursor {
   frames: AjProjectKeyframe[];
@@ -50,14 +51,14 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       return importProjectAnimation(animation, index, displayElements);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
-      const message = `${animation.name}: preview and export use the Create pose because its Molang cannot be evaluated.`;
+      const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
         code: "animated_java_animation_molang_unavailable",
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyProjectAnimation(animation, index, message);
+      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes);
     }
   });
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || "Animated Java";
@@ -74,16 +75,25 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   };
 }
 
-function createPreviewOnlyProjectAnimation(animation: AjProjectAnimation, index: number, reason: string): ImportedAnimation {
+function createPreviewOnlyProjectAnimation(
+  animation: AjProjectAnimation,
+  index: number,
+  reason: string,
+  elements: AjProjectDisplayElement[],
+  nodes: Record<string, ImportedNode>,
+): ImportedAnimation {
+  const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
-    durationTicks: Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20,
+    durationTicks,
     loop: animation.loop === "loop" ? "loop" : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
+    preview: { durationTicks: 20, tracks: {} },
+    runtime: createAjProjectRuntime(animation, durationTicks, elements, nodes),
   };
 }
 

@@ -87,6 +87,10 @@ describe("animatedJavaJsonAdapter", () => {
       code: "animated_java_animation_molang_unavailable",
       sourcePath: "animations[0].animators.block.position[0]",
     }));
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "native_runtime" });
+    expect(compiled.timeline.tracks.aj_block_z.position?.[0].value?.[0]).toBe("((q.ground_speed) * 0.0625)");
+    expect(compiled.nodes.block.type).toBe("block_display");
+    expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 
   it("imports Animated Java 1.10 native cube rigs", async () => {
@@ -437,6 +441,10 @@ describe("animatedJavaJsonAdapter", () => {
       code: "animated_java_animation_molang_unavailable",
       sourcePath: "runtime/item/position",
     }));
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(compiled.timeline.tracks.aj_item_y.position?.[0].value?.[0]).toBe("q.ground_speed");
+    expect(compiled.nodes.item.type).toBe("item_display");
+    expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 
   it("bakes bezier and catmull-rom interpolation", async () => {

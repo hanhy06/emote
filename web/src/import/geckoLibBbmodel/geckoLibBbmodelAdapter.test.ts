@@ -263,6 +263,7 @@ describe("geckoLibBbmodelAdapter", () => {
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
     expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((q.ground_speed * 16) * 0.0625)");
     expect(compiled.nodes.root.type).toBe("item_display");
+    expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 
   it("requires the texture to be embedded", async () => {

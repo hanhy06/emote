@@ -17,7 +17,7 @@ import {
   type ConversionNode,
 } from "../domain/conversionDocument";
 import { multiplyMatrix16 } from "../format/matrix";
-import { matrixToLocalTransform } from "../format/localTransform";
+import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
@@ -80,9 +80,19 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
     };
     if (node.type !== "item_display") return [id, common];
     const assignment = assignments[id];
+    const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
+      ? matrixToLocalTransform(
+          multiplyMatrix16(localTransformToMatrix(node.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
+          `Runtime player head node ${id}`,
+        )
+      : node.transform;
     return [id, {
       ...common,
-      ...(assignment ? { skin: { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } } : { skin: undefined }),
+      transform,
+      ...(assignment ? {
+        item_stack_snbt: PLAYER_HEAD_SNBT,
+        skin: { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order },
+      } : { skin: undefined }),
     }];
   })) as Record<string, EmoteNode>;
 }
