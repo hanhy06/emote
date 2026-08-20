@@ -1,13 +1,12 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

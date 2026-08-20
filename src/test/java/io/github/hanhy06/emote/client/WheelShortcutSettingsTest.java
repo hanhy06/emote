@@ -3,8 +3,8 @@ package io.github.hanhy06.emote.client;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.application.EmoteSummary;
+import io.github.hanhy06.emote.config.JsonFileStore;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 

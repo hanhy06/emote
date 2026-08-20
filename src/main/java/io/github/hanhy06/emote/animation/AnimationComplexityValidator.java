@@ -1,9 +1,8 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 
 final class AnimationComplexityValidator {
     static final int MAX_DURATION_TICKS = 20 * 60 * 10;

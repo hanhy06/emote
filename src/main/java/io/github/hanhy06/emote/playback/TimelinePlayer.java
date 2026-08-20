@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.content.CompiledTimeline;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 
 import java.util.*;
 

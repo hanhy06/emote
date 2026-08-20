@@ -1,20 +1,15 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinPipeline;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
-import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
-import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
-import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
-import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
+import io.github.hanhy06.emote.skin.mineskin.*;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;

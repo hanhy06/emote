@@ -3,9 +3,9 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.Emote;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
-import org.jspecify.annotations.Nullable;
 
 final class PartnerMatcher {
     static final double MAX_HORIZONTAL_DISTANCE = 2.0D;

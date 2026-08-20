@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.client;
 
 import com.google.gson.*;
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.application.EmoteSummary;
+import io.github.hanhy06.emote.config.JsonFileStore;
 
 import java.io.IOException;
 import java.nio.file.Files;

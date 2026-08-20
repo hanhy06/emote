@@ -1,8 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.content.CompiledTimeline;
-
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;

@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.network.payload;
 
 import io.github.hanhy06.emote.Emote;
-import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.application.EmoteSummary;
+import io.github.hanhy06.emote.content.EmoteCatalog;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.ByteBufCodecs;
 import net.minecraft.network.codec.StreamCodec;

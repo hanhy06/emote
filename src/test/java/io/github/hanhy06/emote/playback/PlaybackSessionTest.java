@@ -1,17 +1,11 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.content.CompiledTimeline;
-
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.EmoteSequence;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedEmoteFixture;
-import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.content.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.arguments.coordinates.RotationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
@@ -27,12 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertSame;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackSessionTest {
     @BeforeAll

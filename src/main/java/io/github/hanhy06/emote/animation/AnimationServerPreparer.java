@@ -1,14 +1,12 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.content.PreparedDisplayData;
-
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.content.PreparedDisplayData;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.nbt.NbtOps;

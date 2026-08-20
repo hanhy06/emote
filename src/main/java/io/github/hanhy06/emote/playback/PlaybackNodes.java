@@ -9,12 +9,7 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 
 public final class PlaybackNodes {
     private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;

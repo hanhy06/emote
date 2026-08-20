@@ -1,12 +1,9 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.CompiledTimeline;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.SkinBindingCompiler;
 

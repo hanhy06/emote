@@ -1,13 +1,10 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackDisplayLimitTest {
     @Test

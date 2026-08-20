@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.client;
 
+import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
 import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
-import io.github.hanhy06.emote.application.EmoteSummary;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.KeyMapping;

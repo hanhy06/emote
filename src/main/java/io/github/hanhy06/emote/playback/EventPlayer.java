@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.content.CompiledTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.CompiledTimeline;
 
 import java.util.List;
 import java.util.Objects;

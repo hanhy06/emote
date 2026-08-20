@@ -1,11 +1,8 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.content.PreparedDisplayData;
-
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;

@@ -4,19 +4,12 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.config.AccessConfig;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.random.RandomGenerator;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class IdlePlaybackServiceTest {
     private static final UUID PLAYER_UUID = UUID.fromString("c50d1f70-28d0-4e46-8f8a-334036755c36");

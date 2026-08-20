@@ -5,14 +5,9 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
-
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.UUID;
 import org.jspecify.annotations.Nullable;
+
+import java.util.*;
 
 public final class PlaybackSession {
     private final UUID sessionId;

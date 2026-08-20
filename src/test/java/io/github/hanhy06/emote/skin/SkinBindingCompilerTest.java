@@ -1,13 +1,10 @@
 package io.github.hanhy06.emote.skin;
 
-import io.github.hanhy06.emote.skin.SkinBinding;
-import io.github.hanhy06.emote.skin.SkinBindingCompiler;
-import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;

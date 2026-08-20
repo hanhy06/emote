@@ -1,10 +1,9 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -1,15 +1,11 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.content.PreparedDisplayData;
-
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
+import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import com.google.gson.JsonPrimitive;
 import net.minecraft.commands.arguments.coordinates.RotationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.nbt.CompoundTag;
@@ -24,10 +20,7 @@ import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SequenceCompilerTest {
     private static final EmoteAnimation.Matrix IDENTITY = matrix(0.0D);

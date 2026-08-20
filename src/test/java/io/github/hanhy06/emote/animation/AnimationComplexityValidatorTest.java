@@ -1,11 +1,10 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
@@ -17,9 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationComplexityValidatorTest {
     private static final String MINECRAFT_VERSION = System.getProperty("emote.minecraftVersion");

@@ -1,13 +1,12 @@
 package io.github.hanhy06.emote.application;
 
-import io.github.hanhy06.emote.content.LoadedAnimation;
-
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackParticipant;
