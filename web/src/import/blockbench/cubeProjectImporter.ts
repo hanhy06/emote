@@ -80,7 +80,12 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map()));
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
-      nodes[bone.id] = { id: bone.id, type: "anchor", defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`) };
+      nodes[bone.id] = {
+        id: bone.id,
+        type: "anchor",
+        defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`),
+        ...(heldItemArm(bone.group.name) ? { suggestedHeldItemArm: heldItemArm(bone.group.name) } : {}),
+      };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
@@ -118,6 +123,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
         id: nodeId,
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
+        ...(heldItemArm(locator.name) ? { suggestedHeldItemArm: heldItemArm(locator.name) } : {}),
       };
     }
   }
@@ -624,6 +630,13 @@ function appendTimelineEvent(events: ImportedTimelineEvent[], tick: number, even
 function normalizeBoneName(name: string | undefined): string | undefined {
   const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
   return normalized || undefined;
+}
+
+function heldItemArm(name: string | undefined): "left" | "right" | undefined {
+  const normalized = normalizeBoneName(name);
+  if (normalized === "leftitem" || normalized === "lefthanditem") return "left";
+  if (normalized === "rightitem" || normalized === "righthanditem") return "right";
+  return undefined;
 }
 
 function isHiddenAccessoryName(name: string | undefined): boolean {

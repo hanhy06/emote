@@ -8,10 +8,12 @@ import { SettingsPanel } from "./components/SettingsPanel";
 import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
 import {
   assignmentSummary,
+  assignSessionHeldItemArm,
   assignSessionOrder,
   assignSessionSkinPart,
   assignSessionSpace,
   createConverterSession,
+  createAttachmentPoints,
   createPreviewParts,
   EMPTY_SELECTION,
   findSkinCandidates,
@@ -23,7 +25,7 @@ import {
 import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import { downloadExport, downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { NodeSpace } from "./format/emoteAnimation";
+import type { HeldItemArm, NodeSpace } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
@@ -89,6 +91,11 @@ export function App() {
     () => createPreviewParts(skinCandidates, animation, previewTick),
     [animation, previewTick, skinCandidates],
   );
+  const attachmentPoints = useMemo(
+    () => createAttachmentPoints(project, animation, previewTick),
+    [animation, previewTick, project],
+  );
+  const hasReviewNodes = skinCandidates.length > 0 || attachmentPoints.length > 0;
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
@@ -197,6 +204,11 @@ export function App() {
   function assignSelected(part: SkinPartId | null) {
     if (selectedParts.size === 0) return;
     updateSession((current) => assignSessionSkinPart(current, part));
+  }
+
+  function assignSelectedHeldItem(arm: HeldItemArm | null) {
+    if (selectedParts.size === 0) return;
+    updateSession((current) => assignSessionHeldItemArm(current, arm));
   }
 
   function assignSelectedSpace(space: NodeSpace) {
@@ -346,13 +358,13 @@ export function App() {
             <div className="section-heading">
               <div>
                 <span className="step-label">Page 1</span>
-                <h2 id="workspace-title">{skinCandidates.length > 0 ? "Review player skin parts" : "Review imported animation"}</h2>
-                <p>{skinCandidates.length > 0
-                  ? "Select parts in the preview, then assign each one to a player body part."
-                   : "This file does not contain skin-compatible parts, so no skin assignment is needed."}</p>
+                <h2 id="workspace-title">{hasReviewNodes ? "Review model assignments" : "Review imported animation"}</h2>
+                <p>{hasReviewNodes
+                  ? "Select model parts or attachment points, then assign their player role."
+                  : "This file does not contain assignable model parts or attachment points."}</p>
               </div>
               <div className="preview-controls">
-                {skinCandidates.length > 0 && availability?.preview === "full" && (
+                {hasReviewNodes && availability?.preview === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
@@ -365,12 +377,13 @@ export function App() {
             </div>
             {availability?.preview === "unavailable" ? (
               <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>Edit the animation metadata on Page 2. See the warning above for the source expression that must be changed.</span></div>
-            ) : skinCandidates.length > 0 ? (
+            ) : hasReviewNodes ? (
               <div className="editor">
                 <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
                   <PartPreview
                     key={project.origin.sourceName}
                     parts={previewParts}
+                    attachmentPoints={attachmentPoints}
                     assignments={assignments}
                     selectedParts={selectedParts}
                     onSelectPart={handlePartSelect}
@@ -379,12 +392,14 @@ export function App() {
                 </Suspense>
                 <AssignmentPanel
                   parts={previewParts}
+                  attachmentPoints={attachmentPoints}
                   assignments={assignments}
                   orders={orders}
                   spaces={spaces}
                   selectedParts={selectedParts}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
+                  onAssignHeldItem={assignSelectedHeldItem}
                   onAssignOrder={assignOrder}
                   onAssignSpace={assignSelectedSpace}
                   onSelectPart={handlePartSelect}

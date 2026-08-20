@@ -1,5 +1,5 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace } from "../format/emoteAnimation";
+import type { EmoteMetadata, EmotePlayerBehavior, HeldItemArm, NodeSpace } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { readSnbtRawField, readSnbtStringField } from "../format/snbt";
 import type {
@@ -25,7 +25,10 @@ export type ConversionNode =
   })
   | (Omit<ImportedBlockNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace })
   | (Omit<ImportedTextNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace })
-  | (Omit<ImportedAnchorNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace });
+  | (Omit<ImportedAnchorNode, "id" | "skinAssignmentGroup" | "space" | "suggestedHeldItemArm"> & {
+    space: NodeSpace;
+    heldItemArm: HeldItemArm | null;
+  });
 
 export interface SkinGroup {
   nodeIds: string[];
@@ -84,6 +87,10 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     const space = importedNode.space ?? suggestedSkin?.participant ?? (suggestedSkin ? "initiator" : "scene");
     if (importedNode.type !== "item_display") {
       const { id: _id, skinAssignmentGroup: _skinAssignmentGroup, space: _space, ...node } = importedNode;
+      if (node.type === "anchor") {
+        const { suggestedHeldItemArm, ...anchor } = node;
+        return [nodeId, { ...anchor, space, heldItemArm: suggestedHeldItemArm ?? null }];
+      }
       return [nodeId, { ...node, space }];
     }
 

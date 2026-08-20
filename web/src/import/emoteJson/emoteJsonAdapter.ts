@@ -83,10 +83,19 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
       ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
     };
     if (node.type === "item_display") {
+      if (node.item_source) {
+        return [id, {
+          id,
+          type: "anchor",
+          defaultMatrix,
+          space: node.space,
+          suggestedHeldItemArm: node.item_source.arm,
+        }];
+      }
       return [id, {
         ...common,
         type: "item_display",
-        itemStackSnbt: node.item_stack_snbt,
+        itemStackSnbt: node.item_stack_snbt!,
         itemDisplay: node.item_display,
         ...(node.skin ? { skin: { ...node.skin } } : {}),
       }];

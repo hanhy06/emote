@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
+import type { AttachmentPoint } from "../converterSession";
 import { SKIN_PARTS, type PartAssignments } from "../preview/skinAssignment";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {
   parts: PlayerHeadPart[];
+  attachmentPoints: AttachmentPoint[];
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
   onSelectPart: (nodeId: string, additive: boolean) => void;
@@ -15,9 +17,10 @@ interface PartPreviewProps {
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export default function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
+export default function PartPreview({ parts, attachmentPoints, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
+  const pointMaterialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
   const onSelectPartsRef = useRef(onSelectParts);
   const selectedPartsRef = useRef(selectedParts);
@@ -36,7 +39,14 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       material.emissive.set(selectedParts.has(nodeId) ? "#3d73b9" : "#000000");
       material.emissiveIntensity = selectedParts.has(nodeId) ? 0.7 : 0;
     }
-  }, [assignments, selectedParts]);
+    for (const point of attachmentPoints) {
+      const material = pointMaterialsRef.current.get(point.nodeId);
+      if (!material) continue;
+      material.color.set(point.arm === "right" ? "#d66b32" : point.arm === "left" ? "#3678b8" : "#d0a52c");
+      material.emissive.set(selectedParts.has(point.nodeId) ? "#ffffff" : "#000000");
+      material.emissiveIntensity = selectedParts.has(point.nodeId) ? 0.75 : 0;
+    }
+  }, [assignments, attachmentPoints, selectedParts]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -71,6 +81,7 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
     const clickableMeshes: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
+    const pointGeometry = new THREE.SphereGeometry(0.065, 16, 10);
 
     for (const part of parts) {
       const assignment = assignments[part.nodeId];
@@ -94,6 +105,21 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       edges.matrixAutoUpdate = false;
       edges.matrix.copy(mesh.matrix);
       partGroup.add(edges);
+    }
+    for (const point of attachmentPoints) {
+      const material = new THREE.MeshStandardMaterial({
+        color: point.arm === "right" ? "#d66b32" : point.arm === "left" ? "#3678b8" : "#d0a52c",
+        emissive: selectedParts.has(point.nodeId) ? "#ffffff" : "#000000",
+        emissiveIntensity: selectedParts.has(point.nodeId) ? 0.75 : 0,
+        roughness: 0.65,
+      });
+      pointMaterialsRef.current.set(point.nodeId, material);
+      const marker = new THREE.Mesh(pointGeometry, material);
+      marker.matrixAutoUpdate = false;
+      marker.matrix.set(...point.matrix as MatrixValues);
+      marker.userData.nodeId = point.nodeId;
+      partGroup.add(marker);
+      clickableMeshes.push(marker);
     }
     scene.add(partGroup);
 
@@ -264,6 +290,7 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       controls.dispose();
       geometry.dispose();
       edgeGeometry.dispose();
+      pointGeometry.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -273,8 +300,9 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       renderer.dispose();
       renderer.domElement.remove();
       materialsRef.current.clear();
+      pointMaterialsRef.current.clear();
     };
-  }, [parts]);
+  }, [parts, attachmentPoints]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
   return (

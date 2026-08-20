@@ -1,6 +1,7 @@
 import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
+import type { HeldItemArm } from "../../format/emoteAnimation";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 
@@ -9,6 +10,7 @@ export interface BedrockPlayerBone {
   sourceName: string;
   pivot: readonly [number, number, number];
   parent?: string;
+  heldItemArm?: HeldItemArm;
   cube?: {
     from: readonly [number, number, number];
     to: readonly [number, number, number];
@@ -23,6 +25,8 @@ export const BEDROCK_PLAYER_BONES: readonly BedrockPlayerBone[] = [
   { id: "head", sourceName: "head", pivot: [0, 24, 0], parent: "body", cube: { from: [-4, 24, -4], to: [4, 32, 4], skin: "head" } },
   { id: "left_arm", sourceName: "leftArm", pivot: [5, 22, 0], parent: "body", cube: { from: [4, 12, -2], to: [8, 24, 2], skin: "left_arm" } },
   { id: "right_arm", sourceName: "rightArm", pivot: [-5, 22, 0], parent: "body", cube: { from: [-8, 12, -2], to: [-4, 24, 2], skin: "right_arm" } },
+  { id: "left_item", sourceName: "leftItem", pivot: [6, 15, 1], parent: "left_arm", heldItemArm: "left" },
+  { id: "right_item", sourceName: "rightItem", pivot: [-6, 15, 1], parent: "right_arm", heldItemArm: "right" },
   { id: "left_leg", sourceName: "leftLeg", pivot: [1.9, 12, 0], parent: "root", cube: { from: [-0.1, 0, -2], to: [3.9, 12, 2], skin: "left_leg" } },
   { id: "right_leg", sourceName: "rightLeg", pivot: [-1.9, 12, 0], parent: "root", cube: { from: [-3.9, 0, -2], to: [0.1, 12, 2], skin: "right_leg" } },
 ];
@@ -48,9 +52,18 @@ export function isHiddenBedrockAccessoryBone(name: string): boolean {
 export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matrix4>): Record<string, ImportedNode> {
   const nodes: Record<string, ImportedNode> = {};
   for (const bone of BEDROCK_PLAYER_BONES) {
-    if (!bone.cube) continue;
     const world = worldMatrices.get(bone.id);
     if (!world) throw new Error(`Missing bind matrix for Bedrock player bone ${bone.id}.`);
+    if (bone.heldItemArm) {
+      nodes[bone.id] = {
+        id: bone.id,
+        type: "anchor",
+        defaultMatrix: matrix4ToRowMajor(world, `Bedrock player bone ${bone.id}`),
+        suggestedHeldItemArm: bone.heldItemArm,
+      };
+      continue;
+    }
+    if (!bone.cube) continue;
     nodes[bone.id] = {
       id: bone.id,
       type: "item_display",

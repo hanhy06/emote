@@ -260,6 +260,9 @@ describe("geckoLibBbmodelAdapter", () => {
       code: "geckolib_animation_molang_unavailable",
       sourcePath: "animations[0].animators.root",
     }));
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((q.ground_speed * 16) * 0.0625)");
+    expect(compiled.nodes.root.type).toBe("item_display");
   });
 
   it("requires the texture to be embedded", async () => {
@@ -281,6 +284,22 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.resources.size).toBe(0);
     expect(imported.resourceMinecraftVersion).toBeUndefined();
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
+  });
+
+  it("suggests GeckoLib and Bedrock hand item bone names as attachment points", async () => {
+    for (const [name, arm] of [["RightHandItem", "right"], ["leftItem", "left"]] as const) {
+      const value = project();
+      value.elements = [];
+      value.textures = [];
+      value.outliner[0].children = [];
+      value.groups[0].name = name;
+      value.outliner[0].name = name;
+
+      const imported = await geckoLibBbmodelAdapter.import(input(value));
+      const node = imported.nodes[name.toLowerCase()];
+
+      expect(node.type === "anchor" && node.suggestedHeldItemArm).toBe(arm);
+    }
   });
 
   it("hides item and cape bones without creating skin candidates", async () => {

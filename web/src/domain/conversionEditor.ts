@@ -1,4 +1,4 @@
-import type { NodeSpace } from "../format/emoteAnimation";
+import type { HeldItemArm, NodeSpace } from "../format/emoteAnimation";
 import type { ImportedAnimation } from "./conversionSeed";
 import type { SkinPartId } from "../preview/skinAssignment";
 import type { AnimationOutputSettings, ConversionDocument } from "./conversionDocument";
@@ -58,6 +58,20 @@ export function assignDocumentNodeSpace(
   const skinGroups = { ...document.skinGroups };
   for (const groupId of selectedGroupIds) skinGroups[groupId] = { ...skinGroups[groupId], assignment: null };
   return { ...document, nodes, skinGroups };
+}
+
+export function assignDocumentHeldItemArm(
+  document: ConversionDocument,
+  selectedNodeIds: ReadonlySet<string>,
+  arm: HeldItemArm | null,
+): ConversionDocument {
+  const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
+    nodeId,
+    selectedNodeIds.has(nodeId) && node.type === "anchor"
+      ? { ...node, heldItemArm: arm, ...(arm !== null && node.space === "scene" ? { space: "initiator" as const } : {}) }
+      : node,
+  ])) as ConversionDocument["nodes"];
+  return { ...document, nodes };
 }
 
 export function editDocumentAnimation(
