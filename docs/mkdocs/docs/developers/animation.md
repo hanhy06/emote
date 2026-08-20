@@ -74,7 +74,7 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 ### Selection visibility
 
-`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly. Set it to `false` for Animations used only inside Sequences.
+`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly by normal players. Set it to `false` for Animations used only inside Sequences. Trusted API calls and players with `emote.bypass` may still play it directly.
 
 ### Player behavior
 

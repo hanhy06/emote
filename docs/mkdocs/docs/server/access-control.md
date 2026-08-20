@@ -85,10 +85,10 @@ Disabling an Animation does not prevent another Sequence from referencing it as 
 
 ## What `emote.bypass` does not bypass
 
-`emote.bypass` is not a higher form of administrator permission. These restrictions still apply:
+`emote.bypass` is intended for administrators and development testing. It bypasses `standalone`, disabled IDs, emote permissions, and cooldowns, but it cannot bypass the minimum requirements for playback:
 
 - Nonexistent IDs cannot be played.
-- Animations with `standalone: false` cannot be played directly.
 - Invalid Animations or Sequences that failed to load cannot be used.
 - Display-entity limits and playback-start failures are not ignored.
+- Playback-request listeners can still cancel playback.
 - Management commands that require `emote.manage` are not granted.

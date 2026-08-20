@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.application.EmotePlayService;
+import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
@@ -19,7 +19,7 @@ import net.minecraft.world.InteractionResult;
 
 public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
-    private final EmotePlayService emotePlayService;
+    private final PlaybackPolicyService playbackPolicy;
     private final EmoteCatalog emoteCatalog;
     private final PlaybackEngine playbackEngine;
     private final ReloadService reloadService;
@@ -28,7 +28,7 @@ public class ServerLifecycle {
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
-        EmotePlayService emotePlayService,
+        PlaybackPolicyService playbackPolicy,
         EmoteCatalog emoteCatalog,
         PlaybackEngine playbackEngine,
         ReloadService reloadService,
@@ -36,7 +36,7 @@ public class ServerLifecycle {
         IdlePlaybackService idlePlaybackService
     ) {
         this.playerSkinManager = playerSkinManager;
-        this.emotePlayService = emotePlayService;
+        this.playbackPolicy = playbackPolicy;
         this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
         this.reloadService = reloadService;
@@ -89,7 +89,7 @@ public class ServerLifecycle {
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
         this.playbackEngine.stopAll(PlaybackStopReason.SERVER_STOPPING);
-        this.emotePlayService.clearCooldowns();
+        this.playbackPolicy.clearCooldowns();
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();

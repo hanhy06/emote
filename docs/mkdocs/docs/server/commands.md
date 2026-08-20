@@ -11,7 +11,7 @@
 | `/emote stop` | Stops your current emote. |
 | `V` | Opens the emote wheel when the client mod is installed. |
 
-The menu, search results, suggestions, and wheel only show emotes that the player can use and that have `standalone: true`.
+The menu, search results, suggestions, and wheel only show emotes that the player can use and that have `standalone: true`. Players with `emote.bypass` can also see disabled, unassigned, and `standalone: false` emotes for administration and testing.
 
 ## Management commands
 

@@ -28,7 +28,7 @@ class EmoteQueryServiceTest {
     }
 
     @Test
-    void exposesOnlyPermittedIds() {
+    void delegatesStandaloneVisibilityToThePlaybackPolicy() {
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(
             create("demo:wave", "Wave"),
@@ -40,8 +40,8 @@ class EmoteQueryServiceTest {
             (ignoredPlayer, emote) -> !emote.id().equals("demo:bow")
         );
 
-        assertEquals(List.of("Wave"), service.getAll(null).stream().map(EmoteSummary::displayName).toList());
-        assertEquals(List.of("demo:wave"), service.getPlayableIds(null));
+        assertEquals(List.of("Sit Idle", "Wave"), service.getAll(null).stream().map(EmoteSummary::displayName).toList());
+        assertEquals(List.of("demo:sit_idle", "demo:wave"), service.getPlayableIds(null));
         assertEquals(List.of("demo:bow", "demo:wave"), service.getAllIds());
     }
 }

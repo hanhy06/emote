@@ -54,4 +54,6 @@ The API currently provides:
 
 API calls that change state must run on the Minecraft server thread.
 
+`EmoteApi.play` is a trusted server-side playback entry point. The calling mod is responsible for applying any desired `standalone`, disabled-ID, player-permission, and cooldown policy. Emote still requires a loaded ID, dispatches cancellable playback-request events, and enforces playback-engine limits and failures.
+
 Types and methods are available in the repository's `io.github.hanhy06.emote.api` package. Registration and event examples will be added here after the API is finalized.

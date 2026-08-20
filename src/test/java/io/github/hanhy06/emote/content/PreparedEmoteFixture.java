@@ -35,6 +35,10 @@ public final class PreparedEmoteFixture {
         return create(id, name, true, EmotePlayerBehavior.createDefault(), cooldownTicks);
     }
 
+    public static PreparedEmote create(String id, String name, boolean standalone, int cooldownTicks) {
+        return create(id, name, standalone, EmotePlayerBehavior.createDefault(), cooldownTicks);
+    }
+
     public static PreparedEmote create(
         String id,
         String name,

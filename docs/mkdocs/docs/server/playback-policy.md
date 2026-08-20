@@ -76,4 +76,6 @@ If a player has multiple permissions, entries are checked from top to bottom in 
 ]
 ```
 
+An idle emote does not need to appear in the permission entry's `emotes` list. This allows idle-only emotes that do not appear in menus, searches, command suggestions, or the wheel. Idle playback still respects `standalone`, `disabled`, and cooldown policies unless the player has `emote.bypass`.
+
 An idle emote does not start while another emote is playing. A failed attempt is retried after one second. When several candidates are available, Emote avoids selecting the most recently played emote twice in a row when possible.

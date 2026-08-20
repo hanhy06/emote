@@ -2,219 +2,174 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
+import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedDefinition;
 import net.minecraft.network.chat.Component;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EmotePlayServiceTest {
     @Test
-    void enforcesCooldownAfterSuccessfulPlayback() {
-        EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
+    void rejectsUnknownIdsBeforeEvaluatingPlaybackPolicy() {
+        EmotePlayService service = new EmotePlayService(
+            new EmoteCatalog(),
+            policy((ignoredPlayer, ignoredPermission, ignoredDefault) -> {
+                throw new AssertionError("Unknown IDs must not reach playback policy");
+            }, new AtomicLong()),
+            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertHasErrorMessage(service.play(null, "demo:missing"));
+    }
+
+    @Test
+    void policyRejectionPreventsEventsAndPlayback() {
+        EmoteCatalog catalog = catalogWithWave(0);
+        PlaybackPolicyService policy = policy(
+            (ignoredPlayer, ignoredPermission, ignoredDefault) -> false,
+            new AtomicLong()
+        );
+        policy.onAccessConfigReload(new AccessConfig(List.of(), List.of()));
+        EmotePlayService service = new EmotePlayService(
+            catalog,
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                throw new AssertionError("Rejected playback must not start");
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> {
+                throw new AssertionError("Rejected playback must not dispatch events");
+            }
+        );
+
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+    }
+
+    @Test
+    void listenerCancellationPreventsPlaybackAndCooldown() {
         AtomicLong tick = new AtomicLong();
+        PlaybackPolicyService policy = allowedPolicy(tick);
+        AtomicInteger starts = new AtomicInteger();
         EmotePlayService service = new EmotePlayService(
-            registry,
-            (ignoredPlayer, ignoredDefinition) -> true,
-            ignoredDefinition -> false,
-            ignoredPlayer -> false,
+            catalogWithWave(20),
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                starts.incrementAndGet();
+                return PlayResult.SUCCESS;
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> Component.literal("Cancelled")
+        );
+
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertEquals(0, starts.get());
+    }
+
+    @Test
+    void playbackFailureDoesNotStartCooldown() {
+        AtomicLong tick = new AtomicLong();
+        PlaybackPolicyService policy = allowedPolicy(tick);
+        AtomicInteger starts = new AtomicInteger();
+        EmotePlayService service = new EmotePlayService(
+            catalogWithWave(20),
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                starts.incrementAndGet();
+                return PlayResult.failure("Unavailable");
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertEquals(2, starts.get());
+    }
+
+    @Test
+    void successfulPlaybackStartsCooldown() {
+        AtomicLong tick = new AtomicLong();
+        PlaybackPolicyService policy = allowedPolicy(tick);
+        AtomicInteger starts = new AtomicInteger();
+        EmotePlayService service = new EmotePlayService(
+            catalogWithWave(20),
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                starts.incrementAndGet();
+                return PlayResult.SUCCESS;
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertTrue(service.play(null, "demo:wave").isSuccess());
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertEquals(1, starts.get());
+    }
+
+    @Test
+    void apiCanPlayASequenceOnlyDisabledEmote() {
+        EmoteCatalog catalog = new EmoteCatalog();
+        catalog.replace(List.of(create("demo:internal", "Internal", false)), List.of());
+        PlaybackPolicyService policy = policy(
+            (ignoredPlayer, ignoredPermission, ignoredDefault) -> {
+                throw new AssertionError("API playback must not inspect player permissions");
+            },
+            new AtomicLong()
+        );
+        policy.onAccessConfigReload(new AccessConfig(List.of("demo:internal"), List.of()));
+        EmotePlayService service = new EmotePlayService(
+            catalog,
+            policy,
             (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
+            (ignoredPlayer, ignoredEmote, source) -> {
+                assertEquals(PlaySource.API, source);
+                return null;
+            }
+        );
+
+        assertTrue(service.play(null, "demo:internal", PlaySource.API).isSuccess());
+    }
+
+    private static PlaybackPolicyService allowedPolicy(AtomicLong tick) {
+        PlaybackPolicyService policy = policy(
+            (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
+            tick
+        );
+        policy.onAccessConfigReload(new AccessConfig(
+            List.of(),
+            List.of(new AccessConfig.PermissionEntry("emote.default", List.of("demo:wave"), Optional.empty()))
+        ));
+        return policy;
+    }
+
+    private static PlaybackPolicyService policy(
+        PlaybackPolicyService.PermissionChecker permissionChecker,
+        AtomicLong tick
+    ) {
+        return new PlaybackPolicyService(
+            permissionChecker,
             ignoredPlayer -> new UUID(1L, 1L),
             ignoredPlayer -> tick.get()
         );
-
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-        assertHasErrorMessage(service.play(null, "minecraft:wave"));
-        tick.set(20L);
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
     }
 
-    @Test
-    void clearsCooldownsBetweenServerInstances() {
-        EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
-        AtomicLong tick = new AtomicLong(10_000L);
-        EmotePlayService service = new EmotePlayService(
-            registry,
-            (ignoredPlayer, ignoredDefinition) -> true,
-            ignoredDefinition -> false,
-            ignoredPlayer -> false,
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
-            ignoredPlayer -> new UUID(1L, 1L),
-            ignoredPlayer -> tick.get()
-        );
-
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-        tick.set(0L);
-        assertFalse(service.play(null, "minecraft:wave").isSuccess());
-
-        service.clearCooldowns();
-
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-    }
-
-    @Test
-    void bypassIgnoresAnActiveCooldown() {
-        EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("minecraft:wave", "Wave", 20)), List.of());
-        AtomicBoolean bypass = new AtomicBoolean();
-        EmotePlayService service = new EmotePlayService(
-            registry,
-            (ignoredPlayer, ignoredDefinition) -> true,
-            ignoredDefinition -> false,
-            ignoredPlayer -> bypass.get(),
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
-            ignoredPlayer -> new UUID(1L, 1L),
-            ignoredPlayer -> 0L
-        );
-
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-        bypass.set(true);
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-    }
-
-    @Test
-    void playReturnsSuccess() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> true,
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        PlayResult result = service.play(null, "minecraft:wave");
-
-        assertTrue(result.isSuccess());
-    }
-
-    @Test
-    void playReturnsPlaybackFailure() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> true,
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.failure(" Animation unavailable. "),
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        PlayResult result = service.play(null, "minecraft:wave");
-
-        assertHasErrorMessage(result);
-    }
-
-    @Test
-    void selectionRequiresTheExactId() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> true,
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertTrue(service.play(null, "minecraft:wave").isSuccess());
-        assertHasErrorMessage(service.play(null, "wave"));
-    }
-
-    @Test
-    void rejectsBlockedEmote() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> false,
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertHasErrorMessage(service.play(null, "minecraft:wave"));
-    }
-
-    @Test
-    void idlePlaybackDoesNotRequireEmotePermission() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> fail("Idle playback must not check emote permission"),
-            (ignoredPlayer, ignoredDefinition) -> PlayResult.SUCCESS,
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertTrue(service.play(null, "minecraft:wave", PlaySource.IDLE).isSuccess());
-    }
-
-    @Test
-    void idlePlaybackRejectsDisabledEmote() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> fail("Idle playback must not check emote permission"),
-            ignoredDefinition -> true,
-            ignoredPlayer -> false,
-            (ignoredPlayer, ignoredDefinition) -> fail("Disabled idle emote must not start"),
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null,
-            ignoredPlayer -> new UUID(0L, 0L),
-            ignoredPlayer -> 0L
-        );
-
-        assertHasErrorMessage(service.play(null, "minecraft:wave", PlaySource.IDLE));
-    }
-
-    @Test
-    void apiPlaybackStillRequiresEmotePermission() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> false,
-            (ignoredPlayer, ignoredDefinition) -> fail("Blocked API playback must not start"),
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertHasErrorMessage(service.play(null, "minecraft:wave", PlaySource.API));
-    }
-
-    @Test
-    void rejectsDirectPlaybackOfSequenceOnlyAnimation() {
-        EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("minecraft:sit_idle", "Sit Idle", false)), List.of());
-        EmotePlayService service = new EmotePlayService(
-            registry,
-            (ignoredPlayer, ignoredDefinition) -> true,
-            (ignoredPlayer, ignoredDefinition) -> fail("Sequence-only animation must not start directly"),
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertHasErrorMessage(service.play(null, "minecraft:sit_idle"));
-        assertHasErrorMessage(service.play(null, "minecraft:sit_idle", PlaySource.IDLE));
-    }
-
-    @Test
-    void listenerCanCancelPlaybackWithAComponentMessage() {
-        EmotePlayService service = new EmotePlayService(
-            createRegistry(),
-            (ignoredPlayer, ignoredDefinition) -> true,
-            (ignoredPlayer, ignoredDefinition) -> fail("Cancelled playback must not start"),
-            (ignoredPlayer, ignoredEmote, ignoredSource) ->
-                Component.literal("Playback blocked by another mod.")
-        );
-
-        PlayResult result = service.play(null, "minecraft:wave", PlaySource.API);
-
-        assertHasErrorMessage(result);
+    private static EmoteCatalog catalogWithWave(int cooldownTicks) {
+        EmoteCatalog catalog = new EmoteCatalog();
+        catalog.replace(List.of(create("demo:wave", "Wave", cooldownTicks)), List.of());
+        return catalog;
     }
 
     private static void assertHasErrorMessage(PlayResult result) {
         assertFalse(result.isSuccess());
         assertFalse(result.errorMessage().getString().isBlank());
-    }
-
-    private EmoteCatalog createRegistry() {
-        EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("wave", "Wave")), List.of());
-        return registry;
     }
 }

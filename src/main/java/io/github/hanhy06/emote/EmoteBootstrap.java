@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.application.ApiEventDispatcher;
 import io.github.hanhy06.emote.application.EmoteApiImpl;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
+import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.command.AdminCommand;
 import io.github.hanhy06.emote.command.CommandRegistrar;
 import io.github.hanhy06.emote.command.EmoteMenu;
@@ -31,13 +32,14 @@ final class EmoteBootstrap {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
+        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions);
         PlayerSkinManager skins = new PlayerSkinManager();
         PlaybackEngine playback = new PlaybackEngine(skins);
         PlaybackStateService playbackState = new PlaybackStateService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
-        EmoteQueryService queries = new EmoteQueryService(catalog, permissions);
-        EmotePlayService play = new EmotePlayService(catalog, permissions, playback, apiEvents);
-        IdlePlaybackService idlePlayback = new IdlePlaybackService(permissions, play, playback);
+        EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
+        EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
+        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback);
         WheelSyncService wheelSync = new WheelSyncService(queries);
         ReloadService reload = new ReloadService(
             configManager,
@@ -59,9 +61,9 @@ final class EmoteBootstrap {
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
             new AdminCommand(catalog, playback, permissions, reload, configManager)
         );
-        ServerLifecycle lifecycle = new ServerLifecycle(skins, play, catalog, playback, reload, wheelSync, idlePlayback);
+        ServerLifecycle lifecycle = new ServerLifecycle(skins, playbackPolicy, catalog, playback, reload, wheelSync, idlePlayback);
 
-        configManager.addAccessConfigListener(permissions);
+        configManager.addAccessConfigListener(playbackPolicy);
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(playback);

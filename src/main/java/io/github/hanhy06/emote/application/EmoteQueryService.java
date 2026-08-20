@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedDefinition;
-import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Comparator;
@@ -12,21 +11,20 @@ import java.util.function.Predicate;
 
 public class EmoteQueryService {
     private final EmoteCatalog emoteCatalog;
-    private final PlayPermissionChecker playPermissionChecker;
+    private final VisibilityChecker visibilityChecker;
 
-    public EmoteQueryService(EmoteCatalog emoteCatalog, PermissionService permissionService) {
-        this(emoteCatalog, (player, emote) -> permissionService.canPlay(player, emote.id()));
+    public EmoteQueryService(EmoteCatalog emoteCatalog, PlaybackPolicyService playbackPolicy) {
+        this(emoteCatalog, playbackPolicy::isVisibleForCommand);
     }
 
-    EmoteQueryService(EmoteCatalog emoteCatalog, PlayPermissionChecker playPermissionChecker) {
+    EmoteQueryService(EmoteCatalog emoteCatalog, VisibilityChecker visibilityChecker) {
         this.emoteCatalog = emoteCatalog;
-        this.playPermissionChecker = playPermissionChecker;
+        this.visibilityChecker = visibilityChecker;
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
         return this.emoteCatalog.getAllDefinitions().stream()
-            .filter(PreparedDefinition::standalone)
-            .filter(emote -> canPlay(player, emote))
+            .filter(emote -> isVisible(player, emote))
             .sorted(Comparator.comparing(PreparedDefinition::name).thenComparing(PreparedDefinition::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description()))
             .toList();
@@ -62,30 +60,30 @@ public class EmoteQueryService {
     }
 
     public List<String> getAllIds() {
-        return collectPlayIds(ignored -> true);
+        return collectPlayIds(PreparedDefinition::standalone);
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
-        return collectPlayIds(emote -> canPlay(player, emote));
+        return collectPlayIds(emote -> isVisible(player, emote));
     }
 
     private List<String> collectPlayIds(Predicate<PreparedDefinition> filter) {
         List<String> ids = new java.util.ArrayList<>();
         for (PreparedDefinition emote : this.emoteCatalog.getAllDefinitions()) {
-            if (emote.standalone() && filter.test(emote)) {
+            if (filter.test(emote)) {
                 ids.add(emote.id());
             }
         }
         return List.copyOf(ids);
     }
 
-    private boolean canPlay(ServerPlayer player, PreparedDefinition emote) {
-        return this.playPermissionChecker.canPlay(player, emote);
+    private boolean isVisible(ServerPlayer player, PreparedDefinition emote) {
+        return this.visibilityChecker.isVisible(player, emote);
     }
 
     @FunctionalInterface
-    interface PlayPermissionChecker {
-        boolean canPlay(ServerPlayer player, PreparedDefinition emote);
+    interface VisibilityChecker {
+        boolean isVisible(ServerPlayer player, PreparedDefinition emote);
     }
 
     private record RankedEntry(EmoteSummary emote, int rank) {

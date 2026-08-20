@@ -101,7 +101,7 @@ Set `mineskin_api_key` to apply player skins.
 }
 ```
 
-`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Every player receives `emote.default`, and `*` grants every enabled emote. `emote.bypass` ignores disabled IDs, permissions, and cooldowns.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Every player receives `emote.default`, and `*` grants every enabled emote. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
 
 ## Web converter
 
