@@ -8,7 +8,6 @@ import type {
   Matrix16,
   Vec3,
 } from "../format/emoteAnimation";
-import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { ConversionError } from "../foundation/diagnostics";
 import {
   documentMetadata,
@@ -16,7 +15,8 @@ import {
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
-import { multiplyMatrix16, stabilizeDisplayMatrix } from "../format/matrix";
+import { multiplyMatrix16 } from "../format/matrix";
+import { matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
@@ -74,7 +74,7 @@ function validateAnimationIds(document: ConversionDocument): void {
 function compileNodes(document: ConversionDocument, animation: ImportedAnimation): Record<string, EmoteNode> {
   return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
-    const transform = matrixToTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
+    const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
     if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
     const common = {
       space: node.space,
@@ -123,7 +123,7 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
     const nodeTracks: EmoteNodeTracks = {};
     if (track.transforms.length > 0) {
       const sourceMatrix = track.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
-      const initial = matrixToTransform(compileNodeMatrix(document, nodeId, node, sourceMatrix), `${animation.id}/${nodeId}/0t`);
+      const initial = matrixToLocalTransform(compileNodeMatrix(document, nodeId, node, sourceMatrix), `${animation.id}/${nodeId}/0t`);
       const frames = compileTransformFrames(document, animation, nodeId, initial);
       nodeTracks.position = frames.map((frame) => vectorFrame(frame, frame.transform.position));
       nodeTracks.rotation = frames.map((frame) => vectorFrame(frame, frame.transform.rotation));
@@ -178,7 +178,7 @@ function compileTransformFrames(
   for (const source of sourceFrames) {
     const tick = requireTick(source.tick, `${animation.id}/${nodeId} transform`);
     const matrix = node ? compileNodeMatrix(document, nodeId, node, source.matrix) : source.matrix;
-    const transform = matrixToTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
+    const transform = matrixToLocalTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
     if (tick === 0) {
       result[0] = { tick: 0, transform };
       continue;
@@ -221,22 +221,4 @@ function vectorFrame(frame: TransformFrame, value: Vec3): EmoteVectorKeyframe {
     value,
     ...(frame.interpolation ? { interpolation: frame.interpolation } : {}),
   };
-}
-
-function matrixToTransform(matrix: Matrix16, label: string): LocalTransform {
-  const stable = stabilizeDisplayMatrix(matrix, label);
-  const position = new Vector3();
-  const rotation = new Quaternion();
-  const scale = new Vector3();
-  new Matrix4().set(...stable).decompose(position, rotation, scale);
-  const euler = new Euler().setFromQuaternion(rotation, "XYZ");
-  return {
-    position: cleanVec3([position.x, position.y, position.z]),
-    rotation: cleanVec3([euler.x * 180 / Math.PI, euler.y * 180 / Math.PI, euler.z * 180 / Math.PI]),
-    scale: cleanVec3([scale.x, scale.y, scale.z]),
-  };
-}
-
-function cleanVec3(values: Vec3): Vec3 {
-  return values.map((value) => Math.abs(value) < 1e-12 ? 0 : value) as unknown as Vec3;
 }

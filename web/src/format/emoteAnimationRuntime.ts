@@ -1,4 +1,4 @@
-import type { Schema3EmoteAnimation } from "./emoteAnimation";
+import type { EmoteAnimation, Schema3EmoteAnimation } from "./emoteAnimation";
 import {
   optionalBoolean,
   optionalRecord,
@@ -30,6 +30,23 @@ export function requireEmoteAnimation(value: unknown): Schema3EmoteAnimation {
   requireNodes(root.nodes);
   requireTimeline(root.timeline);
   return value as Schema3EmoteAnimation;
+}
+
+export function requireSchema4EmoteAnimation(value: unknown): EmoteAnimation {
+  const root = requireRecord(value, "animation");
+  requireStringValue(root.type, ["animation"] as const, "type");
+  if (requireNumber(root.schema_version, "schema_version") !== 4) throw new Error("schema_version must be 4.");
+  requireString(root.id, "id");
+  requireMetadata(root.metadata);
+  requireSettings(root.settings);
+  const molang = optionalRecord(root.molang, "molang");
+  if (molang) {
+    optionalString(molang.initialize, "molang.initialize");
+    optionalString(molang.tick, "molang.tick");
+  }
+  requireSchema4Nodes(root.nodes);
+  requireSchema4Timeline(root.timeline);
+  return value as EmoteAnimation;
 }
 
 function requireMetadata(value: unknown): void {
@@ -83,6 +100,45 @@ function requireNodes(value: unknown): void {
   }
 }
 
+function requireSchema4Nodes(value: unknown): void {
+  const nodes = requireRecord(value, "nodes");
+  for (const [nodeId, nodeValue] of Object.entries(nodes)) {
+    const path = `nodes.${nodeId}`;
+    const node = requireRecord(nodeValue, path);
+    const type = requireStringValue(node.type, NODE_TYPES, `${path}.type`);
+    optionalString(node.parent, `${path}.parent`);
+    if (node.space !== undefined) requireStringValue(node.space, NODE_SPACES, `${path}.space`);
+    requireLocalTransform(node.transform, `${path}.transform`);
+    if (type === "anchor") {
+      optionalAnchorFields(node, path);
+      continue;
+    }
+    optionalBoolean(node.visible, `${path}.visible`);
+    optionalString(node.entity_nbt, `${path}.entity_nbt`);
+    if (type === "item_display") {
+      requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
+      requireString(node.item_display, `${path}.item_display`);
+      const skin = optionalRecord(node.skin, `${path}.skin`);
+      if (skin) {
+        requireStringValue(skin.part, SKIN_PARTS, `${path}.skin.part`);
+        requireStringValue(skin.participant, PARTICIPANTS, `${path}.skin.participant`);
+        requireNumber(skin.order, `${path}.skin.order`);
+      }
+    } else if (type === "block_display") {
+      requireString(node.block_state_snbt, `${path}.block_state_snbt`);
+    } else if (node.text === undefined) {
+      throw new Error(`${path}.text is required.`);
+    }
+  }
+}
+
+function requireLocalTransform(value: unknown, path: string): void {
+  const transform = requireRecord(value, path);
+  requireNumberArray(transform.position, `${path}.position`);
+  requireNumberArray(transform.rotation, `${path}.rotation`);
+  requireNumberArray(transform.scale, `${path}.scale`);
+}
+
 function optionalAnchorFields(node: RuntimeRecord, path: string): void {
   optionalBoolean(node.visible, `${path}.visible`);
   optionalString(node.entity_nbt, `${path}.entity_nbt`);
@@ -107,6 +163,57 @@ function requireTimeline(value: unknown): void {
   requireEvents(events.timeline, "timeline.events.timeline", true);
   requireEvents(events.loop, "timeline.events.loop", false);
   requireEvents(events.stop, "timeline.events.stop", false);
+}
+
+function requireSchema4Timeline(value: unknown): void {
+  const timeline = requireRecord(value, "timeline");
+  requireString(timeline.duration, "timeline.duration");
+  const tracks = requireRecord(timeline.tracks, "timeline.tracks");
+  for (const [nodeId, trackValue] of Object.entries(tracks)) {
+    const path = `timeline.tracks.${nodeId}`;
+    const track = requireRecord(trackValue, path);
+    requireVectorTrack(track.position, `${path}.position`);
+    requireVectorTrack(track.rotation, `${path}.rotation`);
+    requireVectorTrack(track.scale, `${path}.scale`);
+    requireVisibilityTrack(track.visible, `${path}.visible`);
+  }
+  const events = optionalRecord(timeline.events, "timeline.events");
+  if (!events) return;
+  requireEvents(events.start, "timeline.events.start", false);
+  requireEvents(events.timeline, "timeline.events.timeline", true);
+  requireEvents(events.loop, "timeline.events.loop", false);
+  requireEvents(events.stop, "timeline.events.stop", false);
+}
+
+function requireVectorTrack(value: unknown, path: string): void {
+  if (value === undefined) return;
+  requireArray(value, path).forEach((frameValue, index) => {
+    const framePath = `${path}[${index}]`;
+    const frame = requireRecord(frameValue, framePath);
+    requireString(frame.time, `${framePath}.time`);
+    requireMolangVector(frame.value, `${framePath}.value`);
+    requireMolangVector(frame.pre, `${framePath}.pre`);
+    requireMolangVector(frame.post, `${framePath}.post`);
+    optionalString(frame.interpolation, `${framePath}.interpolation`);
+    optionalString(frame.easing, `${framePath}.easing`);
+  });
+}
+
+function requireMolangVector(value: unknown, path: string): void {
+  if (value === undefined) return;
+  requireArray(value, path).forEach((entry, index) => {
+    if (typeof entry !== "number" && typeof entry !== "string") throw new Error(`${path}[${index}] must be a number or string.`);
+  });
+}
+
+function requireVisibilityTrack(value: unknown, path: string): void {
+  if (value === undefined) return;
+  requireArray(value, path).forEach((frameValue, index) => {
+    const framePath = `${path}[${index}]`;
+    const frame = requireRecord(frameValue, framePath);
+    requireString(frame.time, `${framePath}.time`);
+    if (typeof frame.value !== "boolean" && typeof frame.value !== "string") throw new Error(`${framePath}.value must be a boolean or string.`);
+  });
 }
 
 function requireKeyframe(value: unknown, index: number): void {

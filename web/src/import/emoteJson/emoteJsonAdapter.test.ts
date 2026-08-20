@@ -1,12 +1,65 @@
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../test/compileImportedFixture";
-import { createDefaultPlayerBehavior, type Matrix16, type Schema3EmoteAnimation } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16, type Schema3EmoteAnimation } from "../../format/emoteAnimation";
 import { emoteJsonAdapter } from "./emoteJsonAdapter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 const encoder = new TextEncoder();
 
 describe("emoteJsonAdapter", () => {
+  it("imports schema 4 animations as the canonical input format", async () => {
+    const source: EmoteAnimation = {
+      type: "animation",
+      schema_version: 4,
+      id: "demo:wave",
+      metadata: { name: "Wave", description: "Wave emote." },
+      settings: {
+        standalone: true,
+        cooldown: "0t",
+        player: createDefaultPlayerBehavior(),
+        playback: { mode: "once", loop_delay: "0t" },
+      },
+      nodes: {
+        arm: {
+          type: "item_display",
+          space: "initiator",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          item_stack_snbt: "{id:\"minecraft:stone\",count:1}",
+          item_display: "none",
+        },
+      },
+      timeline: {
+        duration: "4t",
+        tracks: {
+          arm: {
+            position: [
+              { time: "0t", value: [0, 0, 0], interpolation: "linear" },
+              { time: "4t", value: [1, 0, 0] },
+            ],
+            rotation: [
+              { time: "0t", value: [0, 0, 0], interpolation: "linear" },
+              { time: "4t", value: [0, 90, 0] },
+            ],
+            scale: [
+              { time: "0t", value: [1, 1, 1], interpolation: "linear" },
+              { time: "4t", value: [1, 1, 1] },
+            ],
+          },
+        },
+      },
+    };
+    const input = { name: "emote.wave.json", bytes: encoder.encode(JSON.stringify(source)) };
+
+    expect((await emoteJsonAdapter.probe(input)).reason).toBe("matches emote animation schema 4");
+    const project = await emoteJsonAdapter.import(input);
+    const [recompiled] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "demo" });
+
+    expect(recompiled.schema_version).toBe(4);
+    expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "4t"]);
+    expect(recompiled.timeline.tracks.arm.position?.[1].value?.[0]).toBeCloseTo(1);
+    expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
+  });
+
   it("reimports converted JSON without losing skin order or interpolation duration", async () => {
     const source: Schema3EmoteAnimation = {
       type: "animation",
@@ -88,7 +141,7 @@ describe("emoteJsonAdapter", () => {
     };
 
     expect((await emoteJsonAdapter.probe(input)).confidence).toBe(0);
-    await expect(emoteJsonAdapter.import(input)).rejects.toThrow("schema_version: must be 3");
+    await expect(emoteJsonAdapter.import(input)).rejects.toThrow("schema_version must be 4");
   });
 
   it("automatically migrates schema 1 animations", async () => {
