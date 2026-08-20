@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.util.MinecraftTime;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.Objects;
 
 final class EmoteJsonReader {

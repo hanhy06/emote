@@ -121,8 +121,12 @@ class AnimationJsonLoaderTest {
     @Test
     void loadsAllRepositoryExamplesWhileIgnoringUnknownMetadata() throws Exception {
         List<Path> examplePaths;
-        try (var paths = Files.list(Path.of("docs/example"))) {
-            examplePaths = paths.filter(path -> path.getFileName().toString().endsWith(".json")).sorted().toList();
+        try (var paths = Files.walk(Path.of("docs/example"))) {
+            examplePaths = paths.filter(Files::isRegularFile)
+                .filter(path -> path.getFileName().toString().endsWith(".json"))
+                .filter(path -> !path.getFileName().toString().endsWith(".sequence.json"))
+                .sorted()
+                .toList();
         }
 
         assertFalse(examplePaths.isEmpty());

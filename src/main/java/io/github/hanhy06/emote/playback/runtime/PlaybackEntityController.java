@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback.runtime;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedDisplayData;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.minecraft.BlockDisplayAccessor;

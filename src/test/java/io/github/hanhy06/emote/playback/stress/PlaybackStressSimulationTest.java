@@ -5,8 +5,8 @@ import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
