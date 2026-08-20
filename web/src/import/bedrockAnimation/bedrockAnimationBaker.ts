@@ -16,6 +16,8 @@ interface ResolvedKeyframe {
   discontinuous: boolean;
 }
 
+const RESOLVED_KEYFRAMES = new WeakMap<Record<string, BedrockKeyframe>, readonly ResolvedKeyframe[]>();
+
 export interface BedrockSamplePlan {
   sourceTimes: Map<number, number>;
   stepTicks: Set<number>;
@@ -173,8 +175,11 @@ function collectAnchors(animation: BedrockAnimation): Anchor[] {
   return [...anchors.values()].sort((first, second) => first.time - second.time);
 }
 
-function resolveKeyframes(channel: Record<string, BedrockKeyframe>): ResolvedKeyframe[] {
-  return Object.entries(channel).map<ResolvedKeyframe>(([timestamp, value]) => {
+function resolveKeyframes(channel: Record<string, BedrockKeyframe>): readonly ResolvedKeyframe[] {
+  const cached = RESOLVED_KEYFRAMES.get(channel);
+  if (cached) return cached;
+
+  const frames = Object.entries(channel).map<ResolvedKeyframe>(([timestamp, value]) => {
     if (!isKeyframeValue(value)) {
       return { time: Number(timestamp), pre: value, post: value, lerpMode: "linear", discontinuous: false };
     }
@@ -189,6 +194,8 @@ function resolveKeyframes(channel: Record<string, BedrockKeyframe>): ResolvedKey
       discontinuous: JSON.stringify(pre) !== JSON.stringify(post),
     };
   }).sort((first, second) => first.time - second.time);
+  RESOLVED_KEYFRAMES.set(channel, frames);
+  return frames;
 }
 
 function evaluateVector(vector: BedrockVector, path: string, animationTime: number, keyframeLerpTime: number): number[] {
