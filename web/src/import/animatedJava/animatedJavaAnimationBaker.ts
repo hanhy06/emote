@@ -1,5 +1,4 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
-import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
 import { TICKS_PER_SECOND, secondsToTicks } from "../../format/time";
 import type { AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";
 
@@ -16,9 +15,23 @@ export interface BakedAjTransform extends AjTransformValues {
   time: number;
 }
 
-interface TimedKeyframe {
+interface CompiledScalar {
+  constant?: number;
+  expression?: string;
+}
+
+type CompiledVector = [CompiledScalar, CompiledScalar, CompiledScalar];
+
+interface CompiledKeyframe {
   time: number;
-  keyframe: AjKeyframe;
+  interpolation: AjKeyframe["interpolation"];
+  value: CompiledVector;
+  post?: CompiledVector;
+}
+
+interface CompiledChannel {
+  frames: CompiledKeyframe[];
+  cursor: number;
 }
 
 interface MolangContext {
@@ -45,9 +58,9 @@ export function bakeAjNodeChannels(
   durationTicks: number,
   path: string,
 ): BakedAjTransform[] {
-  const position = prepareChannel(channels.position, `${path}/position`);
-  const rotation = prepareChannel(channels.rotation, `${path}/rotation`);
-  const scale = prepareChannel(channels.scale, `${path}/scale`);
+  const position = compileChannel(channels.position, `${path}/position`);
+  const rotation = compileChannel(channels.rotation, `${path}/rotation`);
+  const scale = compileChannel(channels.scale, `${path}/scale`);
   const parser = createMolangParser(path);
   const frames: BakedAjTransform[] = [];
   for (let tick = 0; tick <= durationTicks; tick++) {
@@ -68,96 +81,175 @@ export function evaluateAjMolang(expression: string, context: MolangContext, pat
   return parseMolang(createMolangParser(path), expression, context, path);
 }
 
-function prepareChannel(channel: Record<string, AjKeyframe> | undefined, path: string): TimedKeyframe[] {
-  return Object.entries(channel ?? {}).map(([key, keyframe]) => {
+function compileChannel(channel: Record<string, AjKeyframe> | undefined, path: string): CompiledChannel {
+  const frames = Object.entries(channel ?? {}).map<CompiledKeyframe>(([key, keyframe]) => {
     const time = Number(key);
     if (!Number.isFinite(time) || time < 0) throw new Error(`${path} has invalid keyframe time ${key}.`);
     secondsToTicks(time, `${path} keyframe`);
-    return { time, keyframe };
+    return {
+      time,
+      interpolation: keyframe.interpolation,
+      value: compileVector(keyframe.value),
+      ...(keyframe.post ? { post: compileVector(keyframe.post) } : {}),
+    };
   }).sort((first, second) => first.time - second.time);
+  return { frames, cursor: 0 };
 }
 
 function evaluateChannel(
-  frames: TimedKeyframe[],
+  channel: CompiledChannel,
   fallback: Vector3Tuple,
   time: number,
   parser: MolangParser,
 ): Vector3Tuple {
+  const frames = channel.frames;
   if (frames.length === 0) return [...fallback];
-  const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
-  if (exact) return evaluateVector(exact.keyframe.value, parser, { animationTime: time, keyframeLerpTime: 0 });
-  const afterIndex = frames.findIndex((frame) => frame.time > time);
-  if (afterIndex === 0) return evaluateVector(frames[0].keyframe.value, parser, { animationTime: time, keyframeLerpTime: 0 });
-  if (afterIndex < 0) {
-    const last = frames[frames.length - 1].keyframe;
-    return evaluateVector(last.post ?? last.value, parser, { animationTime: time, keyframeLerpTime: 1 });
+  while (channel.cursor + 1 < frames.length && frames[channel.cursor + 1].time <= time + 1e-9) {
+    channel.cursor++;
   }
-  const before = frames[afterIndex - 1];
-  const after = frames[afterIndex];
+  const current = frames[channel.cursor];
+  if (Math.abs(current.time - time) < 1e-9) {
+    return evaluateVector(current.value, parser, { animationTime: time, keyframeLerpTime: 0 });
+  }
+  if (time < frames[0].time) {
+    return evaluateVector(frames[0].value, parser, { animationTime: time, keyframeLerpTime: 0 });
+  }
+  if (channel.cursor + 1 >= frames.length) {
+    return evaluateVector(current.post ?? current.value, parser, { animationTime: time, keyframeLerpTime: 1 });
+  }
+  const beforeIndex = channel.cursor;
+  const before = frames[beforeIndex];
+  const after = frames[beforeIndex + 1];
   const alpha = (time - before.time) / (after.time - before.time);
   const context = { animationTime: time, keyframeLerpTime: alpha };
-  if (before.keyframe.interpolation.type === "step") {
-    return evaluateVector(before.keyframe.post ?? before.keyframe.value, parser, context);
+  if (before.interpolation.type === "step") {
+    return evaluateVector(before.post ?? before.value, parser, context);
   }
-  const start = evaluateVector(before.keyframe.post ?? before.keyframe.value, parser, context);
-  const end = evaluateVector(after.keyframe.value, parser, context);
-  if (before.keyframe.interpolation.type === "catmullrom" || after.keyframe.interpolation.type === "catmullrom") {
-    return mapAxes((axis) => catmullRom(frames, afterIndex, axis, alpha, parser, context));
+  const start = evaluateVector(before.post ?? before.value, parser, context);
+  const end = evaluateVector(after.value, parser, context);
+  if (before.interpolation.type === "catmullrom" || after.interpolation.type === "catmullrom") {
+    return catmullRom(frames, beforeIndex, start, end, alpha, parser, context);
   }
-  if (before.keyframe.interpolation.type === "bezier" || after.keyframe.interpolation.type === "bezier") {
+  if (before.interpolation.type === "bezier" || after.interpolation.type === "bezier") {
     return mapAxes((axis) => bezier(before, after, start[axis], end[axis], axis, alpha));
   }
-  const eased = after.keyframe.interpolation.type === "linear"
-    ? easing(after.keyframe.interpolation.easing, after.keyframe.interpolation.easing_arguments, alpha)
+  const eased = after.interpolation.type === "linear"
+    ? easing(after.interpolation.easing, after.interpolation.easing_arguments, alpha)
     : alpha;
   return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * eased);
 }
 
 function catmullRom(
-  frames: TimedKeyframe[],
-  afterIndex: number,
-  axis: number,
+  frames: CompiledKeyframe[],
+  beforeIndex: number,
+  start: Vector3Tuple,
+  end: Vector3Tuple,
   alpha: number,
   parser: MolangParser,
   context: MolangContext,
-): number {
-  const before = frames[afterIndex - 1];
-  const after = frames[afterIndex];
-  const beforePlus = frames[afterIndex - 2];
-  const afterPlus = frames[afterIndex + 1];
-  const points: Vector2[] = [];
-  if (beforePlus && before.keyframe.post == null) points.push(new Vector2(beforePlus.time, evaluateVector(beforePlus.keyframe.post ?? beforePlus.keyframe.value, parser, context)[axis]));
-  points.push(new Vector2(before.time, evaluateVector(before.keyframe.post ?? before.keyframe.value, parser, context)[axis]));
-  points.push(new Vector2(after.time, evaluateVector(after.keyframe.value, parser, context)[axis]));
-  if (afterPlus && after.keyframe.post == null) points.push(new Vector2(afterPlus.time, evaluateVector(afterPlus.keyframe.value, parser, context)[axis]));
-  const curveTime = (alpha + (beforePlus ? 1 : 0)) / (points.length - 1);
-  return new SplineCurve(points).getPoint(curveTime).y;
+): Vector3Tuple {
+  const before = frames[beforeIndex];
+  const after = frames[beforeIndex + 1];
+  const previousFrame = frames[beforeIndex - 1];
+  const followingFrame = frames[beforeIndex + 2];
+  const previous = previousFrame && before.post == null
+    ? evaluateVector(previousFrame.post ?? previousFrame.value, parser, context)
+    : start;
+  const following = followingFrame && after.post == null
+    ? evaluateVector(followingFrame.value, parser, context)
+    : end;
+  return mapAxes((axis) => catmullRomScalar(previous[axis], start[axis], end[axis], following[axis], alpha));
 }
 
-function bezier(before: TimedKeyframe, after: TimedKeyframe, start: number, end: number, axis: number, alpha: number): number {
+function catmullRomScalar(p0: number, p1: number, p2: number, p3: number, alpha: number): number {
+  const v0 = (p2 - p0) * 0.5;
+  const v1 = (p3 - p1) * 0.5;
+  const squared = alpha * alpha;
+  const cubed = squared * alpha;
+  return (2 * p1 - 2 * p2 + v0 + v1) * cubed
+    + (-3 * p1 + 3 * p2 - 2 * v0 - v1) * squared
+    + v0 * alpha
+    + p1;
+}
+
+function bezier(before: CompiledKeyframe, after: CompiledKeyframe, start: number, end: number, axis: number, alpha: number): number {
   const gap = after.time - before.time;
-  const beforeInterpolation = before.keyframe.interpolation.type === "bezier" ? before.keyframe.interpolation : undefined;
-  const afterInterpolation = after.keyframe.interpolation.type === "bezier" ? after.keyframe.interpolation : undefined;
+  const beforeInterpolation = before.interpolation.type === "bezier" ? before.interpolation : undefined;
+  const afterInterpolation = after.interpolation.type === "bezier" ? after.interpolation : undefined;
   const rightTime = clamp(beforeInterpolation?.right_handle_time[axis] ?? 0, 0, gap);
   const leftTime = clamp(afterInterpolation?.left_handle_time[axis] ?? 0, -gap, 0);
-  const curve = new CubicBezierCurve(
-    new Vector2(before.time, start),
-    new Vector2(before.time + rightTime, start + (beforeInterpolation?.right_handle_value[axis] ?? 0)),
-    new Vector2(after.time + leftTime, end + (afterInterpolation?.left_handle_value[axis] ?? 0)),
-    new Vector2(after.time, end),
-  );
-  const targetTime = before.time + gap * alpha;
-  const points = curve.getPoints(200);
-  points.sort((first, second) => Math.abs(first.x - targetTime) - Math.abs(second.x - targetTime));
-  const [first, second] = points;
-  if (!second || Math.abs(second.x - first.x) < 1e-9) return first.y;
-  const progress = clamp((targetTime - first.x) / (second.x - first.x), 0, 1);
-  return first.y + (second.y - first.y) * progress;
+  const x1 = gap === 0 ? 0 : rightTime / gap;
+  const x2 = gap === 0 ? 1 : (gap + leftTime) / gap;
+  const curveTime = invertBezierTime(x1, x2, alpha);
+  return cubicBezier(start, start + (beforeInterpolation?.right_handle_value[axis] ?? 0), end + (afterInterpolation?.left_handle_value[axis] ?? 0), end, curveTime);
 }
 
-function evaluateVector(values: string[], parser: MolangParser, context: MolangContext): Vector3Tuple {
+function invertBezierTime(x1: number, x2: number, target: number): number {
+  if (target <= 0) return 0;
+  if (target >= 1) return 1;
+
+  const boundaries = [0, ...bezierDerivativeRoots(x1, x2), 1];
+  let closest = 0;
+  let closestDistance = target;
+  for (let index = 0; index < boundaries.length - 1; index++) {
+    let low = boundaries[index];
+    let high = boundaries[index + 1];
+    const lowValue = cubicBezier(0, x1, x2, 1, low);
+    const highValue = cubicBezier(0, x1, x2, 1, high);
+    const lowDistance = Math.abs(lowValue - target);
+    if (lowDistance < closestDistance) {
+      closest = low;
+      closestDistance = lowDistance;
+    }
+    if (target < Math.min(lowValue, highValue) - 1e-12 || target > Math.max(lowValue, highValue) + 1e-12) continue;
+
+    const increasing = highValue >= lowValue;
+    for (let iteration = 0; iteration < 32; iteration++) {
+      const middle = (low + high) / 2;
+      const value = cubicBezier(0, x1, x2, 1, middle);
+      if (increasing ? value < target : value > target) low = middle;
+      else high = middle;
+    }
+    return (low + high) / 2;
+  }
+  return closest;
+}
+
+function bezierDerivativeRoots(x1: number, x2: number): number[] {
+  const a = 3 * (3 * x1 - 3 * x2 + 1);
+  const b = 6 * (x2 - 2 * x1);
+  const c = 3 * x1;
+  if (Math.abs(a) < 1e-12) {
+    if (Math.abs(b) < 1e-12) return [];
+    const root = -c / b;
+    return root > 0 && root < 1 ? [root] : [];
+  }
+  const discriminant = b * b - 4 * a * c;
+  if (discriminant <= 0) return [];
+  const squareRoot = Math.sqrt(discriminant);
+  return [(-b - squareRoot) / (2 * a), (-b + squareRoot) / (2 * a)]
+    .filter((root) => root > 0 && root < 1)
+    .sort((first, second) => first - second);
+}
+
+function cubicBezier(p0: number, p1: number, p2: number, p3: number, time: number): number {
+  const inverse = 1 - time;
+  return inverse * inverse * inverse * p0
+    + 3 * inverse * inverse * time * p1
+    + 3 * inverse * time * time * p2
+    + time * time * time * p3;
+}
+
+function compileVector(values: string[]): CompiledVector {
   if (values.length !== 3) throw new Error("Animated Java transform vector must contain three values.");
-  return values.map((value) => parseMolang(parser, value, context, "Animated Java transform")) as Vector3Tuple;
+  return values.map((value) => {
+    const numeric = isNumericExpression(value) ? Number(value) : Number.NaN;
+    return Number.isFinite(numeric) ? { constant: numeric } : { expression: value };
+  }) as CompiledVector;
+}
+
+function evaluateVector(values: CompiledVector, parser: MolangParser, context: MolangContext): Vector3Tuple {
+  return values.map((value) => value.constant ?? parseMolang(parser, value.expression!, context, "Animated Java transform")) as Vector3Tuple;
 }
 
 function parseMolang(parser: MolangParser, expression: string, context: MolangContext, path: string): number {
