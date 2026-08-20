@@ -89,10 +89,16 @@ export function createPreviewParts(
     animation?.tracks[candidate.nodeId],
     tick,
   )).map((candidate) => {
-    const sourceMatrix = tick === null
-      ? candidate.node.defaultMatrix
-      : animation?.tracks[candidate.nodeId]?.transforms.filter((keyframe) => keyframe.tick <= tick).at(-1)?.matrix
-        ?? candidate.node.defaultMatrix;
+    let sourceMatrix = candidate.node.defaultMatrix;
+    if (tick !== null) {
+      const transforms = animation?.tracks[candidate.nodeId]?.transforms;
+      for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
+        const transform = transforms?.[index];
+        if (!transform || transform.tick > tick) continue;
+        sourceMatrix = transform.matrix;
+        break;
+      }
+    }
     return {
       nodeId: candidate.nodeId,
       partIndex: candidate.partIndex,
