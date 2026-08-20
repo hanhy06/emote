@@ -200,11 +200,11 @@ describe("animatedJavaJsonAdapter", () => {
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "animated_java" });
     expect(animation.nodes.effect.type).toBe("anchor");
-    expect(animation.nodes.item.default_matrix[3]).toBe(0.5);
+    expect(animation.nodes.item.transform.position[0]).toBe(0.5);
     expect(animation.timeline.duration).toBe("2t");
     expect(animation.settings.playback.loop_delay).toBe("2t");
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "1t"]);
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item.interpolation_duration)).toEqual(["0t", "1t"]);
+    expect(animation.timeline.tracks.item.position?.map((keyframe) => keyframe.time)).toEqual(["0t", "1t"]);
+    expect(animation.timeline.tracks.item.position?.map((keyframe) => keyframe.interpolation)).toEqual(["linear", undefined]);
     expect(animation.nodes.item.type === "item_display" && animation.nodes.item.item_stack_snbt).toContain('"minecraft:damage":3');
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
@@ -293,12 +293,11 @@ describe("animatedJavaJsonAdapter", () => {
 
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "blend" });
-    const matrix = animation.timeline.keyframes[0].node_transforms?.item.matrix;
+    const position = animation.timeline.tracks.item.position?.[0].value;
+    const scale = animation.timeline.tracks.item.scale?.[0].value;
 
-    expect(matrix?.[3]).toBeCloseTo(1);
-    expect(matrix?.[0]).toBeCloseTo(1.5);
-    expect(matrix?.[5]).toBeCloseTo(1.5);
-    expect(matrix?.[10]).toBeCloseTo(1.5);
+    expect(position?.[0]).toBeCloseTo(1);
+    expect(scale).toEqual([1.5, 1.5, 1.5]);
   });
 
   it("preserves non-canonical decimal timestamps after a start delay", async () => {
@@ -315,11 +314,11 @@ describe("animatedJavaJsonAdapter", () => {
 
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "delayed" });
-    const transforms = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item);
+    const transforms = animation.timeline.tracks.item.position!;
 
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["2t", "3t"]);
-    expect(transforms.map((transform) => transform?.interpolation_duration)).toEqual(["0t", "1t"]);
-    expect(transforms.map((transform) => transform?.matrix[3])).toEqual([0, 2]);
+    expect(transforms.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "3t"]);
+    expect(transforms.map((keyframe) => keyframe.interpolation)).toEqual(["step", "linear", undefined]);
+    expect(transforms.map((keyframe) => keyframe.value?.[0])).toEqual([0, 0, 2]);
   });
 
   it("applies a time-zero keyframe only after the start delay", async () => {
@@ -336,11 +335,11 @@ describe("animatedJavaJsonAdapter", () => {
 
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "delayed" });
-    const [keyframe] = animation.timeline.keyframes;
+    const keyframes = animation.timeline.tracks.item.position!;
 
-    expect(keyframe.time).toBe("2t");
-    expect(keyframe.node_transforms?.item.interpolation_duration).toBe("0t");
-    expect(keyframe.node_transforms?.item.matrix[3]).toBeCloseTo(2);
+    expect(keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "2t"]);
+    expect(keyframes[0].interpolation).toBe("step");
+    expect(keyframes[1].value?.[0]).toBeCloseTo(2);
   });
 
   it("bakes raw Animated Java easing at every tick", async () => {
@@ -358,8 +357,8 @@ describe("animatedJavaJsonAdapter", () => {
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "easing" });
 
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "1t", "2t"]);
-    expect(animation.timeline.keyframes[1].node_transforms?.item.matrix[3]).toBeCloseTo(0.5);
+    expect(animation.timeline.tracks.item.position?.map((keyframe) => keyframe.time)).toEqual(["0t", "1t", "2t"]);
+    expect(animation.timeline.tracks.item.position?.[1].value?.[0]).toBeCloseTo(0.5);
   });
 
   it("bakes pre/post keyframes and time-based Molang expressions", async () => {
@@ -380,7 +379,7 @@ describe("animatedJavaJsonAdapter", () => {
 
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "molang" });
-    const positions = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.item.matrix[3]);
+    const positions = animation.timeline.tracks.item.position?.map((keyframe) => keyframe.value?.[0]);
 
     expect(positions).toEqual([0, 3, 4]);
   });
@@ -414,8 +413,8 @@ describe("animatedJavaJsonAdapter", () => {
     const project = await animatedJavaJsonAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "curves" });
 
-    expect(animation.timeline.keyframes).toHaveLength(5);
-    expect(animation.timeline.keyframes.every((keyframe) => keyframe.node_transforms?.item.matrix.every(Number.isFinite))).toBe(true);
+    expect(animation.timeline.tracks.item.position).toHaveLength(5);
+    expect(animation.timeline.tracks.item.position?.every((keyframe) => keyframe.value?.every((value) => typeof value === "number" && Number.isFinite(value)))).toBe(true);
   });
 
   it("reports the path of malformed blueprint input", async () => {

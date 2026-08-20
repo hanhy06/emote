@@ -26,9 +26,9 @@ describe("bdProjectAdapter", () => {
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "dance" });
     expect(Object.keys(animation.nodes)).toEqual(["display_0"]);
-    expect(animation.timeline.keyframes).toHaveLength(1);
+    expect(animation.timeline.tracks.display_0.position).toHaveLength(1);
     expect(animation.timeline.duration).toBe("2t");
-    expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix).toEqual(IDENTITY_MATRIX);
+    expect(animation.timeline.tracks.display_0.position?.[0].value).toEqual([0, 0, 0]);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
@@ -62,12 +62,12 @@ describe("bdProjectAdapter", () => {
 
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "stable" });
-    const defaultMatrix = animation.nodes.display_0.default_matrix;
-    const animatedMatrix = animation.timeline.keyframes[0].node_transforms?.display_0?.matrix;
+    const defaultTransform = animation.nodes.display_0.transform;
+    const animatedRotation = animation.timeline.tracks.display_0.rotation?.[0].value;
 
-    expect(animatedMatrix).toBeDefined();
-    expect(normalizedMatrixColumnDot(defaultMatrix, 0, 1)).toBeCloseTo(0, 8);
-    expect(normalizedMatrixColumnDot(animatedMatrix!, 0, 1)).toBeCloseTo(0, 8);
+    expect(animatedRotation).toBeDefined();
+    expect([...defaultTransform.position, ...defaultTransform.rotation, ...defaultTransform.scale].every(Number.isFinite)).toBe(true);
+    expect(animatedRotation?.every((value) => typeof value === "number" && Number.isFinite(value))).toBe(true);
   });
 
   it("accepts null curve metadata saved by BD Engine", async () => {
@@ -116,8 +116,8 @@ describe("bdProjectAdapter", () => {
       sourcePath: "scene.listAnim",
     }]);
     expect(animation.metadata.name).toBe("Multiple animations");
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t"]);
-    expect(animation.timeline.keyframes.at(-1)?.node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
+    expect(animation.timeline.tracks.display_0.position?.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t"]);
+    expect(animation.timeline.tracks.display_0.position?.at(-1)?.value?.[0]).toBeCloseTo(4);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
@@ -180,8 +180,8 @@ describe("bdProjectAdapter", () => {
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "poses" });
 
-    expect(animation.nodes.display_0.default_matrix[3]).toBeCloseTo(3);
-    expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
+    expect(animation.nodes.display_0.transform.position[0]).toBeCloseTo(3);
+    expect(animation.timeline.tracks.display_0.position?.[0].value?.[0]).toBeCloseTo(3);
   });
 
   it("bakes sparse BD keyframes with their saved interpolation curve", async () => {
@@ -214,12 +214,11 @@ describe("bdProjectAdapter", () => {
     const project = await bdProjectAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "sparse" });
     expect(animation.timeline.duration).toBe("22t");
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t", "8t", "10t", "12t", "14t", "16t", "18t", "20t"]);
-    expect(animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.display_0?.interpolation_duration))
-      .toEqual(["0t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t", "2t"]);
-    expect(animation.timeline.keyframes[0].node_transforms?.display_0?.matrix[3]).toBeCloseTo(3);
-    expect(animation.timeline.keyframes[1].node_transforms?.display_0?.matrix[3]).toBeCloseTo(4);
-    expect(animation.timeline.keyframes[5].node_transforms?.display_0?.matrix[3]).toBeCloseTo(13);
+    expect(animation.timeline.tracks.display_0.position?.map((keyframe) => keyframe.time)).toEqual(["0t", "2t", "4t", "6t", "8t", "10t", "12t", "14t", "16t", "18t", "20t"]);
+    expect(animation.timeline.tracks.display_0.position?.slice(0, -1).every((keyframe) => keyframe.interpolation === "linear")).toBe(true);
+    expect(animation.timeline.tracks.display_0.position?.[0].value?.[0]).toBeCloseTo(3);
+    expect(animation.timeline.tracks.display_0.position?.[1].value?.[0]).toBeCloseTo(4);
+    expect(animation.timeline.tracks.display_0.position?.[5].value?.[0]).toBeCloseTo(13);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
@@ -250,20 +249,6 @@ function translationMatrix(x: number): number[] {
   const matrix = [...IDENTITY_MATRIX];
   matrix[3] = x;
   return matrix;
-}
-
-function normalizedMatrixColumnDot(matrix: readonly number[], first: number, second: number): number {
-  let dot = 0;
-  let firstLengthSquared = 0;
-  let secondLengthSquared = 0;
-  for (let row = 0; row < 3; row++) {
-    const firstValue = matrix[row * 4 + first];
-    const secondValue = matrix[row * 4 + second];
-    dot += firstValue * secondValue;
-    firstLengthSquared += firstValue * firstValue;
-    secondLengthSquared += secondValue * secondValue;
-  }
-  return dot / Math.sqrt(firstLengthSquared * secondLengthSquared);
 }
 
 function createProject(scene: unknown): Uint8Array {

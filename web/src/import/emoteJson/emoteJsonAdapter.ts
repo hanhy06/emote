@@ -1,4 +1,4 @@
-import type { EmoteAnimation, EmoteEvent } from "../../format/emoteAnimation";
+import type { EmoteEvent, Schema3EmoteAnimation } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { asMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime } from "../../format/minecraftTime";
@@ -58,7 +58,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   },
 };
 
-function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
+function importNodes(animation: Schema3EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
     const defaultMatrix = asMatrix16(node.default_matrix, `${id}.default_matrix`);
     if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix, space: node.space }];
@@ -83,7 +83,7 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   }));
 }
 
-function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimation {
+function importTimeline(animation: Schema3EmoteAnimation, id: string): ImportedAnimation {
   const tracks: ImportedAnimation["tracks"] = {};
   for (const keyframe of animation.timeline.keyframes) {
     for (const [nodeId, transform] of Object.entries(keyframe.node_transforms ?? {})) {

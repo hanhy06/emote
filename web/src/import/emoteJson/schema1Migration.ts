@@ -1,4 +1,4 @@
-import type { EmoteAnimation } from "../../format/emoteAnimation";
+import type { Schema3EmoteAnimation } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import {
   optionalBoolean,
@@ -16,7 +16,7 @@ const JAVA_INT_MAX = 2_147_483_647;
 const LOOP_TYPES = ["once", "hold", "loop", "server_sync"] as const;
 
 export interface MigratedSchema1Animation {
-  animation: EmoteAnimation;
+  animation: Schema3EmoteAnimation;
   minecraftVersion: string;
 }
 

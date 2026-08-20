@@ -169,7 +169,7 @@ describe("exportAnimation", () => {
     expect(animation.nodes.body.space).toBe("initiator");
     expect(animation.metadata).toEqual({ name: "Test", description: "Test emote." });
     expect(animation.settings.player).toEqual(project.suggestedPlayer);
-    expect(animation.schema_version).toBe(3);
+    expect(animation.schema_version).toBe(4);
     expect(animation.settings.playback.mode).toBe("server_sync");
     expect(result.fileName).toBe("emote.test.json");
   });
@@ -259,9 +259,10 @@ describe("exportAnimation", () => {
     const animation = JSON.parse(await result.blob.text());
 
     expect(animation.nodes.cube.item_stack_snbt).toContain("minecraft:player_head");
-    expect(animation.nodes.cube.default_matrix).toEqual(conversion);
+    expect(animation.nodes.cube.transform).toEqual({ position: [0.125, 0.25, 0.125], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5] });
     expect(animation.nodes.cube.skin).toEqual({ participant: "initiator", part: "head", order: 0 });
-    expect(animation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(conversion);
+    expect(animation.timeline.tracks.cube.position[0].value).toEqual([0.125, 0.25, 0.125]);
+    expect(animation.timeline.tracks.cube.scale[0].value).toEqual([0.5, 0.5, 0.5]);
 
     const unassignedResult = exportAnimation(project, {
       minecraftVersion: "26.2",
@@ -276,8 +277,8 @@ describe("exportAnimation", () => {
 
     expect(unassignedAnimation.nodes.cube.item_stack_snbt).toContain("minecraft:paper");
     expect(unassignedAnimation.nodes.cube.skin).toBeUndefined();
-    expect(unassignedAnimation.nodes.cube.default_matrix).toEqual(IDENTITY);
-    expect(unassignedAnimation.timeline.keyframes[0].node_transforms.cube.matrix).toEqual(IDENTITY);
+    expect(unassignedAnimation.nodes.cube.transform).toEqual({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] });
+    expect(unassignedAnimation.timeline.tracks.cube.position[0].value).toEqual([0, 0, 0]);
   });
 
   it("preserves unrecognized metadata in the exported animation", async () => {
@@ -286,7 +287,7 @@ describe("exportAnimation", () => {
       sourceName: "licensed.json",
       suggestedMetadata: { name: "Licensed", description: "", license: "Apache-2.0" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      nodes: {},
+      nodes: { root: { id: "root", type: "anchor", defaultMatrix: IDENTITY } },
       animations: [{
         id: "licensed",
         name: "Licensed",

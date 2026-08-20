@@ -1,4 +1,4 @@
-import type { EmoteAnimation } from "./emoteAnimation";
+import type { Schema3EmoteAnimation } from "./emoteAnimation";
 import {
   optionalBoolean,
   optionalRecord,
@@ -20,7 +20,7 @@ const SKIN_PARTS = ["head", "body", "left_arm", "right_arm", "left_leg", "right_
 const NODE_SPACES = ["scene", "initiator", "partner"] as const;
 const PARTICIPANTS = ["initiator", "partner"] as const;
 
-export function requireEmoteAnimation(value: unknown): EmoteAnimation {
+export function requireEmoteAnimation(value: unknown): Schema3EmoteAnimation {
   const root = requireRecord(value, "animation");
   requireStringValue(root.type, ["animation"] as const, "type");
   requireNumber(root.schema_version, "schema_version");
@@ -29,7 +29,7 @@ export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   requireSettings(root.settings);
   requireNodes(root.nodes);
   requireTimeline(root.timeline);
-  return value as EmoteAnimation;
+  return value as Schema3EmoteAnimation;
 }
 
 function requireMetadata(value: unknown): void {

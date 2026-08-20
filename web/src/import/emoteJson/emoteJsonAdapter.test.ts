@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../test/compileImportedFixture";
-import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type Matrix16, type Schema3EmoteAnimation } from "../../format/emoteAnimation";
 import { emoteJsonAdapter } from "./emoteJsonAdapter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -8,7 +8,7 @@ const encoder = new TextEncoder();
 
 describe("emoteJsonAdapter", () => {
   it("reimports converted JSON without losing skin order or interpolation duration", async () => {
-    const source: EmoteAnimation = {
+    const source: Schema3EmoteAnimation = {
       type: "animation",
       schema_version: 3,
       id: "demo:wave",
@@ -51,7 +51,8 @@ describe("emoteJsonAdapter", () => {
     expect(recompiled.settings.player).toEqual(source.settings.player);
     expect(recompiled.id).toBe(source.id);
     expect(recompiled.settings.playback.mode).toBe("server_sync");
-    expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration).toBe("2t");
+    expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "2t", "4t"]);
+    expect(recompiled.timeline.tracks.arm.position?.[1].interpolation).toBe("linear");
   });
 
   it("reports the path of malformed runtime input", async () => {
@@ -144,10 +145,10 @@ describe("emoteJsonAdapter", () => {
     expect(project.suggestedCooldown).toBe("0t");
     expect(project.animations[0].events.timeline[0].tick).toBe(2);
     expect(recompiled.type).toBe("animation");
-    expect(recompiled.schema_version).toBe(3);
+    expect(recompiled.schema_version).toBe(4);
     expect(recompiled.settings.playback).toEqual({ mode: "loop", loop_delay: "2t" });
     expect(recompiled.timeline.duration).toBe("4t");
-    expect(recompiled.timeline.keyframes[1].node_transforms?.arm.interpolation_duration).toBe("2t");
+    expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "2t", "4t"]);
     expect(recompiled.timeline.events?.timeline?.[0].time).toBe("2t");
   });
 });

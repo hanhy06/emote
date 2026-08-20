@@ -1,15 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "./emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteAnimation } from "./emoteAnimation";
 import { serializeEmoteAnimation } from "./serializer";
 import { MAX_ANIMATION_DURATION_TICKS } from "./time";
 import { validateEmoteAnimation } from "./validator";
 
-const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
-
 function animation(): EmoteAnimation {
   return {
     type: "animation",
-    schema_version: 3,
+    schema_version: 4,
     id: "emote:test",
     metadata: { name: "Test", description: "Test emote." },
     settings: {
@@ -19,12 +17,15 @@ function animation(): EmoteAnimation {
       playback: { mode: "once", loop_delay: "0t" },
     },
     nodes: {
-      display: { type: "item_display", space: "scene", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none", default_matrix: IDENTITY },
-      effect: { type: "anchor", space: "scene", default_matrix: IDENTITY },
+      display: {
+        type: "item_display", space: "scene", item_stack_snbt: "{id:\"minecraft:stone\",count:1}", item_display: "none",
+        transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+      },
+      effect: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
     },
     timeline: {
       duration: "2t",
-      keyframes: [{ time: "0t", node_transforms: { display: { matrix: IDENTITY } } }],
+      tracks: { display: { position: [{ time: "0t", value: [0, 0, 0] }] } },
     },
   };
 }
@@ -33,7 +34,7 @@ describe("validateEmoteAnimation", () => {
   it("accepts and serializes a structurally valid animation", () => {
     const value = animation();
     expect(validateEmoteAnimation(value)).toEqual([]);
-    expect(serializeEmoteAnimation(value)).toContain('"schema_version":3');
+    expect(serializeEmoteAnimation(value)).toContain('"schema_version":4');
   });
 
   it("accepts Minecraft time units", () => {
@@ -68,7 +69,10 @@ describe("validateEmoteAnimation", () => {
     const value = animation();
     value.timeline.duration = "1m";
     value.settings.playback = { mode: "loop", loop_delay: "2147483648t" };
-    value.timeline.keyframes[0].interpolation_duration = "2147483648t";
+    value.timeline.tracks.display.position = [
+      { time: "0t", value: [0, 0, 0], interpolation: "linear" },
+      { time: "2147483648t", value: [1, 0, 0] },
+    ];
     value.timeline.events = { timeline: [
       { time: "1t", source: { type: "player" }, origin: { type: "root" }, commands: [] },
       { time: "0t", source: { type: "player" }, origin: { type: "root" }, commands: [] },
@@ -77,7 +81,7 @@ describe("validateEmoteAnimation", () => {
     const paths = validateEmoteAnimation(value).map((issue) => issue.path);
     expect(paths).toContain("timeline.duration");
     expect(paths).toContain("settings.playback.loop_delay");
-    expect(paths).toContain("timeline.keyframes[0].interpolation_duration");
+    expect(paths).toContain("timeline.tracks.display.position[1].time");
     expect(paths).toContain("timeline.events.timeline[1].time");
   });
 

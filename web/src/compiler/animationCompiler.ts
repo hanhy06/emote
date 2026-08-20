@@ -1,10 +1,14 @@
 import type {
   EmoteAnimation,
-  EmoteKeyframe,
   EmoteNode,
+  EmoteNodeTracks,
   EmoteTimelineEvent,
+  EmoteVectorKeyframe,
+  LocalTransform,
   Matrix16,
+  Vec3,
 } from "../format/emoteAnimation";
+import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import { ConversionError } from "../foundation/diagnostics";
 import {
   documentMetadata,
@@ -12,7 +16,7 @@ import {
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
-import { multiplyMatrix16 } from "../format/matrix";
+import { multiplyMatrix16, stabilizeDisplayMatrix } from "../format/matrix";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
@@ -41,7 +45,7 @@ export function compileConversionAnimation(
   const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
   return {
     type: "animation",
-    schema_version: 3,
+    schema_version: 4,
     id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: documentMetadata(output),
     settings: {
@@ -70,12 +74,12 @@ function validateAnimationIds(document: ConversionDocument): void {
 function compileNodes(document: ConversionDocument, animation: ImportedAnimation): Record<string, EmoteNode> {
   return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
-    const defaultMatrix = compileNodeMatrix(document, id, node, sourceMatrix);
-    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, default_matrix: defaultMatrix }];
+    const transform = matrixToTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
+    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
     const common = {
       space: node.space,
       ...(node.visible ? {} : { visible: false }),
-      default_matrix: defaultMatrix,
+      transform,
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
     };
     if (node.type === "item_display") {
@@ -112,35 +116,30 @@ function compileNodeMatrix(
 
 function compileTimeline(document: ConversionDocument, animation: ImportedAnimation): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
-  const keyframes = new Map<number, EmoteKeyframe>();
+  const tracks: Record<string, EmoteNodeTracks> = {};
   for (const [nodeId, track] of Object.entries(animation.tracks)) {
     const node = document.nodes[nodeId];
-    let previousTick = 0;
-    for (const transform of track.transforms) {
-      const tick = requireTick(transform.tick, `${animation.id}/${nodeId} transform`);
-      const keyframe = keyframes.get(tick) ?? { time: formatMinecraftTime(tick) };
-      const explicitDuration = transform.interpolation.type === "linear" ? transform.interpolation.durationTicks : undefined;
-      const duration = transform.interpolation.type === "step"
-        ? 0
-        : explicitDuration == null
-          ? tick - previousTick
-          : requireTick(explicitDuration, `${animation.id}/${nodeId} interpolation`);
-      keyframe.node_transforms = {
-        ...keyframe.node_transforms,
-        [nodeId]: {
-          matrix: node ? compileNodeMatrix(document, nodeId, node, transform.matrix) : transform.matrix,
-          interpolation_duration: formatMinecraftTime(duration),
-        },
-      };
-      keyframes.set(tick, keyframe);
-      previousTick = tick;
+    if (!node) throw new ConversionError("unknown_animation_node", `${animation.id} references unknown node ${nodeId}.`);
+    const nodeTracks: EmoteNodeTracks = {};
+    if (track.transforms.length > 0) {
+      const sourceMatrix = track.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
+      const initial = matrixToTransform(compileNodeMatrix(document, nodeId, node, sourceMatrix), `${animation.id}/${nodeId}/0t`);
+      const frames = compileTransformFrames(document, animation, nodeId, initial);
+      nodeTracks.position = frames.map((frame) => vectorFrame(frame, frame.transform.position));
+      nodeTracks.rotation = frames.map((frame) => vectorFrame(frame, frame.transform.rotation));
+      nodeTracks.scale = frames.map((frame) => vectorFrame(frame, frame.transform.scale));
     }
-    for (const state of track.visibility) {
-      const tick = requireTick(state.tick, `${animation.id}/${nodeId} visibility`);
-      const keyframe = keyframes.get(tick) ?? { time: formatMinecraftTime(tick) };
-      keyframe.node_states = { ...keyframe.node_states, [nodeId]: { visible: state.visible } };
-      keyframes.set(tick, keyframe);
+    if (track.visibility.length > 0) {
+      const visibility = new Map<number, boolean>([[0, node.type === "anchor" ? true : node.visible]]);
+      for (const state of track.visibility) {
+        visibility.set(requireTick(state.tick, `${animation.id}/${nodeId} visibility`), state.visible);
+      }
+      nodeTracks.visible = [...visibility.entries()].sort(([first], [second]) => first - second).map(([tick, value]) => ({
+        time: formatMinecraftTime(tick),
+        value,
+      }));
     }
+    if (Object.keys(nodeTracks).length > 0) tracks[nodeId] = nodeTracks;
   }
 
   const timelineEvents: EmoteTimelineEvent[] = animation.events.timeline.map(({ tick, ...event }) => ({
@@ -149,7 +148,7 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
   }));
   return {
     duration: formatMinecraftTime(durationTicks),
-    keyframes: [...keyframes.values()].sort((first, second) => parseInt(first.time) - parseInt(second.time)),
+    tracks,
     events: {
       ...(animation.events.start.length ? { start: animation.events.start } : {}),
       ...(timelineEvents.length ? { timeline: timelineEvents } : {}),
@@ -157,4 +156,87 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
       ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
     },
   };
+}
+
+interface TransformFrame {
+  tick: number;
+  transform: LocalTransform;
+  interpolation?: "step" | "linear";
+}
+
+function compileTransformFrames(
+  document: ConversionDocument,
+  animation: ImportedAnimation,
+  nodeId: string,
+  initial: LocalTransform,
+): TransformFrame[] {
+  const node = document.nodes[nodeId];
+  const sourceFrames = animation.tracks[nodeId]?.transforms ?? [];
+  const result: TransformFrame[] = [{ tick: 0, transform: initial }];
+  let previousTargetTick = 0;
+
+  for (const source of sourceFrames) {
+    const tick = requireTick(source.tick, `${animation.id}/${nodeId} transform`);
+    const matrix = node ? compileNodeMatrix(document, nodeId, node, source.matrix) : source.matrix;
+    const transform = matrixToTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
+    if (tick === 0) {
+      result[0] = { tick: 0, transform };
+      continue;
+    }
+    if (tick <= previousTargetTick) {
+      throw new ConversionError("unordered_animation_track", `${animation.id}/${nodeId} transform times must be strictly ascending.`);
+    }
+
+    const gap = tick - previousTargetTick;
+    const duration = source.interpolation.type === "step"
+      ? 0
+      : source.interpolation.durationTicks == null
+        ? gap
+        : requireTick(source.interpolation.durationTicks, `${animation.id}/${nodeId} interpolation`);
+    if (duration > gap) {
+      throw new ConversionError("invalid_interpolation_duration", `${animation.id}/${nodeId} interpolation exceeds the previous transform interval.`);
+    }
+
+    const previous = result.at(-1)!;
+    if (duration === 0) {
+      previous.interpolation = "step";
+    } else {
+      const transitionStart = tick - duration;
+      if (transitionStart > previous.tick) {
+        previous.interpolation = "step";
+        result.push({ tick: transitionStart, transform: previous.transform, interpolation: "linear" });
+      } else {
+        previous.interpolation = "linear";
+      }
+    }
+    result.push({ tick, transform });
+    previousTargetTick = tick;
+  }
+  return result;
+}
+
+function vectorFrame(frame: TransformFrame, value: Vec3): EmoteVectorKeyframe {
+  return {
+    time: formatMinecraftTime(frame.tick),
+    value,
+    ...(frame.interpolation ? { interpolation: frame.interpolation } : {}),
+  };
+}
+
+function matrixToTransform(matrix: Matrix16, label: string): LocalTransform {
+  const stable = stabilizeDisplayMatrix(matrix, label);
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  const scale = new Vector3();
+  new Matrix4().set(...stable).decompose(position, rotation, scale);
+  const euler = new Euler().setFromQuaternion(rotation, "XYZ");
+  return {
+    position: cleanVec3([position.x, position.y, position.z]),
+    rotation: cleanVec3([euler.x * 180 / Math.PI, euler.y * 180 / Math.PI, euler.z * 180 / Math.PI]),
+    scale: cleanVec3([scale.x, scale.y, scale.z]),
+  };
+}
+
+function cleanVec3(values: Vec3): Vec3 {
+  return values.map((value) => Math.abs(value) < 1e-12 ? 0 : value) as unknown as Vec3;
 }

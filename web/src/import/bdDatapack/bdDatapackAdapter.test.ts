@@ -35,15 +35,17 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
       item_stack_snbt: "{id:\"minecraft:dirt\",Count:1}",
     });
     expect(animation.timeline.duration).toBe("4t");
-    expect(animation.timeline.keyframes.map((frame) => frame.time)).toEqual(["0t", "2t"]);
-    expect(animation.timeline.keyframes[1].node_transforms?.display_0).toMatchObject({
-      interpolation_duration: "2t",
-      matrix: [1, 0, 0, 2, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1],
-    });
-    expect(animation.timeline.keyframes[1].node_states).toEqual({
-      display_0: { visible: false },
-      display_0_variant_1: { visible: true },
-    });
+    expect(animation.timeline.tracks.display_0.position?.map((frame) => frame.time)).toEqual(["0t", "2t"]);
+    expect(animation.timeline.tracks.display_0.position?.[0]).toMatchObject({ interpolation: "linear", value: [0, 0, 0] });
+    expect(animation.timeline.tracks.display_0.position?.[1].value).toEqual([2, 0, 0]);
+    expect(animation.timeline.tracks.display_0.visible).toEqual([
+      { time: "0t", value: true },
+      { time: "2t", value: false },
+    ]);
+    expect(animation.timeline.tracks.display_0_variant_1.visible).toEqual([
+      { time: "0t", value: false },
+      { time: "2t", value: true },
+    ]);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 

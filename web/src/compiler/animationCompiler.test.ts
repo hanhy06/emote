@@ -21,13 +21,14 @@ describe("compileImportedProject time handling", () => {
     expect(animation.settings.playback).toEqual({ mode: "loop", loop_delay: "10t" });
   });
 
-  it("writes interpolation duration on the current target keyframe", () => {
+  it("translates target durations into schema 4 outgoing interpolation", () => {
     const project = importedProject();
 
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
-    const durations = animation.timeline.keyframes.map((keyframe) => keyframe.node_transforms?.anchor.interpolation_duration);
+    const frames = animation.timeline.tracks.anchor.position!;
 
-    expect(durations).toEqual(["0t", "2t", "3t"]);
+    expect(frames.map((frame) => frame.time)).toEqual(["0t", "2t", "3t", "5t", "8t"]);
+    expect(frames.map((frame) => frame.interpolation)).toEqual(["step", "step", "linear", "linear", undefined]);
   });
 
   it("uses the animation's tick-zero pose as the node default", () => {
@@ -41,7 +42,7 @@ describe("compileImportedProject time handling", () => {
 
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
 
-    expect(animation.nodes.anchor.default_matrix).toEqual(initialPose);
+    expect(animation.nodes.anchor.transform).toEqual({ position: [4, 5, 6], rotation: [0, 0, 0], scale: [1, 1, 1] });
   });
 
   it("compiles only the selected animation after validating project identifiers", () => {
