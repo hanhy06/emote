@@ -79,6 +79,7 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
 
     const partGroup = new THREE.Group();
     const clickableMeshes: THREE.Mesh[] = [];
+    const modelMeshes: THREE.Mesh[] = [];
     const pointMarkers: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
@@ -100,6 +101,7 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
       if (part.conversionMatrix) mesh.matrix.multiply(new THREE.Matrix4().set(...part.conversionMatrix as MatrixValues));
       mesh.userData.nodeId = part.nodeId;
       partGroup.add(mesh);
+      modelMeshes.push(mesh);
       clickableMeshes.push(mesh);
 
       const edges = new THREE.LineSegments(edgeGeometry, new THREE.LineBasicMaterial({ color: 0x333333 }));
@@ -126,7 +128,9 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
     }
     scene.add(partGroup);
 
-    const bounds = new THREE.Box3().setFromObject(partGroup);
+    const bounds = new THREE.Box3();
+    for (const mesh of modelMeshes) bounds.expandByObject(mesh);
+    for (const marker of pointMarkers) bounds.expandByPoint(marker.position);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
