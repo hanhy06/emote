@@ -21,7 +21,7 @@ import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import { requireTick } from "../format/time";
-import type { ImportedAnimation } from "../domain/conversionSeed";
+import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([
   ["id", serializeSnbtString("minecraft:player_head")],
@@ -42,6 +42,10 @@ export function compileConversionAnimation(
   const output = { ...entry.output, ...outputOverride };
   const namespace = sanitizeNamespace(output.namespace || output.displayName);
   const animation = entry.source;
+  const availability = animationAvailability(animation);
+  if (!availability.exportable) {
+    throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
+  }
   const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
   return {
     type: "animation",

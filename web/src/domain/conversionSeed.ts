@@ -62,6 +62,22 @@ export interface ImportedAnimation {
     loop: EmoteEvent[];
     stop: EmoteEvent[];
   };
+  availability?: ImportedAnimationAvailability;
+}
+
+export interface ImportedAnimationAvailability {
+  preview: "full" | "create_pose" | "unavailable";
+  exportable: boolean;
+  reason?: string;
+}
+
+export const DEFAULT_ANIMATION_AVAILABILITY: ImportedAnimationAvailability = {
+  preview: "full",
+  exportable: true,
+};
+
+export function animationAvailability(animation: ImportedAnimation): ImportedAnimationAvailability {
+  return animation.availability ?? DEFAULT_ANIMATION_AVAILABILITY;
 }
 
 export interface ImportedNodeTrack {
