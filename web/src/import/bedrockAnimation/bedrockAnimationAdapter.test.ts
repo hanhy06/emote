@@ -112,7 +112,7 @@ describe("bedrockAnimationAdapter", () => {
     }));
   });
 
-  it("keeps supported animations and reports nondeterministic or unsupported parts", async () => {
+  it("keeps supported animations and retains unsupported Molang as a Create pose", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
@@ -121,11 +121,29 @@ describe("bedrockAnimationAdapter", () => {
       },
     })));
 
-    expect(imported.animations.map((animation) => animation.name)).toEqual(["supported"]);
+    expect(imported.animations.map((animation) => animation.name)).toEqual(["supported", "random"]);
+    expect(imported.animations[1].availability).toMatchObject({ preview: "create_pose", exportable: false });
     expect(imported.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "bedrock_animation_bone_ignored" }),
-      expect.objectContaining({ code: "bedrock_animation_skipped" }),
+      expect.objectContaining({ code: "bedrock_animation_molang_unavailable" }),
     ]));
+  });
+
+  it("opens a file containing only unsupported runtime Molang for metadata editing", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        runtime: { bones: { body: { rotation: [0, "q.is_on_ground * 45", 0] } } },
+      },
+    })));
+
+    expect(imported.animations).toHaveLength(1);
+    expect(imported.animations[0]).toMatchObject({
+      name: "runtime",
+      tracks: {},
+      availability: { preview: "create_pose", exportable: false },
+    });
+    expect(imported.diagnostics[0].message).toContain("replace the expression at runtime.body.rotation[1]");
   });
 });
 

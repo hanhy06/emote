@@ -7,6 +7,7 @@ import type {
   BedrockVector,
 } from "./bedrockAnimationSchema";
 import { TICKS_PER_SECOND } from "../../format/time";
+import { ConversionError } from "../../foundation/diagnostics";
 
 interface ResolvedKeyframe {
   time: number;
@@ -117,7 +118,11 @@ export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: 
   const fromOne = evaluateBedrockExpression(animation.anim_time_update, 1, 1, `${path}.anim_time_update`);
   const rate = fromZero / delta;
   if (!Number.isFinite(rate) || rate <= 0 || Math.abs((fromOne - 1) - fromZero) > 1e-7) {
-    throw new Error(`${path}.anim_time_update must advance q.anim_time at a constant positive rate.`);
+    throw new ConversionError(
+      "unsupported_bedrock_molang",
+      `${path}.anim_time_update must advance q.anim_time at a constant positive rate.`,
+      `${path}.anim_time_update`,
+    );
   }
   return rate;
 }
@@ -132,7 +137,7 @@ export function evaluateBedrockExpression(expression: BedrockExpression, animati
   const numeric = Number(expression.trim());
   if (Number.isFinite(numeric)) return numeric;
   if (/math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i.test(expression)) {
-    throw new Error(`${path} uses nondeterministic Molang and cannot be baked.`);
+    throw new ConversionError("unsupported_bedrock_molang", `${path} uses nondeterministic Molang and cannot be baked.`, path);
   }
   const parser = new MolangParser();
   parser.variableHandler = (key) => {
@@ -151,7 +156,7 @@ export function evaluateBedrockExpression(expression: BedrockExpression, animati
     if (!Number.isFinite(result)) throw new Error("result is not finite");
     return result;
   } catch (error) {
-    throw new Error(`${path} contains Molang that cannot be baked.`, { cause: error });
+    throw new ConversionError("unsupported_bedrock_molang", `${path} contains Molang that cannot be baked.`, path, { cause: error });
   }
 }
 

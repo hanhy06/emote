@@ -4,6 +4,7 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import { ConversionError } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
@@ -32,6 +33,16 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       collectAnimationDiagnostics(name, animation, diagnostics);
       return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
+      if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
+        const message = `${name} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations.${name}`} with constants or q.anim_time-based Molang.`;
+        diagnostics.push({
+          severity: "warning",
+          code: "bedrock_animation_molang_unavailable",
+          message,
+          sourcePath: reason.sourcePath ?? `animations.${name}`,
+        });
+        return [createPreviewOnlyAnimation(name, animation, index, message)];
+      }
       diagnostics.push({
         severity: "warning",
         code: "bedrock_animation_skipped",
@@ -55,6 +66,20 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     animations,
     diagnostics,
     resources: new Map(),
+  };
+}
+
+function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: string): ImportedAnimation {
+  const sourceDuration = bedrockAnimationDurationSeconds(animation);
+  return {
+    id: sanitizeResourcePath(name, `animation_${index + 1}`),
+    name,
+    durationTicks: sourceDuration > 0 ? Math.max(1, Math.round(sourceDuration * TICKS_PER_SECOND)) : TICKS_PER_SECOND,
+    loop: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
+    loopDelayTicks: 0,
+    tracks: {},
+    events: { start: [], timeline: [], loop: [], stop: [] },
+    availability: { preview: "create_pose", exportable: false, reason },
   };
 }
 
