@@ -1,5 +1,6 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND, secondsToTicks } from "../../format/time";
+import { ConversionError } from "../../foundation/diagnostics";
 import type { AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";
 
 type Vector3Tuple = [number, number, number];
@@ -32,6 +33,7 @@ interface CompiledKeyframe {
 interface CompiledChannel {
   frames: CompiledKeyframe[];
   cursor: number;
+  path: string;
 }
 
 interface MolangContext {
@@ -93,7 +95,7 @@ function compileChannel(channel: Record<string, AjKeyframe> | undefined, path: s
       ...(keyframe.post ? { post: compileVector(keyframe.post) } : {}),
     };
   }).sort((first, second) => first.time - second.time);
-  return { frames, cursor: 0 };
+  return { frames, cursor: 0, path };
 }
 
 function evaluateChannel(
@@ -109,13 +111,13 @@ function evaluateChannel(
   }
   const current = frames[channel.cursor];
   if (Math.abs(current.time - time) < 1e-9) {
-    return evaluateVector(current.value, parser, { animationTime: time, keyframeLerpTime: 0 });
+    return evaluateVector(current.value, parser, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
   }
   if (time < frames[0].time) {
-    return evaluateVector(frames[0].value, parser, { animationTime: time, keyframeLerpTime: 0 });
+    return evaluateVector(frames[0].value, parser, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
   }
   if (channel.cursor + 1 >= frames.length) {
-    return evaluateVector(current.post ?? current.value, parser, { animationTime: time, keyframeLerpTime: 1 });
+    return evaluateVector(current.post ?? current.value, parser, { animationTime: time, keyframeLerpTime: 1 }, channel.path);
   }
   const beforeIndex = channel.cursor;
   const before = frames[beforeIndex];
@@ -123,12 +125,12 @@ function evaluateChannel(
   const alpha = (time - before.time) / (after.time - before.time);
   const context = { animationTime: time, keyframeLerpTime: alpha };
   if (before.interpolation.type === "step") {
-    return evaluateVector(before.post ?? before.value, parser, context);
+    return evaluateVector(before.post ?? before.value, parser, context, channel.path);
   }
-  const start = evaluateVector(before.post ?? before.value, parser, context);
-  const end = evaluateVector(after.value, parser, context);
+  const start = evaluateVector(before.post ?? before.value, parser, context, channel.path);
+  const end = evaluateVector(after.value, parser, context, channel.path);
   if (before.interpolation.type === "catmullrom" || after.interpolation.type === "catmullrom") {
-    return catmullRom(frames, beforeIndex, start, end, alpha, parser, context);
+    return catmullRom(frames, beforeIndex, start, end, alpha, parser, context, channel.path);
   }
   if (before.interpolation.type === "bezier" || after.interpolation.type === "bezier") {
     return mapAxes((axis) => bezier(before, after, start[axis], end[axis], axis, alpha));
@@ -147,16 +149,17 @@ function catmullRom(
   alpha: number,
   parser: MolangParser,
   context: MolangContext,
+  path: string,
 ): Vector3Tuple {
   const before = frames[beforeIndex];
   const after = frames[beforeIndex + 1];
   const previousFrame = frames[beforeIndex - 1];
   const followingFrame = frames[beforeIndex + 2];
   const previous = previousFrame && before.post == null
-    ? evaluateVector(previousFrame.post ?? previousFrame.value, parser, context)
+    ? evaluateVector(previousFrame.post ?? previousFrame.value, parser, context, path)
     : start;
   const following = followingFrame && after.post == null
-    ? evaluateVector(followingFrame.value, parser, context)
+    ? evaluateVector(followingFrame.value, parser, context, path)
     : end;
   return mapAxes((axis) => catmullRomScalar(previous[axis], start[axis], end[axis], following[axis], alpha));
 }
@@ -248,8 +251,8 @@ function compileVector(values: string[]): CompiledVector {
   }) as CompiledVector;
 }
 
-function evaluateVector(values: CompiledVector, parser: MolangParser, context: MolangContext): Vector3Tuple {
-  return values.map((value) => value.constant ?? parseMolang(parser, value.expression!, context, "Animated Java transform")) as Vector3Tuple;
+function evaluateVector(values: CompiledVector, parser: MolangParser, context: MolangContext, path: string): Vector3Tuple {
+  return values.map((value) => value.constant ?? parseMolang(parser, value.expression!, context, path)) as Vector3Tuple;
 }
 
 function parseMolang(parser: MolangParser, expression: string, context: MolangContext, path: string): number {
@@ -268,7 +271,12 @@ function parseMolang(parser: MolangParser, expression: string, context: MolangCo
     if (!Number.isFinite(value)) throw new Error("result is not finite");
     return value;
   } catch (error) {
-    throw new Error(`${path} contains a Molang expression that cannot be baked: ${expression}`, { cause: error });
+    throw new ConversionError(
+      "unsupported_animated_java_molang",
+      `${path} contains a Molang expression that cannot be baked: ${expression}`,
+      path,
+      { cause: error },
+    );
   }
 }
 

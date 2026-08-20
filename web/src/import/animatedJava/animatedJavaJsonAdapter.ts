@@ -4,10 +4,10 @@ import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
-import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
+import { requireAnimationDurationTicks, secondsToTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
@@ -63,7 +63,22 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const resources = new Map<string, Uint8Array>();
     const { nodes, nodeIdsBySource } = importNodes(blueprint, resource, resources);
-    const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => importAnimation(id, animation, nodes, nodeIdsBySource));
+    const diagnostics: ImportDiagnostic[] = [];
+    const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => {
+      try {
+        return importAnimation(id, animation, nodes, nodeIdsBySource);
+      } catch (reason) {
+        if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
+        const message = `${id} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations.${id}`} with constants or q.anim_time-based Molang.`;
+        diagnostics.push({
+          severity: "warning",
+          code: "animated_java_animation_molang_unavailable",
+          message,
+          sourcePath: reason.sourcePath ?? `animations.${id}`,
+        });
+        return createPreviewOnlyAnimation(id, animation, message);
+      }
+    });
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
     if (animations.length === 0) throw new Error("Animated Java blueprint does not contain animations.");
     const name = prettify(resource.path.split("/").at(-1) ?? resource.path);
@@ -74,12 +89,27 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedPlayer: createDefaultPlayerBehavior(),
       nodes,
       animations,
-      diagnostics: [],
+      diagnostics,
       resources,
       ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
     };
   },
 };
+
+function createPreviewOnlyAnimation(id: string, animation: AjAnimation, reason: string): ImportedAnimation {
+  return {
+    id: sanitizeResourcePath(id, "default"),
+    name: prettify(id),
+    durationTicks: Number.isFinite(animation.length) && animation.length > 0
+      ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
+      : TICKS_PER_SECOND,
+    loop: animation.loop_mode.type,
+    loopDelayTicks: 0,
+    tracks: {},
+    events: { start: [], timeline: [], loop: [], stop: [] },
+    availability: { preview: "create_pose", exportable: false, reason },
+  };
+}
 
 function validateRoot(blueprint: AjBlueprint): void {
   if (blueprint.format_version !== 1) throw new Error(`Unsupported Animated Java plugin blueprint version: ${blueprint.format_version}`);

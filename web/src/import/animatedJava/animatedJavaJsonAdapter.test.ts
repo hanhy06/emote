@@ -57,6 +57,38 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(1);
   });
 
+  it("keeps unknown native Animated Java Molang as a warned Create pose", async () => {
+    const input = nativeProject({
+      elements: [{
+        name: "block_display",
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visibility: true,
+        block: "minecraft:stone",
+        configs: { default: {}, variants: {} },
+        uuid: "block",
+        type: "animated_java:vanilla_block_display",
+      }],
+      outliner: ["block"],
+      animations: [{
+        name: "runtime",
+        loop: "once",
+        length: 0.1,
+        loop_delay: "0",
+        animators: { block: { keyframes: [projectFrame("position", 0, ["q.ground_speed", "0", "0"])] } },
+      }],
+    });
+
+    const imported = await animatedJavaJsonAdapter.import(input);
+
+    expect(imported.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: false });
+    expect(imported.diagnostics).toContainEqual(expect.objectContaining({
+      code: "animated_java_animation_molang_unavailable",
+      message: expect.stringContaining("replace the expression at animations[0]"),
+    }));
+  });
+
   it("imports Animated Java 1.10 native cube rigs", async () => {
     const cube = {
       uuid: "arm_cube",
@@ -382,6 +414,29 @@ describe("animatedJavaJsonAdapter", () => {
     const positions = animation.timeline.tracks.item.position?.map((keyframe) => keyframe.value?.[0]);
 
     expect(positions).toEqual([0, 3, 4]);
+  });
+
+  it("keeps unknown Animated Java Molang as a warned Create pose", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      runtime: {
+        loop_mode: { type: "once" },
+        length: 0.1,
+        node_keyframes: { item: { position: {
+          "0.0": { value: ["q.ground_speed", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
+        } } },
+      },
+    });
+
+    const imported = await animatedJavaJsonAdapter.import(input);
+
+    expect(imported.animations[0]).toMatchObject({
+      tracks: {},
+      availability: { preview: "create_pose", exportable: false },
+    });
+    expect(imported.diagnostics).toContainEqual(expect.objectContaining({
+      code: "animated_java_animation_molang_unavailable",
+      message: expect.stringContaining("replace the expression at runtime/item"),
+    }));
   });
 
   it("bakes bezier and catmull-rom interpolation", async () => {

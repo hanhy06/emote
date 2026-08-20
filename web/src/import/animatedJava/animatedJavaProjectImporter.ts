@@ -8,7 +8,7 @@ import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
 import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,
@@ -44,7 +44,22 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
 
   const displayElements = project.elements as AjProjectDisplayElement[];
   const nodes = Object.fromEntries(displayElements.map((element) => [element.uuid, importProjectElement(element)]));
-  const animations = project.animations.map((animation, index) => importProjectAnimation(animation, index, displayElements));
+  const diagnostics: ImportDiagnostic[] = [];
+  const animations = project.animations.map((animation, index) => {
+    try {
+      return importProjectAnimation(animation, index, displayElements);
+    } catch (reason) {
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
+      const message = `${animation.name} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations[${index}]`} with constants or q.anim_time-based Molang.`;
+      diagnostics.push({
+        severity: "warning",
+        code: "animated_java_animation_molang_unavailable",
+        message,
+        sourcePath: reason.sourcePath ?? `animations[${index}]`,
+      });
+      return createPreviewOnlyProjectAnimation(animation, index, message);
+    }
+  });
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || "Animated Java";
   const name = prettify(sourceStem);
   return {
@@ -54,8 +69,21 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     suggestedPlayer: createDefaultPlayerBehavior(),
     nodes,
     animations,
-    diagnostics: [],
+    diagnostics,
     resources: new Map(),
+  };
+}
+
+function createPreviewOnlyProjectAnimation(animation: AjProjectAnimation, index: number, reason: string): ImportedAnimation {
+  return {
+    id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
+    name: prettify(animation.name),
+    durationTicks: Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20,
+    loop: animation.loop === "loop" ? "loop" : "once",
+    loopDelayTicks: 0,
+    tracks: {},
+    events: { start: [], timeline: [], loop: [], stop: [] },
+    availability: { preview: "create_pose", exportable: false, reason },
   };
 }
 
