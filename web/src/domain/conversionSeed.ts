@@ -1,4 +1,4 @@
-import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
 import type { ConversionIssue } from "../foundation/diagnostics";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
@@ -63,6 +63,15 @@ export interface ImportedAnimation {
     stop: EmoteEvent[];
   };
   availability?: ImportedAnimationAvailability;
+  preview?: {
+    durationTicks: number;
+    tracks: Record<string, ImportedNodeTrack>;
+  };
+  runtime?: {
+    molang?: EmoteAnimation["molang"];
+    nodes: Record<string, EmoteNode>;
+    timeline: EmoteTimeline;
+  };
 }
 
 export interface ImportedAnimationAvailability {

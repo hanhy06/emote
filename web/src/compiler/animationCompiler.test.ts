@@ -70,6 +70,24 @@ describe("compileImportedProject time handling", () => {
     expect(() => compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "test" }, 0))
       .toThrow("Runtime Molang cannot be evaluated.");
   });
+
+  it("keeps runtime Molang output separate from numeric preview tracks", () => {
+    const project = importedProject();
+    project.animations[0].preview = { durationTicks: 20, tracks: project.animations[0].tracks };
+    project.animations[0].durationTicks = 12_000;
+    project.animations[0].runtime = {
+      nodes: { anchor: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } } },
+      timeline: {
+        duration: "12000t",
+        tracks: { anchor: { position: [{ time: "0t", value: ["q.anim_time", 0, 0] }] } },
+      },
+    };
+
+    const animation = compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "runtime" }, 0);
+
+    expect(animation.timeline.duration).toBe("12000t");
+    expect(animation.timeline.tracks.anchor.position?.[0].value?.[0]).toBe("q.anim_time");
+  });
 });
 
 function importedProject(): ImportedProject {

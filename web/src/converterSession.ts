@@ -84,14 +84,15 @@ export function createPreviewParts(
   animation: ImportedAnimation | undefined,
   tick: number | null,
 ): PlayerHeadPart[] {
+  const previewTracks = animation?.preview?.tracks ?? animation?.tracks;
   return candidates.filter((candidate) => isVisibleAtTick(
     candidate.node.visible,
-    animation?.tracks[candidate.nodeId],
+    previewTracks?.[candidate.nodeId],
     tick,
   )).map((candidate) => {
     let sourceMatrix = candidate.node.defaultMatrix;
     if (tick !== null) {
-      const transforms = animation?.tracks[candidate.nodeId]?.transforms;
+      const transforms = previewTracks?.[candidate.nodeId]?.transforms;
       for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
         const transform = transforms?.[index];
         if (!transform || transform.tick > tick) continue;

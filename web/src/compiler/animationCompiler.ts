@@ -11,6 +11,7 @@ import type {
 import { ConversionError } from "../foundation/diagnostics";
 import {
   documentMetadata,
+  documentSkinAssignments,
   type AnimationOutputSettings,
   type ConversionDocument,
   type ConversionNode,
@@ -61,9 +62,29 @@ export function compileConversionAnimation(
         loop_delay: formatMinecraftTime(mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay)),
       },
     },
-    nodes: compileNodes(document, animation),
-    timeline: compileTimeline(document, animation),
+    ...(animation.runtime?.molang ? { molang: animation.runtime.molang } : {}),
+    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes) : compileNodes(document, animation),
+    timeline: animation.runtime
+      ? { ...animation.runtime.timeline, duration: formatMinecraftTime(requireTick(animation.durationTicks, `${animation.id} duration`)) }
+      : compileTimeline(document, animation),
   };
+}
+
+function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<string, EmoteNode>): Record<string, EmoteNode> {
+  const assignments = documentSkinAssignments(document);
+  return Object.fromEntries(Object.entries(sourceNodes).map(([id, node]) => {
+    const editorNode = document.nodes[id];
+    const common = {
+      ...node,
+      ...(!node.parent && editorNode ? { space: editorNode.space } : {}),
+    };
+    if (node.type !== "item_display") return [id, common];
+    const assignment = assignments[id];
+    return [id, {
+      ...common,
+      ...(assignment ? { skin: { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } } : { skin: undefined }),
+    }];
+  })) as Record<string, EmoteNode>;
 }
 
 function validateAnimationIds(document: ConversionDocument): void {

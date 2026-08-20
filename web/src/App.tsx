@@ -77,12 +77,13 @@ export function App() {
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
   const availability = animation ? animationAvailability(animation) : null;
+  const previewDurationTicks = animation?.preview?.durationTicks ?? animation?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
   const previewTick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
-    : Math.min(previewFrameIndex - 1, Math.max(0, animation?.durationTicks ?? 0));
+    : Math.min(previewFrameIndex - 1, Math.max(0, previewDurationTicks));
   const previewParts = useMemo(
     () => createPreviewParts(skinCandidates, animation, previewTick),
     [animation, previewTick, skinCandidates],
@@ -341,7 +342,7 @@ export function App() {
                 {skinCandidates.length > 0 && availability?.preview === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
-                    <input type="range" min="0" max={animation.durationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
                       updateSession((current) => ({ ...current, previewFrameIndex: Number(event.currentTarget.value), selectedParts: new Set() }));
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
