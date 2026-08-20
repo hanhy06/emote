@@ -25,6 +25,7 @@ public final class PreparedEmote implements PreparedDefinition {
     private final Map<String, List<StateActivation>> nodeStateActivations;
     private final Map<String, PreparedTransform> defaultTransforms;
     private final int displayNodeCount;
+    private final List<PlaybackSegment> playbackSegments;
 
     private PreparedEmote(
         LoadedAnimation source,
@@ -35,7 +36,8 @@ public final class PreparedEmote implements PreparedDefinition {
         Map<String, List<TransformActivation>> nodeTransformActivations,
         Map<String, List<StateActivation>> nodeStateActivations,
         Map<String, PreparedTransform> defaultTransforms,
-        int displayNodeCount
+        int displayNodeCount,
+        List<PlaybackSegment> playbackSegments
     ) {
         this.source = source;
         this.skinParts = skinParts;
@@ -46,6 +48,7 @@ public final class PreparedEmote implements PreparedDefinition {
         this.nodeStateActivations = nodeStateActivations;
         this.defaultTransforms = defaultTransforms;
         this.displayNodeCount = displayNodeCount;
+        this.playbackSegments = playbackSegments;
     }
 
     public static PreparedEmote from(LoadedAnimation source) {
@@ -120,7 +123,24 @@ public final class PreparedEmote implements PreparedDefinition {
             copyListMap(transformsByNode),
             copyListMap(statesByNode),
             Map.copyOf(defaultTransforms),
-            (int) animation.nodes().values().stream().filter(node -> !(node instanceof EmoteAnimation.AnchorNode)).count()
+            (int) animation.nodes().values().stream().filter(node -> !(node instanceof EmoteAnimation.AnchorNode)).count(),
+            List.of()
+        );
+    }
+
+    static PreparedEmote sequence(PreparedEmote layout, List<PlaybackSegment> playbackSegments) {
+        Objects.requireNonNull(layout, "layout");
+        return new PreparedEmote(
+            layout.source,
+            layout.skinParts,
+            layout.animation,
+            layout.preparedTimeline,
+            layout.tickActions,
+            layout.nodeTransformActivations,
+            layout.nodeStateActivations,
+            layout.defaultTransforms,
+            layout.displayNodeCount,
+            List.copyOf(playbackSegments)
         );
     }
 
@@ -208,6 +228,10 @@ public final class PreparedEmote implements PreparedDefinition {
         return this.displayNodeCount;
     }
 
+    public List<PlaybackSegment> playbackSegments() {
+        return this.playbackSegments;
+    }
+
     public PreparedTransform defaultTransform(String nodeId) {
         PreparedTransform transform = this.defaultTransforms.get(nodeId);
         if (transform == null) {
@@ -281,6 +305,21 @@ public final class PreparedEmote implements PreparedDefinition {
     }
 
     public record StateActivation(int tick, String nodeId, EmoteAnimation.NodeState state) {
+    }
+
+    public record PlaybackSegment(
+        int startTick,
+        int endTick,
+        PreparedEmote animation,
+        Map<String, String> mirroredNodes
+    ) {
+        public PlaybackSegment {
+            if (startTick < 0 || endTick < startTick) {
+                throw new IllegalArgumentException("invalid playback segment range");
+            }
+            Objects.requireNonNull(animation, "animation");
+            mirroredNodes = Map.copyOf(mirroredNodes);
+        }
     }
 
     public record TickActions(

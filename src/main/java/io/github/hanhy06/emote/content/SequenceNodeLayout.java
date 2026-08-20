@@ -18,14 +18,14 @@ final class SequenceNodeLayout {
         Map<String, PreparedDisplayData> preparedDisplayData
     ) {
         if (!collaborative || animation.nodes().values().stream().anyMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER)) {
-            return new Expansion(animation, preparedDisplayData, false);
+            return new Expansion(animation, preparedDisplayData, false, Map.of());
         }
 
         Map<String, String> partnerIds = partnerNodeIds(animation.nodes());
         Map<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>(animation.nodes());
         Map<String, PreparedDisplayData> expandedPreparedData = new LinkedHashMap<>(preparedDisplayData);
         partnerIds.forEach((sourceId, partnerId) -> {
-            nodes.put(partnerId, asPartnerNode(animation.nodes().get(sourceId)));
+            nodes.put(partnerId, asPartnerNode(animation.nodes().get(sourceId), partnerIds));
             PreparedDisplayData prepared = preparedDisplayData.get(sourceId);
             if (prepared != null) {
                 expandedPreparedData.put(partnerId, prepared);
@@ -35,18 +35,28 @@ final class SequenceNodeLayout {
         List<EmoteAnimation.Keyframe> keyframes = animation.timeline().keyframes().stream()
             .map(keyframe -> duplicatePartnerTracks(keyframe, partnerIds))
             .toList();
+        Map<String, EmoteAnimation.NodeTracks> tracks = new LinkedHashMap<>(animation.timeline().tracks());
+        partnerIds.forEach((sourceId, partnerId) -> {
+            EmoteAnimation.NodeTracks sourceTracks = animation.timeline().tracks().get(sourceId);
+            if (sourceTracks != null) {
+                tracks.put(partnerId, sourceTracks);
+            }
+        });
         EmoteAnimation expanded = new EmoteAnimation(
             animation.id(),
             animation.metadata(),
             animation.settings(),
+            animation.schemaVersion(),
+            animation.molang(),
             nodes,
             new EmoteAnimation.Timeline(
                 animation.timeline().durationTicks(),
+                tracks,
                 keyframes,
                 animation.timeline().events()
             )
         );
-        return new Expansion(expanded, expandedPreparedData, true);
+        return new Expansion(expanded, expandedPreparedData, true, partnerIds);
     }
 
     static PreparedEmote validateAndCreateLayout(List<PreparedSequence.Step> steps) {
@@ -137,11 +147,14 @@ final class SequenceNodeLayout {
         return ids;
     }
 
-    private static EmoteAnimation.Node asPartnerNode(EmoteAnimation.Node node) {
+    private static EmoteAnimation.Node asPartnerNode(EmoteAnimation.Node node, Map<String, String> partnerIds) {
+        String parentId = node.parentId() == null ? null : partnerIds.get(node.parentId());
         return switch (node) {
             case EmoteAnimation.ItemNode item -> new EmoteAnimation.ItemNode(
                 item.visible(),
                 EmoteAnimation.NodeSpace.PARTNER,
+                parentId,
+                item.transform(),
                 item.defaultMatrix(),
                 item.entityNbt(),
                 item.itemStackNbt(),
@@ -153,13 +166,13 @@ final class SequenceNodeLayout {
                 )
             );
             case EmoteAnimation.BlockNode block -> new EmoteAnimation.BlockNode(
-                block.visible(), EmoteAnimation.NodeSpace.PARTNER, block.defaultMatrix(), block.entityNbt(), block.blockStateNbt()
+                block.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, block.transform(), block.defaultMatrix(), block.entityNbt(), block.blockStateNbt()
             );
             case EmoteAnimation.TextNode text -> new EmoteAnimation.TextNode(
-                text.visible(), EmoteAnimation.NodeSpace.PARTNER, text.defaultMatrix(), text.entityNbt(), text.text()
+                text.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, text.transform(), text.defaultMatrix(), text.entityNbt(), text.text()
             );
             case EmoteAnimation.AnchorNode anchor -> new EmoteAnimation.AnchorNode(
-                EmoteAnimation.NodeSpace.PARTNER, anchor.defaultMatrix()
+                EmoteAnimation.NodeSpace.PARTNER, parentId, anchor.transform(), anchor.defaultMatrix()
             );
         };
     }
@@ -206,11 +219,13 @@ final class SequenceNodeLayout {
     record Expansion(
         EmoteAnimation animation,
         Map<String, PreparedDisplayData> preparedDisplayData,
-        boolean generatedPartner
+        boolean generatedPartner,
+        Map<String, String> partnerNodeIds
     ) {
         Expansion {
             Objects.requireNonNull(animation, "animation");
             preparedDisplayData = Map.copyOf(preparedDisplayData);
+            partnerNodeIds = Map.copyOf(partnerNodeIds);
         }
     }
 }

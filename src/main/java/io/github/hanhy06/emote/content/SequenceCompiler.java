@@ -18,6 +18,7 @@ final class SequenceCompiler {
     ) {
         List<EmoteAnimation.Keyframe> keyframes = new ArrayList<>();
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
+        List<PreparedEmote.PlaybackSegment> playbackSegments = new ArrayList<>();
         if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
             keyframes.add(createHiddenKeyframe(layoutAnchor.animation(), 0));
         }
@@ -30,6 +31,12 @@ final class SequenceCompiler {
             PreparedSequence.SelectedEmoteStep step = (PreparedSequence.SelectedEmoteStep) selectedStep;
             EmoteAnimation animation = step.animation().animation();
             int segmentOffset = requireTick(offset, sequence);
+            playbackSegments.add(new PreparedEmote.PlaybackSegment(
+                segmentOffset,
+                requireTick(offset + animation.timeline().durationTicks(), sequence),
+                step.animation(),
+                Map.of()
+            ));
             keyframes.add(createResetKeyframe(layoutAnchor.animation(), animation, segmentOffset));
             for (EmoteAnimation.Keyframe keyframe : animation.timeline().keyframes()) {
                 keyframes.add(new EmoteAnimation.Keyframe(
@@ -81,9 +88,18 @@ final class SequenceCompiler {
             compiledAnimation,
             layout.preparedDisplayData()
         );
-        return layout.generatedPartner()
+        List<PreparedEmote.PlaybackSegment> expandedSegments = playbackSegments.stream()
+            .map(segment -> new PreparedEmote.PlaybackSegment(
+                segment.startTick(),
+                segment.endTick(),
+                segment.animation(),
+                layout.partnerNodeIds()
+            ))
+            .toList();
+        PreparedEmote preparedLayout = layout.generatedPartner()
             ? PreparedEmote.from(loaded)
             : PreparedEmote.from(loaded, layoutAnchor.skinParts());
+        return PreparedEmote.sequence(preparedLayout, expandedSegments);
     }
 
     private static EmoteAnimation.Keyframe createHiddenKeyframe(EmoteAnimation animation, int tick) {
@@ -101,8 +117,12 @@ final class SequenceCompiler {
         Map<String, EmoteAnimation.NodeState> states = new LinkedHashMap<>();
         layout.nodes().keySet().forEach(nodeId -> states.put(nodeId, new EmoteAnimation.NodeState(false)));
         animation.nodes().forEach((nodeId, node) -> {
-            transforms.put(nodeId, new EmoteAnimation.NodeTransform(node.defaultMatrix(), 0));
-            states.put(nodeId, new EmoteAnimation.NodeState(node.visible()));
+            if (animation.schemaVersion() != 4) {
+                transforms.put(nodeId, new EmoteAnimation.NodeTransform(node.defaultMatrix(), 0));
+                states.put(nodeId, new EmoteAnimation.NodeState(node.visible()));
+            } else {
+                states.remove(nodeId);
+            }
         });
         return new EmoteAnimation.Keyframe(tick, transforms, states);
     }
