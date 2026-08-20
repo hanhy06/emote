@@ -147,7 +147,7 @@ class PlaybackSessionTest {
     }
 
     private static AnimationPlayer timeline(PreparedEmote emote) {
-        AnimationPlayer animation = new AnimationPlayer(emote.animation(), new EmptyTimelineTarget());
+        AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());
         animation.bindEvents(ignored -> {
         });
         return animation;

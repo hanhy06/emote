@@ -61,7 +61,6 @@ public final class PlaybackStressTest {
                 startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
                 this.entityController.add(level, nodes);
                 try {
-                    timeline.resumeInitialInterpolation();
                     instances.add(new StressTestInstance(emote, nodes, timeline));
                     displayEntityCount += nodes.displayEntityCount();
                 } catch (RuntimeException exception) {

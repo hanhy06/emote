@@ -24,7 +24,7 @@ public final class PreparedEmote implements PreparedDefinition {
     private final Map<String, PreparedTransform> defaultTransforms;
     private final int displayNodeCount;
     private final List<PlaybackSegment> playbackSegments;
-    private final Map<Integer, Map<String, Boolean>> sequenceVisibility;
+    private final Map<Integer, Set<String>> hiddenNodes;
 
     private PreparedEmote(
         LoadedAnimation source,
@@ -35,7 +35,7 @@ public final class PreparedEmote implements PreparedDefinition {
         Map<String, PreparedTransform> defaultTransforms,
         int displayNodeCount,
         List<PlaybackSegment> playbackSegments,
-        Map<Integer, Map<String, Boolean>> sequenceVisibility
+        Map<Integer, Set<String>> hiddenNodes
     ) {
         this.source = source;
         this.skinParts = skinParts;
@@ -45,7 +45,7 @@ public final class PreparedEmote implements PreparedDefinition {
         this.defaultTransforms = defaultTransforms;
         this.displayNodeCount = displayNodeCount;
         this.playbackSegments = playbackSegments;
-        this.sequenceVisibility = sequenceVisibility;
+        this.hiddenNodes = hiddenNodes;
     }
 
     public static PreparedEmote from(LoadedAnimation source) {
@@ -84,11 +84,11 @@ public final class PreparedEmote implements PreparedDefinition {
     static PreparedEmote sequence(
         PreparedEmote layout,
         List<PlaybackSegment> playbackSegments,
-        Map<Integer, Map<String, Boolean>> visibility
+        Map<Integer, Set<String>> hiddenNodes
     ) {
         Objects.requireNonNull(layout, "layout");
-        Map<Integer, Map<String, Boolean>> copiedVisibility = new HashMap<>();
-        visibility.forEach((tick, values) -> copiedVisibility.put(tick, Map.copyOf(values)));
+        Map<Integer, Set<String>> copiedHiddenNodes = new HashMap<>();
+        hiddenNodes.forEach((tick, nodeIds) -> copiedHiddenNodes.put(tick, Set.copyOf(nodeIds)));
         return new PreparedEmote(
             layout.source,
             layout.skinParts,
@@ -98,12 +98,8 @@ public final class PreparedEmote implements PreparedDefinition {
             layout.defaultTransforms,
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
-            Map.copyOf(copiedVisibility)
+            Map.copyOf(copiedHiddenNodes)
         );
-    }
-
-    public static PreparedEmote compile(EmoteAnimation animation) {
-        return from(new LoadedAnimation(Path.of("runtime-animation.json"), "", animation));
     }
 
     public LoadedAnimation source() {
@@ -178,8 +174,8 @@ public final class PreparedEmote implements PreparedDefinition {
         return this.playbackSegments;
     }
 
-    public Map<String, Boolean> sequenceVisibility(int tick) {
-        return this.sequenceVisibility.getOrDefault(tick, Map.of());
+    public Set<String> hiddenNodes(int tick) {
+        return this.hiddenNodes.getOrDefault(tick, Set.of());
     }
 
     public PreparedTransform defaultTransform(String nodeId) {

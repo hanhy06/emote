@@ -4,10 +4,12 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -86,7 +88,8 @@ class AnimationEventTest {
     private AnimationFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
-        AnimationPlayer player = new AnimationPlayer(animation, new EmptyTimelineTarget());
+        PreparedEmote emote = PreparedEmote.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
+        AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
         player.bindEvents(event -> executed.addAll(event.commands()));
         return new AnimationFixture(player, executed);
     }

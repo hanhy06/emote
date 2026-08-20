@@ -148,12 +148,12 @@ class SequenceCompilerTest {
         assertEquals(Set.of("flower", "butterfly"), compiled.nodes().keySet());
         assertEquals(transform(2.0D), compiled.nodes().get("flower").transform());
         assertEquals(transform(8.0D), compiled.nodes().get("butterfly").transform());
-        assertNull(compiledPlan.sequenceVisibility(0).get("flower"));
-        assertFalse(compiledPlan.sequenceVisibility(0).get("butterfly"));
+        assertFalse(compiledPlan.hiddenNodes(0).contains("flower"));
+        assertTrue(compiledPlan.hiddenNodes(0).contains("butterfly"));
 
         PreparedEmote alternating = sequence.compileRandom(randomWithValues(0, 0));
-        assertFalse(alternating.sequenceVisibility(1).get("flower"));
-        assertNull(alternating.sequenceVisibility(1).get("butterfly"));
+        assertTrue(alternating.hiddenNodes(1).contains("flower"));
+        assertFalse(alternating.hiddenNodes(1).contains("butterfly"));
     }
 
     @Test
@@ -388,7 +388,7 @@ class SequenceCompilerTest {
         EmoteAnimation compiled = sequence.compileRandom(randomWithValues(0)).animation();
 
         assertEquals(1, compiled.timeline().durationTicks());
-        assertFalse(sequence.compileRandom(randomWithValues(0)).sequenceVisibility(0).get("root"));
+        assertTrue(sequence.compileRandom(randomWithValues(0)).hiddenNodes(0).contains("root"));
     }
 
     @Test

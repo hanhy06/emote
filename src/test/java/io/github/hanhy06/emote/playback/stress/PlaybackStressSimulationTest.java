@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback.stress;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
@@ -25,10 +26,9 @@ class PlaybackStressSimulationTest {
 
     @Test
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
-        EmoteAnimation animation = new AnimationJsonLoader()
-            .load(Path.of("docs/example/emote.dance.json"))
-            .animation();
-        PreparedEmote plan = PreparedEmote.compile(animation);
+        LoadedAnimation loaded = new AnimationJsonLoader().load(Path.of("docs/example/emote.dance.json"));
+        EmoteAnimation animation = loaded.animation();
+        PreparedEmote plan = PreparedEmote.from(loaded);
         int durationTicks = animation.timeline().durationTicks();
         int[] startTicks = randomizedStartTicks();
         List<SimulatedPlayback> activePlaybacks = new ArrayList<>(INSTANCE_COUNT);
@@ -47,7 +47,6 @@ class PlaybackStressSimulationTest {
                 CountingTarget target = new CountingTarget();
                 AnimationPlayer player = new AnimationPlayer(plan, target);
                 player.startSynchronized(serverTick);
-                player.resumeSynchronizedInterpolation();
                 activePlaybacks.add(new SimulatedPlayback(player, target));
             }
 

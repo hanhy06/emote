@@ -10,7 +10,7 @@ import java.util.*;
 
 public final class AnimationPlayer {
     private final EmoteAnimation animation;
-    private final PreparedEmote compiledTimeline;
+    private final PreparedEmote emote;
     private final TimelineTarget target;
     private AnimationRuntime runtime;
     private final Map<String, PreparedEmote.PreparedTransform> appliedTransforms = new HashMap<>();
@@ -30,23 +30,19 @@ public final class AnimationPlayer {
     private boolean eventsStopped;
 
     public AnimationPlayer(
-        PreparedEmote compiledTimeline,
+        PreparedEmote emote,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
-        this(compiledTimeline, new EntityTimelineTarget(compiledTimeline, nodes, entityController));
+        this(emote, new EntityTimelineTarget(emote, nodes, entityController));
     }
 
-    public AnimationPlayer(EmoteAnimation animation, TimelineTarget target) {
-        this(PreparedEmote.compile(animation), target);
-    }
-
-    public AnimationPlayer(PreparedEmote compiledTimeline, TimelineTarget target) {
-        this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
-        this.animation = compiledTimeline.animation();
+    public AnimationPlayer(PreparedEmote emote, TimelineTarget target) {
+        this.emote = Objects.requireNonNull(emote, "emote");
+        this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
-        this.runtime = compiledTimeline.playbackSegments().isEmpty()
-            ? new AnimationRuntime(compiledTimeline)
+        this.runtime = emote.playbackSegments().isEmpty()
+            ? new AnimationRuntime(emote)
             : null;
     }
 
@@ -91,12 +87,6 @@ public final class AnimationPlayer {
         }
     }
 
-    public void resumeSynchronizedInterpolation() {
-        if (!this.started || this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
-            throw new IllegalStateException("Synchronized timeline has not started");
-        }
-    }
-
     public void deferInitialVisibility() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
@@ -116,12 +106,6 @@ public final class AnimationPlayer {
         ));
     }
 
-    public void resumeInitialInterpolation() {
-        if (!this.started) {
-            throw new IllegalStateException("Timeline has not started");
-        }
-    }
-
     public void bindEvents(EventExecutor eventExecutor) {
         if (this.eventExecutor != null) {
             throw new IllegalStateException("Animation events are already bound");
@@ -136,7 +120,7 @@ public final class AnimationPlayer {
         this.eventsStarted = true;
         execute(this.animation.timeline().events().start());
         if (this.currentTick == 0) {
-            execute(this.compiledTimeline.timelineEvents(0));
+            execute(this.emote.timelineEvents(0));
         }
     }
 
@@ -148,7 +132,7 @@ public final class AnimationPlayer {
         int previousTick = this.currentTick;
         AdvanceResult result = advanceTimeline();
         if (result != AdvanceResult.RESTARTED && this.currentTick != previousTick) {
-            execute(this.compiledTimeline.timelineEvents(this.currentTick));
+            execute(this.emote.timelineEvents(this.currentTick));
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
             execute(this.animation.timeline().events().loop());
@@ -157,7 +141,7 @@ public final class AnimationPlayer {
             }
         }
         if (result == AdvanceResult.RESTARTED) {
-            execute(this.compiledTimeline.timelineEvents(this.currentTick));
+            execute(this.emote.timelineEvents(this.currentTick));
         }
         return result;
     }
@@ -235,7 +219,7 @@ public final class AnimationPlayer {
         PreparedEmote.PreparedTransform transform = this.runtime == null ? null : this.runtime.currentTransform(nodeId);
         return this.target.createTransformation(
             nodeId,
-            transform == null ? this.compiledTimeline.defaultTransform(nodeId) : transform
+            transform == null ? this.emote.defaultTransform(nodeId) : transform
         );
     }
 
@@ -254,7 +238,7 @@ public final class AnimationPlayer {
         this.appliedVisibility.clear();
         this.activePlaybackSegment = -1;
         this.mirroredNodes = Map.of();
-        if (!this.compiledTimeline.playbackSegments().isEmpty()) {
+        if (!this.emote.playbackSegments().isEmpty()) {
             this.runtime = null;
         }
         this.currentTick = 0;
@@ -266,16 +250,16 @@ public final class AnimationPlayer {
     }
 
     private void applyTick(int tick) {
-        if (!this.compiledTimeline.playbackSegments().isEmpty()) {
+        if (!this.emote.playbackSegments().isEmpty()) {
             applyPlaybackSegment(tick);
-            applySequenceVisibility(tick);
+            applyHiddenNodes(tick);
             return;
         }
         applyPose(this.runtime.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
     }
 
     private void applyPlaybackSegment(int tick) {
-        List<PreparedEmote.PlaybackSegment> segments = this.compiledTimeline.playbackSegments();
+        List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
         int selected = -1;
         for (int index = 0; index < segments.size(); index++) {
             PreparedEmote.PlaybackSegment segment = segments.get(index);
@@ -303,8 +287,8 @@ public final class AnimationPlayer {
         applyPose(pose, tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
     }
 
-    private void applySequenceVisibility(int tick) {
-        this.compiledTimeline.sequenceVisibility(tick).forEach(this::applyVisibility);
+    private void applyHiddenNodes(int tick) {
+        this.emote.hiddenNodes(tick).forEach(nodeId -> applyVisibility(nodeId, false));
     }
 
     private void applyPose(AnimationRuntime.Pose pose, int interpolationDurationTicks) {
@@ -388,7 +372,7 @@ public final class AnimationPlayer {
     }
 
     private record EntityTimelineTarget(
-        PreparedEmote compiledTimeline,
+        PreparedEmote emote,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
@@ -423,7 +407,7 @@ public final class AnimationPlayer {
                 this.entityController.applyTransformation(
                     this.nodes,
                     node,
-                    this.compiledTimeline.defaultTransform(nodeId),
+                    this.emote.defaultTransform(nodeId),
                     0
                 );
                 this.entityController.setVisible(node, this.nodes.requestVisibility(nodeId, node.node().visible()));

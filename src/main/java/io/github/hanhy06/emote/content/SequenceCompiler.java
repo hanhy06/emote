@@ -18,9 +18,9 @@ final class SequenceCompiler {
     ) {
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         List<PreparedEmote.PlaybackSegment> playbackSegments = new ArrayList<>();
-        Map<Integer, Map<String, Boolean>> visibility = new HashMap<>();
+        Map<Integer, Set<String>> hiddenNodes = new HashMap<>();
         if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
-            visibility.put(0, hiddenNodes(layoutAnchor.animation(), null));
+            hiddenNodes.put(0, nodesToHide(layoutAnchor.animation(), null));
         }
         long offset = 0L;
         for (PreparedSequence.SelectedStep selectedStep : steps) {
@@ -37,7 +37,7 @@ final class SequenceCompiler {
                 step.animation(),
                 Map.of()
             ));
-            visibility.put(segmentOffset, hiddenNodes(layoutAnchor.animation(), animation));
+            hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.animation(), animation));
             for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
                 timelineEvents.add(new EmoteAnimation.TimelineEvent(
                     requireTick(offset + event.tick(), sequence),
@@ -93,32 +93,30 @@ final class SequenceCompiler {
         PreparedEmote preparedLayout = layout.generatedPartner()
             ? PreparedEmote.from(loaded)
             : PreparedEmote.from(loaded, layoutAnchor.skinParts());
-        return PreparedEmote.sequence(preparedLayout, expandedSegments, expandVisibility(visibility, layout.partnerNodeIds()));
+        return PreparedEmote.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
     }
 
-    private static Map<String, Boolean> hiddenNodes(EmoteAnimation layout, EmoteAnimation active) {
-        Map<String, Boolean> visibility = new LinkedHashMap<>();
-        layout.nodes().keySet().forEach(nodeId -> visibility.put(nodeId, false));
+    private static Set<String> nodesToHide(EmoteAnimation layout, EmoteAnimation active) {
+        Set<String> hiddenNodes = new LinkedHashSet<>(layout.nodes().keySet());
         if (active != null) {
-            active.nodes().keySet().forEach(visibility::remove);
+            hiddenNodes.removeAll(active.nodes().keySet());
         }
-        return Map.copyOf(visibility);
+        return Set.copyOf(hiddenNodes);
     }
 
-    private static Map<Integer, Map<String, Boolean>> expandVisibility(
-        Map<Integer, Map<String, Boolean>> source,
+    private static Map<Integer, Set<String>> expandHiddenNodes(
+        Map<Integer, Set<String>> source,
         Map<String, String> partnerNodeIds
     ) {
-        Map<Integer, Map<String, Boolean>> expanded = new HashMap<>();
-        source.forEach((tick, values) -> {
-            Map<String, Boolean> tickValues = new LinkedHashMap<>(values);
+        Map<Integer, Set<String>> expanded = new HashMap<>();
+        source.forEach((tick, nodeIds) -> {
+            Set<String> tickNodeIds = new LinkedHashSet<>(nodeIds);
             partnerNodeIds.forEach((sourceId, partnerId) -> {
-                Boolean visible = values.get(sourceId);
-                if (visible != null) {
-                    tickValues.put(partnerId, visible);
+                if (nodeIds.contains(sourceId)) {
+                    tickNodeIds.add(partnerId);
                 }
             });
-            expanded.put(tick, Map.copyOf(tickValues));
+            expanded.put(tick, Set.copyOf(tickNodeIds));
         });
         return Map.copyOf(expanded);
     }

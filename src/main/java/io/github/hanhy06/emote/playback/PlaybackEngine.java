@@ -222,9 +222,6 @@ public class PlaybackEngine implements ConfigListener {
             );
             timeline.deferInitialVisibility();
             this.entityController.add(player.level(), nodes);
-            if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                timeline.resumeSynchronizedInterpolation();
-            }
             PlaybackParticipant initiator = new PlaybackParticipant(
                 player.getUUID(),
                 ParticipantRole.INITIATOR,
