@@ -92,7 +92,7 @@ final class SequenceCompiler {
             .toList();
         PreparedAnimation preparedLayout = layout.generatedPartner()
             ? PreparedAnimation.from(loaded)
-            : PreparedAnimation.from(loaded, layoutAnchor.skinParts());
+            : PreparedAnimation.from(loaded, layoutAnchor.skinBindings());
         return PreparedAnimation.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
     }
 

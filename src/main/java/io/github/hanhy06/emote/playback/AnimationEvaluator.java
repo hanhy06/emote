@@ -14,17 +14,17 @@ import java.util.Map;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
-final class AnimationRuntime {
-    private final PreparedAnimation emote;
+final class AnimationEvaluator {
+    private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
     private final Map<String, PreparedAnimation.PreparedTransform> transforms = new HashMap<>();
     private final Map<String, Boolean> visibility = new HashMap<>();
 
     private MolangEngine.Session session;
 
-    AnimationRuntime(PreparedAnimation emote) {
-        this.emote = emote;
-        this.timeline = emote.preparedTimeline();
+    AnimationEvaluator(PreparedAnimation animation) {
+        this.animation = animation;
+        this.timeline = animation.preparedTimeline();
     }
 
     Pose beginCycle(int tick, int loopCount) {
@@ -53,9 +53,9 @@ final class AnimationRuntime {
         this.transforms.clear();
         this.visibility.clear();
         Map<String, Matrix4f> resolved = new HashMap<>();
-        EmoteAnimation animation = this.emote.animation();
+        EmoteAnimation source = this.animation.animation();
         for (String nodeId : this.timeline.nodeOrder()) {
-            Node node = animation.nodes().get(nodeId);
+            Node node = source.nodes().get(nodeId);
             CompiledNodeTracks tracks = this.timeline.tracks().get(nodeId);
             LocalTransform defaults = node.transform();
             double[] position = vector(tracks == null ? List.of() : tracks.position(), tick, defaults.position());
@@ -81,7 +81,7 @@ final class AnimationRuntime {
     private void setQueries(int tick, int loopCount, double deltaTime) {
         this.session.setQuery("anim_time", tick / 20.0D);
         this.session.setQuery("anim_time_ticks", tick);
-        this.session.setQuery("anim_length", this.emote.durationTicks() / 20.0D);
+        this.session.setQuery("anim_length", this.animation.durationTicks() / 20.0D);
         this.session.setQuery("delta_time", deltaTime);
         this.session.setQuery("loop_count", loopCount);
         this.session.setQuery("key_frame_lerp_time", 0.0D);

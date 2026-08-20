@@ -12,13 +12,13 @@ public record PlaybackParticipant(
     UUID playerUuid,
     ParticipantRole role,
     Vec3 startPosition,
-    List<SkinBinding> skinParts,
+    List<SkinBinding> skinBindings,
     boolean wasInvisible
 ) {
     public PlaybackParticipant {
         Objects.requireNonNull(playerUuid, "playerUuid");
         Objects.requireNonNull(role, "role");
         Objects.requireNonNull(startPosition, "startPosition");
-        skinParts = List.copyOf(skinParts);
+        skinBindings = List.copyOf(skinBindings);
     }
 }

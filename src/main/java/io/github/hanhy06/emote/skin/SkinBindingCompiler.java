@@ -13,7 +13,7 @@ import java.util.*;
 public final class SkinBindingCompiler {
     private static final Logger LOGGER = LoggerFactory.getLogger(SkinBindingCompiler.class);
 
-    public List<SkinBinding> create(EmoteAnimation animation) {
+    public List<SkinBinding> compile(EmoteAnimation animation) {
         Map<ParticipantSkinPart, List<RawPart>> byPart = new HashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
             if (!(entry.getValue() instanceof EmoteAnimation.ItemNode itemNode) || itemNode.skin() == null) {

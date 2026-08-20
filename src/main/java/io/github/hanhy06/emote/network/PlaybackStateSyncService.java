@@ -8,7 +8,7 @@ import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
-public class PlaybackStateService implements PlaybackStateListener {
+public class PlaybackStateSyncService implements PlaybackStateListener {
     private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false);
 
     @Override

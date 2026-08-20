@@ -124,7 +124,7 @@ public class PlaybackEngine implements ConfigListener {
         PreparedAnimation offer = sequence.compiledAnimation();
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            offer.skinParts(ParticipantRole.PARTNER)
+            offer.skinBindings(ParticipantRole.PARTNER)
         );
         if (skinPreparation.preparing()) {
             return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
@@ -134,14 +134,14 @@ public class PlaybackEngine implements ConfigListener {
             player.getUUID(),
             ParticipantRole.PARTNER,
             player.position(),
-            offer.skinParts(ParticipantRole.PARTNER),
+            offer.skinBindings(ParticipantRole.PARTNER),
             player.isInvisible()
         );
         session.reservePartner(partner);
         this.sessionRegistry.reservePartner(session, player.getUUID());
         this.entityController.applySkin(
             session.nodes(),
-            partner.skinParts(),
+            partner.skinBindings(),
             skinPreparation.preparedPlayerSkin()
         );
         if (session.state() == PlaybackSession.State.WAITING) {
@@ -173,7 +173,7 @@ public class PlaybackEngine implements ConfigListener {
 
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            emote.skinParts(ParticipantRole.INITIATOR)
+            emote.skinBindings(ParticipantRole.INITIATOR)
         );
         if (skinPreparation.preparing()) {
             return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
@@ -212,7 +212,7 @@ public class PlaybackEngine implements ConfigListener {
             }
             this.entityController.applySkin(
                 nodes,
-                emote.skinParts(ParticipantRole.INITIATOR),
+                emote.skinBindings(ParticipantRole.INITIATOR),
                 preparedSkin
             );
             timeline.deferInitialVisibility();
@@ -221,7 +221,7 @@ public class PlaybackEngine implements ConfigListener {
                 player.getUUID(),
                 ParticipantRole.INITIATOR,
                 roots.get(EmoteAnimation.NodeSpace.SCENE).position(),
-                emote.skinParts(ParticipantRole.INITIATOR),
+                emote.skinBindings(ParticipantRole.INITIATOR),
                 player.isInvisible()
             );
             session = new PlaybackSession(
@@ -268,11 +268,11 @@ public class PlaybackEngine implements ConfigListener {
         }
         PlayerSkinPreparation preparation = this.playerSkinManager.preparePlayerSkin(
             player,
-            participant.skinParts()
+            participant.skinBindings()
         );
         this.entityController.applySkin(
             session.nodes(),
-            participant.skinParts(),
+            participant.skinBindings(),
             preparation.preparedPlayerSkin()
         );
     }

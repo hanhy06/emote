@@ -62,13 +62,13 @@ public class PlayerSkinManager implements ConfigListener {
         );
     }
 
-    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinParts) {
-        if (skinParts.isEmpty()) {
+    public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinBindings) {
+        if (skinBindings.isEmpty()) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
-        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinParts.size());
-        for (SkinBinding skinPart : skinParts) {
-            requiredTextureKeys.add(skinPart.region());
+        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinBindings.size());
+        for (SkinBinding binding : skinBindings) {
+            requiredTextureKeys.add(binding.region());
         }
         PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
         if (skinSource == null) {

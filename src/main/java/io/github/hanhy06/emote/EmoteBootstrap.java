@@ -10,7 +10,7 @@ import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.PayloadRegistry;
-import io.github.hanhy06.emote.network.PlaybackStateService;
+import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
@@ -31,7 +31,7 @@ final class EmoteBootstrap {
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions);
         PlayerSkinManager skins = new PlayerSkinManager();
         PlaybackEngine playback = new PlaybackEngine(skins);
-        PlaybackStateService playbackState = new PlaybackStateService();
+        PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
         EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
@@ -63,7 +63,7 @@ final class EmoteBootstrap {
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(playback);
-        playback.addStateListener(playbackState);
+        playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();
         PayloadRegistry.register();

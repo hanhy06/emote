@@ -75,7 +75,7 @@ final class SequenceNodeLayout {
                     continue;
                 }
                 PreparedAnimation animation = animationChoice.animation();
-                if (!first.skinParts().equals(animation.skinParts())) {
+                if (!first.skinBindings().equals(animation.skinBindings())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
                     );
@@ -104,7 +104,7 @@ final class SequenceNodeLayout {
             layoutAnimation,
             preparedDisplayData
         );
-        return PreparedAnimation.from(loaded, first.skinParts());
+        return PreparedAnimation.from(loaded, first.skinBindings());
     }
 
     private static void mergeNodes(

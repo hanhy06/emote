@@ -450,9 +450,9 @@ class SequenceCompilerTest {
         String partnerId = compiled.nodes().keySet().stream().filter(id -> !id.equals("body")).findFirst().orElseThrow();
 
         assertEquals(sequence.compiledAnimation().animation().nodes().keySet(), compiled.nodes().keySet());
-        assertEquals(1, sequence.compiledAnimation().skinParts(ParticipantRole.PARTNER).size());
+        assertEquals(1, sequence.compiledAnimation().skinBindings(ParticipantRole.PARTNER).size());
         assertEquals(EmoteAnimation.NodeSpace.PARTNER, compiled.nodes().get(partnerId).space());
-        assertEquals(1, compiledEmote.skinParts(ParticipantRole.PARTNER).size());
+        assertEquals(1, compiledEmote.skinBindings(ParticipantRole.PARTNER).size());
         PreparedAnimation.PlaybackSegment segment = compiledEmote.playbackSegments().getFirst();
         assertTrue(segment.animation().animation().timeline().tracks().containsKey("body"));
         assertEquals(partnerId, segment.mirroredNodes().get("body"));

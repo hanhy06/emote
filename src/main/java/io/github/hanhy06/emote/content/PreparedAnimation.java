@@ -15,9 +15,9 @@ import java.nio.file.Path;
 import java.util.*;
 
 public final class PreparedAnimation implements PlayableEmote {
-    private static final SkinBindingCompiler SKIN_PART_FACTORY = new SkinBindingCompiler();
+    private static final SkinBindingCompiler SKIN_BINDING_COMPILER = new SkinBindingCompiler();
     private final LoadedAnimation source;
-    private final List<SkinBinding> skinParts;
+    private final List<SkinBinding> skinBindings;
     private final EmoteAnimation animation;
     private final PreparedAnimationTimeline preparedTimeline;
     private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
@@ -28,7 +28,7 @@ public final class PreparedAnimation implements PlayableEmote {
 
     private PreparedAnimation(
         LoadedAnimation source,
-        List<SkinBinding> skinParts,
+        List<SkinBinding> skinBindings,
         EmoteAnimation animation,
         PreparedAnimationTimeline preparedTimeline,
         Map<Integer, List<EmoteAnimation.Event>> timelineEvents,
@@ -38,7 +38,7 @@ public final class PreparedAnimation implements PlayableEmote {
         Map<Integer, Set<String>> hiddenNodes
     ) {
         this.source = source;
-        this.skinParts = skinParts;
+        this.skinBindings = skinBindings;
         this.animation = animation;
         this.preparedTimeline = preparedTimeline;
         this.timelineEvents = timelineEvents;
@@ -49,12 +49,12 @@ public final class PreparedAnimation implements PlayableEmote {
     }
 
     public static PreparedAnimation from(LoadedAnimation source) {
-        return from(source, SKIN_PART_FACTORY.create(source.animation()));
+        return from(source, SKIN_BINDING_COMPILER.compile(source.animation()));
     }
 
-    public static PreparedAnimation from(LoadedAnimation source, List<SkinBinding> skinParts) {
+    public static PreparedAnimation from(LoadedAnimation source, List<SkinBinding> skinBindings) {
         Objects.requireNonNull(source, "source");
-        skinParts = List.copyOf(skinParts);
+        skinBindings = List.copyOf(skinBindings);
         EmoteAnimation animation = source.animation();
         Objects.requireNonNull(animation, "animation");
         Map<String, PreparedTransform> defaultTransforms = new HashMap<>();
@@ -70,7 +70,7 @@ public final class PreparedAnimation implements PlayableEmote {
 
         return new PreparedAnimation(
             source,
-            skinParts,
+            skinBindings,
             animation,
             PreparedAnimationTimeline.compile(animation),
             copyListMap(eventsByTick),
@@ -91,7 +91,7 @@ public final class PreparedAnimation implements PlayableEmote {
         hiddenNodes.forEach((tick, nodeIds) -> copiedHiddenNodes.put(tick, Set.copyOf(nodeIds)));
         return new PreparedAnimation(
             layout.source,
-            layout.skinParts,
+            layout.skinBindings,
             layout.animation,
             layout.preparedTimeline,
             layout.timelineEvents,
@@ -114,8 +114,8 @@ public final class PreparedAnimation implements PlayableEmote {
         return this.preparedTimeline;
     }
 
-    public List<SkinBinding> skinParts() {
-        return this.skinParts;
+    public List<SkinBinding> skinBindings() {
+        return this.skinBindings;
     }
 
     public String id() {
@@ -158,8 +158,8 @@ public final class PreparedAnimation implements PlayableEmote {
         return animation().settings().playback().mode();
     }
 
-    public List<SkinBinding> skinParts(ParticipantRole participant) {
-        return this.skinParts.stream().filter(binding -> binding.participant() == participant).toList();
+    public List<SkinBinding> skinBindings(ParticipantRole participant) {
+        return this.skinBindings.stream().filter(binding -> binding.participant() == participant).toList();
     }
 
     public List<EmoteAnimation.Event> timelineEvents(int tick) {

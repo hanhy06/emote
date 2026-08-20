@@ -23,16 +23,16 @@ class SkinBindingCompilerTest {
         nodes.put("inner", itemNode(1.0D, EmoteAnimation.SkinPart.LEFT_ARM, 0));
         nodes.put("head", itemNode(1.0D, EmoteAnimation.SkinPart.HEAD, 0));
 
-        List<SkinBinding> parts = new SkinBindingCompiler().create(animation(nodes));
+        List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
 
-        assertEquals(new PlayerSkinSegment(0, 3), find(parts, "inner").region().skinSegment());
-        assertEquals(new PlayerSkinSegment(3, 12), find(parts, "outer").region().skinSegment());
-        assertEquals(PlayerSkinSegment.FULL, find(parts, "head").region().skinSegment());
-        assertEquals(ParticipantRole.INITIATOR, find(parts, "head").participant());
+        assertEquals(new PlayerSkinSegment(0, 3), find(bindings, "inner").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(3, 12), find(bindings, "outer").region().skinSegment());
+        assertEquals(PlayerSkinSegment.FULL, find(bindings, "head").region().skinSegment());
+        assertEquals(ParticipantRole.INITIATOR, find(bindings, "head").participant());
     }
 
-    private SkinBinding find(List<SkinBinding> parts, String nodeId) {
-        return parts.stream().filter(part -> part.nodeId().equals(nodeId)).findFirst().orElseThrow();
+    private SkinBinding find(List<SkinBinding> bindings, String nodeId) {
+        return bindings.stream().filter(binding -> binding.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }
 
     private EmoteAnimation.ItemNode itemNode(double yScale, EmoteAnimation.SkinPart part, int order) {

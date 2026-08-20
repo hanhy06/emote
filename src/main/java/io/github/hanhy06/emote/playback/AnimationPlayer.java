@@ -15,7 +15,7 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedAnimation emote;
     private final TimelineTarget target;
-    private AnimationRuntime runtime;
+    private AnimationEvaluator evaluator;
     private final Map<String, PreparedAnimation.PreparedTransform> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
 
@@ -44,8 +44,8 @@ public final class AnimationPlayer {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
-        this.runtime = emote.playbackSegments().isEmpty()
-            ? new AnimationRuntime(emote)
+        this.evaluator = emote.playbackSegments().isEmpty()
+            ? new AnimationEvaluator(emote)
             : null;
     }
 
@@ -219,7 +219,7 @@ public final class AnimationPlayer {
     }
 
     public Transformation currentTransformation(String nodeId) {
-        PreparedAnimation.PreparedTransform transform = this.runtime == null ? null : this.runtime.currentTransform(nodeId);
+        PreparedAnimation.PreparedTransform transform = this.evaluator == null ? null : this.evaluator.currentTransform(nodeId);
         return this.target.createTransformation(
             nodeId,
             transform == null ? this.emote.defaultTransform(nodeId) : transform
@@ -229,10 +229,10 @@ public final class AnimationPlayer {
     private void resetToTickZero() {
         this.target.resetAll();
         clearState();
-        if (this.runtime == null) {
+        if (this.evaluator == null) {
             applyTick(0);
         } else {
-            applyPose(this.runtime.beginCycle(0, this.loopCount), 0);
+            applyPose(this.evaluator.beginCycle(0, this.loopCount), 0);
         }
     }
 
@@ -242,14 +242,14 @@ public final class AnimationPlayer {
         this.activePlaybackSegment = -1;
         this.mirroredNodes = Map.of();
         if (!this.emote.playbackSegments().isEmpty()) {
-            this.runtime = null;
+            this.evaluator = null;
         }
         this.currentTick = 0;
         this.remainingLoopDelay = 0;
     }
 
     private void applySynchronizedSnapshot(int tick) {
-        applyPose(this.runtime.beginCycle(tick, this.loopCount), 0);
+        applyPose(this.evaluator.beginCycle(tick, this.loopCount), 0);
     }
 
     private void applyTick(int tick) {
@@ -258,7 +258,7 @@ public final class AnimationPlayer {
             applyHiddenNodes(tick);
             return;
         }
-        applyPose(this.runtime.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
+        applyPose(this.evaluator.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
     }
 
     private void applyPlaybackSegment(int tick) {
@@ -278,14 +278,14 @@ public final class AnimationPlayer {
         }
         PreparedAnimation.PlaybackSegment segment = segments.get(selected);
         int localTick = tick - segment.startTick();
-        AnimationRuntime.Pose pose;
+        AnimationEvaluator.Pose pose;
         if (selected != this.activePlaybackSegment) {
             this.activePlaybackSegment = selected;
             this.mirroredNodes = segment.mirroredNodes();
-            this.runtime = new AnimationRuntime(segment.animation());
-            pose = this.runtime.beginCycle(localTick, 0);
+            this.evaluator = new AnimationEvaluator(segment.animation());
+            pose = this.evaluator.beginCycle(localTick, 0);
         } else {
-            pose = this.runtime.evaluate(localTick, 0);
+            pose = this.evaluator.evaluate(localTick, 0);
         }
         applyPose(pose, tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
     }
@@ -294,12 +294,12 @@ public final class AnimationPlayer {
         this.emote.hiddenNodes(tick).forEach(nodeId -> applyVisibility(nodeId, false));
     }
 
-    private void applyPose(AnimationRuntime.Pose pose, int interpolationDurationTicks) {
+    private void applyPose(AnimationEvaluator.Pose pose, int interpolationDurationTicks) {
         applyPose(pose, interpolationDurationTicks, Map.of());
     }
 
     private void applyPose(
-        AnimationRuntime.Pose pose,
+        AnimationEvaluator.Pose pose,
         int interpolationDurationTicks,
         Map<String, String> mirroredNodes
     ) {
