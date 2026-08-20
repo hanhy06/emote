@@ -15,15 +15,27 @@ public record EmoteAnimation(
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
+    MolangPrograms molang,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
+    public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Map<String, Node> nodes, Timeline timeline) {
+        this(id, metadata, settings, MolangPrograms.empty(), nodes, timeline);
+    }
+
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
         Objects.requireNonNull(settings, "settings");
+        Objects.requireNonNull(molang, "molang");
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
+    }
+
+    public record MolangPrograms(String initialize, String tick) {
+        public static MolangPrograms empty() {
+            return new MolangPrograms(null, null);
+        }
     }
 
     public record Settings(
@@ -69,6 +81,10 @@ public record EmoteAnimation(
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
         NodeSpace space();
 
+        String parentId();
+
+        LocalTransform transform();
+
         Matrix defaultMatrix();
 
         default boolean visible() {
@@ -83,14 +99,29 @@ public record EmoteAnimation(
     public record ItemNode(
         boolean visible,
         NodeSpace space,
+        String parentId,
+        LocalTransform transform,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag itemStackNbt,
         String itemDisplay,
         Skin skin
     ) implements Node {
+        public ItemNode(
+            boolean visible,
+            NodeSpace space,
+            Matrix defaultMatrix,
+            CompoundTag entityNbt,
+            CompoundTag itemStackNbt,
+            String itemDisplay,
+            Skin skin
+        ) {
+            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, itemStackNbt, itemDisplay, skin);
+        }
+
         public ItemNode {
             Objects.requireNonNull(space, "space");
+            Objects.requireNonNull(transform, "transform");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             itemStackNbt = copy(itemStackNbt);
@@ -101,12 +132,25 @@ public record EmoteAnimation(
     public record BlockNode(
         boolean visible,
         NodeSpace space,
+        String parentId,
+        LocalTransform transform,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
+        public BlockNode(
+            boolean visible,
+            NodeSpace space,
+            Matrix defaultMatrix,
+            CompoundTag entityNbt,
+            CompoundTag blockStateNbt
+        ) {
+            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, blockStateNbt);
+        }
+
         public BlockNode {
             Objects.requireNonNull(space, "space");
+            Objects.requireNonNull(transform, "transform");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
@@ -116,12 +160,25 @@ public record EmoteAnimation(
     public record TextNode(
         boolean visible,
         NodeSpace space,
+        String parentId,
+        LocalTransform transform,
         Matrix defaultMatrix,
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
+        public TextNode(
+            boolean visible,
+            NodeSpace space,
+            Matrix defaultMatrix,
+            CompoundTag entityNbt,
+            JsonElement text
+        ) {
+            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, text);
+        }
+
         public TextNode {
             Objects.requireNonNull(space, "space");
+            Objects.requireNonNull(transform, "transform");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
@@ -133,10 +190,63 @@ public record EmoteAnimation(
         }
     }
 
-    public record AnchorNode(NodeSpace space, Matrix defaultMatrix) implements Node {
+    public record AnchorNode(
+        NodeSpace space,
+        String parentId,
+        LocalTransform transform,
+        Matrix defaultMatrix
+    ) implements Node {
+        public AnchorNode(NodeSpace space, Matrix defaultMatrix) {
+            this(space, null, LocalTransform.IDENTITY, defaultMatrix);
+        }
+
         public AnchorNode {
             Objects.requireNonNull(space, "space");
+            Objects.requireNonNull(transform, "transform");
             Objects.requireNonNull(defaultMatrix, "defaultMatrix");
+        }
+    }
+
+    public record LocalTransform(Vec3 position, Vec3 rotation, Vec3 scale) {
+        public static final LocalTransform IDENTITY = new LocalTransform(Vec3.ZERO, Vec3.ZERO, new Vec3(1.0D, 1.0D, 1.0D));
+
+        public LocalTransform {
+            Objects.requireNonNull(position, "position");
+            Objects.requireNonNull(rotation, "rotation");
+            Objects.requireNonNull(scale, "scale");
+        }
+
+        public Matrix matrix() {
+            double x = Math.toRadians(this.rotation.x());
+            double y = Math.toRadians(this.rotation.y());
+            double z = Math.toRadians(this.rotation.z());
+            double sx = Math.sin(x);
+            double cx = Math.cos(x);
+            double sy = Math.sin(y);
+            double cy = Math.cos(y);
+            double sz = Math.sin(z);
+            double cz = Math.cos(z);
+            double scaleX = this.scale.x();
+            double scaleY = this.scale.y();
+            double scaleZ = this.scale.z();
+            return new Matrix(List.of(
+                cy * cz * scaleX,
+                -cy * sz * scaleY,
+                sy * scaleZ,
+                this.position.x(),
+                (sx * sy * cz + cx * sz) * scaleX,
+                (-sx * sy * sz + cx * cz) * scaleY,
+                -sx * cy * scaleZ,
+                this.position.y(),
+                (-cx * sy * cz + sx * sz) * scaleX,
+                (cx * sy * sz + sx * cz) * scaleY,
+                cx * cy * scaleZ,
+                this.position.z(),
+                0.0D,
+                0.0D,
+                0.0D,
+                1.0D
+            ));
         }
     }
 
@@ -174,13 +284,132 @@ public record EmoteAnimation(
 
     public record Timeline(
         int durationTicks,
+        Map<String, NodeTracks> tracks,
         List<Keyframe> keyframes,
         Events events
     ) {
+        public Timeline(int durationTicks, List<Keyframe> keyframes, Events events) {
+            this(durationTicks, Map.of(), keyframes, events);
+        }
+
         public Timeline {
+            tracks = Map.copyOf(tracks);
             keyframes = List.copyOf(keyframes);
             Objects.requireNonNull(events, "events");
         }
+    }
+
+    public record NodeTracks(
+        List<VectorKeyframe> position,
+        List<VectorKeyframe> rotation,
+        List<VectorKeyframe> scale,
+        List<VisibilityKeyframe> visible
+    ) {
+        public NodeTracks {
+            position = List.copyOf(position);
+            rotation = List.copyOf(rotation);
+            scale = List.copyOf(scale);
+            visible = List.copyOf(visible);
+        }
+    }
+
+    public record VectorKeyframe(
+        int tick,
+        VectorValue pre,
+        VectorValue post,
+        Interpolation interpolation,
+        Easing easing
+    ) {
+        public VectorKeyframe {
+            Objects.requireNonNull(pre, "pre");
+            Objects.requireNonNull(post, "post");
+            Objects.requireNonNull(interpolation, "interpolation");
+            Objects.requireNonNull(easing, "easing");
+        }
+    }
+
+    public record VectorValue(ScalarValue x, ScalarValue y, ScalarValue z) {
+        public VectorValue {
+            Objects.requireNonNull(x, "x");
+            Objects.requireNonNull(y, "y");
+            Objects.requireNonNull(z, "z");
+        }
+    }
+
+    public sealed interface ScalarValue permits ConstantValue, MolangValue {
+    }
+
+    public record ConstantValue(double value) implements ScalarValue {
+        public ConstantValue {
+            if (!Double.isFinite(value)) {
+                throw new IllegalArgumentException("constant value must be finite");
+            }
+        }
+    }
+
+    public record MolangValue(String source, String path) implements ScalarValue {
+        public MolangValue {
+            Objects.requireNonNull(source, "source");
+            Objects.requireNonNull(path, "path");
+        }
+    }
+
+    public record VisibilityKeyframe(int tick, VisibilityValue value) {
+        public VisibilityKeyframe {
+            Objects.requireNonNull(value, "value");
+        }
+    }
+
+    public sealed interface VisibilityValue permits ConstantVisibility, MolangVisibility {
+    }
+
+    public record ConstantVisibility(boolean value) implements VisibilityValue {
+    }
+
+    public record MolangVisibility(String source, String path) implements VisibilityValue {
+        public MolangVisibility {
+            Objects.requireNonNull(source, "source");
+            Objects.requireNonNull(path, "path");
+        }
+    }
+
+    public enum Interpolation {
+        STEP,
+        LINEAR
+    }
+
+    public enum Easing {
+        LINEAR,
+        EASE_IN_SINE,
+        EASE_OUT_SINE,
+        EASE_IN_OUT_SINE,
+        EASE_IN_QUAD,
+        EASE_OUT_QUAD,
+        EASE_IN_OUT_QUAD,
+        EASE_IN_CUBIC,
+        EASE_OUT_CUBIC,
+        EASE_IN_OUT_CUBIC,
+        EASE_IN_QUART,
+        EASE_OUT_QUART,
+        EASE_IN_OUT_QUART,
+        EASE_IN_QUINT,
+        EASE_OUT_QUINT,
+        EASE_IN_OUT_QUINT,
+        EASE_IN_EXPO,
+        EASE_OUT_EXPO,
+        EASE_IN_OUT_EXPO,
+        EASE_IN_CIRC,
+        EASE_OUT_CIRC,
+        EASE_IN_OUT_CIRC,
+        EASE_IN_BACK,
+        EASE_OUT_BACK,
+        EASE_IN_OUT_BACK,
+        EASE_IN_ELASTIC,
+        EASE_OUT_ELASTIC,
+        EASE_IN_OUT_ELASTIC,
+        EASE_IN_BOUNCE,
+        EASE_OUT_BOUNCE,
+        EASE_IN_OUT_BOUNCE
     }
 
     public enum LoopMode {

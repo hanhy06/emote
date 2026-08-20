@@ -9,6 +9,7 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.animation.molang.MolangEngine;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
@@ -17,6 +18,7 @@ import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Set;
@@ -24,7 +26,12 @@ import java.util.Set;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class AnimationJsonLoader {
-    private static final int SCHEMA_VERSION = 3;
+    private static final int SCHEMA_VERSION = 4;
+    private static final Set<String> FORBIDDEN_ENTITY_NBT = Set.of(
+        "id", "UUID", "Pos", "Motion", "Rotation", "Passengers", "Tags",
+        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration",
+        "item", "item_display", "block_state", "text"
+    );
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
         "thirdperson_lefthand",
@@ -61,13 +68,44 @@ public final class AnimationJsonLoader {
         EmoteMetadata metadata = parseMetadata(reader.requireObject(root, "metadata", "$"), reader);
         JsonObject settingsObject = reader.requireObject(root, "settings", "$");
         Settings settings = parseSettings(settingsObject, reader);
+        MolangPrograms molang = parseMolang(reader.optionalObject(root, "molang", "$"), settings, reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
         return new LoadedAnimation(
             document.sourcePath(),
             sha256(document.bytes()),
-            new EmoteAnimation(id, metadata, settings, nodes, timeline)
+            new EmoteAnimation(id, metadata, settings, molang, nodes, timeline)
         );
+    }
+
+    private MolangPrograms parseMolang(JsonObject object, Settings settings, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (object == null) {
+            return MolangPrograms.empty();
+        }
+        String initialize = optionalProgram(object, "initialize", "$.molang", reader);
+        String tick = optionalProgram(object, "tick", "$.molang", reader);
+        if (settings.playback().mode() == LoopMode.SERVER_SYNC && tick != null) {
+            throw reader.error("$.molang.tick", "is not supported by server_sync playback");
+        }
+        return new MolangPrograms(initialize, tick);
+    }
+
+    private String optionalProgram(JsonObject object, String key, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (reader.isNotString(element)) {
+            throw reader.error(path + "." + key, "must be a string");
+        }
+        String source = element.getAsString();
+        if (source.isBlank()) {
+            throw reader.error(path + "." + key, "must not be blank");
+        }
+        compileMolang(source, path + "." + key, reader);
+        return source;
     }
 
     static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
@@ -135,7 +173,11 @@ public final class AnimationJsonLoader {
 
     private Map<String, Node> parseNodes(JsonObject object, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
+        if (object.isEmpty()) {
+            throw reader.error("$.nodes", "must not be empty");
+        }
         LinkedHashMap<String, Node> nodes = new LinkedHashMap<>();
+        LinkedHashMap<String, JsonObject> definitions = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
             String nodeId = entry.getKey();
             String path = "$.nodes." + nodeId;
@@ -145,16 +187,68 @@ public final class AnimationJsonLoader {
             if (!entry.getValue().isJsonObject()) {
                 throw reader.error(path, "must be an object");
             }
-            nodes.put(nodeId, parseNode(entry.getValue().getAsJsonObject(), path, reader));
+            definitions.put(nodeId, entry.getValue().getAsJsonObject());
+        }
+        Set<String> visiting = new HashSet<>();
+        for (String nodeId : definitions.keySet()) {
+            resolveNode(nodeId, definitions, nodes, visiting, reader);
         }
         return Map.copyOf(nodes);
     }
 
-    private Node parseNode(JsonObject object, String path, EmoteJsonReader reader)
+    private Node resolveNode(
+        String nodeId,
+        Map<String, JsonObject> definitions,
+        Map<String, Node> nodes,
+        Set<String> visiting,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        Node existing = nodes.get(nodeId);
+        if (existing != null) {
+            return existing;
+        }
+        String path = "$.nodes." + nodeId;
+        if (!visiting.add(nodeId)) {
+            throw reader.error(path + ".parent", "creates a parent cycle");
+        }
+        JsonObject object = definitions.get(nodeId);
+        String parentId = optionalParent(object, path, reader);
+        NodeSpace space;
+        if (parentId == null) {
+            space = requireNodeSpace(object, path, reader);
+        } else {
+            if (object.has("space")) {
+                throw reader.error(path + ".space", "is not allowed on child nodes");
+            }
+            if (!definitions.containsKey(parentId)) {
+                throw reader.error(path + ".parent", "references unknown node: " + parentId);
+            }
+            space = resolveNode(parentId, definitions, nodes, visiting, reader).space();
+        }
+        Node node = parseNode(object, path, parentId, space, reader);
+        visiting.remove(nodeId);
+        nodes.put(nodeId, node);
+        return node;
+    }
+
+    private String optionalParent(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get("parent");
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        String parent = reader.requireString(object, "parent", path);
+        if (parent.isBlank()) {
+            throw reader.error(path + ".parent", "must not be blank");
+        }
+        return parent;
+    }
+
+    private Node parseNode(JsonObject object, String path, String parentId, NodeSpace space, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
-        NodeSpace space = parseNodeSpace(object, path, reader);
-        Matrix defaultMatrix = reader.requireMatrix(object, "default_matrix", path);
+        LocalTransform transform = parseTransform(reader.requireObject(object, "transform", path), path + ".transform", reader);
+        Matrix defaultMatrix = transform.matrix();
         if (type.equals("anchor")) {
             if (object.has("visible")) {
                 throw reader.error(path + ".visible", "is not supported by anchor nodes");
@@ -162,7 +256,7 @@ public final class AnimationJsonLoader {
             if (object.has("entity_nbt")) {
                 throw reader.error(path + ".entity_nbt", "is not supported by anchor nodes");
             }
-            return new AnchorNode(space, defaultMatrix);
+            return new AnchorNode(space, parentId, transform, defaultMatrix);
         }
 
         defaultMatrix = MatrixNormalizer.stabilize(defaultMatrix);
@@ -172,6 +266,8 @@ public final class AnimationJsonLoader {
             case "item_display" -> new ItemNode(
                 visible,
                 space,
+                parentId,
+                transform,
                 defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "item_stack_snbt", path, reader),
@@ -181,6 +277,8 @@ public final class AnimationJsonLoader {
             case "block_display" -> new BlockNode(
                 visible,
                 space,
+                parentId,
+                transform,
                 defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "block_state_snbt", path, reader)
@@ -188,6 +286,8 @@ public final class AnimationJsonLoader {
             case "text_display" -> new TextNode(
                 visible,
                 space,
+                parentId,
+                transform,
                 defaultMatrix,
                 entityNbt,
                 reader.requireElement(object, "text", path)
@@ -196,26 +296,31 @@ public final class AnimationJsonLoader {
         };
     }
 
-    private NodeSpace parseNodeSpace(JsonObject object, String path, EmoteJsonReader reader)
+    private LocalTransform parseTransform(JsonObject object, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
-        JsonElement element = object.get("space");
-        if (element == null || element.isJsonNull()) {
-            JsonElement skinElement = object.get("skin");
-            if (skinElement != null && skinElement.isJsonObject()) {
-                JsonElement participantElement = skinElement.getAsJsonObject().get("participant");
-                if (participantElement == null || participantElement.isJsonNull()) {
-                    return NodeSpace.INITIATOR;
-                }
-                if (participantElement.isJsonPrimitive() && participantElement.getAsJsonPrimitive().isString()) {
-                    return switch (participantElement.getAsString()) {
-                        case "initiator" -> NodeSpace.INITIATOR;
-                        case "partner" -> NodeSpace.PARTNER;
-                        default -> NodeSpace.SCENE;
-                    };
-                }
-            }
-            return NodeSpace.SCENE;
+        return new LocalTransform(
+            requireVec3(object, "position", path, reader),
+            requireVec3(object, "rotation", path, reader),
+            requireVec3(object, "scale", path, reader)
+        );
+    }
+
+    private Vec3 requireVec3(JsonObject object, String key, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        var array = reader.requireArray(object, key, path);
+        String fieldPath = path + "." + key;
+        if (array.size() != 3) {
+            throw reader.error(fieldPath, "must contain 3 values");
         }
+        return new Vec3(
+            reader.requireFiniteDouble(array.get(0), fieldPath + "[0]"),
+            reader.requireFiniteDouble(array.get(1), fieldPath + "[1]"),
+            reader.requireFiniteDouble(array.get(2), fieldPath + "[2]")
+        );
+    }
+
+    private NodeSpace requireNodeSpace(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
         String value = reader.requireString(object, "space", path);
         return switch (value) {
             case "scene" -> NodeSpace.SCENE;
@@ -291,7 +396,21 @@ public final class AnimationJsonLoader {
         if (!object.has(key) || object.get(key).isJsonNull()) {
             return new CompoundTag();
         }
-        return requireCompoundSnbt(object, key, path, reader);
+        CompoundTag tag = requireCompoundSnbt(object, key, path, reader);
+        for (String forbidden : FORBIDDEN_ENTITY_NBT) {
+            if (tag.contains(forbidden)) {
+                throw reader.error(path + ".entity_nbt", "must not define runtime-owned field: " + forbidden);
+            }
+        }
+        return tag;
+    }
+
+    static void compileMolang(String source, String path, EmoteJsonReader reader) throws EmoteAnimationLoadException {
+        try {
+            MolangEngine.INSTANCE.compile(source);
+        } catch (MolangEngine.MolangCompileException exception) {
+            throw reader.error(path, "invalid Molang program", exception);
+        }
     }
 
     private CompoundTag requireCompoundSnbt(

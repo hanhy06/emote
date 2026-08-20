@@ -13,11 +13,8 @@ final class TimelineJsonParser {
     Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         int durationTicks = reader.requireTime(object, "duration", "$.timeline", 1);
-        List<Keyframe> keyframes = parseKeyframes(
-            reader.requireArray(object, "keyframes", "$.timeline"),
-            durationTicks,
-            nodes,
-            reader
+        Map<String, NodeTracks> tracks = parseTracks(
+            reader.requireObject(object, "tracks", "$.timeline"), durationTicks, nodes, reader
         );
         Events events = parseEvents(
             reader.optionalObject(object, "events", "$.timeline"),
@@ -25,115 +22,198 @@ final class TimelineJsonParser {
             nodes,
             reader
         );
-        return new Timeline(durationTicks, keyframes, events);
+        return new Timeline(durationTicks, tracks, List.of(), events);
     }
 
-    private List<Keyframe> parseKeyframes(
-        JsonArray array,
+    private Map<String, NodeTracks> parseTracks(
+        JsonObject object,
         int durationTicks,
         Map<String, Node> nodes,
         EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
-        List<Keyframe> keyframes = new ArrayList<>();
-        Map<String, Integer> previousTransformTicks = new HashMap<>();
+        LinkedHashMap<String, NodeTracks> tracks = new LinkedHashMap<>();
+        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
+            String nodeId = entry.getKey();
+            String path = "$.timeline.tracks." + nodeId;
+            Node node = requireNode(nodes, nodeId, path, reader);
+            JsonObject nodeObject = reader.requireObject(entry.getValue(), path);
+            List<VectorKeyframe> position = parseVectorTrack(
+                reader.optionalArray(nodeObject, "position", path), path + ".position", durationTicks, reader
+            );
+            List<VectorKeyframe> rotation = parseVectorTrack(
+                reader.optionalArray(nodeObject, "rotation", path), path + ".rotation", durationTicks, reader
+            );
+            List<VectorKeyframe> scale = parseVectorTrack(
+                reader.optionalArray(nodeObject, "scale", path), path + ".scale", durationTicks, reader
+            );
+            List<VisibilityKeyframe> visible = parseVisibilityTrack(
+                reader.optionalArray(nodeObject, "visible", path), path + ".visible", durationTicks, reader
+            );
+            if (node instanceof AnchorNode && !visible.isEmpty()) {
+                throw reader.error(path + ".visible", "anchor nodes do not support visible tracks");
+            }
+            if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty()) {
+                throw reader.error(path, "must contain at least one track");
+            }
+            tracks.put(nodeId, new NodeTracks(position, rotation, scale, visible));
+        }
+        return Map.copyOf(tracks);
+    }
+
+    private List<VectorKeyframe> parseVectorTrack(
+        JsonArray array,
+        String path,
+        int durationTicks,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        if (array == null) {
+            return List.of();
+        }
+        if (array.isEmpty()) {
+            throw reader.error(path, "must not be empty");
+        }
+        List<VectorKeyframe> keyframes = new ArrayList<>();
         int previousTick = -1;
         for (int index = 0; index < array.size(); index++) {
-            String path = "$.timeline.keyframes[" + index + "]";
-            JsonObject object = reader.requireObject(array.get(index), path);
-            int tick = reader.requireTime(object, "time", path, 0);
-            if (tick < 0 || tick > durationTicks) {
-                throw reader.error(path + ".time", "must be between 0t and timeline duration");
+            String keyframePath = path + "[" + index + "]";
+            JsonObject object = reader.requireObject(array.get(index), keyframePath);
+            int tick = parseTrackTime(object, keyframePath, durationTicks, previousTick, index, reader);
+            boolean hasValue = object.has("value") && !object.get("value").isJsonNull();
+            boolean hasPre = object.has("pre") && !object.get("pre").isJsonNull();
+            boolean hasPost = object.has("post") && !object.get("post").isJsonNull();
+            VectorValue pre;
+            VectorValue post;
+            if (hasValue && !hasPre && !hasPost) {
+                pre = parseVectorValue(reader.requireArray(object, "value", keyframePath), keyframePath + ".value", reader);
+                post = pre;
+            } else if (!hasValue && hasPre && hasPost) {
+                pre = parseVectorValue(reader.requireArray(object, "pre", keyframePath), keyframePath + ".pre", reader);
+                post = parseVectorValue(reader.requireArray(object, "post", keyframePath), keyframePath + ".post", reader);
+            } else {
+                throw reader.error(keyframePath, "must define either value or both pre and post");
             }
-            if (tick <= previousTick) {
-                throw reader.error(path + ".time", "keyframes must be strictly ordered by time");
+            boolean last = index == array.size() - 1;
+            if (last && (object.has("interpolation") || object.has("easing"))) {
+                throw reader.error(keyframePath, "last keyframe must not define interpolation or easing");
             }
+            Interpolation interpolation = last ? Interpolation.LINEAR : parseInterpolation(object, keyframePath, reader);
+            Easing easing = last ? Easing.LINEAR : parseEasing(object, keyframePath, interpolation, reader);
+            keyframes.add(new VectorKeyframe(tick, pre, post, interpolation, easing));
             previousTick = tick;
-            int defaultInterpolation = optionalInterpolationDuration(object, path, 0, reader);
-            if (defaultInterpolation < 0) {
-                throw reader.error(path + ".interpolation_duration", "must not be negative");
-            }
-            Map<String, NodeTransform> transforms = parseNodeTransforms(
-                reader.optionalObject(object, "node_transforms", path),
-                path,
-                tick,
-                defaultInterpolation,
-                previousTransformTicks,
-                nodes,
-                reader
-            );
-            Map<String, NodeState> states = parseNodeStates(
-                reader.optionalObject(object, "node_states", path),
-                path,
-                nodes,
-                reader
-            );
-            keyframes.add(new Keyframe(tick, transforms, states));
         }
         return List.copyOf(keyframes);
     }
 
-    private Map<String, NodeTransform> parseNodeTransforms(
-        JsonObject object,
-        String keyframePath,
-        int tick,
-        int defaultInterpolation,
-        Map<String, Integer> previousTransformTicks,
-        Map<String, Node> nodes,
+    private List<VisibilityKeyframe> parseVisibilityTrack(
+        JsonArray array,
+        String path,
+        int durationTicks,
         EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
-        if (object == null) {
-            return Map.of();
+        if (array == null) {
+            return List.of();
         }
-        LinkedHashMap<String, NodeTransform> transforms = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
-            String nodeId = entry.getKey();
-            String path = keyframePath + ".node_transforms." + nodeId;
-            requireNode(nodes, nodeId, path, reader);
-            JsonObject transform = reader.requireObject(entry.getValue(), path);
-            int interpolation = optionalInterpolationDuration(
-                transform,
-                path,
-                defaultInterpolation,
-                reader
-            );
-            int previousTransformTick = previousTransformTicks.getOrDefault(nodeId, 0);
-            if (interpolation < 0 || interpolation > tick - previousTransformTick) {
-                throw reader.error(
-                    path + ".interpolation_duration",
-                    "must fit between the previous transform tick and the current tick"
-                );
-            }
-            Matrix matrix = reader.requireMatrix(transform, "matrix", path);
-            if (!(nodes.get(nodeId) instanceof AnchorNode)) {
-                matrix = MatrixNormalizer.stabilize(matrix);
-            }
-            transforms.put(nodeId, new NodeTransform(matrix, interpolation));
-            previousTransformTicks.put(nodeId, tick);
+        if (array.isEmpty()) {
+            throw reader.error(path, "must not be empty");
         }
-        return Map.copyOf(transforms);
+        List<VisibilityKeyframe> keyframes = new ArrayList<>();
+        int previousTick = -1;
+        for (int index = 0; index < array.size(); index++) {
+            String keyframePath = path + "[" + index + "]";
+            JsonObject object = reader.requireObject(array.get(index), keyframePath);
+            int tick = parseTrackTime(object, keyframePath, durationTicks, previousTick, index, reader);
+            JsonElement value = reader.requireElement(object, "value", keyframePath);
+            VisibilityValue parsed;
+            if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isBoolean()) {
+                parsed = new ConstantVisibility(value.getAsBoolean());
+            } else if (!reader.isNotString(value) && !value.getAsString().isBlank()) {
+                String source = value.getAsString();
+                AnimationJsonLoader.compileMolang(source, keyframePath + ".value", reader);
+                parsed = new MolangVisibility(source, keyframePath + ".value");
+            } else {
+                throw reader.error(keyframePath + ".value", "must be a boolean or Molang string");
+            }
+            if (object.has("interpolation") || object.has("easing") || object.has("pre") || object.has("post")) {
+                throw reader.error(keyframePath, "visible keyframes only support time and value");
+            }
+            keyframes.add(new VisibilityKeyframe(tick, parsed));
+            previousTick = tick;
+        }
+        return List.copyOf(keyframes);
     }
 
-    private Map<String, NodeState> parseNodeStates(
+    private int parseTrackTime(
         JsonObject object,
-        String keyframePath,
-        Map<String, Node> nodes,
+        String path,
+        int durationTicks,
+        int previousTick,
+        int index,
         EmoteJsonReader reader
     ) throws EmoteAnimationLoadException {
-        if (object == null) {
-            return Map.of();
+        int tick = reader.requireTime(object, "time", path, 0);
+        if (tick < 0 || tick > durationTicks) {
+            throw reader.error(path + ".time", "must be between 0t and timeline duration");
         }
-        LinkedHashMap<String, NodeState> states = new LinkedHashMap<>();
-        for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
-            String nodeId = entry.getKey();
-            String path = keyframePath + ".node_states." + nodeId;
-            Node node = requireNode(nodes, nodeId, path, reader);
-            if (node instanceof AnchorNode) {
-                throw reader.error(path, "anchor nodes do not support visible state");
-            }
-            JsonObject state = reader.requireObject(entry.getValue(), path);
-            states.put(nodeId, new NodeState(reader.requireBoolean(state, "visible", path)));
+        if (index == 0 && tick != 0) {
+            throw reader.error(path + ".time", "first keyframe must be at 0t");
         }
-        return Map.copyOf(states);
+        if (tick <= previousTick) {
+            throw reader.error(path + ".time", "keyframes must be strictly ordered by time");
+        }
+        return tick;
+    }
+
+    private VectorValue parseVectorValue(JsonArray array, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (array.size() != 3) {
+            throw reader.error(path, "must contain 3 values");
+        }
+        return new VectorValue(
+            parseScalar(array.get(0), path + "[0]", reader),
+            parseScalar(array.get(1), path + "[1]", reader),
+            parseScalar(array.get(2), path + "[2]", reader)
+        );
+    }
+
+    private ScalarValue parseScalar(JsonElement element, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return new ConstantValue(reader.requireFiniteDouble(element, path));
+        }
+        if (!reader.isNotString(element) && !element.getAsString().isBlank()) {
+            String source = element.getAsString();
+            AnimationJsonLoader.compileMolang(source, path, reader);
+            return new MolangValue(source, path);
+        }
+        throw reader.error(path, "must be a finite number or Molang string");
+    }
+
+    private Interpolation parseInterpolation(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (!object.has("interpolation")) {
+            return Interpolation.LINEAR;
+        }
+        return switch (reader.requireString(object, "interpolation", path)) {
+            case "step" -> Interpolation.STEP;
+            case "linear" -> Interpolation.LINEAR;
+            default -> throw reader.error(path + ".interpolation", "must be step or linear");
+        };
+    }
+
+    private Easing parseEasing(JsonObject object, String path, Interpolation interpolation, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (!object.has("easing")) {
+            return Easing.LINEAR;
+        }
+        if (interpolation == Interpolation.STEP) {
+            throw reader.error(path + ".easing", "is not supported by step interpolation");
+        }
+        String value = reader.requireString(object, "easing", path);
+        try {
+            return Easing.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw reader.error(path + ".easing", "unsupported easing: " + value);
+        }
     }
 
     private Events parseEvents(
