@@ -145,7 +145,7 @@ class PlaybackNodesTest {
     }
 
     @Test
-    void cachesPreparedTransformationsPerNodeSpace() {
+    void createsEquivalentPreparedTransformationsPerNodeSpace() {
         RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
         RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);
         PlaybackNodes nodes = new PlaybackNodes(
@@ -162,10 +162,11 @@ class PlaybackNodesTest {
         var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
         var partnerResult = nodes.displayTransformation(EmoteAnimation.NodeSpace.PARTNER, transform);
 
-        assertSame(firstScene, secondScene);
+        assertNotSame(firstScene, secondScene);
         assertNotSame(firstScene, partnerResult);
-        assertEquals(scene.displayTransformation(transform), firstScene);
-        assertEquals(partner.displayTransformation(transform), partnerResult);
+        assertEquals(firstScene.getMatrix(), secondScene.getMatrix());
+        assertEquals(scene.displayTransformation(transform).getMatrix(), firstScene.getMatrix());
+        assertEquals(partner.displayTransformation(transform).getMatrix(), partnerResult.getMatrix());
     }
 
     private EmoteAnimation.Matrix identityMatrix() {
