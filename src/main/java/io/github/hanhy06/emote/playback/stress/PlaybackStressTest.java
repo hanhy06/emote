@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.stress;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -12,9 +12,9 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 
-final class PlaybackStressTest {
-    static final int DEFAULT_INSTANCE_COUNT = 100;
-    static final int MAX_INSTANCE_COUNT = 1_000;
+public final class PlaybackStressTest {
+    public static final int DEFAULT_INSTANCE_COUNT = 100;
+    public static final int MAX_INSTANCE_COUNT = 1_000;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
@@ -23,11 +23,11 @@ final class PlaybackStressTest {
 
     private @Nullable Session session;
 
-    PlaybackStressTest(PlaybackEntityController entityController) {
+    public PlaybackStressTest(PlaybackEntityController entityController) {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
-    int start(ServerLevel level, Vec3 origin, float yaw, List<PreparedEmote> emotes, int instanceCount) {
+    public int start(ServerLevel level, Vec3 origin, float yaw, List<PreparedEmote> emotes, int instanceCount) {
         if (emotes.isEmpty()) {
             throw new IllegalArgumentException("At least one emote is required for a stress test");
         }
@@ -89,7 +89,7 @@ final class PlaybackStressTest {
         return instances.size();
     }
 
-    @Nullable PlaybackStressTestReport stop() {
+    public @Nullable PlaybackStressTestReport stop() {
         Session current = this.session;
         if (current == null) {
             return null;
@@ -103,7 +103,7 @@ final class PlaybackStressTest {
         return current.createReport(cleanupNanos, System.nanoTime());
     }
 
-    int displayEntityCount() {
+    public int displayEntityCount() {
         Session current = this.session;
         if (current == null) {
             return 0;
@@ -111,7 +111,7 @@ final class PlaybackStressTest {
         return current.activeDisplayEntities();
     }
 
-    void stopById(String id) {
+    public void stopById(String id) {
         Session current = this.session;
         if (current == null) {
             return;
@@ -127,7 +127,7 @@ final class PlaybackStressTest {
         });
     }
 
-    void tick() {
+    public void tick() {
         Session current = this.session;
         if (current == null) {
             return;

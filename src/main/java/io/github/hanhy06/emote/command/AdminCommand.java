@@ -11,7 +11,7 @@ import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.PlaybackStressTestReport;
+import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
 import net.minecraft.ChatFormatting;
