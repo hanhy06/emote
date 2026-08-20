@@ -14,7 +14,7 @@ import java.util.Map;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
-final class Schema4AnimationRuntime {
+final class AnimationRuntime {
     private final PreparedEmote emote;
     private final PreparedAnimationTimeline timeline;
     private final Map<String, PreparedEmote.PreparedTransform> transforms = new HashMap<>();
@@ -22,7 +22,7 @@ final class Schema4AnimationRuntime {
 
     private MolangEngine.Session session;
 
-    Schema4AnimationRuntime(PreparedEmote emote) {
+    AnimationRuntime(PreparedEmote emote) {
         this.emote = emote;
         this.timeline = emote.preparedTimeline();
     }

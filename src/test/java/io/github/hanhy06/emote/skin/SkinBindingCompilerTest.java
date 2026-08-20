@@ -39,12 +39,12 @@ class SkinBindingCompilerTest {
         return new EmoteAnimation.ItemNode(
             true,
             EmoteAnimation.NodeSpace.INITIATOR,
-            new EmoteAnimation.Matrix(List.of(
-                1.0D, 0.0D, 0.0D, 0.0D,
-                0.0D, yScale, 0.0D, 0.0D,
-                0.0D, 0.0D, 1.0D, 0.0D,
-                0.0D, 0.0D, 0.0D, 1.0D
-            )),
+            null,
+            new EmoteAnimation.LocalTransform(
+                EmoteAnimation.Vec3.ZERO,
+                EmoteAnimation.Vec3.ZERO,
+                new EmoteAnimation.Vec3(1.0D, yScale, 1.0D)
+            ),
             new CompoundTag(),
             new CompoundTag(),
             "none",
@@ -57,8 +57,9 @@ class SkinBindingCompilerTest {
             Identifier.parse("test:skin"),
             new EmoteMetadata("Skin", "Skin"),
             new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
+            EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
         );
     }
 }

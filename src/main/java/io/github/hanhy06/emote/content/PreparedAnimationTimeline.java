@@ -27,20 +27,16 @@ public final class PreparedAnimationTimeline {
     private final Map<String, CompiledNodeTracks> tracks;
     private final MolangEngine.CompiledExpression initialize;
     private final MolangEngine.CompiledExpression tick;
-    private final boolean schema4;
-
     private PreparedAnimationTimeline(
         List<String> nodeOrder,
         Map<String, CompiledNodeTracks> tracks,
         MolangEngine.CompiledExpression initialize,
-        MolangEngine.CompiledExpression tick,
-        boolean schema4
+        MolangEngine.CompiledExpression tick
     ) {
         this.nodeOrder = nodeOrder;
         this.tracks = tracks;
         this.initialize = initialize;
         this.tick = tick;
-        this.schema4 = schema4;
     }
 
     public static PreparedAnimationTimeline compile(EmoteAnimation animation) {
@@ -52,13 +48,8 @@ public final class PreparedAnimationTimeline {
             order,
             Map.copyOf(tracks),
             compileProgram(animation.molang().initialize(), "$.molang.initialize"),
-            compileProgram(animation.molang().tick(), "$.molang.tick"),
-            animation.schemaVersion() == 4
+            compileProgram(animation.molang().tick(), "$.molang.tick")
         );
-    }
-
-    public boolean schema4() {
-        return this.schema4;
     }
 
     public List<String> nodeOrder() {

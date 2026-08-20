@@ -48,14 +48,13 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void loadsServerSynchronizedLoopWithoutChangingSchemaVersion() throws Exception {
+    void loadsServerSynchronizedLoop() throws Exception {
         JsonObject root = readReference();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
 
         LoadedAnimation loaded = parse(root);
 
         assertEquals(EmoteAnimation.LoopMode.SERVER_SYNC, loaded.animation().settings().playback().mode());
-        assertEquals(4, loaded.animation().schemaVersion());
     }
 
     @Test
@@ -167,7 +166,7 @@ class AnimationJsonLoaderTest {
     }
 
     @Test
-    void composesDisplayAndAnchorLocalTransforms() throws Exception {
+    void loadsDisplayAndAnchorLocalTransforms() throws Exception {
         JsonObject root = readReference();
         JsonArray position = new JsonArray();
         position.add(4.0D);
@@ -179,13 +178,11 @@ class AnimationJsonLoaderTest {
             .add("position", position.deepCopy());
 
         EmoteAnimation animation = parse(root).animation();
-        EmoteAnimation.Matrix displayDefault = animation.nodes().get("player_head").defaultMatrix();
-        EmoteAnimation.Matrix anchorDefault = animation.nodes().get("effect_anchor").defaultMatrix();
+        EmoteAnimation.LocalTransform displayDefault = animation.nodes().get("player_head").transform();
+        EmoteAnimation.LocalTransform anchorDefault = animation.nodes().get("effect_anchor").transform();
 
-        assertEquals(4.0D, displayDefault.value(3));
-        assertEquals(5.0D, displayDefault.value(7));
-        assertEquals(6.0D, displayDefault.value(11));
-        assertEquals(displayDefault.values(), anchorDefault.values());
+        assertEquals(new EmoteAnimation.Vec3(4.0D, 5.0D, 6.0D), displayDefault.position());
+        assertEquals(displayDefault, anchorDefault);
     }
 
     @Test

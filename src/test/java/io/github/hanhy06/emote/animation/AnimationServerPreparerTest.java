@@ -11,18 +11,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationServerPreparerTest {
-    private static final EmoteAnimation.Matrix IDENTITY = new EmoteAnimation.Matrix(List.of(
-        1.0D, 0.0D, 0.0D, 0.0D,
-        0.0D, 1.0D, 0.0D, 0.0D,
-        0.0D, 0.0D, 1.0D, 0.0D,
-        0.0D, 0.0D, 0.0D, 1.0D
-    ));
-
     @BeforeAll
     static void bootstrapMinecraftRegistries() {
         SharedConstants.tryDetectVersion();
@@ -64,7 +55,8 @@ class AnimationServerPreparerTest {
         return new EmoteAnimation.ItemNode(
             true,
             EmoteAnimation.NodeSpace.INITIATOR,
-            IDENTITY,
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
             new CompoundTag(),
             "none",

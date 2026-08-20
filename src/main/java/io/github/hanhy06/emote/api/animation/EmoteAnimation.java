@@ -15,26 +15,10 @@ public record EmoteAnimation(
     Identifier id,
     EmoteMetadata metadata,
     Settings settings,
-    int schemaVersion,
     MolangPrograms molang,
     Map<String, Node> nodes,
     Timeline timeline
 ) {
-    public EmoteAnimation(Identifier id, EmoteMetadata metadata, Settings settings, Map<String, Node> nodes, Timeline timeline) {
-        this(id, metadata, settings, 3, MolangPrograms.empty(), nodes, timeline);
-    }
-
-    public EmoteAnimation(
-        Identifier id,
-        EmoteMetadata metadata,
-        Settings settings,
-        MolangPrograms molang,
-        Map<String, Node> nodes,
-        Timeline timeline
-    ) {
-        this(id, metadata, settings, 4, molang, nodes, timeline);
-    }
-
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(metadata, "metadata");
@@ -77,27 +61,12 @@ public record EmoteAnimation(
         }
     }
 
-    public record Matrix(List<Double> values) {
-        public Matrix {
-            values = List.copyOf(values);
-            if (values.size() != 16) {
-                throw new IllegalArgumentException("matrix must contain 16 values");
-            }
-        }
-
-        public double value(int index) {
-            return this.values.get(index);
-        }
-    }
-
     public sealed interface Node permits ItemNode, BlockNode, TextNode, AnchorNode {
         NodeSpace space();
 
         String parentId();
 
         LocalTransform transform();
-
-        Matrix defaultMatrix();
 
         default boolean visible() {
             return true;
@@ -113,28 +82,14 @@ public record EmoteAnimation(
         NodeSpace space,
         String parentId,
         LocalTransform transform,
-        Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag itemStackNbt,
         String itemDisplay,
         Skin skin
     ) implements Node {
-        public ItemNode(
-            boolean visible,
-            NodeSpace space,
-            Matrix defaultMatrix,
-            CompoundTag entityNbt,
-            CompoundTag itemStackNbt,
-            String itemDisplay,
-            Skin skin
-        ) {
-            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, itemStackNbt, itemDisplay, skin);
-        }
-
         public ItemNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
-            Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             itemStackNbt = copy(itemStackNbt);
             Objects.requireNonNull(itemDisplay, "itemDisplay");
@@ -146,24 +101,12 @@ public record EmoteAnimation(
         NodeSpace space,
         String parentId,
         LocalTransform transform,
-        Matrix defaultMatrix,
         CompoundTag entityNbt,
         CompoundTag blockStateNbt
     ) implements Node {
-        public BlockNode(
-            boolean visible,
-            NodeSpace space,
-            Matrix defaultMatrix,
-            CompoundTag entityNbt,
-            CompoundTag blockStateNbt
-        ) {
-            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, blockStateNbt);
-        }
-
         public BlockNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
-            Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             blockStateNbt = copy(blockStateNbt);
         }
@@ -174,24 +117,12 @@ public record EmoteAnimation(
         NodeSpace space,
         String parentId,
         LocalTransform transform,
-        Matrix defaultMatrix,
         CompoundTag entityNbt,
         JsonElement text
     ) implements Node {
-        public TextNode(
-            boolean visible,
-            NodeSpace space,
-            Matrix defaultMatrix,
-            CompoundTag entityNbt,
-            JsonElement text
-        ) {
-            this(visible, space, null, LocalTransform.IDENTITY, defaultMatrix, entityNbt, text);
-        }
-
         public TextNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
-            Objects.requireNonNull(defaultMatrix, "defaultMatrix");
             entityNbt = copy(entityNbt);
             text = Objects.requireNonNull(text, "text").deepCopy();
         }
@@ -205,17 +136,11 @@ public record EmoteAnimation(
     public record AnchorNode(
         NodeSpace space,
         String parentId,
-        LocalTransform transform,
-        Matrix defaultMatrix
+        LocalTransform transform
     ) implements Node {
-        public AnchorNode(NodeSpace space, Matrix defaultMatrix) {
-            this(space, null, LocalTransform.IDENTITY, defaultMatrix);
-        }
-
         public AnchorNode {
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
-            Objects.requireNonNull(defaultMatrix, "defaultMatrix");
         }
     }
 
@@ -228,38 +153,6 @@ public record EmoteAnimation(
             Objects.requireNonNull(scale, "scale");
         }
 
-        public Matrix matrix() {
-            double x = Math.toRadians(this.rotation.x());
-            double y = Math.toRadians(this.rotation.y());
-            double z = Math.toRadians(this.rotation.z());
-            double sx = Math.sin(x);
-            double cx = Math.cos(x);
-            double sy = Math.sin(y);
-            double cy = Math.cos(y);
-            double sz = Math.sin(z);
-            double cz = Math.cos(z);
-            double scaleX = this.scale.x();
-            double scaleY = this.scale.y();
-            double scaleZ = this.scale.z();
-            return new Matrix(List.of(
-                cy * cz * scaleX,
-                -cy * sz * scaleY,
-                sy * scaleZ,
-                this.position.x(),
-                (sx * sy * cz + cx * sz) * scaleX,
-                (-sx * sy * sz + cx * cz) * scaleY,
-                -sx * cy * scaleZ,
-                this.position.y(),
-                (-cx * sy * cz + sx * sz) * scaleX,
-                (cx * sy * sz + sx * cz) * scaleY,
-                cx * cy * scaleZ,
-                this.position.z(),
-                0.0D,
-                0.0D,
-                0.0D,
-                1.0D
-            ));
-        }
     }
 
     public enum NodeSpace {
@@ -297,16 +190,10 @@ public record EmoteAnimation(
     public record Timeline(
         int durationTicks,
         Map<String, NodeTracks> tracks,
-        List<Keyframe> keyframes,
         Events events
     ) {
-        public Timeline(int durationTicks, List<Keyframe> keyframes, Events events) {
-            this(durationTicks, Map.of(), keyframes, events);
-        }
-
         public Timeline {
             tracks = Map.copyOf(tracks);
-            keyframes = List.copyOf(keyframes);
             Objects.requireNonNull(events, "events");
         }
     }
@@ -429,26 +316,6 @@ public record EmoteAnimation(
         HOLD,
         LOOP,
         SERVER_SYNC
-    }
-
-    public record Keyframe(
-        int tick,
-        Map<String, NodeTransform> nodeTransforms,
-        Map<String, NodeState> nodeStates
-    ) {
-        public Keyframe {
-            nodeTransforms = Map.copyOf(nodeTransforms);
-            nodeStates = Map.copyOf(nodeStates);
-        }
-    }
-
-    public record NodeTransform(Matrix matrix, int interpolationDurationTicks) {
-        public NodeTransform {
-            Objects.requireNonNull(matrix, "matrix");
-        }
-    }
-
-    public record NodeState(boolean visible) {
     }
 
     public record Events(

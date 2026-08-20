@@ -121,11 +121,6 @@ class PlaybackStressSimulationTest {
         }
 
         @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
-            this.snapshotCount++;
-        }
-
-        @Override
         public void setVisible(String nodeId, boolean visible) {
         }
 

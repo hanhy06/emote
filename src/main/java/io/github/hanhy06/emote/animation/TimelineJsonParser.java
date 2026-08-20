@@ -22,7 +22,7 @@ final class TimelineJsonParser {
             nodes,
             reader
         );
-        return new Timeline(durationTicks, tracks, List.of(), events);
+        return new Timeline(durationTicks, tracks, events);
     }
 
     private Map<String, NodeTracks> parseTracks(

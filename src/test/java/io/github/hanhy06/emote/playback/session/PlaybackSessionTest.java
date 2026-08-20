@@ -168,11 +168,6 @@ class PlaybackSessionTest {
         }
 
         @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
         public void setVisible(String nodeId, boolean visible) {
             throw new UnsupportedOperationException();
         }

@@ -23,12 +23,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.*;
 
 class SequenceCompilerTest {
-    private static final EmoteAnimation.Matrix IDENTITY = matrix(0.0D);
 
     @Test
     void keepsThePreviousPoseDuringAnExplicitWaitStep() {
-        PreparedEmote first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        PreparedEmote second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         PreparedSequence sequence = PreparedSequence.resolve(
             sequence(
                 new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1),
@@ -38,10 +37,10 @@ class SequenceCompilerTest {
             Map.of(first.id(), first, second.id(), second)
         );
 
-        EmoteAnimation compiled = sequence.compiledAnimation().animation();
+        PreparedEmote compiled = sequence.compiledAnimation();
 
-        assertEquals(10, compiled.timeline().durationTicks());
-        assertEquals(List.of(0, 7), compiled.timeline().keyframes().stream().map(EmoteAnimation.Keyframe::tick).toList());
+        assertEquals(10, compiled.animation().timeline().durationTicks());
+        assertEquals(List.of(0, 7), compiled.playbackSegments().stream().map(PreparedEmote.PlaybackSegment::startTick).toList());
     }
 
     @Test
@@ -51,7 +50,7 @@ class SequenceCompilerTest {
             2,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(keyframe(2, 2.0D)),
+            Map.of("root", positionTrack(2, 2.0D)),
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
@@ -60,7 +59,7 @@ class SequenceCompilerTest {
             3,
             EmoteAnimation.LoopMode.LOOP,
             2,
-            List.of(keyframe(3, 3.0D)),
+            Map.of("root", positionTrack(3, 3.0D)),
             new EmoteAnimation.Events(
                 List.of(),
                 List.of(new EmoteAnimation.TimelineEvent(
@@ -82,15 +81,14 @@ class SequenceCompilerTest {
             Map.of(enter.id(), enter, idle.id(), idle)
         );
 
-        EmoteAnimation compiled = sequence.compiledAnimation().animation();
+        PreparedEmote compiledPlan = sequence.compiledAnimation();
+        EmoteAnimation compiled = compiledPlan.animation();
 
         assertEquals("demo:sequence", compiled.id().toString());
         assertEquals(10, compiled.timeline().durationTicks());
         assertEquals(EmoteAnimation.LoopMode.ONCE, compiled.settings().playback().mode());
-        assertEquals(List.of(0, 2, 7), compiled.timeline().keyframes().stream()
-            .filter(keyframe -> !keyframe.nodeStates().isEmpty())
-            .map(EmoteAnimation.Keyframe::tick)
-            .toList());
+        assertEquals(List.of(0, 2, 7), compiledPlan.playbackSegments().stream()
+            .map(PreparedEmote.PlaybackSegment::startTick).toList());
         assertEquals(List.of(4, 9), compiled.timeline().events().timeline().stream()
             .map(EmoteAnimation.TimelineEvent::tick)
             .toList());
@@ -101,14 +99,16 @@ class SequenceCompilerTest {
         EmoteAnimation.TextNode flowerNode = new EmoteAnimation.TextNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            matrix(2.0D),
+            null,
+            transform(2.0D),
             new CompoundTag(),
             new JsonPrimitive("flower")
         );
         EmoteAnimation.TextNode butterflyNode = new EmoteAnimation.TextNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            matrix(8.0D),
+            null,
+            transform(8.0D),
             new CompoundTag(),
             new JsonPrimitive("butterfly")
         );
@@ -117,7 +117,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("flower", flowerNode),
             Map.of("flower", new PreparedDisplayData.Text(Component.literal("flower")))
@@ -127,7 +127,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("butterfly", butterflyNode),
             Map.of("butterfly", new PreparedDisplayData.Text(Component.literal("butterfly")))
@@ -142,22 +142,18 @@ class SequenceCompilerTest {
             Map.of(first.id(), first, second.id(), second)
         );
 
-        EmoteAnimation compiled = sequence.compiledAnimation().animation();
-        EmoteAnimation.Keyframe initial = compiled.timeline().keyframes().getFirst();
+        PreparedEmote compiledPlan = sequence.compiledAnimation();
+        EmoteAnimation compiled = compiledPlan.animation();
 
         assertEquals(Set.of("flower", "butterfly"), compiled.nodes().keySet());
-        assertEquals(matrix(2.0D), compiled.nodes().get("flower").defaultMatrix());
-        assertEquals(matrix(8.0D), compiled.nodes().get("butterfly").defaultMatrix());
-        assertTrue(initial.nodeStates().get("flower").visible());
-        assertFalse(initial.nodeStates().get("butterfly").visible());
+        assertEquals(transform(2.0D), compiled.nodes().get("flower").transform());
+        assertEquals(transform(8.0D), compiled.nodes().get("butterfly").transform());
+        assertNull(compiledPlan.sequenceVisibility(0).get("flower"));
+        assertFalse(compiledPlan.sequenceVisibility(0).get("butterfly"));
 
-        EmoteAnimation alternating = sequence.compileRandom(randomWithValues(0, 0)).animation();
-        EmoteAnimation.Keyframe butterflySegment = alternating.timeline().keyframes().stream()
-            .filter(keyframe -> keyframe.tick() == 1)
-            .findFirst()
-            .orElseThrow();
-        assertFalse(butterflySegment.nodeStates().get("flower").visible());
-        assertTrue(butterflySegment.nodeStates().get("butterfly").visible());
+        PreparedEmote alternating = sequence.compileRandom(randomWithValues(0, 0));
+        assertFalse(alternating.sequenceVisibility(1).get("flower"));
+        assertNull(alternating.sequenceVisibility(1).get("butterfly"));
     }
 
     @Test
@@ -172,7 +168,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             new EmoteAnimation.Events(List.of(startEvent), List.of(), List.of(), List.of()),
             Map.of("root", sceneAnchor())
         );
@@ -193,7 +189,8 @@ class SequenceCompilerTest {
         EmoteAnimation.TextNode node = new EmoteAnimation.TextNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            IDENTITY,
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
             new JsonPrimitive("same")
         );
@@ -202,7 +199,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
             Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
@@ -212,7 +209,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("text", node),
             Map.of("text", new PreparedDisplayData.Text(Component.literal("same")))
@@ -236,7 +233,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
@@ -245,7 +242,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
@@ -254,7 +251,7 @@ class SequenceCompilerTest {
             1,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of("root", sceneAnchor())
         );
@@ -287,9 +284,9 @@ class SequenceCompilerTest {
 
     @Test
     void selectsWeightedCandidatesAfterExcludingThePreviousCandidate() {
-        PreparedEmote first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        PreparedEmote second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        PreparedEmote third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote first = animation("demo:first", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote second = animation("demo:second", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote third = animation("demo:third", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
@@ -321,8 +318,8 @@ class SequenceCompilerTest {
 
     @Test
     void continueSkipsOneIterationAndBreakStopsOnlyTheCurrentRepeat() {
-        PreparedEmote loop = animation("demo:loop", 2, EmoteAnimation.LoopMode.LOOP, 4, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
-        PreparedEmote finish = animation("demo:finish", 3, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote loop = animation("demo:loop", 2, EmoteAnimation.LoopMode.LOOP, 4, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote finish = animation("demo:finish", 3, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
@@ -352,7 +349,7 @@ class SequenceCompilerTest {
 
     @Test
     void controlChoicesDoNotForceTheOnlyAnimationToAlternateWithContinue() {
-        PreparedEmote animation = animation("demo:only", 1, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote animation = animation("demo:only", 1, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
@@ -375,7 +372,7 @@ class SequenceCompilerTest {
 
     @Test
     void compilesAnEmptyControlResultAsAHiddenOneTickTimeline() {
-        PreparedEmote animation = animation("demo:anchor", 2, EmoteAnimation.LoopMode.ONCE, 0, List.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        PreparedEmote animation = animation("demo:anchor", 2, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         EmoteSequence source = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("demo:sequence"),
@@ -391,7 +388,7 @@ class SequenceCompilerTest {
         EmoteAnimation compiled = sequence.compileRandom(randomWithValues(0)).animation();
 
         assertEquals(1, compiled.timeline().durationTicks());
-        assertFalse(compiled.timeline().keyframes().getFirst().nodeStates().get("root").visible());
+        assertFalse(sequence.compileRandom(randomWithValues(0)).sequenceVisibility(0).get("root"));
     }
 
     @Test
@@ -419,16 +416,24 @@ class SequenceCompilerTest {
             2,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(new EmoteAnimation.Keyframe(
-                1,
-                Map.of("body", new EmoteAnimation.NodeTransform(matrix(1.0D), 1)),
-                Map.of("body", new EmoteAnimation.NodeState(false))
+            Map.of("body", new EmoteAnimation.NodeTracks(
+                List.of(new EmoteAnimation.VectorKeyframe(
+                    1,
+                    vector(1.0D),
+                    vector(1.0D),
+                    EmoteAnimation.Interpolation.LINEAR,
+                    EmoteAnimation.Easing.LINEAR
+                )),
+                List.of(),
+                List.of(),
+                List.of(new EmoteAnimation.VisibilityKeyframe(1, new EmoteAnimation.ConstantVisibility(false)))
             )),
             EmoteAnimation.Events.empty(),
             Map.of("body", new EmoteAnimation.ItemNode(
                 true,
                 EmoteAnimation.NodeSpace.INITIATOR,
-                IDENTITY,
+                null,
+                EmoteAnimation.LocalTransform.IDENTITY,
                 new CompoundTag(),
                 new CompoundTag(),
                 "none",
@@ -448,11 +453,9 @@ class SequenceCompilerTest {
         assertEquals(1, sequence.compiledAnimation().skinParts(ParticipantRole.PARTNER).size());
         assertEquals(EmoteAnimation.NodeSpace.PARTNER, compiled.nodes().get(partnerId).space());
         assertEquals(1, compiledEmote.skinParts(ParticipantRole.PARTNER).size());
-        assertEquals(
-            compiled.timeline().keyframes().stream().filter(keyframe -> keyframe.nodeTransforms().containsKey("body")).count(),
-            compiled.timeline().keyframes().stream().filter(keyframe -> keyframe.nodeTransforms().containsKey(partnerId)).count()
-        );
-        assertTrue(compiled.timeline().keyframes().stream().anyMatch(keyframe -> keyframe.nodeStates().containsKey(partnerId)));
+        PreparedEmote.PlaybackSegment segment = compiledEmote.playbackSegments().getFirst();
+        assertTrue(segment.animation().animation().timeline().tracks().containsKey("body"));
+        assertEquals(partnerId, segment.mirroredNodes().get("body"));
     }
 
     @Test
@@ -462,11 +465,11 @@ class SequenceCompilerTest {
             2,
             EmoteAnimation.LoopMode.ONCE,
             0,
-            List.of(),
+            Map.of(),
             EmoteAnimation.Events.empty(),
             Map.of(
-                "giver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.INITIATOR, IDENTITY),
-                "receiver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.PARTNER, IDENTITY)
+                "giver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.INITIATOR, null, EmoteAnimation.LocalTransform.IDENTITY),
+                "receiver", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.PARTNER, null, EmoteAnimation.LocalTransform.IDENTITY)
             )
         );
         PreparedSequence sequence = PreparedSequence.resolve(
@@ -520,11 +523,11 @@ class SequenceCompilerTest {
         int duration,
         EmoteAnimation.LoopMode loop,
         int loopDelay,
-        List<EmoteAnimation.Keyframe> keyframes,
+        Map<String, EmoteAnimation.NodeTracks> tracks,
         EmoteAnimation.Events events,
         Map<String, EmoteAnimation.Node> nodes
     ) {
-        return animation(id, duration, loop, loopDelay, keyframes, events, nodes, Map.of());
+        return animation(id, duration, loop, loopDelay, tracks, events, nodes, Map.of());
     }
 
     private static Random randomWithValues(int... values) {
@@ -538,7 +541,7 @@ class SequenceCompilerTest {
     }
 
     private static EmoteAnimation.AnchorNode sceneAnchor() {
-        return new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, IDENTITY);
+        return new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY);
     }
 
     private static PreparedEmote animation(
@@ -546,7 +549,7 @@ class SequenceCompilerTest {
         int duration,
         EmoteAnimation.LoopMode loop,
         int loopDelay,
-        List<EmoteAnimation.Keyframe> keyframes,
+        Map<String, EmoteAnimation.NodeTracks> tracks,
         EmoteAnimation.Events events,
         Map<String, EmoteAnimation.Node> nodes,
         Map<String, PreparedDisplayData> preparedDisplayData
@@ -555,8 +558,9 @@ class SequenceCompilerTest {
             Identifier.parse(id),
             new EmoteMetadata(id, id),
             new EmoteAnimation.Settings(false, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, loopDelay)),
+            EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(duration, keyframes, events)
+            new EmoteAnimation.Timeline(duration, tracks, events)
         );
         return PreparedEmote.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
@@ -566,20 +570,35 @@ class SequenceCompilerTest {
         ));
     }
 
-    private static EmoteAnimation.Keyframe keyframe(int tick, double x) {
-        return new EmoteAnimation.Keyframe(
-            tick,
-            Map.of("root", new EmoteAnimation.NodeTransform(matrix(x), 0)),
-            Map.of()
+    private static EmoteAnimation.NodeTracks positionTrack(int tick, double x) {
+        EmoteAnimation.VectorValue value = vector(x);
+        return new EmoteAnimation.NodeTracks(
+            List.of(new EmoteAnimation.VectorKeyframe(
+                tick,
+                value,
+                value,
+                EmoteAnimation.Interpolation.STEP,
+                EmoteAnimation.Easing.LINEAR
+            )),
+            List.of(),
+            List.of(),
+            List.of()
         );
     }
 
-    private static EmoteAnimation.Matrix matrix(double x) {
-        return new EmoteAnimation.Matrix(List.of(
-            1.0D, 0.0D, 0.0D, x,
-            0.0D, 1.0D, 0.0D, 0.0D,
-            0.0D, 0.0D, 1.0D, 0.0D,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
+    private static EmoteAnimation.VectorValue vector(double x) {
+        return new EmoteAnimation.VectorValue(
+            new EmoteAnimation.ConstantValue(x),
+            new EmoteAnimation.ConstantValue(0.0D),
+            new EmoteAnimation.ConstantValue(0.0D)
+        );
+    }
+
+    private static EmoteAnimation.LocalTransform transform(double x) {
+        return new EmoteAnimation.LocalTransform(
+            new EmoteAnimation.Vec3(x, 0.0D, 0.0D),
+            EmoteAnimation.Vec3.ZERO,
+            new EmoteAnimation.Vec3(1.0D, 1.0D, 1.0D)
+        );
     }
 }

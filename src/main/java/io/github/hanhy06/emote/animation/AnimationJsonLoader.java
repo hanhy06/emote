@@ -248,7 +248,6 @@ public final class AnimationJsonLoader {
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
         LocalTransform transform = parseTransform(reader.requireObject(object, "transform", path), path + ".transform", reader);
-        Matrix defaultMatrix = transform.matrix();
         if (type.equals("anchor")) {
             if (object.has("visible")) {
                 throw reader.error(path + ".visible", "is not supported by anchor nodes");
@@ -256,10 +255,9 @@ public final class AnimationJsonLoader {
             if (object.has("entity_nbt")) {
                 throw reader.error(path + ".entity_nbt", "is not supported by anchor nodes");
             }
-            return new AnchorNode(space, parentId, transform, defaultMatrix);
+            return new AnchorNode(space, parentId, transform);
         }
 
-        defaultMatrix = MatrixNormalizer.stabilize(defaultMatrix);
         boolean visible = optionalVisible(object, path, reader);
         CompoundTag entityNbt = optionalEntityNbt(object, path, reader);
         return switch (type) {
@@ -268,7 +266,6 @@ public final class AnimationJsonLoader {
                 space,
                 parentId,
                 transform,
-                defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "item_stack_snbt", path, reader),
                 parseItemDisplay(object, path, reader),
@@ -279,7 +276,6 @@ public final class AnimationJsonLoader {
                 space,
                 parentId,
                 transform,
-                defaultMatrix,
                 entityNbt,
                 requireCompoundSnbt(object, "block_state_snbt", path, reader)
             );
@@ -288,7 +284,6 @@ public final class AnimationJsonLoader {
                 space,
                 parentId,
                 transform,
-                defaultMatrix,
                 entityNbt,
                 reader.requireElement(object, "text", path)
             );

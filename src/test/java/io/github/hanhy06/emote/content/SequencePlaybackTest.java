@@ -18,7 +18,7 @@ import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class Schema4SequencePlaybackTest {
+class SequencePlaybackTest {
     @Test
     void startsIndependentMolangSessionForEachAnimationSegment() throws Exception {
         PreparedEmote first = animation("example:first", 1);
@@ -51,7 +51,7 @@ class Schema4SequencePlaybackTest {
     }
 
     @Test
-    void duplicatesSchema4HierarchyAndTracksForGeneratedPartner() throws Exception {
+    void duplicatesHierarchyAndTracksForGeneratedPartner() throws Exception {
         PreparedEmote animation = animation("example:mirror", 1);
 
         SequenceNodeLayout.Expansion expansion = SequenceNodeLayout.expandCollaborativeLayout(
@@ -149,11 +149,6 @@ class Schema4SequencePlaybackTest {
         @Override
         public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
             this.transforms.put(nodeId, createTransformation(nodeId, transform));
-        }
-
-        @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
-            this.transforms.put(nodeId, transformation);
         }
 
         @Override

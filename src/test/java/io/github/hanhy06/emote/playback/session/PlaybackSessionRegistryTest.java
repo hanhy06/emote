@@ -128,7 +128,8 @@ class PlaybackSessionRegistryTest {
         EmoteAnimation.ItemNode node = new EmoteAnimation.ItemNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            identityMatrix(),
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
             new CompoundTag(),
             "none",
@@ -140,12 +141,4 @@ class PlaybackSessionRegistryTest {
         );
     }
 
-    private static EmoteAnimation.Matrix identityMatrix() {
-        return new EmoteAnimation.Matrix(List.of(
-            1.0D, 0.0D, 0.0D, 0.0D,
-            0.0D, 1.0D, 0.0D, 0.0D,
-            0.0D, 0.0D, 1.0D, 0.0D,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
-    }
 }

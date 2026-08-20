@@ -11,13 +11,6 @@ import java.util.Map;
 import java.util.Objects;
 
 public final class PreparedEmoteFixture {
-    private static final EmoteAnimation.Matrix IDENTITY = new EmoteAnimation.Matrix(List.of(
-        1.0, 0.0, 0.0, 0.0,
-        0.0, 1.0, 0.0, 0.0,
-        0.0, 0.0, 1.0, 0.0,
-        0.0, 0.0, 0.0, 1.0
-    ));
-
     private PreparedEmoteFixture() {
     }
 
@@ -65,8 +58,9 @@ public final class PreparedEmoteFixture {
             Objects.requireNonNull(Identifier.tryParse(id)),
             new EmoteMetadata(name, name + " description"),
             new EmoteAnimation.Settings(standalone, cooldownTicks, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
-            Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, IDENTITY)),
-            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
+            EmoteAnimation.MolangPrograms.empty(),
+            Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY)),
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
         );
         return PreparedEmote.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),

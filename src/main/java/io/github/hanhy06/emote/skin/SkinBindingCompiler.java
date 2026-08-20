@@ -24,7 +24,7 @@ public final class SkinBindingCompiler {
             byPart.computeIfAbsent(participantSkinPart, ignored -> new ArrayList<>()).add(new RawPart(
                 entry.getKey(),
                 itemNode.skin().order(),
-                localYScale(itemNode.defaultMatrix())
+                Math.abs(itemNode.transform().scale().y())
             ));
         }
 
@@ -100,13 +100,6 @@ public final class SkinBindingCompiler {
             case LEFT_LEG -> PlayerSkinPart.LEFT_LEG;
             case RIGHT_LEG -> PlayerSkinPart.RIGHT_LEG;
         };
-    }
-
-    private double localYScale(EmoteAnimation.Matrix matrix) {
-        double x = matrix.value(1);
-        double y = matrix.value(5);
-        double z = matrix.value(9);
-        return Math.sqrt(x * x + y * y + z * z);
     }
 
     private record RawPart(String nodeId, int order, double localYScale) {

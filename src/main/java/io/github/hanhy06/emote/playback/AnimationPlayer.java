@@ -12,13 +12,9 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedEmote compiledTimeline;
     private final TimelineTarget target;
-    private Schema4AnimationRuntime schema4Runtime;
-    private final Map<String, TransformState> transformStates = new HashMap<>();
-    private final Map<String, EmoteAnimation.Matrix> appliedMatrices = new HashMap<>();
+    private AnimationRuntime runtime;
+    private final Map<String, PreparedEmote.PreparedTransform> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
-
-    private List<PreparedEmote.TransformActivation> pendingInterpolations = List.of();
-    private PreparedEmote.TickActions currentTickActions;
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -49,10 +45,9 @@ public final class AnimationPlayer {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
-        this.schema4Runtime = compiledTimeline.playbackSegments().isEmpty() && compiledTimeline.preparedTimeline().schema4()
-            ? new Schema4AnimationRuntime(compiledTimeline)
+        this.runtime = compiledTimeline.playbackSegments().isEmpty()
+            ? new AnimationRuntime(compiledTimeline)
             : null;
-        this.currentTickActions = compiledTimeline.tickActions(0);
     }
 
     public void start() {
@@ -89,7 +84,6 @@ public final class AnimationPlayer {
         long phase = Math.floorMod(cycleTick, cycleLength);
         int timelineTick = (int) Math.min(phase, duration);
         this.currentTick = timelineTick;
-        this.currentTickActions = this.compiledTimeline.tickActions(timelineTick);
         this.loopCount = (int) Math.min(Integer.MAX_VALUE, Math.floorDiv(cycleTick, cycleLength));
         applySynchronizedSnapshot(timelineTick);
         if (phase >= duration) {
@@ -101,7 +95,6 @@ public final class AnimationPlayer {
         if (!this.started || this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
             throw new IllegalStateException("Synchronized timeline has not started");
         }
-        resumeInitialInterpolation();
     }
 
     public void deferInitialVisibility() {
@@ -119,7 +112,7 @@ public final class AnimationPlayer {
         this.initialVisibilityDeferred = false;
         this.animation.nodes().forEach((nodeId, node) -> this.target.setVisible(
             nodeId,
-            this.compiledTimeline.visible(nodeId, this.currentTick, node.visible())
+            this.appliedVisibility.getOrDefault(nodeId, node.visible())
         ));
     }
 
@@ -127,7 +120,6 @@ public final class AnimationPlayer {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
         }
-        resumePendingInterpolations();
     }
 
     public void bindEvents(EventExecutor eventExecutor) {
@@ -144,7 +136,7 @@ public final class AnimationPlayer {
         this.eventsStarted = true;
         execute(this.animation.timeline().events().start());
         if (this.currentTick == 0) {
-            execute(this.currentTickActions.events());
+            execute(this.compiledTimeline.timelineEvents(0));
         }
     }
 
@@ -156,7 +148,7 @@ public final class AnimationPlayer {
         int previousTick = this.currentTick;
         AdvanceResult result = advanceTimeline();
         if (result != AdvanceResult.RESTARTED && this.currentTick != previousTick) {
-            execute(this.currentTickActions.events());
+            execute(this.compiledTimeline.timelineEvents(this.currentTick));
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
             execute(this.animation.timeline().events().loop());
@@ -165,7 +157,7 @@ public final class AnimationPlayer {
             }
         }
         if (result == AdvanceResult.RESTARTED) {
-            execute(this.currentTickActions.events());
+            execute(this.compiledTimeline.timelineEvents(this.currentTick));
         }
         return result;
     }
@@ -197,7 +189,6 @@ public final class AnimationPlayer {
         }
 
         this.currentTick++;
-        resumePendingInterpolations();
         applyTick(this.currentTick);
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
@@ -241,126 +232,46 @@ public final class AnimationPlayer {
     }
 
     public Transformation currentTransformation(String nodeId) {
-        if (this.schema4Runtime != null) {
-            PreparedEmote.PreparedTransform transform = this.schema4Runtime.currentTransform(nodeId);
-            if (transform == null) {
-                transform = this.compiledTimeline.defaultTransform(nodeId);
-            }
-            return this.target.createTransformation(nodeId, transform);
-        }
-        TransformState state = this.transformStates.get(nodeId);
-        if (state == null) {
-            return this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
-        }
-        return state.at(this.currentTick);
+        PreparedEmote.PreparedTransform transform = this.runtime == null ? null : this.runtime.currentTransform(nodeId);
+        return this.target.createTransformation(
+            nodeId,
+            transform == null ? this.compiledTimeline.defaultTransform(nodeId) : transform
+        );
     }
 
     private void resetToTickZero() {
         this.target.resetAll();
         clearState();
-        if (this.schema4Runtime == null) {
+        if (this.runtime == null) {
             applyTick(0);
         } else {
-            this.currentTickActions = this.compiledTimeline.tickActions(0);
-            applySchema4Pose(this.schema4Runtime.beginCycle(0, this.loopCount), 0);
+            applyPose(this.runtime.beginCycle(0, this.loopCount), 0);
         }
     }
 
     private void clearState() {
-        this.transformStates.clear();
-        this.appliedMatrices.clear();
+        this.appliedTransforms.clear();
         this.appliedVisibility.clear();
-        this.pendingInterpolations = List.of();
         this.activePlaybackSegment = -1;
         this.mirroredNodes = Map.of();
         if (!this.compiledTimeline.playbackSegments().isEmpty()) {
-            this.schema4Runtime = null;
+            this.runtime = null;
         }
-        this.currentTickActions = this.compiledTimeline.tickActions(0);
         this.currentTick = 0;
         this.remainingLoopDelay = 0;
     }
 
     private void applySynchronizedSnapshot(int tick) {
-        if (this.schema4Runtime != null) {
-            applySchema4Pose(this.schema4Runtime.beginCycle(tick, this.loopCount), 0);
-            return;
-        }
-        List<PreparedEmote.TransformActivation> activeInterpolations = new ArrayList<>();
-        for (Map.Entry<String, EmoteAnimation.Node> entry : this.animation.nodes().entrySet()) {
-            String nodeId = entry.getKey();
-            EmoteAnimation.Node node = entry.getValue();
-            PreparedEmote.TransformActivation activation = this.compiledTimeline.activeTransform(nodeId, tick);
-            Transformation currentTransformation;
-            if (activation == null) {
-                currentTransformation = this.target.createTransformation(nodeId, this.compiledTimeline.defaultTransform(nodeId));
-            } else {
-                Transformation previous = this.target.createTransformation(nodeId, activation.previousTransform());
-                Transformation targetTransformation = this.target.createTransformation(nodeId, activation.transform());
-                TransformState state = new TransformState(
-                    previous,
-                    targetTransformation,
-                    activation.activationTick(),
-                    activation.interpolationDurationTicks()
-                );
-                this.transformStates.put(nodeId, state);
-                this.appliedMatrices.put(nodeId, activation.transform().matrix());
-                currentTransformation = state.at(tick);
-                if (activation.interpolationDurationTicks() > 0 && tick < activation.targetTick()) {
-                    activeInterpolations.add(activation);
-                }
-            }
-            this.target.setTransformation(nodeId, currentTransformation);
-            this.target.setVisible(nodeId, this.compiledTimeline.visible(nodeId, tick, node.visible()));
-        }
-        this.pendingInterpolations = List.copyOf(activeInterpolations);
-    }
-
-    private void resumePendingInterpolations() {
-        if (this.pendingInterpolations.isEmpty()) {
-            return;
-        }
-        for (PreparedEmote.TransformActivation activation : this.pendingInterpolations) {
-            this.target.applyTransform(
-                activation.nodeId(),
-                activation.transform(),
-                Math.max(0, activation.targetTick() - this.currentTick)
-            );
-        }
-        this.pendingInterpolations = List.of();
+        applyPose(this.runtime.beginCycle(tick, this.loopCount), 0);
     }
 
     private void applyTick(int tick) {
-        this.currentTickActions = this.compiledTimeline.tickActions(tick);
         if (!this.compiledTimeline.playbackSegments().isEmpty()) {
             applyPlaybackSegment(tick);
-            applyStates();
+            applySequenceVisibility(tick);
             return;
         }
-        if (this.schema4Runtime != null) {
-            applySchema4Pose(this.schema4Runtime.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
-            applyStates();
-            return;
-        }
-        for (PreparedEmote.TransformActivation activation : this.currentTickActions.transforms()) {
-            EmoteAnimation.Matrix matrix = activation.transform().matrix();
-            if (matrix.equals(this.appliedMatrices.get(activation.nodeId()))) {
-                continue;
-            }
-            Transformation previous = currentTransformation(activation.nodeId());
-            Transformation next = this.target.createTransformation(activation.nodeId(), activation.transform());
-            this.transformStates.put(
-                activation.nodeId(),
-                new TransformState(previous, next, tick, activation.interpolationDurationTicks())
-            );
-            this.appliedMatrices.put(activation.nodeId(), matrix);
-            this.target.applyTransform(
-                activation.nodeId(),
-                activation.transform(),
-                activation.interpolationDurationTicks()
-            );
-        }
-        applyStates();
+        applyPose(this.runtime.evaluate(tick, this.loopCount), tick == 0 ? 0 : 1);
     }
 
     private void applyPlaybackSegment(int tick) {
@@ -380,63 +291,61 @@ public final class AnimationPlayer {
         }
         PreparedEmote.PlaybackSegment segment = segments.get(selected);
         int localTick = tick - segment.startTick();
-        Schema4AnimationRuntime.Pose pose;
+        AnimationRuntime.Pose pose;
         if (selected != this.activePlaybackSegment) {
             this.activePlaybackSegment = selected;
             this.mirroredNodes = segment.mirroredNodes();
-            this.schema4Runtime = new Schema4AnimationRuntime(segment.animation());
-            pose = this.schema4Runtime.beginCycle(localTick, 0);
+            this.runtime = new AnimationRuntime(segment.animation());
+            pose = this.runtime.beginCycle(localTick, 0);
         } else {
-            pose = this.schema4Runtime.evaluate(localTick, 0);
+            pose = this.runtime.evaluate(localTick, 0);
         }
-        applySchema4Pose(pose, tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
+        applyPose(pose, tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
     }
 
-    private void applyStates() {
-        for (PreparedEmote.StateActivation activation : this.currentTickActions.states()) {
-            this.appliedVisibility.put(activation.nodeId(), activation.state().visible());
-            this.target.setVisible(activation.nodeId(), activation.state().visible());
-        }
+    private void applySequenceVisibility(int tick) {
+        this.compiledTimeline.sequenceVisibility(tick).forEach(this::applyVisibility);
     }
 
-    private void applySchema4Pose(Schema4AnimationRuntime.Pose pose, int interpolationDurationTicks) {
-        applySchema4Pose(pose, interpolationDurationTicks, Map.of());
+    private void applyPose(AnimationRuntime.Pose pose, int interpolationDurationTicks) {
+        applyPose(pose, interpolationDurationTicks, Map.of());
     }
 
-    private void applySchema4Pose(
-        Schema4AnimationRuntime.Pose pose,
+    private void applyPose(
+        AnimationRuntime.Pose pose,
         int interpolationDurationTicks,
         Map<String, String> mirroredNodes
     ) {
         for (Map.Entry<String, PreparedEmote.PreparedTransform> entry : pose.transforms().entrySet()) {
-            applySchema4Transform(entry.getKey(), entry.getValue(), interpolationDurationTicks);
+            applyTransform(entry.getKey(), entry.getValue(), interpolationDurationTicks);
             String mirror = mirroredNodes.get(entry.getKey());
             if (mirror != null) {
-                applySchema4Transform(mirror, entry.getValue(), interpolationDurationTicks);
+                applyTransform(mirror, entry.getValue(), interpolationDurationTicks);
             }
         }
         for (Map.Entry<String, Boolean> entry : pose.visibility().entrySet()) {
-            applySchema4Visibility(entry.getKey(), entry.getValue());
+            applyVisibility(entry.getKey(), entry.getValue());
             String mirror = mirroredNodes.get(entry.getKey());
             if (mirror != null) {
-                applySchema4Visibility(mirror, entry.getValue());
+                applyVisibility(mirror, entry.getValue());
             }
         }
     }
 
-    private void applySchema4Transform(
+    private void applyTransform(
         String nodeId,
         PreparedEmote.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
-        if (transform.matrix().equals(this.appliedMatrices.get(nodeId))) {
+        PreparedEmote.PreparedTransform applied = this.appliedTransforms.get(nodeId);
+        if (applied != null && transform.hasSameMatrix(applied)) {
             return;
         }
-        this.appliedMatrices.put(nodeId, transform.matrix());
+        this.appliedTransforms.put(nodeId, transform);
         this.target.applyTransform(nodeId, transform, interpolationDurationTicks);
     }
 
-    private void applySchema4Visibility(String nodeId, boolean visible) {
+    private void applyVisibility(String nodeId, boolean visible) {
         if (Boolean.valueOf(visible).equals(this.appliedVisibility.put(nodeId, visible))) {
             return;
         }
@@ -473,26 +382,9 @@ public final class AnimationPlayer {
             int interpolationDurationTicks
         );
 
-        void setTransformation(String nodeId, Transformation transformation);
-
         void setVisible(String nodeId, boolean visible);
 
         void resetAll();
-    }
-
-    private record TransformState(
-        Transformation previous,
-        Transformation target,
-        int startTick,
-        int durationTicks
-    ) {
-        private Transformation at(int tick) {
-            if (this.durationTicks == 0) {
-                return this.target;
-            }
-            float progress = Math.clamp((float) (tick - this.startTick) / this.durationTicks, 0.0F, 1.0F);
-            return this.previous.slerp(this.target, progress);
-        }
     }
 
     private record EntityTimelineTarget(
@@ -518,11 +410,6 @@ public final class AnimationPlayer {
                 transform,
                 interpolationDurationTicks
             );
-        }
-
-        @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
-            this.entityController.applyTransformation(requiredNode(nodeId), transformation, 0);
         }
 
         @Override

@@ -3,12 +3,10 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.util.MinecraftTime;
 
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -17,22 +15,6 @@ final class EmoteJsonReader {
 
     EmoteJsonReader(Path sourcePath) {
         this.sourcePath = Objects.requireNonNull(sourcePath, "sourcePath");
-    }
-
-    EmoteAnimation.Matrix requireMatrix(JsonObject object, String key, String path)
-        throws EmoteAnimationLoadException {
-        return readMatrix(requireArray(object, key, path), path + "." + key);
-    }
-
-    EmoteAnimation.Matrix readMatrix(JsonArray array, String path) throws EmoteAnimationLoadException {
-        if (array.size() != 16) {
-            throw error(path, "must contain 16 values");
-        }
-        List<Double> values = new ArrayList<>(16);
-        for (int index = 0; index < array.size(); index++) {
-            values.add(requireFiniteDouble(array.get(index), path + "[" + index + "]"));
-        }
-        return new EmoteAnimation.Matrix(values);
     }
 
     JsonObject requireObject(JsonObject object, String key, String path) throws EmoteAnimationLoadException {

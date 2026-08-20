@@ -32,9 +32,6 @@ final class SequenceNodeLayout {
             }
         });
 
-        List<EmoteAnimation.Keyframe> keyframes = animation.timeline().keyframes().stream()
-            .map(keyframe -> duplicatePartnerTracks(keyframe, partnerIds))
-            .toList();
         Map<String, EmoteAnimation.NodeTracks> tracks = new LinkedHashMap<>(animation.timeline().tracks());
         partnerIds.forEach((sourceId, partnerId) -> {
             EmoteAnimation.NodeTracks sourceTracks = animation.timeline().tracks().get(sourceId);
@@ -46,13 +43,11 @@ final class SequenceNodeLayout {
             animation.id(),
             animation.metadata(),
             animation.settings(),
-            animation.schemaVersion(),
             animation.molang(),
             nodes,
             new EmoteAnimation.Timeline(
                 animation.timeline().durationTicks(),
                 tracks,
-                keyframes,
                 animation.timeline().events()
             )
         );
@@ -99,8 +94,9 @@ final class SequenceNodeLayout {
             first.animation().id(),
             first.animation().metadata(),
             first.animation().settings(),
+            EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(1, List.of(), EmoteAnimation.Events.empty())
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
         );
         LoadedAnimation loaded = new LoadedAnimation(
             first.sourcePath(),
@@ -155,7 +151,6 @@ final class SequenceNodeLayout {
                 EmoteAnimation.NodeSpace.PARTNER,
                 parentId,
                 item.transform(),
-                item.defaultMatrix(),
                 item.entityNbt(),
                 item.itemStackNbt(),
                 item.itemDisplay(),
@@ -166,34 +161,15 @@ final class SequenceNodeLayout {
                 )
             );
             case EmoteAnimation.BlockNode block -> new EmoteAnimation.BlockNode(
-                block.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, block.transform(), block.defaultMatrix(), block.entityNbt(), block.blockStateNbt()
+                block.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, block.transform(), block.entityNbt(), block.blockStateNbt()
             );
             case EmoteAnimation.TextNode text -> new EmoteAnimation.TextNode(
-                text.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, text.transform(), text.defaultMatrix(), text.entityNbt(), text.text()
+                text.visible(), EmoteAnimation.NodeSpace.PARTNER, parentId, text.transform(), text.entityNbt(), text.text()
             );
             case EmoteAnimation.AnchorNode anchor -> new EmoteAnimation.AnchorNode(
-                EmoteAnimation.NodeSpace.PARTNER, parentId, anchor.transform(), anchor.defaultMatrix()
+                EmoteAnimation.NodeSpace.PARTNER, parentId, anchor.transform()
             );
         };
-    }
-
-    private static EmoteAnimation.Keyframe duplicatePartnerTracks(
-        EmoteAnimation.Keyframe keyframe,
-        Map<String, String> partnerIds
-    ) {
-        Map<String, EmoteAnimation.NodeTransform> transforms = new LinkedHashMap<>(keyframe.nodeTransforms());
-        Map<String, EmoteAnimation.NodeState> states = new LinkedHashMap<>(keyframe.nodeStates());
-        partnerIds.forEach((sourceId, partnerId) -> {
-            EmoteAnimation.NodeTransform transform = keyframe.nodeTransforms().get(sourceId);
-            if (transform != null) {
-                transforms.put(partnerId, transform);
-            }
-            EmoteAnimation.NodeState state = keyframe.nodeStates().get(sourceId);
-            if (state != null) {
-                states.put(partnerId, state);
-            }
-        });
-        return new EmoteAnimation.Keyframe(keyframe.tick(), transforms, states);
     }
 
     private static boolean compatibleNode(EmoteAnimation.Node first, EmoteAnimation.Node candidate) {

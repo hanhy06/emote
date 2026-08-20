@@ -1,28 +1,15 @@
 package io.github.hanhy06.emote.playback.runtime;
 
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.world.phys.Vec3;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class RootTransformTest {
-    @Test
-    void convertsRowMajorTranslationToJomlMatrix() {
-        EmoteAnimation.Matrix matrix = matrix(2.0D, 3.0D, 4.0D);
-
-        var result = RootTransform.toJoml(matrix).transformPosition(new org.joml.Vector3f());
-
-        assertEquals(2.0F, result.x, 0.0001F);
-        assertEquals(3.0F, result.y, 0.0001F);
-        assertEquals(4.0F, result.z, 0.0001F);
-    }
-
     @Test
     void alignsModelForwardWithPlayerYaw() {
         assertForward(0.0F, 0.0F, 1.0F);
@@ -50,12 +37,12 @@ class RootTransformTest {
 
     @Test
     void preparedDisplayTransformationMatchesMatrixComposition() {
-        EmoteAnimation.Matrix matrix = new EmoteAnimation.Matrix(List.of(
-            0.0D, -2.0D, 0.0D, 2.0D,
-            1.0D, 0.0D, 0.0D, 3.0D,
-            0.0D, 0.0D, 0.5D, 4.0D,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
+        Matrix4f matrix = new Matrix4f(
+            0.0F, 1.0F, 0.0F, 0.0F,
+            -2.0F, 0.0F, 0.0F, 0.0F,
+            0.0F, 0.0F, 0.5F, 0.0F,
+            2.0F, 3.0F, 4.0F, 1.0F
+        );
         RootTransform root = RootTransform.create(Vec3.ZERO, 37.0F);
 
         Matrix4fc expected = root.displayMatrix(matrix);
@@ -78,12 +65,7 @@ class RootTransformTest {
         assertEquals(expectedZ, result.z, 0.0001F);
     }
 
-    private EmoteAnimation.Matrix matrix(double x, double y, double z) {
-        return new EmoteAnimation.Matrix(List.of(
-            1.0D, 0.0D, 0.0D, x,
-            0.0D, 1.0D, 0.0D, y,
-            0.0D, 0.0D, 1.0D, z,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
+    private Matrix4f matrix(double x, double y, double z) {
+        return new Matrix4f().translate((float) x, (float) y, (float) z);
     }
 }

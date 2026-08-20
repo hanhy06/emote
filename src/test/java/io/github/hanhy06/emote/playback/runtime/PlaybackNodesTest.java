@@ -54,12 +54,8 @@ class PlaybackNodesTest {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            new EmoteAnimation.Matrix(List.of(
-                1.0D, 0.0D, 0.0D, 0.0D,
-                0.0D, 1.0D, 0.0D, 0.0D,
-                0.0D, 0.0D, 1.0D, 0.0D,
-                0.0D, 0.0D, 0.0D, 1.0D
-            )),
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
             new CompoundTag(),
             "none",
@@ -84,7 +80,8 @@ class PlaybackNodesTest {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
             EmoteAnimation.NodeSpace.SCENE,
-            identityMatrix(),
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
             new CompoundTag(),
             "none",
@@ -92,7 +89,8 @@ class PlaybackNodesTest {
         );
         EmoteAnimation.AnchorNode anchorNode = new EmoteAnimation.AnchorNode(
             EmoteAnimation.NodeSpace.SCENE,
-            identityMatrix()
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY
         );
         PlaybackNodes nodes = new PlaybackNodes(
             SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
@@ -109,7 +107,8 @@ class PlaybackNodesTest {
     void masksPartnerVisibilityUntilPartnerSpaceIsActivated() {
         EmoteAnimation.AnchorNode partnerNode = new EmoteAnimation.AnchorNode(
             EmoteAnimation.NodeSpace.PARTNER,
-            identityMatrix()
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY
         );
         PlaybackNodes nodes = new PlaybackNodes(
             SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
@@ -156,7 +155,7 @@ class PlaybackNodesTest {
             ),
             Map.of()
         );
-        PreparedEmote.PreparedTransform transform = PreparedEmote.PreparedTransform.create(identityMatrix(), false);
+        PreparedEmote.PreparedTransform transform = PreparedEmote.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
 
         var firstScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
         var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
@@ -169,12 +168,4 @@ class PlaybackNodesTest {
         assertEquals(partner.displayTransformation(transform).getMatrix(), partnerResult.getMatrix());
     }
 
-    private EmoteAnimation.Matrix identityMatrix() {
-        return new EmoteAnimation.Matrix(List.of(
-            1.0D, 0.0D, 0.0D, 0.0D,
-            0.0D, 1.0D, 0.0D, 0.0D,
-            0.0D, 0.0D, 1.0D, 0.0D,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
-    }
 }

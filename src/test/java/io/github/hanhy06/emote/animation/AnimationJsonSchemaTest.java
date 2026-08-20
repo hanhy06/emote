@@ -12,8 +12,8 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AnimationSchema4JsonLoaderTest {
-    private static final Path SOURCE = Path.of("schema4-test.json");
+class AnimationJsonSchemaTest {
+    private static final Path SOURCE = Path.of("animation-schema-test.json");
     private final AnimationJsonLoader loader = new AnimationJsonLoader();
 
     @Test

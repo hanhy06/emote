@@ -102,8 +102,9 @@ class AnimationEventTest {
             Identifier.parse("test:event-dispatch"),
             new EmoteMetadata("Event Dispatch", "Event Dispatch"),
             new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loopMode, loopDelayTicks)),
+            EmoteAnimation.MolangPrograms.empty(),
             Map.of(),
-            new EmoteAnimation.Timeline(durationTicks, List.of(), events)
+            new EmoteAnimation.Timeline(durationTicks, Map.of(), events)
         );
     }
 
@@ -135,11 +136,6 @@ class AnimationEventTest {
             PreparedEmote.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
             throw new UnsupportedOperationException();
         }
 

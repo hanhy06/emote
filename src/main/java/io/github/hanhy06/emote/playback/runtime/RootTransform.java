@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation.Matrix;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
@@ -33,8 +32,8 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         );
     }
 
-    public Matrix4f displayMatrix(Matrix nodeMatrix) {
-        return new Matrix4f(this.rotationMatrix).mul(toJoml(nodeMatrix));
+    public Matrix4f displayMatrix(Matrix4fc nodeMatrix) {
+        return new Matrix4f(this.rotationMatrix).mul(nodeMatrix);
     }
 
     public Transformation displayTransformation(PreparedEmote.PreparedTransform transform) {
@@ -59,12 +58,4 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
             .mul(displayMatrix);
     }
 
-    static Matrix4f toJoml(Matrix matrix) {
-        return new Matrix4f(
-            (float) matrix.value(0), (float) matrix.value(4), (float) matrix.value(8), (float) matrix.value(12),
-            (float) matrix.value(1), (float) matrix.value(5), (float) matrix.value(9), (float) matrix.value(13),
-            (float) matrix.value(2), (float) matrix.value(6), (float) matrix.value(10), (float) matrix.value(14),
-            (float) matrix.value(3), (float) matrix.value(7), (float) matrix.value(11), (float) matrix.value(15)
-        );
-    }
 }

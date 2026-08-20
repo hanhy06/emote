@@ -1,323 +1,194 @@
 package io.github.hanhy06.emote.playback;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteMetadata;
-import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.content.PreparedEmote;
-import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationPlayerTest {
     @Test
-    void sendsTransformAtInterpolationStartAndReachesTargetAtKeyframeTick() {
+    void evaluatesMolangBeforeTracksAndComposesParentTransform() throws Exception {
+        JsonObject root = base();
+        root.add("molang", JsonParser.parseString("""
+            {"initialize":"v.offset = 2;","tick":"v.offset = v.offset + 1;"}
+            """));
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.offset\""));
+
         FakeTarget target = new FakeTarget();
-        EmoteAnimation animation = animation(
-            10,
-            EmoteAnimation.LoopMode.ONCE,
-            0,
-            List.of(
-                keyframe(0, 0.0D, 0),
-                keyframe(10, 10.0D, 4)
-            )
-        );
-        AnimationPlayer player = new AnimationPlayer(animation, target);
-
+        AnimationPlayer player = player(root, target);
         player.start();
-        for (int tick = 1; tick <= 5; tick++) {
-            player.advance();
-        }
-        assertEquals(List.of(new AppliedTransform(0.0D, 0)), target.transforms);
 
-        player.advance();
-        assertEquals(List.of(new AppliedTransform(0.0D, 0), new AppliedTransform(10.0D, 4)), target.transforms);
-        player.advance();
-        player.advance();
-        assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-
-        player.advance();
-        player.advance();
-        assertEquals(10.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(5.6F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
-    void exposesLoopBoundaryBeforeDelayAndRestart() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                2,
-                EmoteAnimation.LoopMode.LOOP,
-                2,
-                List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))
-            ),
-            target
-        );
+    void appliesEasingAndDynamicVisibilityAtServerTicks() throws Exception {
+        JsonObject root = base();
+        JsonObject first = positionTrack(root).get(0).getAsJsonObject();
+        first.addProperty("easing", "ease_in_quad");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("visible", JsonParser.parseString("""
+                [{"time":"0t","value":"q.anim_time_ticks < 5"}]
+                """));
 
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
         player.start();
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        for (int tick = 0; tick < 5; tick++) {
+            player.advance();
+        }
+
+        assertEquals(3.5F, target.matrix("display").m30(), 1.0E-5F);
+        assertFalse(target.visibility.get("display"));
+    }
+
+    @Test
+    void resetsPersistentVariablesAtLoopBoundary() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.add("molang", JsonParser.parseString("""
+            {"initialize":"v.count = 0;","tick":"v.count = v.count + 1;"}
+            """));
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.count\""));
+
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+
         assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
-        assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.advance());
-        assertEquals(0, player.currentTick());
-        assertEquals(2, target.resetCount);
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
-    void holdModeKeepsTheLastFrameWithoutFinishingOrAdvancing() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(2, EmoteAnimation.LoopMode.HOLD, 0, List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))),
-            target
+    void rejectsPersistentVariableAssignmentInsideTrackValue() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
+            .set(0, JsonParser.parseString("\"v.count = v.count + 1; return v.count;\""));
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> PreparedEmote.from(load(root))
         );
 
-        player.start();
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(2, player.currentTick());
-        assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(2, player.currentTick());
+        assertTrue(exception.getMessage().contains("must not assign persistent variables"));
     }
 
-    @Test
-    void appliesVisibilityOnlyAtStateKeyframeTick() {
-        FakeTarget target = new FakeTarget();
-        EmoteAnimation animation = animation(
-            3,
-            EmoteAnimation.LoopMode.ONCE,
-            0,
-            List.of(
-                new EmoteAnimation.Keyframe(2, Map.of(), Map.of("node", new EmoteAnimation.NodeState(false)))
-            )
-        );
-        AnimationPlayer player = new AnimationPlayer(animation, target);
-
-        player.start();
-        player.advance();
-        assertEquals(List.of(), target.visibility);
-        player.advance();
-        assertEquals(List.of(false), target.visibility);
+    private AnimationPlayer player(JsonObject root, FakeTarget target) throws Exception {
+        return new AnimationPlayer(PreparedEmote.from(load(root)), target);
     }
 
-    @Test
-    void hidesNodesUntilVisibilityIsRestoredOnTheNextPlaybackTick() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(3, EmoteAnimation.LoopMode.ONCE, 0, List.of()),
-            target
-        );
-
-        player.start();
-        player.deferInitialVisibility();
-        assertEquals(List.of(false), target.visibility);
-
-        player.restoreDeferredVisibility();
-        assertEquals(List.of(false, true), target.visibility);
-
-        player.restoreDeferredVisibility();
-        assertEquals(List.of(false, true), target.visibility);
-    }
-
-    @Test
-    void doesNotRestartInterpolationForRepeatedTransformMatrix() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                6,
-                EmoteAnimation.LoopMode.ONCE,
-                0,
-                List.of(
-                    keyframe(0, 0.0D, 0),
-                    keyframe(2, 2.0D, 2),
-                    keyframe(4, 2.0D, 2),
-                    keyframe(6, 2.0D, 2)
-                )
-            ),
-            target
-        );
-
-        player.start();
-        for (int tick = 1; tick <= 6; tick++) {
-            player.advance();
-        }
-
-        assertEquals(
-            List.of(new AppliedTransform(0.0D, 0), new AppliedTransform(2.0D, 2)),
-            target.transforms
+    private io.github.hanhy06.emote.content.LoadedAnimation load(JsonObject root) throws Exception {
+        return new AnimationJsonLoader().parse(
+            Path.of("schema4-player-test.json"),
+            root.toString().getBytes(StandardCharsets.UTF_8)
         );
     }
 
-    @Test
-    void startsServerSynchronizedLoopAtServerPhaseAndResumesInterpolation() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                10,
-                EmoteAnimation.LoopMode.SERVER_SYNC,
-                0,
-                List.of(keyframe(0, 0.0D, 0), keyframe(10, 10.0D, 10))
-            ),
-            target
-        );
-
-        player.startSynchronized(5L);
-
-        assertEquals(5, player.currentTick());
-        assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
-        assertEquals(List.of(), target.transforms);
-
-        player.resumeSynchronizedInterpolation();
-        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
-        player.advance();
-        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
+    private com.google.gson.JsonArray positionTrack(JsonObject root) {
+        return root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .getAsJsonArray("position");
     }
 
-    @Test
-    void startsNonSynchronizedTimelineAtExplicitCyclePhase() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                10,
-                EmoteAnimation.LoopMode.ONCE,
-                0,
-                List.of(keyframe(0, 0.0D, 0), keyframe(10, 10.0D, 10))
-            ),
-            target
-        );
-
-        player.startAtCyclePhase(5L);
-
-        assertEquals(5, player.currentTick());
-        assertEquals(5.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(5.0F, target.snapshots.getLast(), 0.0001F);
-        player.resumeInitialInterpolation();
-        assertEquals(new AppliedTransform(10.0D, 5), target.transforms.getLast());
-    }
-
-    @Test
-    void startsServerSynchronizedLoopInsideLoopDelay() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                2,
-                EmoteAnimation.LoopMode.SERVER_SYNC,
-                2,
-                List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))
-            ),
-            target
-        );
-
-        player.startSynchronized(3L);
-
-        assertEquals(2, player.currentTick());
-        assertEquals(2.0F, target.snapshots.getLast(), 0.0001F);
-        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.advance());
-        assertEquals(0, player.currentTick());
-    }
-
-    @Test
-    void synchronizedStartIgnoresRepeatedTransformMatrices() {
-        FakeTarget target = new FakeTarget();
-        AnimationPlayer player = new AnimationPlayer(
-            animation(
-                6,
-                EmoteAnimation.LoopMode.SERVER_SYNC,
-                0,
-                List.of(
-                    keyframe(0, 0.0D, 0),
-                    keyframe(2, 2.0D, 2),
-                    keyframe(6, 2.0D, 2)
-                )
-            ),
-            target
-        );
-
-        player.startSynchronized(5L);
-
-        assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        player.resumeSynchronizedInterpolation();
-        assertEquals(List.of(), target.transforms);
-    }
-
-    private EmoteAnimation animation(
-        int duration,
-        EmoteAnimation.LoopMode loop,
-        int delay,
-        List<EmoteAnimation.Keyframe> keyframes
-    ) {
-        return new EmoteAnimation(
-            Identifier.parse("test:timeline"),
-            new EmoteMetadata("Timeline", "Timeline"),
-            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, delay)),
-            Map.of("node", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, matrix(0.0D))),
-            new EmoteAnimation.Timeline(duration, keyframes, EmoteAnimation.Events.empty())
-        );
-    }
-
-    private EmoteAnimation.Keyframe keyframe(int tick, double x, int interpolation) {
-        return new EmoteAnimation.Keyframe(
-            tick,
-            Map.of("node", new EmoteAnimation.NodeTransform(matrix(x), interpolation)),
-            Map.of()
-        );
-    }
-
-    private EmoteAnimation.Matrix matrix(double x) {
-        return new EmoteAnimation.Matrix(List.of(
-            1.0D, 0.0D, 0.0D, x,
-            0.0D, 1.0D, 0.0D, 0.0D,
-            0.0D, 0.0D, 1.0D, 0.0D,
-            0.0D, 0.0D, 0.0D, 1.0D
-        ));
+    private JsonObject base() {
+        return JsonParser.parseString("""
+            {
+              "type":"animation",
+              "schema_version":4,
+              "id":"example:runtime",
+              "metadata":{"name":"Runtime","description":"test"},
+              "settings":{
+                "standalone":true,
+                "cooldown":"0t",
+                "player":{
+                  "hidden":true,
+                  "stop_conditions":{
+                    "movement_distance":0,
+                    "jump":true,
+                    "submerge":true,
+                    "ride":true,
+                    "damage":true,
+                    "attack":true,
+                    "game_mode_change":true
+                  }
+                },
+                "playback":{"mode":"once","loop_delay":"0t"}
+              },
+              "nodes":{
+                "root":{
+                  "type":"anchor",
+                  "space":"scene",
+                  "transform":{"position":[1,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+                },
+                "display":{
+                  "type":"item_display",
+                  "parent":"root",
+                  "visible":true,
+                  "item_display":"none",
+                  "item_stack_snbt":"{id:'minecraft:stone',count:1}",
+                  "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+                }
+              },
+              "timeline":{
+                "duration":"10t",
+                "tracks":{
+                  "display":{
+                    "position":[
+                      {"time":"0t","value":[0,0,0],"interpolation":"linear"},
+                      {"time":"10t","value":[10,0,0]}
+                    ]
+                  }
+                },
+                "events":{}
+              }
+            }
+            """).getAsJsonObject();
     }
 
     private static final class FakeTarget implements AnimationPlayer.TimelineTarget {
-        private final List<AppliedTransform> transforms = new ArrayList<>();
-        private final List<Float> snapshots = new ArrayList<>();
-        private final List<Boolean> visibility = new ArrayList<>();
-
-        private int resetCount;
+        private final Map<String, Transformation> transforms = new HashMap<>();
+        private final Map<String, Boolean> visibility = new HashMap<>();
 
         @Override
         public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
-            return new Transformation(new org.joml.Matrix4f(transform.localMatrix()));
+            return new Transformation(transform.localMatrix());
         }
 
         @Override
-        public void applyTransform(
-            String nodeId,
-            PreparedEmote.PreparedTransform transform,
-            int interpolationDurationTicks
-        ) {
-            this.transforms.add(new AppliedTransform(transform.matrix().value(3), interpolationDurationTicks));
-        }
-
-        @Override
-        public void setTransformation(String nodeId, Transformation transformation) {
-            this.snapshots.add(transformation.getMatrix().m30());
+        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
+            this.transforms.put(nodeId, createTransformation(nodeId, transform));
         }
 
         @Override
         public void setVisible(String nodeId, boolean visible) {
-            this.visibility.add(visible);
+            this.visibility.put(nodeId, visible);
         }
 
         @Override
         public void resetAll() {
-            this.resetCount++;
+            this.transforms.clear();
+            this.visibility.clear();
         }
-    }
 
-    private record AppliedTransform(double x, int duration) {
+        private org.joml.Matrix4fc matrix(String nodeId) {
+            return this.transforms.get(nodeId).getMatrix();
+        }
     }
 }
