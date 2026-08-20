@@ -118,7 +118,7 @@ class EmotePlayServiceTest {
     @Test
     void apiCanPlayASequenceOnlyDisabledEmote() {
         EmoteCatalog catalog = new EmoteCatalog();
-        catalog.replace(List.of(create("demo:internal", "Internal", false)), List.of());
+        catalog.replace(List.of(create("demo:internal", "Internal", false)));
         PlaybackPolicyService policy = policy(
             (ignoredPlayer, ignoredPermission, ignoredDefault) -> {
                 throw new AssertionError("API playback must not inspect player permissions");
@@ -164,7 +164,7 @@ class EmotePlayServiceTest {
 
     private static EmoteCatalog catalogWithWave(int cooldownTicks) {
         EmoteCatalog catalog = new EmoteCatalog();
-        catalog.replace(List.of(create("demo:wave", "Wave", cooldownTicks)), List.of());
+        catalog.replace(List.of(create("demo:wave", "Wave", cooldownTicks)));
         return catalog;
     }
 

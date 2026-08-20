@@ -34,7 +34,7 @@ class EmoteQueryServiceTest {
             create("demo:wave", "Wave"),
             create("demo:bow", "Bow"),
             create("demo:sit_idle", "Sit Idle", false)
-        ), List.of());
+        ));
         EmoteQueryService service = new EmoteQueryService(
             registry,
             (ignoredPlayer, emote) -> !emote.id().equals("demo:bow")

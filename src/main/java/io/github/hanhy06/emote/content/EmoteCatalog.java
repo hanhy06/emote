@@ -8,40 +8,27 @@ public class EmoteCatalog {
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
 
     private volatile RegistryState state = RegistryState.empty();
-    private Map<String, PreparedEmote> fileEmotes = Map.of();
-    private Map<String, PreparedSequence> fileSequences = Map.of();
+    private Map<String, PreparedDefinition> fileDefinitions = Map.of();
 
-    public synchronized int replace(Collection<PreparedEmote> emotes, Collection<PreparedSequence> sequences) {
-        List<PreparedEmote> sorted = new ArrayList<>(emotes);
-        sorted.sort(Comparator.comparing(PreparedEmote::id));
+    public synchronized int replace(Collection<? extends PreparedDefinition> definitions) {
+        List<PreparedDefinition> sorted = new ArrayList<>(definitions);
+        sorted.sort(Comparator.comparing(PreparedDefinition::id));
 
-        LinkedHashMap<String, PreparedEmote> byId = new LinkedHashMap<>();
-        for (PreparedEmote emote : sorted) {
-            if (byId.putIfAbsent(emote.id(), emote) != null) {
-                throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
+        LinkedHashMap<String, PreparedDefinition> byId = new LinkedHashMap<>();
+        for (PreparedDefinition definition : sorted) {
+            if (byId.putIfAbsent(definition.id(), definition) != null) {
+                throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
             }
         }
 
-        List<PreparedSequence> sortedSequences = new ArrayList<>(sequences);
-        sortedSequences.sort(Comparator.comparing(PreparedSequence::id));
-        LinkedHashMap<String, PreparedSequence> sequencesById = new LinkedHashMap<>();
-        for (PreparedSequence sequence : sortedSequences) {
-            if (byId.containsKey(sequence.id()) || sequencesById.putIfAbsent(sequence.id(), sequence) != null) {
-                throw new IllegalArgumentException("Duplicate emote id: " + sequence.id());
-            }
-        }
-
-        this.fileEmotes = Map.copyOf(byId);
-        this.fileSequences = Map.copyOf(sequencesById);
+        this.fileDefinitions = Map.copyOf(byId);
         rebuildState();
-        return this.fileEmotes.size() + this.fileSequences.size() - this.state.fileDefinitions().size();
+        return this.fileDefinitions.size() - this.state.fileDefinitions().size();
     }
 
     public synchronized UUID registerApi(PreparedEmote emote) {
         Objects.requireNonNull(emote, "emote");
-        if (this.fileEmotes.containsKey(emote.id())
-            || this.fileSequences.containsKey(emote.id())
-            || this.apiEmotes.containsKey(emote.id())) {
+        if (this.fileDefinitions.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
             throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
         }
         if (this.apiEmotes.size() >= MAX_EMOTE_COUNT) {
@@ -114,11 +101,7 @@ public class EmoteCatalog {
             .map(ApiEntry::emote)
             .sorted(Comparator.comparing(PreparedEmote::id))
             .toList();
-        List<PreparedDefinition> fileList = java.util.stream.Stream.concat(
-                this.fileEmotes.values().stream(),
-                this.fileSequences.values().stream()
-            )
-            .map(PreparedDefinition.class::cast)
+        List<PreparedDefinition> fileList = this.fileDefinitions.values().stream()
             .filter(definition -> !this.apiEmotes.containsKey(definition.id()))
             .sorted(Comparator.comparing(PreparedDefinition::id))
             .limit(MAX_EMOTE_COUNT - apiList.size())

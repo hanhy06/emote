@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.EmoteSequence;
+import io.github.hanhy06.emote.content.PreparedDefinition;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.network.WheelSyncService;
@@ -84,7 +85,9 @@ public final class ReloadService {
             .map(sequence -> resolveSequence(sequence, animationsById))
             .filter(java.util.Objects::nonNull)
             .toList();
-        int ignoredCount = this.emoteCatalog.replace(emotes, sequences);
+        java.util.List<PreparedDefinition> definitions = new java.util.ArrayList<>(emotes);
+        definitions.addAll(sequences);
+        int ignoredCount = this.emoteCatalog.replace(definitions);
         if (ignoredCount > 0) {
             Emote.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",

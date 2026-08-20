@@ -18,7 +18,7 @@ class EmoteCatalogTest {
     @Test
     void findsDefinitionsByExactAnimationId() {
         EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("demo:idle", "Idle")), List.of());
+        registry.replace(List.of(create("demo:idle", "Idle")));
 
         assertNotNull(registry.findDefinition("demo:idle"));
         assertNull(registry.findDefinition("idle"));
@@ -35,7 +35,7 @@ class EmoteCatalogTest {
         Collections.reverse(emotes);
 
         EmoteCatalog registry = new EmoteCatalog();
-        int ignoredCount = registry.replace(emotes, List.of());
+        int ignoredCount = registry.replace(emotes);
 
         assertEquals(EmoteCatalog.MAX_EMOTE_COUNT, registry.size());
         assertEquals(1, ignoredCount);
@@ -53,7 +53,7 @@ class EmoteCatalogTest {
         int ignoredCount = registry.replace(List.of(
             create("api:wave", "File Wave"),
             create("file:dance", "Dance")
-        ), List.of());
+        ));
 
         assertEquals(1, ignoredCount);
         assertSame(apiEmote, registry.findDefinition("api:wave"));
@@ -75,7 +75,7 @@ class EmoteCatalogTest {
     void restoresFileEmoteWhenApiCollisionIsRemoved() {
         EmoteCatalog registry = new EmoteCatalog();
         UUID registrationId = registry.registerApi(create("api:wave", "API Wave"));
-        registry.replace(List.of(create("api:wave", "File Wave")), List.of());
+        registry.replace(List.of(create("api:wave", "File Wave")));
 
         registry.unregisterApi("api:wave", registrationId);
 
@@ -91,7 +91,7 @@ class EmoteCatalogTest {
             fileEmotes.add(create(id, id));
         }
         EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(fileEmotes, List.of());
+        registry.replace(fileEmotes);
 
         UUID registrationId = registry.registerApi(create("api:wave", "Wave"));
 
@@ -107,7 +107,7 @@ class EmoteCatalogTest {
     @Test
     void clearingApiRegistrationsKeepsFileEmotesAndInvalidatesRegistrationIds() {
         EmoteCatalog registry = new EmoteCatalog();
-        registry.replace(List.of(create("file:dance", "Dance")), List.of());
+        registry.replace(List.of(create("file:dance", "Dance")));
         UUID firstRegistrationId = registry.registerApi(create("api:wave", "Wave"));
         UUID secondRegistrationId = registry.registerApi(create("api:clap", "Clap"));
 
@@ -135,12 +135,59 @@ class EmoteCatalogTest {
         PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
         EmoteCatalog registry = new EmoteCatalog();
 
-        registry.replace(List.of(animation), List.of(sequence));
+        registry.replace(List.of(animation, sequence));
 
         assertSame(sequence, registry.findDefinition("demo:sit"));
         assertEquals(List.of("demo:sit", "demo:sit_down"), registry.getAllDefinitions().stream()
             .map(PreparedDefinition::id)
             .toList());
         assertEquals(List.of(animation), registry.getAll());
+    }
+
+    @Test
+    void restoresFileSequenceWhenApiCollisionIsRemoved() {
+        PreparedEmote animation = create("demo:offer", "Offer");
+        EmoteSequence source = new EmoteSequence(
+            Path.of("pair.json"),
+            Identifier.parse("demo:pair"),
+            new EmoteMetadata("Pair", "Pair sequence"),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
+        );
+        PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
+        EmoteCatalog registry = new EmoteCatalog();
+        UUID registrationId = registry.registerApi(create("demo:pair", "API Pair"));
+
+        registry.replace(List.of(animation, sequence));
+        registry.unregisterApi("demo:pair", registrationId);
+
+        assertSame(sequence, registry.findDefinition("demo:pair"));
+    }
+
+    @Test
+    void appliesTheRegistryLimitAcrossAnimationsAndSequencesById() {
+        PreparedEmote animation = create("test:animation", "Animation");
+        EmoteSequence source = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("test:0000"),
+            new EmoteMetadata("Sequence", "Sequence"),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
+            List.of(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1))
+        );
+        PreparedSequence sequence = PreparedSequence.resolve(source, java.util.Map.of(animation.id(), animation));
+        List<PreparedDefinition> definitions = new ArrayList<>();
+        definitions.add(animation);
+        definitions.add(sequence);
+        for (int index = 1; index < EmoteCatalog.MAX_EMOTE_COUNT; index++) {
+            String id = "test:%04d".formatted(index);
+            definitions.add(create(id, id));
+        }
+
+        EmoteCatalog registry = new EmoteCatalog();
+        int ignoredCount = registry.replace(definitions);
+
+        assertEquals(1, ignoredCount);
+        assertSame(sequence, registry.findDefinition("test:0000"));
+        assertNull(registry.findDefinition("test:animation"));
     }
 }
