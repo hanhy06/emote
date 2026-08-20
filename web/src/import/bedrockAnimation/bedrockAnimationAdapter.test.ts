@@ -122,7 +122,7 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations.map((animation) => animation.name)).toEqual(["supported", "random"]);
-    expect(imported.animations[1].availability).toMatchObject({ preview: "create_pose", exportable: false });
+    expect(imported.animations[1].availability).toMatchObject({ preview: "create_pose", exportable: true });
     expect(imported.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "bedrock_animation_bone_ignored" }),
       expect.objectContaining({ code: "bedrock_animation_molang_unavailable" }),
@@ -141,9 +141,11 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations[0]).toMatchObject({
       name: "runtime",
       tracks: {},
-      availability: { preview: "create_pose", exportable: false },
+      availability: { preview: "create_pose", exportable: true },
     });
     expect(imported.diagnostics[0].message).toContain("replace the expression at runtime.body.rotation[1]");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(compiled.timeline).toMatchObject({ duration: "20t", tracks: {} });
   });
 
   it("silently hides left item, right item, and cape helper bones", async () => {

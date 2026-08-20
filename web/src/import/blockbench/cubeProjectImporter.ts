@@ -129,7 +129,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       return importAnimation(animation, index, bones, diagnostics);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
-      const message = `${animation.name} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations[${index}]`} with constants or q.anim_time-based Molang.`;
+      const message = `${animation.name} contains Molang that the converter cannot evaluate. The Create pose will be used for preview and export. To restore the animation, replace the expression at ${reason.sourcePath ?? `animations[${index}]`} with constants or q.anim_time-based Molang.`;
       diagnostics.push({
         severity: "warning",
         code: "geckolib_animation_molang_unavailable",
@@ -166,7 +166,7 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: false, reason },
+    availability: { preview: "create_pose", exportable: true, reason },
   };
 }
 

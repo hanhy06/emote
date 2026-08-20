@@ -35,7 +35,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
       if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
-        const message = `${name} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations.${name}`} with constants or q.anim_time-based Molang.`;
+        const message = `${name} contains Molang that the converter cannot evaluate. The Create pose will be used for preview and export. To restore the animation, replace the expression at ${reason.sourcePath ?? `animations.${name}`} with constants or q.anim_time-based Molang.`;
         diagnostics.push({
           severity: "warning",
           code: "bedrock_animation_molang_unavailable",
@@ -80,7 +80,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: false, reason },
+    availability: { preview: "create_pose", exportable: true, reason },
   };
 }
 

@@ -82,7 +82,7 @@ describe("animatedJavaJsonAdapter", () => {
 
     const imported = await animatedJavaJsonAdapter.import(input);
 
-    expect(imported.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: false });
+    expect(imported.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "animated_java_animation_molang_unavailable",
       message: expect.stringContaining("replace the expression at animations[0]"),
@@ -431,7 +431,7 @@ describe("animatedJavaJsonAdapter", () => {
 
     expect(imported.animations[0]).toMatchObject({
       tracks: {},
-      availability: { preview: "create_pose", exportable: false },
+      availability: { preview: "create_pose", exportable: true },
     });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "animated_java_animation_molang_unavailable",

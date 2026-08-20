@@ -59,10 +59,10 @@ describe("compileImportedProject time handling", () => {
     expect(() => compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" })).toThrow("normalize to the same id");
   });
 
-  it("rejects export when an imported animation is preview-only", () => {
+  it("rejects export only when neither preview nor fallback output is available", () => {
     const project = importedProject();
     project.animations[0].availability = {
-      preview: "create_pose",
+      preview: "unavailable",
       exportable: false,
       reason: "Runtime Molang cannot be evaluated.",
     };

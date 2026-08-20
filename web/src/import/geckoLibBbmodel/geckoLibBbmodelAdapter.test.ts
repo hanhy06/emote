@@ -254,7 +254,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(imported.animations[0]).toMatchObject({
       tracks: {},
-      availability: { preview: "create_pose", exportable: false },
+      availability: { preview: "create_pose", exportable: true },
     });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "geckolib_animation_molang_unavailable",
