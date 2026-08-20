@@ -85,16 +85,17 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .selection-box { position: absolute; z-index: 1; border: 1px solid #0067c0; background: rgb(0 103 192 / 14%); pointer-events: none; }
 .preview-loading { display: grid; height: 540px; place-items: center; color: #666; background: #f4f4f4; }
 .preview-error { height: 540px; margin: 0; padding: 16px; color: #b00020; }
-aside { display: flex; flex-direction: column; height: 540px; padding: 14px; overflow: hidden; border-left: 1px solid #aaa; background: #fff; }
-aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
+.assignment-panel { display: flex; flex-direction: column; height: 540px; padding: 14px; overflow-y: auto; scrollbar-gutter: stable; border-left: 1px solid #aaa; background: #fff; }
+.assignment-panel > p { flex: 0 0 auto; margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
 .assignment-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 12px; }
+.assignment-panel > .assignment-buttons, .assignment-panel > .order-control { flex: 0 0 auto; }
 .assignment-buttons-compact { grid-template-columns: repeat(3, 1fr); }
 .assignment-buttons button { display: flex; align-items: center; gap: 6px; }
 .assignment-buttons i { width: 10px; height: 10px; }
 .order-control { display: grid; grid-template-columns: auto minmax(0, 1fr) 2ch; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
 .order-control input { min-width: 0; padding: 0; }
 .order-control output { text-align: right; font-variant-numeric: tabular-nums; }
-.part-list { position: relative; flex: 1; min-height: 0; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; }
+.part-list { position: relative; flex: 1 0 180px; min-height: 180px; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; }
 .part-list button { display: flex; justify-content: space-between; width: 100%; margin-bottom: 4px; }
 .part-list button.selected { border-color: #0067c0; background: #e5f1fb; }
 .export { margin-top: 28px; padding: 20px; border: 1px solid #cfcfcf; }
@@ -183,7 +184,7 @@ aside > p { margin: 0 0 12px; color: #555; font-size: 13px; line-height: 1.45; }
   .part-preview { height: 420px; }
   .preview-loading { height: 420px; }
   .preview-error { height: 420px; }
-  aside { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
+  .assignment-panel { height: min(420px, 70vh); border-top: 1px solid #aaa; border-left: 0; }
   .command-editor-heading { align-items: flex-start; }
   .command-label-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .fields { grid-template-columns: 1fr; }
