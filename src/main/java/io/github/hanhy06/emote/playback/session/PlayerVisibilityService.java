@@ -81,6 +81,7 @@ public final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
+        this.playbackEngine.refreshHeldItems(player);
         PlaybackSession session = this.playbackEngine.findActive(player.getUUID());
         if (session != null && session.playerBehavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);

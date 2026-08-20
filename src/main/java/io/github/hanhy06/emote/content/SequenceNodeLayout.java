@@ -152,7 +152,7 @@ final class SequenceNodeLayout {
                 parentId,
                 item.transform(),
                 item.entityNbt(),
-                item.itemStackNbt(),
+                item.itemSource(),
                 item.itemDisplay(),
                 item.skin() == null ? null : new EmoteAnimation.Skin(
                     ParticipantRole.PARTNER,
@@ -179,7 +179,7 @@ final class SequenceNodeLayout {
         return switch (first) {
             case EmoteAnimation.ItemNode item -> candidate instanceof EmoteAnimation.ItemNode other
                 && item.entityNbt().equals(other.entityNbt())
-                && item.itemStackNbt().equals(other.itemStackNbt())
+                && item.itemSource().equals(other.itemSource())
                 && item.itemDisplay().equals(other.itemDisplay())
                 && Objects.equals(item.skin(), other.skin());
             case EmoteAnimation.BlockNode block -> candidate instanceof EmoteAnimation.BlockNode other

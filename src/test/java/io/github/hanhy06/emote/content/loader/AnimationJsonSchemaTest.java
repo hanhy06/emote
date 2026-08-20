@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
+import net.minecraft.world.entity.HumanoidArm;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -39,6 +40,32 @@ class AnimationJsonSchemaTest {
         root.addProperty("schema_version", 3);
 
         assertEquals("$.schema_version", assertInvalid(root).fieldPath());
+    }
+
+    @Test
+    void loadsParticipantPhysicalHandItemSource() throws Exception {
+        JsonObject root = base();
+        JsonObject display = root.getAsJsonObject("nodes").getAsJsonObject("display");
+        display.remove("item_stack_snbt");
+        display.add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"left\"}"));
+        display.addProperty("item_display", "thirdperson_lefthand");
+
+        EmoteAnimation.ItemNode node = (EmoteAnimation.ItemNode) parse(root).animation().nodes().get("display");
+
+        EmoteAnimation.ParticipantHandItemSource source = assertInstanceOf(
+            EmoteAnimation.ParticipantHandItemSource.class,
+            node.itemSource()
+        );
+        assertEquals(HumanoidArm.LEFT, source.arm());
+    }
+
+    @Test
+    void rejectsItemWithBothFixedAndParticipantSources() {
+        JsonObject root = base();
+        root.getAsJsonObject("nodes").getAsJsonObject("display")
+            .add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"right\"}"));
+
+        assertEquals("$.nodes.display", assertInvalid(root).fieldPath());
     }
 
     @Test

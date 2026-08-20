@@ -58,7 +58,7 @@ class AnimationContentResolverTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new CompoundTag(),
+            new EmoteAnimation.FixedItemSource(new CompoundTag()),
             "none",
             skin
         );

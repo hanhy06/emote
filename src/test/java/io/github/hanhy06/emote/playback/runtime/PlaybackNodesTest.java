@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback.runtime;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
@@ -56,7 +57,7 @@ class PlaybackNodesTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new CompoundTag(),
+            new EmoteAnimation.FixedItemSource(new CompoundTag()),
             "none",
             null
         );
@@ -75,6 +76,31 @@ class PlaybackNodesTest {
     }
 
     @Test
+    void heldItemNodeKeepsItsPhysicalArmWhenStackChanges() {
+        EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
+            true,
+            EmoteAnimation.NodeSpace.INITIATOR,
+            null,
+            EmoteAnimation.LocalTransform.IDENTITY,
+            new CompoundTag(),
+            new EmoteAnimation.ParticipantHandItemSource(HumanoidArm.RIGHT),
+            "thirdperson_righthand",
+            null
+        );
+        PlaybackNodes.NodeInstance node = new PlaybackNodes.NodeInstance(
+            "right_item",
+            itemNode,
+            null,
+            new PlaybackNodes.HeldItemContent(ItemStack.EMPTY, HumanoidArm.RIGHT)
+        );
+
+        node.setItemStack(ItemStack.EMPTY);
+
+        PlaybackNodes.HeldItemContent content = assertInstanceOf(PlaybackNodes.HeldItemContent.class, node.displayContent());
+        assertEquals(HumanoidArm.RIGHT, content.arm());
+    }
+
+    @Test
     void countsDisplayNodesOnceWithoutIncludingAnchors() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
@@ -82,7 +108,7 @@ class PlaybackNodesTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new CompoundTag(),
+            new EmoteAnimation.FixedItemSource(new CompoundTag()),
             "none",
             null
         );

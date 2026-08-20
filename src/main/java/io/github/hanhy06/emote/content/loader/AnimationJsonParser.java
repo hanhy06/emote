@@ -11,6 +11,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 
@@ -263,7 +264,7 @@ public final class AnimationJsonParser {
                 parentId,
                 transform,
                 entityNbt,
-                requireCompoundSnbt(object, "item_stack_snbt", path, reader),
+                parseItemSource(object, path, reader),
                 parseItemDisplay(object, path, reader),
                 parseSkin(object, space, path, reader)
             );
@@ -328,6 +329,31 @@ public final class AnimationJsonParser {
             throw reader.error(path + ".item_display", "unsupported item display context: " + value);
         }
         return value;
+    }
+
+    private ItemSource parseItemSource(JsonObject object, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        boolean hasStack = object.has("item_stack_snbt");
+        boolean hasSource = object.has("item_source");
+        if (hasStack == hasSource) {
+            throw reader.error(path, "must define exactly one of item_stack_snbt or item_source");
+        }
+        if (hasStack) {
+            return new FixedItemSource(requireCompoundSnbt(object, "item_stack_snbt", path, reader));
+        }
+
+        String sourcePath = path + ".item_source";
+        JsonObject source = reader.requireObject(object, "item_source", path);
+        String type = reader.requireString(source, "type", sourcePath);
+        if (!type.equals("participant_hand")) {
+            throw reader.error(sourcePath + ".type", "unsupported item source: " + type);
+        }
+        String arm = reader.requireString(source, "arm", sourcePath);
+        return new ParticipantHandItemSource(switch (arm) {
+            case "right" -> HumanoidArm.RIGHT;
+            case "left" -> HumanoidArm.LEFT;
+            default -> throw reader.error(sourcePath + ".arm", "unsupported physical arm: " + arm);
+        });
     }
 
     private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonReader reader)

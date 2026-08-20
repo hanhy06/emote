@@ -435,7 +435,7 @@ class SequenceCompilerTest {
                 null,
                 EmoteAnimation.LocalTransform.IDENTITY,
                 new CompoundTag(),
-                new CompoundTag(),
+                new EmoteAnimation.FixedItemSource(new CompoundTag()),
                 "none",
                 new EmoteAnimation.Skin(ParticipantRole.INITIATOR, EmoteAnimation.SkinPart.BODY, 0)
             ))

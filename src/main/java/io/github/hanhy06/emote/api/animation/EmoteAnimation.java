@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
+import net.minecraft.world.entity.HumanoidArm;
 
 import java.util.List;
 import java.util.Map;
@@ -83,7 +84,7 @@ public record EmoteAnimation(
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
-        CompoundTag itemStackNbt,
+        ItemSource itemSource,
         String itemDisplay,
         Skin skin
     ) implements Node {
@@ -91,8 +92,28 @@ public record EmoteAnimation(
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
-            itemStackNbt = copy(itemStackNbt);
+            Objects.requireNonNull(itemSource, "itemSource");
             Objects.requireNonNull(itemDisplay, "itemDisplay");
+        }
+    }
+
+    public sealed interface ItemSource permits FixedItemSource, ParticipantHandItemSource {
+    }
+
+    public record FixedItemSource(CompoundTag itemStackNbt) implements ItemSource {
+        public FixedItemSource {
+            itemStackNbt = copy(itemStackNbt);
+        }
+
+        @Override
+        public CompoundTag itemStackNbt() {
+            return this.itemStackNbt.copy();
+        }
+    }
+
+    public record ParticipantHandItemSource(HumanoidArm arm) implements ItemSource {
+        public ParticipantHandItemSource {
+            Objects.requireNonNull(arm, "arm");
         }
     }
 

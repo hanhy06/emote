@@ -203,6 +203,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
+            this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
             AnimationPlayer timeline = new AnimationPlayer(emote, nodes, this.entityController);
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
@@ -417,6 +418,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackParticipant partner = session.activateReservedPartner(animation);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
+        this.entityController.updateHeldItems(session.nodes(), EmoteAnimation.NodeSpace.PARTNER, player);
         animation.startEvents();
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
@@ -466,6 +468,19 @@ public class PlaybackEngine implements ConfigListener {
             throw new IllegalStateException("Initiator is unavailable");
         }
         return initiator;
+    }
+
+    public void refreshHeldItems(ServerPlayer player) {
+        PlaybackSession session = findActive(player.getUUID());
+        PlaybackParticipant participant = session == null ? null : session.participant(player.getUUID());
+        if (participant == null) {
+            return;
+        }
+        this.entityController.updateHeldItems(
+            session.nodes(),
+            EmoteAnimation.NodeSpace.forParticipant(participant.role()),
+            player
+        );
     }
 
     public void stopAll() {
