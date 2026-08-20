@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.application;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -45,7 +45,7 @@ public class EmotePlayService {
     }
 
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
-        PreparedDefinition emote = this.emoteCatalog.findDefinition(id);
+        PlayableEmote emote = this.emoteCatalog.find(id);
         if (emote == null) {
             return PlayResult.failure("Unknown: " + id);
         }
@@ -66,11 +66,11 @@ public class EmotePlayService {
 
     @FunctionalInterface
     interface PlaybackStarter {
-        PlayResult start(ServerPlayer player, PreparedDefinition emote);
+        PlayResult start(ServerPlayer player, PlayableEmote emote);
     }
 
     @FunctionalInterface
     interface PlayEventDispatcher {
-        Component beforePlay(ServerPlayer player, PreparedDefinition emote, PlaySource source);
+        Component beforePlay(ServerPlayer player, PlayableEmote emote, PlaySource source);
     }
 }

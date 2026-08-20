@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.core.Holder;
@@ -215,7 +215,7 @@ public final class EmoteMenu {
     }
 
     private String createActivePlaybackText(PlaybackSession session) {
-        PreparedDefinition emote = this.emoteCatalog.findDefinition(session.id());
+        PlayableEmote emote = this.emoteCatalog.find(session.id());
         String displayName = emote == null
             ? session.id()
             : emote.name();

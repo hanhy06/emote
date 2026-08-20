@@ -9,27 +9,27 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.Objects;
 
-public final class PreparedEmoteFixture {
-    private PreparedEmoteFixture() {
+public final class PreparedAnimationFixture {
+    private PreparedAnimationFixture() {
     }
 
-    public static PreparedEmote create(String id, String name) {
+    public static PreparedAnimation create(String id, String name) {
         return create(id, name, true, EmotePlayerBehavior.createDefault());
     }
 
-    public static PreparedEmote create(String id, String name, boolean standalone) {
+    public static PreparedAnimation create(String id, String name, boolean standalone) {
         return create(id, name, standalone, EmotePlayerBehavior.createDefault());
     }
 
-    public static PreparedEmote create(String id, String name, int cooldownTicks) {
+    public static PreparedAnimation create(String id, String name, int cooldownTicks) {
         return create(id, name, true, EmotePlayerBehavior.createDefault(), cooldownTicks);
     }
 
-    public static PreparedEmote create(String id, String name, boolean standalone, int cooldownTicks) {
+    public static PreparedAnimation create(String id, String name, boolean standalone, int cooldownTicks) {
         return create(id, name, standalone, EmotePlayerBehavior.createDefault(), cooldownTicks);
     }
 
-    public static PreparedEmote create(
+    public static PreparedAnimation create(
         String id,
         String name,
         EmotePlayerBehavior playerBehavior
@@ -37,7 +37,7 @@ public final class PreparedEmoteFixture {
         return create(id, name, true, playerBehavior);
     }
 
-    private static PreparedEmote create(
+    private static PreparedAnimation create(
         String id,
         String name,
         boolean standalone,
@@ -46,7 +46,7 @@ public final class PreparedEmoteFixture {
         return create(id, name, standalone, playerBehavior, 0);
     }
 
-    private static PreparedEmote create(
+    private static PreparedAnimation create(
         String id,
         String name,
         boolean standalone,
@@ -61,7 +61,7 @@ public final class PreparedEmoteFixture {
             Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY)),
             new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
         );
-        return PreparedEmote.from(new LoadedAnimation(
+        return PreparedAnimation.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             "0000000000000000000000000000000000000000000000000000000000000000",
             animation

@@ -34,7 +34,7 @@ class SequenceJsonLoaderTest {
 
     @Test
     void loadsParticipantsAndAwaitPartnerBranches(@TempDir Path tempDir) throws Exception {
-        EmoteSequence sequence = load(tempDir, "handshake.json", collaborativeJson(
+        EmoteSequence sequence = load(tempDir, "handshake.json", partnerJson(
             "^ ^ ^1.2",
             """
                 {"emote": ["example:handshake_left", "example:handshake_right"], "repeat": 3}
@@ -58,7 +58,7 @@ class SequenceJsonLoaderTest {
     @Test
     void rejectsAbsoluteParticipantPosition(@TempDir Path tempDir) throws Exception {
         Path path = tempDir.resolve("absolute-partner.json");
-        Files.writeString(path, collaborativeJson(
+        Files.writeString(path, partnerJson(
             "0 64 0",
             "{\"emote\":\"example:handshake\"}",
             "{\"emote\":\"example:withdraw\"}"
@@ -100,7 +100,7 @@ class SequenceJsonLoaderTest {
     @Test
     void rejectsASequenceControlAsTheCollaborationOffer(@TempDir Path tempDir) throws Exception {
         Path path = tempDir.resolve("control-offer.json");
-        Files.writeString(path, collaborativeJson(
+        Files.writeString(path, partnerJson(
             "^ ^ ^1.2",
             "{\"emote\":\"example:handshake\"}",
             "{\"emote\":\"example:withdraw\"}"
@@ -167,7 +167,7 @@ class SequenceJsonLoaderTest {
             """.formatted(playerJson(), steps);
     }
 
-    private static String collaborativeJson(String partnerPosition, String matched, String timeout) {
+    private static String partnerJson(String partnerPosition, String matched, String timeout) {
         return """
             {
               "type": "sequence",

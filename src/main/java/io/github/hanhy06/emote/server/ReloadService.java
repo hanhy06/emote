@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.server;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.animation.AnimationDirectoryLoader;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.ConfigManager;
@@ -44,7 +44,7 @@ public final class ReloadService {
         this.configManager.readConfig();
         this.configManager.readAccessConfig();
         ReloadStats stats = reloadRegistry();
-        Emote.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
+        EmoteMod.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
     }
 
     public ReloadResult reloadFromCommand() {
@@ -64,44 +64,44 @@ public final class ReloadService {
         this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
         ReloadStats stats = reloadRegistry();
         this.wheelSyncService.syncAll();
-        Emote.LOGGER.info("reload emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
+        EmoteMod.LOGGER.info("reload emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
         return stats;
     }
 
     private ReloadStats reloadRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
         var emotes = contents.animations().stream()
-            .map(PreparedEmote::from)
+            .map(PreparedAnimation::from)
             .toList();
         var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
-            PreparedEmote::id,
+            PreparedAnimation::id,
             java.util.function.Function.identity()
         ));
         var sequences = contents.sequences().stream()
             .map(sequence -> resolveSequence(sequence, animationsById))
             .filter(java.util.Objects::nonNull)
             .toList();
-        java.util.List<PreparedDefinition> definitions = new java.util.ArrayList<>(emotes);
+        java.util.List<PlayableEmote> definitions = new java.util.ArrayList<>(emotes);
         definitions.addAll(sequences);
         int ignoredCount = this.emoteCatalog.replace(definitions);
         if (ignoredCount > 0) {
-            Emote.LOGGER.warn(
+            EmoteMod.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
                 ignoredCount,
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return new ReloadStats(contents.detectedFileCount(), this.emoteCatalog.getFileDefinitions().size());
+        return new ReloadStats(contents.detectedFileCount(), this.emoteCatalog.fileEmotes().size());
     }
 
     private PreparedSequence resolveSequence(
         EmoteSequence sequence,
-        java.util.Map<String, PreparedEmote> animationsById
+        java.util.Map<String, PreparedAnimation> animationsById
     ) {
         try {
             return PreparedSequence.resolve(sequence, animationsById);
         } catch (IllegalArgumentException exception) {
-            Emote.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
+            EmoteMod.LOGGER.warn("Ignoring invalid emote sequence {}: {}", sequence.sourcePath(), exception.getMessage());
             return null;
         }
     }

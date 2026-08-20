@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.animation.molang.MolangEngine;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
@@ -15,14 +15,14 @@ import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
 final class AnimationRuntime {
-    private final PreparedEmote emote;
+    private final PreparedAnimation emote;
     private final PreparedAnimationTimeline timeline;
-    private final Map<String, PreparedEmote.PreparedTransform> transforms = new HashMap<>();
+    private final Map<String, PreparedAnimation.PreparedTransform> transforms = new HashMap<>();
     private final Map<String, Boolean> visibility = new HashMap<>();
 
     private MolangEngine.Session session;
 
-    AnimationRuntime(PreparedEmote emote) {
+    AnimationRuntime(PreparedAnimation emote) {
         this.emote = emote;
         this.timeline = emote.preparedTimeline();
     }
@@ -40,7 +40,7 @@ final class AnimationRuntime {
         return evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
     }
 
-    PreparedEmote.PreparedTransform currentTransform(String nodeId) {
+    PreparedAnimation.PreparedTransform currentTransform(String nodeId) {
         return this.transforms.get(nodeId);
     }
 
@@ -71,7 +71,7 @@ final class AnimationRuntime {
             resolved.put(nodeId, matrix);
             this.transforms.put(
                 nodeId,
-                PreparedEmote.PreparedTransform.create(matrix, node instanceof AnchorNode)
+                PreparedAnimation.PreparedTransform.create(matrix, node instanceof AnchorNode)
             );
             this.visibility.put(nodeId, visible(node, tracks, tick));
         }
@@ -232,7 +232,7 @@ final class AnimationRuntime {
         return start + (end - start) * progress;
     }
 
-    record Pose(Map<String, PreparedEmote.PreparedTransform> transforms, Map<String, Boolean> visibility) {
+    record Pose(Map<String, PreparedAnimation.PreparedTransform> transforms, Map<String, Boolean> visibility) {
     }
 
     private record Segment(CompiledVectorKeyframe current, CompiledVectorKeyframe next, double progress) {

@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import net.fabricmc.loader.api.FabricLoader;
 import org.jspecify.annotations.Nullable;
 
@@ -16,7 +16,7 @@ import java.util.Optional;
 import java.util.stream.Stream;
 
 public class ConfigManager {
-    private static final String CONFIG_FILE_DIR = Emote.MOD_ID;
+    private static final String CONFIG_FILE_DIR = EmoteMod.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String ACCESS_CONFIG_FILE_NAME = "emotes.json";
     private static final String ANIMATION_DIRECTORY_NAME = "animations";
@@ -51,7 +51,7 @@ public class ConfigManager {
             Files.createDirectories(this.configDirPath);
             Files.createDirectories(getAnimationDirectory());
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to create config files. Using default settings.", exception);
+            EmoteMod.LOGGER.warn("Failed to create config files. Using default settings.", exception);
             return;
         }
 
@@ -59,7 +59,7 @@ public class ConfigManager {
             try {
                 installBundledAnimations(this.bundledAnimationDirectory);
             } catch (IOException exception) {
-                Emote.LOGGER.warn("Failed to install bundled emote animations.", exception);
+                EmoteMod.LOGGER.warn("Failed to install bundled emote animations.", exception);
             }
         }
 
@@ -69,13 +69,13 @@ public class ConfigManager {
 
     private static Optional<Path> findBundledAnimationDirectory() {
         return FabricLoader.getInstance()
-            .getModContainer(Emote.MOD_ID)
+            .getModContainer(EmoteMod.MOD_ID)
             .flatMap(container -> container.findPath(BUNDLED_ANIMATION_DIRECTORY_NAME));
     }
 
     private void installBundledAnimations(@Nullable Path bundledAnimationDirectory) throws IOException {
         if (bundledAnimationDirectory == null) {
-            Emote.LOGGER.warn("Bundled emote animations were not found.");
+            EmoteMod.LOGGER.warn("Bundled emote animations were not found.");
             return;
         }
 
@@ -88,7 +88,7 @@ public class ConfigManager {
             }
         }
 
-        Emote.LOGGER.info("Installed bundled emote animations");
+        EmoteMod.LOGGER.info("Installed bundled emote animations");
     }
 
     public Config getConfig() {
@@ -109,19 +109,19 @@ public class ConfigManager {
         try {
             loadedConfig = this.jsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Config contains invalid field values. Keeping current config.", exception);
+            EmoteMod.LOGGER.warn("Config contains invalid field values. Keeping current config.", exception);
             broadcastConfig();
             return false;
         }
         if (loadedConfig == null) {
-            Emote.LOGGER.warn("Config is empty or invalid. Keeping current config.");
+            EmoteMod.LOGGER.warn("Config is empty or invalid. Keeping current config.");
             broadcastConfig();
             return false;
         }
 
         this.config = loadedConfig;
         broadcastConfig();
-        Emote.LOGGER.info("Loaded main config from {}", CONFIG_FILE_NAME);
+        EmoteMod.LOGGER.info("Loaded main config from {}", CONFIG_FILE_NAME);
         return true;
     }
 
@@ -131,20 +131,20 @@ public class ConfigManager {
         try {
             loadedConfig = this.jsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
+            EmoteMod.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
             broadcastAccessConfig();
             return false;
         }
 
         if (loadedConfig == null) {
-            Emote.LOGGER.warn("Emote access config is empty or invalid. Keeping current config.");
+            EmoteMod.LOGGER.warn("Emote access config is empty or invalid. Keeping current config.");
             broadcastAccessConfig();
             return false;
         }
 
         this.accessConfig = loadedConfig;
         broadcastAccessConfig();
-        Emote.LOGGER.info("Loaded emote access rules from {}", ACCESS_CONFIG_FILE_NAME);
+        EmoteMod.LOGGER.info("Loaded emote access rules from {}", ACCESS_CONFIG_FILE_NAME);
         return true;
     }
 
@@ -199,7 +199,7 @@ public class ConfigManager {
         try {
             return JsonFileStore.readObject(filePath);
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read {}: {}", fileName, exception.getMessage());
+            EmoteMod.LOGGER.warn("Failed to read {}: {}", fileName, exception.getMessage());
             return null;
         }
     }
@@ -218,10 +218,10 @@ public class ConfigManager {
 
         try {
             JsonFileStore.writeObjectAtomically(filePath, json, this.gson);
-            Emote.LOGGER.info("Saved {}", fileName);
+            EmoteMod.LOGGER.info("Saved {}", fileName);
             return true;
         } catch (IOException exception) {
-            Emote.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
+            EmoteMod.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
             return false;
         }
     }

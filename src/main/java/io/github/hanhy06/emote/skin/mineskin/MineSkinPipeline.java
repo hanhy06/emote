@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -197,7 +197,7 @@ public final class MineSkinPipeline {
                 System.currentTimeMillis()
             );
             if (result.totalFilesDeleted() > 0) {
-                Emote.LOGGER.info(
+                EmoteMod.LOGGER.info(
                     "Cleaned MineSkin cache: expired={}, capacity={}, transient={}, retained={} bytes",
                     result.expiredFilesDeleted(),
                     result.capacityFilesDeleted(),
@@ -206,7 +206,7 @@ public final class MineSkinPipeline {
                 );
             }
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to clean MineSkin cache", exception);
+            EmoteMod.LOGGER.warn("Failed to clean MineSkin cache", exception);
         } finally {
             this.generationQueue.schedule(
                 CACHE_CLEANUP_KEY,
@@ -283,7 +283,7 @@ public final class MineSkinPipeline {
                     int retryAttempt = bakeTask.recordRetry(textureKey, resolution.retryAtEpochMillis());
                     if (retryAttempt > RATE_LIMIT_RETRY_LIMIT) {
                         fail(bakeTask);
-                        Emote.LOGGER.warn(
+                        EmoteMod.LOGGER.warn(
                             "MineSkin bake exhausted retries for {} part {}: {}",
                             source.playerName(),
                             textureKey,
@@ -299,7 +299,7 @@ public final class MineSkinPipeline {
                         retryDelayMillis,
                         bakeTask.queueGeneration()
                     );
-                    Emote.LOGGER.warn(
+                    EmoteMod.LOGGER.warn(
                         "MineSkin bake rate limited for {} part {}. Retrying in {} ms ({}/{})",
                         source.playerName(),
                         textureKey,
@@ -317,17 +317,17 @@ public final class MineSkinPipeline {
                 this.cache.save(source.textureHash(), source.slimModel(), saved);
                 bakeTask.markCompleted(textureKey);
             }
-            Emote.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
+            EmoteMod.LOGGER.info("Saved MineSkin bake for {} ({})", source.playerName(), source.textureHash());
             if (bakeTask.isSatisfiedBy(saved.keySet())) {
                 complete(bakeTask);
             }
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             bakeTask.cancel();
-            Emote.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
+            EmoteMod.LOGGER.warn("MineSkin bake interrupted for {}", source.playerName(), exception);
         } catch (IOException | RuntimeException exception) {
             fail(bakeTask);
-            Emote.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
+            EmoteMod.LOGGER.warn("MineSkin bake failed for {}", source.playerName(), exception);
         }
     }
 
@@ -378,7 +378,7 @@ public final class MineSkinPipeline {
                 return TextureResolution.retry(retryAt, exception.getMessage());
             } else {
                 this.cache.saveFailure(contentHash, exception.getMessage(), now + FAILED_JOB_RETRY_DELAY_MILLIS);
-                Emote.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
+                EmoteMod.LOGGER.warn("MineSkin rejected baked texture {}: {}", contentHash, exception.getMessage());
                 return TextureResolution.failed(exception.getMessage());
             }
         }

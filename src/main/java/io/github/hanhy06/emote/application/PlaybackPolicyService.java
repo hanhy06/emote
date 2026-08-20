@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
-import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -47,7 +47,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         this.disabled = Set.copyOf(newConfig.disabled());
     }
 
-    Decision evaluate(ServerPlayer player, PreparedDefinition emote, PlaySource source) {
+    Decision evaluate(ServerPlayer player, PlayableEmote emote, PlaySource source) {
         Objects.requireNonNull(emote, "emote");
         Objects.requireNonNull(source, "source");
 
@@ -85,7 +85,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         }
     }
 
-    public boolean isVisibleForCommand(ServerPlayer player, PreparedDefinition emote) {
+    public boolean isVisibleForCommand(ServerPlayer player, PlayableEmote emote) {
         Rules rules = rulesFor(player, PlaySource.COMMAND);
         return (!rules.checkStandalone() || emote.standalone())
             && (!rules.checkDisabled() || !this.disabled.contains(emote.id()))

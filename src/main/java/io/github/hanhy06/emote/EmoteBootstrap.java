@@ -70,6 +70,6 @@ final class EmoteBootstrap {
         lifecycle.register();
         commands.register();
 
-        Emote.LOGGER.info("{} ready", Emote.MOD_ID);
+        EmoteMod.LOGGER.info("{} ready", EmoteMod.MOD_ID);
     }
 }

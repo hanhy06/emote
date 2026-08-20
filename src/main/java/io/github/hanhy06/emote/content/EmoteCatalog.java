@@ -8,27 +8,27 @@ public class EmoteCatalog {
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
 
     private volatile RegistryState state = RegistryState.empty();
-    private Map<String, PreparedDefinition> fileDefinitions = Map.of();
+    private Map<String, PlayableEmote> fileEmotes = Map.of();
 
-    public synchronized int replace(Collection<? extends PreparedDefinition> definitions) {
-        List<PreparedDefinition> sorted = new ArrayList<>(definitions);
-        sorted.sort(Comparator.comparing(PreparedDefinition::id));
+    public synchronized int replace(Collection<? extends PlayableEmote> emotes) {
+        List<PlayableEmote> sorted = new ArrayList<>(emotes);
+        sorted.sort(Comparator.comparing(PlayableEmote::id));
 
-        LinkedHashMap<String, PreparedDefinition> byId = new LinkedHashMap<>();
-        for (PreparedDefinition definition : sorted) {
+        LinkedHashMap<String, PlayableEmote> byId = new LinkedHashMap<>();
+        for (PlayableEmote definition : sorted) {
             if (byId.putIfAbsent(definition.id(), definition) != null) {
                 throw new IllegalArgumentException("Duplicate emote id: " + definition.id());
             }
         }
 
-        this.fileDefinitions = Map.copyOf(byId);
+        this.fileEmotes = Map.copyOf(byId);
         rebuildState();
-        return this.fileDefinitions.size() - this.state.fileDefinitions().size();
+        return this.fileEmotes.size() - this.state.fileEmotes().size();
     }
 
-    public synchronized UUID registerApi(PreparedEmote emote) {
+    public synchronized UUID register(PreparedAnimation emote) {
         Objects.requireNonNull(emote, "emote");
-        if (this.fileDefinitions.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
+        if (this.fileEmotes.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
             throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
         }
         if (this.apiEmotes.size() >= MAX_EMOTE_COUNT) {
@@ -41,7 +41,7 @@ public class EmoteCatalog {
         return registrationId;
     }
 
-    public synchronized boolean unregisterApi(String id, UUID registrationId) {
+    public synchronized boolean unregister(String id, UUID registrationId) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(registrationId, "registrationId");
         ApiEntry entry = this.apiEmotes.get(id);
@@ -69,68 +69,68 @@ public class EmoteCatalog {
         return removedCount;
     }
 
-    public List<PreparedEmote> getAll() {
+    public List<PreparedAnimation> animations() {
         return this.state.animations();
     }
 
-    public List<PreparedDefinition> getAllDefinitions() {
-        return this.state.definitions();
+    public List<PlayableEmote> emotes() {
+        return this.state.emotes();
     }
 
-    public List<PreparedDefinition> getFileDefinitions() {
-        return this.state.fileDefinitions();
+    public List<PlayableEmote> fileEmotes() {
+        return this.state.fileEmotes();
     }
 
-    public PreparedDefinition findDefinition(String id) {
-        return this.state.definitionsById().get(id);
+    public PlayableEmote find(String id) {
+        return this.state.emotesById().get(id);
     }
 
-    public PreparedDefinition findFileDefinition(String id) {
-        return this.state.fileDefinitions().stream()
+    public PlayableEmote findFileEmote(String id) {
+        return this.state.fileEmotes().stream()
             .filter(definition -> definition.id().equals(id))
             .findFirst()
             .orElse(null);
     }
 
     public int size() {
-        return this.state.definitions().size();
+        return this.state.emotes().size();
     }
 
     private void rebuildState() {
-        List<PreparedEmote> apiList = this.apiEmotes.values().stream()
+        List<PreparedAnimation> apiList = this.apiEmotes.values().stream()
             .map(ApiEntry::emote)
-            .sorted(Comparator.comparing(PreparedEmote::id))
+            .sorted(Comparator.comparing(PreparedAnimation::id))
             .toList();
-        List<PreparedDefinition> fileList = this.fileDefinitions.values().stream()
+        List<PlayableEmote> fileList = this.fileEmotes.values().stream()
             .filter(definition -> !this.apiEmotes.containsKey(definition.id()))
-            .sorted(Comparator.comparing(PreparedDefinition::id))
+            .sorted(Comparator.comparing(PlayableEmote::id))
             .limit(MAX_EMOTE_COUNT - apiList.size())
             .toList();
-        List<PreparedDefinition> combined = new ArrayList<>(apiList.size() + fileList.size());
+        List<PlayableEmote> combined = new ArrayList<>(apiList.size() + fileList.size());
         combined.addAll(apiList);
         combined.addAll(fileList);
-        combined.sort(Comparator.comparing(PreparedDefinition::id));
+        combined.sort(Comparator.comparing(PlayableEmote::id));
 
-        LinkedHashMap<String, PreparedDefinition> definitionsById = new LinkedHashMap<>();
-        for (PreparedDefinition definition : combined) {
-            definitionsById.put(definition.id(), definition);
+        LinkedHashMap<String, PlayableEmote> emotesById = new LinkedHashMap<>();
+        for (PlayableEmote definition : combined) {
+            emotesById.put(definition.id(), definition);
         }
         this.state = new RegistryState(
-            Map.copyOf(definitionsById),
+            Map.copyOf(emotesById),
             List.copyOf(combined),
-            combined.stream().filter(PreparedEmote.class::isInstance).map(PreparedEmote.class::cast).toList(),
+            combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
             List.copyOf(fileList)
         );
     }
 
-    private record ApiEntry(UUID registrationId, PreparedEmote emote) {
+    private record ApiEntry(UUID registrationId, PreparedAnimation emote) {
     }
 
     private record RegistryState(
-        Map<String, PreparedDefinition> definitionsById,
-        List<PreparedDefinition> definitions,
-        List<PreparedEmote> animations,
-        List<PreparedDefinition> fileDefinitions
+        Map<String, PlayableEmote> emotesById,
+        List<PlayableEmote> emotes,
+        List<PreparedAnimation> animations,
+        List<PlayableEmote> fileEmotes
     ) {
         private static RegistryState empty() {
             return new RegistryState(Map.of(), List.of(), List.of(), List.of());

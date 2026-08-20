@@ -4,7 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import net.fabricmc.loader.api.FabricLoader;
 
 import javax.imageio.ImageIO;
@@ -374,11 +374,11 @@ public final class MineSkinClient {
     private static String createUserAgent() {
         try {
             return FabricLoader.getInstance()
-                .getModContainer(Emote.MOD_ID)
-                .map(container -> Emote.MOD_ID + "/" + container.getMetadata().getVersion().getFriendlyString())
-                .orElse(Emote.MOD_ID + "/dev");
+                .getModContainer(EmoteMod.MOD_ID)
+                .map(container -> EmoteMod.MOD_ID + "/" + container.getMetadata().getVersion().getFriendlyString())
+                .orElse(EmoteMod.MOD_ID + "/dev");
         } catch (RuntimeException exception) {
-            return Emote.MOD_ID + "/dev";
+            return EmoteMod.MOD_ID + "/dev";
         }
     }
 

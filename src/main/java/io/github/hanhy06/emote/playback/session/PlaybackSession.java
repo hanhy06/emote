@@ -19,7 +19,7 @@ public final class PlaybackSession {
     private final PlaybackNodes nodes;
     private AnimationPlayer animation;
     private final EmotePlayerBehavior playerBehavior;
-    private final @Nullable PreparedSequence collaborativeSequence;
+    private final @Nullable PreparedSequence partnerSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
     private final Collection<PlaybackParticipant> participantView = Collections.unmodifiableCollection(this.participants.values());
     private final Map<ParticipantRole, PlaybackParticipant> participantMapView = Collections.unmodifiableMap(this.participants);
@@ -37,7 +37,7 @@ public final class PlaybackSession {
         AnimationPlayer animation,
         EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator,
-        @Nullable PreparedSequence collaborativeSequence
+        @Nullable PreparedSequence partnerSequence
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -46,9 +46,9 @@ public final class PlaybackSession {
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.animation = Objects.requireNonNull(animation, "animation");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
-        this.collaborativeSequence = collaborativeSequence;
-        this.state = collaborativeSequence == null ? State.SOLO : State.OFFERING;
-        this.remainingTimeoutTicks = collaborativeSequence == null ? 0 : collaborativeSequence.collaboration().timeoutTicks();
+        this.partnerSequence = partnerSequence;
+        this.state = partnerSequence == null ? State.SOLO : State.OFFERING;
+        this.remainingTimeoutTicks = partnerSequence == null ? 0 : partnerSequence.partnerPlayback().timeoutTicks();
         addParticipant(Objects.requireNonNull(initiator, "initiator"));
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
@@ -103,15 +103,15 @@ public final class PlaybackSession {
         return null;
     }
 
-    public boolean collaborative() {
-        return this.collaborativeSequence != null;
+    public boolean hasPartner() {
+        return this.partnerSequence != null;
     }
 
-    public PreparedSequence collaborativeSequence() {
-        if (this.collaborativeSequence == null) {
-            throw new IllegalStateException("Solo sessions do not have a collaborative sequence");
+    public PreparedSequence partnerSequence() {
+        if (this.partnerSequence == null) {
+            throw new IllegalStateException("Solo sessions do not have a partner sequence");
         }
-        return this.collaborativeSequence;
+        return this.partnerSequence;
     }
 
     public State state() {

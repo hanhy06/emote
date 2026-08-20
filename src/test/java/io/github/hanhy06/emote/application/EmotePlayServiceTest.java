@@ -13,7 +13,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
+import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmotePlayServiceTest {

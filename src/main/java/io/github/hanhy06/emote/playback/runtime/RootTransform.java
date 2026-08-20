@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
@@ -36,7 +36,7 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         return new Matrix4f(this.rotationMatrix).mul(nodeMatrix);
     }
 
-    public Transformation displayTransformation(PreparedEmote.PreparedTransform transform) {
+    public Transformation displayTransformation(PreparedAnimation.PreparedTransform transform) {
         if (transform.preservesMatrix()) {
             return new Transformation(new Matrix4f(this.rotationMatrix).mul(transform.localMatrix()));
         }

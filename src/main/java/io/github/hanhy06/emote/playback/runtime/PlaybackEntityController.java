@@ -4,7 +4,7 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedDisplayData;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.minecraft.BlockDisplayAccessor;
 import io.github.hanhy06.emote.minecraft.DisplayAccessor;
 import io.github.hanhy06.emote.minecraft.ItemDisplayAccessor;
@@ -67,15 +67,15 @@ public final class PlaybackEntityController {
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
     private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;
 
-    public PlaybackNodes create(ServerPlayer player, PreparedEmote emote) {
+    public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
         return create(player.level(), RootTransform.fromPlayer(player), emote);
     }
 
-    PlaybackNodes create(ServerLevel level, RootTransform root, PreparedEmote emote) {
+    PlaybackNodes create(ServerLevel level, RootTransform root, PreparedAnimation emote) {
         return create(level, SceneRootResolver.single(root), emote);
     }
 
-    public PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, PreparedEmote emote) {
+    public PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, PreparedAnimation emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
@@ -89,7 +89,7 @@ public final class PlaybackEntityController {
         return new PlaybackNodes(spaces, instances);
     }
 
-    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
+    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedAnimation emote) {
         return create(level, RootTransform.create(position, yaw), emote);
     }
 
@@ -154,7 +154,7 @@ public final class PlaybackEntityController {
     public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
-        PreparedEmote.PreparedTransform transform,
+        PreparedAnimation.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
         if (node.isAnchor()) {

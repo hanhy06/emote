@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.mixin;
 
-import io.github.hanhy06.emote.EmoteClient;
+import io.github.hanhy06.emote.EmoteClientMod;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.entity.player.AvatarRenderer;
@@ -25,7 +25,7 @@ abstract class AvatarRendererMixin {
         CallbackInfo callbackInfo
     ) {
         LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null || entity != player || !EmoteClient.shouldHideLocalPlayerEquipment()) {
+        if (player == null || entity != player || !EmoteClientMod.shouldHideLocalPlayerEquipment()) {
             return;
         }
 

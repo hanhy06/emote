@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.network;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -22,7 +22,7 @@ public class WheelSyncService {
     }
 
     public void syncAll() {
-        for (ServerPlayer player : Emote.SERVER.getPlayerList().getPlayers()) {
+        for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
             syncPlayer(player);
         }
     }

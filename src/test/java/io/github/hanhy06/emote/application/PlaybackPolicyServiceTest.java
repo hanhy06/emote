@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
 import org.junit.jupiter.api.Test;
 
@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
-import static io.github.hanhy06.emote.content.PreparedEmoteFixture.create;
+import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackPolicyServiceTest {
@@ -46,7 +46,7 @@ class PlaybackPolicyServiceTest {
         );
         service.onAccessConfigReload(new AccessConfig(List.of("demo:disabled"), List.of()));
 
-        PreparedEmote idle = create("demo:idle", "Idle", 20);
+        PreparedAnimation idle = create("demo:idle", "Idle", 20);
         PlaybackPolicyService.Decision first = service.evaluate(null, idle, PlaySource.IDLE);
         assertAllowed(first);
         service.onPlaybackStarted(first);
@@ -63,7 +63,7 @@ class PlaybackPolicyServiceTest {
             new AtomicLong()
         );
         service.onAccessConfigReload(new AccessConfig(List.of("demo:internal"), List.of()));
-        PreparedEmote emote = create("demo:internal", "Internal", false, 20);
+        PreparedAnimation emote = create("demo:internal", "Internal", false, 20);
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.API);
         assertAllowed(first);
@@ -79,7 +79,7 @@ class PlaybackPolicyServiceTest {
             new AtomicLong()
         );
         service.onAccessConfigReload(new AccessConfig(List.of("demo:internal"), List.of()));
-        PreparedEmote emote = create("demo:internal", "Internal", false, 20);
+        PreparedAnimation emote = create("demo:internal", "Internal", false, 20);
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(first);
@@ -100,7 +100,7 @@ class PlaybackPolicyServiceTest {
             List.of(),
             List.of(entry("emote.default", List.of("demo:wave")))
         ));
-        PreparedEmote emote = create("demo:wave", "Wave", 20);
+        PreparedAnimation emote = create("demo:wave", "Wave", 20);
 
         PlaybackPolicyService.Decision notStarted = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(notStarted);

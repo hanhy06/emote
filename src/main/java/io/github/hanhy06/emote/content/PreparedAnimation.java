@@ -14,7 +14,7 @@ import org.joml.Vector3f;
 import java.nio.file.Path;
 import java.util.*;
 
-public final class PreparedEmote implements PreparedDefinition {
+public final class PreparedAnimation implements PlayableEmote {
     private static final SkinBindingCompiler SKIN_PART_FACTORY = new SkinBindingCompiler();
     private final LoadedAnimation source;
     private final List<SkinBinding> skinParts;
@@ -26,7 +26,7 @@ public final class PreparedEmote implements PreparedDefinition {
     private final List<PlaybackSegment> playbackSegments;
     private final Map<Integer, Set<String>> hiddenNodes;
 
-    private PreparedEmote(
+    private PreparedAnimation(
         LoadedAnimation source,
         List<SkinBinding> skinParts,
         EmoteAnimation animation,
@@ -48,11 +48,11 @@ public final class PreparedEmote implements PreparedDefinition {
         this.hiddenNodes = hiddenNodes;
     }
 
-    public static PreparedEmote from(LoadedAnimation source) {
+    public static PreparedAnimation from(LoadedAnimation source) {
         return from(source, SKIN_PART_FACTORY.create(source.animation()));
     }
 
-    public static PreparedEmote from(LoadedAnimation source, List<SkinBinding> skinParts) {
+    public static PreparedAnimation from(LoadedAnimation source, List<SkinBinding> skinParts) {
         Objects.requireNonNull(source, "source");
         skinParts = List.copyOf(skinParts);
         EmoteAnimation animation = source.animation();
@@ -68,7 +68,7 @@ public final class PreparedEmote implements PreparedDefinition {
             eventsByTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(event.event());
         }
 
-        return new PreparedEmote(
+        return new PreparedAnimation(
             source,
             skinParts,
             animation,
@@ -81,15 +81,15 @@ public final class PreparedEmote implements PreparedDefinition {
         );
     }
 
-    static PreparedEmote sequence(
-        PreparedEmote layout,
+    static PreparedAnimation sequence(
+        PreparedAnimation layout,
         List<PlaybackSegment> playbackSegments,
         Map<Integer, Set<String>> hiddenNodes
     ) {
         Objects.requireNonNull(layout, "layout");
         Map<Integer, Set<String>> copiedHiddenNodes = new HashMap<>();
         hiddenNodes.forEach((tick, nodeIds) -> copiedHiddenNodes.put(tick, Set.copyOf(nodeIds)));
-        return new PreparedEmote(
+        return new PreparedAnimation(
             layout.source,
             layout.skinParts,
             layout.animation,
@@ -195,7 +195,7 @@ public final class PreparedEmote implements PreparedDefinition {
     public record PlaybackSegment(
         int startTick,
         int endTick,
-        PreparedEmote animation,
+        PreparedAnimation animation,
         Map<String, String> mirroredNodes
     ) {
         public PlaybackSegment {

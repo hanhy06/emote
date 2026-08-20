@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.server;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
@@ -65,7 +65,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
         if (!advanceCheckSchedule()) {
             return;
         }
-        for (ServerPlayer player : Emote.SERVER.getPlayerList().getPlayers()) {
+        for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
             tickPlayer(player.getUUID(), player.getLastActionTime(), player);
         }
     }

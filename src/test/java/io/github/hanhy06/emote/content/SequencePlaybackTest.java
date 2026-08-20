@@ -22,8 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class SequencePlaybackTest {
     @Test
     void startsIndependentMolangSessionForEachAnimationSegment() throws Exception {
-        PreparedEmote first = animation("example:first", 1);
-        PreparedEmote second = animation("example:second", 10);
+        PreparedAnimation first = animation("example:first", 1);
+        PreparedAnimation second = animation("example:second", 10);
         EmoteSequence sequence = new EmoteSequence(
             Path.of("sequence.json"),
             Identifier.parse("example:sequence"),
@@ -36,7 +36,7 @@ class SequencePlaybackTest {
             )
         );
         PreparedSequence prepared = PreparedSequence.resolve(sequence, Map.of(first.id(), first, second.id(), second));
-        PreparedEmote playback = prepared.compileRandom(new Random(1));
+        PreparedAnimation playback = prepared.compile(new Random(1));
         FakeTarget target = new FakeTarget();
         AnimationPlayer player = new AnimationPlayer(playback, target);
 
@@ -53,9 +53,9 @@ class SequencePlaybackTest {
 
     @Test
     void duplicatesHierarchyAndTracksForGeneratedPartner() throws Exception {
-        PreparedEmote animation = animation("example:mirror", 1);
+        PreparedAnimation animation = animation("example:mirror", 1);
 
-        SequenceNodeLayout.Expansion expansion = SequenceNodeLayout.expandCollaborativeLayout(
+        SequenceNodeLayout.Expansion expansion = SequenceNodeLayout.expandPartnerLayout(
             true,
             animation.animation(),
             Map.of()
@@ -72,7 +72,7 @@ class SequencePlaybackTest {
         );
     }
 
-    private PreparedEmote animation(String id, int initialValue) throws Exception {
+    private PreparedAnimation animation(String id, int initialValue) throws Exception {
         String json = """
             {
               "type":"animation",
@@ -130,7 +130,7 @@ class SequencePlaybackTest {
             Path.of(id.replace(':', '_') + ".json"),
             json.getBytes(StandardCharsets.UTF_8)
         );
-        return PreparedEmote.from(loaded);
+        return PreparedAnimation.from(loaded);
     }
 
     private EmotePlayerBehavior playerBehavior() {
@@ -143,12 +143,12 @@ class SequencePlaybackTest {
         private final Map<String, Transformation> transforms = new HashMap<>();
 
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             return new Transformation(transform.localMatrix());
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
             this.transforms.put(nodeId, createTransformation(nodeId, transform));
         }
 

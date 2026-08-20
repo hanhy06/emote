@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.server;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
@@ -69,11 +69,11 @@ public class ServerLifecycle {
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
-                if (Emote.SERVER.isSameThread()) {
+                if (EmoteMod.SERVER.isSameThread()) {
                     this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idlePlaybackService.removePlayer(handler.player);
                 } else {
-                    Emote.SERVER.execute(() -> {
+                    EmoteMod.SERVER.execute(() -> {
                         this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idlePlaybackService.removePlayer(handler.player);
                     });
@@ -83,7 +83,7 @@ public class ServerLifecycle {
     }
 
     private void handleServerStarted(MinecraftServer server) {
-        Emote.SERVER = server;
+        EmoteMod.SERVER = server;
         this.reloadService.loadOnServerStart();
     }
 
@@ -93,10 +93,10 @@ public class ServerLifecycle {
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();
-        Emote.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
+        EmoteMod.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
     }
 
     private void handleServerStopped(MinecraftServer ignoredServer) {
-        Emote.SERVER = null;
+        EmoteMod.SERVER = null;
     }
 }

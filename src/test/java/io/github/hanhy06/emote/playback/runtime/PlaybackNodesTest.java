@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.runtime;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
@@ -154,7 +154,7 @@ class PlaybackNodesTest {
             ),
             Map.of()
         );
-        PreparedEmote.PreparedTransform transform = PreparedEmote.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
+        PreparedAnimation.PreparedTransform transform = PreparedAnimation.PreparedTransform.create(EmoteAnimation.LocalTransform.IDENTITY, false);
 
         var firstScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);
         var secondScene = nodes.displayTransformation(EmoteAnimation.NodeSpace.SCENE, transform);

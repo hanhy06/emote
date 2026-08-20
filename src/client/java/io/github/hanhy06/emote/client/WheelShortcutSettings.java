@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.client;
 
 import com.google.gson.*;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.config.JsonFileStore;
 
@@ -207,13 +207,13 @@ public class WheelShortcutSettings {
         try {
             JsonObject root = JsonFileStore.readObject(this.filePath);
             if (root == null || readInt(root.get("schema_version")) != CURRENT_SCHEMA_VERSION) {
-                Emote.LOGGER.warn("Wheel shortcut settings are empty or use an unsupported schema version.");
+                EmoteMod.LOGGER.warn("Wheel shortcut settings are empty or use an unsupported schema version.");
                 return;
             }
 
             JsonElement serversElement = root.get("servers");
             if (serversElement == null || !serversElement.isJsonObject()) {
-                Emote.LOGGER.warn("Wheel shortcut settings do not contain a valid servers object.");
+                EmoteMod.LOGGER.warn("Wheel shortcut settings do not contain a valid servers object.");
                 return;
             }
 
@@ -234,7 +234,7 @@ public class WheelShortcutSettings {
                 }
             }
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read wheel shortcut settings: {}", exception.getMessage());
+            EmoteMod.LOGGER.warn("Failed to read wheel shortcut settings: {}", exception.getMessage());
         }
     }
 
@@ -259,7 +259,7 @@ public class WheelShortcutSettings {
         try {
             JsonFileStore.writeObjectAtomically(this.filePath, root, this.gson);
         } catch (IOException exception) {
-            Emote.LOGGER.error("Failed to save wheel shortcut settings: {}", exception.getMessage());
+            EmoteMod.LOGGER.error("Failed to save wheel shortcut settings: {}", exception.getMessage());
         }
     }
 

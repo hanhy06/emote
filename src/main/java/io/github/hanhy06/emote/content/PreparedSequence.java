@@ -15,9 +15,9 @@ import java.util.random.RandomGenerator;
 public record PreparedSequence(
     EmoteSequence source,
     Playback playback,
-    PreparedEmote layoutAnchor,
-    PreparedEmote compiledAnimation
-) implements PreparedDefinition {
+    PreparedAnimation layoutAnchor,
+    PreparedAnimation compiledAnimation
+) implements PlayableEmote {
     public PreparedSequence {
         Objects.requireNonNull(source, "source");
         Objects.requireNonNull(playback, "playback");
@@ -25,12 +25,12 @@ public record PreparedSequence(
         Objects.requireNonNull(compiledAnimation, "compiledAnimation");
     }
 
-    public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedEmote> animations) {
+    public static PreparedSequence resolve(EmoteSequence source, Map<String, PreparedAnimation> animations) {
         Playback playback = resolvePlayback(source, animations);
-        PreparedEmote layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
+        PreparedAnimation layoutAnchor = SequenceNodeLayout.validateAndCreateLayout(playback.validationSteps());
         List<SelectedStep> initialSteps = switch (playback) {
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
-            case CollaborativePlayback collaborative -> List.of(new SelectedEmoteStep(collaborative.offer(), false));
+            case PartnerPlayback partner -> List.of(new SelectedEmoteStep(partner.offer(), false));
         };
         return new PreparedSequence(
             source,
@@ -40,9 +40,9 @@ public record PreparedSequence(
         );
     }
 
-    private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedEmote> animations) {
+    private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
         if (source.steps().getFirst() instanceof EmoteSequence.AwaitPartnerStep await) {
-            return new CollaborativePlayback(
+            return new PartnerPlayback(
                 resolveAnimation(await.offerEmoteId().toString(), animations),
                 await.timeoutTicks(),
                 resolveBranch(await.matched(), animations),
@@ -52,7 +52,7 @@ public record PreparedSequence(
         return new LinearPlayback(resolveBranch(source.steps(), animations));
     }
 
-    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedEmote> animations) {
+    private static Branch resolveBranch(List<EmoteSequence.Step> sourceSteps, Map<String, PreparedAnimation> animations) {
         List<Step> resolvedSteps = new ArrayList<>(sourceSteps.size());
         for (EmoteSequence.Step sourceStep : sourceSteps) {
             if (sourceStep instanceof EmoteSequence.WaitStep(int ticks)) {
@@ -67,7 +67,7 @@ public record PreparedSequence(
                     candidates.add(new ControlChoice(control, choice.chance()));
                     continue;
                 }
-                PreparedEmote animation = resolveAnimation(choice.emoteId().toString(), animations);
+                PreparedAnimation animation = resolveAnimation(choice.emoteId().toString(), animations);
                 candidates.add(new AnimationChoice(animation, choice.chance()));
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat()));
@@ -75,8 +75,8 @@ public record PreparedSequence(
         return new Branch(resolvedSteps);
     }
 
-    private static PreparedEmote resolveAnimation(String id, Map<String, PreparedEmote> animations) {
-        PreparedEmote animation = animations.get(id);
+    private static PreparedAnimation resolveAnimation(String id, Map<String, PreparedAnimation> animations) {
+        PreparedAnimation animation = animations.get(id);
         if (animation == null) {
             throw new IllegalArgumentException("Unknown or disabled animation: " + id);
         }
@@ -89,35 +89,35 @@ public record PreparedSequence(
         return animation;
     }
 
-    public PreparedEmote compileRandom(RandomGenerator random) {
+    public PreparedAnimation compile(RandomGenerator random) {
         if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Collaborative sequence branches must be compiled separately: " + id());
+            throw new IllegalStateException("Partner sequence branches must be compiled separately: " + id());
         }
         return SequenceCompiler.compile(this.source, selectSteps(linear.branch(), random), this.layoutAnchor);
     }
 
-    public PreparedEmote compileMatchedRandom(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(collaboration().matched(), random), this.layoutAnchor);
+    public PreparedAnimation compileMatch(RandomGenerator random) {
+        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().matched(), random), this.layoutAnchor);
     }
 
-    public PreparedEmote compileTimeoutRandom(RandomGenerator random) {
-        return SequenceCompiler.compile(this.source, selectSteps(collaboration().timeout(), random), this.layoutAnchor);
+    public PreparedAnimation compileTimeout(RandomGenerator random) {
+        return SequenceCompiler.compile(this.source, selectSteps(partnerPlayback().timeout(), random), this.layoutAnchor);
     }
 
-    public boolean collaborative() {
-        return this.playback instanceof CollaborativePlayback;
+    public boolean hasPartner() {
+        return this.playback instanceof PartnerPlayback;
     }
 
-    public CollaborativePlayback collaboration() {
-        if (!(this.playback instanceof CollaborativePlayback collaboration)) {
-            throw new IllegalStateException("Sequence is not collaborative: " + id());
+    public PartnerPlayback partnerPlayback() {
+        if (!(this.playback instanceof PartnerPlayback partnerPlayback)) {
+            throw new IllegalStateException("Sequence is not partner: " + id());
         }
-        return collaboration;
+        return partnerPlayback;
     }
 
     List<SelectedStep> selectSteps(RandomGenerator random) {
         if (!(this.playback instanceof LinearPlayback linear)) {
-            throw new IllegalStateException("Collaborative sequence branches must be selected separately: " + id());
+            throw new IllegalStateException("Partner sequence branches must be selected separately: " + id());
         }
         return selectSteps(linear.branch(), random);
     }
@@ -131,7 +131,7 @@ public record PreparedSequence(
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedEmote> selectedAnimations = new ArrayList<>();
+            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
             int animationCandidateCount = (int) emoteStep.candidates().stream().filter(AnimationChoice.class::isInstance).count();
             int previousAnimationIndex = -1;
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
@@ -158,7 +158,7 @@ public record PreparedSequence(
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedEmote> selectedAnimations = new ArrayList<>();
+            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
                 Choice selected = emoteStep.candidates().getFirst();
                 if (selected instanceof AnimationChoice animation) {
@@ -172,7 +172,7 @@ public record PreparedSequence(
         return selectedSteps;
     }
 
-    private static void appendSelectedAnimations(List<SelectedStep> selectedSteps, List<PreparedEmote> animations) {
+    private static void appendSelectedAnimations(List<SelectedStep> selectedSteps, List<PreparedAnimation> animations) {
         for (int index = 0; index < animations.size(); index++) {
             selectedSteps.add(new SelectedEmoteStep(animations.get(index), index + 1 < animations.size()));
         }
@@ -223,7 +223,7 @@ public record PreparedSequence(
         return this.compiledAnimation.nodeCount();
     }
 
-    public sealed interface Playback permits LinearPlayback, CollaborativePlayback {
+    public sealed interface Playback permits LinearPlayback, PartnerPlayback {
         List<Step> validationSteps();
     }
 
@@ -238,13 +238,13 @@ public record PreparedSequence(
         }
     }
 
-    public record CollaborativePlayback(
-        PreparedEmote offer,
+    public record PartnerPlayback(
+        PreparedAnimation offer,
         int timeoutTicks,
         Branch matched,
         Branch timeout
     ) implements Playback {
-        public CollaborativePlayback {
+        public PartnerPlayback {
             Objects.requireNonNull(offer, "offer");
             if (timeoutTicks < 1) {
                 throw new IllegalArgumentException("await_partner timeout must be at least 1 tick");
@@ -302,7 +302,7 @@ public record PreparedSequence(
         int chance();
     }
 
-    public record AnimationChoice(PreparedEmote animation, int chance) implements Choice {
+    public record AnimationChoice(PreparedAnimation animation, int chance) implements Choice {
         public AnimationChoice {
             Objects.requireNonNull(animation, "animation");
         }
@@ -317,7 +317,7 @@ public record PreparedSequence(
     sealed interface SelectedStep permits SelectedEmoteStep, SelectedWaitStep {
     }
 
-    record SelectedEmoteStep(PreparedEmote animation, boolean loopDelayAfter) implements SelectedStep {
+    record SelectedEmoteStep(PreparedAnimation animation, boolean loopDelayAfter) implements SelectedStep {
         SelectedEmoteStep {
             Objects.requireNonNull(animation, "animation");
         }

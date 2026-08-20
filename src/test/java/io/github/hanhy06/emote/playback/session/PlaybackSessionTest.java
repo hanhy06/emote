@@ -6,8 +6,8 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.content.EmoteSequence;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -106,12 +106,12 @@ class PlaybackSessionTest {
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
-        PreparedEmote offer = PreparedEmoteFixture.create("test:offer", "Offer");
+        PreparedAnimation offer = PreparedAnimationFixture.create("test:offer", "Offer");
         Identifier offerId = offer.animation().id();
         EmoteSequence source = new EmoteSequence(
-            Path.of("collaborative.json"),
-            Identifier.parse("test:collaborative"),
-            new EmoteMetadata("Collaborative", "Collaborative"),
+            Path.of("partner.json"),
+            Identifier.parse("test:partner"),
+            new EmoteMetadata("Partner", "Partner"),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
             new EmoteSequence.Participants(
                 new EmoteSequence.ParticipantPlacement(
@@ -149,24 +149,24 @@ class PlaybackSessionTest {
         return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
     }
 
-    private static AnimationPlayer timeline(PreparedEmote emote) {
+    private static AnimationPlayer timeline(PreparedAnimation emote) {
         AnimationPlayer animation = new AnimationPlayer(emote, new EmptyTimelineTarget());
         animation.bindEvents(ignored -> {
         });
         return animation;
     }
 
-    private record SessionFixture(PlaybackSession session, PreparedEmote offer) {
+    private record SessionFixture(PlaybackSession session, PreparedAnimation offer) {
     }
 
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
             throw new UnsupportedOperationException();
         }
 

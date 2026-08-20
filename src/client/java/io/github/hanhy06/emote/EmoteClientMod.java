@@ -11,7 +11,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.KeyMapping;
 
-public class EmoteClient implements ClientModInitializer {
+public class EmoteClientMod implements ClientModInitializer {
     private static final KeyMapping EMOTE_WHEEL_KEY = KeyMappingHelper.registerKeyMapping(
         new KeyMapping("key.emote.wheel", InputConstants.KEY_V, KeyMapping.Category.MISC)
     );
@@ -20,7 +20,7 @@ public class EmoteClient implements ClientModInitializer {
     public void onInitializeClient() {
         PerspectiveController perspectiveController = new PerspectiveController();
         WheelShortcutSettings wheelShortcutSettings = new WheelShortcutSettings(
-            FabricLoader.getInstance().getConfigDir().resolve(Emote.MOD_ID).resolve("wheel-shortcuts.json")
+            FabricLoader.getInstance().getConfigDir().resolve(EmoteMod.MOD_ID).resolve("wheel-shortcuts.json")
         );
         WheelController wheelController = new WheelController(wheelShortcutSettings);
 

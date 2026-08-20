@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.animation;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.LoadedAnimation;
@@ -50,7 +50,7 @@ public final class AnimationDirectoryLoader {
                     );
                 }
             } catch (EmoteAnimationLoadException exception) {
-                Emote.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
+                EmoteMod.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
             }
         }
         return rejectDuplicateIds(candidates, sequenceCandidates, detectedFiles.size());
@@ -60,7 +60,7 @@ public final class AnimationDirectoryLoader {
         try {
             Files.createDirectories(directory);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to create emote animation directory {}", directory, exception);
+            EmoteMod.LOGGER.warn("Failed to create emote animation directory {}", directory, exception);
             return List.of();
         }
 
@@ -71,7 +71,7 @@ public final class AnimationDirectoryLoader {
                 .sorted(Comparator.comparing(path -> directory.relativize(path).toString().toLowerCase(Locale.ROOT)))
                 .toList();
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to scan emote animation directory {}", directory, exception);
+            EmoteMod.LOGGER.warn("Failed to scan emote animation directory {}", directory, exception);
             return List.of();
         }
     }
@@ -92,7 +92,7 @@ public final class AnimationDirectoryLoader {
 
         Set<String> duplicateIds = pathsById.entrySet().stream()
             .filter(entry -> entry.getValue().size() > 1)
-            .peek(entry -> Emote.LOGGER.warn("Ignoring emote files with duplicate id {}: {}", entry.getKey(), entry.getValue()))
+            .peek(entry -> EmoteMod.LOGGER.warn("Ignoring emote files with duplicate id {}: {}", entry.getKey(), entry.getValue()))
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
         List<LoadedAnimation> loaded = candidates.stream()

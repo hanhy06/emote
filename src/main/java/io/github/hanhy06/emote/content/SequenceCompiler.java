@@ -11,13 +11,13 @@ final class SequenceCompiler {
     private SequenceCompiler() {
     }
 
-    static PreparedEmote compile(
+    static PreparedAnimation compile(
         EmoteSequence sequence,
         List<PreparedSequence.SelectedStep> steps,
-        PreparedEmote layoutAnchor
+        PreparedAnimation layoutAnchor
     ) {
         List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
-        List<PreparedEmote.PlaybackSegment> playbackSegments = new ArrayList<>();
+        List<PreparedAnimation.PlaybackSegment> playbackSegments = new ArrayList<>();
         Map<Integer, Set<String>> hiddenNodes = new HashMap<>();
         if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
             hiddenNodes.put(0, nodesToHide(layoutAnchor.animation(), null));
@@ -31,7 +31,7 @@ final class SequenceCompiler {
             PreparedSequence.SelectedEmoteStep step = (PreparedSequence.SelectedEmoteStep) selectedStep;
             EmoteAnimation animation = step.animation().animation();
             int segmentOffset = requireTick(offset, sequence);
-            playbackSegments.add(new PreparedEmote.PlaybackSegment(
+            playbackSegments.add(new PreparedAnimation.PlaybackSegment(
                 segmentOffset,
                 requireTick(offset + animation.timeline().durationTicks(), sequence),
                 step.animation(),
@@ -70,7 +70,7 @@ final class SequenceCompiler {
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
             )
         );
-        SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandCollaborativeLayout(
+        SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandPartnerLayout(
             sequence.participants() != null,
             compiledAnimation,
             layoutAnchor.source().preparedDisplayData()
@@ -82,18 +82,18 @@ final class SequenceCompiler {
             compiledAnimation,
             layout.preparedDisplayData()
         );
-        List<PreparedEmote.PlaybackSegment> expandedSegments = playbackSegments.stream()
-            .map(segment -> new PreparedEmote.PlaybackSegment(
+        List<PreparedAnimation.PlaybackSegment> expandedSegments = playbackSegments.stream()
+            .map(segment -> new PreparedAnimation.PlaybackSegment(
                 segment.startTick(),
                 segment.endTick(),
                 segment.animation(),
                 layout.partnerNodeIds()
             ))
             .toList();
-        PreparedEmote preparedLayout = layout.generatedPartner()
-            ? PreparedEmote.from(loaded)
-            : PreparedEmote.from(loaded, layoutAnchor.skinParts());
-        return PreparedEmote.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
+        PreparedAnimation preparedLayout = layout.generatedPartner()
+            ? PreparedAnimation.from(loaded)
+            : PreparedAnimation.from(loaded, layoutAnchor.skinParts());
+        return PreparedAnimation.sequence(preparedLayout, expandedSegments, expandHiddenNodes(hiddenNodes, layout.partnerNodeIds()));
     }
 
     private static Set<String> nodesToHide(EmoteAnimation layout, EmoteAnimation active) {

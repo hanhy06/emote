@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 
@@ -13,10 +13,10 @@ import java.util.Objects;
 
 public final class AnimationPlayer {
     private final EmoteAnimation animation;
-    private final PreparedEmote emote;
+    private final PreparedAnimation emote;
     private final TimelineTarget target;
     private AnimationRuntime runtime;
-    private final Map<String, PreparedEmote.PreparedTransform> appliedTransforms = new HashMap<>();
+    private final Map<String, PreparedAnimation.PreparedTransform> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
 
     private int currentTick;
@@ -33,14 +33,14 @@ public final class AnimationPlayer {
     private boolean eventsStopped;
 
     public AnimationPlayer(
-        PreparedEmote emote,
+        PreparedAnimation emote,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
         this(emote, new EntityTimelineTarget(emote, nodes, entityController));
     }
 
-    public AnimationPlayer(PreparedEmote emote, TimelineTarget target) {
+    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -219,7 +219,7 @@ public final class AnimationPlayer {
     }
 
     public Transformation currentTransformation(String nodeId) {
-        PreparedEmote.PreparedTransform transform = this.runtime == null ? null : this.runtime.currentTransform(nodeId);
+        PreparedAnimation.PreparedTransform transform = this.runtime == null ? null : this.runtime.currentTransform(nodeId);
         return this.target.createTransformation(
             nodeId,
             transform == null ? this.emote.defaultTransform(nodeId) : transform
@@ -262,10 +262,10 @@ public final class AnimationPlayer {
     }
 
     private void applyPlaybackSegment(int tick) {
-        List<PreparedEmote.PlaybackSegment> segments = this.emote.playbackSegments();
+        List<PreparedAnimation.PlaybackSegment> segments = this.emote.playbackSegments();
         int selected = -1;
         for (int index = 0; index < segments.size(); index++) {
-            PreparedEmote.PlaybackSegment segment = segments.get(index);
+            PreparedAnimation.PlaybackSegment segment = segments.get(index);
             if (segment.startTick() > tick) {
                 break;
             }
@@ -276,7 +276,7 @@ public final class AnimationPlayer {
         if (selected < 0) {
             return;
         }
-        PreparedEmote.PlaybackSegment segment = segments.get(selected);
+        PreparedAnimation.PlaybackSegment segment = segments.get(selected);
         int localTick = tick - segment.startTick();
         AnimationRuntime.Pose pose;
         if (selected != this.activePlaybackSegment) {
@@ -303,7 +303,7 @@ public final class AnimationPlayer {
         int interpolationDurationTicks,
         Map<String, String> mirroredNodes
     ) {
-        for (Map.Entry<String, PreparedEmote.PreparedTransform> entry : pose.transforms().entrySet()) {
+        for (Map.Entry<String, PreparedAnimation.PreparedTransform> entry : pose.transforms().entrySet()) {
             applyTransform(entry.getKey(), entry.getValue(), interpolationDurationTicks);
             String mirror = mirroredNodes.get(entry.getKey());
             if (mirror != null) {
@@ -321,10 +321,10 @@ public final class AnimationPlayer {
 
     private void applyTransform(
         String nodeId,
-        PreparedEmote.PreparedTransform transform,
+        PreparedAnimation.PreparedTransform transform,
         int interpolationDurationTicks
     ) {
-        PreparedEmote.PreparedTransform applied = this.appliedTransforms.get(nodeId);
+        PreparedAnimation.PreparedTransform applied = this.appliedTransforms.get(nodeId);
         if (applied != null && transform.hasSameMatrix(applied)) {
             return;
         }
@@ -361,11 +361,11 @@ public final class AnimationPlayer {
     }
 
     public interface TimelineTarget {
-        Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform);
+        Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform);
 
         void applyTransform(
             String nodeId,
-            PreparedEmote.PreparedTransform transform,
+            PreparedAnimation.PreparedTransform transform,
             int interpolationDurationTicks
         );
 
@@ -375,12 +375,12 @@ public final class AnimationPlayer {
     }
 
     private record EntityTimelineTarget(
-        PreparedEmote emote,
+        PreparedAnimation emote,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) implements TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             PlaybackNodes.NodeInstance node = requiredNode(nodeId);
             return this.nodes.displayTransformation(node.node().space(), transform);
         }
@@ -388,7 +388,7 @@ public final class AnimationPlayer {
         @Override
         public void applyTransform(
             String nodeId,
-            PreparedEmote.PreparedTransform transform,
+            PreparedAnimation.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.entityController.applyTransformation(

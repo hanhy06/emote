@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
@@ -88,7 +88,7 @@ class AnimationEventTest {
     private AnimationFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
-        PreparedEmote emote = PreparedEmote.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
+        PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
         AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
         player.bindEvents(event -> executed.addAll(event.commands()));
         return new AnimationFixture(player, executed);
@@ -129,14 +129,14 @@ class AnimationEventTest {
 
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             throw new UnsupportedOperationException();
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PreparedEmote.PreparedTransform transform,
+            PreparedAnimation.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             throw new UnsupportedOperationException();

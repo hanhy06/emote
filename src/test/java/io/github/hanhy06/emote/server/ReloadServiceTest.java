@@ -49,6 +49,6 @@ class ReloadServiceTest {
 
         service.loadOnServerStart();
 
-        assertNotNull(registry.findDefinition("example:disabled"));
+        assertNotNull(registry.find("example:disabled"));
     }
 }

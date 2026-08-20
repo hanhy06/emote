@@ -1,13 +1,13 @@
 package io.github.hanhy06.emote.application;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.animation.AnimationServerPreparer;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -69,8 +69,8 @@ public final class EmoteApiImpl extends EmoteApi {
             "api:" + animation.id(),
             animation
         );
-        PreparedEmote emote = PreparedEmote.from(this.animationValidator.prepare(loaded));
-        UUID registrationId = this.emoteCatalog.registerApi(emote);
+        PreparedAnimation emote = PreparedAnimation.from(this.animationValidator.prepare(loaded));
+        UUID registrationId = this.emoteCatalog.register(emote);
         this.changeNotifier.notifyChanged();
         return new ApiRegistration(animation.id(), registrationId);
     }
@@ -78,13 +78,13 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public Optional<EmoteInfo> find(Identifier emoteId) {
         Objects.requireNonNull(emoteId, "emoteId");
-        return Optional.ofNullable(this.emoteCatalog.findDefinition(emoteId.toString()))
+        return Optional.ofNullable(this.emoteCatalog.find(emoteId.toString()))
             .map(ApiEventDispatcher::toInfo);
     }
 
     @Override
     public List<EmoteInfo> getAll() {
-        return this.emoteCatalog.getAllDefinitions().stream()
+        return this.emoteCatalog.emotes().stream()
             .map(ApiEventDispatcher::toInfo)
             .toList();
     }
@@ -111,7 +111,7 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     private void requireServerThread() {
-        if (!Emote.SERVER.isSameThread()) {
+        if (!EmoteMod.SERVER.isSameThread()) {
             throw new IllegalStateException("Emote API mutations must run on the server thread.");
         }
     }
@@ -141,7 +141,7 @@ public final class EmoteApiImpl extends EmoteApi {
         @Override
         public boolean unregister() {
             requireServerThread();
-            if (!EmoteApiImpl.this.emoteCatalog.unregisterApi(this.id.toString(), this.registrationId)) {
+            if (!EmoteApiImpl.this.emoteCatalog.unregister(this.id.toString(), this.registrationId)) {
                 return false;
             }
             EmoteApiImpl.this.playbackEngine.stopById(this.id.toString(), PlaybackStopReason.EMOTE_REMOVED);

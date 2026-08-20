@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback.session;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -38,7 +38,7 @@ public final class PartnerMatcher {
         if (initiatorState.playerUuid().equals(partner.getUUID())) {
             return null;
         }
-        ServerPlayer initiator = Emote.SERVER.getPlayerList().getPlayer(initiatorState.playerUuid());
+        ServerPlayer initiator = EmoteMod.SERVER.getPlayerList().getPlayer(initiatorState.playerUuid());
         if (initiator == null || !initiator.isAlive() || initiator.level() != partner.level()) {
             return null;
         }
@@ -72,7 +72,7 @@ public final class PartnerMatcher {
 
     private static boolean acceptsPartner(PlaybackSession session, String sequenceId) {
         return session.id().equals(sequenceId)
-            && session.collaborative()
+            && session.hasPartner()
             && session.acceptsPartner();
     }
 

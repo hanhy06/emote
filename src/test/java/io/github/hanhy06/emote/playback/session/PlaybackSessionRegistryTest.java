@@ -5,8 +5,8 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.EmoteSequence;
-import io.github.hanhy06.emote.content.PreparedEmote;
-import io.github.hanhy06.emote.content.PreparedEmoteFixture;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
@@ -38,7 +38,7 @@ class PlaybackSessionRegistryTest {
 
     @Test
     void keepsPartnerReservationsSeparateUntilActivation() {
-        PreparedEmote emote = PreparedEmoteFixture.create("test:registry", "Registry");
+        PreparedAnimation emote = PreparedAnimationFixture.create("test:registry", "Registry");
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
@@ -61,7 +61,7 @@ class PlaybackSessionRegistryTest {
 
     @Test
     void removingSessionClearsParticipantAndReservationIndexes() {
-        PreparedEmote emote = PreparedEmoteFixture.create("test:remove", "Remove");
+        PreparedAnimation emote = PreparedAnimationFixture.create("test:remove", "Remove");
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
@@ -79,7 +79,7 @@ class PlaybackSessionRegistryTest {
         assertEquals(0, registry.activeDisplayEntityCount());
     }
 
-    private static PlaybackSession session(PreparedEmote emote) {
+    private static PlaybackSession session(PreparedAnimation emote) {
         EmoteSequence source = new EmoteSequence(
             Path.of("registry.json"),
             Identifier.parse("test:registry"),
@@ -92,7 +92,7 @@ class PlaybackSessionRegistryTest {
         ));
         PreparedSequence sequence = new PreparedSequence(
             source,
-            new PreparedSequence.CollaborativePlayback(emote, 20, branch, branch),
+            new PreparedSequence.PartnerPlayback(emote, 20, branch, branch),
             emote,
             emote
         );
@@ -109,7 +109,7 @@ class PlaybackSessionRegistryTest {
         );
     }
 
-    private static AnimationPlayer timeline(PreparedEmote emote) {
+    private static AnimationPlayer timeline(PreparedAnimation emote) {
         AnimationPlayer animation = new AnimationPlayer(
             emote,
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),

@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
@@ -8,8 +8,8 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.content.PreparedDefinition;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -64,15 +64,15 @@ public class PlaybackEngine implements ConfigListener {
         this.stateListeners.add(Objects.requireNonNull(stateListener, "stateListener"));
     }
 
-    public PlayResult start(ServerPlayer player, PreparedDefinition definition) {
+    public PlayResult start(ServerPlayer player, PlayableEmote definition) {
         releasePlayerReservation(player.getUUID());
         return switch (definition) {
-            case PreparedEmote animation -> start(player, animation);
+            case PreparedAnimation animation -> start(player, animation);
             case PreparedSequence sequence -> start(player, sequence);
         };
     }
 
-    public PlayResult start(ServerPlayer player, PreparedEmote emote) {
+    public PlayResult start(ServerPlayer player, PreparedAnimation emote) {
         return startResolved(
             player,
             emote,
@@ -84,12 +84,12 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private PlayResult start(ServerPlayer player, PreparedSequence sequence) {
-        if (sequence.collaborative()) {
-            return startCollaborative(player, sequence);
+        if (sequence.hasPartner()) {
+            return startPartnerPlayback(player, sequence);
         }
         return startResolved(
             player,
-            sequence.compileRandom(this.random),
+            sequence.compile(this.random),
             sequence.id(),
             sequence.playerBehavior(),
             SceneRootResolver.single(RootTransform.fromPlayer(player)),
@@ -97,7 +97,7 @@ public class PlaybackEngine implements ConfigListener {
         );
     }
 
-    private PlayResult startCollaborative(ServerPlayer player, PreparedSequence sequence) {
+    private PlayResult startPartnerPlayback(ServerPlayer player, PreparedSequence sequence) {
         if (findActive(player.getUUID()) == null) {
             PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessionRegistry.sessions());
             if (waitingSession != null) {
@@ -120,8 +120,8 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
-        PreparedSequence sequence = session.collaborativeSequence();
-        PreparedEmote offer = sequence.compiledAnimation();
+        PreparedSequence sequence = session.partnerSequence();
+        PreparedAnimation offer = sequence.compiledAnimation();
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             offer.skinParts(ParticipantRole.PARTNER)
@@ -152,11 +152,11 @@ public class PlaybackEngine implements ConfigListener {
 
     private PlayResult startResolved(
         ServerPlayer player,
-        PreparedEmote emote,
+        PreparedAnimation emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
-        @Nullable PreparedSequence collaborativeSequence
+        @Nullable PreparedSequence partnerSequence
     ) {
         PlaybackSession currentSession = findActive(player.getUUID());
         int projectedDisplayEntities = projectedDisplayEntityCount(
@@ -186,18 +186,18 @@ public class PlaybackEngine implements ConfigListener {
             playerBehavior,
             roots,
             skinPreparation.preparedPlayerSkin(),
-            collaborativeSequence
+            partnerSequence
         );
     }
 
     private PlayResult startPrepared(
         ServerPlayer player,
-        PreparedEmote emote,
+        PreparedAnimation emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
-        @Nullable PreparedSequence collaborativeSequence
+        @Nullable PreparedSequence partnerSequence
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
@@ -206,7 +206,7 @@ public class PlaybackEngine implements ConfigListener {
             AnimationPlayer timeline = new AnimationPlayer(emote, nodes, this.entityController);
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
+                timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
             } else {
                 timeline.start();
             }
@@ -233,7 +233,7 @@ public class PlaybackEngine implements ConfigListener {
                 timeline,
                 playerBehavior,
                 initiator,
-                collaborativeSequence
+                partnerSequence
             );
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
@@ -246,7 +246,7 @@ public class PlaybackEngine implements ConfigListener {
             }
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
+            EmoteMod.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
             if (session != null && removeSession(session)) {
                 cleanupSession(session, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
@@ -262,7 +262,7 @@ public class PlaybackEngine implements ConfigListener {
             return;
         }
         PlaybackParticipant participant = session.participant(playerUuid);
-        ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(playerUuid);
+        ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(playerUuid);
         if (player == null || participant == null) {
             return;
         }
@@ -322,10 +322,10 @@ public class PlaybackEngine implements ConfigListener {
         List<StopRequest> stopRequests = null;
         for (PlaybackSession session : this.sessionRegistry.sessions()) {
             PlaybackParticipant initiator = session.initiator();
-            ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
+            ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
             for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer participantPlayer = Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                 if (!canKeepPlaying(participantPlayer, session)) {
                     stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
                     break;
@@ -364,14 +364,14 @@ public class PlaybackEngine implements ConfigListener {
 
                     if (stopReason == null && !playbackChanged(session)) {
                         for (PlaybackParticipant participant : session.participants()) {
-                            ServerPlayer participantPlayer = Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                            ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                             if (participantPlayer != null) {
                                 this.playerVisibilityService.tick(participantPlayer, session, participant);
                             }
                         }
                     }
                 } catch (RuntimeException exception) {
-                    Emote.LOGGER.warn("Failed while playing emote {}", session.id(), exception);
+                    EmoteMod.LOGGER.warn("Failed while playing emote {}", session.id(), exception);
                     stopReason = PlaybackStopReason.ERROR;
                 }
             }
@@ -405,14 +405,14 @@ public class PlaybackEngine implements ConfigListener {
 
     private boolean activateMatched(PlaybackSession session) {
         PlaybackParticipant reservedPartner = Objects.requireNonNull(session.reservedPartner(), "reservedPartner");
-        ServerPlayer player = Emote.SERVER.getPlayerList().getPlayer(reservedPartner.playerUuid());
+        ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(reservedPartner.playerUuid());
         if (player == null || !player.isAlive() || !this.partnerMatcher.stillMatches(session, player)) {
             releaseReservedPartner(session);
             return false;
         }
 
-        PreparedSequence sequence = session.collaborativeSequence();
-        PreparedEmote matched = sequence.compileMatchedRandom(this.random);
+        PreparedSequence sequence = session.partnerSequence();
+        PreparedAnimation matched = sequence.compileMatch(this.random);
         AnimationPlayer animation = createBranchAnimation(session, matched);
         PlaybackParticipant partner = session.activateReservedPartner(animation);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
@@ -426,14 +426,14 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private void activateTimeout(PlaybackSession session) {
-        PreparedSequence sequence = session.collaborativeSequence();
-        PreparedEmote timeout = sequence.compileTimeoutRandom(this.random);
+        PreparedSequence sequence = session.partnerSequence();
+        PreparedAnimation timeout = sequence.compileTimeout(this.random);
         AnimationPlayer animation = createBranchAnimation(session, timeout);
         session.beginTimeout(animation);
         animation.startEvents();
     }
 
-    private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedEmote emote) {
+    private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedAnimation emote) {
         AnimationPlayer animation = new AnimationPlayer(emote, session.nodes(), this.entityController);
         animation.bindEvents(new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), animation));
         animation.start();
@@ -461,7 +461,7 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private ServerPlayer sessionInitiatorPlayer(PlaybackSession session) {
-        ServerPlayer initiator = Emote.SERVER.getPlayerList().getPlayer(session.initiator().playerUuid());
+        ServerPlayer initiator = EmoteMod.SERVER.getPlayerList().getPlayer(session.initiator().playerUuid());
         if (initiator == null) {
             throw new IllegalStateException("Initiator is unavailable");
         }
@@ -483,7 +483,7 @@ public class PlaybackEngine implements ConfigListener {
         ServerLevel level,
         Vec3 origin,
         float yaw,
-        List<PreparedEmote> emotes,
+        List<PreparedAnimation> emotes,
         int instanceCount
     ) {
         return this.stressTest.start(level, origin, yaw, emotes, instanceCount);
@@ -532,7 +532,7 @@ public class PlaybackEngine implements ConfigListener {
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
                     ? knownPlayer
-                    : Emote.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                    : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                 if (player == null) {
                     continue;
                 }
@@ -547,9 +547,9 @@ public class PlaybackEngine implements ConfigListener {
             try {
                 session.animation().stop();
             } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
+                EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
             } finally {
-                ServerLevel level = Emote.SERVER.getLevel(session.levelKey());
+                ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
                 if (level != null) {
                     this.entityController.remove(level, session.nodes());
                 }

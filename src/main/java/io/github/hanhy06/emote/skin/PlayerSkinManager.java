@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.skin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.mineskin.*;
@@ -86,7 +86,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private void notifySkinReady(UUID playerUuid) {
-        MinecraftServer server = Emote.SERVER;
+        MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
@@ -99,7 +99,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private void notifySkinFailed(UUID playerUuid) {
-        MinecraftServer server = Emote.SERVER;
+        MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
@@ -109,7 +109,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
-        MinecraftServer server = Emote.SERVER;
+        MinecraftServer server = EmoteMod.SERVER;
         Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
         if (packedTextures == null) {
             return null;

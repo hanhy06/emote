@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.application;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
-import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -26,13 +26,13 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         return register(this.playbackListeners, Objects.requireNonNull(listener, "listener"));
     }
 
-    public Component beforePlay(ServerPlayer player, PreparedDefinition emote, PlaySource source) {
+    public Component beforePlay(ServerPlayer player, PlayableEmote emote, PlaySource source) {
         EmotePlayEvent event = new EmotePlayEvent(player, toInfo(emote), source);
         for (EmotePlayListener listener : this.playListeners) {
             try {
                 listener.beforePlay(event);
             } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("An emote play listener failed", exception);
+                EmoteMod.LOGGER.warn("An emote play listener failed", exception);
                 event.cancel(Component.literal("Emote playback was cancelled because a listener failed."));
             }
             if (event.isCancelled()) {
@@ -49,7 +49,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
             try {
                 listener.onStarted(playback);
             } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("An emote playback listener failed while handling start", exception);
+                EmoteMod.LOGGER.warn("An emote playback listener failed while handling start", exception);
             }
         }
     }
@@ -66,12 +66,12 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
             try {
                 listener.onStopped(playback, reason);
             } catch (RuntimeException exception) {
-                Emote.LOGGER.warn("An emote playback listener failed while handling stop", exception);
+                EmoteMod.LOGGER.warn("An emote playback listener failed while handling stop", exception);
             }
         }
     }
 
-    public static EmoteInfo toInfo(PreparedDefinition emote) {
+    public static EmoteInfo toInfo(PlayableEmote emote) {
         return new EmoteInfo(
             Identifier.parse(emote.id()),
             emote.metadata(),

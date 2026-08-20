@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.animation;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.ParseResults;
 import com.mojang.serialization.JsonOps;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedDisplayData;
@@ -31,7 +31,7 @@ public final class AnimationServerPreparer {
 
     public LoadedAnimation prepare(LoadedAnimation loaded) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
-        MinecraftServer server = Emote.SERVER;
+        MinecraftServer server = EmoteMod.SERVER;
         Path sourcePath = loaded.sourcePath();
         this.complexityValidator.validate(loaded);
 

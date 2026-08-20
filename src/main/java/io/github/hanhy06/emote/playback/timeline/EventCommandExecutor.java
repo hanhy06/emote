@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.playback.timeline;
 
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -38,17 +38,17 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
             .withPermission(LevelBasedPermissionSet.OWNER)
             .withSuppressedOutput();
         for (String command : event.commands()) {
-            Emote.SERVER.getCommands().performPrefixedCommand(source, command);
+            EmoteMod.SERVER.getCommands().performPrefixedCommand(source, command);
         }
     }
 
     private CommandSourceStack createSource(EmoteAnimation.CommandSource source) {
         return switch (source.type()) {
             case PLAYER -> this.player.createCommandSourceStack();
-            case SERVER -> Emote.SERVER.createCommandSourceStack().withLevel(this.player.level());
+            case SERVER -> EmoteMod.SERVER.createCommandSourceStack().withLevel(this.player.level());
             case NODE -> {
                 Entity entity = requiredEntity(source.node());
-                yield Emote.SERVER.createCommandSourceStack()
+                yield EmoteMod.SERVER.createCommandSourceStack()
                     .withLevel(this.player.level())
                     .withEntity(entity)
                     .withPosition(entity.position());

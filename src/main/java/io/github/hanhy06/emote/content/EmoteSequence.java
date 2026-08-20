@@ -59,9 +59,9 @@ public record EmoteSequence(
         long awaitCount = steps.stream().filter(AwaitPartnerStep.class::isInstance).count();
         if (awaitCount > 0) {
             if (steps.size() != 1 || awaitCount != 1) {
-                throw new IllegalArgumentException("a collaborative sequence must contain exactly one await_partner step");
+                throw new IllegalArgumentException("a partner sequence must contain exactly one await_partner step");
             }
-            Objects.requireNonNull(participants, "collaborative sequence participants");
+            Objects.requireNonNull(participants, "partner sequence participants");
         } else {
             if (participants != null) {
                 throw new IllegalArgumentException("participants require an await_partner step");

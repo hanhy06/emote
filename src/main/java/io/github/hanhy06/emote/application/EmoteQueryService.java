@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedDefinition;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.Comparator;
@@ -23,9 +23,9 @@ public class EmoteQueryService {
     }
 
     public List<EmoteSummary> getAll(ServerPlayer player) {
-        return this.emoteCatalog.getAllDefinitions().stream()
+        return this.emoteCatalog.emotes().stream()
             .filter(emote -> isVisible(player, emote))
-            .sorted(Comparator.comparing(PreparedDefinition::name).thenComparing(PreparedDefinition::id))
+            .sorted(Comparator.comparing(PlayableEmote::name).thenComparing(PlayableEmote::id))
             .map(emote -> new EmoteSummary(emote.id(), emote.name(), emote.description()))
             .toList();
     }
@@ -60,16 +60,16 @@ public class EmoteQueryService {
     }
 
     public List<String> getAllIds() {
-        return collectPlayIds(PreparedDefinition::standalone);
+        return collectPlayIds(PlayableEmote::standalone);
     }
 
     public List<String> getPlayableIds(ServerPlayer player) {
         return collectPlayIds(emote -> isVisible(player, emote));
     }
 
-    private List<String> collectPlayIds(Predicate<PreparedDefinition> filter) {
+    private List<String> collectPlayIds(Predicate<PlayableEmote> filter) {
         List<String> ids = new java.util.ArrayList<>();
-        for (PreparedDefinition emote : this.emoteCatalog.getAllDefinitions()) {
+        for (PlayableEmote emote : this.emoteCatalog.emotes()) {
             if (filter.test(emote)) {
                 ids.add(emote.id());
             }
@@ -77,13 +77,13 @@ public class EmoteQueryService {
         return List.copyOf(ids);
     }
 
-    private boolean isVisible(ServerPlayer player, PreparedDefinition emote) {
+    private boolean isVisible(ServerPlayer player, PlayableEmote emote) {
         return this.visibilityChecker.isVisible(player, emote);
     }
 
     @FunctionalInterface
     interface VisibilityChecker {
-        boolean isVisible(ServerPlayer player, PreparedDefinition emote);
+        boolean isVisible(ServerPlayer player, PlayableEmote emote);
     }
 
     private record RankedEntry(EmoteSummary emote, int rank) {

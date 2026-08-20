@@ -12,12 +12,12 @@ final class SequenceNodeLayout {
     private SequenceNodeLayout() {
     }
 
-    static Expansion expandCollaborativeLayout(
-        boolean collaborative,
+    static Expansion expandPartnerLayout(
+        boolean partner,
         EmoteAnimation animation,
         Map<String, PreparedDisplayData> preparedDisplayData
     ) {
-        if (!collaborative || animation.nodes().values().stream().anyMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER)) {
+        if (!partner || animation.nodes().values().stream().anyMatch(node -> node.space() == EmoteAnimation.NodeSpace.PARTNER)) {
             return new Expansion(animation, preparedDisplayData, false, Map.of());
         }
 
@@ -54,8 +54,8 @@ final class SequenceNodeLayout {
         return new Expansion(expanded, expandedPreparedData, true, partnerIds);
     }
 
-    static PreparedEmote validateAndCreateLayout(List<PreparedSequence.Step> steps) {
-        PreparedEmote first = steps.stream()
+    static PreparedAnimation validateAndCreateLayout(List<PreparedSequence.Step> steps) {
+        PreparedAnimation first = steps.stream()
             .filter(PreparedSequence.EmoteStep.class::isInstance)
             .map(PreparedSequence.EmoteStep.class::cast)
             .flatMap(step -> step.candidates().stream())
@@ -74,7 +74,7 @@ final class SequenceNodeLayout {
                 if (!(choice instanceof PreparedSequence.AnimationChoice animationChoice)) {
                     continue;
                 }
-                PreparedEmote animation = animationChoice.animation();
+                PreparedAnimation animation = animationChoice.animation();
                 if (!first.skinParts().equals(animation.skinParts())) {
                     throw new IllegalArgumentException(
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
@@ -104,12 +104,12 @@ final class SequenceNodeLayout {
             layoutAnimation,
             preparedDisplayData
         );
-        return PreparedEmote.from(loaded, first.skinParts());
+        return PreparedAnimation.from(loaded, first.skinParts());
     }
 
     private static void mergeNodes(
-        PreparedEmote first,
-        PreparedEmote animation,
+        PreparedAnimation first,
+        PreparedAnimation animation,
         Map<String, EmoteAnimation.Node> nodes,
         Map<String, PreparedDisplayData> preparedDisplayData
     ) {

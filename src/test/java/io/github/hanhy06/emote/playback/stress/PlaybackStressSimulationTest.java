@@ -4,7 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.world.phys.Vec3;
@@ -28,7 +28,7 @@ class PlaybackStressSimulationTest {
     void keepsOneHundredLateStartingPlayersOnTheSameServerPhase() throws Exception {
         LoadedAnimation loaded = new AnimationJsonLoader().load(Path.of("docs/example/emote.dance.json"));
         EmoteAnimation animation = loaded.animation();
-        PreparedEmote plan = PreparedEmote.from(loaded);
+        PreparedAnimation plan = PreparedAnimation.from(loaded);
         int durationTicks = animation.timeline().durationTicks();
         int[] startTicks = randomizedStartTicks();
         List<SimulatedPlayback> activePlaybacks = new ArrayList<>(INSTANCE_COUNT);
@@ -105,14 +105,14 @@ class PlaybackStressSimulationTest {
         private Transformation lastTransformation;
 
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             return this.rootTransform.displayTransformation(transform);
         }
 
         @Override
         public void applyTransform(
             String nodeId,
-            PreparedEmote.PreparedTransform transform,
+            PreparedAnimation.PreparedTransform transform,
             int interpolationDurationTicks
         ) {
             this.lastTransformation = this.rootTransform.displayTransformation(transform);

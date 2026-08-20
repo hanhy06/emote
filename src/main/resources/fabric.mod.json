@@ -16,10 +16,10 @@
     "environment": "*",
     "entrypoints": {
         "main": [
-            "io.github.hanhy06.emote.Emote"
+            "io.github.hanhy06.emote.EmoteMod"
         ],
         "client": [
-            "io.github.hanhy06.emote.EmoteClient"
+            "io.github.hanhy06.emote.EmoteClientMod"
         ]
     },
     "mixins": [

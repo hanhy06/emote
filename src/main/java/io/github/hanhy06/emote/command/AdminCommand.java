@@ -4,11 +4,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
-import io.github.hanhy06.emote.content.PreparedDefinition;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
@@ -121,7 +121,7 @@ public final class AdminCommand {
             .requires(this.permissionService.requireManage())
             .then(Commands.argument("id", IdentifierArgument.id())
                 .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
-                    this.emoteCatalog.getFileDefinitions().stream().map(PreparedDefinition::id),
+                    this.emoteCatalog.fileEmotes().stream().map(PlayableEmote::id),
                     builder
                 ))
                 .executes(context -> setEnabled(
@@ -154,7 +154,7 @@ public final class AdminCommand {
     }
 
     private int list(CommandSourceStack source) {
-        List<PreparedDefinition> emotes = this.emoteCatalog.getAllDefinitions();
+        List<PlayableEmote> emotes = this.emoteCatalog.emotes();
         if (emotes.isEmpty()) {
             source.sendSuccess(() -> Component.literal("No emotes."), false);
             return 0;
@@ -166,7 +166,7 @@ public final class AdminCommand {
             false
         );
 
-        for (PreparedDefinition emote : emotes) {
+        for (PlayableEmote emote : emotes) {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
                 emote.name(),
@@ -236,7 +236,7 @@ public final class AdminCommand {
     }
 
     private int startStressTest(CommandSourceStack source, int requestedInstanceCount) {
-        List<PreparedEmote> emotes = this.emoteCatalog.getAll();
+        List<PreparedAnimation> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
             return 0;
@@ -252,7 +252,7 @@ public final class AdminCommand {
                 requestedInstanceCount
             );
         } catch (RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to start emote stress test", exception);
+            EmoteMod.LOGGER.warn("Failed to start emote stress test", exception);
             source.sendFailure(Component.literal("Failed to start emote stress test."));
             return 0;
         }
@@ -328,7 +328,7 @@ public final class AdminCommand {
                 source.sendFailure(Component.literal("Emote is not disabled: " + id));
                 return 0;
             }
-        } else if (this.emoteCatalog.findFileDefinition(id) == null) {
+        } else if (this.emoteCatalog.findFileEmote(id) == null) {
             source.sendFailure(Component.literal("Emote is not enabled: " + id));
             return 0;
         }

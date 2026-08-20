@@ -4,7 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
-import io.github.hanhy06.emote.content.PreparedEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -85,14 +85,14 @@ class AnimationPlayerTest {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> PreparedEmote.from(load(root))
+            () -> PreparedAnimation.from(load(root))
         );
 
         assertTrue(exception.getMessage().contains("must not assign persistent variables"));
     }
 
     private AnimationPlayer player(JsonObject root, FakeTarget target) throws Exception {
-        return new AnimationPlayer(PreparedEmote.from(load(root)), target);
+        return new AnimationPlayer(PreparedAnimation.from(load(root)), target);
     }
 
     private io.github.hanhy06.emote.content.LoadedAnimation load(JsonObject root) throws Exception {
@@ -167,12 +167,12 @@ class AnimationPlayerTest {
         private final Map<String, Boolean> visibility = new HashMap<>();
 
         @Override
-        public Transformation createTransformation(String nodeId, PreparedEmote.PreparedTransform transform) {
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             return new Transformation(transform.localMatrix());
         }
 
         @Override
-        public void applyTransform(String nodeId, PreparedEmote.PreparedTransform transform, int interpolationDurationTicks) {
+        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
             this.transforms.put(nodeId, createTransformation(nodeId, transform));
         }
 

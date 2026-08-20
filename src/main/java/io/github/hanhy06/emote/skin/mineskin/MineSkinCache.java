@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
 import com.google.gson.*;
-import io.github.hanhy06.emote.Emote;
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.JsonFileStore;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -100,7 +100,7 @@ public final class MineSkinCache {
             refreshLastUsed(filePath);
             return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
             return cacheSkinTextures(cacheKey, Map.of());
         }
     }
@@ -118,7 +118,7 @@ public final class MineSkinCache {
             this.skinTextures.put(new SkinCacheKey(textureHash, slimModel), savedTextureUrls);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
         }
     }
 
@@ -150,7 +150,7 @@ public final class MineSkinCache {
             refreshLastUsed(filePath);
             return existingTextureUrl == null ? textureUrl : existingTextureUrl;
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
             return null;
         }
     }
@@ -170,7 +170,7 @@ public final class MineSkinCache {
             this.contentTextureUrls.put(contentHash, textureUrl);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
         }
     }
 
@@ -195,7 +195,7 @@ public final class MineSkinCache {
             }
             return new MineSkinPendingJob(jobId, submittedAt);
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
             return null;
         }
     }
@@ -213,7 +213,7 @@ public final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to write MineSkin pending job: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write MineSkin pending job: {}", filePath, exception);
         }
     }
 
@@ -236,7 +236,7 @@ public final class MineSkinCache {
             String errorMessage = readString(object, "last_error");
             return new MineSkinFailure(retryAfter, errorMessage == null ? "MineSkin request failed" : errorMessage);
         } catch (IOException | RuntimeException exception) {
-            Emote.LOGGER.warn("Failed to read MineSkin failure state: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read MineSkin failure state: {}", filePath, exception);
             return null;
         }
     }
@@ -254,7 +254,7 @@ public final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to write MineSkin failure state: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write MineSkin failure state: {}", filePath, exception);
         }
     }
 
@@ -270,7 +270,7 @@ public final class MineSkinCache {
         try {
             Files.deleteIfExists(filePath);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to clear MineSkin {}: {}", description, filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to clear MineSkin {}: {}", description, filePath, exception);
         }
     }
 
@@ -402,7 +402,7 @@ public final class MineSkinCache {
                 Files.getLastModifiedTime(filePath).toMillis()
             ));
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to inspect MineSkin cache file: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to inspect MineSkin cache file: {}", filePath, exception);
         }
     }
 
@@ -416,7 +416,7 @@ public final class MineSkinCache {
                 .filter(path -> path.getFileName().toString().endsWith(".json"))
                 .toList();
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to list MineSkin cache directory: {}", directory, exception);
+            EmoteMod.LOGGER.warn("Failed to list MineSkin cache directory: {}", directory, exception);
             return List.of();
         }
     }
@@ -434,7 +434,7 @@ public final class MineSkinCache {
         try {
             return Files.deleteIfExists(filePath);
         } catch (IOException exception) {
-            Emote.LOGGER.warn("Failed to delete MineSkin cache file: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to delete MineSkin cache file: {}", filePath, exception);
             return false;
         }
     }
@@ -612,6 +612,6 @@ public final class MineSkinCache {
     }
 
     private static Path resolveDefaultSkinDirPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(Emote.MOD_ID).resolve("skin").resolve("mineskin");
+        return FabricLoader.getInstance().getConfigDir().resolve(EmoteMod.MOD_ID).resolve("skin").resolve("mineskin");
     }
 }
