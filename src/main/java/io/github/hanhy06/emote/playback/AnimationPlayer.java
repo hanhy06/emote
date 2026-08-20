@@ -263,15 +263,14 @@ public final class AnimationPlayer {
 
     private void applyPlaybackSegment(int tick) {
         List<PreparedAnimation.PlaybackSegment> segments = this.emote.playbackSegments();
-        int selected = -1;
-        for (int index = 0; index < segments.size(); index++) {
-            PreparedAnimation.PlaybackSegment segment = segments.get(index);
-            if (segment.startTick() > tick) {
-                break;
-            }
-            if (tick <= segment.endTick()) {
-                selected = index;
-            }
+        int selected = this.activePlaybackSegment;
+        if (selected >= 0 && tick > segments.get(selected).endTick()) {
+            selected = -1;
+        }
+        for (int index = this.activePlaybackSegment + 1; index < segments.size(); index++) {
+            PreparedAnimation.PlaybackSegment next = segments.get(index);
+            if (next.startTick() > tick) break;
+            if (tick <= next.endTick()) selected = index;
         }
         if (selected < 0) {
             return;
