@@ -122,9 +122,9 @@ export function AssignmentPanel({
         <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
       <p><strong>Item</strong></p>
-      <div className="assignment-buttons">
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}><i style={{ backgroundColor: "#d66b32" }} />Character right</button>
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}><i style={{ backgroundColor: "#3678b8" }} />Character left</button>
+      <div className="assignment-buttons item-assignment-buttons">
+        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}><i style={{ backgroundColor: "#d66b32" }} />Right hand</button>
+        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}><i style={{ backgroundColor: "#3678b8" }} />Left hand</button>
         <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem(null)}>Unassigned</button>
       </div>
       <p><strong>Coordinate space</strong></p>
