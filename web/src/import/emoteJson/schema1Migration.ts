@@ -1,5 +1,5 @@
-import type { Schema3EmoteAnimation } from "../../format/emoteAnimation";
-import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
+import type { Schema3EmoteAnimation } from "./animationSchema3/animationSchema3";
+import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
 import {
   optionalBoolean,
   optionalRecord,
@@ -35,7 +35,7 @@ export function migrateSchema1Animation(value: unknown): MigratedSchema1Animatio
   const timeline = requireRecord(root.timeline, "timeline");
   const loop = requireStringValue(timeline.loop, LOOP_TYPES, "timeline.loop");
   const events = optionalRecord(timeline.events, "timeline.events");
-  const migrated = requireEmoteAnimation({
+  const migrated = requireSchema3Animation({
     type: "animation",
     schema_version: 3,
     id: root.id,

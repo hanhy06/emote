@@ -4,10 +4,10 @@ import type {
   EmoteNodeTracks,
   EmoteVectorKeyframe,
   LocalTransform,
-  Schema3EmoteAnimation,
-} from "../../format/emoteAnimation";
-import { matrixToLocalTransform } from "../../format/localTransform";
-import { formatMinecraftTime, parseMinecraftTime } from "../../format/minecraftTime";
+} from "../../../format/emoteAnimation";
+import { matrixToLocalTransform } from "../../../format/localTransform";
+import { formatMinecraftTime, parseMinecraftTime } from "../../../format/minecraftTime";
+import type { Schema3EmoteAnimation } from "./animationSchema3";
 
 interface MigratedTransformFrame {
   tick: number;

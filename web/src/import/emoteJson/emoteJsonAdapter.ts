@@ -1,5 +1,5 @@
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Vec3 } from "../../format/emoteAnimation";
-import { requireEmoteAnimation, requireSchema4EmoteAnimation } from "../../format/emoteAnimationRuntime";
+import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
 import { parseMinecraftTime } from "../../format/minecraftTime";
 import { isRecord } from "../../format/runtimeValue";
@@ -9,7 +9,9 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
-import { migrateSchema3Animation } from "./schema3Migration";
+import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
+import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
+import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
 
 export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "emote_json",
@@ -34,9 +36,9 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   async import(input: ImportInput): Promise<ImportedProject> {
     const parsed = parseInputJson(input);
     const schema1 = isRecord(parsed) && parsed.schema_version === 1 ? migrateSchema1Animation(parsed) : null;
-    const schema3 = schema1?.animation ?? (isRecord(parsed) && parsed.schema_version === 3 ? requireEmoteAnimation(parsed) : null);
-    if (schema3) requireValidAnimation(schema3);
-    const animation = schema3 ? migrateSchema3Animation(schema3) : requireSchema4EmoteAnimation(parsed);
+    const schema3 = schema1?.animation ?? (isRecord(parsed) && parsed.schema_version === 3 ? requireSchema3Animation(parsed) : null);
+    if (schema3) requireValidSchema3Animation(schema3);
+    const animation = schema3 ? migrateSchema3Animation(schema3) : requireEmoteAnimation(parsed);
     const issues = validateEmoteAnimation(animation);
     if (issues.length > 0) {
       throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
@@ -61,8 +63,8 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   },
 };
 
-function requireValidAnimation(animation: Parameters<typeof validateEmoteAnimation>[0]): void {
-  const issues = validateEmoteAnimation(animation);
+function requireValidSchema3Animation(animation: Parameters<typeof validateSchema3Animation>[0]): void {
+  const issues = validateSchema3Animation(animation);
   if (issues.length > 0) {
     throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
   }
