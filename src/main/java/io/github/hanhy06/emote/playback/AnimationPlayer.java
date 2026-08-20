@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback.timeline;
+package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -8,7 +8,7 @@ import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 
 import java.util.*;
 
-public final class TimelinePlayer {
+public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final CompiledTimeline compiledTimeline;
     private final TimelineTarget target;
@@ -24,8 +24,11 @@ public final class TimelinePlayer {
     private boolean finished;
     private boolean awaitingLoopContinuation;
     private boolean initialVisibilityDeferred;
+    private EventExecutor eventExecutor;
+    private boolean eventsStarted;
+    private boolean eventsStopped;
 
-    public TimelinePlayer(
+    public AnimationPlayer(
         CompiledTimeline compiledTimeline,
         PlaybackNodes nodes,
         PlaybackEntityController entityController
@@ -33,11 +36,11 @@ public final class TimelinePlayer {
         this(compiledTimeline, new EntityTimelineTarget(compiledTimeline, nodes, entityController));
     }
 
-    public TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
+    public AnimationPlayer(EmoteAnimation animation, TimelineTarget target) {
         this(CompiledTimeline.compile(animation), target);
     }
 
-    public TimelinePlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
+    public AnimationPlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -118,7 +121,47 @@ public final class TimelinePlayer {
         resumePendingInterpolations();
     }
 
+    public void bindEvents(EventExecutor eventExecutor) {
+        if (this.eventExecutor != null) {
+            throw new IllegalStateException("Animation events are already bound");
+        }
+        this.eventExecutor = Objects.requireNonNull(eventExecutor, "eventExecutor");
+    }
+
+    public void startEvents() {
+        if (this.eventsStarted) {
+            throw new IllegalStateException("Events already started");
+        }
+        this.eventsStarted = true;
+        execute(this.animation.timeline().events().start());
+        if (this.currentTick == 0) {
+            execute(this.currentTickActions.events());
+        }
+    }
+
     public AdvanceResult advance() {
+        return advance(true);
+    }
+
+    public AdvanceResult advance(boolean continueAfterLoopBoundary) {
+        int previousTick = this.currentTick;
+        AdvanceResult result = advanceTimeline();
+        if (result != AdvanceResult.RESTARTED && this.currentTick != previousTick) {
+            execute(this.currentTickActions.events());
+        }
+        if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
+            execute(this.animation.timeline().events().loop());
+            if (continueAfterLoopBoundary) {
+                result = continueAfterLoopEvent();
+            }
+        }
+        if (result == AdvanceResult.RESTARTED) {
+            execute(this.currentTickActions.events());
+        }
+        return result;
+    }
+
+    private AdvanceResult advanceTimeline() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
         }
@@ -178,8 +221,12 @@ public final class TimelinePlayer {
         return this.currentTick;
     }
 
-    List<EmoteAnimation.Event> currentTimelineEvents() {
-        return this.currentTickActions.events();
+    public void stop() {
+        if (!this.eventsStarted || this.eventsStopped) {
+            return;
+        }
+        this.eventsStopped = true;
+        execute(this.animation.timeline().events().stop());
     }
 
     public Transformation currentTransformation(String nodeId) {
@@ -280,6 +327,20 @@ public final class TimelinePlayer {
         LOOP_BOUNDARY,
         RESTARTED,
         FINISHED
+    }
+
+    private void execute(List<EmoteAnimation.Event> events) {
+        if (this.eventExecutor == null) {
+            return;
+        }
+        for (EmoteAnimation.Event event : events) {
+            this.eventExecutor.execute(event);
+        }
+    }
+
+    @FunctionalInterface
+    public interface EventExecutor {
+        void execute(EmoteAnimation.Event event);
     }
 
     public interface TimelineTarget {

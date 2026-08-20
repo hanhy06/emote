@@ -26,9 +26,7 @@ import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
-import io.github.hanhy06.emote.playback.timeline.EventPlayer;
-import io.github.hanhy06.emote.playback.timeline.PlaybackTrack;
-import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -210,7 +208,8 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackSession session = null;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
-            TimelinePlayer timeline = new TimelinePlayer(emote.compiledTimeline(), nodes, this.entityController);
+            AnimationPlayer timeline = new AnimationPlayer(emote.compiledTimeline(), nodes, this.entityController);
+            timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(Emote.SERVER.overworld().getGameTime());
             } else {
@@ -226,10 +225,6 @@ public class PlaybackEngine implements ConfigListener {
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.resumeSynchronizedInterpolation();
             }
-            EventPlayer events = new EventPlayer(
-                emote.compiledTimeline(),
-                new EventCommandExecutor(player, nodes, timeline)
-            );
             PlaybackParticipant initiator = new PlaybackParticipant(
                 player.getUUID(),
                 ParticipantRole.INITIATOR,
@@ -243,14 +238,14 @@ public class PlaybackEngine implements ConfigListener {
                 playbackId,
                 emote.id(),
                 nodes,
-                new PlaybackTrack(timeline, events),
+                timeline,
                 playerBehavior,
                 initiator,
                 collaborativeSequence
             );
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
-            session.track().startEvents();
+            session.animation().startEvents();
             if (playbackChanged(session)) {
                 return PlayResult.SUCCESS;
             }
@@ -354,7 +349,7 @@ public class PlaybackEngine implements ConfigListener {
             }
             if (stopReason == null) {
                 try {
-                    session.track().timeline().restoreDeferredVisibility();
+                    session.animation().restoreDeferredVisibility();
                     if (followsInitiatorView(session.state())) {
                         this.entityController.updateViewRotation(session.nodes(), player.getYRot());
                     }
@@ -366,11 +361,11 @@ public class PlaybackEngine implements ConfigListener {
                             activateTimeout(session);
                         }
                     } else {
-                        TimelinePlayer.AdvanceResult result = session.track().advance();
+                        AnimationPlayer.AdvanceResult result = session.animation().advance();
                         if (playbackChanged(session)) {
                             continue;
                         }
-                        if (result == TimelinePlayer.AdvanceResult.FINISHED) {
+                        if (result == AnimationPlayer.AdvanceResult.FINISHED) {
                             stopReason = handleFinishedTimeline(session);
                         }
                     }
@@ -426,11 +421,11 @@ public class PlaybackEngine implements ConfigListener {
 
         PreparedSequence sequence = session.collaborativeSequence();
         PreparedEmote matched = sequence.compileMatchedRandom(this.random);
-        PlaybackTrack track = createBranchTrack(session, matched);
-        PlaybackParticipant partner = session.activateReservedPartner(track);
+        AnimationPlayer animation = createBranchAnimation(session, matched);
+        PlaybackParticipant partner = session.activateReservedPartner(animation);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
-        track.startEvents();
+        animation.startEvents();
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
@@ -441,19 +436,16 @@ public class PlaybackEngine implements ConfigListener {
     private void activateTimeout(PlaybackSession session) {
         PreparedSequence sequence = session.collaborativeSequence();
         PreparedEmote timeout = sequence.compileTimeoutRandom(this.random);
-        PlaybackTrack track = createBranchTrack(session, timeout);
-        session.beginTimeout(track);
-        track.startEvents();
+        AnimationPlayer animation = createBranchAnimation(session, timeout);
+        session.beginTimeout(animation);
+        animation.startEvents();
     }
 
-    private PlaybackTrack createBranchTrack(PlaybackSession session, PreparedEmote emote) {
-        TimelinePlayer timeline = new TimelinePlayer(emote.compiledTimeline(), session.nodes(), this.entityController);
-        timeline.start();
-        EventPlayer events = new EventPlayer(
-            emote.compiledTimeline(),
-            new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), timeline)
-        );
-        return new PlaybackTrack(timeline, events);
+    private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedEmote emote) {
+        AnimationPlayer animation = new AnimationPlayer(emote.compiledTimeline(), session.nodes(), this.entityController);
+        animation.bindEvents(new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), animation));
+        animation.start();
+        return animation;
     }
 
     private void releaseReservedPartner(PlaybackSession session) {
@@ -561,7 +553,7 @@ public class PlaybackEngine implements ConfigListener {
             }
         } finally {
             try {
-                session.track().stop();
+                session.animation().stop();
             } catch (RuntimeException exception) {
                 Emote.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
             } finally {

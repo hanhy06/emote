@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.CompiledTimeline;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +45,7 @@ class PlaybackStressSimulationTest {
                 }
 
                 CountingTarget target = new CountingTarget();
-                TimelinePlayer player = new TimelinePlayer(plan, target);
+                AnimationPlayer player = new AnimationPlayer(plan, target);
                 player.startSynchronized(serverTick);
                 player.resumeSynchronizedInterpolation();
                 activePlaybacks.add(new SimulatedPlayback(player, target));
@@ -87,18 +87,18 @@ class PlaybackStressSimulationTest {
         return startTicks;
     }
 
-    private void advancePastLoopBoundary(TimelinePlayer player) {
-        TimelinePlayer.AdvanceResult result = player.advance();
-        if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
+    private void advancePastLoopBoundary(AnimationPlayer player) {
+        AnimationPlayer.AdvanceResult result = player.advance();
+        if (result == AnimationPlayer.AdvanceResult.LOOP_BOUNDARY) {
             result = player.continueAfterLoopEvent();
         }
-        assertNotEquals(TimelinePlayer.AdvanceResult.FINISHED, result);
+        assertNotEquals(AnimationPlayer.AdvanceResult.FINISHED, result);
     }
 
-    private record SimulatedPlayback(TimelinePlayer player, CountingTarget target) {
+    private record SimulatedPlayback(AnimationPlayer player, CountingTarget target) {
     }
 
-    private static final class CountingTarget implements TimelinePlayer.TimelineTarget {
+    private static final class CountingTarget implements AnimationPlayer.TimelineTarget {
         private final RootTransform rootTransform = RootTransform.create(Vec3.ZERO, 0.0F);
 
         private int transformCount;

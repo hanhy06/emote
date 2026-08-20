@@ -3,8 +3,8 @@ package io.github.hanhy06.emote.playback.session;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.playback.timeline.PlaybackTrack;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
@@ -17,7 +17,7 @@ public final class PlaybackSession {
     private final String id;
     private final String animationId;
     private final PlaybackNodes nodes;
-    private PlaybackTrack track;
+    private AnimationPlayer animation;
     private final EmotePlayerBehavior playerBehavior;
     private final @Nullable PreparedSequence collaborativeSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
@@ -34,7 +34,7 @@ public final class PlaybackSession {
         String id,
         String animationId,
         PlaybackNodes nodes,
-        PlaybackTrack track,
+        AnimationPlayer animation,
         EmotePlayerBehavior playerBehavior,
         PlaybackParticipant initiator,
         @Nullable PreparedSequence collaborativeSequence
@@ -44,7 +44,7 @@ public final class PlaybackSession {
         this.id = Objects.requireNonNull(id, "id");
         this.animationId = Objects.requireNonNull(animationId, "animationId");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
-        this.track = Objects.requireNonNull(track, "track");
+        this.animation = Objects.requireNonNull(animation, "animation");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
         this.collaborativeSequence = collaborativeSequence;
         this.state = collaborativeSequence == null ? State.SOLO : State.OFFERING;
@@ -82,8 +82,8 @@ public final class PlaybackSession {
         return this.nodes;
     }
 
-    public PlaybackTrack track() {
-        return this.track;
+    public AnimationPlayer animation() {
+        return this.animation;
     }
 
     public EmotePlayerBehavior playerBehavior() {
@@ -150,14 +150,14 @@ public final class PlaybackSession {
         return this.reservedPartner;
     }
 
-    public PlaybackParticipant activateReservedPartner(PlaybackTrack track) {
+    public PlaybackParticipant activateReservedPartner(AnimationPlayer animation) {
         if (this.state != State.OFFERING && this.state != State.WAITING) {
             throw new IllegalStateException("Session cannot activate a partner in state " + this.state);
         }
         PlaybackParticipant participant = Objects.requireNonNull(this.reservedPartner, "reservedPartner");
         this.reservedPartner = null;
         addParticipant(participant);
-        replaceTrack(track, State.MATCHED);
+        replaceAnimation(animation, State.MATCHED);
         return participant;
     }
 
@@ -167,15 +167,15 @@ public final class PlaybackSession {
         return participant;
     }
 
-    public void beginTimeout(PlaybackTrack track) {
+    public void beginTimeout(AnimationPlayer animation) {
         if (this.state != State.WAITING || this.reservedPartner != null) {
             throw new IllegalStateException("Only an unreserved waiting session can time out");
         }
-        replaceTrack(track, State.TIMEOUT);
+        replaceAnimation(animation, State.TIMEOUT);
     }
 
-    private void replaceTrack(PlaybackTrack track, State state) {
-        this.track = Objects.requireNonNull(track, "track");
+    private void replaceAnimation(AnimationPlayer animation, State state) {
+        this.animation = Objects.requireNonNull(animation, "animation");
         this.state = Objects.requireNonNull(state, "state");
     }
 

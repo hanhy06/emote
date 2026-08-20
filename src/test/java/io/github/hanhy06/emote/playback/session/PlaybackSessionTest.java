@@ -9,9 +9,7 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
-import io.github.hanhy06.emote.playback.timeline.EventPlayer;
-import io.github.hanhy06.emote.playback.timeline.PlaybackTrack;
-import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.arguments.coordinates.RotationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
@@ -47,13 +45,11 @@ class PlaybackSessionTest {
         assertFalse(session.tickTimeout());
         assertTrue(session.tickTimeout());
 
-        TimelinePlayer timeoutTimeline = timeline(fixture.offer());
-        EventPlayer timeoutEvents = events(fixture.offer());
-        session.beginTimeout(new PlaybackTrack(timeoutTimeline, timeoutEvents));
+        AnimationPlayer timeoutTimeline = timeline(fixture.offer());
+        session.beginTimeout(timeoutTimeline);
 
         assertEquals(PlaybackSession.State.TIMEOUT, session.state());
-        assertSame(timeoutTimeline, session.track().timeline());
-        assertSame(timeoutEvents, session.track().events());
+        assertSame(timeoutTimeline, session.animation());
         assertFalse(session.acceptsPartner());
     }
 
@@ -62,18 +58,16 @@ class PlaybackSessionTest {
         SessionFixture fixture = fixture(20);
         PlaybackSession session = fixture.session();
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
-        TimelinePlayer matchedTimeline = timeline(fixture.offer());
-        EventPlayer matchedEvents = events(fixture.offer());
+        AnimationPlayer matchedTimeline = timeline(fixture.offer());
 
         session.reservePartner(partner);
-        PlaybackParticipant activated = session.activateReservedPartner(new PlaybackTrack(matchedTimeline, matchedEvents));
+        PlaybackParticipant activated = session.activateReservedPartner(matchedTimeline);
 
         assertSame(partner, activated);
         assertSame(partner, session.participant(partner.playerUuid()));
         assertNull(session.reservedPartner());
         assertEquals(PlaybackSession.State.MATCHED, session.state());
-        assertSame(matchedTimeline, session.track().timeline());
-        assertSame(matchedEvents, session.track().events());
+        assertSame(matchedTimeline, session.animation());
     }
 
     @Test
@@ -85,7 +79,7 @@ class PlaybackSessionTest {
         PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
 
         session.reservePartner(partner);
-        session.activateReservedPartner(new PlaybackTrack(timeline(fixture.offer()), events(fixture.offer())));
+        session.activateReservedPartner(timeline(fixture.offer()));
 
         assertSame(participantView, session.participants());
         assertSame(participantMapView, session.participantsByRole());
@@ -140,7 +134,7 @@ class PlaybackSessionTest {
             sequence.id(),
             offer.id(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
-            new PlaybackTrack(timeline(offer), events(offer)),
+            timeline(offer),
             sequence.playerBehavior(),
             participant(ParticipantRole.INITIATOR),
             sequence
@@ -152,19 +146,17 @@ class PlaybackSessionTest {
         return new PlaybackParticipant(UUID.randomUUID(), role, Vec3.ZERO, List.of(), false);
     }
 
-    private static TimelinePlayer timeline(PreparedEmote emote) {
-        return new TimelinePlayer(emote.animation(), new EmptyTimelineTarget());
-    }
-
-    private static EventPlayer events(PreparedEmote emote) {
-        return new EventPlayer(emote.animation(), ignored -> {
+    private static AnimationPlayer timeline(PreparedEmote emote) {
+        AnimationPlayer animation = new AnimationPlayer(emote.animation(), new EmptyTimelineTarget());
+        animation.bindEvents(ignored -> {
         });
+        return animation;
     }
 
     private record SessionFixture(PlaybackSession session, PreparedEmote offer) {
     }
 
-    private static final class EmptyTimelineTarget implements TimelinePlayer.TimelineTarget {
+    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
         public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
             throw new UnsupportedOperationException();

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback.timeline;
+package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -14,7 +14,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class TimelinePlayerTest {
+class AnimationPlayerTest {
     @Test
     void sendsTransformAtInterpolationStartAndReachesTargetAtKeyframeTick() {
         FakeTarget target = new FakeTarget();
@@ -27,7 +27,7 @@ class TimelinePlayerTest {
                 keyframe(10, 10.0D, 4)
             )
         );
-        TimelinePlayer player = new TimelinePlayer(animation, target);
+        AnimationPlayer player = new AnimationPlayer(animation, target);
 
         player.start();
         for (int tick = 1; tick <= 5; tick++) {
@@ -44,13 +44,13 @@ class TimelinePlayerTest {
         player.advance();
         player.advance();
         assertEquals(10.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(TimelinePlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
     }
 
     @Test
     void exposesLoopBoundaryBeforeDelayAndRestart() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 2,
                 EmoteAnimation.LoopMode.LOOP,
@@ -61,12 +61,12 @@ class TimelinePlayerTest {
         );
 
         player.start();
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(TimelinePlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(TimelinePlayer.AdvanceResult.RESTARTED, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.advance());
         assertEquals(0, player.currentTick());
         assertEquals(2, target.resetCount);
     }
@@ -74,17 +74,17 @@ class TimelinePlayerTest {
     @Test
     void holdModeKeepsTheLastFrameWithoutFinishingOrAdvancing() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(2, EmoteAnimation.LoopMode.HOLD, 0, List.of(keyframe(0, 0.0D, 0), keyframe(2, 2.0D, 0))),
             target
         );
 
         player.start();
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
         assertEquals(2, player.currentTick());
         assertEquals(2.0F, player.currentTransformation("node").getMatrix().m30(), 0.0001F);
-        assertEquals(TimelinePlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
         assertEquals(2, player.currentTick());
     }
 
@@ -99,7 +99,7 @@ class TimelinePlayerTest {
                 new EmoteAnimation.Keyframe(2, Map.of(), Map.of("node", new EmoteAnimation.NodeState(false)))
             )
         );
-        TimelinePlayer player = new TimelinePlayer(animation, target);
+        AnimationPlayer player = new AnimationPlayer(animation, target);
 
         player.start();
         player.advance();
@@ -111,7 +111,7 @@ class TimelinePlayerTest {
     @Test
     void hidesNodesUntilVisibilityIsRestoredOnTheNextPlaybackTick() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(3, EmoteAnimation.LoopMode.ONCE, 0, List.of()),
             target
         );
@@ -130,7 +130,7 @@ class TimelinePlayerTest {
     @Test
     void doesNotRestartInterpolationForRepeatedTransformMatrix() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 6,
                 EmoteAnimation.LoopMode.ONCE,
@@ -159,7 +159,7 @@ class TimelinePlayerTest {
     @Test
     void startsServerSynchronizedLoopAtServerPhaseAndResumesInterpolation() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 10,
                 EmoteAnimation.LoopMode.SERVER_SYNC,
@@ -185,7 +185,7 @@ class TimelinePlayerTest {
     @Test
     void startsNonSynchronizedTimelineAtExplicitCyclePhase() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 10,
                 EmoteAnimation.LoopMode.ONCE,
@@ -207,7 +207,7 @@ class TimelinePlayerTest {
     @Test
     void startsServerSynchronizedLoopInsideLoopDelay() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 2,
                 EmoteAnimation.LoopMode.SERVER_SYNC,
@@ -221,14 +221,14 @@ class TimelinePlayerTest {
 
         assertEquals(2, player.currentTick());
         assertEquals(2.0F, target.snapshots.getLast(), 0.0001F);
-        assertEquals(TimelinePlayer.AdvanceResult.RESTARTED, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.advance());
         assertEquals(0, player.currentTick());
     }
 
     @Test
     void synchronizedStartIgnoresRepeatedTransformMatrices() {
         FakeTarget target = new FakeTarget();
-        TimelinePlayer player = new TimelinePlayer(
+        AnimationPlayer player = new AnimationPlayer(
             animation(
                 6,
                 EmoteAnimation.LoopMode.SERVER_SYNC,
@@ -281,7 +281,7 @@ class TimelinePlayerTest {
         ));
     }
 
-    private static final class FakeTarget implements TimelinePlayer.TimelineTarget {
+    private static final class FakeTarget implements AnimationPlayer.TimelineTarget {
         private final List<AppliedTransform> transforms = new ArrayList<>();
         private final List<Float> snapshots = new ArrayList<>();
         private final List<Boolean> visibility = new ArrayList<>();

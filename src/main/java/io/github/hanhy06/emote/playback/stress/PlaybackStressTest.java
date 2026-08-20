@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedEmote;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -53,7 +53,7 @@ public final class PlaybackStressTest {
                     yaw,
                     emote
                 );
-                TimelinePlayer timeline = new TimelinePlayer(
+                AnimationPlayer timeline = new AnimationPlayer(
                     emote.compiledTimeline(),
                     nodes,
                     this.entityController
@@ -139,9 +139,9 @@ public final class PlaybackStressTest {
             while (iterator.hasNext()) {
                 StressTestInstance instance = iterator.next();
                 try {
-                    TimelinePlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                    if (result == TimelinePlayer.AdvanceResult.FINISHED) {
-                        instance.timeline = new TimelinePlayer(
+                    AnimationPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
+                    if (result == AnimationPlayer.AdvanceResult.FINISHED) {
+                        instance.timeline = new AnimationPlayer(
                             instance.emote.compiledTimeline(),
                             instance.nodes,
                             this.entityController
@@ -197,7 +197,7 @@ public final class PlaybackStressTest {
         };
     }
 
-    private void startAtInitialTick(TimelinePlayer timeline, EmoteAnimation animation, int requestedTick) {
+    private void startAtInitialTick(AnimationPlayer timeline, EmoteAnimation animation, int requestedTick) {
         int initialTick = requestedTick;
         if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE
             || animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
@@ -210,9 +210,9 @@ public final class PlaybackStressTest {
         timeline.startAtCyclePhase(initialTick);
     }
 
-    private TimelinePlayer.AdvanceResult advanceTimeline(TimelinePlayer timeline) {
-        TimelinePlayer.AdvanceResult result = timeline.advance();
-        if (result == TimelinePlayer.AdvanceResult.LOOP_BOUNDARY) {
+    private AnimationPlayer.AdvanceResult advanceTimeline(AnimationPlayer timeline) {
+        AnimationPlayer.AdvanceResult result = timeline.advance();
+        if (result == AnimationPlayer.AdvanceResult.LOOP_BOUNDARY) {
             result = timeline.continueAfterLoopEvent();
         }
         return result;
@@ -358,9 +358,9 @@ public final class PlaybackStressTest {
         private final PreparedEmote emote;
         private final PlaybackNodes nodes;
 
-        private TimelinePlayer timeline;
+        private AnimationPlayer timeline;
 
-        private StressTestInstance(PreparedEmote emote, PlaybackNodes nodes, TimelinePlayer timeline) {
+        private StressTestInstance(PreparedEmote emote, PlaybackNodes nodes, AnimationPlayer timeline) {
             this.emote = emote;
             this.nodes = nodes;
             this.timeline = timeline;

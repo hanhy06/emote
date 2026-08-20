@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback.timeline;
 
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.commands.CommandSourceStack;
@@ -14,15 +15,15 @@ import org.joml.Vector3f;
 
 import java.util.Objects;
 
-public final class EventCommandExecutor implements EventPlayer.EventExecutor {
+public final class EventCommandExecutor implements AnimationPlayer.EventExecutor {
     private final ServerPlayer player;
     private final PlaybackNodes nodes;
-    private final TimelinePlayer timeline;
+    private final AnimationPlayer timeline;
 
     public EventCommandExecutor(
         ServerPlayer player,
         PlaybackNodes nodes,
-        TimelinePlayer timeline
+        AnimationPlayer timeline
     ) {
         this.player = Objects.requireNonNull(player, "player");
         this.nodes = Objects.requireNonNull(nodes, "nodes");

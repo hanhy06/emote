@@ -86,7 +86,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         return new PlaybackInfo(
             participant.playerUuid(),
             Identifier.parse(session.id()),
-            session.track().currentTick()
+            session.animation().currentTick()
         );
     }
 

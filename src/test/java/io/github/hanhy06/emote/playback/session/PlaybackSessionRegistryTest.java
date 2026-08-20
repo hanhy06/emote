@@ -12,9 +12,7 @@ import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
-import io.github.hanhy06.emote.playback.timeline.EventPlayer;
-import io.github.hanhy06.emote.playback.timeline.PlaybackTrack;
-import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -54,7 +52,7 @@ class PlaybackSessionRegistryTest {
         assertNull(registry.findParticipant(partner.playerUuid()));
         assertSame(session, registry.findReservation(partner.playerUuid()));
 
-        session.activateReservedPartner(new PlaybackTrack(timeline(emote), events(emote)));
+        session.activateReservedPartner(timeline(emote));
         registry.activatePartner(session, partner.playerUuid());
 
         assertSame(session, registry.findParticipant(partner.playerUuid()));
@@ -104,24 +102,22 @@ class PlaybackSessionRegistryTest {
             sequence.id(),
             emote.id(),
             playbackNodes(),
-            new PlaybackTrack(timeline(emote), events(emote)),
+            timeline(emote),
             EmotePlayerBehavior.createDefault(),
             participant(ParticipantRole.INITIATOR),
             sequence
         );
     }
 
-    private static TimelinePlayer timeline(PreparedEmote emote) {
-        return new TimelinePlayer(
+    private static AnimationPlayer timeline(PreparedEmote emote) {
+        AnimationPlayer animation = new AnimationPlayer(
             emote.compiledTimeline(),
             new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
             new PlaybackEntityController()
         );
-    }
-
-    private static EventPlayer events(PreparedEmote emote) {
-        return new EventPlayer(emote.compiledTimeline(), ignored -> {
+        animation.bindEvents(ignored -> {
         });
+        return animation;
     }
 
     private static PlaybackParticipant participant(ParticipantRole role) {
