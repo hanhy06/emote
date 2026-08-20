@@ -122,7 +122,21 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
 
   if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
   const diagnostics: ImportDiagnostic[] = [];
-  const animations = project.animations.map((animation, index) => importAnimation(animation, index, bones, diagnostics));
+  const animations = project.animations.map((animation, index) => {
+    try {
+      return importAnimation(animation, index, bones, diagnostics);
+    } catch (reason) {
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
+      const message = `${animation.name} contains Molang that the converter cannot evaluate. Only the Create pose is available; animation export is disabled. To fix it, replace the expression at ${reason.sourcePath ?? `animations[${index}]`} with constants or q.anim_time-based Molang.`;
+      diagnostics.push({
+        severity: "warning",
+        code: "geckolib_animation_molang_unavailable",
+        message,
+        sourcePath: reason.sourcePath ?? `animations[${index}]`,
+      });
+      return createPreviewOnlyAnimation(animation, index, message);
+    }
+  });
   return {
     source: "geckolib_bbmodel",
     sourceName,
@@ -134,6 +148,23 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     diagnostics,
     resources,
     ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
+  };
+}
+
+function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string): ImportedAnimation {
+  const loop = animation.loop ?? "once";
+  const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
+  return {
+    id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
+    name: animation.name,
+    durationTicks: Number.isFinite(animation.length) && animation.length > 0
+      ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
+      : TICKS_PER_SECOND,
+    loop: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
+    loopDelayTicks: 0,
+    tracks: {},
+    events: { start: [], timeline: [], loop: [], stop: [] },
+    availability: { preview: "create_pose", exportable: false, reason },
   };
 }
 

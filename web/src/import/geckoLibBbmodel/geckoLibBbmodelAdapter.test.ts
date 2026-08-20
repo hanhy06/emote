@@ -246,6 +246,22 @@ describe("geckoLibBbmodelAdapter", () => {
     await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("unsupported easing customEasing");
   });
 
+  it("keeps unknown GeckoLib Molang as a warned Create pose", async () => {
+    const value = project();
+    Object.assign(value.animations[0].animators.root.keyframes[1].data_points[0], { x: "q.ground_speed * 16" });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0]).toMatchObject({
+      tracks: {},
+      availability: { preview: "create_pose", exportable: false },
+    });
+    expect(imported.diagnostics).toContainEqual(expect.objectContaining({
+      code: "geckolib_animation_molang_unavailable",
+      message: expect.stringContaining("replace the expression at animations[0].animators.root"),
+    }));
+  });
+
   it("requires the texture to be embedded", async () => {
     const value = project();
     (value.textures[0] as { source?: string }).source = undefined;
