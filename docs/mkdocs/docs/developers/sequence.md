@@ -35,7 +35,7 @@ Sequence files use schema version `4` and combine existing Animations into one e
 }
 ```
 
-Sequence reference JSON files, including weighted random selection and a two-player example, are provided separately in the repository's `docs/reference` directory.
+[Sequence reference JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) and a [two-player reference](https://github.com/hanhy06/emote/blob/dev/docs/reference/two-player-sequence.json) are provided separately.
 
 ## Root fields
 
@@ -144,19 +144,21 @@ A wait step cannot be the first or last step, cannot be adjacent to another wait
 
 ## Animation compatibility
 
-All Animations used as candidates in one Sequence must have the same node IDs and compatible node content. Control IDs are excluded from compatibility checks.
+Animations in one Sequence may use different node IDs. The compiled Sequence creates the union of their nodes once, reuses those display entities throughout playback, and hides nodes that are absent from the active Animation step.
+
+When two Animations reuse the same node ID, that node must have the same inherited space and compatible display content:
 
 - Node types must match.
 - Item stacks, display contexts, block states, text, and entity NBT must match.
-- Player skin parts and order must match.
+- Player skin participant, part, and order must match.
 
-Default transformations and visibility may differ. They are reset to the corresponding values when each Animation step starts.
+Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
 
 Timeline command events are preserved. Animations referenced by a Sequence cannot use `start`, `loop`, or `stop` command events.
 
 ## Playback behavior
 
-Referenced Animations are resolved and checked for compatibility when emotes are reloaded. Before playback, the selected steps are compiled into one Animation. Display entities are created once and reused until the Sequence ends.
+Referenced Animations are resolved and checked for compatibility when emotes are reloaded. Before playback, random choices and repeat controls are resolved and the selected steps are compiled into one playback. Display entities are created once and reused until the Sequence ends.
 
 The Sequence's player settings replace those of referenced Animations. Stopping or interrupting the Sequence cancels all remaining steps.
 

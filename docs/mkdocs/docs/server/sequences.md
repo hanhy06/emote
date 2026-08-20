@@ -73,6 +73,6 @@ Assign player permissions and cooldowns to the Sequence ID, `example:sit`. You d
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
 !!! note "Complete example pack"
-    A ready-to-install Sequence example pack will be added to the existing `docs/example/` collection when it is ready. The JSON on this page only demonstrates the structure and requires separate referenced Animation files.
+    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
 
 To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).
