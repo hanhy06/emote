@@ -1,4 +1,5 @@
 import type { ConverterSession } from "./converterSession";
+import { animationAvailability } from "./domain/conversionSeed";
 
 export type WorkspacePage = 0 | 1 | 2;
 
@@ -34,8 +35,11 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
   switch (action.type) {
     case "begin_open":
       return { ...state, session: null, page: 0, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
-    case "finish_open":
-      return { ...state, session: action.session, page: 0, operation: { type: "idle" } };
+    case "finish_open": {
+      const animation = action.session.document.animations[action.session.animationIndex]?.source;
+      const page = animation && animationAvailability(animation).preview === "unavailable" ? 1 : 0;
+      return { ...state, session: action.session, page, operation: { type: "idle" } };
+    }
     case "fail_open":
       return { ...state, openError: action.message, operation: { type: "idle" } };
     case "begin_export":

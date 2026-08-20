@@ -30,6 +30,7 @@ import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
 import type { ImportedAnimation } from "./domain/conversionSeed";
+import { animationAvailability } from "./domain/conversionSeed";
 import {
   selectPart,
   selectParts,
@@ -75,12 +76,13 @@ export function App() {
   const spaces = useMemo(() => project ? documentNodeSpaces(project) : {}, [project]);
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
+  const availability = animation ? animationAvailability(animation) : null;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
-  const previewTick = previewFrameIndex === 0
+  const previewTick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
-    : Math.min(previewFrameIndex - 1, Math.max(0, (animation?.durationTicks ?? 1) - 1));
+    : Math.min(previewFrameIndex - 1, Math.max(0, animation?.durationTicks ?? 0));
   const previewParts = useMemo(
     () => createPreviewParts(skinCandidates, animation, previewTick),
     [animation, previewTick, skinCandidates],
@@ -290,7 +292,10 @@ export function App() {
             <label className="project-animation">
               <span>Animation</span>
               <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
-                updateSession((current) => selectSessionAnimation(current, Number(event.currentTarget.value)));
+                const nextIndex = Number(event.currentTarget.value);
+                updateSession((current) => selectSessionAnimation(current, nextIndex));
+                const nextAnimation = project.animations[nextIndex]?.source;
+                if (nextAnimation && animationAvailability(nextAnimation).preview === "unavailable") dispatch({ type: "set_page", page: 1 });
               }}>
                 {project.animations.map((item, index) => <option value={index} key={`${item.source.id}:${index}`}>{item.source.name}</option>)}
               </select>
@@ -333,10 +338,10 @@ export function App() {
                    : "This file does not contain skin-compatible parts, so no skin assignment is needed."}</p>
               </div>
               <div className="preview-controls">
-                {skinCandidates.length > 0 && (
+                {skinCandidates.length > 0 && availability?.preview === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
-                    <input type="range" min="0" max={animation.durationTicks} step="1" value={previewFrameIndex} onChange={(event) => {
+                    <input type="range" min="0" max={animation.durationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
                       updateSession((current) => ({ ...current, previewFrameIndex: Number(event.currentTarget.value), selectedParts: new Set() }));
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
@@ -344,7 +349,9 @@ export function App() {
                 )}
               </div>
             </div>
-            {skinCandidates.length > 0 ? (
+            {availability?.preview === "unavailable" ? (
+              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>Edit the animation metadata on Page 2. See the warning above for the source expression that must be changed.</span></div>
+            ) : skinCandidates.length > 0 ? (
               <div className="editor">
                 <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
                   <PartPreview
@@ -372,14 +379,14 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            <CommandPanel
+            {availability?.exportable && <CommandPanel
               animation={animation}
               tick={previewTick}
               disabled={busy}
               onAdd={addCommandAtPreviewTick}
               onChange={changeFrameCommand}
               onRemove={deleteFrameCommand}
-            />
+            />}
           </section>}
 
           {page === 1 && animationOptions && <SettingsPanel
@@ -395,7 +402,10 @@ export function App() {
 
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
-            animations={project.animations.map((item) => ({ label: item.output.displayName, detail: item.source.id }))}
+            animations={project.animations.map((item) => {
+              const itemAvailability = animationAvailability(item.source);
+              return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
+            })}
             hasResources={project.resources.size > 0}
             error={exportError}
             disabled={busy}
