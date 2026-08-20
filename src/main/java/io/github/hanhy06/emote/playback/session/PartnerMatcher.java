@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.Emote;
 import net.minecraft.server.level.ServerPlayer;
@@ -7,12 +7,12 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.Collection;
 
-final class PartnerMatcher {
+public final class PartnerMatcher {
     static final double MAX_HORIZONTAL_DISTANCE = 2.0D;
     static final double MAX_HEIGHT_DIFFERENCE = 1.0D;
     static final double MIN_FACING_DOT = Math.cos(Math.toRadians(45.0D));
 
-    PlaybackSession find(ServerPlayer partner, String sequenceId, Collection<PlaybackSession> sessions) {
+    public PlaybackSession find(ServerPlayer partner, String sequenceId, Collection<PlaybackSession> sessions) {
         PlaybackSession nearest = null;
         double nearestDistanceSquared = Double.MAX_VALUE;
         for (PlaybackSession session : sessions) {
@@ -29,7 +29,7 @@ final class PartnerMatcher {
         return nearest;
     }
 
-    boolean stillMatches(PlaybackSession session, ServerPlayer partner) {
+    public boolean stillMatches(PlaybackSession session, ServerPlayer partner) {
         return matchingCandidate(session, partner) != null;
     }
 

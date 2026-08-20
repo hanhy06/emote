@@ -1,7 +1,9 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.session;
 
 import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.minecraft.EntitySharedFlagsAccessor;
+import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
@@ -15,7 +17,7 @@ import net.minecraft.world.item.ItemStack;
 import java.util.List;
 import java.util.Map;
 
-final class PlayerVisibilityService {
+public final class PlayerVisibilityService {
     private static final List<EquipmentSlot> PLAYER_EQUIPMENT_SLOTS = List.of(
         EquipmentSlot.MAINHAND,
         EquipmentSlot.OFFHAND,
@@ -30,16 +32,16 @@ final class PlayerVisibilityService {
 
     private final PlaybackEngine playbackEngine;
 
-    PlayerVisibilityService(PlaybackEngine playbackEngine) {
+    public PlayerVisibilityService(PlaybackEngine playbackEngine) {
         this.playbackEngine = playbackEngine;
     }
 
-    void register() {
+    public void register() {
         EntityTrackingEvents.START_TRACKING.register(this::handleStartTracking);
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
 
-    void start(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    public void start(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
         if (!session.playerBehavior().hidden()) {
             return;
         }
@@ -48,7 +50,7 @@ final class PlayerVisibilityService {
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
-    void tick(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    public void tick(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
         if (!session.playerBehavior().hidden() || player.isInvisible()) {
             return;
         }
@@ -56,7 +58,7 @@ final class PlayerVisibilityService {
         syncPlayerVisibility(player);
     }
 
-    void stop(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    public void stop(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
         if (!session.playerBehavior().hidden()) {
             return;
         }

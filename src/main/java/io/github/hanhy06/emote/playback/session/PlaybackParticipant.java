@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.skin.SkinBinding;

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.session;
 
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;

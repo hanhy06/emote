@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
@@ -103,11 +103,11 @@ public final class PlaybackSession {
         return null;
     }
 
-    boolean collaborative() {
+    public boolean collaborative() {
         return this.collaborativeSequence != null;
     }
 
-    PreparedSequence collaborativeSequence() {
+    public PreparedSequence collaborativeSequence() {
         if (this.collaborativeSequence == null) {
             throw new IllegalStateException("Solo sessions do not have a collaborative sequence");
         }
@@ -118,21 +118,21 @@ public final class PlaybackSession {
         return this.state;
     }
 
-    void enterWaiting() {
+    public void enterWaiting() {
         if (this.state != State.OFFERING || this.reservedPartner != null) {
             throw new IllegalStateException("Only an unreserved offer can start waiting for a partner");
         }
         this.state = State.WAITING;
     }
 
-    boolean tickTimeout() {
+    public boolean tickTimeout() {
         if (this.state != State.WAITING) {
             throw new IllegalStateException("Session is not waiting for a partner");
         }
         return --this.remainingTimeoutTicks <= 0;
     }
 
-    void reservePartner(PlaybackParticipant participant) {
+    public void reservePartner(PlaybackParticipant participant) {
         if (!acceptsPartner()) {
             throw new IllegalStateException("Session is not accepting a partner");
         }
@@ -142,7 +142,7 @@ public final class PlaybackSession {
         this.reservedPartner = participant;
     }
 
-    boolean acceptsPartner() {
+    public boolean acceptsPartner() {
         return (this.state == State.OFFERING || this.state == State.WAITING) && this.reservedPartner == null;
     }
 
@@ -150,7 +150,7 @@ public final class PlaybackSession {
         return this.reservedPartner;
     }
 
-    PlaybackParticipant activateReservedPartner(PlaybackTrack track) {
+    public PlaybackParticipant activateReservedPartner(PlaybackTrack track) {
         if (this.state != State.OFFERING && this.state != State.WAITING) {
             throw new IllegalStateException("Session cannot activate a partner in state " + this.state);
         }
@@ -161,13 +161,13 @@ public final class PlaybackSession {
         return participant;
     }
 
-    @Nullable PlaybackParticipant releaseReservedPartner() {
+    public @Nullable PlaybackParticipant releaseReservedPartner() {
         PlaybackParticipant participant = this.reservedPartner;
         this.reservedPartner = null;
         return participant;
     }
 
-    void beginTimeout(PlaybackTrack track) {
+    public void beginTimeout(PlaybackTrack track) {
         if (this.state != State.WAITING || this.reservedPartner != null) {
             throw new IllegalStateException("Only an unreserved waiting session can time out");
         }

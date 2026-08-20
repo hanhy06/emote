@@ -2,9 +2,9 @@ package io.github.hanhy06.emote.network;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
-import io.github.hanhy06.emote.playback.PlaybackParticipant;
-import io.github.hanhy06.emote.playback.PlaybackSession;
 import io.github.hanhy06.emote.playback.PlaybackStateListener;
+import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.server.level.ServerPlayer;
 
