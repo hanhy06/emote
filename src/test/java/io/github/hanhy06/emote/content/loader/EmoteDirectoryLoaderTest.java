@@ -78,7 +78,7 @@ class EmoteDirectoryLoaderTest {
         Files.writeString(tempDir.resolve("sequence.json"), """
             {
               "type": "sequence",
-              "schema_version": 3,
+              "schema_version": 4,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence"},
               "settings": {

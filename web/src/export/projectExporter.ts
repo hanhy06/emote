@@ -32,7 +32,7 @@ export function exportDocumentAnimationFiles(document: ConversionDocument, inclu
     const sequenceOutput = document.sequence;
     const sequence = {
       type: "sequence",
-      schema_version: 3,
+      schema_version: 4,
       id: `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.displayName)}`,
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
       settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },

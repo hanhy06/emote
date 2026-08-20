@@ -1,11 +1,11 @@
 # Sequence Format
 
-Sequence files use schema version `3` and combine existing Animations into one emote.
+Sequence files use schema version `4` and combine existing Animations into one emote.
 
 ```json
 {
   "type": "sequence",
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "example:sit",
   "metadata": {
     "name": "Sit",
@@ -42,7 +42,7 @@ Sequence reference JSON files, including weighted random selection and a two-pla
 | Field | Description |
 |---|---|
 | `type` | Must be `sequence`. |
-| `schema_version` | Must be `3`. |
+| `schema_version` | Must be `4`. |
 | `id` | A lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and custom metadata. |
 | `participants` | Participant placement required by two-player Sequences; omitted for single-player Sequences. |
@@ -227,13 +227,13 @@ If any `partner` node exists, the Animation is treated as explicitly asymmetric 
 
 ## Migrating from schema 1
 
-The web converter can import published schema 1 Sequences and export them as schema 3. The server only loads schema 3 directly.
+The web converter can import published schema 1 Sequences and export them as schema 4. The server only loads schema 4 directly.
 
-| Schema 1 | Schema 3 |
+| Schema 1 | Schema 4 |
 |---|---|
-| `schema_version: 1` | `schema_version: 3` |
+| `schema_version: 1` | `schema_version: 4` |
 | Root `player` | `settings.player` |
 | No cooldown | `settings.cooldown`; use `"0t"` when migrating |
-| References to schema 1 Animations | Convert each Animation to schema 3 |
+| References to schema 1 Animations | Convert each Animation to schema 4 |
 
-Existing Animation steps, repeats, and uniform or weighted random-selection structures remain unchanged. Schema 3 adds wait steps using Minecraft time strings and two-player Sequences.
+Schema 4 keeps the existing Sequence structure and behavior unchanged while aligning its version with the Animation format.

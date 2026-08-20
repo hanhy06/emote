@@ -16,7 +16,7 @@ class SequenceJsonParserTest {
     private final SequenceJsonParser parser = new SequenceJsonParser();
 
     @Test
-    void loadsSchemaThreeSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
+    void loadsSchemaFourSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
         EmoteSequence sequence = load(tempDir, "sit.json", baseJson("""
             {"emote": "example:sit_down"},
             {"wait": "0.5s"},
@@ -30,6 +30,16 @@ class SequenceJsonParserTest {
         assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
         assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());
+    }
+
+    @Test
+    void rejectsSchemaThree(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("schema-three.json");
+        Files.writeString(path, baseJson("{\"emote\":\"example:wave\"}").replace("\"schema_version\": 4", "\"schema_version\": 3"));
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
+
+        assertEquals("$.schema_version", exception.fieldPath());
     }
 
     @Test
@@ -155,7 +165,7 @@ class SequenceJsonParserTest {
         return """
             {
               "type": "sequence",
-              "schema_version": 3,
+              "schema_version": 4,
               "id": "example:sit",
               "metadata": {"name": "Sit", "description": "Sit sequence", "credit": "author"},
               "settings": {
@@ -171,7 +181,7 @@ class SequenceJsonParserTest {
         return """
             {
               "type": "sequence",
-              "schema_version": 3,
+              "schema_version": 4,
               "id": "example:handshake",
               "metadata": {"name": "Handshake", "description": "Two-player handshake"},
               "participants": {

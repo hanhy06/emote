@@ -17,7 +17,7 @@ config/emote/animations/sit/
 ```json
 {
   "type": "sequence",
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "example:sit",
   "metadata": {
     "name": "Sit",

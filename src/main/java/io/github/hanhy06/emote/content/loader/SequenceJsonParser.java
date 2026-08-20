@@ -14,7 +14,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public final class SequenceJsonParser {
-    private static final int SCHEMA_VERSION = 3;
+    private static final int SCHEMA_VERSION = 4;
     private final ParticipantPlacementParser placementParser = new ParticipantPlacementParser();
 
     public EmoteSequence parse(Path sourcePath) throws EmoteAnimationLoadException {

@@ -10,7 +10,7 @@ describe("sequenceJsonAdapter", () => {
       name: "emote.demo.json",
       bytes: encoder.encode(JSON.stringify({
         type: "sequence",
-        schema_version: 3,
+        schema_version: 4,
         id: "demo:sequence",
         metadata: { name: "Demo", description: "" },
         settings: { cooldown: "0t", player: createDefaultPlayerBehavior() },

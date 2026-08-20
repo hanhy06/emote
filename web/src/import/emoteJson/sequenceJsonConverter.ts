@@ -15,7 +15,7 @@ import { parseInputJson } from "../inputCache";
 
 export interface EmoteSequence {
   type: "sequence";
-  schema_version: 3;
+  schema_version: 4;
   id: string;
   metadata: RuntimeRecord;
   settings: {
@@ -34,14 +34,14 @@ export function convertSequenceInput(input: ImportInput): EmoteSequence | null {
   }
   if (!isRecord(value) || value.type !== "sequence") return null;
   if (value.schema_version === 1) return migrateSchema1Sequence(value);
-  if (value.schema_version === 3) return requireSchema3Sequence(value);
+  if (value.schema_version === 4) return requireSequence(value);
   throw new ConversionError("unsupported_sequence_schema", `Unsupported sequence schema: ${String(value.schema_version)}.`, "schema_version");
 }
 
 function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
-  return requireSchema3Sequence({
+  return requireSequence({
     type: "sequence",
-    schema_version: 3,
+    schema_version: 4,
     id: root.id,
     metadata: root.metadata,
     settings: { cooldown: "0t", player: root.player },
@@ -49,10 +49,10 @@ function migrateSchema1Sequence(root: RuntimeRecord): EmoteSequence {
   });
 }
 
-function requireSchema3Sequence(value: unknown): EmoteSequence {
+function requireSequence(value: unknown): EmoteSequence {
   const root = requireRecord(value, "sequence");
   if (root.type !== "sequence") throw invalid("type", "must be sequence");
-  if (root.schema_version !== 3) throw invalid("schema_version", "must be 3");
+  if (root.schema_version !== 4) throw invalid("schema_version", "must be 4");
   const id = requireString(root.id, "id");
   if (!isResourceLocation(id)) throw invalid("id", "must be a Minecraft resource location");
   const metadata = requireRecord(root.metadata, "metadata");
@@ -70,7 +70,7 @@ function requireSchema3Sequence(value: unknown): EmoteSequence {
     if (index === 0 || index === steps.length - 1) throw invalid(`steps[${index}].wait`, "must be between emote steps");
     if ("wait" in steps[index - 1]) throw invalid(`steps[${index}].wait`, "must not follow another wait step");
   });
-  return { type: "sequence", schema_version: 3, id, metadata, settings: { cooldown, player }, steps };
+  return { type: "sequence", schema_version: 4, id, metadata, settings: { cooldown, player }, steps };
 }
 
 function requirePlayer(player: RuntimeRecord): void {

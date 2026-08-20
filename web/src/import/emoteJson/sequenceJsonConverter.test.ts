@@ -5,7 +5,7 @@ import { convertSequenceInput } from "./sequenceJsonConverter";
 const encoder = new TextEncoder();
 
 describe("convertSequenceInput", () => {
-  it("migrates schema 1 sequences to schema 3", () => {
+  it("migrates schema 1 sequences to schema 4", () => {
     const input = {
       name: "emote.inventory.json",
       bytes: encoder.encode(JSON.stringify({
@@ -24,7 +24,7 @@ describe("convertSequenceInput", () => {
 
     expect(convertSequenceInput(input)).toEqual({
       type: "sequence",
-      schema_version: 3,
+      schema_version: 4,
       id: "emote:inventory",
       metadata: { name: "Inventory", description: "" },
       settings: { cooldown: "0t", player: createDefaultPlayerBehavior() },
@@ -36,10 +36,10 @@ describe("convertSequenceInput", () => {
     });
   });
 
-  it("rejects unreleased schema 2 sequences", () => {
+  it("rejects schema 3 sequences", () => {
     const sequence = {
       type: "sequence",
-      schema_version: 2,
+      schema_version: 3,
       id: "emote:sit",
       metadata: { name: "Sit", description: "" },
       settings: { cooldown: "5s", player: createDefaultPlayerBehavior() },
@@ -47,7 +47,7 @@ describe("convertSequenceInput", () => {
     };
 
     expect(() => convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) }))
-      .toThrow("Unsupported sequence schema: 2");
+      .toThrow("Unsupported sequence schema: 3");
   });
 
   it("ignores non-sequence JSON", () => {

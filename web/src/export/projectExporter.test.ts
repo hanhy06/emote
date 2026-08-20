@@ -74,7 +74,7 @@ function exportDocument(
 }
 
 describe("exportAnimation", () => {
-  it("exports multiple animations and a schema 3 sequence as individual files", async () => {
+  it("exports multiple animations and a schema 4 sequence as individual files", async () => {
     const project: ImportedProject = {
       source: "emote_json",
       sourceName: "multi.json",
@@ -97,7 +97,7 @@ describe("exportAnimation", () => {
     const sequenceJson = await sequenceFile.blob.text();
     const sequence = JSON.parse(sequenceJson);
     expect(sequenceJson).toContain('\n  "steps": [\n');
-    expect(sequence.schema_version).toBe(3);
+    expect(sequence.schema_version).toBe(4);
     expect(sequence.id).toBe("demo:demo");
     expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");

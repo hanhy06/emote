@@ -130,7 +130,7 @@ Connect short animation clips in order and combine waits, weighted random choice
 ```json
 {
   "type": "sequence",
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "example:sit",
   "steps": [
     {"emote": "example:sit_down"},
@@ -157,7 +157,7 @@ Combine animations for two players in a sequence to create a collaborative emote
 ```json
 {
   "type": "sequence",
-  "schema_version": 3,
+  "schema_version": 4,
   "id": "emote:handshake",
   "participants": {
     "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
