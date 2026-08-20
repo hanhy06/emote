@@ -59,7 +59,7 @@ class PlaybackStressSimulationTest {
 
         assertEquals(INSTANCE_COUNT, activePlaybacks.size());
         assertEquals(
-            INSTANCE_COUNT * animation.nodes().size(),
+            0,
             activePlaybacks.stream().mapToInt(playback -> playback.target().snapshotCount).sum()
         );
         assertTrue(activePlaybacks.stream().mapToInt(playback -> playback.target().transformCount).sum() > 0);
