@@ -152,7 +152,7 @@ public final class PlaybackEntityController {
         });
     }
 
-    void applyTransformation(
+    public void applyTransformation(
         PlaybackNodes playbackNodes,
         NodeInstance node,
         CompiledTimeline.PreparedTransform transform,

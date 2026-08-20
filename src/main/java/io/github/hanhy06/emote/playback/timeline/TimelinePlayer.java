@@ -1,8 +1,10 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.timeline;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.playback.PlaybackEntityController;
+import io.github.hanhy06.emote.playback.PlaybackNodes;
 
 import java.util.*;
 
@@ -31,11 +33,11 @@ public final class TimelinePlayer {
         this(compiledTimeline, new EntityTimelineTarget(compiledTimeline, nodes, entityController));
     }
 
-    TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
+    public TimelinePlayer(EmoteAnimation animation, TimelineTarget target) {
         this(CompiledTimeline.compile(animation), target);
     }
 
-    TimelinePlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
+    public TimelinePlayer(CompiledTimeline compiledTimeline, TimelineTarget target) {
         this.compiledTimeline = Objects.requireNonNull(compiledTimeline, "compiledTimeline");
         this.animation = compiledTimeline.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -61,7 +63,7 @@ public final class TimelinePlayer {
         startAtCyclePhaseUnchecked(serverTick);
     }
 
-    void startAtCyclePhase(long cycleTick) {
+    public void startAtCyclePhase(long cycleTick) {
         if (this.started) {
             throw new IllegalStateException("Timeline already started");
         }
@@ -90,7 +92,7 @@ public final class TimelinePlayer {
         resumeInitialInterpolation();
     }
 
-    void deferInitialVisibility() {
+    public void deferInitialVisibility() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
         }
@@ -98,7 +100,7 @@ public final class TimelinePlayer {
         this.initialVisibilityDeferred = true;
     }
 
-    void restoreDeferredVisibility() {
+    public void restoreDeferredVisibility() {
         if (!this.initialVisibilityDeferred) {
             return;
         }
@@ -109,7 +111,7 @@ public final class TimelinePlayer {
         ));
     }
 
-    void resumeInitialInterpolation() {
+    public void resumeInitialInterpolation() {
         if (!this.started) {
             throw new IllegalStateException("Timeline has not started");
         }
@@ -280,7 +282,7 @@ public final class TimelinePlayer {
         FINISHED
     }
 
-    interface TimelineTarget {
+    public interface TimelineTarget {
         Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform);
 
         void applyTransform(

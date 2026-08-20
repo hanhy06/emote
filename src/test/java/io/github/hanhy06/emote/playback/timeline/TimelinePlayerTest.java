@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.timeline;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -290,7 +290,7 @@ class TimelinePlayerTest {
 
         @Override
         public Transformation createTransformation(String nodeId, CompiledTimeline.PreparedTransform transform) {
-            return new Transformation(RootTransform.toJoml(transform.matrix()));
+            return new Transformation(new org.joml.Matrix4f(transform.localMatrix()));
         }
 
         @Override

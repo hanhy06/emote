@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.timeline;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;

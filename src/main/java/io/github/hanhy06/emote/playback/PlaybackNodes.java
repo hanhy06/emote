@@ -45,7 +45,7 @@ public final class PlaybackNodes {
         return root(EmoteAnimation.NodeSpace.SCENE);
     }
 
-    RootTransform root(EmoteAnimation.NodeSpace space) {
+    public RootTransform root(EmoteAnimation.NodeSpace space) {
         return this.spaces.get(Objects.requireNonNull(space, "space"));
     }
 
@@ -57,7 +57,7 @@ public final class PlaybackNodes {
         return this.displayEntityCount;
     }
 
-    Transformation displayTransformation(
+    public Transformation displayTransformation(
         EmoteAnimation.NodeSpace space,
         CompiledTimeline.PreparedTransform transform
     ) {
@@ -66,7 +66,7 @@ public final class PlaybackNodes {
             .computeIfAbsent(transform, ignored -> root(space).displayTransformation(transform));
     }
 
-    boolean requestVisibility(String nodeId, boolean visible) {
+    public boolean requestVisibility(String nodeId, boolean visible) {
         NodeInstance node = Objects.requireNonNull(this.nodes.get(nodeId), "Unknown node " + nodeId);
         this.requestedVisibility.put(nodeId, visible);
         return effectiveVisibility(nodeId);
@@ -81,7 +81,7 @@ public final class PlaybackNodes {
         this.activeSpaces.add(Objects.requireNonNull(space, "space"));
     }
 
-    float orientationYaw(EmoteAnimation.NodeSpace space) {
+    public float orientationYaw(EmoteAnimation.NodeSpace space) {
         return space == EmoteAnimation.NodeSpace.SCENE ? this.viewYaw : root(space).yaw();
     }
 

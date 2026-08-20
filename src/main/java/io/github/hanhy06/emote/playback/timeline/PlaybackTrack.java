@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.timeline;
 
 import java.util.Objects;
 

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.timeline;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
