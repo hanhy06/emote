@@ -2,8 +2,6 @@ package io.github.hanhy06.emote.animation;
 
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.Emote;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteSequence;
@@ -43,47 +41,20 @@ public final class AnimationDirectoryLoader {
         List<Path> detectedFiles = findJsonFiles(directory);
         for (Path path : detectedFiles) {
             try {
-                if (fileType(path).equals("sequence")) {
-                    sequenceCandidates.add(this.sequenceJsonLoader.load(path));
-                } else {
-                    LoadedAnimation loaded = this.jsonLoader.load(path);
-                    candidates.add(validator.validate(loaded));
+                EmoteJsonDocument document = EmoteJsonDocument.read(path);
+                switch (document.type()) {
+                    case "animation" -> candidates.add(validator.validate(this.jsonLoader.parse(document)));
+                    case "sequence" -> sequenceCandidates.add(this.sequenceJsonLoader.parse(document));
+                    default -> throw document.reader().error(
+                        "$.type",
+                        "unsupported emote file type: " + document.type()
+                    );
                 }
             } catch (EmoteAnimationLoadException exception) {
                 Emote.LOGGER.warn("Ignoring invalid emote file: {}", exception.getMessage());
             }
         }
         return rejectDuplicateIds(candidates, sequenceCandidates, detectedFiles.size());
-    }
-
-    private String fileType(Path path) throws EmoteAnimationLoadException {
-        try {
-            if (Files.size(path) > AnimationJsonLoader.MAX_JSON_BYTES) {
-                throw new EmoteAnimationLoadException(
-                    path,
-                    "$",
-                    "file must not exceed " + AnimationJsonLoader.MAX_JSON_BYTES + " bytes"
-                );
-            }
-            JsonElement element = JsonParser.parseString(Files.readString(path));
-            if (!element.isJsonObject()) {
-                return "animation";
-            }
-            JsonElement type = element.getAsJsonObject().get("type");
-            if (type == null || type.isJsonNull()) {
-                return "animation";
-            }
-            if (!type.isJsonPrimitive() || !type.getAsJsonPrimitive().isString()) {
-                throw new EmoteAnimationLoadException(path, "$.type", "must be a string");
-            }
-            String value = type.getAsString();
-            if (!value.equals("animation") && !value.equals("sequence")) {
-                throw new EmoteAnimationLoadException(path, "$.type", "unsupported emote file type: " + value);
-            }
-            return value;
-        } catch (IOException | com.google.gson.JsonParseException exception) {
-            throw new EmoteAnimationLoadException(path, "$", "failed to detect emote file type", exception);
-        }
     }
 
     private List<Path> findJsonFiles(Path directory) {

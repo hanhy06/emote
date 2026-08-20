@@ -248,7 +248,7 @@ class AnimationJsonLoaderTest {
 
     @Test
     void rejectsOversizedAnimationBeforeParsingJson() {
-        byte[] bytes = new byte[AnimationJsonLoader.MAX_JSON_BYTES + 1];
+        byte[] bytes = new byte[EmoteJsonDocument.MAX_JSON_BYTES + 1];
 
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,

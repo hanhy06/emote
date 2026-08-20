@@ -7,9 +7,6 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteSequence;
 import net.minecraft.resources.Identifier;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -19,34 +16,13 @@ public final class SequenceJsonLoader {
     private final ParticipantPlacementParser placementParser = new ParticipantPlacementParser();
 
     public EmoteSequence load(Path sourcePath) throws EmoteAnimationLoadException {
-        byte[] bytes;
-        try {
-            long fileSize = Files.size(sourcePath);
-            if (fileSize > AnimationJsonLoader.MAX_JSON_BYTES) {
-                throw new EmoteAnimationLoadException(
-                    sourcePath,
-                    "$",
-                    "file must not exceed " + AnimationJsonLoader.MAX_JSON_BYTES + " bytes"
-                );
-            }
-            bytes = Files.readAllBytes(sourcePath);
-        } catch (IOException exception) {
-            throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
-        }
+        return parse(EmoteJsonDocument.read(sourcePath));
+    }
 
-        EmoteJsonReader reader = new EmoteJsonReader(sourcePath);
-        JsonElement rootElement;
-        try {
-            rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
-        } catch (JsonParseException exception) {
-            throw reader.error("$", "invalid JSON", exception);
-        }
-        if (!rootElement.isJsonObject()) {
-            throw reader.error("$", "must be an object");
-        }
-
-        JsonObject root = rootElement.getAsJsonObject();
-        if (!reader.requireString(root, "type", "$").equals("sequence")) {
+    EmoteSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
+        EmoteJsonReader reader = document.reader();
+        JsonObject root = document.root();
+        if (!document.type().equals("sequence")) {
             throw reader.error("$.type", "must equal sequence");
         }
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
@@ -64,7 +40,7 @@ public final class SequenceJsonLoader {
 
         List<EmoteSequence.Step> steps = parseSteps(reader.requireArray(root, "steps", "$"), "$.steps", true, reader);
         try {
-            return new EmoteSequence(sourcePath, id, metadata, settings, participants, steps);
+            return new EmoteSequence(document.sourcePath(), id, metadata, settings, participants, steps);
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw reader.error("$.steps", exception.getMessage(), exception);
         }

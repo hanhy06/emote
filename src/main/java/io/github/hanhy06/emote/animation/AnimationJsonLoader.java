@@ -4,8 +4,6 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonParser;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
@@ -16,9 +14,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -28,7 +23,6 @@ import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class AnimationJsonLoader {
     private static final int SCHEMA_VERSION = 3;
-    static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;
     private static final Set<String> ITEM_DISPLAY_VALUES = Set.of(
         "none",
         "thirdperson_lefthand",
@@ -44,48 +38,18 @@ public final class AnimationJsonLoader {
     private final TimelineJsonParser timelineParser = new TimelineJsonParser();
 
     public LoadedAnimation load(Path sourcePath) throws EmoteAnimationLoadException {
-        byte[] bytes;
-        try {
-            long fileSize = Files.size(sourcePath);
-            if (fileSize > MAX_JSON_BYTES) {
-                throw new EmoteAnimationLoadException(
-                    sourcePath,
-                    "$",
-                    "file must not exceed " + MAX_JSON_BYTES + " bytes"
-                );
-            }
-            bytes = Files.readAllBytes(sourcePath);
-        } catch (IOException exception) {
-            throw new EmoteAnimationLoadException(sourcePath, "$", "failed to read file", exception);
-        }
-        return parse(sourcePath, bytes);
+        return parse(EmoteJsonDocument.read(sourcePath));
     }
 
     public LoadedAnimation parse(Path sourcePath, byte[] bytes)
         throws EmoteAnimationLoadException {
-        Objects.requireNonNull(sourcePath, "sourcePath");
-        Objects.requireNonNull(bytes, "bytes");
-        if (bytes.length > MAX_JSON_BYTES) {
-            throw new EmoteAnimationLoadException(
-                sourcePath,
-                "$",
-                "file must not exceed " + MAX_JSON_BYTES + " bytes"
-            );
-        }
+        return parse(EmoteJsonDocument.parse(sourcePath, bytes));
+    }
 
-        EmoteJsonReader reader = new EmoteJsonReader(sourcePath);
-        JsonElement rootElement;
-        try {
-            rootElement = JsonParser.parseString(new String(bytes, StandardCharsets.UTF_8));
-        } catch (JsonParseException exception) {
-            throw reader.error("$", "invalid JSON", exception);
-        }
-        if (!rootElement.isJsonObject()) {
-            throw reader.error("$", "must be an object");
-        }
-
-        JsonObject root = rootElement.getAsJsonObject();
-        if (!reader.requireString(root, "type", "$").equals("animation")) {
+    LoadedAnimation parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
+        EmoteJsonReader reader = document.reader();
+        JsonObject root = document.root();
+        if (!document.type().equals("animation")) {
             throw reader.error("$.type", "must equal animation");
         }
         reader.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
@@ -97,7 +61,11 @@ public final class AnimationJsonLoader {
         Settings settings = parseSettings(settingsObject, reader);
         Map<String, Node> nodes = parseNodes(reader.requireObject(root, "nodes", "$"), reader);
         Timeline timeline = this.timelineParser.parse(reader.requireObject(root, "timeline", "$"), nodes, reader);
-        return new LoadedAnimation(sourcePath, sha256(bytes), new EmoteAnimation(id, metadata, settings, nodes, timeline));
+        return new LoadedAnimation(
+            document.sourcePath(),
+            sha256(document.bytes()),
+            new EmoteAnimation(id, metadata, settings, nodes, timeline)
+        );
     }
 
     static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
