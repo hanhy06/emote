@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Matrix;
@@ -37,7 +37,7 @@ public record RootTransform(Vec3 position, float yaw, Matrix4f rotationMatrix, Q
         return new Matrix4f(this.rotationMatrix).mul(toJoml(nodeMatrix));
     }
 
-    Transformation displayTransformation(CompiledTimeline.PreparedTransform transform) {
+    public Transformation displayTransformation(CompiledTimeline.PreparedTransform transform) {
         if (transform.preservesMatrix()) {
             return new Transformation(new Matrix4f(this.rotationMatrix).mul(transform.localMatrix()));
         }

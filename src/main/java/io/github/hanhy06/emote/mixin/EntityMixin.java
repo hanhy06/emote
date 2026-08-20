@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.mixin;
 
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.Entity;

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.math.Transformation;
@@ -35,10 +35,10 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import static io.github.hanhy06.emote.playback.PlaybackNodes.*;
+import static io.github.hanhy06.emote.playback.runtime.PlaybackNodes.*;
 
 public final class PlaybackEntityController {
-    void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, PreparedPlayerSkin skin) {
+    public void applySkin(PlaybackNodes nodes, Collection<SkinBinding> bindings, PreparedPlayerSkin skin) {
         if (skin == null || bindings.isEmpty()) {
             return;
         }
@@ -76,7 +76,7 @@ public final class PlaybackEntityController {
         return create(level, SceneRootResolver.single(root), emote);
     }
 
-    PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, PreparedEmote emote) {
+    public PlaybackNodes create(ServerLevel level, Map<EmoteAnimation.NodeSpace, RootTransform> spaces, PreparedEmote emote) {
         LinkedHashMap<String, NodeInstance> instances = new LinkedHashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : emote.animation().nodes().entrySet()) {
             PreparedDisplayData preparedData = emote.source().preparedDisplayData().get(entry.getKey());
@@ -90,7 +90,7 @@ public final class PlaybackEntityController {
         return new PlaybackNodes(spaces, instances);
     }
 
-    PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
+    public PlaybackNodes create(ServerLevel level, Vec3 position, float yaw, PreparedEmote emote) {
         return create(level, RootTransform.create(position, yaw), emote);
     }
 
@@ -143,7 +143,7 @@ public final class PlaybackEntityController {
         }
     }
 
-    void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
+    public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
         nodes.activateSpace(space);
         nodes.nodes().forEach((nodeId, node) -> {
             if (node.node().space() == space) {

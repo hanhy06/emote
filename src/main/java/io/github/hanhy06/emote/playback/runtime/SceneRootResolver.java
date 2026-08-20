@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.runtime;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.EmoteSequence;
@@ -11,8 +11,8 @@ import net.minecraft.world.phys.Vec3;
 import java.util.EnumMap;
 import java.util.Map;
 
-final class SceneRootResolver {
-    static Map<EmoteAnimation.NodeSpace, RootTransform> single(RootTransform root) {
+public final class SceneRootResolver {
+    public static Map<EmoteAnimation.NodeSpace, RootTransform> single(RootTransform root) {
         EnumMap<EmoteAnimation.NodeSpace, RootTransform> roots = new EnumMap<>(EmoteAnimation.NodeSpace.class);
         for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
             roots.put(space, root);
@@ -20,7 +20,7 @@ final class SceneRootResolver {
         return Map.copyOf(roots);
     }
 
-    Map<EmoteAnimation.NodeSpace, RootTransform> resolve(
+    public Map<EmoteAnimation.NodeSpace, RootTransform> resolve(
         ServerPlayer initiator,
         EmoteSequence.Participants participants
     ) {

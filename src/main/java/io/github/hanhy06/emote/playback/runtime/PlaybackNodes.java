@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.playback;
+package io.github.hanhy06.emote.playback.runtime;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -53,7 +53,7 @@ public final class PlaybackNodes {
         return this.nodes;
     }
 
-    int displayEntityCount() {
+    public int displayEntityCount() {
         return this.displayEntityCount;
     }
 

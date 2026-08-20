@@ -4,6 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.animation.AnimationJsonLoader;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.CompiledTimeline;
+import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.timeline.TimelinePlayer;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;

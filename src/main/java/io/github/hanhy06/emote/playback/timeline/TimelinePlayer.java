@@ -3,8 +3,8 @@ package io.github.hanhy06.emote.playback.timeline;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.CompiledTimeline;
-import io.github.hanhy06.emote.playback.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.PlaybackNodes;
+import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
+import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 
 import java.util.*;
 
