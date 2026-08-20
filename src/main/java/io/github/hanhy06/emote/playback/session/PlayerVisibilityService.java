@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback.session;
 
 import com.mojang.datafixers.util.Pair;
-import io.github.hanhy06.emote.minecraft.EntitySharedFlagsAccessor;
+import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;

@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.minecraft;
+package io.github.hanhy06.emote.mixin.accessor;
 
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.level.block.state.BlockState;

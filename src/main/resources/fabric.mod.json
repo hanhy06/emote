@@ -24,7 +24,7 @@
     },
     "mixins": [
         "emote.mixins.json",
-        "emote.minecraft.mixins.json",
+        "emote.accessor.mixins.json",
         {
             "config": "emote.client.mixins.json",
             "environment": "client"
