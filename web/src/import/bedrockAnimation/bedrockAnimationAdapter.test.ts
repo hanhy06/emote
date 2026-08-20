@@ -145,6 +145,26 @@ describe("bedrockAnimationAdapter", () => {
     });
     expect(imported.diagnostics[0].message).toContain("replace the expression at runtime.body.rotation[1]");
   });
+
+  it("silently hides left item, right item, and cape helper bones", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        accessories: {
+          animation_length: 0.1,
+          bones: {
+            left_item: { rotation: [10, 0, 0] },
+            rightItem: { rotation: [0, 10, 0] },
+            cape: { rotation: [0, 0, 10] },
+          },
+        },
+      },
+    })));
+
+    expect(imported.animations[0].availability).toBeUndefined();
+    expect(imported.diagnostics).toEqual([]);
+    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"]);
+  });
 });
 
 function input(text: string) {

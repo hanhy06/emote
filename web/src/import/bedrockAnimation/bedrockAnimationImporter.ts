@@ -19,6 +19,7 @@ import {
   BEDROCK_PLAYER_RENDER_SCALE,
   bedrockPlayerBoneById,
   createBedrockPlayerNodes,
+  isHiddenBedrockAccessoryBone,
   resolveBedrockPlayerBone,
 } from "./bedrockPlayerRig";
 
@@ -185,7 +186,7 @@ function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, 
     });
   }
   for (const [boneName, bone] of Object.entries(animation.bones ?? {})) {
-    if (!resolveBedrockPlayerBone(boneName)) {
+    if (!resolveBedrockPlayerBone(boneName) && !isHiddenBedrockAccessoryBone(boneName)) {
       diagnostics.push({
         severity: "warning",
         code: "bedrock_animation_bone_ignored",

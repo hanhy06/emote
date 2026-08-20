@@ -29,6 +29,7 @@ export const BEDROCK_PLAYER_BONES: readonly BedrockPlayerBone[] = [
 
 const BONES_BY_ID = new Map(BEDROCK_PLAYER_BONES.map((bone) => [bone.id, bone]));
 const BONES_BY_NORMALIZED_NAME = new Map(BEDROCK_PLAYER_BONES.map((bone) => [normalizeBedrockBoneName(bone.sourceName), bone]));
+const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 
 export function bedrockPlayerBoneById(id: string): BedrockPlayerBone {
   const bone = BONES_BY_ID.get(id);
@@ -38,6 +39,10 @@ export function bedrockPlayerBoneById(id: string): BedrockPlayerBone {
 
 export function resolveBedrockPlayerBone(name: string): BedrockPlayerBone | undefined {
   return BONES_BY_NORMALIZED_NAME.get(normalizeBedrockBoneName(name));
+}
+
+export function isHiddenBedrockAccessoryBone(name: string): boolean {
+  return HIDDEN_ACCESSORY_BONES.has(normalizeBedrockBoneName(name));
 }
 
 export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matrix4>): Record<string, ImportedNode> {

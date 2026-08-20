@@ -23,6 +23,7 @@ import { evaluateGeckoChannel } from "./cubeAnimationBaker";
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 const PLAYER_RENDER_SCALE = 0.9375;
+const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 
 interface BoneNodeEntry {
   id: string;
@@ -83,9 +84,10 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
-      const conversionMatrix = cubePlayerHeadMatrix(cube, bone);
-      if (!conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
-      const skin = skinAssignments.get(cube.uuid);
+      const hiddenAccessory = isHiddenAccessoryBone(bone);
+      const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone);
+      if (!hiddenAccessory && !conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
+      const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
       const localMatrix = cubeLocalMatrix(cube, bone);
       bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
@@ -103,7 +105,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
             ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
           ])],
         ]),
-        playerHeadConversion: { matrix: conversionMatrix },
+        ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };
     }
@@ -535,7 +537,7 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
   }
 
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
-    if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || (animator.keyframes?.length ?? 0) === 0) continue;
+    if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || isHiddenAccessoryName(animator.name ?? animatorId) || (animator.keyframes?.length ?? 0) === 0) continue;
     const normalizedName = normalizeBoneName(animator.name);
     const matchingBones = normalizedName
       ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBoneName(bone.group.name) === normalizedName)
@@ -622,6 +624,18 @@ function appendTimelineEvent(events: ImportedTimelineEvent[], tick: number, even
 function normalizeBoneName(name: string | undefined): string | undefined {
   const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
   return normalized || undefined;
+}
+
+function isHiddenAccessoryName(name: string | undefined): boolean {
+  const normalized = normalizeBoneName(name);
+  return normalized !== undefined && HIDDEN_ACCESSORY_BONES.has(normalized);
+}
+
+function isHiddenAccessoryBone(bone: BoneEntry): boolean {
+  for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
+    if (isHiddenAccessoryName(current.group.name)) return true;
+  }
+  return false;
 }
 
 function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {

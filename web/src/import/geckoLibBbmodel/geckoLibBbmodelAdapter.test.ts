@@ -283,6 +283,35 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
 
+  it("hides item and cape bones without creating skin candidates", async () => {
+    for (const accessoryName of ["left_item", "rightItem", "cape"]) {
+      const value = project();
+      value.groups[0].name = accessoryName;
+      value.outliner[0].name = accessoryName;
+      value.animations[0].animators.root.name = accessoryName;
+
+      const imported = await geckoLibBbmodelAdapter.import(input(value));
+      const node = Object.values(imported.nodes).find((candidate) => candidate.type === "item_display");
+
+      expect(node?.type).toBe("item_display");
+      expect(node?.type === "item_display" && node.visible).toBe(true);
+      expect(node?.type === "item_display" && node.playerHeadConversion).toBeUndefined();
+      expect(node?.type === "item_display" && node.suggestedSkin).toBeUndefined();
+    }
+  });
+
+  it("ignores animation-only item and cape helper bones", async () => {
+    const value = project();
+    Object.assign(value.animations[0].animators, { cape_helper: {
+      name: "cape",
+      keyframes: [{ channel: "rotation", time: 0, interpolation: "linear", data_points: [{ x: 0, y: 0, z: 0 }] }],
+    } });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    expect(imported.animations[0].availability).toBeUndefined();
+  });
+
   it("moves arbitrary multi-axis cube rotation into the display transform", async () => {
     const value = project();
     value.elements[0].origin = [2, 2, 2];
