@@ -35,6 +35,18 @@ class AnimationJsonParserTest {
         assertTrue(loaded.animation().settings().player().hidden());
         assertEquals(0.1D, loaded.animation().settings().player().stopConditions().movementDistance());
         assertTrue(loaded.animation().settings().player().stopConditions().jump());
+        assertNotNull(loaded.animation().molang().initialize());
+        assertNotNull(loaded.animation().molang().tick());
+        assertEquals("effect_anchor", loaded.animation().nodes().get("enchanted_sword").parentId());
+        EmoteAnimation.NodeTracks headTracks = loaded.animation().timeline().tracks().get("player_head");
+        assertEquals(EmoteAnimation.Easing.EASE_IN_OUT_SINE, headTracks.position().getFirst().easing());
+        assertNotEquals(headTracks.position().getLast().pre(), headTracks.position().getLast().post());
+        assertInstanceOf(EmoteAnimation.MolangValue.class, headTracks.rotation().getFirst().post().y());
+        assertInstanceOf(EmoteAnimation.MolangValue.class, headTracks.scale().getLast().post().x());
+        assertInstanceOf(
+            EmoteAnimation.MolangVisibility.class,
+            loaded.animation().timeline().tracks().get("caption").visible().getLast().value()
+        );
         assertEquals(64, loaded.sha256().length());
     }
 
@@ -51,6 +63,7 @@ class AnimationJsonParserTest {
     void loadsServerSynchronizedLoop() throws Exception {
         JsonObject root = readReference();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
+        root.getAsJsonObject("molang").remove("tick");
 
         LoadedAnimation loaded = parse(root);
 

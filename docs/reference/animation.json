@@ -26,6 +26,10 @@
             "loop_delay": "0t"
         }
     },
+    "molang": {
+        "initialize": "v.wave_scale = 1; v.caption_visible = 0;",
+        "tick": "v.wave_scale = 1 + math.sin(q.anim_time * 180) * 0.05; v.caption_visible = q.anim_time >= 2;"
+    },
     "nodes": {
         "player_head": {
             "type": "item_display",
@@ -93,7 +97,7 @@
             "item_display": "fixed",
             "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:sharpness\":5}}}",
             "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
-            "space": "scene",
+            "parent": "effect_anchor",
             "transform": {
                 "position": [
                     0.5,
@@ -196,13 +200,19 @@
                             1.75,
                             0
                         ],
-                        "interpolation": "linear"
+                        "interpolation": "linear",
+                        "easing": "ease_in_out_sine"
                     },
                     {
                         "time": "1t",
-                        "value": [
+                        "pre": [
                             0,
                             1.76,
+                            0
+                        ],
+                        "post": [
+                            0,
+                            1.77,
                             0
                         ]
                     }
@@ -212,7 +222,7 @@
                         "time": "0t",
                         "value": [
                             0,
-                            0,
+                            "q.anim_time_ticks * 5",
                             0
                         ],
                         "interpolation": "linear"
@@ -239,9 +249,9 @@
                     {
                         "time": "1t",
                         "value": [
-                            1.0000091399582305,
+                            "v.wave_scale",
                             1,
-                            1.0000091399582305
+                            "v.wave_scale"
                         ]
                     }
                 ]
@@ -380,7 +390,7 @@
                     },
                     {
                         "time": "40t",
-                        "value": true
+                        "value": "v.caption_visible"
                     }
                 ]
             },
