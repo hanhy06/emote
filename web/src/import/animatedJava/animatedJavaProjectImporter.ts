@@ -16,6 +16,7 @@ import type {
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
+import { requireSupportedMolangFunctions } from "../molang/molangBakeEvaluator";
 
 interface ProjectChannelCursor {
   frames: AjProjectKeyframe[];
@@ -300,6 +301,7 @@ function composeProjectMatrix(position: number[], rotation: number[], scale: num
 }
 
 function projectNumeric(value: string | number, path: string): number {
+  if (typeof value === "string") requireSupportedMolangFunctions(value, path);
   const parsed = typeof value === "number" ? value : Number(value.trim());
   if (!Number.isFinite(parsed)) {
     throw new ConversionError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);

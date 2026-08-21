@@ -37,6 +37,23 @@ describe("validateEmoteAnimation", () => {
     expect(serializeEmoteAnimation(value)).toContain('"schema_version":4');
   });
 
+  it("rejects Molang functions unavailable in the mod", () => {
+    const value = animation();
+    value.molang = { initialize: "v.speed = math.sign(-2);" };
+    value.timeline.tracks.display.position![0].value = ["query.any(1, 1)", "math.hermite_blend(0.5)", 0];
+
+    expect(validateEmoteAnimation(value)).toEqual(expect.arrayContaining([
+      {
+        path: "molang.initialize",
+        message: "uses Molang function math.sign, which is not supported by the Emote mod",
+      },
+      {
+        path: "timeline.tracks.display.position[0].value[0]",
+        message: "uses Molang function query.any, which is not supported by the Emote mod",
+      },
+    ]));
+  });
+
   it("validates a child skin participant against its inherited root space", () => {
     const value = animation();
     value.nodes.root = {

@@ -7,6 +7,7 @@ import type {
 import { isResourceLocation } from "./resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS } from "./time";
 import { parseMinecraftTime } from "./minecraftTime";
+import { findUnsupportedMolangFunction } from "./molangFunctions";
 
 const JAVA_INT_MAX = 2_147_483_647;
 const ITEM_DISPLAY_VALUES = new Set([
@@ -53,6 +54,8 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (node.type === "item_display") validateItemNode(animation, nodeId, node, path, issues);
   }
   validateParentCycles(animation, issues);
+  validateMolangSource(animation.molang?.initialize, "molang.initialize", issues);
+  validateMolangSource(animation.molang?.tick, "molang.tick", issues);
 
   const durationTicks = validateTime(animation.timeline.duration, 1, "timeline.duration", issues);
   if (durationTicks !== null && durationTicks > MAX_ANIMATION_DURATION_TICKS) {
@@ -185,7 +188,7 @@ function validateVisibilityTrack(
     if (index === 0 && tick !== 0) add(issues, `${path}[${index}].time`, "first keyframe must be at 0t");
     if (tick <= previousTick) add(issues, `${path}[${index}].time`, "must be strictly ascending");
     if (durationTicks !== null && tick > durationTicks) add(issues, `${path}[${index}].time`, "must be within 0..duration");
-    if (typeof frame.value === "string" && !frame.value.trim()) add(issues, `${path}[${index}].value`, "Molang must not be blank");
+    if (typeof frame.value === "string") validateMolangSource(frame.value, `${path}[${index}].value`, issues);
     previousTick = tick;
   });
 }
@@ -194,8 +197,18 @@ function validateMolangVec3(values: readonly MolangScalar[], path: string, issue
   if (values.length !== 3) add(issues, path, "must contain three values");
   values.forEach((value, index) => {
     if (typeof value === "number" && !Number.isFinite(value)) add(issues, `${path}[${index}]`, "must be finite");
-    if (typeof value === "string" && !value.trim()) add(issues, `${path}[${index}]`, "Molang must not be blank");
+    if (typeof value === "string") validateMolangSource(value, `${path}[${index}]`, issues);
   });
+}
+
+function validateMolangSource(source: string | undefined, path: string, issues: ValidationIssue[]): void {
+  if (source === undefined) return;
+  if (!source.trim()) {
+    add(issues, path, "Molang must not be blank");
+    return;
+  }
+  const functionName = findUnsupportedMolangFunction(source);
+  if (functionName) add(issues, path, `uses Molang function ${functionName}, which is not supported by the Emote mod`);
 }
 
 function validateVec3(values: readonly number[], path: string, issues: ValidationIssue[]): void {

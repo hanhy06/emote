@@ -1,9 +1,18 @@
 package io.github.hanhy06.emote.playback.molang;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.stream.DoubleStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class MolangEngineTest {
     private final MolangEngine engine = MolangEngine.INSTANCE;
@@ -67,5 +76,24 @@ class MolangEngineTest {
                     || name.equals("item_is_charged"))
                 .collect(java.util.stream.Collectors.toSet())
         );
+    }
+
+    @Test
+    void supportsEveryMathFunctionExposedByTheWebConverter() throws Exception {
+        Map<String, double[]> functions = readSupportedMathFunctions();
+
+        assertEquals(27, functions.size());
+        for (var entry : functions.entrySet()) {
+            String arguments = String.join(",", DoubleStream.of(entry.getValue()).mapToObj(String::valueOf).toList());
+            var expression = this.engine.compile("math." + entry.getKey() + "(" + arguments + ")");
+            double result = this.engine.createSession().evaluate(expression);
+
+            assertTrue(Double.isFinite(result), entry.getKey() + " must produce a finite result");
+        }
+    }
+
+    private static Map<String, double[]> readSupportedMathFunctions() throws IOException {
+        String json = Files.readString(Path.of("molang-functions.json"));
+        return new Gson().fromJson(json, new TypeToken<Map<String, double[]>>() {}.getType());
     }
 }
