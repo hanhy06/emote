@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
+import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -22,7 +23,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-class MineSkinPipelineTest {
+class MineSkinProviderTest {
     @Test
     void completedBakeTaskIsRemoved(@TempDir Path tempDir) {
         PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
@@ -31,17 +32,13 @@ class MineSkinPipelineTest {
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
             MineSkinTaskQueue queue = new MineSkinTaskQueue(() -> executorService);
-            MineSkinPipeline manager = new MineSkinPipeline(
+            MineSkinProvider provider = new MineSkinProvider(
                 new PlayerSkinBaker(),
                 cache,
                 new MineSkinClient(httpClient),
-                queue,
-                ignored -> {
-                },
-                ignored -> {
-                }
+                queue
             );
-            manager.configure("api-key", 3, 30, 256);
+            provider.configure("api-key", 3, 30, 256);
             PlayerSkinSource source = new PlayerSkinSource(
                 UUID.randomUUID(),
                 "player",
@@ -50,15 +47,15 @@ class MineSkinPipelineTest {
                 false
             );
 
-            manager.prepare(source, Set.of(textureKey));
-            assertEquals(1, manager.trackedBakeTaskCount());
+            provider.prepare(source, Set.of(textureKey));
+            assertEquals(1, provider.trackedBakeTaskCount());
             assertNotNull(executorService.command);
 
             cache.save("skin-hash", false, Map.of(textureKey, "https://textures.example/head"));
             executorService.command.run();
 
-            assertEquals(0, manager.trackedBakeTaskCount());
-            manager.cancelPendingBakes();
+            assertEquals(0, provider.trackedBakeTaskCount());
+            provider.cancelPendingBakes();
         }
     }
 
@@ -71,16 +68,19 @@ class MineSkinPipelineTest {
         try (CapturingExecutorService executorService = new CapturingExecutorService();
              HttpClient httpClient = MineSkinClient.createHttpClient()) {
             MineSkinTaskQueue queue = new MineSkinTaskQueue(() -> executorService);
-            MineSkinPipeline manager = new MineSkinPipeline(
+            MineSkinProvider provider = new MineSkinProvider(
                 new PlayerSkinBaker(),
                 cache,
                 new MineSkinClient(httpClient),
-                queue,
-                ignored -> completionNotifications.incrementAndGet(),
-                ignored -> {
-                }
+                queue
             );
-            manager.configure("api-key", 3, 30, 256);
+            provider.setListener(new PlayerSkinProvider.Listener() {
+                @Override
+                public void onReady(UUID ignoredPlayerUuid) {
+                    completionNotifications.incrementAndGet();
+                }
+            });
+            provider.configure("api-key", 3, 30, 256);
             PlayerSkinSource source = new PlayerSkinSource(
                 UUID.randomUUID(),
                 "player",
@@ -89,15 +89,15 @@ class MineSkinPipelineTest {
                 false
             );
 
-            manager.prepare(source, Set.of(textureKey));
+            provider.prepare(source, Set.of(textureKey));
             assertNotNull(executorService.command);
             cache.save("skin-hash", false, Map.of(textureKey, "https://textures.example/head"));
 
-            manager.cancelPendingBakes();
+            provider.cancelPendingBakes();
             executorService.command.run();
 
             assertEquals(0, completionNotifications.get());
-            assertEquals(0, manager.trackedBakeTaskCount());
+            assertEquals(0, provider.trackedBakeTaskCount());
         }
     }
 

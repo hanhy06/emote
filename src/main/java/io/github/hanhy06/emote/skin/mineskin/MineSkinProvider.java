@@ -1,7 +1,9 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
+import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -11,9 +13,8 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
-public final class MineSkinPipeline {
+public final class MineSkinProvider implements PlayerSkinProvider {
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
@@ -25,31 +26,38 @@ public final class MineSkinPipeline {
     private final MineSkinCache cache;
     private final MineSkinClient client;
     private final MineSkinTaskQueue generationQueue;
-    private final Consumer<UUID> readyNotifier;
-    private final Consumer<UUID> failureNotifier;
     private final Map<String, MineSkinBakeTask> bakeTasks = new HashMap<>();
+
+    private volatile Listener listener = new Listener() {
+    };
 
     private volatile String apiKey = "";
     private volatile int cacheRetentionDays;
     private volatile int cacheMaxMiB;
 
-    public MineSkinPipeline(
+    public MineSkinProvider(
         PlayerSkinBaker playerSkinBaker,
         MineSkinCache cache,
         MineSkinClient client,
-        MineSkinTaskQueue generationQueue,
-        Consumer<UUID> readyNotifier,
-        Consumer<UUID> failureNotifier
+        MineSkinTaskQueue generationQueue
     ) {
-        this.playerSkinBaker = playerSkinBaker;
-        this.cache = cache;
-        this.client = client;
-        this.generationQueue = generationQueue;
-        this.readyNotifier = readyNotifier;
-        this.failureNotifier = failureNotifier;
+        this.playerSkinBaker = Objects.requireNonNull(playerSkinBaker, "playerSkinBaker");
+        this.cache = Objects.requireNonNull(cache, "cache");
+        this.client = Objects.requireNonNull(client, "client");
+        this.generationQueue = Objects.requireNonNull(generationQueue, "generationQueue");
     }
 
-    public void configure(
+    @Override
+    public void onConfigReload(Config newConfig) {
+        configure(
+            newConfig.mineSkinApiKey(),
+            newConfig.mineSkinPollIntervalSeconds(),
+            newConfig.mineSkinCacheRetentionDays(),
+            newConfig.mineSkinCacheMaxMiB()
+        );
+    }
+
+    void configure(
         String apiKey,
         int pollIntervalSeconds,
         int cacheRetentionDays,
@@ -63,6 +71,7 @@ public final class MineSkinPipeline {
         this.generationQueue.submit(CACHE_CLEANUP_KEY, () -> cleanupCache(queueGeneration));
     }
 
+    @Override
     public PlayerSkinPreparation prepare(
         PlayerSkinSource source,
         Set<PlayerSkinRegion> requiredTextureKeys
@@ -100,14 +109,19 @@ public final class MineSkinPipeline {
 
     private void notifyCompleted(MineSkinBakeTask bakeTask) {
         for (UUID playerUuid : bakeTask.subscribers()) {
-            this.readyNotifier.accept(playerUuid);
+            this.listener.onReady(playerUuid);
         }
     }
 
     private void notifyFailed(MineSkinBakeTask bakeTask) {
         for (UUID playerUuid : bakeTask.subscribers()) {
-            this.failureNotifier.accept(playerUuid);
+            this.listener.onFailed(playerUuid);
         }
+    }
+
+    @Override
+    public void setListener(Listener listener) {
+        this.listener = Objects.requireNonNull(listener, "listener");
     }
 
     private void fail(MineSkinBakeTask bakeTask) {
@@ -179,6 +193,7 @@ public final class MineSkinPipeline {
         }
     }
 
+    @Override
     public void cancelPendingBakes() {
         synchronized (this.bakeTasks) {
             for (MineSkinBakeTask bakeTask : this.bakeTasks.values()) {

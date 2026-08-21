@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.model.*;
 import org.jspecify.annotations.NonNull;
@@ -137,10 +138,7 @@ class PlayerSkinManagerTest {
         PlayerSkinSource skinSource
     ) {
         PlayerSkinManager manager = new PlayerSkinManager(
-            new PlayerSkinBaker(),
-            textureStore,
-            apiClient,
-            bakeExecutor,
+            new MineSkinProvider(new PlayerSkinBaker(), textureStore, apiClient, bakeExecutor),
             ignoredPlayer -> skinSource
         );
         manager.onConfigReload(new Config(

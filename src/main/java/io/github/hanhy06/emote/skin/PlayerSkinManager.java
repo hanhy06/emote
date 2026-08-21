@@ -6,7 +6,10 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.skin.mineskin.*;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -20,46 +23,44 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class PlayerSkinManager implements ConfigListener {
-    private final MineSkinPipeline mineSkinManager;
+    private final PlayerSkinProvider provider;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
 
     public PlayerSkinManager() {
         this(
-            new PlayerSkinBaker(),
-            new MineSkinCache(),
-            new MineSkinClient(),
-            new MineSkinTaskQueue(),
+            new MineSkinProvider(
+                new PlayerSkinBaker(),
+                new MineSkinCache(),
+                new MineSkinClient(),
+                new MineSkinTaskQueue()
+            ),
             PlayerSkinManager::readPlayerSkinSource
         );
     }
 
     PlayerSkinManager(
-        PlayerSkinBaker playerSkinBaker,
-        MineSkinCache mineSkinCache,
-        MineSkinClient mineSkinClient,
-        MineSkinTaskQueue generationQueue,
+        PlayerSkinProvider provider,
         Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver
     ) {
+        this.provider = Objects.requireNonNull(provider, "provider");
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
-        this.mineSkinManager = new MineSkinPipeline(
-            Objects.requireNonNull(playerSkinBaker, "playerSkinBaker"),
-            Objects.requireNonNull(mineSkinCache, "mineSkinCache"),
-            Objects.requireNonNull(mineSkinClient, "mineSkinClient"),
-            Objects.requireNonNull(generationQueue, "generationQueue"),
-            this::notifySkinReady,
-            this::notifySkinFailed
-        );
+        this.provider.setListener(new PlayerSkinProvider.Listener() {
+            @Override
+            public void onReady(UUID playerUuid) {
+                notifySkinReady(playerUuid);
+            }
+
+            @Override
+            public void onFailed(UUID playerUuid) {
+                notifySkinFailed(playerUuid);
+            }
+        });
     }
 
     @Override
     public void onConfigReload(Config newConfig) {
-        this.mineSkinManager.configure(
-            newConfig.mineSkinApiKey(),
-            newConfig.mineSkinPollIntervalSeconds(),
-            newConfig.mineSkinCacheRetentionDays(),
-            newConfig.mineSkinCacheMaxMiB()
-        );
+        this.provider.onConfigReload(newConfig);
     }
 
     public PlayerSkinPreparation preparePlayerSkin(ServerPlayer player, List<SkinBinding> skinBindings) {
@@ -74,7 +75,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinSource == null) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0);
         }
-        return this.mineSkinManager.prepare(skinSource, requiredTextureKeys);
+        return this.provider.prepare(skinSource, requiredTextureKeys);
     }
 
     public void addReadyListener(Consumer<UUID> readyListener) {
@@ -82,7 +83,7 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     public void cancelPendingBakes() {
-        this.mineSkinManager.cancelPendingBakes();
+        this.provider.cancelPendingBakes();
     }
 
     private void notifySkinReady(UUID playerUuid) {
