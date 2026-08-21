@@ -126,6 +126,19 @@ class AnimationPlayerTest {
         assertTrue(exception.getMessage().contains("must not assign persistent variables"));
     }
 
+    @Test
+    void rejectsQueryAssignmentInsideTickProgram() throws Exception {
+        JsonObject root = base();
+        root.add("molang", JsonParser.parseString("{\"tick\":\"q.anim_time = 100;\"}"));
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> PreparedAnimation.from(load(root))
+        );
+
+        assertTrue(exception.getMessage().contains("must not assign queries"));
+    }
+
     private AnimationPlayer player(JsonObject root, FakeTarget target) throws Exception {
         return new AnimationPlayer(PreparedAnimation.from(load(root)), target);
     }

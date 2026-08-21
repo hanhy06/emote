@@ -15,6 +15,9 @@ public final class PreparedAnimationTimeline {
     private static final Pattern VARIABLE_ASSIGNMENT = Pattern.compile(
         "(?i)\\b(?:v|variable)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
     );
+    private static final Pattern QUERY_ASSIGNMENT = Pattern.compile(
+        "(?i)\\b(?:q|query)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
+    );
 
     private final List<String> nodeOrder;
     private final Map<String, CompiledNodeTracks> tracks;
@@ -109,6 +112,9 @@ public final class PreparedAnimationTimeline {
     private static MolangEngine.CompiledExpression compileProgram(String source, String path) {
         if (source == null) {
             return null;
+        }
+        if (QUERY_ASSIGNMENT.matcher(source).find()) {
+            throw new IllegalArgumentException(path + " must not assign queries");
         }
         validateQueries(source, path);
         try {
