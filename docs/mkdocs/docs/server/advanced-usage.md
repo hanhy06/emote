@@ -133,7 +133,8 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 ```json
 "settings": {
   "standalone": false,
-  "cooldown": "0t"
+  "cooldown": "0t",
+  "rotation_deadzone": 50
 }
 ```
 
