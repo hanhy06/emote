@@ -78,16 +78,16 @@ A complete [Animation reference JSON](https://github.com/hanhy06/emote/blob/dev/
 
 ## Root fields
 
-| Field | Description |
-|---|---|
-| `type` | Must be `animation`. |
-| `schema_version` | Must be `4`. |
-| `id` | A lowercase Minecraft identifier in `namespace:path` form. |
-| `metadata` | Display name, description, and custom metadata. |
-| `settings` | Selection visibility, player behavior, and playback settings. |
-| [`molang`](molang.md) | Optional initialization and per-tick Molang programs. |
-| `nodes` | A nonempty map of display and anchor nodes keyed by stable node IDs. |
-| `timeline` | Duration, node tracks, and command events. |
+| Field                 | Description                                                          |
+|-----------------------|----------------------------------------------------------------------|
+| `type`                | Must be `animation`.                                                 |
+| `schema_version`      | Must be `4`.                                                         |
+| `id`                  | A lowercase Minecraft identifier in `namespace:path` form.           |
+| `metadata`            | Display name, description, and custom metadata.                      |
+| `settings`            | Selection visibility, player behavior, and playback settings.        |
+| [`molang`](molang.md) | Optional initialization and per-tick Molang programs.                |
+| `nodes`               | A nonempty map of display and anchor nodes keyed by stable node IDs. |
+| `timeline`            | Duration, node tracks, and command events.                           |
 
 Animation JSON files are limited to 8 MiB and timelines are limited to 10 minutes.
 
@@ -103,13 +103,13 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 - `name`: Nonempty name shown in commands and the emote UI.
 - `description`: Description shown to players.
-- Other fields are preserved and exposed to the API and web converter.
+- Additional fields can include whatever you want, such as licenses or creators.
 
 ## Settings
 
 ### Selection visibility
 
-`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly by normal players. Set it to `false` for Animations used only inside Sequences. Trusted API calls and players with `emote.bypass` may still play it directly.
+`standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly by normal players. Set it to `false` for Animations used only inside Sequences.
 
 ### Cooldown and rotation
 

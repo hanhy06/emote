@@ -2,7 +2,7 @@
 
 ## Cooldowns
 
-Cooldowns are configured with `settings.cooldown` in each Animation or Sequence JSON, not in `emotes.json`.
+Cooldowns are configured with `settings.cooldown` in each Emote file, not in `emotes.json`.
 
 ```json
 {
@@ -20,11 +20,9 @@ Cooldowns are configured with `settings.cooldown` in each Animation or Sequence 
     `t` or omitted: ticks<br>
     `d`: Minecraft days
 
-Cooldowns are tracked separately for each player and emote ID. Using `example:wave` does not affect the cooldown of `example:dance`.
-
-A cooldown is applied only after playback starts successfully. It does not begin if playback fails because of missing permission, skin preparation, the entity limit, or cancellation by another mod.
-
 When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
+
+---
 
 ## Idle Emotes
 
@@ -76,8 +74,6 @@ If a player has multiple permissions, entries are checked from top to bottom in 
 ]
 ```
 
-An idle emote does not need to appear in the permission entry's `emotes` list. This allows idle-only emotes that do not appear in menus, searches, command suggestions, or the wheel. Idle playback still respects `standalone`, `disabled`, and cooldown policies unless the player has `emote.bypass`.
-
 An idle emote does not start while another emote is playing. A failed attempt is retried after one second. When several candidates are available, Emote avoids selecting the most recently played emote twice in a row when possible.
 
 ## Sequences
@@ -107,6 +103,7 @@ config/emote/animations/sit/
   },
   "settings": {
     "cooldown": "5s",
+    "rotation_deadzone": 50,
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -133,19 +130,10 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 ```json
 "settings": {
   "standalone": false,
-  "cooldown": "0t",
-  "rotation_deadzone": 50
 }
 ```
 
-Assign player permissions and cooldowns to the Sequence ID, `example:sit`. You do not need to grant the internal Animation IDs in the player's `emotes` list.
-
-```json
-{
-  "permission": "emote.default",
-  "emotes": ["example:sit"]
-}
-```
+---
 
 ### Verifying the installation
 

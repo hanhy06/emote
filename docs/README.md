@@ -26,10 +26,7 @@ On the server, LuckPerms permissions can assign emotes and idle emotes per playe
 | Command | Description |
 |---|---|
 | `/emote` | Opens the emote menu. |
-| `/emote <page>` | Opens a specific menu page. |
-| `/emote search [query] [page]` | Searches for emotes. |
 | `/emote play <id>` | Plays an emote by ID. |
-| `/emote stop` | Stops the current emote. |
 | `V` | Opens the client emote wheel. |
 
 Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order is stored on the client separately for each server.
@@ -181,11 +178,11 @@ Combine animations for two players in a sequence to create a collaborative emote
 
 ## Troubleshooting
 
-| Problem | Check |
-|---|---|
-| An emote does not appear | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only. |
-| A player skin is not applied | Check the converter's skin part assignments and `mineskin_api_key`. Run the emote again after a new skin finishes processing. If MineSkin is unavailable, the animation's default texture is used. |
-| A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces. |
+| Problem                              | Check                                                                                                                                                                                              |
+|--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| An emote does not appear             | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only.                                                                               |
+| A player skin is not applied         | Check the converter's skin part assignments and `mineskin_api_key`. Run the emote again after a new skin finishes processing. If MineSkin is unavailable, the animation's default texture is used. |
+| A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces.                                              |
 
 If the problem is not covered here, report it on [Discord](https://discord.gg/CRWqKbSebW) or [GitHub Issues](https://github.com/hanhy06/emote/issues).
 

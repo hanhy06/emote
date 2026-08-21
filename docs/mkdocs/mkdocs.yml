@@ -21,7 +21,6 @@ nav:
   - Server Administration:
       - Installation: server/installation.md
       - Access Control: server/access-control.md
-      - Commands: server/commands.md
       - Advanced Usage: server/advanced-usage.md
   - Developers:
       - Animation: developers/animation.md
