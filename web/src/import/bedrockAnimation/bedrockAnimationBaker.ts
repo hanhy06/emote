@@ -8,7 +8,7 @@ import type {
 } from "./bedrockAnimationSchema";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
 
 interface ResolvedKeyframe {
   time: number;
@@ -19,6 +19,14 @@ interface ResolvedKeyframe {
 }
 
 const RESOLVED_KEYFRAMES = new WeakMap<Record<string, BedrockKeyframe>, readonly ResolvedKeyframe[]>();
+const MOLANG_EVALUATOR = new MolangBakeEvaluator({
+  rejectNondeterministic: true,
+  error: {
+    code: "unsupported_bedrock_molang",
+    message: (_, path) => `${path} contains Molang that cannot be baked.`,
+    nondeterministicMessage: (_, path) => `${path} uses nondeterministic Molang and cannot be baked.`,
+  },
+});
 
 export interface BedrockSamplePlan {
   sourceTimes: Map<number, number>;
@@ -134,32 +142,7 @@ export function bedrockAnimationUsesTime(animation: BedrockAnimation): boolean {
 }
 
 export function evaluateBedrockExpression(expression: BedrockExpression, animationTime: number, keyframeLerpTime: number, path: string): number {
-  if (typeof expression === "number") return expression;
-  const numeric = Number(expression.trim());
-  if (Number.isFinite(numeric)) return numeric;
-  if (/math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i.test(expression)) {
-    throw new ConversionError("unsupported_bedrock_molang", `${path} uses nondeterministic Molang and cannot be baked.`, path);
-  }
-  const parser = new MolangParser();
-  parser.variableHandler = (key) => {
-    throw new Error(`${path} references runtime Molang variable ${key}.`);
-  };
-  try {
-    const result = parser.parse(expression, {
-      ...PREVIEW_PLAYER_STATE_QUERIES,
-      "query.anim_time": animationTime,
-      "q.anim_time": animationTime,
-      "query.delta_time": 1 / TICKS_PER_SECOND,
-      "q.delta_time": 1 / TICKS_PER_SECOND,
-      "query.key_frame_lerp_time": keyframeLerpTime,
-      "q.key_frame_lerp_time": keyframeLerpTime,
-      "global.key_frame_lerp_time": keyframeLerpTime,
-    });
-    if (!Number.isFinite(result)) throw new Error("result is not finite");
-    return result;
-  } catch (error) {
-    throw new ConversionError("unsupported_bedrock_molang", `${path} contains Molang that cannot be baked.`, path, { cause: error });
-  }
+  return MOLANG_EVALUATOR.evaluate(expression, { animationTime, keyframeLerpTime }, path);
 }
 
 function collectAnchors(animation: BedrockAnimation): Anchor[] {
@@ -247,4 +230,3 @@ function betterThan(candidate: PlanState, current: PlanState): boolean {
   if (candidate.count !== current.count) return candidate.count > current.count;
   return candidate.distance < current.distance;
 }
-import MolangParser from "molangjs/dist/molang.esm.js";
