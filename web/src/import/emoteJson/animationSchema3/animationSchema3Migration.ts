@@ -6,7 +6,7 @@ import type {
   LocalTransform,
 } from "../../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../../format/localTransform";
-import { formatMinecraftTime, parseMinecraftTime } from "../../../format/minecraftTime";
+import { formatMinecraftTime, parseMinecraftTime } from "../../../format/time";
 import type { Schema3EmoteAnimation } from "./animationSchema3";
 
 interface MigratedTransformFrame {

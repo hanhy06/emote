@@ -18,10 +18,9 @@ import {
 } from "../domain/conversionDocument";
 import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
+import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
-import { requireTick } from "../format/time";
 import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([

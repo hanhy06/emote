@@ -5,8 +5,7 @@ import type {
   MolangScalar,
 } from "./emoteAnimation";
 import { isResourceLocation } from "./resourceLocation";
-import { MAX_ANIMATION_DURATION_TICKS } from "./time";
-import { parseMinecraftTime } from "./minecraftTime";
+import { MAX_ANIMATION_DURATION_TICKS, parseMinecraftTime } from "./time";
 
 const JAVA_INT_MAX = 2_147_483_647;
 const ITEM_DISPLAY_VALUES = new Set([

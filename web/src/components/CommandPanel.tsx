@@ -1,5 +1,4 @@
 import type { ImportedAnimation, ImportedTimelineEvent } from "../domain/conversionSeed";
-import { frameCommands } from "./frameCommands";
 
 interface CommandPanelProps {
   animation: ImportedAnimation;
@@ -68,4 +67,17 @@ function describeEvent(event: ImportedTimelineEvent): string {
   const source = event.source.type === "node" ? `node ${event.source.node}` : event.source.type;
   const origin = event.origin.type === "node" ? `node ${event.origin.node}` : "animation root";
   return `Runs as ${source} · Origin: ${origin}`;
+}
+
+export interface FrameCommand {
+  eventIndex: number;
+  commandIndex: number;
+  command: string;
+  event: ImportedTimelineEvent;
+}
+
+export function frameCommands(animation: ImportedAnimation, tick: number): FrameCommand[] {
+  return animation.events.timeline.flatMap((event, eventIndex) => event.tick === tick
+    ? event.commands.map((command, commandIndex) => ({ eventIndex, commandIndex, command, event }))
+    : []);
 }

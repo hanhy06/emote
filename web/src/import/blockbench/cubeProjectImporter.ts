@@ -1,11 +1,10 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteNode, type EmoteNodeTracks, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
-import { formatMinecraftTime } from "../../format/minecraftTime";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
-import { requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
+import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import {

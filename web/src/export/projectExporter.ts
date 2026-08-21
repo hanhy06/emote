@@ -1,6 +1,6 @@
 import { compileConversionAnimation } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
-import { formatMinecraftTime, parseMinecraftTime } from "../format/minecraftTime";
+import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import { validateResourceVersion } from "./generatedResources";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { addMetadataEntry, parseMetadataJson, renameMetadataEntry } from "./additionalMetadata";
+import { addMetadataEntry, parseMetadataJson, renameMetadataEntry } from "./AdditionalMetadataEditor";
 
 describe("additional metadata editing", () => {
   it("adds a non-conflicting field and preserves entry order while renaming", () => {

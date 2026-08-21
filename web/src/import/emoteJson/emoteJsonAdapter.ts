@@ -2,7 +2,7 @@ import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, M
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
 import { multiplyMatrix16 } from "../../format/matrix";
-import { parseMinecraftTime } from "../../format/minecraftTime";
+import { parseMinecraftTime } from "../../format/time";
 import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";

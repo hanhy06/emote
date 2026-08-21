@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, requireTick, secondsToTicks } from "./time";
+import {
+  formatMinecraftTime,
+  MAX_ANIMATION_DURATION_TICKS,
+  parseMinecraftTime,
+  requireAnimationDurationTicks,
+  requireTick,
+  secondsToTicks,
+} from "./time";
 
 describe("time utilities", () => {
   it("converts exact 20 TPS times to integer ticks", () => {
@@ -17,5 +24,11 @@ describe("time utilities", () => {
     expect(requireAnimationDurationTicks(MAX_ANIMATION_DURATION_TICKS, "duration")).toBe(12_000);
     expect(() => requireAnimationDurationTicks(0, "duration")).toThrow("between 1 and 12000 ticks");
     expect(() => requireAnimationDurationTicks(MAX_ANIMATION_DURATION_TICKS + 1, "duration")).toThrow("between 1 and 12000 ticks");
+  });
+
+  it("parses and formats Minecraft time strings", () => {
+    expect(parseMinecraftTime("1.5s")).toBe(30);
+    expect(parseMinecraftTime("2t")).toBe(2);
+    expect(formatMinecraftTime(30)).toBe("30t");
   });
 });

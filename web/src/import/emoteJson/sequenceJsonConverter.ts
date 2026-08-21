@@ -1,4 +1,4 @@
-import { parseMinecraftTime } from "../../format/minecraftTime";
+import { parseMinecraftTime } from "../../format/time";
 import { isResourceLocation } from "../../format/resourceLocation";
 import {
   isRecord,

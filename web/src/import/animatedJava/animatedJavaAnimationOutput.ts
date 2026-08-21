@@ -1,7 +1,7 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
-import { formatMinecraftTime } from "../../format/minecraftTime";
+import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 import type { AjAnimation, AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";

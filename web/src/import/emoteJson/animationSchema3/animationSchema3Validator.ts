@@ -1,7 +1,6 @@
 import type { EmoteEvent, Matrix16 } from "../../../format/emoteAnimation";
 import { isResourceLocation } from "../../../format/resourceLocation";
-import { MAX_ANIMATION_DURATION_TICKS } from "../../../format/time";
-import { parseMinecraftTime } from "../../../format/minecraftTime";
+import { MAX_ANIMATION_DURATION_TICKS, parseMinecraftTime } from "../../../format/time";
 import type { Schema3EmoteAnimation } from "./animationSchema3";
 
 const JAVA_INT_MAX = 2_147_483_647;
