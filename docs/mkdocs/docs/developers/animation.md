@@ -284,6 +284,12 @@ Available queries are:
 | `q.is_moving` | `1` while the initiator has non-zero movement, otherwise `0`. |
 | `q.is_on_ground` | `1` while the initiator is on the ground, otherwise `0`. |
 | `q.is_sprinting` | `1` while the initiator is sprinting, otherwise `0`. |
+| `q.is_swimming` | `1` while the initiator is swimming, otherwise `0`. |
+| `q.is_gliding` | `1` while the initiator is gliding with an elytra, otherwise `0`. |
+| `q.is_riding` | `1` while the initiator is riding another entity, otherwise `0`. |
+| `q.is_using_item` | `1` while the initiator is using an item, otherwise `0`. |
+| `q.is_on_fire` | `1` while the initiator is on fire, otherwise `0`. |
+| `q.is_in_water` | `1` while the initiator is in water, otherwise `0`. |
 
 Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
 

@@ -33,6 +33,7 @@ class MolangEngineTest {
     void emptyQuerySourceSuppliesZeroPlayerState() throws Exception {
         MolangEngine.CompiledExpression expression = this.engine.compile(
             "q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting"
+                + " + q.is_swimming + q.is_gliding + q.is_riding + q.is_using_item + q.is_on_fire + q.is_in_water"
         );
         MolangEngine.Session session = this.engine.createSession();
 

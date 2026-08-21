@@ -62,7 +62,8 @@ class AnimationPlayerTest {
         JsonObject frame = positionTrack(root).get(0).getAsJsonObject();
         frame.remove("interpolation");
         frame.getAsJsonArray("value").set(0, JsonParser.parseString(
-            "\"q.life_time + q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting\""
+            "\"q.life_time + q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting"
+                + " + q.is_swimming + q.is_gliding + q.is_riding + q.is_using_item + q.is_on_fire + q.is_in_water\""
         ));
 
         MolangQueries.Source queries = session -> {
@@ -71,15 +72,21 @@ class AnimationPlayerTest {
             session.setQuery("is_moving", 1.0D);
             session.setQuery("is_on_ground", 1.0D);
             session.setQuery("is_sprinting", 1.0D);
+            session.setQuery("is_swimming", 1.0D);
+            session.setQuery("is_gliding", 1.0D);
+            session.setQuery("is_riding", 1.0D);
+            session.setQuery("is_using_item", 1.0D);
+            session.setQuery("is_on_fire", 1.0D);
+            session.setQuery("is_in_water", 1.0D);
         };
         FakeTarget target = new FakeTarget();
         AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
 
         player.start();
-        assertEquals(9.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(15.0F, target.matrix("display").m30(), 1.0E-5F);
 
         player.advance();
-        assertEquals(9.05F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(15.05F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
