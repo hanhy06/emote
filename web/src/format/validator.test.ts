@@ -37,6 +37,25 @@ describe("validateEmoteAnimation", () => {
     expect(serializeEmoteAnimation(value)).toContain('"schema_version":4');
   });
 
+  it("validates a child skin participant against its inherited root space", () => {
+    const value = animation();
+    value.nodes.root = {
+      type: "anchor",
+      space: "partner",
+      transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+    };
+    const display = value.nodes.display;
+    if (display.type !== "item_display") throw new Error("Expected item display fixture.");
+    delete display.space;
+    display.parent = "root";
+    display.skin = { participant: "initiator", part: "head", order: 0 };
+
+    expect(validateEmoteAnimation(value)).toContainEqual({
+      path: "nodes.display.skin.participant",
+      message: "must match the node space",
+    });
+  });
+
   it("accepts Minecraft time units", () => {
     const value = animation();
     value.settings.cooldown = "10s";

@@ -351,4 +351,4 @@ The major schema 3 to 4 changes are:
 | Linear matrix interpolation | Step or eased linear vector interpolation, with quaternion rotation interpolation |
 | No dynamic values | Molang programs and Molang track components |
 
-The converter can migrate ordinary schema 3 files automatically. Schema 4 features such as parented nodes, independently timed transform channels, Molang, easing, and discontinuous `pre`/`post` values may not be representable when a schema 4 file is imported back into the current web editor.
+The converter can migrate ordinary schema 3 files automatically. When a schema 4 file uses parented nodes, independently timed transform channels, Molang, easing, or discontinuous `pre`/`post` values, the web preview is limited to the Create pose. These advanced fields are preserved when the file is exported again.

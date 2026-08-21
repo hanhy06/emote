@@ -50,7 +50,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (node.type === "anchor" && ("visible" in node || "entity_nbt" in node)) {
       add(issues, path, "anchor cannot define visible or entity_nbt");
     }
-    if (node.type === "item_display") validateItemNode(node, path, issues);
+    if (node.type === "item_display") validateItemNode(animation, nodeId, node, path, issues);
   }
   validateParentCycles(animation, issues);
 
@@ -90,6 +90,8 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): v
 }
 
 function validateItemNode(
+  animation: EmoteAnimation,
+  nodeId: string,
   node: Extract<EmoteAnimation["nodes"][string], { type: "item_display" }>,
   path: string,
   issues: ValidationIssue[],
@@ -101,9 +103,19 @@ function validateItemNode(
   if (!ITEM_DISPLAY_VALUES.has(node.item_display)) add(issues, `${path}.item_display`, "uses an unsupported item display context");
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
   if (node.skin) {
-    const rootSpace = node.space;
+    const rootSpace = inheritedNodeSpace(animation, nodeId);
     if (rootSpace && node.skin.participant !== rootSpace) add(issues, `${path}.skin.participant`, "must match the node space");
   }
+}
+
+function inheritedNodeSpace(animation: EmoteAnimation, nodeId: string): EmoteAnimation["nodes"][string]["space"] {
+  const seen = new Set<string>();
+  let current = animation.nodes[nodeId];
+  while (current?.parent && !seen.has(current.parent)) {
+    seen.add(current.parent);
+    current = animation.nodes[current.parent];
+  }
+  return current?.space;
 }
 
 function validateParentCycles(animation: EmoteAnimation, issues: ValidationIssue[]): void {

@@ -23,9 +23,12 @@ export function assignDocumentSkinPart(
       assignment: part === null ? null : { part, order: order ?? group.assignment?.order ?? 0 },
     };
   }
+  const selectedSpaceGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
-    selectedNodeIds.has(nodeId) && part !== null && node.space === "scene" ? { ...node, space: "initiator" as const } : node,
+    part !== null && node.space === "scene" && selectedSpaceGroups.has(node.spaceAssignmentGroup ?? nodeId)
+      ? { ...node, space: "initiator" as const }
+      : node,
   ])) as ConversionDocument["nodes"];
   return { ...document, nodes, skinGroups };
 }
@@ -49,9 +52,10 @@ export function assignDocumentNodeSpace(
   selectedNodeIds: ReadonlySet<string>,
   space: NodeSpace,
 ): ConversionDocument {
+  const selectedGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
-    selectedNodeIds.has(nodeId) ? { ...node, space } : node,
+    selectedGroups.has(node.spaceAssignmentGroup ?? nodeId) ? { ...node, space } : node,
   ])) as ConversionDocument["nodes"];
   if (space !== "scene") return { ...document, nodes };
   const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
@@ -65,9 +69,10 @@ export function assignDocumentHeldItemArm(
   selectedNodeIds: ReadonlySet<string>,
   arm: HeldItemArm | null,
 ): ConversionDocument {
+  const selectedGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
-    selectedNodeIds.has(nodeId) && node.type === "anchor"
+    selectedGroups.has(node.spaceAssignmentGroup ?? nodeId) && selectedNodeIds.has(nodeId) && node.type === "anchor"
       ? { ...node, heldItemArm: arm, ...(arm !== null && node.space === "scene" ? { space: "initiator" as const } : {}) }
       : node,
   ])) as ConversionDocument["nodes"];
@@ -104,5 +109,12 @@ function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: Rea
   return new Set([...selectedNodeIds].flatMap((nodeId) => {
     const node = document.nodes[nodeId];
     return node?.type === "item_display" && node.skinGroupId ? [node.skinGroupId] : [];
+  }));
+}
+
+function selectedSpaceAssignmentGroups(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
+  return new Set([...selectedNodeIds].flatMap((nodeId) => {
+    const node = document.nodes[nodeId];
+    return node ? [node.spaceAssignmentGroup ?? nodeId] : [];
   }));
 }

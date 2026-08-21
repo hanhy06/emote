@@ -121,20 +121,26 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     targetMinecraftVersion: project.suggestedMinecraftVersion ?? DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes,
     skinGroups,
-    animations: project.animations.map((animation) => ({
-      source: animation,
-      output: {
-        namespace,
-        playbackMode: "source",
-        displayName: animation.name,
-        description: `${animation.name} emote.`,
-        player: project.suggestedPlayer,
-        additionalMetadata,
-        standalone: project.suggestedStandalone ?? true,
-        cooldown: project.suggestedCooldown ?? "0t",
-        loopDelay: `${animation.loopDelayTicks}t`,
-      },
-    })),
+    animations: project.animations.map((animation) => {
+      const metadata = animation.suggestedMetadata;
+      const animationAdditionalMetadata = metadata
+        ? Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "name" && key !== "description"))
+        : additionalMetadata;
+      return {
+        source: animation,
+        output: {
+          namespace,
+          playbackMode: "source",
+          displayName: metadata?.name ?? animation.name,
+          description: metadata?.description ?? `${animation.name} emote.`,
+          player: project.suggestedPlayer,
+          additionalMetadata: animationAdditionalMetadata,
+          standalone: project.suggestedStandalone ?? true,
+          cooldown: project.suggestedCooldown ?? "0t",
+          loopDelay: `${animation.loopDelayTicks}t`,
+        },
+      };
+    }),
     sequence: {
       namespace,
       displayName: project.suggestedMetadata.name,

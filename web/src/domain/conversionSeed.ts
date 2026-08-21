@@ -27,6 +27,7 @@ export interface ImportedNodeBase {
   visible: boolean;
   entityNbt?: string;
   skinAssignmentGroup?: string;
+  spaceAssignmentGroup?: string;
   space?: NodeSpace;
 }
 
@@ -52,6 +53,7 @@ export interface ImportedSkinPart {
 export interface ImportedAnimation {
   id: string;
   name: string;
+  suggestedMetadata?: EmoteMetadata;
   durationTicks: number;
   loop: "once" | "hold" | "loop" | "server_sync";
   loopDelayTicks: number;

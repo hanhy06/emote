@@ -1,6 +1,7 @@
-import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Vec3 } from "../../format/emoteAnimation";
+import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
+import { multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime } from "../../format/minecraftTime";
 import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
@@ -46,6 +47,19 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
     const separator = animation.id.indexOf(":");
     const namespace = animation.id.slice(0, separator);
     const animationId = animation.id.slice(separator + 1);
+    let nodes: Record<string, ImportedNode>;
+    let importedAnimation: ImportedAnimation;
+    const diagnostics: ImportedProject["diagnostics"] = [];
+    try {
+      nodes = importNodes(animation);
+      importedAnimation = importTimeline(animation, animationId);
+    } catch (reason) {
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import" || schema3) throw reason;
+      const message = "Advanced schema 4 data is preserved for export; preview uses the Create pose.";
+      nodes = importRuntimeNodes(animation);
+      importedAnimation = importRuntimeTimeline(animation, animationId, message);
+      diagnostics.push({ severity: "warning", code: "schema_4_preview_limited", message, sourcePath: reason.sourcePath });
+    }
     return {
       source: "emote_json",
       sourceName: input.name,
@@ -55,9 +69,9 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
-      nodes: importNodes(animation),
-      animations: [importTimeline(animation, animationId)],
-      diagnostics: [],
+      nodes,
+      animations: [importedAnimation],
+      diagnostics,
       resources: new Map(),
     };
   },
@@ -68,6 +82,59 @@ function requireValidSchema3Animation(animation: Parameters<typeof validateSchem
   if (issues.length > 0) {
     throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${issues[0].path}: ${issues[0].message}`, issues[0].path);
   }
+}
+
+function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
+  const worldMatrices = new Map<string, Matrix16>();
+  const rootIds = new Map<string, string>();
+  const worldMatrix = (id: string): Matrix16 => {
+    const existing = worldMatrices.get(id);
+    if (existing) return existing;
+    const node = animation.nodes[id];
+    const local = localTransformToMatrix(node.transform, `${id}.transform`);
+    const world = node.parent
+      ? multiplyMatrix16(worldMatrix(node.parent), local, `${id}.world_transform`)
+      : local;
+    worldMatrices.set(id, world);
+    return world;
+  };
+  const rootId = (id: string): string => {
+    const existing = rootIds.get(id);
+    if (existing) return existing;
+    const parent = animation.nodes[id].parent;
+    const root = parent ? rootId(parent) : id;
+    rootIds.set(id, root);
+    return root;
+  };
+
+  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
+    const root = rootId(id);
+    const space = animation.nodes[root].space!;
+    const defaultMatrix = worldMatrix(id);
+    const assignment = { space, spaceAssignmentGroup: root };
+    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix, ...assignment }];
+    const common = {
+      id,
+      defaultMatrix,
+      visible: node.visible ?? true,
+      ...assignment,
+      ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
+    };
+    if (node.type === "item_display") {
+      if (node.item_source) {
+        return [id, { id, type: "anchor", defaultMatrix, ...assignment, suggestedHeldItemArm: node.item_source.arm }];
+      }
+      return [id, {
+        ...common,
+        type: "item_display",
+        itemStackSnbt: node.item_stack_snbt!,
+        itemDisplay: node.item_display,
+        ...(node.skin ? { skin: { ...node.skin } } : {}),
+      }];
+    }
+    if (node.type === "block_display") return [id, { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt }];
+    return [id, { ...common, type: "text_display", text: node.text }];
+  }));
 }
 
 function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
@@ -119,20 +186,46 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     }
     tracks[nodeId] = track;
   }
-  const events = animation.timeline.events;
   return {
     id,
     name: animation.metadata.name,
+    suggestedMetadata: { ...animation.metadata },
     durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
     loop: animation.settings.playback.mode,
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
     tracks,
-    events: {
-      start: copyEvents(events?.start),
-      timeline: (events?.timeline ?? []).map(({ time, ...event }) => ({ ...copyEvent(event), tick: parseMinecraftTime(time) })),
-      loop: copyEvents(events?.loop),
-      stop: copyEvents(events?.stop),
+    events: importEvents(animation),
+  };
+}
+
+function importRuntimeTimeline(animation: EmoteAnimation, id: string, reason: string): ImportedAnimation {
+  const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
+  return {
+    id,
+    name: animation.metadata.name,
+    suggestedMetadata: { ...animation.metadata },
+    durationTicks,
+    loop: animation.settings.playback.mode,
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    tracks: {},
+    events: importEvents(animation),
+    availability: { preview: "create_pose", exportable: true, reason },
+    preview: { durationTicks, tracks: {} },
+    runtime: {
+      ...(animation.molang ? { molang: animation.molang } : {}),
+      nodes: animation.nodes,
+      timeline: animation.timeline,
     },
+  };
+}
+
+function importEvents(animation: EmoteAnimation): ImportedAnimation["events"] {
+  const events = animation.timeline.events;
+  return {
+    start: copyEvents(events?.start),
+    timeline: (events?.timeline ?? []).map(({ time, ...event }) => ({ ...copyEvent(event), tick: parseMinecraftTime(time) })),
+    loop: copyEvents(events?.loop),
+    stop: copyEvents(events?.stop),
   };
 }
 
