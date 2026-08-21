@@ -1,4 +1,11 @@
-const PLAYER_STATE_QUERY_NAMES = [
+const MOD_SUPPORTED_QUERY_NAMES = [
+  "anim_time",
+  "anim_time_ticks",
+  "anim_length",
+  "delta_time",
+  "loop_count",
+  "key_frame_lerp_time",
+  "life_time",
   "target_x_rotation",
   "target_y_rotation",
   "body_x_rotation",
@@ -28,5 +35,5 @@ const PLAYER_STATE_QUERY_NAMES = [
 ] as const;
 
 export const PREVIEW_PLAYER_STATE_QUERIES: Readonly<Record<string, number>> = Object.fromEntries(
-  PLAYER_STATE_QUERY_NAMES.flatMap((name) => [[`q.${name}`, 0], [`query.${name}`, 0]]),
+  MOD_SUPPORTED_QUERY_NAMES.flatMap((name) => [[`q.${name}`, 0], [`query.${name}`, 0]]),
 );
