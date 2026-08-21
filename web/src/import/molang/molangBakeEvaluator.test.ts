@@ -50,16 +50,4 @@ describe("MolangBakeEvaluator", () => {
       keyframeLerpTime: 0,
     }, "animation.position")).toThrow("animation.position is nondeterministic");
   });
-
-  it("accepts mod math functions and rejects functions unavailable in the mod", () => {
-    const context = { animationTime: 0, keyframeLerpTime: 0 };
-
-    expect(evaluator().evaluate("math.hermite_blend(0.5)", context, "supported")).toBe(0.5);
-    for (const expression of ["math.sign(-2)", "math.inverse_lerp(0, 10, 5)", "query.any(1, 1)"]) {
-      expect(() => evaluator().evaluate(expression, context, "unsupported")).toThrowError(expect.objectContaining({
-        code: "unsupported_molang_function",
-        sourcePath: "unsupported",
-      }));
-    }
-  });
 });

@@ -1,6 +1,5 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../../format/time";
-import { findUnsupportedMolangFunction } from "../../format/molangFunctions";
 import { ConversionError } from "../../foundation/diagnostics";
 import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
 
@@ -24,15 +23,6 @@ export interface MolangBakeOptions {
 
 const NUMERIC_LITERAL = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/;
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
-export function requireSupportedMolangFunctions(expression: string, path: string): void {
-  const functionName = findUnsupportedMolangFunction(expression);
-  if (!functionName) return;
-  throw new ConversionError(
-    "unsupported_molang_function",
-    `Molang function ${functionName} is not supported by the Emote mod.`,
-    path,
-  );
-}
 
 export class MolangBakeEvaluator {
   private readonly parser = new MolangParser();
@@ -46,7 +36,6 @@ export class MolangBakeEvaluator {
   evaluate(expression: string | number, context: MolangBakeContext, path: string): number {
     if (typeof expression === "number") return this.requireFinite(expression, expression, path);
     if (NUMERIC_LITERAL.test(expression.trim())) return this.requireFinite(Number(expression), expression, path);
-    requireSupportedMolangFunctions(expression, path);
     if (this.options.rejectNondeterministic && NONDETERMINISTIC_FUNCTION.test(expression)) {
       const message = this.options.error.nondeterministicMessage?.(expression, path)
         ?? this.options.error.message(expression, path);
