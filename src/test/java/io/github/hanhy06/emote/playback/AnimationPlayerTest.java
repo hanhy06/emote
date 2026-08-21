@@ -179,6 +179,7 @@ class AnimationPlayerTest {
               "settings":{
                 "standalone":true,
                 "cooldown":"0t",
+                "rotation_deadzone":50,
                 "player":{
                   "hidden":true,
                   "stop_conditions":{
