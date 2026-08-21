@@ -4,13 +4,18 @@ import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class ReloadServiceTest {
     @Test
@@ -39,10 +44,36 @@ class ReloadServiceTest {
             """);
         EmoteCatalog registry = new EmoteCatalog();
         var loaded = new AnimationJsonParser().parse(configManager.getAnimationDirectory().resolve("disabled.json"));
+        var value = new EmoteAnimation.MolangValue("q.unsupported", "$.timeline.tracks.root.position[0].value[0]");
+        var vector = new EmoteAnimation.VectorValue(value, value, value);
+        var invalidAnimation = new EmoteAnimation(
+            net.minecraft.resources.Identifier.parse("example:invalid"),
+            loaded.animation().metadata(),
+            loaded.animation().settings(),
+            loaded.animation().molang(),
+            loaded.animation().nodes(),
+            new EmoteAnimation.Timeline(
+                1,
+                Map.of("root", new EmoteAnimation.NodeTracks(
+                    List.of(new EmoteAnimation.VectorKeyframe(
+                        0,
+                        vector,
+                        vector,
+                        EmoteAnimation.Interpolation.LINEAR,
+                        EmoteAnimation.Easing.LINEAR
+                    )),
+                    List.of(),
+                    List.of(),
+                    List.of()
+                )),
+                EmoteAnimation.Events.empty()
+            )
+        );
+        var invalid = new LoadedAnimation(Path.of("invalid.json"), "invalid", invalidAnimation);
         ReloadService service = new ReloadService(
             configManager,
             registry,
-            ignored -> new EmoteDirectoryLoader.LoadResult(java.util.List.of(loaded), java.util.List.of(), 1),
+            ignored -> new EmoteDirectoryLoader.LoadResult(List.of(invalid, loaded), List.of(), 2),
             null,
             null
         );
@@ -50,5 +81,6 @@ class ReloadServiceTest {
         service.loadOnServerStart();
 
         assertNotNull(registry.find("example:disabled"));
+        assertNull(registry.find("example:invalid"));
     }
 }

@@ -71,7 +71,8 @@ public final class ReloadService {
     private ReloadStats reloadRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
         var emotes = contents.animations().stream()
-            .map(PreparedAnimation::from)
+            .map(this::prepareAnimation)
+            .filter(java.util.Objects::nonNull)
             .toList();
         var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
             PreparedAnimation::id,
@@ -92,6 +93,15 @@ public final class ReloadService {
             );
         }
         return new ReloadStats(contents.detectedFileCount(), this.emoteCatalog.fileEmotes().size());
+    }
+
+    private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
+        try {
+            return PreparedAnimation.from(animation);
+        } catch (IllegalArgumentException exception) {
+            EmoteMod.LOGGER.warn("Ignoring invalid emote animation {}: {}", animation.sourcePath(), exception.getMessage());
+            return null;
+        }
     }
 
     private PreparedSequence resolveSequence(
