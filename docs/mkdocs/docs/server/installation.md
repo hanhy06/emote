@@ -24,7 +24,7 @@ animations/
     └── sit-sequence.json
 ```
 
-File names are only for organization. The actual emote ID comes from `id` inside the JSON. If different files declare the same ID, all files with that ID are rejected.
+File names are only for organization. The mod identifies emotes by `id` and rejects duplicate IDs.
 
 ## `config.json`
 
