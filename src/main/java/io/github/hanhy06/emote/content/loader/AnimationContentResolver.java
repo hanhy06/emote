@@ -27,13 +27,13 @@ import java.util.Objects;
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class AnimationContentResolver {
-    private final AnimationComplexityValidator complexityValidator = new AnimationComplexityValidator();
+    static final int MAX_DURATION_TICKS = 20 * 60 * 10;
 
     public LoadedAnimation resolve(LoadedAnimation loaded) throws EmoteAnimationLoadException {
         Objects.requireNonNull(loaded, "loaded");
         MinecraftServer server = EmoteMod.SERVER;
         Path sourcePath = loaded.sourcePath();
-        this.complexityValidator.validate(loaded);
+        validateComplexity(loaded);
 
         var nbtOps = server.registryAccess().createSerializationContext(NbtOps.INSTANCE);
         var jsonOps = server.registryAccess().createSerializationContext(JsonOps.INSTANCE);
@@ -94,6 +94,16 @@ public final class AnimationContentResolver {
         validateEvents(events.loop(), "$.timeline.events.loop", validationSource, server, sourcePath);
         validateEvents(events.stop(), "$.timeline.events.stop", validationSource, server, sourcePath);
         return new LoadedAnimation(loaded.sourcePath(), loaded.sha256(), loaded.animation(), preparedDisplayData);
+    }
+
+    static void validateComplexity(LoadedAnimation loaded) throws EmoteAnimationLoadException {
+        if (loaded.animation().timeline().durationTicks() > MAX_DURATION_TICKS) {
+            throw new EmoteAnimationLoadException(
+                loaded.sourcePath(),
+                "$.timeline.duration",
+                "must not exceed " + MAX_DURATION_TICKS
+            );
+        }
     }
 
     static void validateSkinTarget(Path sourcePath, String nodePath, ItemNode itemNode, ItemStack itemStack)

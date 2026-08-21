@@ -3,10 +3,15 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.mojang.brigadier.StringReader;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.EmoteSequence;
+import net.minecraft.commands.arguments.coordinates.Coordinates;
+import net.minecraft.commands.arguments.coordinates.RotationArgument;
+import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
@@ -15,7 +20,6 @@ import java.util.List;
 
 public final class SequenceJsonParser {
     private static final int SCHEMA_VERSION = 4;
-    private final ParticipantPlacementParser placementParser = new ParticipantPlacementParser();
 
     public EmoteSequence parse(Path sourcePath) throws EmoteAnimationLoadException {
         return parse(EmoteJsonDocument.read(sourcePath));
@@ -68,12 +72,42 @@ public final class SequenceJsonParser {
     ) throws EmoteAnimationLoadException {
         String path = "$.participants." + role;
         JsonObject placement = reader.requireObject(participants, role, "$.participants");
-        return this.placementParser.parse(
+        Coordinates position = parseCoordinates(
             reader.requireString(placement, "position", path),
-            reader.requireString(placement, "rotation", path),
-            path,
+            path + ".position",
+            true,
             reader
         );
+        if (!position.isXRelative() || !position.isYRelative() || !position.isZRelative()) {
+            throw reader.error(path + ".position", "must use only relative ~ or local ^ coordinates");
+        }
+        Coordinates rotation = parseCoordinates(
+            reader.requireString(placement, "rotation", path),
+            path + ".rotation",
+            false,
+            reader
+        );
+        return new EmoteSequence.ParticipantPlacement(position, rotation);
+    }
+
+    private Coordinates parseCoordinates(
+        String value,
+        String path,
+        boolean position,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        StringReader stringReader = new StringReader(value);
+        try {
+            Coordinates coordinates = position
+                ? Vec3Argument.vec3(false).parse(stringReader)
+                : RotationArgument.rotation().parse(stringReader);
+            if (stringReader.canRead()) {
+                throw reader.error(path, "contains trailing input");
+            }
+            return coordinates;
+        } catch (CommandSyntaxException exception) {
+            throw reader.error(path, "invalid Minecraft coordinates", exception);
+        }
     }
 
     private List<EmoteSequence.Step> parseSteps(

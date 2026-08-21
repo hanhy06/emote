@@ -22,7 +22,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     private final PermissionChecker permissionChecker;
     private final Function<ServerPlayer, UUID> playerIdResolver;
     private final ToLongFunction<ServerPlayer> tickSource;
-    private final EmoteCooldowns cooldowns = new EmoteCooldowns();
+    private final Cooldowns cooldowns = new Cooldowns();
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
     private Set<String> disabled = Set.of();
@@ -131,6 +131,37 @@ public final class PlaybackPolicyService implements AccessConfigListener {
             }
         }
         return false;
+    }
+
+    private static final class Cooldowns {
+        private final Map<UUID, Map<String, Long>> readyTicks = new HashMap<>();
+
+        private long remainingTicks(UUID playerId, String emoteId, long currentTick) {
+            Map<String, Long> playerCooldowns = this.readyTicks.get(playerId);
+            if (playerCooldowns == null) {
+                return 0L;
+            }
+            long remaining = playerCooldowns.getOrDefault(emoteId, currentTick) - currentTick;
+            if (remaining <= 0L) {
+                playerCooldowns.remove(emoteId);
+                if (playerCooldowns.isEmpty()) {
+                    this.readyTicks.remove(playerId);
+                }
+                return 0L;
+            }
+            return remaining;
+        }
+
+        private void start(UUID playerId, String emoteId, long currentTick, int cooldownTicks) {
+            if (cooldownTicks > 0) {
+                this.readyTicks.computeIfAbsent(playerId, ignored -> new HashMap<>())
+                    .put(emoteId, currentTick + cooldownTicks);
+            }
+        }
+
+        private void clear() {
+            this.readyTicks.clear();
+        }
     }
 
     record Decision(

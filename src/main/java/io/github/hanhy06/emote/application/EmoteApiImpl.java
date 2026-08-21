@@ -25,7 +25,7 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmotePlayService playService;
     private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
-    private final EmoteChangeNotifier changeNotifier;
+    private final ChangeNotifier changeNotifier;
     private final AnimationContentResolver contentResolver;
 
     public EmoteApiImpl(
@@ -33,7 +33,7 @@ public final class EmoteApiImpl extends EmoteApi {
         EmotePlayService playService,
         PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
-        EmoteChangeNotifier changeNotifier,
+        ChangeNotifier changeNotifier,
         AnimationContentResolver contentResolver
     ) {
         this.emoteCatalog = Objects.requireNonNull(emoteCatalog, "emoteCatalog");
@@ -114,6 +114,11 @@ public final class EmoteApiImpl extends EmoteApi {
         if (!EmoteMod.SERVER.isSameThread()) {
             throw new IllegalStateException("Emote API mutations must run on the server thread.");
         }
+    }
+
+    @FunctionalInterface
+    public interface ChangeNotifier {
+        void notifyChanged();
     }
 
     private final class ApiRegistration implements EmoteRegistration {

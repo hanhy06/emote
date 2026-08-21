@@ -17,8 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AnimationComplexityValidatorTest {
-    private final AnimationComplexityValidator validator = new AnimationComplexityValidator();
+class AnimationContentResolverComplexityTest {
 
     @Test
     void acceptsAllBundledAnimations() throws Exception {
@@ -26,7 +25,7 @@ class AnimationComplexityValidatorTest {
         try (var paths = Files.list(Path.of("docs/sample"))) {
             for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
                 LoadedAnimation loaded = parser.parse(path);
-                assertDoesNotThrow(() -> this.validator.validate(loaded), path.toString());
+                assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded), path.toString());
             }
         }
     }
@@ -45,7 +44,7 @@ class AnimationComplexityValidatorTest {
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
             commands
         );
-        assertDoesNotThrow(() -> this.validator.validate(loaded(
+        assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded(
             nodes,
             20,
             new EmoteAnimation.Events(List.of(event), List.of(), List.of(), List.of())
@@ -56,9 +55,9 @@ class AnimationComplexityValidatorTest {
     void rejectsTimelineLongerThanTenMinutes() {
         EmoteAnimationLoadException exception = assertThrows(
             EmoteAnimationLoadException.class,
-            () -> this.validator.validate(loaded(
+            () -> AnimationContentResolver.validateComplexity(loaded(
                 Map.of("node", blockNode()),
-                AnimationComplexityValidator.MAX_DURATION_TICKS + 1,
+                AnimationContentResolver.MAX_DURATION_TICKS + 1,
                 EmoteAnimation.Events.empty()
             ))
         );
