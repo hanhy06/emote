@@ -21,9 +21,8 @@ nav:
   - Server Administration:
       - Installation: server/installation.md
       - Access Control: server/access-control.md
-      - Idle Emotes: server/playback-policy.md
       - Commands: server/commands.md
-      - Using Sequences: server/sequences.md
+      - Advanced Usage: server/advanced-usage.md
   - Developers:
       - Animation: developers/animation.md
       - Sequence: developers/sequence.md

@@ -1,6 +1,6 @@
-# Idle Emotes
+# Advanced Usage
 
-## Emote cooldowns
+## Cooldowns
 
 Cooldowns are configured with `settings.cooldown` in each Animation or Sequence JSON, not in `emotes.json`.
 
@@ -26,7 +26,7 @@ A cooldown is applied only after playback starts successfully. It does not begin
 
 When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
 
-## Idle emotes
+## Idle Emotes
 
 Idle emotes play automatically after a specified time since the player's last action. Add `idle` to a permission entry in `emotes.json`.
 
@@ -79,3 +79,82 @@ If a player has multiple permissions, entries are checked from top to bottom in 
 An idle emote does not need to appear in the permission entry's `emotes` list. This allows idle-only emotes that do not appear in menus, searches, command suggestions, or the wheel. Idle playback still respects `standalone`, `disabled`, and cooldown policies unless the player has `emote.bypass`.
 
 An idle emote does not start while another emote is playing. A failed attempt is retried after one second. When several candidates are available, Emote avoids selecting the most recently played emote twice in a row when possible.
+
+## Sequences
+
+A Sequence connects multiple Animations in order and presents them to the player as one emote. Server operators must install both the Sequence JSON and every Animation JSON it references.
+
+### Example file layout
+
+```text
+config/emote/animations/sit/
+├── sit-down.json
+├── sit-idle.json
+├── stand-up.json
+└── sit.json
+```
+
+`sit.json`:
+
+```json
+{
+  "type": "sequence",
+  "schema_version": 4,
+  "id": "example:sit",
+  "metadata": {
+    "name": "Sit",
+    "description": "Sit down and stand up after waiting."
+  },
+  "settings": {
+    "cooldown": "5s",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "steps": [
+    {"emote": "example:sit-down"},
+    {"emote": "example:sit-idle", "repeat": 3},
+    {"emote": "example:stand-up"}
+  ]
+}
+```
+
+Intermediate Animations referenced by a Sequence are usually hidden from direct selection:
+
+```json
+"settings": {
+  "standalone": false,
+  "cooldown": "0t"
+}
+```
+
+Assign player permissions and cooldowns to the Sequence ID, `example:sit`. You do not need to grant the internal Animation IDs in the player's `emotes` list.
+
+```json
+{
+  "permission": "emote.default",
+  "emotes": ["example:sit"]
+}
+```
+
+### Verifying the installation
+
+1. Place all JSON files under `animations/` on the same server.
+2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
+3. Run `/emote play example:sit` with normal player permissions.
+
+If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
+
+!!! note "Complete example pack"
+    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
+
+To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).

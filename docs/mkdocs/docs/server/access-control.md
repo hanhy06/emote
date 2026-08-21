@@ -66,7 +66,7 @@ API and bypass playback must still meet the minimum playback requirements.
 | `permissions` | Permission groups used to assemble each player's available emote IDs. |
 | `permission` | Permission checked through the installed permission provider. |
 | `emotes` | Exact allowed IDs. `"*"` grants every enabled standalone emote. |
-| `idle` | Optional idle-playback rule. See [Cooldowns and Idle Emotes](playback-policy.md). |
+| `idle` | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes). |
 
 Normal player access is resolved as follows:
 
