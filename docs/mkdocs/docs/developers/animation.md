@@ -290,15 +290,26 @@ Available queries are:
 | `q.loop_count` | Zero-based number of completed loops. |
 | `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
 | `q.life_time` | Alias of `q.anim_time`, for imported Molang compatibility. |
+| `q.target_x_rotation`, `q.target_y_rotation` | Initiator look pitch and head yaw relative to the body, in degrees. |
+| `q.body_x_rotation`, `q.body_y_rotation` | Initiator pitch and absolute body yaw, in degrees. |
+| `q.head_x_rotation`, `q.head_y_rotation` | Initiator pitch and absolute head yaw, in degrees. |
+| `q.eye_target_x_rotation`, `q.eye_target_y_rotation` | Initiator eye pitch and absolute head yaw, in degrees. |
 | `q.ground_speed` | Initiator horizontal movement speed in blocks per second. |
 | `q.vertical_speed` | Initiator vertical movement speed in blocks per second; positive is upward. |
+| `q.modified_distance_moved` | Initiator walk-animation position used by imported Bedrock movement formulas. |
+| `q.walk_distance` | Initiator accumulated movement distance. |
 | `q.is_moving` | `1` while the initiator has non-zero movement, otherwise `0`. |
 | `q.is_on_ground` | `1` while the initiator is on the ground, otherwise `0`. |
+| `q.is_sneaking` | `1` while the initiator is crouching, otherwise `0`. |
 | `q.is_sprinting` | `1` while the initiator is sprinting, otherwise `0`. |
 | `q.is_swimming` | `1` while the initiator is swimming, otherwise `0`. |
 | `q.is_gliding` | `1` while the initiator is gliding with an elytra, otherwise `0`. |
 | `q.is_riding` | `1` while the initiator is riding another entity, otherwise `0`. |
 | `q.is_using_item` | `1` while the initiator is using an item, otherwise `0`. |
+| `q.is_sleeping` | `1` while the initiator is sleeping, otherwise `0`. |
+| `q.is_emoting` | `1` during player-backed emote playback, otherwise `0`. |
+| `q.item_is_charged` | `1` while the initiator's main-hand crossbow is charged, otherwise `0`. |
+| `q.sleep_rotation` | Yaw of the bed occupied by the initiator, or `0` while not sleeping. |
 | `q.is_on_fire` | `1` while the initiator is on fire, otherwise `0`. |
 | `q.is_in_water` | `1` while the initiator is in water, otherwise `0`. |
 

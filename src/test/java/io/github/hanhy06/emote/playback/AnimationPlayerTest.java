@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -137,6 +138,19 @@ class AnimationPlayerTest {
         );
 
         assertTrue(exception.getMessage().contains("must not assign queries"));
+    }
+
+    @Test
+    void acceptsBedrockPlayerAnimationQueries() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value").set(0, new JsonPrimitive(
+            "q.target_x_rotation + q.target_y_rotation + q.body_x_rotation + q.body_y_rotation"
+                + " + q.head_x_rotation + q.head_y_rotation + q.eye_target_x_rotation + q.eye_target_y_rotation"
+                + " + q.modified_distance_moved + q.walk_distance + q.is_sneaking + q.is_sleeping"
+                + " + q.is_emoting + q.item_is_charged + q.sleep_rotation"
+        ));
+
+        assertDoesNotThrow(() -> PreparedAnimation.from(load(root)));
     }
 
     private AnimationPlayer player(JsonObject root, FakeTarget target) throws Exception {
