@@ -34,7 +34,7 @@ See the [LuckPerms Wiki](https://luckperms.net/wiki/Home) for permission-mod usa
 
 Cooldown does not hide an emote from menus, search results, suggestions, or the wheel. It is checked only when playback is requested.
 
-API and bypass playback still require a loaded ID and remain subject to playback-request listeners, display-entity limits, skin preparation, and other playback-engine failures.
+API and bypass playback must still meet the minimum playback requirements.
 
 ## `emotes.json`
 
