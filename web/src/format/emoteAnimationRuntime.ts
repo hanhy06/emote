@@ -34,7 +34,7 @@ export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   }
   requireSchema4Nodes(root.nodes);
   requireSchema4Timeline(root.timeline);
-  return value as EmoteAnimation;
+  return normalizeSchemaDefaults(root);
 }
 
 function requireMetadata(value: unknown): void {
@@ -91,7 +91,9 @@ function requireSchema4Nodes(value: unknown): void {
       const skin = optionalRecord(node.skin, `${path}.skin`);
       if (skin) {
         requireStringValue(skin.part, SKIN_PARTS, `${path}.skin.part`);
-        requireStringValue(skin.participant, PARTICIPANTS, `${path}.skin.participant`);
+        if (skin.participant !== undefined && skin.participant !== null) {
+          requireStringValue(skin.participant, PARTICIPANTS, `${path}.skin.participant`);
+        }
         requireNumber(skin.order, `${path}.skin.order`);
       }
     } else if (type === "block_display") {
@@ -100,6 +102,17 @@ function requireSchema4Nodes(value: unknown): void {
       throw new Error(`${path}.text is required.`);
     }
   }
+}
+
+function normalizeSchemaDefaults(root: RuntimeRecord): EmoteAnimation {
+  const nodes = root.nodes as RuntimeRecord;
+  const normalizedNodes = Object.fromEntries(Object.entries(nodes).map(([nodeId, nodeValue]) => {
+    const node = nodeValue as RuntimeRecord;
+    const skin = node.skin as RuntimeRecord | undefined;
+    if (!skin || (skin.participant !== undefined && skin.participant !== null)) return [nodeId, node];
+    return [nodeId, { ...node, skin: { ...skin, participant: "initiator" } }];
+  }));
+  return { ...root, nodes: normalizedNodes } as unknown as EmoteAnimation;
 }
 
 function requireLocalTransform(value: unknown, path: string): void {
