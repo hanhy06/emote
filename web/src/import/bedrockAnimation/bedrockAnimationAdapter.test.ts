@@ -35,8 +35,7 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.source).toBe("bedrock_animation_json");
-    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_item", "right_item", "left_leg", "right_leg"]);
-    expect(imported.nodes.right_item.type === "anchor" && imported.nodes.right_item.suggestedHeldItemArm).toBe("right");
+    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"]);
     expect(imported.nodes.left_arm.type === "item_display" && imported.nodes.left_arm.suggestedSkin).toEqual({ part: "left_arm", order: 0 });
     expect(imported.nodes.left_arm.defaultMatrix[3]).toBeCloseTo(-0.29296875);
     expect(imported.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(0.29296875);
@@ -52,11 +51,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(compiled).toHaveLength(1);
     expect(compiled[0].settings.rotation_deadzone).toBe(0);
     expect(compiled[0].nodes.body.type === "item_display" && compiled[0].nodes.body.skin).toEqual({ participant: "initiator", part: "body", order: 0 });
-    expect(compiled[0].nodes.right_item).toMatchObject({
-      type: "item_display",
-      item_source: { type: "participant_hand", arm: "right" },
-      item_display: "thirdperson_righthand",
-    });
+    expect(compiled[0].nodes).not.toHaveProperty("right_item");
   });
 
   it("normalizes Bedrock position and rotation axes before producing canonical transforms", async () => {
@@ -221,7 +216,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(validateEmoteAnimation(compiled)).toEqual([]);
   });
 
-  it("imports left and right item helper bones while silently ignoring cape", async () => {
+  it("silently ignores item helper and cape bones", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
@@ -238,9 +233,9 @@ describe("bedrockAnimationAdapter", () => {
 
     expect(imported.animations[0].availability).toBeUndefined();
     expect(imported.diagnostics).toEqual([]);
-    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_item", "right_item", "left_leg", "right_leg"]);
-    expect(imported.animations[0].tracks.left_item.transforms).toHaveLength(3);
-    expect(imported.animations[0].tracks.right_item.transforms).toHaveLength(3);
+    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"]);
+    expect(imported.animations[0].tracks).not.toHaveProperty("left_item");
+    expect(imported.animations[0].tracks).not.toHaveProperty("right_item");
   });
 });
 

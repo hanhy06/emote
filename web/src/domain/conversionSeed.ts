@@ -1,4 +1,4 @@
-import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, HeldItemArm, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
 import type { ConversionIssue } from "../foundation/diagnostics";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
@@ -43,7 +43,7 @@ export type ImportedNode =
   })
   | (ImportedNodeBase & { type: "block_display"; blockStateSnbt: string })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
-  | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor"; suggestedHeldItemArm?: HeldItemArm });
+  | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
 
 export interface ImportedSkinPart {
   participant?: Participant;

@@ -25,15 +25,7 @@ export function createBedrockRuntime(animation: BedrockAnimation, durationTicks:
     nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
-    if (bone.heldItemArm) {
-      nodes[bone.id] = {
-        type: "item_display",
-        parent: `${bone.id}_x`,
-        transform: { position: ZERO, rotation: ZERO, scale: ONE },
-        item_source: { type: "participant_hand", arm: bone.heldItemArm },
-        item_display: bone.heldItemArm === "right" ? "thirdperson_righthand" : "thirdperson_lefthand",
-      };
-    } else if (bone.cube) {
+    if (bone.cube) {
       nodes[bone.id] = {
         type: "item_display",
         parent: `${bone.id}_x`,

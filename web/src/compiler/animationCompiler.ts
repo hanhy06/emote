@@ -111,16 +111,7 @@ function compileNodes(document: ConversionDocument, animation: ImportedAnimation
   return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
-    if (node.type === "anchor") {
-      if (node.heldItemArm) return [id, {
-        type: "item_display",
-        space: node.space,
-        transform,
-        item_source: { type: "participant_hand", arm: node.heldItemArm },
-        item_display: node.heldItemArm === "right" ? "thirdperson_righthand" : "thirdperson_lefthand",
-      }];
-      return [id, { type: "anchor", space: node.space, transform }];
-    }
+    if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
     const common = {
       space: node.space,
       ...(node.visible ? {} : { visible: false }),

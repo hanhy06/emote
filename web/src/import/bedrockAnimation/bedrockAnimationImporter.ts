@@ -110,7 +110,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   );
   const previewDurationTicks = assumedDuration ? TICKS_PER_SECOND : durationTicks;
   const samplePlan = planBedrockAnimationSamples(animation, previewDurationTicks, playbackRate);
-  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube || bone.heldItemArm).map((bone) => [bone.id, {
+  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
     transforms: [],
     visibility: [],
   }]));
@@ -118,7 +118,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
     const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
     for (const bone of BEDROCK_PLAYER_BONES) {
-      if (!bone.cube && !bone.heldItemArm) continue;
+      if (!bone.cube) continue;
       const matrix = worldMatrices.get(bone.id);
       if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${bone.id}.`);
       tracks[bone.id].transforms.push({

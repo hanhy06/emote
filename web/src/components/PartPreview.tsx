@@ -2,13 +2,11 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
-import type { AttachmentPoint } from "../converterSession";
 import { SKIN_PARTS, type PartAssignments } from "../preview/skinAssignment";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {
   parts: PlayerHeadPart[];
-  attachmentPoints: AttachmentPoint[];
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
   onSelectPart: (nodeId: string, additive: boolean) => void;
@@ -17,10 +15,9 @@ interface PartPreviewProps {
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export default function PartPreview({ parts, attachmentPoints, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
+export default function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
-  const pointMaterialsRef = useRef(new Map<string, THREE.MeshBasicMaterial>());
   const onSelectPartRef = useRef(onSelectPart);
   const onSelectPartsRef = useRef(onSelectParts);
   const selectedPartsRef = useRef(selectedParts);
@@ -39,14 +36,7 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
       material.emissive.set(selectedParts.has(nodeId) ? "#3d73b9" : "#000000");
       material.emissiveIntensity = selectedParts.has(nodeId) ? 0.7 : 0;
     }
-    for (const point of attachmentPoints) {
-      const material = pointMaterialsRef.current.get(point.nodeId);
-      if (!material) continue;
-      material.color.set(selectedParts.has(point.nodeId)
-        ? "#ffffff"
-        : point.arm === "right" ? "#d66b32" : point.arm === "left" ? "#3678b8" : "#d0a52c");
-    }
-  }, [assignments, attachmentPoints, selectedParts]);
+  }, [assignments, selectedParts]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -80,10 +70,8 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
     const partGroup = new THREE.Group();
     const clickableMeshes: THREE.Mesh[] = [];
     const modelMeshes: THREE.Mesh[] = [];
-    const pointMarkers: THREE.Mesh[] = [];
     const geometry = createPlayerHeadGeometry();
     const edgeGeometry = new THREE.EdgesGeometry(geometry);
-    const pointGeometry = new THREE.CircleGeometry(0.05, 20);
 
     for (const part of parts) {
       const assignment = assignments[part.nodeId];
@@ -109,28 +97,10 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
       edges.matrix.copy(mesh.matrix);
       partGroup.add(edges);
     }
-    for (const point of attachmentPoints) {
-      const material = new THREE.MeshBasicMaterial({
-        color: selectedParts.has(point.nodeId)
-          ? "#ffffff"
-          : point.arm === "right" ? "#d66b32" : point.arm === "left" ? "#3678b8" : "#d0a52c",
-        depthTest: false,
-        depthWrite: false,
-      });
-      pointMaterialsRef.current.set(point.nodeId, material);
-      const marker = new THREE.Mesh(pointGeometry, material);
-      marker.position.setFromMatrixPosition(new THREE.Matrix4().set(...point.matrix as MatrixValues));
-      marker.renderOrder = 2;
-      marker.userData.nodeId = point.nodeId;
-      partGroup.add(marker);
-      pointMarkers.push(marker);
-      clickableMeshes.push(marker);
-    }
     scene.add(partGroup);
 
     const bounds = new THREE.Box3();
     for (const mesh of modelMeshes) bounds.expandByObject(mesh);
-    for (const marker of pointMarkers) bounds.expandByPoint(marker.position);
     const center = bounds.getCenter(new THREE.Vector3());
     const size = Math.max(bounds.getSize(new THREE.Vector3()).length(), 1);
     const initialTarget = center.clone().add(new THREE.Vector3(0, size * 0.7, 0));
@@ -279,7 +249,6 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
     let animationFrame = 0;
     const render = () => {
       controls.update();
-      for (const marker of pointMarkers) marker.quaternion.copy(camera.quaternion);
       renderer.render(scene, camera);
       animationFrame = requestAnimationFrame(render);
     };
@@ -298,7 +267,6 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
       controls.dispose();
       geometry.dispose();
       edgeGeometry.dispose();
-      pointGeometry.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -308,9 +276,8 @@ export default function PartPreview({ parts, attachmentPoints, assignments, sele
       renderer.dispose();
       renderer.domElement.remove();
       materialsRef.current.clear();
-      pointMaterialsRef.current.clear();
     };
-  }, [parts, attachmentPoints]);
+  }, [parts]);
 
   if (renderError) return <p className="preview-error">{renderError}</p>;
   return (

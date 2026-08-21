@@ -1,8 +1,6 @@
 import type { TargetedEvent, TargetedMouseEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { NodeSpace } from "../format/emoteAnimation";
-import type { HeldItemArm } from "../format/emoteAnimation";
-import type { AttachmentPoint } from "../converterSession";
 import type { PlayerHeadPart } from "../preview/playerHeadPart";
 import {
   SKIN_PARTS,
@@ -13,14 +11,12 @@ import {
 
 interface AssignmentPanelProps {
   parts: PlayerHeadPart[];
-  attachmentPoints: AttachmentPoint[];
   assignments: PartAssignments;
   orders: PartOrders;
   spaces: Readonly<Record<string, NodeSpace>>;
   selectedParts: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
-  onAssignHeldItem: (arm: HeldItemArm | null) => void;
   onAssignOrder: (order: number) => void;
   onAssignSpace: (space: NodeSpace) => void;
   onSelectPart: (nodeId: string, additive: boolean) => void;
@@ -28,25 +24,19 @@ interface AssignmentPanelProps {
 
 export function AssignmentPanel({
   parts,
-  attachmentPoints,
   assignments,
   orders,
   spaces,
   selectedParts,
   hasSelectedAssignment,
   onAssignPart,
-  onAssignHeldItem,
   onAssignOrder,
   onAssignSpace,
   onSelectPart,
 }: AssignmentPanelProps) {
   const hasSelection = selectedParts.size > 0;
   const hasSelectedSkinPart = parts.some((part) => selectedParts.has(part.nodeId));
-  const hasSelectedAttachment = attachmentPoints.some((point) => selectedParts.has(point.nodeId));
-  const selectableItems = [
-    ...parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) })),
-    ...attachmentPoints.map((point) => ({ nodeId: point.nodeId, label: "●", detail: heldItemLabel(point.arm) })),
-  ];
+  const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
   const selectedOrders = [...selectedParts]
@@ -75,7 +65,7 @@ export function AssignmentPanel({
         behavior: "smooth",
       });
     }
-  }, [parts, attachmentPoints, selectedParts]);
+  }, [parts, selectedParts]);
 
   function handlePartClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
     onSelectPart(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
@@ -121,12 +111,6 @@ export function AssignmentPanel({
         ))}
         <button type="button" disabled={!hasSelectedSkinPart} onClick={() => onAssignPart(null)}>Unassigned</button>
       </div>
-      <p><strong>Item</strong></p>
-      <div className="assignment-buttons item-assignment-buttons">
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("right")}><i style={{ backgroundColor: "#d66b32" }} />Right hand</button>
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem("left")}><i style={{ backgroundColor: "#3678b8" }} />Left hand</button>
-        <button type="button" disabled={!hasSelectedAttachment} onClick={() => onAssignHeldItem(null)}>Unassigned</button>
-      </div>
       <p><strong>Coordinate space</strong></p>
       <div className="assignment-buttons">
         {(["scene", "initiator", "partner"] as const).map((space) => (
@@ -170,10 +154,6 @@ export function AssignmentPanel({
       </ul>
     </aside>
   );
-}
-
-function heldItemLabel(arm: HeldItemArm | null): string {
-  return arm === "right" ? "Right hand item" : arm === "left" ? "Left hand item" : "Attachment point";
 }
 
 function assignmentLabel(assignment: SkinPartId | null | undefined, order: number | null | undefined): string {

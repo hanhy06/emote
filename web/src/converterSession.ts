@@ -1,5 +1,4 @@
 import {
-  assignDocumentHeldItemArm,
   assignDocumentNodeSpace,
   assignDocumentSkinOrder,
   assignDocumentSkinPart,
@@ -12,7 +11,7 @@ import {
   type ConversionDocument,
   type ConversionNode,
 } from "./domain/conversionDocument";
-import type { HeldItemArm, Matrix16, NodeSpace } from "./format/emoteAnimation";
+import type { NodeSpace } from "./format/emoteAnimation";
 import type { ImportedAnimation, ImportedProject } from "./domain/conversionSeed";
 import { isVisibleAtTick, type PlayerHeadPart } from "./preview/playerHeadPart";
 import type { SkinPartId } from "./preview/skinAssignment";
@@ -23,12 +22,6 @@ export interface SkinCandidate {
   nodeId: string;
   partIndex: number;
   node: ConversionItemNode;
-}
-
-export interface AttachmentPoint {
-  nodeId: string;
-  matrix: Matrix16;
-  arm: HeldItemArm | null;
 }
 
 export interface ConverterSession {
@@ -116,29 +109,6 @@ export function createPreviewParts(
   });
 }
 
-export function createAttachmentPoints(
-  document: ConversionDocument | null,
-  animation: ImportedAnimation | undefined,
-  tick: number | null,
-): AttachmentPoint[] {
-  if (!document) return [];
-  const previewTracks = animation?.preview?.tracks ?? animation?.tracks;
-  return Object.entries(document.nodes).flatMap(([nodeId, node]) => {
-    if (node.type !== "anchor") return [];
-    let matrix = node.defaultMatrix;
-    if (tick !== null) {
-      const transforms = previewTracks?.[nodeId]?.transforms;
-      for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
-        const transform = transforms?.[index];
-        if (!transform || transform.tick > tick) continue;
-        matrix = transform.matrix;
-        break;
-      }
-    }
-    return [{ nodeId, matrix, arm: node.heldItemArm }];
-  });
-}
-
 export function assignSessionSkinPart(session: ConverterSession, part: SkinPartId | null): ConverterSession {
   return { ...session, document: assignDocumentSkinPart(session.document, session.selectedParts, part) };
 }
@@ -149,10 +119,6 @@ export function assignSessionSpace(session: ConverterSession, space: NodeSpace):
 
 export function assignSessionOrder(session: ConverterSession, order: number): ConverterSession {
   return { ...session, document: assignDocumentSkinOrder(session.document, session.selectedParts, order) };
-}
-
-export function assignSessionHeldItemArm(session: ConverterSession, arm: HeldItemArm | null): ConverterSession {
-  return { ...session, document: assignDocumentHeldItemArm(session.document, session.selectedParts, arm) };
 }
 
 export function assignmentSummary(document: ConversionDocument): string {

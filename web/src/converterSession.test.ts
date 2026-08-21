@@ -10,7 +10,6 @@ import {
 } from "./domain/conversionDocument";
 import {
   assignSessionOrder,
-  assignSessionHeldItemArm,
   assignSessionSkinPart,
   assignSessionSpace,
   createConverterSession,
@@ -65,18 +64,6 @@ describe("converter session skin assignment", () => {
     expect(documentPartOrders(cleared.document)).toEqual({ head: null, head_variant: null });
   });
 
-  it("assigns a selected attachment point to a physical hand and participant space", () => {
-    const source = project();
-    source.nodes.hand = { id: "hand", type: "anchor", defaultMatrix: IDENTITY_MATRIX };
-    const session = createConverterSession(source, "Test adapter");
-    session.selectedParts = new Set(["hand"]);
-
-    const assigned = assignSessionHeldItemArm(session, "right");
-
-    expect(assigned.document.nodes.hand).toMatchObject({ type: "anchor", heldItemArm: "right", space: "initiator" });
-    const cleared = assignSessionHeldItemArm(assigned, null);
-    expect(cleared.document.nodes.hand).toMatchObject({ type: "anchor", heldItemArm: null });
-  });
 });
 
 function project(): ImportedProject {

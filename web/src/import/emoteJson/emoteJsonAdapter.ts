@@ -123,7 +123,7 @@ function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedN
     };
     if (node.type === "item_display") {
       if (node.item_source) {
-        return [id, { id, type: "anchor", defaultMatrix, ...assignment, suggestedHeldItemArm: node.item_source.arm }];
+        return [id, { id, type: "anchor", defaultMatrix, ...assignment }];
       }
       return [id, {
         ...common,
@@ -152,13 +152,7 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
     };
     if (node.type === "item_display") {
       if (node.item_source) {
-        return [id, {
-          id,
-          type: "anchor",
-          defaultMatrix,
-          space: node.space,
-          suggestedHeldItemArm: node.item_source.arm,
-        }];
+        return [id, { id, type: "anchor", defaultMatrix, space: node.space }];
       }
       return [id, {
         ...common,

@@ -91,7 +91,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .assignment-panel > .assignment-buttons, .assignment-panel > .order-control { flex: 0 0 auto; }
 .assignment-buttons button { display: flex; align-items: center; gap: 6px; }
 .assignment-buttons i { flex: 0 0 10px; width: 10px; height: 10px; }
-.item-assignment-buttons i { border-radius: 50%; }
 .order-control { display: grid; grid-template-columns: auto minmax(0, 1fr) 2ch; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; }
 .order-control input { min-width: 0; padding: 0; }
 .order-control output { text-align: right; font-variant-numeric: tabular-nums; }

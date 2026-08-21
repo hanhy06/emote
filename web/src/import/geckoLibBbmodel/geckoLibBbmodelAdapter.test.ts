@@ -305,8 +305,8 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
 
-  it("suggests GeckoLib and Bedrock hand item bone names as attachment points", async () => {
-    for (const [name, arm] of [["RightHandItem", "right"], ["leftItem", "left"]] as const) {
+  it("keeps hand item bone names as ordinary anchors", async () => {
+    for (const name of ["RightHandItem", "leftItem"]) {
       const value = project();
       value.elements = [];
       value.textures = [];
@@ -317,7 +317,8 @@ describe("geckoLibBbmodelAdapter", () => {
       const imported = await geckoLibBbmodelAdapter.import(input(value));
       const node = imported.nodes[name.toLowerCase()];
 
-      expect(node.type === "anchor" && node.suggestedHeldItemArm).toBe(arm);
+      expect(node).toMatchObject({ type: "anchor" });
+      expect(node).not.toHaveProperty("suggestedHeldItemArm");
     }
   });
 
