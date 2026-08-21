@@ -1,7 +1,5 @@
-import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND, secondsToTicks } from "../../format/time";
-import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
 import type { AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";
 
 type Vector3Tuple = [number, number, number];
@@ -64,16 +62,16 @@ export function bakeAjNodeChannels(
   const position = compileChannel(channels.position, `${path}/position`);
   const rotation = compileChannel(channels.rotation, `${path}/rotation`);
   const scale = compileChannel(channels.scale, `${path}/scale`);
-  const parser = createMolangParser(path);
+  const evaluator = createMolangEvaluator();
   const frames: BakedAjTransform[] = [];
   for (let tick = 0; tick <= durationTicks; tick++) {
     const time = tick / TICKS_PER_SECOND;
     frames.push({
       tick,
       time,
-      position: evaluateChannel(position, base.position, time, parser),
-      rotation: evaluateChannel(rotation, base.rotation, time, parser),
-      scale: evaluateChannel(scale, base.scale, time, parser),
+      position: evaluateChannel(position, base.position, time, evaluator),
+      rotation: evaluateChannel(rotation, base.rotation, time, evaluator),
+      scale: evaluateChannel(scale, base.scale, time, evaluator),
     });
   }
   return frames;
@@ -81,7 +79,7 @@ export function bakeAjNodeChannels(
 
 export function evaluateAjMolang(expression: string, context: MolangContext, path: string): number {
   if (isNumericExpression(expression)) return Number(expression);
-  return parseMolang(createMolangParser(path), expression, context, path);
+  return evaluateMolang(createMolangEvaluator(), expression, context, path);
 }
 
 function compileChannel(channel: Record<string, AjKeyframe> | undefined, path: string): CompiledChannel {
@@ -103,7 +101,7 @@ function evaluateChannel(
   channel: CompiledChannel,
   fallback: Vector3Tuple,
   time: number,
-  parser: MolangParser,
+  evaluator: MolangBakeEvaluator,
 ): Vector3Tuple {
   const frames = channel.frames;
   if (frames.length === 0) return [...fallback];
@@ -112,13 +110,13 @@ function evaluateChannel(
   }
   const current = frames[channel.cursor];
   if (Math.abs(current.time - time) < 1e-9) {
-    return evaluateVector(current.value, parser, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
+    return evaluateVector(current.value, evaluator, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
   }
   if (time < frames[0].time) {
-    return evaluateVector(frames[0].value, parser, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
+    return evaluateVector(frames[0].value, evaluator, { animationTime: time, keyframeLerpTime: 0 }, channel.path);
   }
   if (channel.cursor + 1 >= frames.length) {
-    return evaluateVector(current.post ?? current.value, parser, { animationTime: time, keyframeLerpTime: 1 }, channel.path);
+    return evaluateVector(current.post ?? current.value, evaluator, { animationTime: time, keyframeLerpTime: 1 }, channel.path);
   }
   const beforeIndex = channel.cursor;
   const before = frames[beforeIndex];
@@ -126,12 +124,12 @@ function evaluateChannel(
   const alpha = (time - before.time) / (after.time - before.time);
   const context = { animationTime: time, keyframeLerpTime: alpha };
   if (before.interpolation.type === "step") {
-    return evaluateVector(before.post ?? before.value, parser, context, channel.path);
+    return evaluateVector(before.post ?? before.value, evaluator, context, channel.path);
   }
-  const start = evaluateVector(before.post ?? before.value, parser, context, channel.path);
-  const end = evaluateVector(after.value, parser, context, channel.path);
+  const start = evaluateVector(before.post ?? before.value, evaluator, context, channel.path);
+  const end = evaluateVector(after.value, evaluator, context, channel.path);
   if (before.interpolation.type === "catmullrom" || after.interpolation.type === "catmullrom") {
-    return catmullRom(frames, beforeIndex, start, end, alpha, parser, context, channel.path);
+    return catmullRom(frames, beforeIndex, start, end, alpha, evaluator, context, channel.path);
   }
   if (before.interpolation.type === "bezier" || after.interpolation.type === "bezier") {
     return mapAxes((axis) => bezier(before, after, start[axis], end[axis], axis, alpha));
@@ -148,7 +146,7 @@ function catmullRom(
   start: Vector3Tuple,
   end: Vector3Tuple,
   alpha: number,
-  parser: MolangParser,
+  evaluator: MolangBakeEvaluator,
   context: MolangContext,
   path: string,
 ): Vector3Tuple {
@@ -157,10 +155,10 @@ function catmullRom(
   const previousFrame = frames[beforeIndex - 1];
   const followingFrame = frames[beforeIndex + 2];
   const previous = previousFrame && before.post == null
-    ? evaluateVector(previousFrame.post ?? previousFrame.value, parser, context, path)
+    ? evaluateVector(previousFrame.post ?? previousFrame.value, evaluator, context, path)
     : start;
   const following = followingFrame && after.post == null
-    ? evaluateVector(followingFrame.value, parser, context, path)
+    ? evaluateVector(followingFrame.value, evaluator, context, path)
     : end;
   return mapAxes((axis) => catmullRomScalar(previous[axis], start[axis], end[axis], following[axis], alpha));
 }
@@ -252,42 +250,21 @@ function compileVector(values: string[]): CompiledVector {
   }) as CompiledVector;
 }
 
-function evaluateVector(values: CompiledVector, parser: MolangParser, context: MolangContext, path: string): Vector3Tuple {
-  return values.map((value) => value.constant ?? parseMolang(parser, value.expression!, context, path)) as Vector3Tuple;
+function evaluateVector(values: CompiledVector, evaluator: MolangBakeEvaluator, context: MolangContext, path: string): Vector3Tuple {
+  return values.map((value) => value.constant ?? evaluateMolang(evaluator, value.expression!, context, path)) as Vector3Tuple;
 }
 
-function parseMolang(parser: MolangParser, expression: string, context: MolangContext, path: string): number {
-  try {
-    const value = parser.parse(expression, {
-      ...PREVIEW_PLAYER_STATE_QUERIES,
-      "query.anim_time": context.animationTime,
-      "q.anim_time": context.animationTime,
-      "query.life_time": context.animationTime,
-      "q.life_time": context.animationTime,
-      "query.key_frame_lerp_time": context.keyframeLerpTime,
-      "q.key_frame_lerp_time": context.keyframeLerpTime,
-      "global.key_frame_lerp_time": context.keyframeLerpTime,
-      "query.delta_time": 1 / TICKS_PER_SECOND,
-      "q.delta_time": 1 / TICKS_PER_SECOND,
-    });
-    if (!Number.isFinite(value)) throw new Error("result is not finite");
-    return value;
-  } catch (error) {
-    throw new ConversionError(
-      "unsupported_animated_java_molang",
-      `${path} contains a Molang expression that cannot be baked: ${expression}`,
-      path,
-      { cause: error },
-    );
-  }
+function evaluateMolang(evaluator: MolangBakeEvaluator, expression: string, context: MolangContext, path: string): number {
+  return evaluator.evaluate(expression, { ...context, lifeTime: context.animationTime }, path);
 }
 
-function createMolangParser(path: string): MolangParser {
-  const parser = new MolangParser();
-  parser.variableHandler = (key) => {
-    throw new Error(`${path} references runtime Molang variable ${key}`);
-  };
-  return parser;
+function createMolangEvaluator(): MolangBakeEvaluator {
+  return new MolangBakeEvaluator({
+    error: {
+      code: "unsupported_animated_java_molang",
+      message: (expression, path) => `${path} contains a Molang expression that cannot be baked: ${expression}`,
+    },
+  });
 }
 
 function easing(name: string, args: number[] | undefined, value: number): number {
