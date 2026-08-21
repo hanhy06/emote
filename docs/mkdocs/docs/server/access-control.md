@@ -62,7 +62,7 @@ API and bypass playback must still meet the minimum playback requirements.
 | Field | Behavior |
 |---|---|
 | `schema_version` | Must be `2`. |
-| `disabled` | IDs normal players and idle playback cannot select or start. Definitions remain loaded. |
+| `disabled` | Hidden from normal players. Only players with `emote.bypass` can use them. |
 | `permissions` | Permission groups used to assemble each player's available emote IDs. |
 | `permission` | Permission checked through the installed permission provider. |
 | `emotes` | Exact allowed IDs. `"*"` grants every enabled standalone emote. |
