@@ -1,9 +1,9 @@
 package io.github.hanhy06.emote.content;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.Objects;

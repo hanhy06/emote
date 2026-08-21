@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.content;
 
-import io.github.hanhy06.emote.playback.molang.MolangEngine;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.playback.molang.MolangEngine;
 
 import java.util.*;
 import java.util.regex.Matcher;

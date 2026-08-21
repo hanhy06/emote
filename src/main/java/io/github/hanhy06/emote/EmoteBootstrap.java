@@ -1,7 +1,5 @@
 package io.github.hanhy06.emote;
 
-import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
-import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.application.*;
 import io.github.hanhy06.emote.command.AdminCommand;
 import io.github.hanhy06.emote.command.CommandRegistrar;
@@ -9,6 +7,8 @@ import io.github.hanhy06.emote.command.EmoteMenu;
 import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
+import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
