@@ -59,6 +59,11 @@ const IMPORT_FORMATS = [
     extensions: ".ajblueprint, .json",
     description: "Imports native cube rigs and plugin blueprints, detects player-model cubes, and supports player-skin assignment.",
   },
+  {
+    label: "Bedrock Edition",
+    extensions: ".animation.json, .json",
+    description: "Imports Bedrock Edition player animation files. Molang support is not yet complete, so converted animations may look incorrect.",
+  },
 ] as const;
 
 export function App() {
