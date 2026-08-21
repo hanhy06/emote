@@ -1,8 +1,6 @@
-import MolangParser from "molangjs/dist/molang.esm.js";
 import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
-import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
 import type { BbDataPoint, BbKeyframe } from "./cubeProjectSchema";
 import { cubeEasingProgress } from "./cubeEasing";
 
@@ -30,22 +28,22 @@ export function evaluateGeckoChannel(
     .map((keyframe) => ({ time: keyframe.time, keyframe }))
     .sort((first, second) => first.time - second.time);
   if (frames.length === 0) return [...fallback];
-  const parser = createMolangParser(path);
+  const evaluator = createMolangEvaluator();
   const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
-  if (exact) return evaluatePoint(postPoint(exact.keyframe), parser, { animationTime: time, keyframeLerpTime: 1 }, path);
+  if (exact) return evaluatePoint(postPoint(exact.keyframe), evaluator, { animationTime: time, keyframeLerpTime: 1 }, path);
   const afterIndex = frames.findIndex((frame) => frame.time > time);
   if (afterIndex === 0) return [...fallback];
-  if (afterIndex < 0) return evaluatePoint(postPoint(frames[frames.length - 1].keyframe), parser, { animationTime: time, keyframeLerpTime: 1 }, path);
+  if (afterIndex < 0) return evaluatePoint(postPoint(frames[frames.length - 1].keyframe), evaluator, { animationTime: time, keyframeLerpTime: 1 }, path);
 
   const before = frames[afterIndex - 1];
   const after = frames[afterIndex];
   const alpha = (time - before.time) / (after.time - before.time);
   const context = { animationTime: time, keyframeLerpTime: alpha };
-  const start = evaluatePoint(postPoint(before.keyframe), parser, context, path);
-  const end = evaluatePoint(prePoint(after.keyframe), parser, context, path);
+  const start = evaluatePoint(postPoint(before.keyframe), evaluator, context, path);
+  const end = evaluatePoint(prePoint(after.keyframe), evaluator, context, path);
   if ((before.keyframe.interpolation ?? "linear") === "step") return start;
   if (before.keyframe.interpolation === "catmullrom" || after.keyframe.interpolation === "catmullrom") {
-    return mapAxes((axis) => catmullRom(frames, afterIndex, axis, alpha, parser, context, path));
+    return mapAxes((axis) => catmullRom(frames, afterIndex, axis, alpha, evaluator, context, path));
   }
   if (before.keyframe.interpolation === "bezier" || after.keyframe.interpolation === "bezier") {
     return mapAxes((axis) => bezier(before, after, start[axis], end[axis], axis, alpha));
@@ -65,7 +63,7 @@ function catmullRom(
   afterIndex: number,
   axis: number,
   alpha: number,
-  parser: MolangParser,
+  evaluator: MolangBakeEvaluator,
   context: MolangContext,
   path: string,
 ): number {
@@ -75,12 +73,12 @@ function catmullRom(
   const afterPlus = frames[afterIndex + 1];
   const points: Vector2[] = [];
   if (beforePlus && before.keyframe.data_points.length === 1) {
-    points.push(new Vector2(beforePlus.time, evaluatePoint(postPoint(beforePlus.keyframe), parser, context, path)[axis]));
+    points.push(new Vector2(beforePlus.time, evaluatePoint(postPoint(beforePlus.keyframe), evaluator, context, path)[axis]));
   }
-  points.push(new Vector2(before.time, evaluatePoint(postPoint(before.keyframe), parser, context, path)[axis]));
-  points.push(new Vector2(after.time, evaluatePoint(prePoint(after.keyframe), parser, context, path)[axis]));
+  points.push(new Vector2(before.time, evaluatePoint(postPoint(before.keyframe), evaluator, context, path)[axis]));
+  points.push(new Vector2(after.time, evaluatePoint(prePoint(after.keyframe), evaluator, context, path)[axis]));
   if (afterPlus && after.keyframe.data_points.length === 1) {
-    points.push(new Vector2(afterPlus.time, evaluatePoint(prePoint(afterPlus.keyframe), parser, context, path)[axis]));
+    points.push(new Vector2(afterPlus.time, evaluatePoint(prePoint(afterPlus.keyframe), evaluator, context, path)[axis]));
   }
   const curveTime = (alpha + (beforePlus ? 1 : 0)) / (points.length - 1);
   return new SplineCurve(points).getPoint(curveTime).y;
@@ -122,43 +120,20 @@ function requiredPoint(keyframe: BbKeyframe, index: number): BbDataPoint {
   return keyframe.data_points[index];
 }
 
-function evaluatePoint(point: BbDataPoint, parser: MolangParser, context: MolangContext, path: string): Vector3Tuple {
+function evaluatePoint(point: BbDataPoint, evaluator: MolangBakeEvaluator, context: MolangContext, path: string): Vector3Tuple {
   if (point.x === undefined || point.y === undefined || point.z === undefined) {
     throw new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.", path);
   }
-  return [point.x, point.y, point.z].map((value) => evaluateMolang(value, parser, context, path)) as Vector3Tuple;
+  return [point.x, point.y, point.z].map((value) => evaluator.evaluate(value, { ...context, lifeTime: context.animationTime }, path)) as Vector3Tuple;
 }
 
-function evaluateMolang(value: string | number, parser: MolangParser, context: MolangContext, path: string): number {
-  if (typeof value === "number") return value;
-  const numeric = Number(value.trim());
-  if (Number.isFinite(numeric)) return numeric;
-  try {
-    const result = parser.parse(value, {
-      ...PREVIEW_PLAYER_STATE_QUERIES,
-      "query.anim_time": context.animationTime,
-      "q.anim_time": context.animationTime,
-      "query.life_time": context.animationTime,
-      "q.life_time": context.animationTime,
-      "query.key_frame_lerp_time": context.keyframeLerpTime,
-      "q.key_frame_lerp_time": context.keyframeLerpTime,
-      "global.key_frame_lerp_time": context.keyframeLerpTime,
-      "query.delta_time": 1 / TICKS_PER_SECOND,
-      "q.delta_time": 1 / TICKS_PER_SECOND,
-    });
-    if (!Number.isFinite(result)) throw new Error("result is not finite");
-    return result;
-  } catch (error) {
-    throw new ConversionError("unsupported_geckolib_molang", `GeckoLib expression ${value} cannot be baked.`, path, { cause: error });
-  }
-}
-
-function createMolangParser(path: string): MolangParser {
-  const parser = new MolangParser();
-  parser.variableHandler = (key) => {
-    throw new Error(`${path} references runtime Molang variable ${key}`);
-  };
-  return parser;
+function createMolangEvaluator(): MolangBakeEvaluator {
+  return new MolangBakeEvaluator({
+    error: {
+      code: "unsupported_geckolib_molang",
+      message: (expression) => `GeckoLib expression ${expression} cannot be baked.`,
+    },
+  });
 }
 
 function mapAxes(mapper: (axis: number) => number): Vector3Tuple {
