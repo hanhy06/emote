@@ -67,7 +67,7 @@ describe("emoteJsonAdapter", () => {
     expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
   });
 
-  it("preserves advanced schema 4 runtime data with a Create pose preview", async () => {
+  it("previews advanced schema 4 runtime data without changing exported Molang", async () => {
     const source: EmoteAnimation = {
       type: "animation",
       schema_version: 4,
@@ -80,7 +80,7 @@ describe("emoteJsonAdapter", () => {
         player: createDefaultPlayerBehavior(),
         playback: { mode: "loop", loop_delay: "2t" },
       },
-      molang: { initialize: "v.offset = 1;" },
+      molang: { initialize: "v.offset = 1; v.elapsed = 0;", tick: "v.elapsed = v.elapsed + q.delta_time;" },
       nodes: {
         root: {
           type: "anchor",
@@ -98,6 +98,16 @@ describe("emoteJsonAdapter", () => {
       timeline: {
         duration: "10t",
         tracks: {
+          root: {
+            position: [{
+              time: "0t",
+              value: [
+                "v.offset + v.elapsed + q.anim_time_ticks + q.anim_length + q.is_on_ground + q.is_emoting",
+                "t.value = t.value + 1; return t.value;",
+                0,
+              ],
+            }],
+          },
           child: {
             position: [
               { time: "0t", value: ["q.anim_time + v.offset", 0, 0], interpolation: "linear", easing: "ease_in_sine" },
@@ -115,8 +125,16 @@ describe("emoteJsonAdapter", () => {
     const input = { name: "emote.dynamic.json", bytes: encoder.encode(JSON.stringify(source)) };
 
     const project = await emoteJsonAdapter.import(input);
-    expect(project.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
-    expect(project.diagnostics).toContainEqual(expect.objectContaining({ code: "schema_4_preview_limited" }));
+    expect(project.animations[0].availability).toBeUndefined();
+    expect(project.diagnostics).toEqual([]);
+    expect(project.animations[0].preview?.tracks.root.transforms[0].matrix[3]).toBeCloseTo(3.5);
+    expect(project.animations[0].preview?.tracks.root.transforms[1].matrix[3]).toBeCloseTo(4.55);
+    expect(project.animations[0].preview?.tracks.root.transforms[0].matrix[7]).toBeCloseTo(1);
+    expect(project.animations[0].preview?.tracks.root.transforms[1].matrix[7]).toBeCloseTo(1);
+    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[3]).toBeCloseTo(9.9267767);
+    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[0]).toBeCloseTo(0);
+    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[2]).toBeCloseTo(1);
+    expect(project.animations[0].preview?.tracks.child.visibility).toEqual([{ tick: 0, visible: false }]);
     expect(project.nodes.child.defaultMatrix[3]).toBeCloseTo(1);
     expect(project.nodes.child.defaultMatrix[7]).toBeCloseTo(2);
 
@@ -131,6 +149,43 @@ describe("emoteJsonAdapter", () => {
     expect(serialized.metadata).toEqual(source.metadata);
     expect(serialized.molang).toEqual(source.molang);
     expect(serialized.timeline.tracks).toEqual(source.timeline.tracks);
+  });
+
+  it("falls back to the Create pose for nondeterministic schema 4 Molang", async () => {
+    const source: EmoteAnimation = {
+      type: "animation",
+      schema_version: 4,
+      id: "demo:random",
+      metadata: { name: "Random", description: "Random preview." },
+      settings: {
+        standalone: true,
+        cooldown: "0t",
+        rotation_deadzone: 0,
+        player: createDefaultPlayerBehavior(),
+        playback: { mode: "once", loop_delay: "0t" },
+      },
+      nodes: {
+        item: {
+          type: "item_display",
+          space: "initiator",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          item_stack_snbt: "{id:\"minecraft:stone\",count:1}",
+          item_display: "none",
+        },
+      },
+      timeline: {
+        duration: "2t",
+        tracks: { item: { position: [{ time: "0t", value: ["math.random(0, 1)", 0, 0] }] } },
+      },
+    };
+
+    const project = await emoteJsonAdapter.import({ name: "emote.random.json", bytes: encoder.encode(JSON.stringify(source)) });
+
+    expect(project.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
+    expect(project.diagnostics).toContainEqual(expect.objectContaining({
+      code: "schema_4_preview_limited",
+      sourcePath: "timeline.tracks.item.position[0].value[0]",
+    }));
   });
 
   it("reimports converted JSON without losing skin order or interpolation duration", async () => {

@@ -26,10 +26,10 @@ describe("MolangBakeEvaluator", () => {
   });
 
   it("supplies preview player-state queries", () => {
-    expect(evaluator().evaluate("q.ground_speed + query.is_sneaking", {
+    expect(evaluator().evaluate("q.ground_speed + query.is_sneaking + q.is_on_ground", {
       animationTime: 0,
       keyframeLerpTime: 0,
-    }, "queries")).toBe(0);
+    }, "queries")).toBe(1);
   });
 
   it("wraps runtime variables and non-finite results in the configured conversion error", () => {

@@ -13,6 +13,7 @@ import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
 import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
 import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
+import { bakeSchema4Preview } from "./schema4PreviewBaker";
 
 export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "emote_json",
@@ -55,10 +56,19 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       importedAnimation = importTimeline(animation, animationId);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import" || schema3) throw reason;
-      const message = "Advanced schema 4 data is preserved for export; preview uses the Create pose.";
       nodes = importRuntimeNodes(animation);
-      importedAnimation = importRuntimeTimeline(animation, animationId, message);
-      diagnostics.push({ severity: "warning", code: "schema_4_preview_limited", message, sourcePath: reason.sourcePath });
+      try {
+        importedAnimation = importRuntimeTimeline(animation, animationId, bakeSchema4Preview(animation));
+      } catch (previewReason) {
+        const message = "Advanced schema 4 data is preserved for export; preview uses the Create pose because its runtime values cannot be evaluated safely.";
+        importedAnimation = importRuntimeTimeline(animation, animationId, undefined, message);
+        diagnostics.push({
+          severity: "warning",
+          code: "schema_4_preview_limited",
+          message,
+          sourcePath: previewReason instanceof ConversionError ? previewReason.sourcePath : reason.sourcePath,
+        });
+      }
     }
     return {
       source: "emote_json",
@@ -193,7 +203,12 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   };
 }
 
-function importRuntimeTimeline(animation: EmoteAnimation, id: string, reason: string): ImportedAnimation {
+function importRuntimeTimeline(
+  animation: EmoteAnimation,
+  id: string,
+  previewTracks?: Record<string, ImportedAnimation["tracks"][string]>,
+  reason?: string,
+): ImportedAnimation {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
   return {
     id,
@@ -204,8 +219,12 @@ function importRuntimeTimeline(animation: EmoteAnimation, id: string, reason: st
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
     tracks: {},
     events: importEvents(animation),
-    availability: { preview: "create_pose", exportable: true, reason },
-    preview: { durationTicks, tracks: {} },
+    ...(previewTracks
+      ? { preview: { durationTicks, tracks: previewTracks } }
+      : {
+          availability: { preview: "create_pose", exportable: true, reason },
+          preview: { durationTicks, tracks: {} },
+        }),
     runtime: {
       ...(animation.molang ? { molang: animation.molang } : {}),
       nodes: animation.nodes,

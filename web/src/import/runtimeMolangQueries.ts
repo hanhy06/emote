@@ -35,5 +35,8 @@ const MOD_SUPPORTED_QUERY_NAMES = [
 ] as const;
 
 export const PREVIEW_PLAYER_STATE_QUERIES: Readonly<Record<string, number>> = Object.fromEntries(
-  MOD_SUPPORTED_QUERY_NAMES.flatMap((name) => [[`q.${name}`, 0], [`query.${name}`, 0]]),
+  MOD_SUPPORTED_QUERY_NAMES.flatMap((name) => {
+    const value = name === "is_on_ground" || name === "is_emoting" ? 1 : 0;
+    return [[`q.${name}`, value], [`query.${name}`, value]];
+  }),
 );
