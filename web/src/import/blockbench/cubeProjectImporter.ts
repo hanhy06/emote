@@ -6,7 +6,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -16,16 +16,21 @@ import {
   type BbLocator,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
-  type BbTexture,
   type BbmodelProject,
 } from "./cubeProjectSchema";
 import { evaluateGeckoChannel } from "./cubeAnimationBaker";
+import {
+  cubePlayerHeadMatrix,
+  isHiddenAccessoryBone,
+  isHiddenAccessoryName,
+  normalizeBlockbenchName,
+  prepareCubeModels,
+  uniqueCubeNodeId,
+  writeCubeResources,
+} from "./cubeModelResources";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 
-const encoder = new TextEncoder();
-const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 const PLAYER_RENDER_SCALE = 0.9375;
-const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 
 interface BoneNodeEntry {
   id: string;
@@ -34,7 +39,7 @@ interface BoneNodeEntry {
   locatorName?: string;
 }
 
-interface BoneEntry {
+export interface BoneEntry {
   id: string;
   uuid: string;
   group: BbGroup;
@@ -56,26 +61,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const resources = new Map<string, Uint8Array>();
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
-  if (bones.some((bone) => bone.cubes.length > 0)) {
-    const texture = requireEmbeddedTexture(project.textures);
-    const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-    const textureBytes = decodeTexture(texture);
-    resources.set(texturePath, textureBytes);
-    const textureMetadata = animatedTextureMetadata(texture, textureBytes);
-    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, jsonBytes(textureMetadata));
-    const resourceNodeIds = new Set(bones.map((bone) => bone.id));
-    for (const bone of bones) {
-      for (const [cubeIndex, cube] of bone.cubes.entries()) {
-        const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-        writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources);
-      }
-    }
-  }
-  const playableCubesByBone = new Map(bones.map((bone) => [
-    bone.uuid,
-    splitTallSkinCubes(bone, removeDuplicateSkinLayers(bone.cubes)),
-  ]));
-  const skinAssignments = inferSkinAssignments(bones, playableCubesByBone);
+  const { playableCubesByBone, skinAssignments } = prepareCubeModels(project, bones, namespace, projectPath, resources);
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
@@ -302,15 +288,6 @@ function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGr
   const rotation = outliner.rotation ?? saved?.rotation ?? [0, 0, 0];
   if (!name || !origin) throw new Error(`GeckoLib bone ${outliner.uuid} is missing its saved group data.`);
   return { uuid: outliner.uuid, name, origin, rotation };
-}
-
-function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: number, ids: Set<string>): string {
-  const cubeName = sanitizeResourcePath(cube.name?.trim() || `cube_${cubeIndex + 1}`, `cube_${cubeIndex + 1}`).replaceAll("/", "_");
-  const base = `${bone.id}_${cubeName}`;
-  let id = base;
-  for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
-  ids.add(id);
-  return id;
 }
 
 function uniqueLocatorNodeId(bone: BoneEntry, locator: BbLocator, locatorIndex: number, ids: Set<string>): string {
@@ -632,9 +609,9 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
 
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
     if (boneByUuid.has(animatorId) || isEffectAnimator(animatorId, animator) || isHiddenAccessoryName(animator.name ?? animatorId) || (animator.keyframes?.length ?? 0) === 0) continue;
-    const normalizedName = normalizeBoneName(animator.name);
+    const normalizedName = normalizeBlockbenchName(animator.name);
     const matchingBones = normalizedName
-      ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBoneName(bone.group.name) === normalizedName)
+      ? bones.filter((bone) => !result.has(bone.uuid) && normalizeBlockbenchName(bone.group.name) === normalizedName)
       : [];
     if (matchingBones.length === 1) {
       result.set(matchingBones[0].uuid, animator);
@@ -697,13 +674,13 @@ function importEffectEvents(
 }
 
 function effectOrigin(locator: string | undefined, bones: BoneEntry[]): EmoteEvent["origin"] {
-  const name = normalizeBoneName(locator);
+  const name = normalizeBlockbenchName(locator);
   if (!name) return { type: "root" };
   for (const bone of bones) {
-    const locatorNode = bone.nodes.find((node) => normalizeBoneName(node.locatorName) === name);
+    const locatorNode = bone.nodes.find((node) => normalizeBlockbenchName(node.locatorName) === name);
     if (locatorNode) return { type: "node", node: locatorNode.id };
   }
-  const bone = bones.find((candidate) => normalizeBoneName(candidate.group.name) === name);
+  const bone = bones.find((candidate) => normalizeBlockbenchName(candidate.group.name) === name);
   return bone?.nodes[0] ? { type: "node", node: bone.nodes[0].id } : { type: "root" };
 }
 
@@ -713,142 +690,6 @@ function appendTimelineEvent(events: ImportedTimelineEvent[], tick: number, even
     && JSON.stringify(candidate.origin) === JSON.stringify(event.origin));
   if (matching) matching.commands.push(...event.commands);
   else events.push({ ...event, tick });
-}
-
-function normalizeBoneName(name: string | undefined): string | undefined {
-  const normalized = name?.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
-  return normalized || undefined;
-}
-
-function isHiddenAccessoryName(name: string | undefined): boolean {
-  const normalized = normalizeBoneName(name);
-  return normalized !== undefined && HIDDEN_ACCESSORY_BONES.has(normalized);
-}
-
-function isHiddenAccessoryBone(bone: BoneEntry): boolean {
-  for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
-    if (isHiddenAccessoryName(current.group.name)) return true;
-  }
-  return false;
-}
-
-function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
-  return cubes.filter((cube, cubeIndex) => !cubes.some((other, otherIndex) => {
-    if (cubeIndex === otherIndex || !sameCubeBounds(cube, other)) return false;
-    const nameMarksLayer = normalizeBoneName(cube.name)?.includes("layer") ?? false;
-    return nameMarksLayer || (cube.inflate ?? 0) > (other.inflate ?? 0);
-  }));
-}
-
-function splitTallSkinCubes(bone: BoneEntry, cubes: BbCube[]): BbCube[] {
-  const part = inferSkinPart(bone);
-  return cubes.flatMap((cube) => {
-    if (!part || part === "head" || !isStandardPlayerSkinCube(cube, part)) return [cube];
-    const height = cube.to[1] - cube.from[1];
-    const upperHeight = height / 3;
-    const splitY = cube.to[1] - upperHeight;
-    const [upperFaces, lowerFaces] = splitVerticalFaceUvs(cube.faces, upperHeight / height);
-    return [
-      {
-        ...cube,
-        uuid: `${cube.uuid}_skin_upper`,
-        name: `${cube.name ?? "Cube"} Upper`,
-        from: [cube.from[0], splitY, cube.from[2]],
-        faces: upperFaces,
-      },
-      {
-        ...cube,
-        uuid: `${cube.uuid}_skin_lower`,
-        name: `${cube.name ?? "Cube"} Lower`,
-        to: [cube.to[0], splitY, cube.to[2]],
-        faces: lowerFaces,
-      },
-    ];
-  });
-}
-
-function splitVerticalFaceUvs(faces: BbCube["faces"], upperRatio: number): [BbCube["faces"], BbCube["faces"]] {
-  const upperFaces: BbCube["faces"] = {};
-  const lowerFaces: BbCube["faces"] = {};
-  for (const [direction, face] of Object.entries(faces)) {
-    if (!["north", "south", "east", "west"].includes(direction) || face.uv?.length !== 4) {
-      upperFaces[direction] = face;
-      lowerFaces[direction] = face;
-      continue;
-    }
-
-    const [minU, minV, maxU, maxV] = face.uv;
-    const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
-    if (rotation === 90) {
-      const splitU = minU + (maxU - minU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
-    } else if (rotation === 180) {
-      const splitV = maxV + (minV - maxV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
-    } else if (rotation === 270) {
-      const splitU = maxU + (minU - maxU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
-    } else {
-      const splitV = minV + (maxV - minV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
-      lowerFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
-    }
-  }
-  return [upperFaces, lowerFaces];
-}
-
-function sameCubeBounds(first: BbCube, second: BbCube): boolean {
-  return first.from.every((value, axis) => Math.abs(value - second.from[axis]) <= 1e-7)
-    && first.to.every((value, axis) => Math.abs(value - second.to[axis]) <= 1e-7);
-}
-
-function inferSkinAssignments(
-  bones: BoneEntry[],
-  playableCubesByBone: ReadonlyMap<string, BbCube[]>,
-): Map<string, ImportedSkinPart> {
-  const candidates: { cube: BbCube; part: ImportedSkinPart["part"]; centerY: number; sourceOrder: number }[] = [];
-  let sourceOrder = 0;
-  for (const bone of bones) {
-    const part = inferSkinPart(bone);
-    for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
-      const isSplitSkinCube = cube.uuid.endsWith("_skin_upper") || cube.uuid.endsWith("_skin_lower");
-      if (!part || (!isSplitSkinCube && !isStandardPlayerSkinCube(cube, part))) continue;
-      candidates.push({ cube, part, centerY: (cube.from[1] + cube.to[1]) / 2, sourceOrder: sourceOrder++ });
-    }
-  }
-
-  const result = new Map<string, ImportedSkinPart>();
-  for (const part of ["head", "body", "left_arm", "right_arm", "left_leg", "right_leg"] as const) {
-    candidates
-      .filter((candidate) => candidate.part === part)
-      .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
-      .forEach((candidate, order) => result.set(candidate.cube.uuid, { part, order }));
-  }
-  return result;
-}
-
-function isStandardPlayerSkinCube(cube: BbCube, part: ImportedSkinPart["part"]): boolean {
-  const size = cube.to.map((value, axis) => Math.abs(value - cube.from[axis]));
-  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
-  if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
-  if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);
-  return (closeTo(size[0], 3) || closeTo(size[0], 4)) && closeTo(size[1], 12) && closeTo(size[2], 4);
-}
-
-function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
-  for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
-    const name = normalizeBoneName(current.group.name) ?? "";
-    if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
-    if (name.includes("right") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "right_arm";
-    if (name.includes("left") && (name.includes("leg") || name.includes("foot"))) return "left_leg";
-    if (name.includes("right") && (name.includes("leg") || name.includes("foot"))) return "right_leg";
-    if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
-    if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
-  }
-  return undefined;
 }
 
 function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined): void {
@@ -902,37 +743,6 @@ function composeTransform(position: number[], rotation: number[], scale: number[
   );
 }
 
-function writeCubeResources(
-  project: BbmodelProject,
-  bone: BoneEntry,
-  cube: BbCube,
-  namespace: string,
-  modelPath: string,
-  resources: Map<string, Uint8Array>,
-): void {
-  const model = {
-    textures: { layer0: `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/texture` },
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution)],
-  };
-  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
-  resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
-}
-
-function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | undefined {
-  const inflate = cube.inflate ?? 0;
-  const from = cube.from.map((value, axis) => (value - bone.group.origin[axis] - inflate) / 16);
-  const to = cube.to.map((value, axis) => (value - bone.group.origin[axis] + inflate) / 16);
-  const size = to.map((value, axis) => value - from[axis]);
-  if (size.some((value) => value <= 0)) return undefined;
-
-  const center = from.map((value, axis) => (value + to[axis]) / 2);
-  const fit = new Matrix4()
-    .makeTranslation(center[0], center[1], center[2])
-    .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
-    .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
-  return matrix4ToRowMajor(fit, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
-}
-
 function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
   const rotation = cube.rotation ?? [0, 0, 0];
   if (rotation.every((value) => Math.abs(value) <= 1e-7)) return new Matrix4();
@@ -956,94 +766,6 @@ function matrixWithoutScale(matrix: Matrix4): Matrix4 {
   return new Matrix4().compose(position, rotation, new Vector3(1, 1, 1));
 }
 
-function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {
-  const inflate = cube.inflate ?? 0;
-  const offset = (value: number, axis: number, direction: -1 | 1) => value - boneOrigin[axis] + 8 + inflate * direction;
-  const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
-    if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
-    return [[direction, {
-      uv: [
-        face.uv[0] * 16 / resolution.width,
-        face.uv[1] * 16 / resolution.height,
-        face.uv[2] * 16 / resolution.width,
-        face.uv[3] * 16 / resolution.height,
-      ],
-      texture: "#layer0",
-      ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
-    }]];
-  }));
-  return {
-    from: cube.from.map((value, axis) => offset(value, axis, -1)),
-    to: cube.to.map((value, axis) => offset(value, axis, 1)),
-    faces,
-  };
-}
-
-function requireEmbeddedTexture(textures: BbTexture[]): BbTexture {
-  if (textures.length !== 1) throw new Error(`GeckoLib bbmodel must contain exactly one texture; found ${textures.length}.`);
-  const texture = textures[0];
-  if (!texture.source?.startsWith("data:image/png;base64,")) {
-    throw new ConversionError("geckolib_external_texture", "GeckoLib texture must be embedded in the bbmodel as PNG data.", "textures[0].source");
-  }
-  return texture;
-}
-
-function decodeTexture(texture: BbTexture): Uint8Array {
-  const base64 = texture.source!.slice("data:image/png;base64,".length);
-  try {
-    return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
-  } catch (error) {
-    throw new ConversionError("invalid_geckolib_texture", "GeckoLib embedded texture is not valid base64.", "textures[0].source", { cause: error });
-  }
-}
-
-function animatedTextureMetadata(texture: BbTexture, bytes: Uint8Array): Record<string, unknown> | undefined {
-  const configured = texture.frame_time !== undefined
-    || texture.frame_interpolate !== undefined
-    || texture.frame_order_type !== undefined
-    || texture.frame_order !== undefined;
-  if (!configured) return undefined;
-  const frameTime = texture.frame_time ?? 1;
-  if (!Number.isInteger(frameTime) || frameTime < 1) throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib texture frame time must be a positive integer.");
-  const orderType = texture.frame_order_type ?? "loop";
-  const frames = textureFrames(orderType, texture.frame_order, pngFrameCount(bytes));
-  return {
-    animation: {
-      frametime: frameTime,
-      ...(texture.frame_interpolate ? { interpolate: true } : {}),
-      ...(frames ? { frames } : {}),
-    },
-  };
-}
-
-function textureFrames(orderType: NonNullable<BbTexture["frame_order_type"]>, frameOrder: string | undefined, frameCount: number | undefined): number[] | undefined {
-  if (orderType === "loop") return undefined;
-  if (orderType === "custom") {
-    const frames = (frameOrder ?? "").trim().split(/\s+/).filter(Boolean).map(Number);
-    if (frames.length === 0 || frames.some((frame) => !Number.isInteger(frame) || frame < 0)) {
-      throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib custom texture frame order must contain non-negative frame numbers.");
-    }
-    return frames;
-  }
-  if (frameCount === undefined || frameCount < 2) {
-    throw new ConversionError("invalid_geckolib_texture_animation", `GeckoLib ${orderType} texture animation requires a vertical PNG sprite sheet.`);
-  }
-  const forward = Array.from({ length: frameCount }, (_, index) => index);
-  if (orderType === "backwards") return forward.reverse();
-  return [...forward, ...forward.slice(1, -1).reverse()];
-}
-
-function pngFrameCount(bytes: Uint8Array): number | undefined {
-  if (bytes.length < 24 || bytes[0] !== 0x89 || bytes[1] !== 0x50 || bytes[2] !== 0x4e || bytes[3] !== 0x47) return undefined;
-  const width = readUint32(bytes, 16);
-  const height = readUint32(bytes, 20);
-  return width > 0 && height >= width && height % width === 0 ? height / width : undefined;
-}
-
-function readUint32(bytes: Uint8Array, offset: number): number {
-  return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
-}
-
 function numericValue(value: string | number, path: string): number {
   const number = typeof value === "number" ? value : Number(value.trim());
   if (!Number.isFinite(number)) throw new ConversionError("unsupported_geckolib_molang", `GeckoLib expression ${String(value)} is not a numeric constant.`, path);
@@ -1053,8 +775,4 @@ function numericValue(value: string | number, path: string): number {
 function validNamespace(value: string | undefined): string | undefined {
   if (!value) return undefined;
   return /^[a-z0-9_.-]+$/.test(value) ? value : undefined;
-}
-
-function jsonBytes(value: unknown): Uint8Array {
-  return encoder.encode(`${JSON.stringify(value, null, 2)}\n`);
 }
