@@ -44,9 +44,20 @@ class PlaybackNodesTest {
         );
         PlaybackEntityController controller = new PlaybackEntityController();
 
-        assertFalse(controller.updateViewRotation(nodes, 40.0F));
-        assertTrue(controller.updateViewRotation(nodes, 60.0F));
-        assertFalse(controller.updateViewRotation(nodes, 60.5F));
+        assertFalse(controller.updateViewRotation(nodes, 40.0F, 50.0F));
+        assertTrue(controller.updateViewRotation(nodes, 60.0F, 50.0F));
+        assertFalse(controller.updateViewRotation(nodes, 60.5F, 50.0F));
+    }
+
+    @Test
+    void followsViewYawWithoutDeadzone() {
+        PlaybackNodes nodes = new PlaybackNodes(
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            Map.of()
+        );
+
+        assertEquals(40.0F, nodes.updateViewYaw(40.0F, 0.0F), 0.0001F);
+        assertEquals(-30.0F, nodes.updateViewYaw(-30.0F, 0.0F), 0.0001F);
     }
 
     @Test

@@ -123,6 +123,13 @@ public final class AnimationJsonParser {
         throws EmoteAnimationLoadException {
         boolean standalone = reader.requireBoolean(object, "standalone", "$.settings");
         int cooldownTicks = reader.requireTime(object, "cooldown", "$.settings", 0);
+        double rotationDeadzone = reader.requireFiniteDouble(
+            reader.requireElement(object, "rotation_deadzone", "$.settings"),
+            "$.settings.rotation_deadzone"
+        );
+        if (rotationDeadzone < 0.0D || rotationDeadzone > 180.0D) {
+            throw reader.error("$.settings.rotation_deadzone", "must be between 0 and 180 degrees");
+        }
         EmotePlayerBehavior player = parsePlayer(
             reader.requireObject(object, "player", "$.settings"),
             "$.settings.player",
@@ -139,7 +146,7 @@ public final class AnimationJsonParser {
         };
         int loopDelayTicks = reader.requireTime(playbackObject, "loop_delay", "$.settings.playback", 0);
         try {
-            return new Settings(standalone, cooldownTicks, player, new PlaybackSettings(mode, loopDelayTicks));
+            return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopDelayTicks));
         } catch (IllegalArgumentException exception) {
             throw reader.error("$.settings.playback.loop_delay", exception.getMessage(), exception);
         }

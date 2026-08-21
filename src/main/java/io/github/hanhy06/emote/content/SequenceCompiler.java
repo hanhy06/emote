@@ -59,6 +59,7 @@ final class SequenceCompiler {
             new EmoteAnimation.Settings(
                 true,
                 sequence.settings().cooldownTicks(),
+                layoutAnchor.animation().settings().rotationDeadzone(),
                 sequence.settings().player(),
                 new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)
             ),

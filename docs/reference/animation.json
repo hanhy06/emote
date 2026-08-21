@@ -9,6 +9,7 @@
     "settings": {
         "standalone": true,
         "cooldown": "0t",
+        "rotation_deadzone": 50.0,
         "player": {
             "hidden": true,
             "stop_conditions": {

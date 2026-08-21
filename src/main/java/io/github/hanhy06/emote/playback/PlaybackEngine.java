@@ -350,7 +350,11 @@ public class PlaybackEngine implements ConfigListener {
                 try {
                     session.animation().restoreDeferredVisibility();
                     if (followsInitiatorView(session.state())) {
-                        this.entityController.updateViewRotation(session.nodes(), player.getYRot());
+                        this.entityController.updateViewRotation(
+                            session.nodes(),
+                            player.getYRot(),
+                            session.animation().rotationDeadzone()
+                        );
                     }
 
                     if (session.state() == PlaybackSession.State.WAITING) {

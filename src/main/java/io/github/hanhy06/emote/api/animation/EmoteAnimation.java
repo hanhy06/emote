@@ -38,12 +38,16 @@ public record EmoteAnimation(
     public record Settings(
         boolean standalone,
         int cooldownTicks,
+        float rotationDeadzone,
         EmotePlayerBehavior player,
         PlaybackSettings playback
     ) {
         public Settings {
             if (cooldownTicks < 0) {
                 throw new IllegalArgumentException("cooldown must not be negative");
+            }
+            if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0.0F || rotationDeadzone > 180.0F) {
+                throw new IllegalArgumentException("rotation deadzone must be finite and between 0 and 180 degrees");
             }
             Objects.requireNonNull(player, "player");
             Objects.requireNonNull(playback, "playback");

@@ -557,7 +557,7 @@ class SequenceCompilerTest {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
             new EmoteMetadata(id, id),
-            new EmoteAnimation.Settings(false, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, loopDelay)),
+            new EmoteAnimation.Settings(false, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loop, loopDelay)),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
             new EmoteAnimation.Timeline(duration, tracks, events)

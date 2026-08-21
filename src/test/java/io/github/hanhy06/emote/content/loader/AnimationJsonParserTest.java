@@ -32,6 +32,7 @@ class AnimationJsonParserTest {
         assertEquals("Format Reference", loaded.animation().metadata().name());
         assertEquals("ignored", loaded.animation().metadata().additional().get("future_metadata").getAsString());
         assertTrue(loaded.animation().settings().standalone());
+        assertEquals(50.0F, loaded.animation().settings().rotationDeadzone());
         assertTrue(loaded.animation().settings().player().hidden());
         assertEquals(0.1D, loaded.animation().settings().player().stopConditions().movementDistance());
         assertTrue(loaded.animation().settings().player().stopConditions().jump());
@@ -180,6 +181,19 @@ class AnimationJsonParserTest {
         );
 
         assertEquals("$.settings.player.stop_conditions.movement_distance", exception.fieldPath());
+    }
+
+    @Test
+    void rejectsRotationDeadzoneOutsideDegreeRange() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("settings").addProperty("rotation_deadzone", 180.1D);
+
+        EmoteAnimationLoadException exception = assertThrows(
+            EmoteAnimationLoadException.class,
+            () -> parse(root)
+        );
+
+        assertEquals("$.settings.rotation_deadzone", exception.fieldPath());
     }
 
     @Test

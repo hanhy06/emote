@@ -74,7 +74,7 @@ class AnimationComplexityValidatorTest {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse("test:complexity"),
             new EmoteMetadata("Complexity", "Complexity"),
-            new EmoteAnimation.Settings(true, 0, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
+            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
             new EmoteAnimation.Timeline(

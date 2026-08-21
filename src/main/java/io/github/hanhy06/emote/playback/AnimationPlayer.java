@@ -228,6 +228,14 @@ public final class AnimationPlayer {
         return this.currentTick;
     }
 
+    public float rotationDeadzone() {
+        if (this.activePlaybackSegment < 0) {
+            return this.animation.settings().rotationDeadzone();
+        }
+        return this.emote.playbackSegments().get(this.activePlaybackSegment)
+            .animation().animation().settings().rotationDeadzone();
+    }
+
     public void stop() {
         if (!this.eventsStarted || this.eventsStopped) {
             return;

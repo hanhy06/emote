@@ -64,7 +64,6 @@ public final class PlaybackEntityController {
 
     public static final String RUNTIME_TAG = "emote.runtime";
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
-    private static final float VIEW_ROTATION_THRESHOLD_DEGREES = 50.0F;
 
     public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
         return create(player.level(), RootTransform.fromPlayer(player), emote);
@@ -109,9 +108,9 @@ public final class PlaybackEntityController {
         removeEntities(level, nodes.nodes().values());
     }
 
-    public boolean updateViewRotation(PlaybackNodes nodes, float currentYaw) {
+    public boolean updateViewRotation(PlaybackNodes nodes, float currentYaw, float rotationDeadzone) {
         float previousRelativeYaw = nodes.root().relativeYaw(nodes.viewYaw());
-        float viewYaw = nodes.updateViewYaw(currentYaw, VIEW_ROTATION_THRESHOLD_DEGREES);
+        float viewYaw = nodes.updateViewYaw(currentYaw, rotationDeadzone);
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
         if (Mth.packDegrees(previousRelativeYaw) == Mth.packDegrees(relativeYaw)) {
             return false;
