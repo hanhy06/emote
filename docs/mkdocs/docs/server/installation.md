@@ -11,7 +11,7 @@ config/emote/
 └── animations/
 ```
 
-Place Animation or Sequence JSON exported by the web converter under `animations/`. Subdirectories are scanned as well, so files may be grouped by creator or pack.
+Place Emote JSON exported by the web converter under `animations/`. The directory is scanned recursively, so file location within it does not matter.
 
 ```text
 animations/
