@@ -69,6 +69,17 @@ class AnimationJsonSchemaTest {
     }
 
     @Test
+    void rejectsParticipantHandItemInSceneSpace() {
+        JsonObject root = base();
+        root.getAsJsonObject("nodes").getAsJsonObject("root").addProperty("space", "scene");
+        JsonObject display = root.getAsJsonObject("nodes").getAsJsonObject("display");
+        display.remove("item_stack_snbt");
+        display.add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"right\"}"));
+
+        assertEquals("$.nodes.display.item_source", assertInvalid(root).fieldPath());
+    }
+
+    @Test
     void rejectsParentCycle() {
         JsonObject root = base();
         root.getAsJsonObject("nodes").getAsJsonObject("root").addProperty("parent", "display");

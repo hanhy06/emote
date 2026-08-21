@@ -264,7 +264,7 @@ public final class AnimationJsonParser {
                 parentId,
                 transform,
                 entityNbt,
-                parseItemSource(object, path, reader),
+                parseItemSource(object, space, path, reader),
                 parseItemDisplay(object, path, reader),
                 parseSkin(object, space, path, reader)
             );
@@ -331,7 +331,7 @@ public final class AnimationJsonParser {
         return value;
     }
 
-    private ItemSource parseItemSource(JsonObject object, String path, EmoteJsonReader reader)
+    private ItemSource parseItemSource(JsonObject object, NodeSpace space, String path, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         boolean hasStack = object.has("item_stack_snbt");
         boolean hasSource = object.has("item_source");
@@ -347,6 +347,9 @@ public final class AnimationJsonParser {
         String type = reader.requireString(source, "type", sourcePath);
         if (!type.equals("participant_hand")) {
             throw reader.error(sourcePath + ".type", "unsupported item source: " + type);
+        }
+        if (space == NodeSpace.SCENE) {
+            throw reader.error(sourcePath, "participant hand items require initiator or partner node space");
         }
         String arm = reader.requireString(source, "arm", sourcePath);
         return new ParticipantHandItemSource(switch (arm) {
