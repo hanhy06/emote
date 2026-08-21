@@ -9,17 +9,14 @@ import {
   documentPartOrders,
 } from "./domain/conversionDocument";
 import {
-  assignSessionOrder,
-  assignSessionSkinPart,
-  assignSessionSpace,
-  createConverterSession,
-  selectSessionAnimation,
-  updateSessionAnimationOptions,
-} from "./converterSession";
+  INITIAL_WORKSPACE,
+  workspaceReducer,
+  type WorkspaceState,
+} from "./workspace";
 
 describe("converter session skin assignment", () => {
   it("initializes suggested assignments, coordinate spaces, and metadata", () => {
-    const session = createConverterSession(project(), "Test adapter");
+    const session = opened(project()).session!;
 
     expect(documentPartAssignments(session.document)).toEqual({ head: "head", head_variant: "head" });
     expect(documentPartOrders(session.document)).toEqual({ head: 2, head_variant: 2 });
@@ -31,11 +28,17 @@ describe("converter session skin assignment", () => {
   it("caches metadata and settings for each selected animation", () => {
     const source = project();
     source.animations.push({ ...source.animations[0], id: "second", name: "Second", loopDelayTicks: 4 });
-    const initial = createConverterSession(source, "Test adapter");
-    const editedFirst = updateSessionAnimationOptions(initial, { ...initial.document.animations[0].output, displayName: "First edited", cooldown: "2s" });
-    const selectedSecond = selectSessionAnimation(editedFirst, 1);
-    const editedSecond = updateSessionAnimationOptions(selectedSecond, { ...selectedSecond.document.animations[1].output, displayName: "Second edited", cooldown: "3s" });
-    const selectedFirst = selectSessionAnimation(editedSecond, 0);
+    const initial = opened(source);
+    const editedFirst = workspaceReducer(initial, {
+      type: "animation_output_changed",
+      output: { ...initial.session!.document.animations[0].output, displayName: "First edited", cooldown: "2s" },
+    });
+    const selectedSecond = workspaceReducer(editedFirst, { type: "animation_selected", index: 1 });
+    const editedSecond = workspaceReducer(selectedSecond, {
+      type: "animation_output_changed",
+      output: { ...selectedSecond.session!.document.animations[1].output, displayName: "Second edited", cooldown: "3s" },
+    });
+    const selectedFirst = workspaceReducer(editedSecond, { type: "animation_selected", index: 0 }).session!;
 
     expect(selectedFirst.document.animations[0].output).toMatchObject({ displayName: "First edited", cooldown: "2s", loopDelay: "0t" });
     expect(selectedFirst.document.animations[1].output).toMatchObject({ displayName: "Second edited", cooldown: "3s", loopDelay: "4t" });
@@ -43,28 +46,31 @@ describe("converter session skin assignment", () => {
   });
 
   it("moves assigned scene parts to initiator space", () => {
-    const session = createConverterSession(project(), "Test adapter");
-    session.selectedParts = new Set(["head_variant"]);
-    session.document.nodes.head_variant.space = "scene";
-
-    const result = assignSessionSkinPart(session, "body");
+    const initial = opened(project());
+    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const moved = workspaceReducer(selected, { type: "node_space_assigned", space: "scene" });
+    const result = workspaceReducer(moved, { type: "skin_part_assigned", part: "body" }).session!;
 
     expect(documentPartAssignments(result.document)).toEqual({ head: "body", head_variant: "body" });
     expect(result.document.nodes.head_variant.space).toBe("initiator");
   });
 
   it("clears a logical skin group in scene space and updates its order together", () => {
-    const session = createConverterSession(project(), "Test adapter");
-    session.selectedParts = new Set(["head_variant"]);
-    const ordered = assignSessionOrder(session, 5);
-    const cleared = assignSessionSpace(ordered, "scene");
+    const initial = opened(project());
+    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const ordered = workspaceReducer(selected, { type: "skin_order_assigned", order: 5 });
+    const cleared = workspaceReducer(ordered, { type: "node_space_assigned", space: "scene" });
 
-    expect(documentPartOrders(ordered.document)).toEqual({ head: 5, head_variant: 5 });
-    expect(documentPartAssignments(cleared.document)).toEqual({ head: null, head_variant: null });
-    expect(documentPartOrders(cleared.document)).toEqual({ head: null, head_variant: null });
+    expect(documentPartOrders(ordered.session!.document)).toEqual({ head: 5, head_variant: 5 });
+    expect(documentPartAssignments(cleared.session!.document)).toEqual({ head: null, head_variant: null });
+    expect(documentPartOrders(cleared.session!.document)).toEqual({ head: null, head_variant: null });
   });
 
 });
+
+function opened(source: ImportedProject): WorkspaceState {
+  return workspaceReducer(INITIAL_WORKSPACE, { type: "open_succeeded", project: source, adapterLabel: "Test adapter" });
+}
 
 function project(): ImportedProject {
   return {

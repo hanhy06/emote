@@ -5,38 +5,25 @@ import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { addFrameCommand, removeFrameCommand, updateFrameCommand } from "./components/frameCommands";
-import {
-  assignmentSummary,
-  assignSessionOrder,
-  assignSessionSkinPart,
-  assignSessionSpace,
-  createConverterSession,
-  createPreviewParts,
-  EMPTY_SELECTION,
-  findSkinCandidates,
-  selectSessionAnimation,
-  updateSessionAnimation,
-  updateSessionAnimationOptions,
-  type ConverterSession,
-} from "./converterSession";
 import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import { downloadExport, downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { NodeSpace } from "./format/emoteAnimation";
+import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/securityWarning";
-import type { ImportedAnimation } from "./domain/conversionSeed";
 import { animationAvailability } from "./domain/conversionSeed";
 import {
-  selectPart,
-  selectParts,
-  type SkinPartId,
-} from "./preview/skinAssignment";
-import { INITIAL_WORKSPACE, workspaceReducer, type WorkspacePage } from "./workspace";
+  assignmentSummary,
+  createPreviewParts,
+  EMPTY_SELECTION,
+  findSkinCandidates,
+  INITIAL_WORKSPACE,
+  workspaceReducer,
+  type WorkspacePage,
+} from "./workspace";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -69,9 +56,6 @@ export function App() {
   const { session, page, openError, exportError, operation } = workspace;
   const busy = operation.type !== "idle";
   const busyMessage = operation.type === "idle" ? null : operation.message;
-  const updateSession = useCallback((update: (current: ConverterSession) => ConverterSession) => {
-    dispatch({ type: "update_session", update });
-  }, []);
 
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
@@ -104,7 +88,7 @@ export function App() {
       inputElement.value = "";
       return;
     }
-    dispatch({ type: "begin_open", message: "Opening animation project" });
+    dispatch({ type: "open_started", message: "Opening animation project" });
     try {
       await showLoadingScreen();
       const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
@@ -117,26 +101,26 @@ export function App() {
         });
         return;
       }
-      dispatch({ type: "finish_open", session: createConverterSession(imported, detected.adapter.label) });
+      dispatch({ type: "open_succeeded", project: imported, adapterLabel: detected.adapter.label });
     } catch (reason) {
-      dispatch({ type: "fail_open", message: conversionErrorMessage(reason, "Could not import the file.") });
+      dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
-      dispatch({ type: "finish_operation" });
+      dispatch({ type: "operation_finished" });
       inputElement.value = "";
     }
   }
 
   async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string, progressMessage: string) {
     if (busy) return;
-    dispatch({ type: "begin_export", message: progressMessage });
+    dispatch({ type: "export_started", message: progressMessage });
 
     try {
       await showLoadingScreen();
       downloadExport(await action());
     } catch (reason) {
-      dispatch({ type: "fail_export", message: conversionErrorMessage(reason, fallbackMessage) });
+      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, fallbackMessage) });
     } finally {
-      dispatch({ type: "finish_operation" });
+      dispatch({ type: "operation_finished" });
     }
   }
 
@@ -152,16 +136,16 @@ export function App() {
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
     if (busy) return;
-    dispatch({ type: "begin_export", message: includeSequence ? "Creating sequence files" : "Creating animation files" });
+    dispatch({ type: "export_started", message: includeSequence ? "Creating sequence files" : "Creating animation files" });
 
     try {
       await showLoadingScreen();
       const { exportDocumentAnimationFiles } = await import("./export/projectExporter");
       downloadExports(exportDocumentAnimationFiles(session.document, includeSequence));
     } catch (reason) {
-      dispatch({ type: "fail_export", message: conversionErrorMessage(reason, "File export failed.") });
+      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, "File export failed.") });
     } finally {
-      dispatch({ type: "finish_operation" });
+      dispatch({ type: "operation_finished" });
     }
   }
 
@@ -193,41 +177,37 @@ export function App() {
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
-    updateSession((current) => ({ ...current, selectedParts: selectPart(current.selectedParts, nodeId, additive) }));
-  }, [updateSession]);
+    dispatch({ type: "part_selected", nodeId, additive });
+  }, []);
 
   const handlePartsSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
-    updateSession((current) => ({ ...current, selectedParts: selectParts(current.selectedParts, nodeIds, additive) }));
-  }, [updateSession]);
+    dispatch({ type: "parts_selected", nodeIds, additive });
+  }, []);
 
-  function assignSelected(part: SkinPartId | null) {
+  function assignSelected(part: PlayerSkinPart | null) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => assignSessionSkinPart(current, part));
+    dispatch({ type: "skin_part_assigned", part });
   }
 
   function assignSelectedSpace(space: NodeSpace) {
     if (selectedParts.size === 0) return;
-    updateSession((current) => assignSessionSpace(current, space));
+    dispatch({ type: "node_space_assigned", space });
   }
 
   function assignOrder(order: number) {
-    updateSession((current) => assignSessionOrder(current, order));
-  }
-
-  function editCurrentAnimation(edit: (current: ImportedAnimation) => ImportedAnimation) {
-    updateSession((current) => updateSessionAnimation(current, edit));
+    dispatch({ type: "skin_order_assigned", order });
   }
 
   function addCommandAtPreviewTick() {
-    if (previewTick !== null) editCurrentAnimation((current) => addFrameCommand(current, previewTick));
+    if (previewTick !== null) dispatch({ type: "frame_command_added", tick: previewTick });
   }
 
   function changeFrameCommand(eventIndex: number, commandIndex: number, command: string) {
-    editCurrentAnimation((current) => updateFrameCommand(current, eventIndex, commandIndex, command));
+    dispatch({ type: "frame_command_changed", eventIndex, commandIndex, command });
   }
 
   function deleteFrameCommand(eventIndex: number, commandIndex: number) {
-    editCurrentAnimation((current) => removeFrameCommand(current, eventIndex, commandIndex));
+    dispatch({ type: "frame_command_removed", eventIndex, commandIndex });
   }
 
   const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
@@ -301,9 +281,7 @@ export function App() {
               <span>Animation</span>
               <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
                 const nextIndex = Number(event.currentTarget.value);
-                updateSession((current) => selectSessionAnimation(current, nextIndex));
-                const nextAnimation = project.animations[nextIndex]?.source;
-                if (nextAnimation && animationAvailability(nextAnimation).preview === "unavailable") dispatch({ type: "set_page", page: 1 });
+                dispatch({ type: "animation_selected", index: nextIndex });
               }}>
                 {project.animations.map((item, index) => <option value={index} key={`${item.source.id}:${index}`}>{item.source.name}</option>)}
               </select>
@@ -317,7 +295,7 @@ export function App() {
 
           <nav className="workflow-pages" aria-label="Conversion pages">
             {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "set_page", page: index as WorkspacePage })} key={label}>
+              <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -362,7 +340,7 @@ export function App() {
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
-                      updateSession((current) => ({ ...current, previewFrameIndex: Number(event.currentTarget.value), selectedParts: new Set() }));
+                      dispatch({ type: "preview_frame_selected", index: Number(event.currentTarget.value) });
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
                   </label>
@@ -413,11 +391,8 @@ export function App() {
             metadata={animationOptions}
             minecraftVersion={project.targetMinecraftVersion}
             disabled={busy}
-            onMetadataChange={(metadata) => updateSession((current) => updateSessionAnimationOptions(current, metadata))}
-            onMinecraftVersionChange={(minecraftVersion) => updateSession((current) => ({
-              ...current,
-              document: { ...current.document, targetMinecraftVersion: minecraftVersion },
-            }))}
+            onMetadataChange={(output) => dispatch({ type: "animation_output_changed", output })}
+            onMinecraftVersionChange={(version) => dispatch({ type: "minecraft_version_changed", version })}
           />}
 
           {page === 2 && <ExportPanel

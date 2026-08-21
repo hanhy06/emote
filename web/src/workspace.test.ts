@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
 import type { ImportedProject } from "./domain/conversionSeed";
-import { createConverterSession } from "./converterSession";
 import { INITIAL_WORKSPACE, workspaceReducer } from "./workspace";
 
 describe("workspaceReducer", () => {
   it("owns open and export operation transitions", () => {
-    const opening = workspaceReducer(INITIAL_WORKSPACE, { type: "begin_open", message: "Opening" });
-    const failed = workspaceReducer(opening, { type: "fail_open", message: "Bad file" });
+    const opening = workspaceReducer(INITIAL_WORKSPACE, { type: "open_started", message: "Opening" });
+    const failed = workspaceReducer(opening, { type: "open_failed", message: "Bad file" });
 
     expect(opening.operation).toEqual({ type: "opening", message: "Opening" });
     expect(failed).toMatchObject({ openError: "Bad file", operation: { type: "idle" } });
@@ -16,16 +15,18 @@ describe("workspaceReducer", () => {
 
   it("resets view state for a newly opened document", () => {
     const previous = { ...INITIAL_WORKSPACE, page: 2 as const, exportError: "Old failure" };
-    const session = createConverterSession(project("full"), "Test adapter");
-    const opened = workspaceReducer(previous, { type: "finish_open", session });
+    const opened = workspaceReducer(previous, { type: "open_succeeded", project: project("full"), adapterLabel: "Test adapter" });
 
-    expect(opened).toMatchObject({ session, page: 0, operation: { type: "idle" } });
+    expect(opened).toMatchObject({ page: 0, operation: { type: "idle" } });
+    expect(opened.session?.document.origin.adapterLabel).toBe("Test adapter");
   });
 
   it("opens metadata when the imported model has no usable preview", () => {
-    const session = createConverterSession(project("unavailable"), "Test adapter");
-
-    expect(workspaceReducer(INITIAL_WORKSPACE, { type: "finish_open", session }).page).toBe(1);
+    expect(workspaceReducer(INITIAL_WORKSPACE, {
+      type: "open_succeeded",
+      project: project("unavailable"),
+      adapterLabel: "Test adapter",
+    }).page).toBe(1);
   });
 });
 
