@@ -1,4 +1,4 @@
-# Emote
+# Home
 
 ![Emote demo](https://cdn.modrinth.com/data/qUF0jygw/images/15c895aea280b546764a0b7f2db2a4cb1f9628c8.gif)
 

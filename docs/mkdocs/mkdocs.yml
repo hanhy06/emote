@@ -19,9 +19,9 @@ watch:
 nav:
   - Home: index.md
   - Server Administration:
-      - Installation and Configuration: server/installation.md
-      - Permissions and Access Control: server/access-control.md
-      - Cooldowns and Idle Emotes: server/playback-policy.md
+      - Installation: server/installation.md
+      - Access Control: server/access-control.md
+      - Idle Emotes: server/playback-policy.md
       - Commands: server/commands.md
       - Using Sequences: server/sequences.md
   - Developers:

@@ -1,4 +1,4 @@
-# Sequence Format
+# Sequence
 
 Sequence files use schema version `4` and combine existing Animations into one emote.
 

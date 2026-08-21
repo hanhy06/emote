@@ -1,4 +1,4 @@
-# Cooldowns and Idle Emotes
+# Idle Emotes
 
 ## Emote cooldowns
 

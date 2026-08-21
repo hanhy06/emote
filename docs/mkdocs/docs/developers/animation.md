@@ -1,4 +1,4 @@
-# Animation Format
+# Animation
 
 Animation files use schema version `4`. An Animation defines a hierarchy of display and anchor nodes, their local transforms, independently timed animation tracks, and optional command events.
 

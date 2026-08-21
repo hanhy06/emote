@@ -1,4 +1,4 @@
-# Permissions and Access Control
+# Access Control
 
 Emote reads access rules from `config/emote/emotes.json`. Permissions are resolved through a Fabric Permissions API-compatible mod such as LuckPerms.
 
