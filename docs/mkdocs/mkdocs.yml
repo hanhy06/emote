@@ -25,6 +25,7 @@ nav:
       - Advanced Usage: server/advanced-usage.md
   - Developers:
       - Animation: developers/animation.md
+      - Molang: developers/molang.md
       - Sequence: developers/sequence.md
       - Mod API: developers/api.md
 

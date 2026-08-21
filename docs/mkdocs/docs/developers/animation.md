@@ -14,6 +14,7 @@ Animation files use schema version `4`. An Animation defines a hierarchy of disp
   "settings": {
     "standalone": true,
     "cooldown": "2s",
+    "rotation_deadzone": 50,
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -84,7 +85,7 @@ A complete [Animation reference JSON](https://github.com/hanhy06/emote/blob/dev/
 | `id` | A lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and custom metadata. |
 | `settings` | Selection visibility, player behavior, and playback settings. |
-| `molang` | Optional initialization and per-tick Molang programs. |
+| [`molang`](molang.md) | Optional initialization and per-tick Molang programs. |
 | `nodes` | A nonempty map of display and anchor nodes keyed by stable node IDs. |
 | `timeline` | Duration, node tracks, and command events. |
 
@@ -109,6 +110,11 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 ### Selection visibility
 
 `standalone` determines whether an Animation appears in menus, the wheel, searches, and command suggestions and can be played directly by normal players. Set it to `false` for Animations used only inside Sequences. Trusted API calls and players with `emote.bypass` may still play it directly.
+
+### Cooldown and rotation
+
+- `cooldown`: Nonnegative playback cooldown. It starts only after playback begins successfully.
+- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback and partner offer/wait states, the display root follows the initiator's yaw only when the difference exceeds this angle. `0` follows every yaw change; `180` keeps the initial orientation.
 
 ### Player behavior
 
@@ -192,6 +198,7 @@ Display nodes also support:
 ```
 
 `arm` is the physical `left` or `right` hand, independent of the participant's main-hand setting. Participant-hand items cannot use `skin`.
+The node must inherit `initiator` or `partner` space; participant-hand items are not allowed in `scene` space.
 
 Anchor nodes do not support `visible` or `entity_nbt`. They can have transform tracks, but not visibility tracks, and cannot be used as a command source because they have no entity.
 
@@ -222,7 +229,7 @@ Within each track:
 
 - The first keyframe must be at `0t`.
 - Times must be strictly increasing and cannot exceed the timeline duration.
-- Every vector value contains three finite numbers or Molang strings.
+- Every vector value contains three finite numbers or [Molang](molang.md) strings.
 - `interpolation` belongs to the segment from the current keyframe to the next and defaults to `linear`.
 - The final keyframe cannot declare `interpolation` or `easing` because no segment follows it.
 
@@ -260,62 +267,7 @@ Visibility tracks are stepped boolean states and do not support `interpolation`,
 ]
 ```
 
-The value may also be a Molang string; zero is hidden and any other finite result is visible.
-
-## Molang
-
-Any component of a position, rotation, or scale value may be a Molang string. Animation-level programs are optional:
-
-```json
-"molang": {
-  "initialize": "v.speed = 2;",
-  "tick": "v.phase = v.phase + q.delta_time * v.speed;"
-}
-```
-
-- `initialize` runs when a playback cycle begins.
-- `tick` runs before track values are evaluated on each animation tick.
-- `v.*` variables persist within that cycle. A new Molang session is created for each repeated cycle and each Animation segment in a Sequence.
-- `t.*` temporary variables exist only for one expression evaluation.
-- `server_sync` Animations cannot use `molang.tick` because their timeline may begin at an arbitrary synchronized time.
-
-Available queries are:
-
-| Query | Value |
-|---|---|
-| `q.anim_time` | Current timeline time in seconds. |
-| `q.anim_time_ticks` | Current timeline time in ticks. |
-| `q.anim_length` | Timeline duration in seconds. |
-| `q.delta_time` | `0.05` during normal ticks and `0` when a cycle is initialized. |
-| `q.loop_count` | Zero-based number of completed loops. |
-| `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
-| `q.life_time` | Alias of `q.anim_time`, for imported Molang compatibility. |
-| `q.target_x_rotation`, `q.target_y_rotation` | Initiator look pitch and head yaw relative to the body, in degrees. |
-| `q.body_x_rotation`, `q.body_y_rotation` | Initiator pitch and absolute body yaw, in degrees. |
-| `q.head_x_rotation`, `q.head_y_rotation` | Initiator pitch and absolute head yaw, in degrees. |
-| `q.eye_target_x_rotation`, `q.eye_target_y_rotation` | Initiator eye pitch and absolute head yaw, in degrees. |
-| `q.ground_speed` | Initiator horizontal movement speed in blocks per second. |
-| `q.vertical_speed` | Initiator vertical movement speed in blocks per second; positive is upward. |
-| `q.modified_distance_moved` | Initiator walk-animation position used by imported Bedrock movement formulas. |
-| `q.walk_distance` | Initiator accumulated movement distance. |
-| `q.is_moving` | `1` while the initiator has non-zero movement, otherwise `0`. |
-| `q.is_on_ground` | `1` while the initiator is on the ground, otherwise `0`. |
-| `q.is_sneaking` | `1` while the initiator is crouching, otherwise `0`. |
-| `q.is_sprinting` | `1` while the initiator is sprinting, otherwise `0`. |
-| `q.is_swimming` | `1` while the initiator is swimming, otherwise `0`. |
-| `q.is_gliding` | `1` while the initiator is gliding with an elytra, otherwise `0`. |
-| `q.is_riding` | `1` while the initiator is riding another entity, otherwise `0`. |
-| `q.is_using_item` | `1` while the initiator is using an item, otherwise `0`. |
-| `q.is_sleeping` | `1` while the initiator is sleeping, otherwise `0`. |
-| `q.is_emoting` | `1` during player-backed emote playback, otherwise `0`. |
-| `q.item_is_charged` | `1` while the initiator's main-hand crossbow is charged, otherwise `0`. |
-| `q.sleep_rotation` | Yaw of the bed occupied by the initiator, or `0` while not sleeping. |
-| `q.is_on_fire` | `1` while the initiator is on fire, otherwise `0`. |
-| `q.is_in_water` | `1` while the initiator is in water, otherwise `0`. |
-
-Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
-
-Molang source is compiled when the Animation loads. A value that evaluates to a non-finite number stops playback as a runtime failure.
+The value may also be a [Molang](molang.md) string; zero is hidden and any other finite result is visible.
 
 ## Command events
 
@@ -362,4 +314,4 @@ The major schema 3 to 4 changes are:
 | Linear matrix interpolation | Step or eased linear vector interpolation, with quaternion rotation interpolation |
 | No dynamic values | Molang programs and Molang track components |
 
-The converter can migrate ordinary schema 3 files automatically. When a schema 4 file uses parented nodes, independently timed transform channels, Molang, easing, or discontinuous `pre`/`post` values, the web preview is limited to the Create pose. These advanced fields are preserved when the file is exported again.
+The converter can migrate ordinary schema 3 files automatically. Schema 4 runtime data is preserved when exported again. The web converter bakes deterministic parented nodes, independent tracks, Molang, easing, and discontinuous `pre`/`post` values for preview. If a runtime value cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
