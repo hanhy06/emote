@@ -426,7 +426,7 @@ describe("animatedJavaJsonAdapter", () => {
         loop_mode: { type: "once" },
         length: 0.1,
         node_keyframes: { item: { position: {
-          "0.0": { value: ["q.ground_speed", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
+          "0.0": { value: ["v.runtime_speed", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
         } } },
       },
     });
@@ -442,7 +442,7 @@ describe("animatedJavaJsonAdapter", () => {
       sourcePath: "runtime/item/position",
     }));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
-    expect(compiled.timeline.tracks.aj_item_y.position?.[0].value?.[0]).toBe("q.ground_speed");
+    expect(compiled.timeline.tracks.aj_item_y.position?.[0].value?.[0]).toBe("v.runtime_speed");
     expect(compiled.nodes.item.type).toBe("item_display");
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
