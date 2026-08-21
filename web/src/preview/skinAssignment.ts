@@ -1,5 +1,6 @@
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { readSnbtRawField, readSnbtStringField } from "../format/snbt";
+import type { PlayerSkinPart } from "../format/emoteAnimation";
 
 export const SKIN_PARTS = [
   { id: "head", label: "Head", color: "#f0b65f" },
@@ -10,7 +11,7 @@ export const SKIN_PARTS = [
   { id: "right_leg", label: "Right Leg", color: "#74ca86" },
 ] as const;
 
-export type SkinPartId = typeof SKIN_PARTS[number]["id"];
+export type SkinPartId = PlayerSkinPart;
 export type PartAssignments = Record<string, SkinPartId | null>;
 export type PartOrders = Record<string, number | null>;
 

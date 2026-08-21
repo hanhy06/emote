@@ -3,7 +3,7 @@ import { compileImportedProject } from "../../test/compileImportedFixture";
 import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "../../format/emoteAnimation";
 import { serializeEmoteAnimation } from "../../format/serializer";
 import { createConversionDocument } from "../../domain/conversionDocument";
-import { assignDocumentNodeSpace } from "../../domain/conversionEditor";
+import { assignDocumentNodeSpace } from "../../domain/conversionDocument";
 import { compileConversionAnimation } from "../../compiler/animationCompiler";
 import type { Schema3EmoteAnimation } from "./animationSchema3/animationSchema3";
 import { emoteJsonAdapter } from "./emoteJsonAdapter";

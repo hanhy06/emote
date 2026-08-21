@@ -1,4 +1,4 @@
-import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, Matrix16, NodeSpace, Participant } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
 import type { ConversionIssue } from "../foundation/diagnostics";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
@@ -47,7 +47,7 @@ export type ImportedNode =
 
 export interface ImportedSkinPart {
   participant?: Participant;
-  part: "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg";
+  part: PlayerSkinPart;
   order: number;
 }
 

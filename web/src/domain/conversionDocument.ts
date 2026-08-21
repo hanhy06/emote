@@ -1,5 +1,5 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace } from "../format/emoteAnimation";
+import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { readSnbtRawField, readSnbtStringField } from "../format/snbt";
 import type {
@@ -9,7 +9,6 @@ import type {
   ImportedSkinPart,
   ImportSource,
 } from "./conversionSeed";
-import type { SkinPartId } from "../preview/skinAssignment";
 
 type ImportedItemNode = Extract<ImportedNode, { type: "item_display" }>;
 type ImportedBlockNode = Extract<ImportedNode, { type: "block_display" }>;
@@ -30,7 +29,7 @@ export type ConversionNode =
 export interface SkinGroup {
   nodeIds: string[];
   assignment: {
-    part: SkinPartId;
+    part: PlayerSkinPart;
     order: number;
   } | null;
 }
@@ -172,7 +171,7 @@ export function documentNodeSpaces(document: ConversionDocument): Record<string,
   return Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [nodeId, node.space]));
 }
 
-export function documentPartAssignments(document: ConversionDocument): Record<string, SkinPartId | null> {
+export function documentPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
   return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.skinGroupId
     ? [[nodeId, document.skinGroups[node.skinGroupId]?.assignment?.part ?? null]]
     : []));
@@ -184,7 +183,94 @@ export function documentPartOrders(document: ConversionDocument): Record<string,
     : []));
 }
 
-export function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
+export function assignDocumentSkinPart(
+  document: ConversionDocument,
+  selectedNodeIds: ReadonlySet<string>,
+  part: PlayerSkinPart | null,
+): ConversionDocument {
+  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
+  if (selectedGroupIds.size === 0) return document;
+  const order = selectedGroupIds.size === 1 && part !== null
+    ? new Set(Object.entries(document.skinGroups)
+      .filter(([groupId, group]) => !selectedGroupIds.has(groupId) && group.assignment?.part === part)
+      .map(([groupId]) => groupId)).size
+    : null;
+  const skinGroups = { ...document.skinGroups };
+  for (const groupId of selectedGroupIds) {
+    const group = skinGroups[groupId];
+    skinGroups[groupId] = {
+      ...group,
+      assignment: part === null ? null : { part, order: order ?? group.assignment?.order ?? 0 },
+    };
+  }
+  const selectedSpaceGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
+  const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
+    nodeId,
+    part !== null && node.space === "scene" && selectedSpaceGroups.has(node.spaceAssignmentGroup ?? nodeId)
+      ? { ...node, space: "initiator" as const }
+      : node,
+  ])) as ConversionDocument["nodes"];
+  return { ...document, nodes, skinGroups };
+}
+
+export function assignDocumentSkinOrder(
+  document: ConversionDocument,
+  selectedNodeIds: ReadonlySet<string>,
+  order: number,
+): ConversionDocument {
+  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
+  const skinGroups = { ...document.skinGroups };
+  for (const groupId of selectedGroupIds) {
+    const group = skinGroups[groupId];
+    if (group.assignment) skinGroups[groupId] = { ...group, assignment: { ...group.assignment, order } };
+  }
+  return { ...document, skinGroups };
+}
+
+export function assignDocumentNodeSpace(
+  document: ConversionDocument,
+  selectedNodeIds: ReadonlySet<string>,
+  space: NodeSpace,
+): ConversionDocument {
+  const selectedGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
+  const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
+    nodeId,
+    selectedGroups.has(node.spaceAssignmentGroup ?? nodeId) ? { ...node, space } : node,
+  ])) as ConversionDocument["nodes"];
+  if (space !== "scene") return { ...document, nodes };
+  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
+  const skinGroups = { ...document.skinGroups };
+  for (const groupId of selectedGroupIds) skinGroups[groupId] = { ...skinGroups[groupId], assignment: null };
+  return { ...document, nodes, skinGroups };
+}
+
+export function editDocumentAnimation(
+  document: ConversionDocument,
+  animationIndex: number,
+  edit: (animation: ImportedAnimation) => ImportedAnimation,
+): ConversionDocument {
+  if (!document.animations[animationIndex]) return document;
+  return {
+    ...document,
+    animations: document.animations.map((animation, index) => index === animationIndex
+      ? { ...animation, source: edit(animation.source) }
+      : animation),
+  };
+}
+
+export function updateDocumentAnimationOutput(
+  document: ConversionDocument,
+  animationIndex: number,
+  output: AnimationOutputSettings,
+): ConversionDocument {
+  if (!document.animations[animationIndex]) return document;
+  return {
+    ...document,
+    animations: document.animations.map((animation, index) => index === animationIndex ? { ...animation, output } : animation),
+  };
+}
+
+function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
   const quotedId = readSnbtStringField(itemStackSnbt, "id");
   const rawId = quotedId === null ? readSnbtRawField(itemStackSnbt, "id") : null;
   const id = quotedId ?? (rawId && /^[A-Za-z0-9._+-]+$/.test(rawId) ? rawId : null);
@@ -193,4 +279,18 @@ export function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
 
 function isSkinCandidate(node: ImportedItemNode): boolean {
   return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || isPlayerHeadItemStack(node.itemStackSnbt));
+}
+
+function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
+  return new Set([...selectedNodeIds].flatMap((nodeId) => {
+    const node = document.nodes[nodeId];
+    return node?.type === "item_display" && node.skinGroupId ? [node.skinGroupId] : [];
+  }));
+}
+
+function selectedSpaceAssignmentGroups(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
+  return new Set([...selectedNodeIds].flatMap((nodeId) => {
+    const node = document.nodes[nodeId];
+    return node ? [node.spaceAssignmentGroup ?? nodeId] : [];
+  }));
 }

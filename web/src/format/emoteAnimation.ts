@@ -68,6 +68,7 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
 export type NodeSpace = "scene" | "initiator" | "partner";
 export type Participant = "initiator" | "partner";
 export type HeldItemArm = "left" | "right";
+export type PlayerSkinPart = "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg";
 
 export interface LocalTransform {
   position: Vec3;
@@ -92,7 +93,7 @@ export type EmoteNode =
     item_stack_snbt?: string;
     item_source?: { type: "participant_hand"; arm: HeldItemArm };
     item_display: string;
-    skin?: { participant: Participant; part: "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg"; order: number };
+    skin?: { participant: Participant; part: PlayerSkinPart; order: number };
   })
   | (EmoteDisplayNodeBase & { type: "block_display"; block_state_snbt: string })
   | (EmoteDisplayNodeBase & { type: "text_display"; text: unknown })

@@ -2,8 +2,10 @@ import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { IDENTITY_MATRIX } from "../format/matrix";
 import type { ImportedProject } from "./conversionSeed";
-import { assignDocumentNodeSpace, assignDocumentSkinOrder, assignDocumentSkinPart } from "./conversionEditor";
 import {
+  assignDocumentNodeSpace,
+  assignDocumentSkinOrder,
+  assignDocumentSkinPart,
   createConversionDocument,
   documentPartAssignments,
   documentPartOrders,

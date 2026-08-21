@@ -2,11 +2,9 @@ import {
   assignDocumentNodeSpace,
   assignDocumentSkinOrder,
   assignDocumentSkinPart,
-  updateDocumentAnimationOutput,
-} from "./domain/conversionEditor";
-import {
   createConversionDocument,
   documentPartAssignments,
+  updateDocumentAnimationOutput,
   type AnimationOutputSettings,
   type ConversionDocument,
   type ConversionNode,
