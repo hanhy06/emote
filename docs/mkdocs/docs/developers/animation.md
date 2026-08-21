@@ -278,6 +278,14 @@ Available queries are:
 | `q.delta_time` | `0.05` during normal ticks and `0` when a cycle is initialized. |
 | `q.loop_count` | Zero-based number of completed loops. |
 | `q.key_frame_lerp_time` | Uneased progress from the current vector keyframe to the next, from `0` to `1`; `0` outside vector evaluation. |
+| `q.life_time` | Alias of `q.anim_time`, for imported Molang compatibility. |
+| `q.ground_speed` | Initiator horizontal movement speed in blocks per second. |
+| `q.vertical_speed` | Initiator vertical movement speed in blocks per second; positive is upward. |
+| `q.is_moving` | `1` while the initiator has non-zero movement, otherwise `0`. |
+| `q.is_on_ground` | `1` while the initiator is on the ground, otherwise `0`. |
+| `q.is_sprinting` | `1` while the initiator is sprinting, otherwise `0`. |
+
+Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
 
 Molang source is compiled when the Animation loads. A value that evaluates to a non-finite number stops playback as a runtime failure.
 

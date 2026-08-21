@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import org.joml.Matrix4f;
@@ -17,6 +18,7 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedAnimation emote;
     private final TimelineTarget target;
+    private final MolangQueries.Source querySource;
     private AnimationEvaluator evaluator;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
@@ -39,15 +41,29 @@ public final class AnimationPlayer {
         PlaybackNodes nodes,
         PlaybackEntityController entityController
     ) {
-        this(emote, new EntityTimelineTarget(emote, nodes, entityController));
+        this(emote, new EntityTimelineTarget(emote, nodes, entityController), MolangQueries.EMPTY);
+    }
+
+    public AnimationPlayer(
+        PreparedAnimation emote,
+        PlaybackNodes nodes,
+        PlaybackEntityController entityController,
+        MolangQueries.Source querySource
+    ) {
+        this(emote, new EntityTimelineTarget(emote, nodes, entityController), querySource);
     }
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
+        this(emote, target, MolangQueries.EMPTY);
+    }
+
+    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, MolangQueries.Source querySource) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
+        this.querySource = Objects.requireNonNull(querySource, "querySource");
         this.evaluator = emote.playbackSegments().isEmpty()
-            ? new AnimationEvaluator(emote)
+            ? new AnimationEvaluator(emote, this.querySource)
             : null;
     }
 
@@ -283,7 +299,7 @@ public final class AnimationPlayer {
         if (selected != this.activePlaybackSegment) {
             this.activePlaybackSegment = selected;
             this.mirroredNodes = segment.mirroredNodes();
-            this.evaluator = new AnimationEvaluator(segment.animation());
+            this.evaluator = new AnimationEvaluator(segment.animation(), this.querySource);
             this.evaluator.beginCycle(localTick, 0);
         } else {
             this.evaluator.evaluate(localTick, 0);

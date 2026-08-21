@@ -28,4 +28,16 @@ class MolangEngineTest {
         assertEquals(11.0D, session.evaluate(variable));
         assertEquals(21.0D, session.evaluate(variable));
     }
+
+    @Test
+    void emptyQuerySourceSuppliesZeroPlayerState() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting"
+        );
+        MolangEngine.Session session = this.engine.createSession();
+
+        MolangQueries.EMPTY.apply(session);
+
+        assertEquals(0.0D, session.evaluate(expression));
+    }
 }

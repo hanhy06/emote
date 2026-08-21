@@ -8,16 +8,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
+import static io.github.hanhy06.emote.playback.molang.MolangQueries.SUPPORTED_NAMES;
 
 public final class PreparedAnimationTimeline {
-    private static final Set<String> QUERIES = Set.of(
-        "anim_time",
-        "anim_time_ticks",
-        "anim_length",
-        "delta_time",
-        "loop_count",
-        "key_frame_lerp_time"
-    );
     private static final Pattern QUERY_REFERENCE = Pattern.compile("(?i)\\b(?:q|query)\\.([a-z_][a-z0-9_]*)");
     private static final Pattern VARIABLE_ASSIGNMENT = Pattern.compile(
         "(?i)\\b(?:v|variable)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
@@ -135,7 +128,7 @@ public final class PreparedAnimationTimeline {
         Matcher matcher = QUERY_REFERENCE.matcher(source);
         while (matcher.find()) {
             String query = matcher.group(1).toLowerCase(Locale.ROOT);
-            if (!QUERIES.contains(query)) {
+            if (!SUPPORTED_NAMES.contains(query)) {
                 throw new IllegalArgumentException(path + " references unsupported query " + query);
             }
         }

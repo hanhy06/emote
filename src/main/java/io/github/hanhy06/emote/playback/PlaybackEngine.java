@@ -12,6 +12,7 @@ import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
@@ -204,7 +205,12 @@ public class PlaybackEngine implements ConfigListener {
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
             this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
-            AnimationPlayer timeline = new AnimationPlayer(emote, nodes, this.entityController);
+            AnimationPlayer timeline = new AnimationPlayer(
+                emote,
+                nodes,
+                this.entityController,
+                MolangQueries.forPlayer(player)
+            );
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
@@ -436,8 +442,14 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedAnimation emote) {
-        AnimationPlayer animation = new AnimationPlayer(emote, session.nodes(), this.entityController);
-        animation.bindEvents(new EventCommandExecutor(sessionInitiatorPlayer(session), session.nodes(), animation));
+        ServerPlayer initiator = sessionInitiatorPlayer(session);
+        AnimationPlayer animation = new AnimationPlayer(
+            emote,
+            session.nodes(),
+            this.entityController,
+            MolangQueries.forPlayer(initiator)
+        );
+        animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation));
         animation.start();
         return animation;
     }

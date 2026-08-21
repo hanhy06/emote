@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.playback.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -18,6 +19,7 @@ import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 final class AnimationEvaluator {
     private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
+    private final MolangQueries.Source querySource;
     private final NodeState[] nodes;
     private final Map<String, Integer> nodeIndexes;
     private final Matrix4f localMatrix = new Matrix4f();
@@ -30,9 +32,10 @@ final class AnimationEvaluator {
 
     private MolangEngine.Session session;
 
-    AnimationEvaluator(PreparedAnimation animation) {
+    AnimationEvaluator(PreparedAnimation animation, MolangQueries.Source querySource) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
+        this.querySource = querySource;
         this.nodes = new NodeState[this.timeline.nodeOrder().size()];
         Map<String, Integer> indexes = new HashMap<>();
         EmoteAnimation source = animation.animation();
@@ -142,12 +145,15 @@ final class AnimationEvaluator {
     }
 
     private void setQueries(int tick, int loopCount, double deltaTime) {
-        this.session.setQuery("anim_time", tick / 20.0D);
+        double animationTime = tick / 20.0D;
+        this.session.setQuery("anim_time", animationTime);
         this.session.setQuery("anim_time_ticks", tick);
         this.session.setQuery("anim_length", this.animation.durationTicks() / 20.0D);
         this.session.setQuery("delta_time", deltaTime);
         this.session.setQuery("loop_count", loopCount);
         this.session.setQuery("key_frame_lerp_time", 0.0D);
+        this.session.setQuery("life_time", animationTime);
+        this.querySource.apply(this.session);
     }
 
     private int vector(List<CompiledVectorKeyframe> frames, int currentIndex, int tick, Vec3 defaults, double[] target) {

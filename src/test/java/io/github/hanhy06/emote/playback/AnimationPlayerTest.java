@@ -5,6 +5,7 @@ import com.google.gson.JsonParser;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -52,6 +53,33 @@ class AnimationPlayerTest {
 
         assertEquals(3.5F, target.matrix("display").m30(), 1.0E-5F);
         assertFalse(target.visibility.get("display"));
+    }
+
+    @Test
+    void evaluatesInitiatorQueriesAndLifeTimeBeforeTracks() throws Exception {
+        JsonObject root = base();
+        positionTrack(root).remove(1);
+        JsonObject frame = positionTrack(root).get(0).getAsJsonObject();
+        frame.remove("interpolation");
+        frame.getAsJsonArray("value").set(0, JsonParser.parseString(
+            "\"q.life_time + q.ground_speed + q.vertical_speed + q.is_moving + q.is_on_ground + q.is_sprinting\""
+        ));
+
+        MolangQueries.Source queries = session -> {
+            session.setQuery("ground_speed", 2.0D);
+            session.setQuery("vertical_speed", 3.0D);
+            session.setQuery("is_moving", 1.0D);
+            session.setQuery("is_on_ground", 1.0D);
+            session.setQuery("is_sprinting", 1.0D);
+        };
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
+
+        player.start();
+        assertEquals(9.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        player.advance();
+        assertEquals(9.05F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
