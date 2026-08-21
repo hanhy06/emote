@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
-import io.github.hanhy06.emote.skin.mineskin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.*;
 import org.jspecify.annotations.NonNull;
 import org.junit.jupiter.api.Test;

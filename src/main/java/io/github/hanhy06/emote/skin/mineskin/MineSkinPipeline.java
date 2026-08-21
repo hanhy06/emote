@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.skin.mineskin;
 
 import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;

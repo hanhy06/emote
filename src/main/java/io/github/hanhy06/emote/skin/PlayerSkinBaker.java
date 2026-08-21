@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin.mineskin;
+package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
@@ -63,13 +63,13 @@ public final class PlayerSkinBaker {
     private static final FaceTarget OVERLAY_LEFT = new FaceTarget(48, 8, 8, 8);
     private static final FaceTarget OVERLAY_BACK = new FaceTarget(56, 8, 8, 8);
 
-    PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
+    public PreparedSkin prepare(BufferedImage sourceImage, boolean slimModel) {
         boolean effectiveSlimModel = resolveSlimModel(sourceImage, slimModel);
         BufferedImage normalizedImage = normalizeSkinImage(sourceImage);
         return new PreparedSkin(normalizedImage, effectiveSlimModel);
     }
 
-    byte[] bake(
+    public byte[] bake(
         PreparedSkin preparedSkin,
         PlayerSkinPart skinPart,
         PlayerSkinSegment skinSegment
@@ -324,7 +324,7 @@ public final class PlayerSkinBaker {
     private record PartAtlas(FaceMap base, FaceMap overlay, FaceMap slimBase, FaceMap slimOverlay) {
     }
 
-    final class PreparedSkin {
+    public final class PreparedSkin {
         private final BufferedImage normalizedImage;
         private final boolean slimModel;
         private final Map<PlayerSkinPart, BufferedImage> expandedArmImages = new EnumMap<>(PlayerSkinPart.class);
