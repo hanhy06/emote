@@ -1,15 +1,17 @@
 # Permissions and Access Control
 
-Emote's access policy is defined in `config/emote/emotes.json`. Actual permissions are granted through a Fabric Permissions API-compatible permission mod such as LuckPerms.
+Emote reads access rules from `config/emote/emotes.json`. Permissions are resolved through a Fabric Permissions API-compatible mod such as LuckPerms.
 
 ## Permission types
 
 | Permission | Purpose | Default |
 |---|---|---|
-| `emote.manage` | List, reload, enable, disable, stop others, stop all, and stress-test commands | Allowed for operators with the game-master permission level |
-| `emote.bypass` | Play while ignoring server policy | Never granted automatically |
-| `emote.default` | Default grant group in `emotes.json` | Allowed for every player unless overridden by a permission mod |
-| Custom permission | Server-specific emote groups such as VIP, supporter, or administrator | Granted through the permission mod |
+| `emote.manage` | Use list, reload, enable, disable, stop-other, stop-all, and stress-test commands | Game-master permission level |
+| `emote.bypass` | Ignore selection and playback policy for administration and testing | Denied |
+| `emote.default` | Built-in group used by `emotes.json` | Allowed unless explicitly denied |
+| Custom permission | Server-defined groups such as VIP, supporter, or administrator | Denied unless granted |
+
+`emote.manage` does not grant emote access. Grant `emote.bypass` or add a permission entry containing `"emotes": ["*"]` when an administrator also needs every emote.
 
 Example LuckPerms commands:
 
@@ -19,9 +21,20 @@ Example LuckPerms commands:
 /lp user <player> permission set emote.bypass true
 ```
 
-`emote.manage` only grants management commands. An operator with this permission does not automatically gain access to every emote. To grant all emotes as well, set `"emotes": ["*"]` for a separate group or grant `emote.bypass`.
+See the [LuckPerms Wiki](https://luckperms.net/wiki/Home) for permission-mod usage.
 
-See the [LuckPerms Wiki](https://luckperms.net/wiki/Home) for detailed usage.
+## Playback policy
+
+| Playback source | Permission | Standalone | Disable | Cooldown |
+|---|:---:|:---:|:---:|:---:|
+| Wheel and commands | <span style="color: #4caf50">Yes</span> | <span style="color: #4caf50">Yes</span> | <span style="color: #4caf50">Yes</span> | <span style="color: #4caf50">Yes</span> |
+| Idle | <span style="color: #ef5350">No</span> | <span style="color: #4caf50">Yes</span> | <span style="color: #4caf50">Yes</span> | <span style="color: #4caf50">Yes</span> |
+| API | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> |
+| emote.bypass | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> | <span style="color: #ef5350">No</span> |
+
+Cooldown does not hide an emote from menus, search results, suggestions, or the wheel. It is checked only when playback is requested.
+
+API and bypass playback still require a loaded ID and remain subject to playback-request listeners, display-entity limits, skin preparation, and other playback-engine failures.
 
 ## `emotes.json`
 
@@ -46,49 +59,51 @@ See the [LuckPerms Wiki](https://luckperms.net/wiki/Home) for detailed usage.
 }
 ```
 
-Access is evaluated in this order:
+| Field | Behavior |
+|---|---|
+| `schema_version` | Must be `2`. |
+| `disabled` | IDs normal players and idle playback cannot select or start. Definitions remain loaded. |
+| `permissions` | Permission groups used to assemble each player's available emote IDs. |
+| `permission` | Permission checked through the installed permission provider. |
+| `emotes` | Exact allowed IDs. `"*"` grants every enabled standalone emote. |
+| `idle` | Optional idle-playback rule. See [Cooldowns and Idle Emotes](playback-policy.md). |
 
-1. Allow if the player has `emote.bypass`.
-2. Deny if the ID is in `disabled`.
-3. Allow if any permission group held by the player contains the ID or `*` in `emotes`.
-4. Deny if no rule matches.
+Normal player access is resolved as follows:
 
-Disallowed emotes do not appear in menus, searches, command suggestions, or the client wheel, and cannot be played by entering their ID directly.
+| Priority | Condition | Result |
+|---:|---|---|
+| 1 | Player has `emote.bypass` | Allow without policy checks. |
+| 2 | Animation has `standalone: false` | Deny direct selection and playback. |
+| 3 | ID appears in `disabled` | Deny direct selection and playback. |
+| 4 | Any granted permission entry contains the ID or `"*"` | Allow. |
+| 5 | No permission entry matches | Deny. |
 
-!!! note "`emote.default` is a regular permission"
-    `emote.default` is merely allowed by default. If the permission mod explicitly gives a player `emote.default=false`, that player cannot use the default list either.
+Permission entries are combined for normal emote access, so their order does not change which IDs a player receives. Entry order matters for idle settings because the first granted entry containing `idle` is selected.
 
-## How `disabled` works
+!!! note "`emote.default` can be denied"
+    `emote.default` is allowed only as its permission-provider default. An explicit `emote.default=false` overrides that default.
 
-`disabled` does not delete files or exclude them from loading. Emote definitions remain loaded, but normal players cannot select or play them directly.
+## Disabling emotes
 
-```text
-/emote disable example:dance
-```
+| Operation | Effect |
+|---|---|
+| Add an ID to `disabled` | Hides it from normal selection and rejects normal or idle playback. |
+| `/emote disable <id>` | Adds an enabled file-emote ID, stops playback, reloads Emote, and synchronizes client wheels. |
+| `/emote enable <id>` | Removes a disabled ID, reloads Emote, and synchronizes client wheels. |
+| Reference a disabled Animation from a Sequence | Allowed; only the Sequence ID is checked when the player starts the Sequence. |
+| Start a disabled ID through `EmoteApi.play` or with `emote.bypass` | Allowed if the ID is loaded and playback succeeds. |
 
-This command:
+`/emote disable` accepts file emotes loaded from `animations/`, including Sequences. It does not disable API registrations. Both enable and disable perform a full Emote reload, so all active playback is stopped.
 
-1. Saves `example:dance` to `disabled` in `emotes.json`.
-2. Stops current playback of that ID.
-3. Reloads the entire Emote configuration, which also stops other emotes currently playing.
-4. Updates player menus and wheel lists.
+## Bypass limits
 
-To allow it again, use:
-
-```text
-/emote enable example:dance
-```
-
-Players with `emote.bypass` can still see and play disabled emotes.
-
-Disabling an Animation does not prevent another Sequence from referencing it as an internal step. To block the entire Sequence, add the Sequence's own ID to `disabled`.
-
-## What `emote.bypass` does not bypass
-
-`emote.bypass` is intended for administrators and development testing. It bypasses `standalone`, disabled IDs, emote permissions, and cooldowns, but it cannot bypass the minimum requirements for playback:
-
-- Nonexistent IDs cannot be played.
-- Invalid Animations or Sequences that failed to load cannot be used.
-- Display-entity limits and playback-start failures are not ignored.
-- Playback-request listeners can still cancel playback.
-- Management commands that require `emote.manage` are not granted.
+| Check | Bypassed by `emote.bypass` |
+|---|:---:|
+| `standalone` | Yes |
+| `disabled` | Yes |
+| Emote permission entries | Yes |
+| Cooldown | Yes |
+| Loaded and valid ID | No |
+| Playback-request listener cancellation | No |
+| Display-entity limit and playback-start failures | No |
+| `emote.manage` requirement | No |
