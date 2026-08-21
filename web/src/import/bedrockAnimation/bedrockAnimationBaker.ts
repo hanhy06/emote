@@ -8,6 +8,7 @@ import type {
 } from "./bedrockAnimationSchema";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
+import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
 
 interface ResolvedKeyframe {
   time: number;
@@ -145,6 +146,7 @@ export function evaluateBedrockExpression(expression: BedrockExpression, animati
   };
   try {
     const result = parser.parse(expression, {
+      ...PREVIEW_PLAYER_STATE_QUERIES,
       "query.anim_time": animationTime,
       "q.anim_time": animationTime,
       "query.delta_time": 1 / TICKS_PER_SECOND,

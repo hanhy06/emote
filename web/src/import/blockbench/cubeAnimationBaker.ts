@@ -2,6 +2,7 @@ import MolangParser from "molangjs/dist/molang.esm.js";
 import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
+import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
 import type { BbDataPoint, BbKeyframe } from "./cubeProjectSchema";
 import { cubeEasingProgress } from "./cubeEasing";
 
@@ -134,6 +135,7 @@ function evaluateMolang(value: string | number, parser: MolangParser, context: M
   if (Number.isFinite(numeric)) return numeric;
   try {
     const result = parser.parse(value, {
+      ...PREVIEW_PLAYER_STATE_QUERIES,
       "query.anim_time": context.animationTime,
       "q.anim_time": context.animationTime,
       "query.life_time": context.animationTime,

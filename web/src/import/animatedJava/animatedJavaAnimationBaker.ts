@@ -1,6 +1,7 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND, secondsToTicks } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
+import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
 import type { AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";
 
 type Vector3Tuple = [number, number, number];
@@ -258,6 +259,7 @@ function evaluateVector(values: CompiledVector, parser: MolangParser, context: M
 function parseMolang(parser: MolangParser, expression: string, context: MolangContext, path: string): number {
   try {
     const value = parser.parse(expression, {
+      ...PREVIEW_PLAYER_STATE_QUERIES,
       "query.anim_time": context.animationTime,
       "q.anim_time": context.animationTime,
       "query.life_time": context.animationTime,

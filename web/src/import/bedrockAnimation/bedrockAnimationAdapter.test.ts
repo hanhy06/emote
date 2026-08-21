@@ -147,7 +147,7 @@ describe("bedrockAnimationAdapter", () => {
     ]));
   });
 
-  it("opens a file containing only unsupported runtime Molang for metadata editing", async () => {
+  it("previews supported runtime player queries without warning and preserves them for export", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
@@ -156,14 +156,11 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations).toHaveLength(1);
-    expect(imported.animations[0]).toMatchObject({
-      name: "runtime",
-      tracks: {},
-      availability: { preview: "create_pose", exportable: true },
-    });
-    expect(imported.diagnostics[0]).toMatchObject({ sourcePath: "runtime.body.rotation[1]" });
+    expect(imported.animations[0].availability).toBeUndefined();
+    expect(imported.diagnostics).toEqual([]);
+    expect(imported.animations[0].tracks.body.transforms[0].matrix).toEqual(expect.any(Array));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
-    expect(compiled.timeline.duration).toBe("20t");
+    expect(compiled.timeline.duration).toBe("1t");
     expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("q.is_on_ground * 45");
   });
 
