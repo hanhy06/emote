@@ -1,6 +1,7 @@
 import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { formatMinecraftTime } from "../../format/minecraftTime";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
+import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
@@ -16,7 +17,11 @@ export function createBedrockRuntime(animation: BedrockAnimation, durationTicks:
   for (const bone of BEDROCK_PLAYER_BONES) {
     const source = Object.entries(animation.bones ?? {}).find(([name]) => resolveBedrockPlayerBone(name)?.id === bone.id)?.[1];
     const parent = bone.parent ? `${bone.parent}_x` : "bedrock_scene";
-    const basePosition = bone.pivot.map((value, axis) => (value - (BEDROCK_PLAYER_BONES.find((candidate) => candidate.id === bone.parent)?.pivot[axis] ?? 0)) / 16) as [number, number, number];
+    const parentPivot = BEDROCK_PLAYER_BONES.find((candidate) => candidate.id === bone.parent)?.pivot ?? ZERO;
+    const basePosition = bedrockPositionToCanonical(
+      bone.pivot.map((value, axis) => value - parentPivot[axis]),
+      (value) => -value,
+    ).map((value) => value / 16) as [number, number, number];
     nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
@@ -38,8 +43,9 @@ export function createBedrockRuntime(animation: BedrockAnimation, durationTicks:
       };
     }
     if (!source) continue;
-    const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, (values) => values.map((value, axis) => affine(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = channelVectors(source.rotation, timelineRate, playbackRate);
+    const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, (values) =>
+      bedrockPositionToCanonical(values, negate).map((value, axis) => affine(value, 1 / 16, basePosition[axis])) as MolangVector);
+    const rotation = convertChannel(source.rotation, ZERO, timelineRate, playbackRate, (values) => bedrockRotationToCanonical(values, negate));
     const scale = convertChannel(source.scale, ONE, timelineRate, playbackRate, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
@@ -59,10 +65,6 @@ export function createBedrockRuntime(animation: BedrockAnimation, durationTicks:
 }
 
 type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
-
-function channelVectors(channel: BedrockChannel | undefined, timelineRate: number, expressionRate: number | null): EmoteVectorKeyframe[] | undefined {
-  return convertChannel(channel, ZERO, timelineRate, expressionRate, (values) => values);
-}
 
 function convertChannel(
   channel: BedrockChannel | undefined,
@@ -112,6 +114,10 @@ function rewriteExpression(value: BedrockExpression, playbackRate: number | null
 
 function rewriteProgramExpression(value: BedrockExpression): string {
   return String(value).trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
+}
+
+function negate(value: MolangScalar): MolangScalar {
+  return typeof value === "number" ? -value : `-(${value})`;
 }
 
 function affine(value: MolangScalar, factor: number, offset: number): MolangScalar {

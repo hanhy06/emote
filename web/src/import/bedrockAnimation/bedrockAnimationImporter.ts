@@ -5,6 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
+import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
@@ -161,9 +162,10 @@ function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<str
     const bone = bedrockPlayerBoneById(id);
     const parent = bone.parent ? bedrockPlayerBoneById(bone.parent) : undefined;
     const transform = transforms.get(id) ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+    const sourcePosition = bone.pivot.map((value, axis) => (value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]);
     const local = composeTransform(
-      bone.pivot.map((value, axis) => ((value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]) / 16),
-      transform.rotation,
+      bedrockPositionToCanonical(sourcePosition, (value) => -value).map((value) => value / 16),
+      bedrockRotationToCanonical(transform.rotation, (value) => -value),
       transform.scale,
     );
     const world = parent

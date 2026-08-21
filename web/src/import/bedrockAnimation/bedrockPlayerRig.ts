@@ -2,6 +2,7 @@ import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import type { HeldItemArm } from "../../format/emoteAnimation";
+import { bedrockBoundsToCanonical } from "../coordinateSpace";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 
@@ -80,8 +81,11 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
 
 export function bedrockPlayerHeadConversionMatrix(bone: BedrockPlayerBone) {
   if (!bone.cube) throw new Error(`Bedrock player bone ${bone.id} does not have geometry.`);
-  const from = bone.cube.from.map((value, axis) => (value - bone.pivot[axis]) / 16);
-  const to = bone.cube.to.map((value, axis) => (value - bone.pivot[axis]) / 16);
+  const sourceFrom = bone.cube.from.map((value, axis) => value - bone.pivot[axis]);
+  const sourceTo = bone.cube.to.map((value, axis) => value - bone.pivot[axis]);
+  const canonical = bedrockBoundsToCanonical(sourceFrom, sourceTo);
+  const from = canonical.from.map((value) => value / 16);
+  const to = canonical.to.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);
   const center = from.map((value, axis) => (value + to[axis]) / 2);
   const fit = new Matrix4()

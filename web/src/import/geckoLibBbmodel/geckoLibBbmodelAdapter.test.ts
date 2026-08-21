@@ -64,6 +64,24 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 
+  it("keeps GeckoLib bbmodel coordinates in Blockbench space at the import boundary", async () => {
+    const value = project();
+    value.groups[0].origin = [16, 0, 0];
+    value.groups[0].rotation = [10, 20, 30];
+    value.outliner[0].origin = [16, 0, 0];
+    value.outliner[0].rotation = [10, 20, 30];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+
+    const expected = [
+      0.7629353263, -0.4134090099, 0.3548646622, 0.9375,
+      0.440480916, 0.8274038618, 0.0169015418, 0,
+      -0.3206438844, 0.1529774167, 0.8675780422, 0,
+      0, 0, 0, 1,
+    ];
+    imported.nodes.root.defaultMatrix.forEach((value, index) => expect(value).toBeCloseTo(expected[index]));
+  });
+
   it("splits cubes in the same bone into independently assignable nodes", async () => {
     const value = project();
     value.elements.push({

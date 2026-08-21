@@ -38,6 +38,10 @@ describe("bedrockAnimationAdapter", () => {
     expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_item", "right_item", "left_leg", "right_leg"]);
     expect(imported.nodes.right_item.type === "anchor" && imported.nodes.right_item.suggestedHeldItemArm).toBe("right");
     expect(imported.nodes.left_arm.type === "item_display" && imported.nodes.left_arm.suggestedSkin).toEqual({ part: "left_arm", order: 0 });
+    expect(imported.nodes.left_arm.defaultMatrix[3]).toBeCloseTo(-0.29296875);
+    expect(imported.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(0.29296875);
+    expect(imported.nodes.left_arm.type === "item_display" && imported.nodes.left_arm.playerHeadConversion?.matrix[3]).toBeCloseTo(-0.0625);
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.playerHeadConversion?.matrix[3]).toBeCloseTo(0.0625);
     expect(imported.nodes.body.defaultMatrix[7]).toBeCloseTo(1.40625);
     expect(imported.animations[0].durationTicks).toBe(25);
     expect(imported.animations[0].loop).toBe("hold");
@@ -52,6 +56,28 @@ describe("bedrockAnimationAdapter", () => {
       item_source: { type: "participant_hand", arm: "right" },
       item_display: "thirdperson_righthand",
     });
+  });
+
+  it("normalizes Bedrock position and rotation axes before producing canonical transforms", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        axes: {
+          animation_length: 0.1,
+          bones: { body: { position: [16, 0, 0], rotation: [10, 20, 30] } },
+        },
+      },
+    })));
+
+    expect(imported.animations[0].tracks.body.transforms[0].matrix[3]).toBeCloseTo(-0.9375);
+
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "axes" });
+    expect(compiled.nodes.body_y.parent).toBe("body_z");
+    expect(compiled.nodes.body_x.parent).toBe("body_y");
+    expect(compiled.timeline.tracks.body_z.position?.[0].value).toEqual([-1, 0.75, 0]);
+    expect(compiled.timeline.tracks.body_z.rotation?.[0].value).toEqual([0, 0, 30]);
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value).toEqual([0, -20, 0]);
+    expect(compiled.timeline.tracks.body_x.rotation?.[0].value).toEqual([-10, 0, 0]);
   });
 
   it("bakes linear, Catmull-Rom, pre/post, and off-grid keyframes at 20 TPS", async () => {
@@ -99,7 +125,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations[0].tracks.body.transforms[10].matrix).not.toEqual(imported.nodes.body.defaultMatrix);
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "fast" });
     expect(compiled.timeline.duration).toBe("10t");
-    expect(compiled.timeline.tracks.root_y.rotation?.[0].value?.[1]).toBe("-(q.anim_time * 2) * 90");
+    expect(compiled.timeline.tracks.root_y.rotation?.[0].value?.[1]).toBe("-(-(q.anim_time * 2) * 90)");
   });
 
   it("uses a warned 20-tick duration for time-dependent Molang without a source duration", async () => {
@@ -124,7 +150,7 @@ describe("bedrockAnimationAdapter", () => {
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length" });
     expect(compiled.timeline.duration).toBe("12000t");
     expect(compiled.settings.playback.mode).toBe("once");
-    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("q.anim_time * 90");
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("-(q.anim_time * 90)");
     expect(validateEmoteAnimation(compiled)).toEqual([]);
     const [looped] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length", loop: "loop" });
     expect(looped.settings.playback.mode).toBe("loop");
@@ -169,7 +195,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations[0].tracks.body.transforms[0].matrix).toEqual(expect.any(Array));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
     expect(compiled.timeline.duration).toBe("1t");
-    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe(playerQueries);
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe(`-(${playerQueries})`);
   });
 
   it("preserves dynamic anim_time_update through a runtime Molang clock", async () => {
@@ -190,7 +216,7 @@ describe("bedrockAnimationAdapter", () => {
       initialize: "v.bedrock_anim_time = 0;",
       tick: "v.bedrock_anim_time = (v.bedrock_anim_time + q.delta_time * q.ground_speed);",
     });
-    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("v.bedrock_anim_time * 45");
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("-(v.bedrock_anim_time * 45)");
     expect(validateEmoteAnimation(compiled)).toEqual([]);
   });
 
