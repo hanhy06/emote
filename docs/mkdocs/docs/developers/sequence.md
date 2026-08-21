@@ -35,7 +35,7 @@ Sequence files use schema version `4` and combine existing Animations into one e
 }
 ```
 
-[Sequence reference JSON](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) and a [two-player reference](https://github.com/hanhy06/emote/blob/dev/docs/reference/two-player-sequence.json) are provided separately.
+Complete examples: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) and [two-player Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/two-player-sequence.json).
 
 ## Root fields
 
@@ -69,6 +69,8 @@ Sequence JSON files are limited to 8 MiB.
 
 Each stop-condition field matches the player-behavior setting in the [Animation format](animation.md).
 
+Sequences do not define `standalone`, `rotation_deadzone`, or `playback`. They are directly playable entries. Each active Animation step supplies its own `rotation_deadzone`; the Sequence controls the cooldown and player behavior.
+
 ## Animation steps
 
 Specify one Animation with `emote` and optionally add `repeat`.
@@ -79,7 +81,7 @@ Specify one Animation with `emote` and optionally add `repeat`.
 
 `repeat` defaults to `1`. Each repetition runs one complete playback cycle of the Animation. Repeating Animations include their `loop_delay` between cycles.
 
-The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and `server_sync` Animations may not be referenced.
+The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and Animations using `hold` or `server_sync` playback may not be referenced.
 
 ## Random selection
 
@@ -146,11 +148,13 @@ A wait step cannot be the first or last step, cannot be adjacent to another wait
 
 Animations in one Sequence may use different node IDs. The compiled Sequence creates the union of their nodes once, reuses those display entities throughout playback, and hides nodes that are absent from the active Animation step.
 
+All referenced Animations must use the same compiled player-skin layout: node IDs, participants, and body regions derived from `part`, `order`, and local Y scale.
+
 When two Animations reuse the same node ID, that node must have the same inherited space and compatible display content:
 
 - Node types must match.
 - Item stacks, display contexts, block states, text, and entity NBT must match.
-- Player skin participant, part, and order must match.
+- Player skin binding and participant-hand source must match.
 
 Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
 
@@ -201,6 +205,8 @@ A two-player Sequence adds `participants` at the root and contains one `await_pa
 
 The Sequence must contain exactly one top-level step, and it must be `await_partner`.
 
+The server supports cooperative Sequences. The current web converter imports and exports only linear Sequence steps using `emote` and `wait`; it does not accept `participants` or `await_partner`.
+
 | Field | Description |
 |---|---|
 | `await_partner.emote` | Offer Animation played by the initiator while waiting |
@@ -217,7 +223,7 @@ The offer Animation plays for the initiator, and partner-space content remains h
 - Both players are alive and in the same dimension
 - Horizontal distance is at most 2 blocks and vertical distance at most 1 block
 - Each player faces the other within 45 degrees
-- The partner is visible to the initiator
+- The initiator has line of sight to the partner
 
 If several compatible offers exist, the nearest initiator is selected. Joining reserves the partner, and the matching conditions are checked again when the offer Animation ends. If the reservation becomes invalid, the initiator keeps waiting until another partner joins or the timeout expires.
 
@@ -237,5 +243,3 @@ The web converter can import published schema 1 Sequences and export them as sch
 | Root `player` | `settings.player` |
 | No cooldown | `settings.cooldown`; use `"0t"` when migrating |
 | References to schema 1 Animations | Convert each Animation to schema 4 |
-
-Schema 4 keeps the existing Sequence structure and behavior unchanged while aligning its version with the Animation format.
