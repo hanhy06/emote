@@ -148,10 +148,18 @@ describe("bedrockAnimationAdapter", () => {
   });
 
   it("previews supported runtime player queries without warning and preserves them for export", async () => {
+    const playerQueries = [
+      "q.target_x_rotation", "q.target_y_rotation",
+      "q.body_x_rotation", "q.body_y_rotation",
+      "q.head_x_rotation", "q.head_y_rotation",
+      "q.eye_target_x_rotation", "q.eye_target_y_rotation",
+      "q.modified_distance_moved", "q.walk_distance",
+      "q.is_sneaking", "q.is_sleeping", "q.is_emoting", "q.item_is_charged", "q.sleep_rotation",
+    ].join(" + ");
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
-        runtime: { bones: { body: { rotation: [0, "q.is_on_ground * 45", 0] } } },
+        runtime: { bones: { body: { rotation: [0, playerQueries, 0] } } },
       },
     })));
 
@@ -161,7 +169,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations[0].tracks.body.transforms[0].matrix).toEqual(expect.any(Array));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
     expect(compiled.timeline.duration).toBe("1t");
-    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("q.is_on_ground * 45");
+    expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe(playerQueries);
   });
 
   it("preserves dynamic anim_time_update through a runtime Molang clock", async () => {
