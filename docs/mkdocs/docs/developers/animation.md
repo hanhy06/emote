@@ -169,7 +169,7 @@ A child node declares `parent` instead of `space`. It inherits its root node's s
 
 | Type | Required fields | Purpose |
 |---|---|---|
-| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack. |
+| `item_display` | Exactly one of `item_stack_snbt` or `item_source`, plus `item_display` | Displays a fixed or participant-held item stack. |
 | `block_display` | `block_state_snbt` | Displays a block state. |
 | `text_display` | `text` | Displays a Minecraft text component. |
 | `anchor` | None beyond the common hierarchy and transform fields | Groups child nodes or provides a command origin without creating an entity. |
@@ -181,6 +181,17 @@ Display nodes also support:
 - `skin`: Player-skin binding for an item display.
 
 `item_display` accepts Minecraft item display contexts such as `none`, `fixed`, `head`, `ground`, `gui`, and the first- or third-person hand contexts.
+
+`item_stack_snbt` contains a fixed item stack. Alternatively, `item_source` can display the item currently held in a participant's physical hand:
+
+```json
+"item_source": {
+  "type": "participant_hand",
+  "arm": "right"
+}
+```
+
+`arm` is the physical `left` or `right` hand, independent of the participant's main-hand setting. Participant-hand items cannot use `skin`.
 
 Anchor nodes do not support `visible` or `entity_nbt`. They can have transform tracks, but not visibility tracks, and cannot be used as a command source because they have no entity.
 
