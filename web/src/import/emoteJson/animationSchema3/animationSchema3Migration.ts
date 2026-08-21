@@ -23,6 +23,7 @@ export function migrateSchema3Animation(animation: Schema3EmoteAnimation): Emote
     metadata: { ...animation.metadata },
     settings: {
       ...animation.settings,
+      rotation_deadzone: 50,
       player: {
         ...animation.settings.player,
         stop_conditions: { ...animation.settings.player.stop_conditions },

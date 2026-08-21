@@ -47,6 +47,7 @@ function requireSettings(value: unknown): void {
   const settings = requireRecord(value, "settings");
   requireBoolean(settings.standalone, "settings.standalone");
   requireString(settings.cooldown, "settings.cooldown");
+  requireNumber(settings.rotation_deadzone, "settings.rotation_deadzone");
   const player = requireRecord(settings.player, "settings.player");
   requireBoolean(player.hidden, "settings.player.hidden");
   const stopConditions = requireRecord(player.stop_conditions, "settings.player.stop_conditions");

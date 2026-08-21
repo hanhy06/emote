@@ -13,6 +13,7 @@ describe("requireEmoteAnimation", () => {
       settings: {
         standalone: true,
         cooldown: "0t",
+        rotation_deadzone: 50,
         player: createDefaultPlayerBehavior(),
         playback: { mode: "once", loop_delay: "0t" },
       },
@@ -41,6 +42,7 @@ describe("requireEmoteAnimation", () => {
       settings: {
         standalone: true,
         cooldown: "0t",
+        rotation_deadzone: 50,
         player: createDefaultPlayerBehavior(),
         playback: { mode: "once", loop_delay: "0t" },
       },

@@ -13,6 +13,7 @@ function animation(): EmoteAnimation {
     settings: {
       standalone: true,
       cooldown: "0t",
+      rotation_deadzone: 50,
       player: createDefaultPlayerBehavior(),
       playback: { mode: "once", loop_delay: "0t" },
     },
@@ -118,6 +119,13 @@ describe("validateEmoteAnimation", () => {
     value.settings.player.stop_conditions.movement_distance = Number.NaN;
     expect(validateEmoteAnimation(value).map((issue) => issue.path))
       .toContain("settings.player.stop_conditions.movement_distance");
+  });
+
+  it("rejects a rotation deadzone outside the degree range", () => {
+    const value = animation();
+    value.settings.rotation_deadzone = 180.1;
+
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.rotation_deadzone");
   });
 
   it("allows timeline events with the same time in source order", () => {

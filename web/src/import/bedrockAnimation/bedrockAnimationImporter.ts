@@ -65,6 +65,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: sanitizeNamespace(sourceStem),
+    suggestedRotationDeadzone: 0,
     nodes: createBedrockPlayerNodes(bindMatrices),
     animations,
     diagnostics,

@@ -21,6 +21,7 @@ describe("emoteJsonAdapter", () => {
       settings: {
         standalone: true,
         cooldown: "0t",
+        rotation_deadzone: 35,
         player: createDefaultPlayerBehavior(),
         playback: { mode: "once", loop_delay: "0t" },
       },
@@ -60,6 +61,7 @@ describe("emoteJsonAdapter", () => {
     const [recompiled] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "demo" });
 
     expect(recompiled.schema_version).toBe(4);
+    expect(recompiled.settings.rotation_deadzone).toBe(35);
     expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "4t"]);
     expect(recompiled.timeline.tracks.arm.position?.[1].value?.[0]).toBeCloseTo(1);
     expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
@@ -74,6 +76,7 @@ describe("emoteJsonAdapter", () => {
       settings: {
         standalone: true,
         cooldown: "0t",
+        rotation_deadzone: 50,
         player: createDefaultPlayerBehavior(),
         playback: { mode: "loop", loop_delay: "2t" },
       },

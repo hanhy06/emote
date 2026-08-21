@@ -18,6 +18,7 @@ describe("compileImportedProject time handling", () => {
 
     expect(animation.settings.standalone).toBe(false);
     expect(animation.settings.cooldown).toBe("200t");
+    expect(animation.settings.rotation_deadzone).toBe(50);
     expect(animation.settings.playback).toEqual({ mode: "loop", loop_delay: "10t" });
   });
 

@@ -69,6 +69,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
+      suggestedRotationDeadzone: animation.settings.rotation_deadzone,
       nodes,
       animations: [importedAnimation],
       diagnostics,

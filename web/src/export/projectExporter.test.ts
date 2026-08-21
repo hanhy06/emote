@@ -59,6 +59,7 @@ function exportDocument(
     additionalMetadata: options.additionalMetadata,
     standalone: options.standalone ?? true,
     cooldown: options.cooldown ?? "0t",
+    rotationDeadzone: document.animations[0].output.rotationDeadzone,
     loopDelay: options.loopDelay ?? document.animations[0].output.loopDelay,
   };
   for (const [nodeId, space] of Object.entries(spaces)) {

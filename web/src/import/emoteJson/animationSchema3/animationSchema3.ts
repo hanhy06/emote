@@ -13,7 +13,7 @@ export interface Schema3EmoteAnimation {
   schema_version: 3;
   id: string;
   metadata: EmoteMetadata;
-  settings: EmoteAnimationSettings;
+  settings: Omit<EmoteAnimationSettings, "rotation_deadzone">;
   nodes: Record<string, Schema3EmoteNode>;
   timeline: Schema3EmoteTimeline;
 }

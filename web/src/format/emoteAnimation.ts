@@ -29,6 +29,7 @@ export interface EmoteMetadata {
 export interface EmoteAnimationSettings {
   standalone: boolean;
   cooldown: MinecraftTime;
+  rotation_deadzone: number;
   player: EmotePlayerBehavior;
   playback: {
     mode: "once" | "hold" | "loop" | "server_sync";

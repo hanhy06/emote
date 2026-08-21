@@ -50,6 +50,7 @@ describe("bedrockAnimationAdapter", () => {
 
     const compiled = compileImportedProject(imported, {});
     expect(compiled).toHaveLength(1);
+    expect(compiled[0].settings.rotation_deadzone).toBe(0);
     expect(compiled[0].nodes.body.type === "item_display" && compiled[0].nodes.body.skin).toEqual({ participant: "initiator", part: "body", order: 0 });
     expect(compiled[0].nodes.right_item).toMatchObject({
       type: "item_display",

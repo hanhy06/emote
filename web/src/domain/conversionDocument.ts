@@ -47,6 +47,7 @@ export interface AnimationOutputSettings {
   additionalMetadata: Record<string, unknown>;
   standalone: boolean;
   cooldown: string;
+  rotationDeadzone: number;
   loopDelay: string;
 }
 
@@ -137,6 +138,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           additionalMetadata: animationAdditionalMetadata,
           standalone: project.suggestedStandalone ?? true,
           cooldown: project.suggestedCooldown ?? "0t",
+          rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };

@@ -82,6 +82,10 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): v
     || animation.settings.player.stop_conditions.movement_distance < 0) {
     add(issues, "settings.player.stop_conditions.movement_distance", "must be a finite non-negative number");
   }
+  if (!Number.isFinite(animation.settings.rotation_deadzone)
+    || animation.settings.rotation_deadzone < 0 || animation.settings.rotation_deadzone > 180) {
+    add(issues, "settings.rotation_deadzone", "must be a finite number between 0 and 180");
+  }
   validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
   const loopDelayTicks = validateTime(animation.settings.playback.loop_delay, 0, "settings.playback.loop_delay", issues);
   if (["once", "hold"].includes(animation.settings.playback.mode) && loopDelayTicks !== null && loopDelayTicks !== 0) {
