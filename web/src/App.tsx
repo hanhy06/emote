@@ -5,7 +5,6 @@ import { AssignmentPanel } from "./components/AssignmentPanel";
 import { CommandPanel } from "./components/CommandPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { documentNodeSpaces, documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import { downloadExport, downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
@@ -17,13 +16,12 @@ import { countImportedCommands } from "./import/securityWarning";
 import { animationAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,
-  createPreviewParts,
   EMPTY_SELECTION,
-  findSkinCandidates,
   INITIAL_WORKSPACE,
   workspaceReducer,
   type WorkspacePage,
 } from "./workspace";
+import { createPreviewModel } from "./preview/previewModel";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -60,25 +58,20 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const assignments = useMemo(() => project ? documentPartAssignments(project) : {}, [project]);
-  const orders = useMemo(() => project ? documentPartOrders(project) : {}, [project]);
-  const spaces = useMemo(() => project ? documentNodeSpaces(project) : {}, [project]);
+  const preview = useMemo(() => session ? createPreviewModel(session) : null, [session]);
+  const assignments = preview?.assignments ?? {};
+  const orders = preview?.orders ?? {};
+  const spaces = preview?.spaces ?? {};
   const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
-  const availability = animation ? animationAvailability(animation) : null;
-  const previewDurationTicks = animation?.preview?.durationTicks ?? animation?.durationTicks ?? 0;
+  const availability = preview?.availability ?? null;
+  const previewDurationTicks = preview?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
   const warningGroups = useMemo(() => groupConversionWarnings(project?.diagnostics ?? []), [project]);
-  const skinCandidates = useMemo(() => findSkinCandidates(project), [project]);
-  const previewTick = availability?.preview !== "full" || previewFrameIndex === 0
-    ? null
-    : Math.min(previewFrameIndex - 1, Math.max(0, previewDurationTicks));
-  const previewParts = useMemo(
-    () => createPreviewParts(skinCandidates, animation, previewTick),
-    [animation, previewTick, skinCandidates],
-  );
-  const hasReviewNodes = skinCandidates.length > 0;
+  const previewTick = preview?.tick ?? null;
+  const previewParts = preview?.parts ?? [];
+  const hasReviewNodes = preview?.hasReviewNodes ?? false;
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;

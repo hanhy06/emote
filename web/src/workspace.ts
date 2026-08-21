@@ -8,22 +8,12 @@ import {
   updateDocumentAnimationOutput,
   type AnimationOutputSettings,
   type ConversionDocument,
-  type ConversionNode,
 } from "./domain/conversionDocument";
 import { animationAvailability, type ImportedAnimation, type ImportedProject, type ImportedTimelineEvent } from "./domain/conversionSeed";
 import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
-import { isVisibleAtTick, type PlayerHeadPart } from "./preview/playerHeadPart";
-import { selectPart, selectParts } from "./preview/skinAssignment";
-
-type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
+import { selectPart, selectParts } from "./preview/skinParts";
 
 export type WorkspacePage = 0 | 1 | 2;
-
-export interface SkinCandidate {
-  nodeId: string;
-  partIndex: number;
-  node: ConversionItemNode;
-}
 
 export interface ConversionSession {
   document: ConversionDocument;
@@ -142,49 +132,6 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "frame_command_removed":
       return editCurrentAnimation(state, (animation) => removeFrameCommand(animation, action.eventIndex, action.commandIndex));
   }
-}
-
-export function findSkinCandidates(document: ConversionDocument | null): SkinCandidate[] {
-  if (!document) return [];
-  const candidates = Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.skinGroupId
-    ? [{ nodeId, partIndex: 0, node }]
-    : []);
-  const partIndexByGroup = new Map<string, number>();
-  return candidates.map((candidate) => {
-    const group = candidate.node.skinGroupId!;
-    if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
-    return { ...candidate, partIndex: partIndexByGroup.get(group)! };
-  });
-}
-
-export function createPreviewParts(
-  candidates: SkinCandidate[],
-  animation: ImportedAnimation | undefined,
-  tick: number | null,
-): PlayerHeadPart[] {
-  const previewTracks = animation?.preview?.tracks ?? animation?.tracks;
-  return candidates.filter((candidate) => isVisibleAtTick(
-    candidate.node.visible,
-    previewTracks?.[candidate.nodeId],
-    tick,
-  )).map((candidate) => {
-    let sourceMatrix = candidate.node.defaultMatrix;
-    if (tick !== null) {
-      const transforms = previewTracks?.[candidate.nodeId]?.transforms;
-      for (let index = (transforms?.length ?? 0) - 1; index >= 0; index--) {
-        const transform = transforms?.[index];
-        if (!transform || transform.tick > tick) continue;
-        sourceMatrix = transform.matrix;
-        break;
-      }
-    }
-    return {
-      nodeId: candidate.nodeId,
-      partIndex: candidate.partIndex,
-      matrix: sourceMatrix,
-      ...(candidate.node.playerHeadConversion ? { conversionMatrix: candidate.node.playerHeadConversion.matrix } : {}),
-    };
-  });
 }
 
 export function assignmentSummary(document: ConversionDocument): string {

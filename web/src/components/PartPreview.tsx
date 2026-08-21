@@ -1,12 +1,12 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import type { PlayerHeadPart } from "../preview/playerHeadPart";
-import { SKIN_PARTS, type PartAssignments } from "../preview/skinAssignment";
+import type { PreviewPart } from "../preview/previewModel";
+import { SKIN_PARTS, type PartAssignments } from "../preview/skinParts";
 import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 
 interface PartPreviewProps {
-  parts: PlayerHeadPart[];
+  parts: PreviewPart[];
   assignments: PartAssignments;
   selectedParts: ReadonlySet<string>;
   onSelectPart: (nodeId: string, additive: boolean) => void;

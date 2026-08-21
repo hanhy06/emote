@@ -63,6 +63,26 @@ describe("ConversionDocument", () => {
       head_variant: { participant: "initiator", part: "head", order: 2 },
     });
   });
+
+  it("recognizes quoted and bare player-head item identifiers as skin candidates", () => {
+    const source = project();
+    source.nodes = {
+      quoted: {
+        id: "quoted", type: "item_display", itemStackSnbt: '{id:"minecraft:player_head",count:1}', itemDisplay: "none",
+        defaultMatrix: IDENTITY_MATRIX, visible: true,
+      },
+      bare: {
+        id: "bare", type: "item_display", itemStackSnbt: "{id:player_head,count:1}", itemDisplay: "none",
+        defaultMatrix: IDENTITY_MATRIX, visible: true,
+      },
+      other: {
+        id: "other", type: "item_display", itemStackSnbt: "{id:stone,count:1}", itemDisplay: "none",
+        defaultMatrix: IDENTITY_MATRIX, visible: true,
+      },
+    };
+
+    expect(Object.keys(createConversionDocument(source, "Test adapter").skinGroups)).toEqual(["quoted", "bare"]);
+  });
 });
 
 function project(): ImportedProject {

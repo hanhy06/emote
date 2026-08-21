@@ -1,16 +1,16 @@
 import type { TargetedEvent, TargetedMouseEvent } from "preact";
 import { useEffect, useRef } from "preact/hooks";
 import type { NodeSpace } from "../format/emoteAnimation";
-import type { PlayerHeadPart } from "../preview/playerHeadPart";
+import type { PreviewPart } from "../preview/previewModel";
 import {
   SKIN_PARTS,
   type PartAssignments,
   type PartOrders,
   type SkinPartId,
-} from "../preview/skinAssignment";
+} from "../preview/skinParts";
 
 interface AssignmentPanelProps {
-  parts: PlayerHeadPart[];
+  parts: PreviewPart[];
   assignments: PartAssignments;
   orders: PartOrders;
   spaces: Readonly<Record<string, NodeSpace>>;
