@@ -1,631 +1,402 @@
 {
-    "type": "animation",
-    "schema_version": 4,
-    "id": "emote:format_reference",
-    "metadata": {
-        "name": "Format Reference",
-        "description": "Reference emote containing every runtime feature supported by schema 4."
+  "type": "animation",
+  "schema_version": 4,
+  "id": "emote:format_reference",
+  "metadata": {
+    "name": "Format Reference",
+    "description": "Reference emote containing every runtime feature supported by schema 4."
+  },
+  "settings": {
+    "standalone": true,
+    "cooldown": "0t",
+    "rotation_deadzone": 50.0,
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
     },
-    "settings": {
-        "standalone": true,
-        "cooldown": "0t",
-        "rotation_deadzone": 50.0,
-        "player": {
-            "hidden": true,
-            "stop_conditions": {
-                "movement_distance": 0.1,
-                "jump": true,
-                "submerge": true,
-                "ride": true,
-                "damage": true,
-                "attack": true,
-                "game_mode_change": true
-            }
-        },
-        "playback": {
-            "mode": "loop",
-            "loop_delay": "0t"
-        }
-    },
-    "molang": {
-        "initialize": "v.wave_scale = 1; v.caption_visible = 0;",
-        "tick": "v.wave_scale = 1 + math.sin(q.anim_time * 180) * 0.05; v.caption_visible = q.anim_time >= 2;"
-    },
-    "nodes": {
-        "player_head": {
-            "type": "item_display",
-            "visible": true,
-            "item_display": "none",
-            "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
-            "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
-            "skin": {
-                "part": "head",
-                "order": 0,
-                "participant": "initiator"
-            },
-            "space": "initiator",
-            "transform": {
-                "position": [
-                    0,
-                    1.75,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            }
-        },
-        "partner_head": {
-            "type": "item_display",
-            "visible": true,
-            "item_display": "none",
-            "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
-            "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
-            "skin": {
-                "part": "head",
-                "order": 0,
-                "participant": "partner"
-            },
-            "space": "partner",
-            "transform": {
-                "position": [
-                    0,
-                    1.75,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            }
-        },
-        "enchanted_sword": {
-            "type": "item_display",
-            "visible": true,
-            "item_display": "fixed",
-            "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:sharpness\":5}}}",
-            "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
-            "parent": "effect_anchor",
-            "transform": {
-                "position": [
-                    0.5,
-                    1,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            }
-        },
-        "stage": {
-            "type": "block_display",
-            "visible": true,
-            "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
-            "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
-            "space": "scene",
-            "transform": {
-                "position": [
-                    -1,
-                    0,
-                    -1
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    2,
-                    0.1,
-                    2
-                ]
-            }
-        },
-        "caption": {
-            "type": "text_display",
-            "visible": false,
-            "text": {
-                "text": "Emote"
-            },
-            "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
-            "space": "scene",
-            "transform": {
-                "position": [
-                    0,
-                    2.4,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            }
-        },
-        "effect_anchor": {
-            "type": "anchor",
-            "space": "scene",
-            "transform": {
-                "position": [
-                    0,
-                    1.5,
-                    0
-                ],
-                "rotation": [
-                    0,
-                    0,
-                    0
-                ],
-                "scale": [
-                    1,
-                    1,
-                    1
-                ]
-            }
-        }
-    },
-    "timeline": {
-        "duration": "80t",
-        "tracks": {
-            "player_head": {
-                "position": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            1.75,
-                            0
-                        ],
-                        "interpolation": "linear",
-                        "easing": "ease_in_out_sine"
-                    },
-                    {
-                        "time": "1t",
-                        "pre": [
-                            0,
-                            1.76,
-                            0
-                        ],
-                        "post": [
-                            0,
-                            1.77,
-                            0
-                        ]
-                    }
-                ],
-                "rotation": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            "q.anim_time_ticks * 5",
-                            0
-                        ],
-                        "interpolation": "linear"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0,
-                            5.002499605710734,
-                            0
-                        ]
-                    }
-                ],
-                "scale": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ],
-                        "interpolation": "linear"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            "v.wave_scale",
-                            1,
-                            "v.wave_scale"
-                        ]
-                    }
-                ]
-            },
-            "enchanted_sword": {
-                "position": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0.5,
-                            1,
-                            0
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0.52,
-                            1.02,
-                            0
-                        ]
-                    }
-                ],
-                "rotation": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            0,
-                            0
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0,
-                            0,
-                            9.99735865418825
-                        ]
-                    }
-                ],
-                "scale": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0.9999839998719979,
-                            0.9999839998719979,
-                            1
-                        ]
-                    }
-                ],
-                "visible": [
-                    {
-                        "time": "0t",
-                        "value": true
-                    },
-                    {
-                        "time": "60t",
-                        "value": false
-                    }
-                ]
-            },
-            "caption": {
-                "position": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            2.4,
-                            0
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "40t",
-                        "value": [
-                            0,
-                            2.6,
-                            0
-                        ]
-                    }
-                ],
-                "rotation": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            0,
-                            0
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "40t",
-                        "value": [
-                            0,
-                            0,
-                            0
-                        ]
-                    }
-                ],
-                "scale": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ],
-                        "interpolation": "step"
-                    },
-                    {
-                        "time": "40t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ]
-                    }
-                ],
-                "visible": [
-                    {
-                        "time": "0t",
-                        "value": false
-                    },
-                    {
-                        "time": "40t",
-                        "value": "v.caption_visible"
-                    }
-                ]
-            },
-            "effect_anchor": {
-                "position": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            1.5,
-                            0
-                        ],
-                        "interpolation": "linear"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0.52,
-                            1.45,
-                            0
-                        ]
-                    }
-                ],
-                "rotation": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            0,
-                            0,
-                            0
-                        ],
-                        "interpolation": "linear"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            0,
-                            0,
-                            0
-                        ]
-                    }
-                ],
-                "scale": [
-                    {
-                        "time": "0t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ],
-                        "interpolation": "linear"
-                    },
-                    {
-                        "time": "1t",
-                        "value": [
-                            1,
-                            1,
-                            1
-                        ]
-                    }
-                ]
-            }
-        },
-        "events": {
-            "start": [
-                {
-                    "source": {
-                        "type": "player"
-                    },
-                    "origin": {
-                        "type": "root",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "playsound minecraft:entity.player.levelup player @a[distance=..32] ~ ~ ~ 1.0 1.0",
-                        "say emote started"
-                    ]
-                }
-            ],
-            "timeline": [
-                {
-                    "time": "10t",
-                    "source": {
-                        "type": "server"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "effect_anchor",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "particle minecraft:flame ~ ~ ~ 0.2 0.2 0.2 0.02 12 normal"
-                    ]
-                },
-                {
-                    "time": "20t",
-                    "source": {
-                        "type": "server"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "enchanted_sword",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "playsound minecraft:item.trident.throw player @a[distance=..32] ~ ~ ~ 0.8 1.2"
-                    ]
-                },
-                {
-                    "time": "30t",
-                    "source": {
-                        "type": "node",
-                        "node": "enchanted_sword"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "enchanted_sword",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "data merge entity @s {glowing:0b}",
-                        "data modify entity @s item set value {id:\"minecraft:netherite_sword\",count:1,components:{\"minecraft:enchantment_glint_override\":true}}"
-                    ]
-                },
-                {
-                    "time": "40t",
-                    "source": {
-                        "type": "node",
-                        "node": "stage"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "stage",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "data modify entity @s block_state set value {Name:\"minecraft:diamond_block\"}"
-                    ]
-                },
-                {
-                    "time": "50t",
-                    "source": {
-                        "type": "node",
-                        "node": "caption"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "caption",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "data merge entity @s {text:{text:\"Runtime event\",color:\"gold\",bold:true},glowing:1b}"
-                    ]
-                },
-                {
-                    "time": "60t",
-                    "source": {
-                        "type": "server"
-                    },
-                    "origin": {
-                        "type": "node",
-                        "node": "effect_anchor",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "execute if entity @a[distance=..16] run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.0 8 normal"
-                    ]
-                }
-            ],
-            "loop": [
-                {
-                    "source": {
-                        "type": "server"
-                    },
-                    "origin": {
-                        "type": "root",
-                        "offset": [
-                            0,
-                            0,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "playsound minecraft:block.note_block.hat player @a[distance=..32] ~ ~ ~ 0.4 1.0"
-                    ]
-                }
-            ],
-            "stop": [
-                {
-                    "source": {
-                        "type": "player"
-                    },
-                    "origin": {
-                        "type": "root",
-                        "offset": [
-                            0,
-                            1,
-                            0
-                        ]
-                    },
-                    "commands": [
-                        "particle minecraft:poof ~ ~ ~ 0.3 0.5 0.3 0.02 16 normal",
-                        "say emote stopped"
-                    ]
-                }
-            ]
-        }
+    "playback": {
+      "mode": "loop",
+      "loop_delay": "0t"
     }
+  },
+  "molang": {
+    "initialize": "v.wave_scale = 1; v.caption_visible = 0;",
+    "tick": "v.wave_scale = 1 + math.sin(q.anim_time * 180) * 0.05; v.caption_visible = q.anim_time >= 2;"
+  },
+  "nodes": {
+    "player_head": {
+      "type": "item_display",
+      "visible": true,
+      "item_display": "none",
+      "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
+      "skin": {
+        "part": "head",
+        "order": 0,
+        "participant": "initiator"
+      },
+      "space": "initiator",
+      "transform": {
+        "position": [0, 1.75, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    "partner_head": {
+      "type": "item_display",
+      "visible": true,
+      "item_display": "none",
+      "item_stack_snbt": "{id:\"minecraft:player_head\",count:1}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f}",
+      "skin": {
+        "part": "head",
+        "order": 0,
+        "participant": "partner"
+      },
+      "space": "partner",
+      "transform": {
+        "position": [0, 1.75, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    "enchanted_sword": {
+      "type": "item_display",
+      "visible": true,
+      "item_display": "fixed",
+      "item_stack_snbt": "{id:\"minecraft:diamond_sword\",count:1,components:{\"minecraft:enchantments\":{\"minecraft:sharpness\":5}}}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,glowing:1b}",
+      "parent": "effect_anchor",
+      "transform": {
+        "position": [0.5, 1, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    "stage": {
+      "type": "block_display",
+      "visible": true,
+      "block_state_snbt": "{Name:\"minecraft:gold_block\"}",
+      "entity_nbt": "{brightness:{block:15,sky:15},shadow_radius:0.0f,shadow_strength:0.0f}",
+      "space": "scene",
+      "transform": {
+        "position": [-1, 0, -1],
+        "rotation": [0, 0, 0],
+        "scale": [2, 0.1, 2]
+      }
+    },
+    "caption": {
+      "type": "text_display",
+      "visible": false,
+      "text": {
+        "text": "Emote"
+      },
+      "entity_nbt": "{billboard:\"center\",background:0,line_width:200,see_through:1b,shadow:1b}",
+      "space": "scene",
+      "transform": {
+        "position": [0, 2.4, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    },
+    "effect_anchor": {
+      "type": "anchor",
+      "space": "scene",
+      "transform": {
+        "position": [0, 1.5, 0],
+        "rotation": [0, 0, 0],
+        "scale": [1, 1, 1]
+      }
+    }
+  },
+  "timeline": {
+    "duration": "80t",
+    "tracks": {
+      "player_head": {
+        "position": [
+          {
+            "time": "0t",
+            "value": [0, 1.75, 0],
+            "interpolation": "linear",
+            "easing": "ease_in_out_sine"
+          },
+          {
+            "time": "1t",
+            "pre": [0, 1.76, 0],
+            "post": [0, 1.77, 0]
+          }
+        ],
+        "rotation": [
+          {
+            "time": "0t",
+            "value": [0, "q.anim_time_ticks * 5", 0],
+            "interpolation": "linear"
+          },
+          {
+            "time": "1t",
+            "value": [0, 5.002499605710734, 0]
+          }
+        ],
+        "scale": [
+          {
+            "time": "0t",
+            "value": [1, 1, 1],
+            "interpolation": "linear"
+          },
+          {
+            "time": "1t",
+            "value": ["v.wave_scale", 1, "v.wave_scale"]
+          }
+        ]
+      },
+      "enchanted_sword": {
+        "position": [
+          {
+            "time": "0t",
+            "value": [0.5, 1, 0],
+            "interpolation": "step"
+          },
+          {
+            "time": "1t",
+            "value": [0.52, 1.02, 0]
+          }
+        ],
+        "rotation": [
+          {
+            "time": "0t",
+            "value": [0, 0, 0],
+            "interpolation": "step"
+          },
+          {
+            "time": "1t",
+            "value": [0, 0, 9.99735865418825]
+          }
+        ],
+        "scale": [
+          {
+            "time": "0t",
+            "value": [1, 1, 1],
+            "interpolation": "step"
+          },
+          {
+            "time": "1t",
+            "value": [0.9999839998719979, 0.9999839998719979, 1]
+          }
+        ],
+        "visible": [
+          {
+            "time": "0t",
+            "value": true
+          },
+          {
+            "time": "60t",
+            "value": false
+          }
+        ]
+      },
+      "caption": {
+        "position": [
+          {
+            "time": "0t",
+            "value": [0, 2.4, 0],
+            "interpolation": "step"
+          },
+          {
+            "time": "40t",
+            "value": [0, 2.6, 0]
+          }
+        ],
+        "rotation": [
+          {
+            "time": "0t",
+            "value": [0, 0, 0],
+            "interpolation": "step"
+          },
+          {
+            "time": "40t",
+            "value": [0, 0, 0]
+          }
+        ],
+        "scale": [
+          {
+            "time": "0t",
+            "value": [1, 1, 1],
+            "interpolation": "step"
+          },
+          {
+            "time": "40t",
+            "value": [1, 1, 1]
+          }
+        ],
+        "visible": [
+          {
+            "time": "0t",
+            "value": false
+          },
+          {
+            "time": "40t",
+            "value": "v.caption_visible"
+          }
+        ]
+      },
+      "effect_anchor": {
+        "position": [
+          {
+            "time": "0t",
+            "value": [0, 1.5, 0],
+            "interpolation": "linear"
+          },
+          {
+            "time": "1t",
+            "value": [0.52, 1.45, 0]
+          }
+        ],
+        "rotation": [
+          {
+            "time": "0t",
+            "value": [0, 0, 0],
+            "interpolation": "linear"
+          },
+          {
+            "time": "1t",
+            "value": [0, 0, 0]
+          }
+        ],
+        "scale": [
+          {
+            "time": "0t",
+            "value": [1, 1, 1],
+            "interpolation": "linear"
+          },
+          {
+            "time": "1t",
+            "value": [1, 1, 1]
+          }
+        ]
+      }
+    },
+    "events": {
+      "start": [
+        {
+          "source": {
+            "type": "player"
+          },
+          "origin": {
+            "type": "root",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["playsound minecraft:entity.player.levelup player @a[distance=..32] ~ ~ ~ 1.0 1.0", "say emote started"]
+        }
+      ],
+      "timeline": [
+        {
+          "time": "10t",
+          "source": {
+            "type": "server"
+          },
+          "origin": {
+            "type": "node",
+            "node": "effect_anchor",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["particle minecraft:flame ~ ~ ~ 0.2 0.2 0.2 0.02 12 normal"]
+        },
+        {
+          "time": "20t",
+          "source": {
+            "type": "server"
+          },
+          "origin": {
+            "type": "node",
+            "node": "enchanted_sword",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["playsound minecraft:item.trident.throw player @a[distance=..32] ~ ~ ~ 0.8 1.2"]
+        },
+        {
+          "time": "30t",
+          "source": {
+            "type": "node",
+            "node": "enchanted_sword"
+          },
+          "origin": {
+            "type": "node",
+            "node": "enchanted_sword",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["data merge entity @s {glowing:0b}", "data modify entity @s item set value {id:\"minecraft:netherite_sword\",count:1,components:{\"minecraft:enchantment_glint_override\":true}}"]
+        },
+        {
+          "time": "40t",
+          "source": {
+            "type": "node",
+            "node": "stage"
+          },
+          "origin": {
+            "type": "node",
+            "node": "stage",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["data modify entity @s block_state set value {Name:\"minecraft:diamond_block\"}"]
+        },
+        {
+          "time": "50t",
+          "source": {
+            "type": "node",
+            "node": "caption"
+          },
+          "origin": {
+            "type": "node",
+            "node": "caption",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["data merge entity @s {text:{text:\"Runtime event\",color:\"gold\",bold:true},glowing:1b}"]
+        },
+        {
+          "time": "60t",
+          "source": {
+            "type": "server"
+          },
+          "origin": {
+            "type": "node",
+            "node": "effect_anchor",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["execute if entity @a[distance=..16] run particle minecraft:happy_villager ~ ~ ~ 0.2 0.2 0.2 0.0 8 normal"]
+        }
+      ],
+      "loop": [
+        {
+          "source": {
+            "type": "server"
+          },
+          "origin": {
+            "type": "root",
+            "offset": [0, 0, 0]
+          },
+          "commands": ["playsound minecraft:block.note_block.hat player @a[distance=..32] ~ ~ ~ 0.4 1.0"]
+        }
+      ],
+      "stop": [
+        {
+          "source": {
+            "type": "player"
+          },
+          "origin": {
+            "type": "root",
+            "offset": [0, 1, 0]
+          },
+          "commands": ["particle minecraft:poof ~ ~ ~ 0.3 0.5 0.3 0.02 16 normal", "say emote stopped"]
+        }
+      ]
+    }
+  }
 }
