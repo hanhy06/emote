@@ -67,7 +67,10 @@ export interface AjAnimation {
   blend_weight?: string;
   start_delay?: string;
   length: number;
-  global_keyframes?: { texture?: Record<string, unknown>; event?: Record<string, unknown> };
+  global_keyframes?: {
+    texture?: Record<string, Record<string, string>>;
+    event?: Record<string, { events: string[] }>;
+  };
   node_keyframes?: Record<string, AjNodeChannels>;
 }
 
@@ -211,8 +214,20 @@ function requireAjAnimation(value: unknown, path: string): void {
   requireNumber(animation.length, `${path}.length`);
   const global = optionalRecord(animation.global_keyframes, `${path}.global_keyframes`);
   if (global) {
-    optionalRecord(global.texture, `${path}.global_keyframes.texture`);
-    optionalRecord(global.event, `${path}.global_keyframes.event`);
+    const texture = optionalRecord(global.texture, `${path}.global_keyframes.texture`);
+    for (const [time, frameValue] of Object.entries(texture ?? {})) {
+      requireKeyframeTime(time, `${path}.global_keyframes.texture.${time}`);
+      const frame = requireRecord(frameValue, `${path}.global_keyframes.texture.${time}`);
+      for (const [palette, state] of Object.entries(frame)) {
+        requireString(state, `${path}.global_keyframes.texture.${time}.${palette}`);
+      }
+    }
+    const event = optionalRecord(global.event, `${path}.global_keyframes.event`);
+    for (const [time, frameValue] of Object.entries(event ?? {})) {
+      requireKeyframeTime(time, `${path}.global_keyframes.event.${time}`);
+      const frame = requireRecord(frameValue, `${path}.global_keyframes.event.${time}`);
+      requireStringArray(frame.events, `${path}.global_keyframes.event.${time}.events`);
+    }
   }
   const nodeKeyframes = optionalRecord(animation.node_keyframes, `${path}.node_keyframes`);
   for (const [nodeId, channelsValue] of Object.entries(nodeKeyframes ?? {})) {
@@ -238,4 +253,9 @@ function requireAjAnimation(value: unknown, path: string): void {
       }
     }
   }
+}
+
+function requireKeyframeTime(value: string, path: string): void {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) throw new Error(`${path} has an invalid keyframe time.`);
 }

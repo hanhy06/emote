@@ -89,6 +89,40 @@ describe("compileImportedProject time handling", () => {
     expect(animation.timeline.duration).toBe("12000t");
     expect(animation.timeline.tracks.anchor.position?.[0].value?.[0]).toBe("q.anim_time");
   });
+
+  it("does not let item NBT replace an assigned player-head skin", () => {
+    const project = importedProject();
+    project.nodes = {
+      item: {
+        id: "item",
+        type: "item_display",
+        defaultMatrix: IDENTITY,
+        visible: true,
+        itemStackSnbt: '{id:"minecraft:paper",count:1}',
+        itemDisplay: "none",
+        suggestedSkin: { part: "head", order: 0 },
+        playerHeadConversion: { matrix: IDENTITY },
+      },
+    };
+    project.animations[0].tracks = {
+      item: {
+        transforms: [],
+        visibility: [],
+        nbt: [{
+          tick: 0,
+          value: '{item:{id:"minecraft:paper",count:1},brightness:{block:15,sky:15}}',
+        }],
+      },
+    };
+
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "skin" });
+
+    expect(animation.nodes.item.type === "item_display" && animation.nodes.item.item_stack_snbt).toContain("player_head");
+    expect(animation.timeline.tracks.item.nbt).toEqual([{
+      time: "0t",
+      value: "{brightness:{block:15,sky:15}}",
+    }]);
+  });
 });
 
 function importedProject(): ImportedProject {

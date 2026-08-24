@@ -311,6 +311,46 @@ describe("animatedJavaJsonAdapter", () => {
     );
   });
 
+  it("converts texture palette keyframes into item NBT tracks", async () => {
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:rig" },
+      textures: {
+        red: { type: "reference", resource_location: "minecraft:block/red_wool" },
+        blue: { type: "reference", resource_location: "minecraft:block/blue_wool" },
+      },
+      texture_palettes: {
+        skin: { active_state: "red", states: { red: { texture: "red" }, blue: { texture: "blue" } } },
+      },
+      nodes: {
+        body: {
+          type: "bone",
+          elements: [{
+            from: [0, 0, 0], to: [1, 1, 1], rotation: [0, 0, 0],
+            faces: { north: { uv: [0, 0, 16, 16], texture_provider: { type: "texture_palette", texture_palette: "skin" } } },
+          }],
+        },
+      },
+      animations: {
+        swap: {
+          loop_mode: { type: "once" },
+          length: 0.05,
+          global_keyframes: { texture: { "0.0": { skin: "red" }, "0.05": { skin: "blue" } } },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "demo" });
+
+    expect(new TextDecoder().decode(project.resources.get("assets/demo/models/item/rig/body.json"))).toContain("minecraft:block/red_wool");
+    expect(new TextDecoder().decode(project.resources.get("assets/demo/models/item/rig/body_palette_1.json"))).toContain("minecraft:block/blue_wool");
+    expect(animation.timeline.tracks.body.nbt).toEqual([
+      { time: "0t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body"}}}' },
+      { time: "1t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body_palette_1"}}}' },
+    ]);
+  });
+
   it("splits Animated Java bones into independently assignable player-head cubes", async () => {
     const face = { uv: [0, 0, 4, 12], texture_provider: { type: "texture", texture: "skin" } };
     const input = rawBlueprint({

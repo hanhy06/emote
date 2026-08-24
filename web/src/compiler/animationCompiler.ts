@@ -20,7 +20,7 @@ import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
+import { omitSnbtFields, serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
 import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
 const PLAYER_HEAD_SNBT = serializeSnbtCompound([
@@ -65,7 +65,7 @@ export function compileConversionAnimation(
     ...(animation.runtime?.molang ? { molang: animation.runtime.molang } : {}),
     nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes) : compileNodes(document, animation),
     timeline: animation.runtime
-      ? { ...animation.runtime.timeline, duration: formatMinecraftTime(requireTick(animation.durationTicks, `${animation.id} duration`)) }
+      ? compileRuntimeTimeline(document, animation.runtime.timeline, animation.durationTicks, animation.id)
       : compileTimeline(document, animation),
   };
 }
@@ -175,10 +175,14 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
       }));
     }
     if (track.nbt.length > 0) {
-      nodeTracks.nbt = track.nbt.map((frame) => ({
-        time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
-        value: frame.value,
-      }));
+      const nbt = track.nbt.flatMap((frame) => {
+        const value = compileNodeNbt(document, nodeId, frame.value);
+        return value === undefined ? [] : [{
+          time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
+          value,
+        }];
+      });
+      if (nbt.length > 0) nodeTracks.nbt = nbt;
     }
     if (Object.keys(nodeTracks).length > 0) tracks[nodeId] = nodeTracks;
   }
@@ -197,6 +201,31 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
       ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
     },
   };
+}
+
+function compileRuntimeTimeline(
+  document: ConversionDocument,
+  timeline: EmoteAnimation["timeline"],
+  durationTicks: number,
+  animationId: string,
+): EmoteAnimation["timeline"] {
+  const tracks = Object.fromEntries(Object.entries(timeline.tracks).map(([nodeId, track]) => {
+    if (!track.nbt?.length) return [nodeId, track];
+    const nbt = track.nbt.flatMap((frame) => {
+      const value = compileNodeNbt(document, nodeId, frame.value);
+      return value === undefined ? [] : [{ ...frame, value }];
+    });
+    const { nbt: _nbt, ...remaining } = track;
+    return [nodeId, nbt.length > 0 ? { ...remaining, nbt } : remaining];
+  }));
+  return { ...timeline, duration: formatMinecraftTime(requireTick(durationTicks, `${animationId} duration`)), tracks };
+}
+
+function compileNodeNbt(document: ConversionDocument, nodeId: string, value: string): string | undefined {
+  const node = document.nodes[nodeId];
+  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.skinGroupId) return value;
+  if (!document.skinGroups[node.skinGroupId]?.assignment) return value;
+  return omitSnbtFields(value, new Set(["item"]));
 }
 
 interface TransformFrame {

@@ -4,7 +4,7 @@ import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
-import { requireAnimationDurationTicks, secondsToTicks, TICKS_PER_SECOND } from "../../format/time";
+import { formatMinecraftTime, requireAnimationDurationTicks, secondsToTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -20,6 +20,12 @@ const encoder = new TextEncoder();
 interface ImportedAjNodes {
   nodes: Record<string, ImportedNode>;
   nodeIdsBySource: Map<string, string[]>;
+  itemModelsByNodeAndPaletteState: Map<string, Map<string, string>>;
+}
+
+interface AjPaletteConfiguration {
+  key: string;
+  states: Record<string, string>;
 }
 
 interface AjSkinCandidate {
@@ -63,11 +69,17 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const resources = new Map<string, Uint8Array>();
-    const { nodes, nodeIdsBySource } = importNodes(blueprint, resource, resources);
+    const paletteConfigurations = collectPaletteConfigurations(blueprint);
+    const { nodes, nodeIdsBySource, itemModelsByNodeAndPaletteState } = importNodes(
+      blueprint,
+      resource,
+      resources,
+      paletteConfigurations,
+    );
     const diagnostics: ImportDiagnostic[] = [];
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => {
       try {
-        return importAnimation(id, animation, nodes, nodeIdsBySource);
+        return importAnimation(id, animation, nodes, nodeIdsBySource, blueprint, itemModelsByNodeAndPaletteState);
       } catch (reason) {
         if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
         const message = `${id}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -77,7 +89,15 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
           message,
           sourcePath: reason.sourcePath ?? `animations.${id}`,
         });
-        return createPreviewOnlyAnimation(id, animation, message, nodes, nodeIdsBySource);
+        return createPreviewOnlyAnimation(
+          id,
+          animation,
+          message,
+          nodes,
+          nodeIdsBySource,
+          blueprint,
+          itemModelsByNodeAndPaletteState,
+        );
       }
     });
     if (Object.keys(nodes).length === 0) throw new Error("Animated Java blueprint does not contain nodes.");
@@ -103,10 +123,31 @@ function createPreviewOnlyAnimation(
   reason: string,
   nodes: Record<string, ImportedNode>,
   nodeIdsBySource: ReadonlyMap<string, string[]>,
+  blueprint: AjBlueprint,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): ImportedAnimation {
-  const durationTicks = Number.isFinite(animation.length) && animation.length > 0
+  const animationDurationTicks = Number.isFinite(animation.length) && animation.length > 0
     ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
     : TICKS_PER_SECOND;
+  const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
+  const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
+  const runtime = createAjBlueprintRuntime(animation, durationTicks, nodeIdsBySource, nodes);
+  const textureTracks: ImportedAnimation["tracks"] = {};
+  addTextureNbtTracks(
+    id,
+    animation,
+    startDelayTicks,
+    animationDurationTicks,
+    blueprint,
+    itemModelsByNodeAndPaletteState,
+    textureTracks,
+  );
+  for (const [nodeId, track] of Object.entries(textureTracks)) {
+    runtime.timeline.tracks[nodeId] = {
+      ...runtime.timeline.tracks[nodeId],
+      nbt: track.nbt.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.value })),
+    };
+  }
   return {
     id: sanitizeResourcePath(id, "default"),
     name: prettify(id),
@@ -117,7 +158,7 @@ function createPreviewOnlyAnimation(
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
     preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createAjBlueprintRuntime(animation, durationTicks, nodeIdsBySource, nodes),
+    runtime,
   };
 }
 
@@ -126,15 +167,64 @@ function validateRoot(blueprint: AjBlueprint): void {
   parseResourceLocation(blueprint.settings?.id, "Animated Java settings.id");
 }
 
+function collectPaletteConfigurations(blueprint: AjBlueprint): AjPaletteConfiguration[] {
+  const defaults = Object.fromEntries(Object.entries(blueprint.texture_palettes ?? {})
+    .sort(([first], [second]) => first.localeCompare(second))
+    .map(([paletteId, palette]) => {
+      if (!palette.states[palette.active_state]) {
+        throw new Error(`Animated Java texture palette ${paletteId} references unknown active state ${palette.active_state}.`);
+      }
+      return [paletteId, palette.active_state];
+    }));
+  const configurations = new Map<string, Record<string, string>>();
+  const add = (states: Record<string, string>) => configurations.set(paletteStateKey(states), { ...states });
+  add(defaults);
+  for (const animation of Object.values(blueprint.animations ?? {})) {
+    const states = { ...defaults };
+    for (const [, frame] of sortedTextureKeyframes(animation)) {
+      for (const [paletteId, stateId] of Object.entries(frame)) {
+        const palette = blueprint.texture_palettes?.[paletteId];
+        if (!palette) throw new Error(`Animated Java texture keyframe references unknown palette ${paletteId}.`);
+        if (!palette.states[stateId]) throw new Error(`Animated Java texture palette ${paletteId} has no state ${stateId}.`);
+        states[paletteId] = stateId;
+      }
+      add(states);
+    }
+  }
+  return [...configurations].map(([key, states]) => ({ key, states }));
+}
+
+function sortedTextureKeyframes(animation: AjAnimation): [number, Record<string, string>][] {
+  return Object.entries(animation.global_keyframes?.texture ?? {})
+    .map(([time, frame]) => [Number(time), frame] as [number, Record<string, string>])
+    .sort(([first], [second]) => first - second);
+}
+
+function paletteStateKey(states: Record<string, string>): string {
+  return JSON.stringify(Object.entries(states).sort(([first], [second]) => first.localeCompare(second)));
+}
+
+function boneItemStackSnbt(namespace: string, modelPath: string): string {
+  return serializeSnbtCompound([
+    ["id", serializeSnbtString("minecraft:paper")],
+    ["count", "1"],
+    ["components", serializeSnbtCompound([
+      ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
+    ])],
+  ]);
+}
+
 function importNodes(
   blueprint: AjBlueprint,
   resource: ResourceLocation,
   resources: Map<string, Uint8Array>,
+  paletteConfigurations: AjPaletteConfiguration[],
 ): ImportedAjNodes {
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySource = new Map<string, string[]>();
   const skinCandidates: AjSkinCandidate[] = [];
   const usedIds = new Set(Object.keys(blueprint.nodes ?? {}));
+  const itemModelsByNodeAndPaletteState = new Map<string, Map<string, string>>();
   let sourceOrder = 0;
   for (const [id, node] of Object.entries(blueprint.nodes ?? {})) {
     if (node.type !== "bone") {
@@ -157,7 +247,13 @@ function importNodes(
     for (const [elementIndex, element] of elements.entries()) {
       const nodeId = elementIndex === 0 ? id : uniqueAjElementNodeId(id, elementIndex, usedIds);
       const modelPath = [resource.path, nodeId].filter(Boolean).join("/");
-      writeBoneResources(modelPath, id, [element], resource, blueprint, resources);
+      const itemModels = new Map<string, string>();
+      for (const [configurationIndex, configuration] of paletteConfigurations.entries()) {
+        const variantModelPath = configurationIndex === 0 ? modelPath : `${modelPath}_palette_${configurationIndex}`;
+        writeBoneResources(variantModelPath, id, [element], resource, blueprint, resources, configuration.states);
+        itemModels.set(configuration.key, variantModelPath);
+      }
+      itemModelsByNodeAndPaletteState.set(nodeId, itemModels);
       const conversionMatrix = ajElementPlayerHeadMatrix(element, `${id}.elements[${elementIndex}]`);
       nodes[nodeId] = {
         id: nodeId,
@@ -166,13 +262,7 @@ function importNodes(
         visible: true,
         ...(entityNbt ? { entityNbt } : {}),
         itemDisplay: "none",
-        itemStackSnbt: serializeSnbtCompound([
-          ["id", serializeSnbtString("minecraft:paper")],
-          ["count", "1"],
-          ["components", serializeSnbtCompound([
-            ["minecraft:item_model", serializeSnbtString(`${resource.namespace}:${modelPath}`)],
-          ])],
-        ]),
+        itemStackSnbt: boneItemStackSnbt(resource.namespace, modelPath),
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
       };
       generatedIds.push(nodeId);
@@ -188,7 +278,7 @@ function importNodes(
     nodeIdsBySource.set(id, generatedIds);
   }
   assignSuggestedAjSkinParts(nodes, skinCandidates);
-  return { nodes, nodeIdsBySource };
+  return { nodes, nodeIdsBySource, itemModelsByNodeAndPaletteState };
 }
 
 function importDisplayNode(id: string, node: AjNode): ImportedNode {
@@ -372,14 +462,16 @@ function importAnimation(
   animation: AjAnimation,
   nodes: Record<string, ImportedNode>,
   nodeIdsBySource: ReadonlyMap<string, string[]>,
+  blueprint: AjBlueprint,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
 ): ImportedAnimation {
   const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const animationDurationTicks = secondsToTicks(animation.length, `${id}.length`);
   const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
   const global = animation.global_keyframes;
-  if (global && (Object.keys(global.texture ?? {}).length || Object.keys(global.event ?? {}).length)) {
-    throw new Error(`Animated Java animation ${id} contains texture or API event keyframes that the emote format cannot preserve.`);
+  if (global && Object.keys(global.event ?? {}).length) {
+    throw new Error(`Animated Java animation ${id} contains API event keyframes that the emote format cannot preserve.`);
   }
 
   const tracks: ImportedAnimation["tracks"] = {};
@@ -394,6 +486,15 @@ function importAnimation(
       nbt: [],
     };
   }
+  addTextureNbtTracks(
+    id,
+    animation,
+    startDelayTicks,
+    animationDurationTicks,
+    blueprint,
+    itemModelsByNodeAndPaletteState,
+    tracks,
+  );
   return {
     id: sanitizeResourcePath(id, "default"),
     name: prettify(id),
@@ -405,6 +506,49 @@ function importAnimation(
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
   };
+}
+
+function addTextureNbtTracks(
+  animationId: string,
+  animation: AjAnimation,
+  startDelayTicks: number,
+  animationDurationTicks: number,
+  blueprint: AjBlueprint,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  tracks: ImportedAnimation["tracks"],
+): void {
+  const sourceFrames = sortedTextureKeyframes(animation);
+  if (sourceFrames.length === 0) return;
+  const states = Object.fromEntries(Object.entries(blueprint.texture_palettes ?? {})
+    .map(([paletteId, palette]) => [paletteId, palette.active_state]));
+  const frames: { tick: number; key: string }[] = [{ tick: 0, key: paletteStateKey(states) }];
+  for (const [time, frame] of sourceFrames) {
+    if (time > animation.length) throw new Error(`${animationId}.global_keyframes.texture.${time} exceeds the animation length.`);
+    Object.assign(states, frame);
+    const tick = secondsToTicks(time, `${animationId}.global_keyframes.texture.${time}`) + startDelayTicks;
+    const value = { tick, key: paletteStateKey(states) };
+    if (frames.at(-1)!.tick === tick) frames[frames.length - 1] = value;
+    else frames.push(value);
+  }
+  for (const [nodeId, models] of itemModelsByNodeAndPaletteState) {
+    const node = models.size ? tracks[nodeId] ?? { transforms: [], visibility: [], nbt: [] } : undefined;
+    if (!node) continue;
+    node.nbt = frames.map(({ tick, key }) => {
+      const modelPath = models.get(key);
+      if (!modelPath) throw new Error(`Animated Java animation ${animationId} produced an unknown texture palette state.`);
+      return {
+        tick,
+        value: serializeSnbtCompound([["item", boneItemStackSnbt(
+          parseResourceLocation(blueprint.settings.id, "Animated Java settings.id").namespace,
+          modelPath,
+        )]]),
+      };
+    });
+    tracks[nodeId] = node;
+  }
+  if (frames.at(-1)!.tick > animationDurationTicks + startDelayTicks) {
+    throw new Error(`${animationId} texture keyframe exceeds the animation duration.`);
+  }
 }
 
 function compileNodeChannels(
@@ -542,6 +686,7 @@ function writeBoneResources(
   resource: ResourceLocation,
   blueprint: AjBlueprint,
   resources: Map<string, Uint8Array>,
+  paletteStates: Readonly<Record<string, string>>,
 ): void {
   const usedTextures = new Set<string>();
   const modelElements = elements.map((element) => ({
@@ -551,7 +696,7 @@ function writeBoneResources(
     ...(element.shade === undefined ? {} : { shade: element.shade }),
     ...(element.light_emission === undefined ? {} : { light_emission: element.light_emission }),
     faces: Object.fromEntries(Object.entries(element.faces).map(([direction, face]) => {
-      const texture = resolveTexture(face.texture_provider, blueprint);
+      const texture = resolveTexture(face.texture_provider, blueprint, paletteStates);
       usedTextures.add(texture);
       return [direction, {
         uv: face.uv,
@@ -579,10 +724,14 @@ function writeBoneResources(
   );
 }
 
-function resolveTexture(provider: AjElement["faces"][string]["texture_provider"], blueprint: AjBlueprint): string {
+function resolveTexture(
+  provider: AjElement["faces"][string]["texture_provider"],
+  blueprint: AjBlueprint,
+  paletteStates: Readonly<Record<string, string>>,
+): string {
   if (provider.type === "texture") return provider.texture;
   const palette = blueprint.texture_palettes?.[provider.texture_palette];
-  const texture = palette?.states?.[palette.active_state]?.texture;
+  const texture = palette?.states?.[paletteStates[provider.texture_palette]]?.texture;
   if (!texture) throw new Error(`Animated Java texture palette ${provider.texture_palette} has no active texture.`);
   return texture;
 }
