@@ -9,7 +9,8 @@ The first server startup creates this structure:
 config/emote/
 ├── config.json
 ├── emotes.json
-└── emote/
+├── emote/
+└── resource-pack/
 ```
 
 Place Emote JSON exported by the web converter under `emote/`.
