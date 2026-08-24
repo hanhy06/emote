@@ -351,6 +351,42 @@ describe("animatedJavaJsonAdapter", () => {
     ]);
   });
 
+  it("converts API event keyframes into namespaced callbacks", async () => {
+    const input = blueprint({ item: { type: "item_display" } }, {
+      attack: {
+        loop_mode: { type: "once" },
+        start_delay: "0.05",
+        length: 0.1,
+        global_keyframes: {
+          event: {
+            "0.0": { events: ["swing", "trail"] },
+            "0.1": { events: ["finish"] },
+          },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "callbacks" });
+
+    expect(animation.timeline.events?.timeline).toEqual([
+      {
+        time: "1t",
+        source: { type: "player" },
+        origin: { type: "root" },
+        commands: [],
+        callbacks: [{ name: "demo:swing" }, { name: "demo:trail" }],
+      },
+      {
+        time: "2t",
+        source: { type: "player" },
+        origin: { type: "root" },
+        commands: [],
+        callbacks: [{ name: "demo:finish" }],
+      },
+    ]);
+  });
+
   it("splits Animated Java bones into independently assignable player-head cubes", async () => {
     const face = { uv: [0, 0, 4, 12], texture_provider: { type: "texture", texture: "skin" } };
     const input = rawBlueprint({
@@ -507,6 +543,7 @@ describe("animatedJavaJsonAdapter", () => {
       runtime: {
         loop_mode: { type: "once" },
         length: 0.1,
+        global_keyframes: { event: { "0.05": { events: ["runtime_event"] } } },
         node_keyframes: { item: { position: {
           "0.0": { value: ["v.runtime_speed", "0", "0"], interpolation: { type: "linear", easing: "linear" } },
         } } },
@@ -525,6 +562,10 @@ describe("animatedJavaJsonAdapter", () => {
     }));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
     expect(compiled.timeline.tracks.aj_item_y.position?.[0].value?.[0]).toBe("v.runtime_speed");
+    expect(compiled.timeline.events?.timeline?.[0]).toMatchObject({
+      time: "1t",
+      callbacks: [{ name: "demo:runtime_event" }],
+    });
     expect(compiled.nodes.item.type).toBe("item_display");
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });

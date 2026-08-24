@@ -7,7 +7,7 @@ import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, secondsToTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
@@ -132,6 +132,10 @@ function createPreviewOnlyAnimation(
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
   const runtime = createAjBlueprintRuntime(animation, durationTicks, nodeIdsBySource, nodes);
+  const callbacks = compileAjCallbackEvents(id, animation, startDelayTicks, durationTicks, blueprint);
+  if (callbacks.length > 0) {
+    runtime.timeline.events = { timeline: callbacks.map(({ tick, ...event }) => ({ ...event, time: formatMinecraftTime(tick) })) };
+  }
   const textureTracks: ImportedAnimation["tracks"] = {};
   addTextureNbtTracks(
     id,
@@ -155,7 +159,7 @@ function createPreviewOnlyAnimation(
     loop: animation.loop_mode.type,
     loopDelayTicks: 0,
     tracks: {},
-    events: { start: [], timeline: [], loop: [], stop: [] },
+    events: { start: [], timeline: callbacks, loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
     preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
     runtime,
@@ -469,11 +473,6 @@ function importAnimation(
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const animationDurationTicks = secondsToTicks(animation.length, `${id}.length`);
   const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
-  const global = animation.global_keyframes;
-  if (global && Object.keys(global.event ?? {}).length) {
-    throw new Error(`Animated Java animation ${id} contains API event keyframes that the emote format cannot preserve.`);
-  }
-
   const tracks: ImportedAnimation["tracks"] = {};
   for (const [sourceNodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
     const generatedNodeIds = nodeIdsBySource.get(sourceNodeId);
@@ -504,8 +503,38 @@ function importAnimation(
       ? secondsToTicks(numericExpression(animation.loop_mode.loop_delay ?? "0", `${id}.loop_delay`), `${id}.loop_delay`)
       : 0,
     tracks,
-    events: { start: [], timeline: [], loop: [], stop: [] },
+    events: {
+      start: [],
+      timeline: compileAjCallbackEvents(id, animation, startDelayTicks, durationTicks, blueprint),
+      loop: [],
+      stop: [],
+    },
   };
+}
+
+function compileAjCallbackEvents(
+  animationId: string,
+  animation: AjAnimation,
+  startDelayTicks: number,
+  durationTicks: number,
+  blueprint: AjBlueprint,
+): ImportedTimelineEvent[] {
+  const namespace = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id").namespace;
+  return Object.entries(animation.global_keyframes?.event ?? {})
+    .map(([time, frame]) => ({ time: Number(time), frame }))
+    .sort((first, second) => first.time - second.time)
+    .filter(({ frame }) => frame.events.length > 0)
+    .map(({ time, frame }) => {
+      if (time > animation.length) throw new Error(`${animationId}.global_keyframes.event.${time} exceeds the animation length.`);
+      const sourceTick = secondsToTicks(time, `${animationId}.global_keyframes.event.${time}`) + startDelayTicks;
+      return {
+        tick: Math.min(sourceTick, durationTicks - 1),
+        source: { type: "player" as const },
+        origin: { type: "root" as const },
+        commands: [],
+        callbacks: frame.events.map((name) => ({ name: `${namespace}:${name}` })),
+      };
+    });
 }
 
 function addTextureNbtTracks(

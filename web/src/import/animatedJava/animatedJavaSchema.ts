@@ -226,7 +226,9 @@ function requireAjAnimation(value: unknown, path: string): void {
     for (const [time, frameValue] of Object.entries(event ?? {})) {
       requireKeyframeTime(time, `${path}.global_keyframes.event.${time}`);
       const frame = requireRecord(frameValue, `${path}.global_keyframes.event.${time}`);
-      requireStringArray(frame.events, `${path}.global_keyframes.event.${time}.events`);
+      requireStringArray(frame.events, `${path}.global_keyframes.event.${time}.events`).forEach((name, index) => {
+        if (!/^[a-z0-9_]+$/.test(name)) throw new Error(`${path}.global_keyframes.event.${time}.events[${index}] has an invalid event name.`);
+      });
     }
   }
   const nodeKeyframes = optionalRecord(animation.node_keyframes, `${path}.node_keyframes`);
