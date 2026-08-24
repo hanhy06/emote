@@ -69,7 +69,7 @@ public final class ReloadService {
     }
 
     private ReloadStats reloadRegistry() {
-        var contents = this.directoryLoader.load(this.configManager.getAnimationDirectory());
+        var contents = this.directoryLoader.load(this.configManager.getEmoteDirectory());
         var emotes = contents.animations().stream()
             .map(this::prepareAnimation)
             .filter(java.util.Objects::nonNull)

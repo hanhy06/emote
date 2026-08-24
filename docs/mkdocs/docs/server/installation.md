@@ -9,13 +9,13 @@ The first server startup creates this structure:
 config/emote/
 ├── config.json
 ├── emotes.json
-└── animations/
+└── emote/
 ```
 
-Place Emote JSON exported by the web converter under `animations/`.
+Place Emote JSON exported by the web converter under `emote/`.
 
 ```text
-animations/
+emote/
 ├── default/
 │   ├── wave.json
 │   └── dance.json

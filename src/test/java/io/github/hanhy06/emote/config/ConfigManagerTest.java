@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void installsBundledAnimationsWhenEmoteDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
+    void installsBundledEmotesWhenConfigDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
         Path bundledDirectory = tempDir.resolve("bundled");
         Files.createDirectories(bundledDirectory.resolve("nested"));
         Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
@@ -23,15 +23,16 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configure();
 
-        assertEquals("wave", Files.readString(manager.getAnimationDirectory().resolve("wave.json")));
+        assertEquals(tempDir.resolve("emote/emote"), manager.getEmoteDirectory());
+        assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
         assertEquals(
             "bow",
-            Files.readString(manager.getAnimationDirectory().resolve("nested").resolve("bow.json"))
+            Files.readString(manager.getEmoteDirectory().resolve("nested").resolve("bow.json"))
         );
     }
 
     @Test
-    void doesNotInstallBundledAnimationsWhenEmoteDirectoryAlreadyExists(@TempDir Path tempDir) throws IOException {
+    void doesNotInstallBundledEmotesWhenConfigDirectoryAlreadyExists(@TempDir Path tempDir) throws IOException {
         Path bundledDirectory = tempDir.resolve("bundled");
         Files.createDirectories(bundledDirectory);
         Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
@@ -40,8 +41,8 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configure();
 
-        assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
-        assertFalse(Files.exists(manager.getAnimationDirectory().resolve("wave.json")));
+        assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
+        assertFalse(Files.exists(manager.getEmoteDirectory().resolve("wave.json")));
     }
 
     @Test
@@ -70,7 +71,7 @@ class ConfigManagerTest {
         assertTrue(configJson.contains("\"mineskin_cache_retention_days\": 30"));
         assertTrue(configJson.contains("\"mineskin_cache_max_mib\": 256"));
         assertTrue(configJson.contains("\"max_active_display_entities\": 512"));
-        assertTrue(Files.isDirectory(manager.getAnimationDirectory()));
+        assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
     }
 
     @Test

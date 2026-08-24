@@ -65,7 +65,7 @@ processResources {
 
     from("docs/sample") {
         include "**/*.json"
-        into "default-emote-animations"
+        into "default-emotes"
     }
 }
 

@@ -21,12 +21,12 @@ class ReloadServiceTest {
     @Test
     void keepsDisabledAnimationsLoadedInTheRegistry(@TempDir Path tempDir) throws Exception {
         ConfigManager configManager = new ConfigManager(tempDir);
-        Files.createDirectories(tempDir.resolve("emote/animations"));
+        Files.createDirectories(tempDir.resolve("emote/emote"));
         configManager.configure();
         Files.writeString(tempDir.resolve("emote/emotes.json"), """
             {"schema_version":2,"disabled":["example:disabled"],"permissions":[]}
             """);
-        Files.writeString(configManager.getAnimationDirectory().resolve("disabled.json"), """
+        Files.writeString(configManager.getEmoteDirectory().resolve("disabled.json"), """
             {
               "type":"animation",
               "schema_version":4,
@@ -44,7 +44,7 @@ class ReloadServiceTest {
             }
             """);
         EmoteCatalog registry = new EmoteCatalog();
-        var loaded = new AnimationJsonParser().parse(configManager.getAnimationDirectory().resolve("disabled.json"));
+        var loaded = new AnimationJsonParser().parse(configManager.getEmoteDirectory().resolve("disabled.json"));
         var value = new EmoteAnimation.MolangValue("q.unsupported", "$.timeline.tracks.root.position[0].value[0]");
         var vector = new EmoteAnimation.VectorValue(value, value, value);
         var invalidAnimation = new EmoteAnimation(

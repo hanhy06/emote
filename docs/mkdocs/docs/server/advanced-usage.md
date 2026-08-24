@@ -83,7 +83,7 @@ A Sequence connects multiple Animations in order and presents them to the player
 ### Example file layout
 
 ```text
-config/emote/animations/sit/
+config/emote/emote/sit/
 ├── sit-down.json
 ├── sit-idle.json
 ├── stand-up.json
@@ -137,7 +137,7 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 ### Verifying the installation
 
-1. Place all JSON files under `animations/` on the same server.
+1. Place all JSON files under `emote/` on the same server.
 2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
 3. Run `/emote play example:sit` with normal player permissions.
 

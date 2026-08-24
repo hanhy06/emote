@@ -19,11 +19,11 @@ public class ConfigManager {
     private static final String CONFIG_FILE_DIR = EmoteMod.MOD_ID;
     private static final String CONFIG_FILE_NAME = "config.json";
     private static final String ACCESS_CONFIG_FILE_NAME = "emotes.json";
-    private static final String ANIMATION_DIRECTORY_NAME = "animations";
-    private static final String BUNDLED_ANIMATION_DIRECTORY_NAME = "default-emote-animations";
+    private static final String EMOTE_DIRECTORY_NAME = "emote";
+    private static final String BUNDLED_EMOTE_DIRECTORY_NAME = "default-emotes";
 
     private final Path configDirPath;
-    private final @Nullable Path bundledAnimationDirectory;
+    private final @Nullable Path bundledEmoteDirectory;
     private final Gson gson = new GsonBuilder()
         .setPrettyPrinting()
         .disableHtmlEscaping()
@@ -36,30 +36,30 @@ public class ConfigManager {
     private AccessConfig accessConfig = AccessConfig.createDefault();
 
     public ConfigManager(Path configBasePath) {
-        this(configBasePath, findBundledAnimationDirectory().orElse(null));
+        this(configBasePath, findBundledEmoteDirectory().orElse(null));
     }
 
-    ConfigManager(Path configBasePath, @Nullable Path bundledAnimationDirectory) {
+    ConfigManager(Path configBasePath, @Nullable Path bundledEmoteDirectory) {
         this.configDirPath = configBasePath.resolve(CONFIG_FILE_DIR);
-        this.bundledAnimationDirectory = bundledAnimationDirectory;
+        this.bundledEmoteDirectory = bundledEmoteDirectory;
     }
 
     public void configure() {
-        boolean installBundledAnimations = Files.notExists(this.configDirPath);
+        boolean installBundledEmotes = Files.notExists(this.configDirPath);
 
         try {
             Files.createDirectories(this.configDirPath);
-            Files.createDirectories(getAnimationDirectory());
+            Files.createDirectories(getEmoteDirectory());
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to create config files. Using default settings.", exception);
             return;
         }
 
-        if (installBundledAnimations) {
+        if (installBundledEmotes) {
             try {
-                installBundledAnimations(this.bundledAnimationDirectory);
+                installBundledEmotes(this.bundledEmoteDirectory);
             } catch (IOException exception) {
-                EmoteMod.LOGGER.warn("Failed to install bundled emote animations.", exception);
+                EmoteMod.LOGGER.warn("Failed to install bundled emotes.", exception);
             }
         }
 
@@ -67,28 +67,28 @@ public class ConfigManager {
         writeIfAbsent(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig));
     }
 
-    private static Optional<Path> findBundledAnimationDirectory() {
+    private static Optional<Path> findBundledEmoteDirectory() {
         return FabricLoader.getInstance()
             .getModContainer(EmoteMod.MOD_ID)
-            .flatMap(container -> container.findPath(BUNDLED_ANIMATION_DIRECTORY_NAME));
+            .flatMap(container -> container.findPath(BUNDLED_EMOTE_DIRECTORY_NAME));
     }
 
-    private void installBundledAnimations(@Nullable Path bundledAnimationDirectory) throws IOException {
-        if (bundledAnimationDirectory == null) {
-            EmoteMod.LOGGER.warn("Bundled emote animations were not found.");
+    private void installBundledEmotes(@Nullable Path bundledEmoteDirectory) throws IOException {
+        if (bundledEmoteDirectory == null) {
+            EmoteMod.LOGGER.warn("Bundled emotes were not found.");
             return;
         }
 
-        try (Stream<Path> paths = Files.walk(bundledAnimationDirectory)) {
+        try (Stream<Path> paths = Files.walk(bundledEmoteDirectory)) {
             for (Path sourcePath : paths.filter(Files::isRegularFile).toList()) {
-                Path relativePath = bundledAnimationDirectory.relativize(sourcePath);
-                Path targetPath = getAnimationDirectory().resolve(relativePath.toString());
+                Path relativePath = bundledEmoteDirectory.relativize(sourcePath);
+                Path targetPath = getEmoteDirectory().resolve(relativePath.toString());
                 Files.createDirectories(targetPath.getParent());
                 Files.copy(sourcePath, targetPath);
             }
         }
 
-        EmoteMod.LOGGER.info("Installed bundled emote animations");
+        EmoteMod.LOGGER.info("Installed bundled emotes");
     }
 
     public Config getConfig() {
@@ -99,8 +99,8 @@ public class ConfigManager {
         return this.accessConfig;
     }
 
-    public Path getAnimationDirectory() {
-        return this.configDirPath.resolve(ANIMATION_DIRECTORY_NAME);
+    public Path getEmoteDirectory() {
+        return this.configDirPath.resolve(EMOTE_DIRECTORY_NAME);
     }
 
     public boolean readConfig() {
