@@ -27,24 +27,15 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
 
     expect(project).toMatchObject({ source: "bd_datapack", suggestedNamespace: "dance" });
     expect(project.nodes.display_0).toMatchObject({ skinAssignmentGroup: "display_0" });
-    expect(project.nodes.display_0_variant_1).toMatchObject({ skinAssignmentGroup: "display_0" });
+    expect(project.nodes.display_0_variant_1).toBeUndefined();
     expect(animation.nodes.display_0).toMatchObject({ type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",Count:1}" });
-    expect(animation.nodes.display_0_variant_1).toMatchObject({
-      type: "item_display",
-      visible: false,
-      item_stack_snbt: "{id:\"minecraft:dirt\",Count:1}",
-    });
     expect(animation.timeline.duration).toBe("4t");
     expect(animation.timeline.tracks.display_0.position?.map((frame) => frame.time)).toEqual(["0t", "2t"]);
     expect(animation.timeline.tracks.display_0.position?.[0]).toMatchObject({ interpolation: "linear", value: [0, 0, 0] });
     expect(animation.timeline.tracks.display_0.position?.[1].value).toEqual([2, 0, 0]);
-    expect(animation.timeline.tracks.display_0.visible).toEqual([
-      { time: "0t", value: true },
-      { time: "2t", value: false },
-    ]);
-    expect(animation.timeline.tracks.display_0_variant_1.visible).toEqual([
-      { time: "0t", value: false },
-      { time: "2t", value: true },
+    expect(animation.timeline.tracks.display_0.nbt).toEqual([
+      { time: "0t", value: "{item:{id:\"minecraft:stone\",Count:1}}" },
+      { time: "2t", value: "{item:{id:\"minecraft:dirt\",Count:1}}" },
     ]);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });

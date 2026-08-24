@@ -35,8 +35,6 @@ interface BdDatapackArchive {
 interface ImportedDisplays {
   nodes: Record<string, ImportedNode>;
   nodeIdsByTag: Map<string, string>;
-  nodeIdsByTagAndPayload: Map<string, Map<string, string>>;
-  nodeIdsByTagInOrder: Map<string, string[]>;
   payloadByNodeId: Map<string, string>;
 }
 
@@ -139,11 +137,6 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
     nodes,
     nodeIdsByTag,
     payloadByNodeId,
-    nodeIdsByTagAndPayload: new Map(found.map((display) => [
-      display.tag,
-      new Map([[payloadByNodeId.get(display.node.id)!, display.node.id]]),
-    ])),
-    nodeIdsByTagInOrder: new Map(found.map((display) => [display.tag, [display.node.id]])),
   };
 }
 
@@ -193,7 +186,6 @@ function importAnimations(
     const tracks: Record<string, ImportedNodeTrack> = Object.fromEntries(
       Object.keys(displays.nodes).map((id) => [id, { transforms: [], visibility: [], nbt: [] }]),
     );
-    const activeNodeByTag = new Map(displays.nodeIdsByTag);
     const currentPayloadByTag = new Map([...displays.nodeIdsByTag].map(([tag, nodeId]) => [tag, displays.payloadByNodeId.get(nodeId)!]));
     for (const frame of frames) {
       const lines = frame.content.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
@@ -211,19 +203,14 @@ function importAnimations(
         validateDisplayMerge(displays.nodes[baseNodeId], merge[2], frame.path);
         const payloadUpdate = readDisplayPayloadUpdate(displays.nodes[baseNodeId], merge[2]);
         if (!payloadUpdate) continue;
-        const previousNodeId = activeNodeByTag.get(tag)!;
         const mergedPayload = mergeSnbtValue(currentPayloadByTag.get(tag)!, payloadUpdate);
-        const activeNodeId = ensurePayloadVariant(displays, tag, baseNodeId, mergedPayload);
-        if (!tracks[activeNodeId]) tracks[activeNodeId] = {
-          transforms: tracks[baseNodeId].transforms.map((transform) => ({ ...transform })),
-          visibility: [],
-          nbt: [],
-        };
-        if (activeNodeId !== previousNodeId) {
-          tracks[previousNodeId].visibility.push({ tick: frame.index * TICKS_PER_BD_FRAME, visible: false });
-          tracks[activeNodeId].visibility.push({ tick: frame.index * TICKS_PER_BD_FRAME, visible: true });
-          activeNodeByTag.set(tag, activeNodeId);
-        }
+        setNbtFrame(
+          tracks[baseNodeId],
+          frame.index * TICKS_PER_BD_FRAME,
+          displays.nodes[baseNodeId],
+          displays.payloadByNodeId.get(baseNodeId)!,
+          mergedPayload,
+        );
         currentPayloadByTag.set(tag, mergedPayload);
       }
       for (const line of lines) {
@@ -232,17 +219,14 @@ function importAnimations(
         const matrix = readSnbtRawField(merge[2], "transformation");
         if (!matrix) continue;
         const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
-        const nodeIds = tag ? displays.nodeIdsByTagInOrder.get(tag) : undefined;
-        if (!nodeIds) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
+        const nodeId = tag ? displays.nodeIdsByTag.get(tag) : undefined;
+        if (!nodeId) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
         const duration = readIntegerField(merge[2], "interpolation_duration", 0);
-        for (const nodeId of nodeIds) {
-          if (!tracks[nodeId]) tracks[nodeId] = { transforms: [], visibility: [], nbt: [] };
-          tracks[nodeId].transforms.push({
-            tick: frame.index * TICKS_PER_BD_FRAME,
-            matrix: readMatrix(matrix, `${frame.path} ${nodeId} transformation`),
-            interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
-          });
-        }
+        tracks[nodeId].transforms.push({
+          tick: frame.index * TICKS_PER_BD_FRAME,
+          matrix: readMatrix(matrix, `${frame.path} ${nodeId} transformation`),
+          interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
+        });
       }
     }
     return {
@@ -280,21 +264,6 @@ function readDisplayPayloadUpdate(node: ImportedNode, compound: string): string 
   return null;
 }
 
-function ensurePayloadVariant(displays: ImportedDisplays, tag: string, baseNodeId: string, payload: string): string {
-  const variants = displays.nodeIdsByTagAndPayload.get(tag)!;
-  const existing = variants.get(payload);
-  if (existing) return existing;
-  const base = displays.nodes[baseNodeId];
-  const index = variants.size;
-  const id = `${baseNodeId}_variant_${index}`;
-  const node = withDisplayPayload(base, id, payload);
-  displays.nodes[id] = node;
-  displays.payloadByNodeId.set(id, payload);
-  displays.nodeIdsByTagInOrder.get(tag)!.push(id);
-  variants.set(payload, id);
-  return id;
-}
-
 function displayPayload(node: ImportedNode): string {
   if (node.type === "item_display") return node.itemStackSnbt;
   if (node.type === "block_display") return node.blockStateSnbt;
@@ -302,14 +271,24 @@ function displayPayload(node: ImportedNode): string {
   throw new Error(`Node ${node.id} is not a display.`);
 }
 
-function withDisplayPayload(base: ImportedNode, id: string, payload: string): ImportedNode {
-  if (base.type === "item_display") return { ...base, id, visible: false, itemStackSnbt: payload };
-  if (base.type === "block_display") return { ...base, id, visible: false, blockStateSnbt: payload };
-  if (base.type === "text_display") {
-    const value = readSnbtString(payload) ?? payload;
-    return { ...base, id, visible: false, text: parseText(value) };
-  }
-  throw new Error(`Node ${base.id} is not a display.`);
+function setNbtFrame(
+  track: ImportedNodeTrack,
+  tick: number,
+  node: ImportedNode,
+  initialPayload: string,
+  payload: string,
+): void {
+  if (track.nbt.length === 0) track.nbt.push({ tick: 0, value: displayPayloadNbt(node, initialPayload) });
+  const frame = { tick, value: displayPayloadNbt(node, payload) };
+  if (track.nbt.at(-1)!.tick === tick) track.nbt[track.nbt.length - 1] = frame;
+  else track.nbt.push(frame);
+}
+
+function displayPayloadNbt(node: ImportedNode, payload: string): string {
+  if (node.type === "item_display") return serializeSnbtCompound([["item", payload]]);
+  if (node.type === "block_display") return serializeSnbtCompound([["block_state", payload]]);
+  if (node.type === "text_display") return serializeSnbtCompound([["text", payload]]);
+  throw new Error(`Node ${node.id} is not a display.`);
 }
 
 function mergeSnbtValue(current: string, update: string): string {
@@ -346,18 +325,6 @@ function readStringList(raw: string | null): string[] {
 function readBareField(compound: string, name: string): string | null {
   const raw = readSnbtRawField(compound, name);
   return raw && /^[A-Za-z0-9._+-]+$/.test(raw) ? raw : null;
-}
-
-function readSnbtString(raw: string): string | null {
-  if (raw.startsWith('"') && raw.endsWith('"')) {
-    try {
-      const value = JSON.parse(raw) as unknown;
-      return typeof value === "string" ? value : null;
-    } catch {
-      return null;
-    }
-  }
-  return raw.startsWith("'") && raw.endsWith("'") ? raw.slice(1, -1) : null;
 }
 
 function readIntegerField(compound: string, name: string, fallback: number): number {
