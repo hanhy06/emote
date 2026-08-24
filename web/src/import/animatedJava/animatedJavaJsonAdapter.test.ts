@@ -245,6 +245,38 @@ describe("animatedJavaJsonAdapter", () => {
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
 
+  it("preserves Animated Java display properties as entity NBT", async () => {
+    const input = blueprint({
+      label: {
+        type: "text_display",
+        display_properties: {
+          text: '{"text":"Label"}',
+          billboard: "vertical",
+          custom_brightness: 12,
+          glow_color_override: 0x123456,
+          is_glowing: true,
+          shadow_radius: 0.5,
+          shadow_strength: 0.75,
+          alignment: "left",
+          background_color: 0x40112233,
+          is_default_background: false,
+          is_see_through: true,
+          is_shadowed: true,
+          line_width: 160,
+          text_opacity: -16,
+        },
+      },
+    }, { idle: { loop_mode: { type: "once" }, length: 0.05 } });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const node = project.nodes.label;
+
+    expect(node.type).toBe("text_display");
+    expect(node.type !== "anchor" && node.entityNbt).toBe(
+      '{billboard:"vertical",shadow_radius:0.5,shadow_strength:0.75,glow_color_override:1193046,Glowing:1b,brightness:{sky:12,block:12},alignment:"left",background:1074864691,line_width:160,text_opacity:-16b,default_background:0b,see_through:1b,shadow:1b}',
+    );
+  });
+
   it("creates resource-pack files for bone models", async () => {
     const input = rawBlueprint({
       format_version: 1,

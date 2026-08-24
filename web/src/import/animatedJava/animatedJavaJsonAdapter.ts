@@ -144,7 +144,7 @@ function importNodes(
     }
 
     const defaultMatrix = readDefaultMatrix(node, id);
-    const entityNbt = displayPropertiesToNbt(node.display_properties);
+    const entityNbt = displayPropertiesToNbt(node.display_properties, node.type);
     const part = inferAjSkinPart(id);
     const elements = (node.elements ?? []).flatMap((element) => splitTallAjSkinElement(element, part));
     if (elements.length === 0) {
@@ -196,7 +196,7 @@ function importDisplayNode(id: string, node: AjNode): ImportedNode {
   if (node.type === "locator" || node.type === "structure" || node.type === "camera") {
     return { id, type: "anchor", defaultMatrix };
   }
-  const entityNbt = displayPropertiesToNbt(node.display_properties);
+  const entityNbt = displayPropertiesToNbt(node.display_properties, node.type);
   const properties = node.display_properties ?? {};
   if (node.type === "item_display") {
     return {
@@ -584,7 +584,7 @@ function resolveTexture(provider: AjElement["faces"][string]["texture_provider"]
   return texture;
 }
 
-function displayPropertiesToNbt(properties: Record<string, unknown> | undefined): string | undefined {
+function displayPropertiesToNbt(properties: Record<string, unknown> | undefined, nodeType: AjNode["type"]): string | undefined {
   if (!properties) return undefined;
   const fields: [string, string][] = [];
   for (const key of ["billboard", "shadow_radius", "shadow_strength", "glow_color_override"] as const) {
@@ -592,11 +592,34 @@ function displayPropertiesToNbt(properties: Record<string, unknown> | undefined)
     if (typeof value === "string") fields.push([key, serializeSnbtString(value)]);
     else if (typeof value === "number" && Number.isFinite(value)) fields.push([key, String(value)]);
   }
-  if (properties.is_glowing === true) fields.push(["glowing", "1b"]);
-  if (properties.is_custom_brightness_enabled === true && isRecord(properties.custom_brightness)) {
+  if (properties.is_glowing === true) fields.push(["Glowing", "1b"]);
+  if (typeof properties.custom_brightness === "number" && Number.isInteger(properties.custom_brightness)) {
+    fields.push(["brightness", serializeSnbtCompound([
+      ["sky", String(properties.custom_brightness)],
+      ["block", String(properties.custom_brightness)],
+    ])]);
+  } else if (properties.is_custom_brightness_enabled === true && isRecord(properties.custom_brightness)) {
     const sky = numberProperty(properties.custom_brightness, "sky", 0);
     const block = numberProperty(properties.custom_brightness, "block", 0);
     fields.push(["brightness", serializeSnbtCompound([["sky", String(sky)], ["block", String(block)]])]);
+  }
+  if (nodeType === "text_display") {
+    const alignment = properties.alignment;
+    if (typeof alignment === "string") fields.push(["alignment", serializeSnbtString(alignment)]);
+    for (const [source, target] of [["background_color", "background"], ["line_width", "line_width"]] as const) {
+      const value = properties[source];
+      if (typeof value === "number" && Number.isInteger(value)) fields.push([target, String(value)]);
+    }
+    if (typeof properties.text_opacity === "number" && Number.isInteger(properties.text_opacity)) {
+      fields.push(["text_opacity", `${properties.text_opacity}b`]);
+    }
+    for (const [source, target] of [
+      ["is_default_background", "default_background"],
+      ["is_see_through", "see_through"],
+      ["is_shadowed", "shadow"],
+    ] as const) {
+      if (typeof properties[source] === "boolean") fields.push([target, properties[source] ? "1b" : "0b"]);
+    }
   }
   return fields.length ? serializeSnbtCompound(fields) : undefined;
 }
