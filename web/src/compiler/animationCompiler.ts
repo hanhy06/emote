@@ -174,6 +174,12 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
         value,
       }));
     }
+    if (track.nbt.length > 0) {
+      nodeTracks.nbt = track.nbt.map((frame) => ({
+        time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
+        value: frame.value,
+      }));
+    }
     if (Object.keys(nodeTracks).length > 0) tracks[nodeId] = nodeTracks;
   }
 

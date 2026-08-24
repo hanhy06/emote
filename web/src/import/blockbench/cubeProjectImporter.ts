@@ -355,6 +355,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
           ),
         })),
         visibility: [],
+        nbt: [],
       };
     }
   }

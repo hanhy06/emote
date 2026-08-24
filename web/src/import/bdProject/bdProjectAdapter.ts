@@ -71,6 +71,7 @@ export const bdProjectAdapter: ImportAdapter<ImportedProject> = {
         interpolation: time === 0 ? { type: "step" } : { type: "linear" },
       })),
       visibility: [],
+      nbt: [],
     }]));
     const sourceStem = input.name.replace(/\.bdengine$/i, "").trim() || "BD Project";
     const animationName = (root.listAnim?.length ?? 0) > 1

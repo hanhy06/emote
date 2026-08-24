@@ -391,6 +391,7 @@ function importAnimation(
     for (const nodeId of generatedNodeIds) tracks[nodeId] = {
       transforms,
       visibility: [],
+      nbt: [],
     };
   }
   return {

@@ -1,13 +1,19 @@
 import type {
   EmoteAnimation,
   EmoteEvent,
+  EmoteNbtKeyframe,
   EmoteVectorKeyframe,
   MolangScalar,
 } from "./emoteAnimation";
 import { isResourceLocation } from "./resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, parseMinecraftTime } from "./time";
+import { parseSnbtCompound } from "./snbt";
 
 const JAVA_INT_MAX = 2_147_483_647;
+const RUNTIME_OWNED_NBT_FIELDS = new Set([
+  "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
+  "transformation", "interpolation_duration", "start_interpolation", "teleport_duration",
+]);
 const ITEM_DISPLAY_VALUES = new Set([
   "none",
   "thirdperson_lefthand",
@@ -61,13 +67,18 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     const path = `timeline.tracks.${nodeId}`;
     const node = animation.nodes[nodeId];
     if (!node) add(issues, path, "references an unknown node");
-    const entries = [tracks.position, tracks.rotation, tracks.scale, tracks.visible].filter(Boolean);
+    const entries = [tracks.position, tracks.rotation, tracks.scale, tracks.visible, tracks.nbt].filter(Boolean);
     if (entries.length === 0) add(issues, path, "must contain at least one track");
     validateVectorTrack(tracks.position, `${path}.position`, durationTicks, issues);
     validateVectorTrack(tracks.rotation, `${path}.rotation`, durationTicks, issues);
     validateVectorTrack(tracks.scale, `${path}.scale`, durationTicks, issues);
     validateVisibilityTrack(tracks.visible, `${path}.visible`, durationTicks, issues);
+    validateNbtTrack(tracks.nbt, `${path}.nbt`, durationTicks, issues);
     if (node?.type === "anchor" && tracks.visible) add(issues, `${path}.visible`, "anchor does not support visible state");
+    if (node?.type === "anchor" && tracks.nbt) add(issues, `${path}.nbt`, "anchor does not support nbt state");
+    if (node?.type === "item_display" && node.item_source && tracks.nbt?.some((frame) => {
+      try { return parseSnbtCompound(frame.value).some((field) => field.name === "item"); } catch { return false; }
+    })) add(issues, `${path}.nbt`, "participant hand item nodes do not support item changes");
   }
 
   validateEvents(animation, durationTicks, issues);
@@ -190,6 +201,41 @@ function validateVisibilityTrack(
     if (durationTicks !== null && tick > durationTicks) add(issues, `${path}[${index}].time`, "must be within 0..duration");
     if (typeof frame.value === "string" && !frame.value.trim()) add(issues, `${path}[${index}].value`, "Molang must not be blank");
     previousTick = tick;
+  });
+}
+
+function validateNbtTrack(
+  frames: EmoteNbtKeyframe[] | undefined,
+  path: string,
+  durationTicks: number | null,
+  issues: ValidationIssue[],
+): void {
+  if (!frames) return;
+  if (frames.length === 0) {
+    add(issues, path, "must not be empty");
+    return;
+  }
+  let previousTick = -1;
+  let initialFields = new Set<string>();
+  frames.forEach((frame, index) => {
+    const framePath = `${path}[${index}]`;
+    const tick = validateTime(frame.time, 0, `${framePath}.time`, issues);
+    if (tick !== null) {
+      if (index === 0 && tick !== 0) add(issues, `${framePath}.time`, "first keyframe must be at 0t");
+      if (tick <= previousTick) add(issues, `${framePath}.time`, "must be strictly ascending");
+      if (durationTicks !== null && tick > durationTicks) add(issues, `${framePath}.time`, "must be within 0..duration");
+      previousTick = tick;
+    }
+    try {
+      const fields = parseSnbtCompound(frame.value).map((field) => field.name);
+      if (index === 0) initialFields = new Set(fields);
+      for (const field of fields) {
+        if (RUNTIME_OWNED_NBT_FIELDS.has(field)) add(issues, `${framePath}.value`, `must not modify runtime-owned field ${field}`);
+        if (index > 0 && !initialFields.has(field)) add(issues, `${framePath}.value`, "must only modify fields declared by the 0t keyframe");
+      }
+    } catch (reason) {
+      add(issues, `${framePath}.value`, reason instanceof Error ? reason.message : "must be compound SNBT");
+    }
   });
 }
 

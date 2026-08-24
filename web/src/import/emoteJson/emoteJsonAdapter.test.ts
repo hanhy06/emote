@@ -50,6 +50,10 @@ describe("emoteJsonAdapter", () => {
               { time: "0t", value: [1, 1, 1], interpolation: "linear" },
               { time: "4t", value: [1, 1, 1] },
             ],
+            nbt: [
+              { time: "0t", value: "{item:{id:'minecraft:stone',count:1}}" },
+              { time: "4t", value: "{item:{id:'minecraft:diamond',count:1}}" },
+            ],
           },
         },
       },
@@ -65,6 +69,7 @@ describe("emoteJsonAdapter", () => {
     expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "4t"]);
     expect(recompiled.timeline.tracks.arm.position?.[1].value?.[0]).toBeCloseTo(1);
     expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
+    expect(recompiled.timeline.tracks.arm.nbt).toEqual(source.timeline.tracks.arm.nbt);
   });
 
   it("previews advanced schema 4 runtime data without changing exported Molang", async () => {

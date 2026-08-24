@@ -125,6 +125,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
     transforms: [],
     visibility: [],
+    nbt: [],
   }]));
   if (startDelayTicks > 0) {
     const bindMatrices = buildWorldMatrices(new Map());

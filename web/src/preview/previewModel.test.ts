@@ -48,6 +48,7 @@ function session(previewFrameIndex: number): ConversionSession {
             { tick: 4, visible: false },
             { tick: 8, visible: true },
           ],
+          nbt: [],
         },
       },
       events: { start: [], timeline: [], loop: [], stop: [] },

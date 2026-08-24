@@ -139,6 +139,7 @@ function requireSchema4Timeline(value: unknown): void {
     requireVectorTrack(track.rotation, `${path}.rotation`);
     requireVectorTrack(track.scale, `${path}.scale`);
     requireVisibilityTrack(track.visible, `${path}.visible`);
+    requireNbtTrack(track.nbt, `${path}.nbt`);
   }
   const events = optionalRecord(timeline.events, "timeline.events");
   if (!events) return;
@@ -176,6 +177,16 @@ function requireVisibilityTrack(value: unknown, path: string): void {
     const frame = requireRecord(frameValue, framePath);
     requireString(frame.time, `${framePath}.time`);
     if (typeof frame.value !== "boolean" && typeof frame.value !== "string") throw new Error(`${framePath}.value must be a boolean or string.`);
+  });
+}
+
+function requireNbtTrack(value: unknown, path: string): void {
+  if (value === undefined) return;
+  requireArray(value, path).forEach((frameValue, index) => {
+    const framePath = `${path}[${index}]`;
+    const frame = requireRecord(frameValue, framePath);
+    requireString(frame.time, `${framePath}.time`);
+    requireString(frame.value, `${framePath}.value`);
   });
 }
 

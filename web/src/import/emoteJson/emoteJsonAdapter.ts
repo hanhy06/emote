@@ -184,7 +184,11 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   const tracks: ImportedAnimation["tracks"] = {};
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
-    const track = { transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`), visibility: [] } as ImportedAnimation["tracks"][string];
+    const track = {
+      transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
+      visibility: [],
+      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value })),
+    } as ImportedAnimation["tracks"][string];
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
       track.visibility.push({ tick: parseMinecraftTime(frame.time), visible: frame.value });

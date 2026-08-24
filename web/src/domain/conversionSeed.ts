@@ -95,6 +95,7 @@ export function animationAvailability(animation: ImportedAnimation): ImportedAni
 export interface ImportedNodeTrack {
   transforms: ImportedTransformKeyframe[];
   visibility: ImportedVisibilityKeyframe[];
+  nbt: ImportedNbtKeyframe[];
 }
 
 export interface ImportedTransformKeyframe {
@@ -110,6 +111,11 @@ export type ImportedInterpolation =
 export interface ImportedVisibilityKeyframe {
   tick: number;
   visible: boolean;
+}
+
+export interface ImportedNbtKeyframe {
+  tick: number;
+  value: string;
 }
 
 export interface ImportedTimelineEvent extends EmoteEvent {

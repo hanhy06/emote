@@ -112,6 +112,7 @@ function importedProject(): ImportedProject {
               { tick: 8, matrix: IDENTITY, interpolation: { type: "linear" } },
             ],
             visibility: [],
+            nbt: [],
           },
         },
         events: { start: [], timeline: [], loop: [], stop: [] },

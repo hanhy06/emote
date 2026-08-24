@@ -110,6 +110,7 @@ export interface EmoteNodeTracks {
   rotation?: EmoteVectorKeyframe[];
   scale?: EmoteVectorKeyframe[];
   visible?: EmoteVisibilityKeyframe[];
+  nbt?: EmoteNbtKeyframe[];
 }
 
 export type EmoteInterpolation = "step" | "linear";
@@ -138,6 +139,11 @@ export interface EmoteVectorKeyframe {
 export interface EmoteVisibilityKeyframe {
   time: MinecraftTime;
   value: boolean | string;
+}
+
+export interface EmoteNbtKeyframe {
+  time: MinecraftTime;
+  value: string;
 }
 
 export interface EmoteEvents {

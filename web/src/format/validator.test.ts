@@ -64,6 +64,21 @@ describe("validateEmoteAnimation", () => {
     expect(validateEmoteAnimation(value)).toEqual([]);
   });
 
+  it("accepts a schema 4 NBT track and rejects runtime-owned fields", () => {
+    const value = animation();
+    value.timeline.tracks.display.nbt = [
+      { time: "0t", value: "{item:{id:'minecraft:stone',count:1},Glowing:false}" },
+      { time: "2t", value: "{item:{id:'minecraft:diamond',count:1},Glowing:true}" },
+    ];
+    expect(validateEmoteAnimation(value)).toEqual([]);
+
+    value.timeline.tracks.display.nbt[1].value = "{transformation:{}}";
+    expect(validateEmoteAnimation(value)).toContainEqual({
+      path: "timeline.tracks.display.nbt[1].value",
+      message: "must not modify runtime-owned field transformation",
+    });
+  });
+
   it("accepts hold mode only with zero loop delay", () => {
     const value = animation();
     value.settings.playback = { mode: "hold", loop_delay: "0t" };

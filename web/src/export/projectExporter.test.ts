@@ -240,6 +240,7 @@ describe("exportAnimation", () => {
           cube: {
             transforms: [{ tick: 0, matrix: IDENTITY, interpolation: { type: "step" } }],
             visibility: [],
+            nbt: [],
           },
         },
         events: { start: [], timeline: [], loop: [], stop: [] },

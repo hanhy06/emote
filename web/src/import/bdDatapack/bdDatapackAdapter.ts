@@ -191,7 +191,7 @@ function importAnimations(
     });
     const durationTicks = requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${animationName} duration`);
     const tracks: Record<string, ImportedNodeTrack> = Object.fromEntries(
-      Object.keys(displays.nodes).map((id) => [id, { transforms: [], visibility: [] }]),
+      Object.keys(displays.nodes).map((id) => [id, { transforms: [], visibility: [], nbt: [] }]),
     );
     const activeNodeByTag = new Map(displays.nodeIdsByTag);
     const currentPayloadByTag = new Map([...displays.nodeIdsByTag].map(([tag, nodeId]) => [tag, displays.payloadByNodeId.get(nodeId)!]));
@@ -217,6 +217,7 @@ function importAnimations(
         if (!tracks[activeNodeId]) tracks[activeNodeId] = {
           transforms: tracks[baseNodeId].transforms.map((transform) => ({ ...transform })),
           visibility: [],
+          nbt: [],
         };
         if (activeNodeId !== previousNodeId) {
           tracks[previousNodeId].visibility.push({ tick: frame.index * TICKS_PER_BD_FRAME, visible: false });
@@ -235,7 +236,7 @@ function importAnimations(
         if (!nodeIds) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
         const duration = readIntegerField(merge[2], "interpolation_duration", 0);
         for (const nodeId of nodeIds) {
-          if (!tracks[nodeId]) tracks[nodeId] = { transforms: [], visibility: [] };
+          if (!tracks[nodeId]) tracks[nodeId] = { transforms: [], visibility: [], nbt: [] };
           tracks[nodeId].transforms.push({
             tick: frame.index * TICKS_PER_BD_FRAME,
             matrix: readMatrix(matrix, `${frame.path} ${nodeId} transformation`),

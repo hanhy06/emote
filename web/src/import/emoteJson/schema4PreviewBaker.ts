@@ -50,7 +50,11 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
   const session = new PreviewMolangSession(durationTicks);
   const states = prepareNodeStates(animation);
-  const result = Object.fromEntries(states.map((state) => [state.id, { transforms: [], visibility: [] }])) as Record<string, ImportedNodeTrack>;
+  const result = Object.fromEntries(states.map((state) => [state.id, {
+    transforms: [],
+    visibility: [],
+    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value })),
+  }])) as Record<string, ImportedNodeTrack>;
 
   session.setTick(0, 0);
   if (animation.molang?.initialize) session.evaluate(animation.molang.initialize, "molang.initialize", true);

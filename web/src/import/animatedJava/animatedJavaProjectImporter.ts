@@ -196,7 +196,7 @@ function importProjectAnimation(
         interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    tracks[element.uuid] = { transforms, visibility: [] };
+    tracks[element.uuid] = { transforms, visibility: [], nbt: [] };
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
