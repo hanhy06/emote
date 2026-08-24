@@ -21,7 +21,6 @@ import java.util.function.Consumer;
 
 public final class PolymerResourcePackDistributor {
     private static final String AUTO_HOST_FILE_NAME = "auto-host.json";
-    private static final String RESOURCE_PACK_FILE_NAME = "resource-pack.json";
 
     private final ConfigManager configManager;
     private final ResourcePackContributor contributor;
@@ -31,13 +30,13 @@ public final class PolymerResourcePackDistributor {
         this.configManager = configManager;
         this.contributor = new ResourcePackContributor();
 
-        configurePolymer();
+        configureAutoHost();
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(this::addEmoteResources);
     }
 
     public void rebuildAndPush() {
         try {
-            PolymerResourcePackUtils.getInstance().build(this.configManager.getGeneratedResourcePackPath());
+            PolymerResourcePackUtils.getInstance().build(PolymerResourcePackUtils.getMainPath());
             pushToOnlinePlayers();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -76,7 +75,7 @@ public final class PolymerResourcePackDistributor {
         }
     }
 
-    private void configurePolymer() {
+    private void configureAutoHost() {
         Path polymerConfigDirectory = FabricLoader.getInstance().getConfigDir().resolve("polymer");
         try {
             updateJson(polymerConfigDirectory.resolve(AUTO_HOST_FILE_NAME), json -> {
@@ -86,24 +85,9 @@ public final class PolymerResourcePackDistributor {
                     json.add("settings", new JsonObject());
                 }
             });
-            updateJson(polymerConfigDirectory.resolve(RESOURCE_PACK_FILE_NAME), json ->
-                json.addProperty("resource_pack_location", resourcePackLocation())
-            );
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to configure Polymer AutoHost: {}", exception.getMessage());
         }
-    }
-
-    private String resourcePackLocation() {
-        Path gameDirectory = FabricLoader.getInstance().getGameDir().toAbsolutePath().normalize();
-        Path resourcePack = this.configManager.getGeneratedResourcePackPath().toAbsolutePath().normalize();
-        String location;
-        try {
-            location = gameDirectory.relativize(resourcePack).toString();
-        } catch (IllegalArgumentException exception) {
-            location = resourcePack.toString();
-        }
-        return location.replace('\\', '/');
     }
 
     private void updateJson(Path path, Consumer<JsonObject> update) throws IOException {

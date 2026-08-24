@@ -21,7 +21,6 @@ public class ConfigManager {
     private static final String ACCESS_CONFIG_FILE_NAME = "emotes.json";
     private static final String EMOTE_DIRECTORY_NAME = "emote";
     private static final String RESOURCE_PACK_DIRECTORY_NAME = "resource-pack";
-    private static final String GENERATED_RESOURCE_PACK_FILE_NAME = ".resource-pack.zip";
     private static final String BUNDLED_EMOTE_DIRECTORY_NAME = "default-emotes";
 
     private final Path configDirPath;
@@ -107,10 +106,6 @@ public class ConfigManager {
 
     public Path getResourcePackDirectory() {
         return this.configDirPath.resolve(RESOURCE_PACK_DIRECTORY_NAME);
-    }
-
-    public Path getGeneratedResourcePackPath() {
-        return this.configDirPath.resolve(GENERATED_RESOURCE_PACK_FILE_NAME);
     }
 
     public void configureResourcePack() throws IOException {
