@@ -5,7 +5,7 @@ import { createConversionDocument, type AnimationOutputSettings } from "../domai
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
 import { exportDocumentAnimation, exportDocumentAnimationFiles } from "./projectExporter";
-import { exportDocumentResourcePack } from "./resourcePackExporter";
+import { exportDocumentResourceBundle } from "./resourceBundleExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
@@ -32,14 +32,13 @@ function exportAnimation(
   return exportDocumentAnimation(exportDocument(project, options, skinAssignments, spaces), animationIndex);
 }
 
-function exportResourcePack(
+function exportResourceBundle(
   project: ImportedProject,
   options: FixtureExportOptions,
   skinAssignments: Readonly<Record<string, ImportedSkinPart | null>>,
-  animationIndex: number,
   spaces: Readonly<Record<string, NodeSpace>> = {},
 ) {
-  return exportDocumentResourcePack(exportDocument(project, options, skinAssignments, spaces), animationIndex);
+  return exportDocumentResourceBundle(exportDocument(project, options, skinAssignments, spaces));
 }
 
 function exportDocument(
@@ -319,7 +318,7 @@ describe("exportAnimation", () => {
     });
   });
 
-  it("packages generated resources under the animation export name", async () => {
+  it("exports generated resources as flat self-locating files without pack metadata", async () => {
     const texture = new Uint8Array([1, 2, 3]);
     const project: ImportedProject = {
       source: "animated_java_json",
@@ -339,9 +338,14 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      resources: new Map([["assets/test/textures/entity/test.png", texture]]),
+      resources: new Map([
+        ["assets/test/textures/entity/test.png", texture],
+        ["assets/test/textures/entity/test.png.mcmeta", new Uint8Array([4])],
+        ["assets/test/models/item/test.json", new Uint8Array([5])],
+        ["assets/test/items/test.json", new Uint8Array([6])],
+      ]),
     };
-    const result = exportResourcePack(project, {
+    const result = exportResourceBundle(project, {
       minecraftVersion: "26.2",
       namespace: "test",
       playbackMode: "source",
@@ -349,20 +353,18 @@ describe("exportAnimation", () => {
       description: project.suggestedMetadata.description,
       player: project.suggestedPlayer,
       additionalMetadata: {},
-    }, {}, 0);
+    }, {});
     const files = unzipSync(new Uint8Array(await result.blob.arrayBuffer()));
-    const metadata = JSON.parse(strFromU8(files["pack.mcmeta"]));
 
-    expect(result.fileName).toBe("emote.test_emote.zip");
-    expect(Object.keys(files).sort()).toEqual(["assets/test/textures/entity/test.png", "pack.mcmeta"]);
-    expect(files["assets/test/textures/entity/test.png"]).toEqual(texture);
-    expect(metadata).toEqual({
-      pack: {
-        description: "Test Emote emote resources",
-        min_format: [88, 0],
-        max_format: [88, 0],
-      },
-    });
+    expect(result.fileName).toBe("emote.test.resources.zip");
+    expect(Object.keys(files).sort()).toEqual([
+      "test+items+test.json",
+      "test+models+item+test.json",
+      "test+textures+entity+test.png",
+      "test+textures+entity+test.png.mcmeta",
+    ]);
+    expect(files["test+textures+entity+test.png"]).toEqual(texture);
+    expect(files["pack.mcmeta"]).toBeUndefined();
   });
 
   it.each([

@@ -1,6 +1,3 @@
-import type { TargetedEvent } from "preact";
-import { useEffect, useState } from "preact/hooks";
-
 interface DownloadItem {
   label: string;
   detail: string;
@@ -17,9 +14,7 @@ interface ExportPanelProps {
   onDownloadAnimation: (index: number) => void;
   onDownloadAllAnimations: () => void;
   onDownloadSequence: () => void;
-  onDownloadResourcePack: (index: number) => void;
-  onMergeResourcePackZip: (file: File) => void;
-  onMergeResourcePackFolder: (files: File[]) => void;
+  onDownloadResources: () => void;
 }
 
 export function ExportPanel({
@@ -31,39 +26,8 @@ export function ExportPanel({
   onDownloadAnimation,
   onDownloadAllAnimations,
   onDownloadSequence,
-  onDownloadResourcePack,
-  onMergeResourcePackZip,
-  onMergeResourcePackFolder,
+  onDownloadResources,
 }: ExportPanelProps) {
-  const [mergeMenuIndex, setMergeMenuIndex] = useState<number | null>(null);
-  useEffect(() => {
-    if (mergeMenuIndex === null) return;
-    const closeMenu = () => setMergeMenuIndex(null);
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeMenu();
-    };
-    document.addEventListener("pointerdown", closeMenu);
-    document.addEventListener("keydown", closeOnEscape);
-    return () => {
-      document.removeEventListener("pointerdown", closeMenu);
-      document.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [mergeMenuIndex]);
-
-  function selectZip(event: TargetedEvent<HTMLInputElement>) {
-    const file = event.currentTarget.files?.[0];
-    if (file) onMergeResourcePackZip(file);
-    setMergeMenuIndex(null);
-    event.currentTarget.value = "";
-  }
-
-  function selectFolder(event: TargetedEvent<HTMLInputElement>) {
-    const files = [...(event.currentTarget.files ?? [])];
-    if (files.length) onMergeResourcePackFolder(files);
-    setMergeMenuIndex(null);
-    event.currentTarget.value = "";
-  }
-
   const bundleDisabled = disabled || animations.some((animation) => !animation.exportable);
 
   return (
@@ -81,6 +45,10 @@ export function ExportPanel({
         <button type="button" disabled={bundleDisabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
         <button className="primary-button" type="button" disabled={bundleDisabled} onClick={onDownloadSequence}>Download sequence files</button>
       </div>}
+      {hasResources && <div className="export-row">
+        <span><strong>Resource files</strong><small>Flat files named with their resource-pack locations.</small></span>
+        <button type="button" disabled={disabled} onClick={onDownloadResources}>Download resources ZIP</button>
+      </div>}
       <h3>Animations</h3>
       <ul className="download-list">
         {animations.map((animation, index) => (
@@ -88,32 +56,6 @@ export function ExportPanel({
             <span><strong>{animation.label}</strong><small>{animation.exportable ? animation.detail : `${animation.detail} · Export unavailable`}</small>{!animation.exportable && animation.reason && <small>{animation.reason}</small>}</span>
             <div className="download-actions">
               <button className="primary-button" type="button" disabled={disabled || !animation.exportable} onClick={() => onDownloadAnimation(index)}>Download JSON</button>
-              {hasResources && (
-                <div className="resource-pack-action">
-                  <div className="resource-pack-button">
-                    <button type="button" disabled={disabled || !animation.exportable} onClick={() => {
-                      setMergeMenuIndex(null);
-                      onDownloadResourcePack(index);
-                    }}>Download resource pack</button>
-                    <button
-                      className="split-menu-toggle"
-                      type="button"
-                      disabled={disabled || !animation.exportable}
-                      aria-label="Resource pack merge options"
-                      aria-haspopup="menu"
-                      aria-expanded={mergeMenuIndex === index}
-                      onPointerDown={(event) => event.stopPropagation()}
-                      onClick={() => setMergeMenuIndex((current) => current === index ? null : index)}
-                    >▼</button>
-                  </div>
-                  {mergeMenuIndex === index && (
-                    <div className="merge-menu" role="menu" onPointerDown={(event) => event.stopPropagation()}>
-                      <label className="button-file-input">Merge into ZIP<input type="file" accept=".zip,application/zip" disabled={disabled} onChange={selectZip} /></label>
-                      <label className="button-file-input">Merge into folder<input type="file" multiple disabled={disabled} ref={(input) => input?.setAttribute("webkitdirectory", "")} onChange={selectFolder} /></label>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           </li>
         ))}

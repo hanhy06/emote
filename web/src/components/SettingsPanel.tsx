@@ -62,7 +62,7 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
       </section>
-      <section className="playback-behavior"><h3>Other</h3><div className="fields"><label>Minecraft version <small>Used only for generated resource packs.</small><input value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)} /></label></div></section>
+      <section className="playback-behavior"><h3>Other</h3><div className="fields"><label>Minecraft version <small>Used only for generated resource files.</small><input value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)} /></label></div></section>
     </section>
   );
 }

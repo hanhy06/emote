@@ -142,31 +142,13 @@ export function App() {
     }
   }
 
-  async function handleResourcePackDownload(index: number) {
+  async function handleResourceBundleDownload() {
     if (!session) return;
 
     await runExport(async () => {
-      const { exportDocumentResourcePack } = await import("./export/resourcePackExporter");
-      return exportDocumentResourcePack(session.document, index);
-    }, "Resource export failed.", "Creating resource pack");
-  }
-
-  async function handleResourcePackZipMerge(file: File) {
-    if (!session) return;
-
-    await runExport(async () => {
-      const { mergeDocumentResourcePackZip } = await import("./export/resourcePackMerger");
-      return mergeDocumentResourcePackZip(session.document, file);
-    }, "Resource pack merge failed.", "Merging resource pack");
-  }
-
-  async function handleResourcePackFolderMerge(files: File[]) {
-    if (!session) return;
-
-    await runExport(async () => {
-      const { mergeDocumentResourcePackFolder } = await import("./export/resourcePackMerger");
-      return mergeDocumentResourcePackFolder(session.document, files);
-    }, "Resource pack merge failed.", "Merging resource pack");
+      const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
+      return exportDocumentResourceBundle(session.document);
+    }, "Resource export failed.", "Creating resource files");
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
@@ -400,9 +382,7 @@ export function App() {
             onDownloadAnimation={handleAnimationDownload}
             onDownloadAllAnimations={() => handleAnimationBundle(false)}
             onDownloadSequence={() => handleAnimationBundle(true)}
-            onDownloadResourcePack={handleResourcePackDownload}
-            onMergeResourcePackZip={handleResourcePackZipMerge}
-            onMergeResourcePackFolder={handleResourcePackFolderMerge}
+            onDownloadResources={handleResourceBundleDownload}
           />}
         </>
       )}

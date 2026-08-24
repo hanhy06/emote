@@ -15,7 +15,7 @@ Join the Discord server to share emotes you have made.
 
 Emote is a server-side emote mod that plays animations with Minecraft display entities. All server features work when the mod is installed only on the server. Installing it on the client is optional and adds an emote wheel and automatic third-person view during playback.
 
-The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and commands without editing Animation JSON, then export the resource pack as well.
+The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and commands without editing Animation JSON, then export flat resource files for the server to assemble.
 
 On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations or coordinate two players in a collaborative emote, with each player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
@@ -104,7 +104,7 @@ Set `mineskin_api_key` to apply player skins.
 
 [Emote Converter](https://hanhy06.github.io/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
 
-Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export individual Animation and Sequence JSON files, download a resource pack, or merge the result into an existing resource pack.
+Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands. Export individual Animation and Sequence JSON files or download a flat ZIP of generated resource files. Each resource filename encodes its location below `assets/` with `+` separators, and the ZIP does not contain `pack.mcmeta`.
 
 ![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
