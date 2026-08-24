@@ -30,6 +30,10 @@ sourceSets.test {
 
 repositories {
     mavenCentral()
+    maven {
+        name = "Nucleoid"
+        url = "https://maven.nucleoid.xyz/"
+    }
 
     // Add repositories to retrieve artifacts from in here.
     // You should only use this when depending on other mods because
@@ -50,6 +54,10 @@ dependencies {
     include(implementation("me.lucko:fabric-permissions-api:${fabric_permissions_api_version}"))
     include(implementation("team.unnamed:mocha:3.0.1"))
     include(implementation("org.javassist:javassist:3.30.2-GA"))
+
+    include(implementation("eu.pb4:polymer-common:${polymer_version}"))
+    include(implementation("eu.pb4:polymer-resource-pack:${polymer_version}"))
+    include(implementation("eu.pb4:polymer-autohost:${polymer_version}"))
 
     testImplementation platform("org.junit:junit-bom:5.12.2")
     testImplementation "org.junit.jupiter:junit-jupiter"

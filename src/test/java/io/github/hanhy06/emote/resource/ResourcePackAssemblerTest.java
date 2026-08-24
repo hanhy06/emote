@@ -1,9 +1,11 @@
 package io.github.hanhy06.emote.resource;
 
+import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.lang.reflect.Proxy;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
@@ -68,6 +70,31 @@ class ResourcePackAssemblerTest {
 
         assertTrue(exception.getMessage().contains("Conflicting resource assets/demo/textures/item/shared.png"));
         assertEquals("previous", Files.readString(outputFile));
+    }
+
+    @Test
+    void contributesDecodedResourcesToOnePolymerPack(@TempDir Path tempDir) throws Exception {
+        Path sourceDirectory = tempDir.resolve("resource-pack");
+        Files.createDirectories(sourceDirectory);
+        Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "source metadata");
+        Files.write(sourceDirectory.resolve("demo]textures]item]chair.png"), new byte[] {1, 2, 3});
+
+        Map<String, byte[]> entries = new HashMap<>();
+        ResourcePackBuilder builder = (ResourcePackBuilder) Proxy.newProxyInstance(
+            ResourcePackBuilder.class.getClassLoader(),
+            new Class<?>[] {ResourcePackBuilder.class},
+            (ignoredProxy, method, arguments) -> {
+                if (method.getName().equals("addData") && arguments[1] instanceof byte[] data) {
+                    entries.put((String) arguments[0], data);
+                    return true;
+                }
+                throw new UnsupportedOperationException(method.toString());
+            }
+        );
+
+        assertEquals(1, new ResourcePackAssembler().addTo(sourceDirectory, builder));
+        assertArrayEquals(new byte[] {1, 2, 3}, entries.get("assets/demo/textures/item/chair.png"));
+        assertEquals(1, entries.size());
     }
 
     private static void writeZip(Path path, Map<String, byte[]> entries) throws IOException {

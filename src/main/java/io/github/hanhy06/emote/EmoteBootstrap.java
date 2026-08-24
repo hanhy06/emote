@@ -14,6 +14,7 @@ import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
@@ -37,12 +38,14 @@ final class EmoteBootstrap {
         EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
         IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback);
         WheelSyncService wheelSync = new WheelSyncService(queries);
+        PolymerResourcePackDistributor resourcePackDistributor = new PolymerResourcePackDistributor(configManager);
         ReloadService reload = new ReloadService(
             configManager,
             catalog,
             new EmoteDirectoryLoader(),
             playback,
-            wheelSync
+            wheelSync,
+            resourcePackDistributor::rebuildAndPush
         );
 
         new EmoteApiImpl(

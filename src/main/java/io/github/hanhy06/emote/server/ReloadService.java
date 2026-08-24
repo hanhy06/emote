@@ -34,6 +34,17 @@ public final class ReloadService {
         );
     }
 
+    public ReloadService(
+        ConfigManager configManager,
+        EmoteCatalog emoteCatalog,
+        EmoteDirectoryLoader directoryLoader,
+        PlaybackEngine playbackEngine,
+        WheelSyncService wheelSyncService,
+        Runnable resourcePackReloader
+    ) {
+        this(configManager, emoteCatalog, directoryLoader::load, playbackEngine, wheelSyncService, resourcePackReloader);
+    }
+
     ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
@@ -64,7 +75,6 @@ public final class ReloadService {
         this.configManager.configure();
         this.configManager.readConfig();
         this.configManager.readAccessConfig();
-        this.resourcePackReloader.run();
         ReloadStats stats = reloadRegistry();
         EmoteMod.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
     }

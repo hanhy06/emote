@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.resource;
 
+import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import net.minecraft.resources.Identifier;
 
 import java.io.ByteArrayOutputStream;
@@ -25,6 +26,22 @@ public final class ResourcePackAssembler {
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
     public BuildResult assemble(Path sourceDirectory, Path outputFile) throws IOException {
+        PackContents contents = readContents(sourceDirectory);
+        writeAtomically(outputFile, contents.metadata(), contents.resources());
+        return new BuildResult(contents.resources().size(), Files.size(outputFile), sha1(outputFile));
+    }
+
+    public int addTo(Path sourceDirectory, ResourcePackBuilder builder) throws IOException {
+        PackContents contents = readContents(sourceDirectory);
+        for (Map.Entry<String, ResourceFile> entry : contents.resources().entrySet()) {
+            if (!builder.addData(entry.getKey(), entry.getValue().data())) {
+                throw new IOException("Polymer rejected resource " + entry.getKey());
+            }
+        }
+        return contents.resources().size();
+    }
+
+    private static PackContents readContents(Path sourceDirectory) throws IOException {
         Path metadataPath = sourceDirectory.resolve(METADATA_FILE_NAME);
         if (!Files.isRegularFile(metadataPath)) {
             throw new IOException("Resource-pack metadata is missing: " + metadataPath);
@@ -46,8 +63,7 @@ public final class ResourcePackAssembler {
         }
 
         byte[] metadata = Files.readAllBytes(metadataPath);
-        writeAtomically(outputFile, metadata, resources);
-        return new BuildResult(resources.size(), Files.size(outputFile), sha1(outputFile));
+        return new PackContents(metadata, resources);
     }
 
     private static void readLooseFile(Path sourcePath, Map<String, ResourceFile> resources, Budget budget) throws IOException {
@@ -195,6 +211,9 @@ public final class ResourcePackAssembler {
     }
 
     private record ResourceFile(byte[] data, String source) {
+    }
+
+    private record PackContents(byte[] metadata, TreeMap<String, ResourceFile> resources) {
     }
 
     private static final class Budget {
