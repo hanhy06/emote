@@ -43,4 +43,6 @@ public abstract class EmoteApi {
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);
 
     public abstract ListenerRegistration addPlaybackListener(EmotePlaybackListener listener);
+
+    public abstract ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener);
 }

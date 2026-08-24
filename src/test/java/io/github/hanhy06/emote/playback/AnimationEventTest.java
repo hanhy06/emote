@@ -85,6 +85,37 @@ class AnimationEventTest {
         assertEquals(List.of("start", "tick-0", "stop"), fixture.executed());
     }
 
+    @Test
+    void repeatsNamedTimelineCallbacksAfterLoopRestart() {
+        EmoteAnimation.Callback callback = new EmoteAnimation.Callback(Identifier.parse("test:swing"), "right_hand");
+        EmoteAnimation.TimelineEvent event = new EmoteAnimation.TimelineEvent(
+            0,
+            new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            List.of(),
+            List.of(callback)
+        );
+        EmoteAnimation animation = animation(1, EmoteAnimation.LoopMode.LOOP, 0);
+        animation = new EmoteAnimation(
+            animation.id(),
+            animation.metadata(),
+            animation.settings(),
+            animation.molang(),
+            animation.nodes(),
+            new EmoteAnimation.Timeline(1, Map.of(), new EmoteAnimation.Events(List.of(), List.of(event), List.of(), List.of()))
+        );
+        PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("callback-test.json"), "test", animation));
+        AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
+        List<EmoteAnimation.Callback> executed = new ArrayList<>();
+        player.bindEvents(dispatched -> executed.addAll(dispatched.callbacks()));
+
+        player.start();
+        player.startEvents();
+        player.advance();
+
+        assertEquals(List.of(callback, callback), executed);
+    }
+
     private AnimationFixture fixture(int durationTicks, EmoteAnimation.LoopMode loopMode, int loopDelayTicks) {
         List<String> executed = new ArrayList<>();
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
@@ -115,13 +146,14 @@ class AnimationEventTest {
         return new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of(command)
+            List.of(command),
+            List.of()
         );
     }
 
     private EmoteAnimation.TimelineEvent tickZeroEvent() {
         EmoteAnimation.Event event = event("tick-0");
-        return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands());
+        return new EmoteAnimation.TimelineEvent(0, event.source(), event.origin(), event.commands(), event.callbacks());
     }
 
     private record AnimationFixture(AnimationPlayer player, List<String> executed) {

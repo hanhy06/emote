@@ -374,23 +374,32 @@ public record EmoteAnimation(
         }
     }
 
-    public record Event(CommandSource source, CommandOrigin origin, List<String> commands) {
+    public record Event(CommandSource source, CommandOrigin origin, List<String> commands, List<Callback> callbacks) {
         public Event {
             Objects.requireNonNull(source, "source");
             Objects.requireNonNull(origin, "origin");
             commands = List.copyOf(commands);
+            callbacks = List.copyOf(callbacks);
         }
     }
 
-    public record TimelineEvent(int tick, CommandSource source, CommandOrigin origin, List<String> commands) {
+    public record TimelineEvent(int tick, CommandSource source, CommandOrigin origin, List<String> commands, List<Callback> callbacks) {
         public TimelineEvent {
             Objects.requireNonNull(source, "source");
             Objects.requireNonNull(origin, "origin");
             commands = List.copyOf(commands);
+            callbacks = List.copyOf(callbacks);
         }
 
         public Event event() {
-            return new Event(this.source, this.origin, this.commands);
+            return new Event(this.source, this.origin, this.commands, this.callbacks);
+        }
+    }
+
+    public record Callback(Identifier name, String payload) {
+        public Callback {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(payload, "payload");
         }
     }
 

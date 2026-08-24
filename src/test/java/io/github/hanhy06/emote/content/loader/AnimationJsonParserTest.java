@@ -236,6 +236,40 @@ class AnimationJsonParserTest {
     }
 
     @Test
+    void loadsNamedCallbacksWithOptionalPayload() throws Exception {
+        JsonObject root = readReference();
+        JsonObject event = root.getAsJsonObject("timeline").getAsJsonObject("events")
+            .getAsJsonArray("timeline").get(0).getAsJsonObject();
+        JsonObject callback = new JsonObject();
+        callback.addProperty("name", "demo:sword_swing");
+        callback.addProperty("payload", "right_hand");
+        JsonArray callbacks = new JsonArray();
+        callbacks.add(callback);
+        event.add("callbacks", callbacks);
+
+        EmoteAnimation.Callback loaded = parse(root).animation().timeline().events().timeline().getFirst().callbacks().getFirst();
+
+        assertEquals("demo:sword_swing", loaded.name().toString());
+        assertEquals("right_hand", loaded.payload());
+    }
+
+    @Test
+    void rejectsInvalidNamedCallbackIdentifiers() throws Exception {
+        JsonObject root = readReference();
+        JsonObject event = root.getAsJsonObject("timeline").getAsJsonObject("events")
+            .getAsJsonArray("timeline").get(0).getAsJsonObject();
+        JsonObject callback = new JsonObject();
+        callback.addProperty("name", "Invalid Callback");
+        JsonArray callbacks = new JsonArray();
+        callbacks.add(callback);
+        event.add("callbacks", callbacks);
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.timeline.events.timeline[0].callbacks[0].name", exception.fieldPath());
+    }
+
+    @Test
     void rejectsInterpolationOnLastTrackKeyframe() throws Exception {
         JsonObject root = readReference();
         JsonArray track = root.getAsJsonObject("timeline")

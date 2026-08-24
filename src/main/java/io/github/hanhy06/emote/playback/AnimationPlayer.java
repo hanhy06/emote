@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
@@ -228,6 +229,10 @@ public final class AnimationPlayer {
 
     public int currentTick() {
         return this.currentTick;
+    }
+
+    public Identifier emoteId() {
+        return this.animation.id();
     }
 
     public float rotationDeadzone() {

@@ -269,7 +269,7 @@ Visibility tracks are stepped boolean states and do not support `interpolation`,
 
 The value may also be a [Molang](molang.md) string; zero is hidden and any other finite result is visible.
 
-## Command events
+## Events
 
 Optional `timeline.events` supports four event groups.
 
@@ -280,7 +280,7 @@ Optional `timeline.events` supports four event groups.
 | `loop` | After each repetition completes. |
 | `stop` | When playback stops. |
 
-Each event contains object-shaped `source` and `origin` fields and a `commands` array. Commands do not start with `/`.
+Each event contains object-shaped `source` and `origin` fields, a `commands` array, and an optional `callbacks` array. Commands do not start with `/`. Callback names are namespaced identifiers; `payload` is an optional string passed through unchanged to the registered mod listener.
 
 ```json
 {
@@ -290,13 +290,18 @@ Each event contains object-shaped `source` and `origin` fields and a `commands` 
     "node": "effect_anchor",
     "offset": [0, 0.5, 0]
   },
-  "commands": ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal"]
+  "commands": ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal"],
+  "callbacks": [
+    {"name": "example:sword_swing", "payload": "right_hand"}
+  ]
 }
 ```
 
 `source.type` may be `player`, `server`, or `node`. A node source also requires `node` and must reference a display node. `origin.type` may be `root` or `node`; a node origin requires `node`. Every origin may include an optional three-number `offset`, which defaults to zero.
 
 Timeline events must be ordered by time and occur before the end of the timeline.
+
+Named callbacks are dispatched to server-side listeners registered through `EmoteApi.addCallbackListener`. An unregistered name is ignored with a warning; one failing listener does not interrupt playback or the remaining listeners.
 
 ## Migrating older Animations
 

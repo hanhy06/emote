@@ -43,7 +43,8 @@ final class SequenceCompiler {
                     requireTick(offset + event.tick(), sequence),
                     event.source(),
                     event.origin(),
-                    event.commands()
+                    event.commands(),
+                    event.callbacks()
                 ));
             }
 

@@ -66,7 +66,8 @@ class SequenceCompilerTest {
                     2,
                     new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
                     new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-                    List.of("say idle")
+                    List.of("say idle"),
+                    List.of()
                 )),
                 List.of(),
                 List.of()
@@ -161,7 +162,8 @@ class SequenceCompilerTest {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of("say start")
+            List.of("say start"),
+            List.of()
         );
         PreparedAnimation animation = animation(
             "demo:eventful",

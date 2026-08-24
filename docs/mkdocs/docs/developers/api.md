@@ -51,9 +51,26 @@ The API currently provides:
 - Current playback-state queries
 - Cancellable playback-request listeners
 - Playback start and stop lifecycle listeners
+- Named animation callback listeners
 
 API calls that change state must run on the Minecraft server thread.
 
 `EmoteApi.play` is a trusted server-side playback entry point. The calling mod is responsible for applying any desired `standalone`, disabled-ID, player-permission, and cooldown policy. Emote still requires a loaded ID, dispatches cancellable playback-request events, and enforces playback-engine limits and failures.
 
-Types and methods are available in the repository's `io.github.hanhy06.emote.api` package. Registration and event examples will be added here after the API is finalized.
+Register a named animation callback listener with a namespaced identifier. The returned registration removes only this listener and can be unregistered once.
+
+```java
+ListenerRegistration registration = EmoteApi.getInstance().addCallbackListener(
+    Identifier.parse("example:sword_swing"),
+    event -> LOGGER.info(
+        "{} fired at tick {} with payload {}",
+        event.name(),
+        event.currentTick(),
+        event.payload()
+    )
+);
+```
+
+The callback event also exposes the initiating `ServerPlayer`, emote ID, participant role, and resolved world-space origin. Listener failures are logged and isolated from playback.
+
+Types and methods are available in the repository's `io.github.hanhy06.emote.api` package.

@@ -14,6 +14,7 @@ import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
@@ -31,7 +32,8 @@ final class EmoteBootstrap {
         PermissionService permissions = new PermissionService();
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions);
         PlayerSkinManager skins = new PlayerSkinManager();
-        PlaybackEngine playback = new PlaybackEngine(skins);
+        NamedCallbackDispatcher callbacks = new NamedCallbackDispatcher();
+        PlaybackEngine playback = new PlaybackEngine(skins, callbacks);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
@@ -53,6 +55,7 @@ final class EmoteBootstrap {
             play,
             playback,
             apiEvents,
+            callbacks,
             wheelSync::syncAll,
             new AnimationContentResolver()
         );

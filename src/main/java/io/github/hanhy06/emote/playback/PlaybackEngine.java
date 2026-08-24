@@ -20,6 +20,7 @@ import io.github.hanhy06.emote.playback.session.*;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
+import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
@@ -38,6 +39,7 @@ public class PlaybackEngine implements ConfigListener {
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
     private final PlayerSkinManager playerSkinManager;
+    private final NamedCallbackDispatcher callbacks;
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
@@ -46,8 +48,9 @@ public class PlaybackEngine implements ConfigListener {
     private final RandomGenerator random = RandomGenerator.getDefault();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
 
-    public PlaybackEngine(PlayerSkinManager playerSkinManager) {
+    public PlaybackEngine(PlayerSkinManager playerSkinManager, NamedCallbackDispatcher callbacks) {
         this.playerSkinManager = playerSkinManager;
+        this.callbacks = Objects.requireNonNull(callbacks, "callbacks");
         this.playerVisibilityService = new PlayerVisibilityService(this);
         this.playerSkinManager.addReadyListener(this::refreshPlayerSkin);
     }
@@ -211,7 +214,7 @@ public class PlaybackEngine implements ConfigListener {
                 this.entityController,
                 MolangQueries.forPlayer(player)
             );
-            timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline));
+            timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline, this.callbacks));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
             } else {
@@ -453,7 +456,7 @@ public class PlaybackEngine implements ConfigListener {
             this.entityController,
             MolangQueries.forPlayer(initiator)
         );
-        animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation));
+        animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation, this.callbacks));
         animation.start();
         return animation;
     }

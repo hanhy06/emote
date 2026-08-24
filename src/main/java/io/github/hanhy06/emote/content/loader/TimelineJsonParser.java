@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
+import net.minecraft.resources.Identifier;
 
 import java.util.*;
 
@@ -354,7 +355,7 @@ final class TimelineJsonParser {
             }
             previousTick = tick;
             Event event = parseEvent(object, path, nodes, reader);
-            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands()));
+            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands(), event.callbacks()));
         }
         return List.copyOf(events);
     }
@@ -395,7 +396,20 @@ final class TimelineJsonParser {
             }
             commands.add(command);
         }
-        return new Event(source, origin, commands);
+        JsonArray callbackArray = reader.optionalArray(object, "callbacks", path);
+        List<Callback> callbacks = new ArrayList<>();
+        if (callbackArray != null) {
+            for (int index = 0; index < callbackArray.size(); index++) {
+                String callbackPath = path + ".callbacks[" + index + "]";
+                JsonObject callback = reader.requireObject(callbackArray.get(index), callbackPath);
+                String nameValue = reader.requireString(callback, "name", callbackPath);
+                Identifier name = Identifier.tryParse(nameValue);
+                if (name == null) throw reader.error(callbackPath + ".name", "must be a valid namespaced identifier");
+                String payload = callback.has("payload") ? reader.requireString(callback, "payload", callbackPath) : "";
+                callbacks.add(new Callback(name, payload));
+            }
+        }
+        return new Event(source, origin, commands, callbacks);
     }
 
     private CommandSource parseCommandSource(
