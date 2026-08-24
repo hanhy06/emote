@@ -56,6 +56,15 @@ describe("emoteJsonAdapter", () => {
             ],
           },
         },
+        events: {
+          timeline: [{
+            time: "2t",
+            source: { type: "player" },
+            origin: { type: "root" },
+            commands: [],
+            callbacks: [{ name: "demo:sword_swing", payload: "right_hand" }],
+          }],
+        },
       },
     };
     const input = { name: "emote.wave.json", bytes: encoder.encode(JSON.stringify(source)) };
@@ -70,6 +79,7 @@ describe("emoteJsonAdapter", () => {
     expect(recompiled.timeline.tracks.arm.position?.[1].value?.[0]).toBeCloseTo(1);
     expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
     expect(recompiled.timeline.tracks.arm.nbt).toEqual(source.timeline.tracks.arm.nbt);
+    expect(recompiled.timeline.events?.timeline?.[0].callbacks).toEqual(source.timeline.events?.timeline?.[0].callbacks);
   });
 
   it("previews advanced schema 4 runtime data without changing exported Molang", async () => {

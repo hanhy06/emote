@@ -199,6 +199,14 @@ function requireEvents(value: unknown, path: string, timeline: boolean): void {
     requireEventSource(event.source, `${eventPath}.source`);
     requireEventOrigin(event.origin, `${eventPath}.origin`);
     requireStringArray(event.commands, `${eventPath}.commands`);
+    if (event.callbacks !== undefined) {
+      requireArray(event.callbacks, `${eventPath}.callbacks`).forEach((callbackValue, callbackIndex) => {
+        const callbackPath = `${eventPath}.callbacks[${callbackIndex}]`;
+        const callback = requireRecord(callbackValue, callbackPath);
+        requireString(callback.name, `${callbackPath}.name`);
+        optionalString(callback.payload, `${callbackPath}.payload`);
+      });
+    }
   });
 }
 

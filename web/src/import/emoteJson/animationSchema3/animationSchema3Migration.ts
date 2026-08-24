@@ -141,5 +141,6 @@ function copyEvent(event: EmoteEvent): EmoteEvent {
     source: { ...event.source },
     origin: { ...event.origin, ...(event.origin.offset ? { offset: [...event.origin.offset] as [number, number, number] } : {}) },
     commands: [...event.commands],
+    ...(event.callbacks ? { callbacks: event.callbacks.map((callback) => ({ ...callback })) } : {}),
   };
 }

@@ -100,6 +100,24 @@ describe("validateEmoteAnimation", () => {
     expect(paths).toContain("timeline.events.timeline[0].source.node");
   });
 
+  it("accepts named callbacks and rejects invalid callback names", () => {
+    const value = animation();
+    value.timeline.events = { timeline: [{
+      time: "1t",
+      source: { type: "player" },
+      origin: { type: "root" },
+      commands: [],
+      callbacks: [{ name: "demo:sword_swing", payload: "right_hand" }],
+    }] };
+    expect(validateEmoteAnimation(value)).toEqual([]);
+
+    value.timeline.events.timeline![0].callbacks![0].name = "Invalid Callback";
+    expect(validateEmoteAnimation(value)).toContainEqual({
+      path: "timeline.events.timeline[0].callbacks[0].name",
+      message: "must be a namespaced identifier",
+    });
+  });
+
   it("rejects invalid time strings and descending timeline events", () => {
     const value = animation();
     value.timeline.duration = "1m";

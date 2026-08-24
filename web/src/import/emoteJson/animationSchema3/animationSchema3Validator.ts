@@ -136,6 +136,9 @@ function validateEvent(event: EmoteEvent, path: string, animation: Schema3EmoteA
   event.commands.forEach((command, index) => {
     if (!command.trim() || command.startsWith("/")) add(issues, `${path}.commands[${index}]`, "must be non-empty and omit the leading slash");
   });
+  event.callbacks?.forEach((callback, index) => {
+    if (!isResourceLocation(callback.name)) add(issues, `${path}.callbacks[${index}].name`, "must be a namespaced identifier");
+  });
 }
 
 function validateMatrix(matrix: Matrix16, path: string, issues: Schema3ValidationIssue[]): void {
