@@ -35,6 +35,33 @@ class AnimationJsonSchemaTest {
     }
 
     @Test
+    void loadsStepNbtTrackAlongsideTransformTracks() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [
+                  {"time":"0t","value":"{item:{id:'minecraft:stone',count:1},Glowing:false}"},
+                  {"time":"10t","value":"{item:{id:'minecraft:diamond',count:1},Glowing:true}"}
+                ]
+                """));
+
+        EmoteAnimation.NodeTracks tracks = parse(root).animation().timeline().tracks().get("display");
+
+        assertEquals(2, tracks.nbt().size());
+        assertTrue(tracks.nbt().getLast().value().getBooleanOr("Glowing", false));
+        assertTrue(tracks.nbt().getLast().value().toString().contains("minecraft:diamond"));
+    }
+
+    @Test
+    void rejectsRuntimeOwnedNbtTrackField() {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("[{\"time\":\"0t\",\"value\":\"{transformation:{}}\"}]"));
+
+        assertEquals("$.timeline.tracks.display.nbt[0].value", assertInvalid(root).fieldPath());
+    }
+
+    @Test
     void rejectsSchemaThree() {
         JsonObject root = base();
         root.addProperty("schema_version", 3);

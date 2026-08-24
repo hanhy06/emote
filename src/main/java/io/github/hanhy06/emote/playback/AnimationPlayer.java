@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
@@ -22,6 +23,7 @@ public final class AnimationPlayer {
     private AnimationEvaluator evaluator;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
+    private final Map<String, CompoundTag> appliedNbt = new HashMap<>();
 
     private int currentTick;
     private int remainingLoopDelay;
@@ -264,6 +266,7 @@ public final class AnimationPlayer {
     private void clearState() {
         this.appliedTransforms.clear();
         this.appliedVisibility.clear();
+        this.appliedNbt.clear();
         this.activePlaybackSegment = -1;
         this.mirroredNodes = Map.of();
         if (!this.emote.playbackSegments().isEmpty()) {
@@ -334,6 +337,11 @@ public final class AnimationPlayer {
             if (mirror != null) {
                 applyVisibility(mirror, visible);
             }
+            CompoundTag nbt = this.evaluator.nbt(index);
+            if (nbt != null) {
+                applyNbt(nodeId, nbt);
+                if (mirror != null) applyNbt(mirror, nbt);
+            }
         }
     }
 
@@ -355,6 +363,13 @@ public final class AnimationPlayer {
             return;
         }
         this.target.setVisible(nodeId, visible);
+    }
+
+    private void applyNbt(String nodeId, CompoundTag nbt) {
+        CompoundTag previous = this.appliedNbt.get(nodeId);
+        if (nbt.equals(previous)) return;
+        this.appliedNbt.put(nodeId, nbt.copy());
+        this.target.applyNbt(nodeId, nbt);
     }
 
     public enum AdvanceResult {
@@ -405,6 +420,8 @@ public final class AnimationPlayer {
         }
 
         void setVisible(String nodeId, boolean visible);
+
+        void applyNbt(String nodeId, CompoundTag nbt);
 
         void resetAll();
     }
@@ -458,6 +475,11 @@ public final class AnimationPlayer {
         @Override
         public void setVisible(String nodeId, boolean visible) {
             this.entityController.setVisible(requiredNode(nodeId), this.nodes.requestVisibility(nodeId, visible));
+        }
+
+        @Override
+        public void applyNbt(String nodeId, CompoundTag nbt) {
+            this.entityController.applyNbt(this.nodes, requiredNode(nodeId), nbt);
         }
 
         @Override

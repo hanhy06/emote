@@ -153,6 +153,10 @@ public final class PlaybackNodes {
             };
         }
 
+        void setDisplayContent(DisplayContent displayContent) {
+            this.displayContent = Objects.requireNonNull(displayContent, "displayContent");
+        }
+
         public boolean isAnchor() {
             return this.entity == null;
         }

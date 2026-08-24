@@ -426,7 +426,8 @@ class SequenceCompilerTest {
                 )),
                 List.of(),
                 List.of(),
-                List.of(new EmoteAnimation.VisibilityKeyframe(1, new EmoteAnimation.ConstantVisibility(false)))
+                List.of(new EmoteAnimation.VisibilityKeyframe(1, new EmoteAnimation.ConstantVisibility(false))),
+                List.of()
             )),
             EmoteAnimation.Events.empty(),
             Map.of("body", new EmoteAnimation.ItemNode(
@@ -580,6 +581,7 @@ class SequenceCompilerTest {
                 EmoteAnimation.Interpolation.STEP,
                 EmoteAnimation.Easing.LINEAR
             )),
+            List.of(),
             List.of(),
             List.of(),
             List.of()

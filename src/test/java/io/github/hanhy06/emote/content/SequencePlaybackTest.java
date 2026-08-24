@@ -158,6 +158,10 @@ class SequencePlaybackTest {
         }
 
         @Override
+        public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
+        }
+
+        @Override
         public void resetAll() {
             this.transforms.clear();
         }

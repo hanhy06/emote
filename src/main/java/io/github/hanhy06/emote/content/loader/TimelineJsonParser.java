@@ -4,12 +4,19 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 
 import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 final class TimelineJsonParser {
+    private static final Set<String> RUNTIME_OWNED_NBT_FIELDS = Set.of(
+        "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
+        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
+    );
+
     Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteJsonReader reader)
         throws EmoteAnimationLoadException {
         int durationTicks = reader.requireTime(object, "duration", "$.timeline", 1);
@@ -49,15 +56,67 @@ final class TimelineJsonParser {
             List<VisibilityKeyframe> visible = parseVisibilityTrack(
                 reader.optionalArray(nodeObject, "visible", path), path + ".visible", durationTicks, reader
             );
+            List<NbtKeyframe> nbt = parseNbtTrack(
+                reader.optionalArray(nodeObject, "nbt", path), path + ".nbt", durationTicks, reader
+            );
             if (node instanceof AnchorNode && !visible.isEmpty()) {
                 throw reader.error(path + ".visible", "anchor nodes do not support visible tracks");
             }
-            if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty()) {
+            if (node instanceof AnchorNode && !nbt.isEmpty()) {
+                throw reader.error(path + ".nbt", "anchor nodes do not support nbt tracks");
+            }
+            if (node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource
+                && nbt.stream().anyMatch(frame -> frame.value().contains("item"))) {
+                throw reader.error(path + ".nbt", "participant hand item nodes do not support item changes in nbt tracks");
+            }
+            if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty() && nbt.isEmpty()) {
                 throw reader.error(path, "must contain at least one track");
             }
-            tracks.put(nodeId, new NodeTracks(position, rotation, scale, visible));
+            tracks.put(nodeId, new NodeTracks(position, rotation, scale, visible, nbt));
         }
         return Map.copyOf(tracks);
+    }
+
+    private List<NbtKeyframe> parseNbtTrack(
+        JsonArray array,
+        String path,
+        int durationTicks,
+        EmoteJsonReader reader
+    ) throws EmoteAnimationLoadException {
+        if (array == null) return List.of();
+        if (array.isEmpty()) throw reader.error(path, "must not be empty");
+
+        List<NbtKeyframe> keyframes = new ArrayList<>();
+        Set<String> initialFields = null;
+        int previousTick = -1;
+        for (int index = 0; index < array.size(); index++) {
+            String keyframePath = path + "[" + index + "]";
+            JsonObject object = reader.requireObject(array.get(index), keyframePath);
+            int tick = parseTrackTime(object, keyframePath, durationTicks, previousTick, index, reader);
+            String value = reader.requireString(object, "value", keyframePath);
+            CompoundTag parsed;
+            try {
+                parsed = TagParser.parseCompoundFully(value);
+            } catch (Exception exception) {
+                throw reader.error(keyframePath + ".value", "invalid compound SNBT", exception);
+            }
+            for (String field : RUNTIME_OWNED_NBT_FIELDS) {
+                if (parsed.contains(field)) {
+                    throw reader.error(keyframePath + ".value", "must not modify runtime-owned field " + field);
+                }
+            }
+            if (index == 0) {
+                initialFields = Set.copyOf(parsed.keySet());
+            } else if (!initialFields.containsAll(parsed.keySet())) {
+                throw reader.error(keyframePath + ".value", "must only modify fields declared by the 0t keyframe");
+            }
+            if (object.size() != 2) {
+                throw reader.error(keyframePath, "nbt keyframes only support time and value");
+            }
+            keyframes.add(new NbtKeyframe(tick, parsed));
+            previousTick = tick;
+        }
+        return List.copyOf(keyframes);
     }
 
     private List<VectorKeyframe> parseVectorTrack(

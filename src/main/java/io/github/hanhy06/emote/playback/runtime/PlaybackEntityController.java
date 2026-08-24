@@ -16,6 +16,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentUtils;
 import net.minecraft.network.chat.ResolutionContext;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
@@ -140,6 +141,24 @@ public final class PlaybackEntityController {
             case null -> {
             }
         }
+    }
+
+    public void applyNbt(PlaybackNodes nodes, NodeInstance node, CompoundTag nbt) {
+        if (node.isAnchor()) return;
+        TypedEntityData.of(node.entity().getType(), nbt).loadInto(node.entity());
+        if (nbt.contains("item")) {
+            ItemDisplayAccessor accessor = (ItemDisplayAccessor) node.entity();
+            node.setItemStack(accessor.emote$getItemStack());
+        } else if (nbt.contains("block_state")) {
+            BlockDisplayAccessor accessor = (BlockDisplayAccessor) node.entity();
+            node.setDisplayContent(new BlockContent(accessor.emote$getBlockState()));
+        } else if (nbt.contains("text")) {
+            TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
+            Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
+            accessor.emote$setText(text);
+            node.setDisplayContent(new TextContent(text));
+        }
+        setVisible(node, nodes.effectiveVisibility(node.id()));
     }
 
     public void updateHeldItems(PlaybackNodes nodes, EmoteAnimation.NodeSpace space, ServerPlayer player) {

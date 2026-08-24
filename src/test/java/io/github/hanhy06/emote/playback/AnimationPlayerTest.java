@@ -114,6 +114,38 @@ class AnimationPlayerTest {
     }
 
     @Test
+    void appliesNbtOnlyWhenTheStepFrameChangesAndRestoresItOnLoop() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "2t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [
+                  {"time":"0t","value":"{item:{id:'minecraft:stone',count:1}}"},
+                  {"time":"2t","value":"{item:{id:'minecraft:diamond',count:1}}"}
+                ]
+                """));
+
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+        player.advance();
+
+        assertEquals(1, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+
+        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(2, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:diamond"));
+
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(3, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+    }
+
+    @Test
     void rejectsPersistentVariableAssignmentInsideTrackValue() throws Exception {
         JsonObject root = base();
         positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
@@ -228,6 +260,8 @@ class AnimationPlayerTest {
     private static final class FakeTarget implements AnimationPlayer.TimelineTarget {
         private final Map<String, Transformation> transforms = new HashMap<>();
         private final Map<String, Boolean> visibility = new HashMap<>();
+        private final Map<String, net.minecraft.nbt.CompoundTag> nbt = new HashMap<>();
+        private int nbtApplyCount;
 
         @Override
         public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
@@ -245,9 +279,16 @@ class AnimationPlayerTest {
         }
 
         @Override
+        public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
+            this.nbt.put(nodeId, nbt.copy());
+            this.nbtApplyCount++;
+        }
+
+        @Override
         public void resetAll() {
             this.transforms.clear();
             this.visibility.clear();
+            this.nbt.clear();
         }
 
         private org.joml.Matrix4fc matrix(String nodeId) {

@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.playback.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Quaternionf;
@@ -101,6 +102,12 @@ final class AnimationEvaluator {
         return this.nodes[index].visible;
     }
 
+    CompoundTag nbt(int index) {
+        NodeState state = this.nodes[index];
+        if (state.tracks == null || state.tracks.nbt().isEmpty()) return null;
+        return state.tracks.nbt().get(state.nbtCursor).value();
+    }
+
     private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
         setQueries(tick, loopCount, deltaTime);
         if (runTick) {
@@ -141,6 +148,7 @@ final class AnimationEvaluator {
                 state.worldMatrix.set(this.nodes[state.parentIndex].worldMatrix).mul(this.localMatrix);
             }
             state.visibilityCursor = visible(state, tick);
+            state.nbtCursor = advanceNbtCursor(tracks == null ? List.of() : tracks.nbt(), state.nbtCursor, tick);
         }
     }
 
@@ -236,6 +244,13 @@ final class AnimationEvaluator {
     }
 
     private int advanceVisibilityCursor(List<CompiledVisibilityKeyframe> frames, int currentIndex, int tick) {
+        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
+            currentIndex++;
+        }
+        return currentIndex;
+    }
+
+    private int advanceNbtCursor(List<CompiledNbtKeyframe> frames, int currentIndex, int tick) {
         while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
             currentIndex++;
         }
@@ -346,6 +361,17 @@ final class AnimationEvaluator {
         return Math.max(0, low - 1);
     }
 
+    private static int findNbtCursor(List<CompiledNbtKeyframe> frames, int tick) {
+        int low = 1;
+        int high = frames.size();
+        while (low < high) {
+            int middle = (low + high) >>> 1;
+            if (frames.get(middle).tick() <= tick) low = middle + 1;
+            else high = middle;
+        }
+        return Math.max(0, low - 1);
+    }
+
     private static final class NodeState {
         private final String id;
         private final Node node;
@@ -357,6 +383,7 @@ final class AnimationEvaluator {
         private int rotationCursor;
         private int scaleCursor;
         private int visibilityCursor;
+        private int nbtCursor;
         private boolean visible;
 
         private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
@@ -375,6 +402,8 @@ final class AnimationEvaluator {
                 ? 0 : findVectorCursor(this.tracks.scale(), tick);
             this.visibilityCursor = this.tracks == null || this.tracks.visible().isEmpty()
                 ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
+            this.nbtCursor = this.tracks == null || this.tracks.nbt().isEmpty()
+                ? 0 : findNbtCursor(this.tracks.nbt(), tick);
         }
     }
 

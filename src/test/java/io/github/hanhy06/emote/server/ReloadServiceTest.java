@@ -65,6 +65,7 @@ class ReloadServiceTest {
                     )),
                     List.of(),
                     List.of(),
+                    List.of(),
                     List.of()
                 )),
                 EmoteAnimation.Events.empty()

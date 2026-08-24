@@ -148,6 +148,11 @@ class AnimationEventTest {
         }
 
         @Override
+        public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
         public void resetAll() {
         }
     }

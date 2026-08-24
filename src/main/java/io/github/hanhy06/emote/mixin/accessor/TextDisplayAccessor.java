@@ -7,6 +7,9 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(Display.TextDisplay.class)
 public interface TextDisplayAccessor {
+    @Invoker("getText")
+    Component emote$getText();
+
     @Invoker("setText")
     void emote$setText(Component text);
 }

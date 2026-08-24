@@ -7,6 +7,9 @@ import org.spongepowered.asm.mixin.gen.Invoker;
 
 @Mixin(Display.BlockDisplay.class)
 public interface BlockDisplayAccessor {
+    @Invoker("getBlockState")
+    BlockState emote$getBlockState();
+
     @Invoker("setBlockState")
     void emote$setBlockState(BlockState blockState);
 }

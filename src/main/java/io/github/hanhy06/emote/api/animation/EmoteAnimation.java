@@ -227,13 +227,15 @@ public record EmoteAnimation(
         List<VectorKeyframe> position,
         List<VectorKeyframe> rotation,
         List<VectorKeyframe> scale,
-        List<VisibilityKeyframe> visible
+        List<VisibilityKeyframe> visible,
+        List<NbtKeyframe> nbt
     ) {
         public NodeTracks {
             position = List.copyOf(position);
             rotation = List.copyOf(rotation);
             scale = List.copyOf(scale);
             visible = List.copyOf(visible);
+            nbt = nbt.stream().map(frame -> new NbtKeyframe(frame.tick(), frame.value())).toList();
         }
     }
 
@@ -281,6 +283,17 @@ public record EmoteAnimation(
     public record VisibilityKeyframe(int tick, VisibilityValue value) {
         public VisibilityKeyframe {
             Objects.requireNonNull(value, "value");
+        }
+    }
+
+    public record NbtKeyframe(int tick, CompoundTag value) {
+        public NbtKeyframe {
+            value = copy(value);
+        }
+
+        @Override
+        public CompoundTag value() {
+            return this.value.copy();
         }
     }
 

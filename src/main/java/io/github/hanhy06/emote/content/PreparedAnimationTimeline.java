@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.playback.molang.MolangEngine;
+import net.minecraft.nbt.CompoundTag;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -71,8 +72,19 @@ public final class PreparedAnimationTimeline {
             compileVectors(tracks.scale()),
             tracks.visible().stream()
                 .map(frame -> new CompiledVisibilityKeyframe(frame.tick(), compile(frame.value())))
-                .toList()
+                .toList(),
+            compileNbt(tracks.nbt())
         );
+    }
+
+    private static List<CompiledNbtKeyframe> compileNbt(List<NbtKeyframe> frames) {
+        CompoundTag state = new CompoundTag();
+        List<CompiledNbtKeyframe> compiled = new ArrayList<>(frames.size());
+        for (NbtKeyframe frame : frames) {
+            state.merge(frame.value());
+            compiled.add(new CompiledNbtKeyframe(frame.tick(), state.copy()));
+        }
+        return List.copyOf(compiled);
     }
 
     private static List<CompiledVectorKeyframe> compileVectors(List<VectorKeyframe> frames) {
@@ -164,7 +176,8 @@ public final class PreparedAnimationTimeline {
         List<CompiledVectorKeyframe> position,
         List<CompiledVectorKeyframe> rotation,
         List<CompiledVectorKeyframe> scale,
-        List<CompiledVisibilityKeyframe> visible
+        List<CompiledVisibilityKeyframe> visible,
+        List<CompiledNbtKeyframe> nbt
     ) {
     }
 
@@ -200,6 +213,17 @@ public final class PreparedAnimationTimeline {
     }
 
     public record CompiledVisibilityKeyframe(int tick, CompiledVisibility value) {
+    }
+
+    public record CompiledNbtKeyframe(int tick, CompoundTag value) {
+        public CompiledNbtKeyframe {
+            value = value.copy();
+        }
+
+        @Override
+        public CompoundTag value() {
+            return this.value.copy();
+        }
     }
 
     public record CompiledVisibility(

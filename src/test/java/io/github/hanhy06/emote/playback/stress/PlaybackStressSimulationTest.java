@@ -124,6 +124,10 @@ class PlaybackStressSimulationTest {
         }
 
         @Override
+        public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
+        }
+
+        @Override
         public void resetAll() {
         }
     }
