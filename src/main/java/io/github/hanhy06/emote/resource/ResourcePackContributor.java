@@ -6,49 +6,33 @@ import net.minecraft.resources.Identifier;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
-import java.util.HexFormat;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-import java.util.zip.ZipOutputStream;
 
-public final class ResourcePackAssembler {
+final class ResourcePackContributor {
     private static final String METADATA_FILE_NAME = "pack.mcmeta";
     private static final int MAX_ENTRY_COUNT = 65_536;
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
-    public BuildResult assemble(Path sourceDirectory, Path outputFile) throws IOException {
-        PackContents contents = readContents(sourceDirectory);
-        writeAtomically(outputFile, contents.metadata(), contents.resources());
-        return new BuildResult(contents.resources().size(), Files.size(outputFile), sha1(outputFile));
-    }
-
-    public int addTo(Path sourceDirectory, ResourcePackBuilder builder) throws IOException {
-        PackContents contents = readContents(sourceDirectory);
-        for (Map.Entry<String, ResourceFile> entry : contents.resources().entrySet()) {
+    int addTo(Path sourceDirectory, ResourcePackBuilder builder) throws IOException {
+        Map<String, ResourceFile> resources = readResources(sourceDirectory);
+        for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
             if (!builder.addData(entry.getKey(), entry.getValue().data())) {
                 throw new IOException("Polymer rejected resource " + entry.getKey());
             }
         }
-        return contents.resources().size();
+        return resources.size();
     }
 
-    private static PackContents readContents(Path sourceDirectory) throws IOException {
+    private static Map<String, ResourceFile> readResources(Path sourceDirectory) throws IOException {
         Path metadataPath = sourceDirectory.resolve(METADATA_FILE_NAME);
-        if (!Files.isRegularFile(metadataPath)) {
-            throw new IOException("Resource-pack metadata is missing: " + metadataPath);
-        }
-
         Budget budget = new Budget();
-        TreeMap<String, ResourceFile> resources = new TreeMap<>();
+        Map<String, ResourceFile> resources = new TreeMap<>();
         try (var paths = Files.walk(sourceDirectory)) {
             for (Path sourcePath : paths.filter(Files::isRegularFile).sorted().toList()) {
                 if (sourcePath.equals(metadataPath)) {
@@ -61,20 +45,17 @@ public final class ResourcePackAssembler {
                 }
             }
         }
-
-        byte[] metadata = Files.readAllBytes(metadataPath);
-        return new PackContents(metadata, resources);
+        return resources;
     }
 
     private static void readLooseFile(Path sourcePath, Map<String, ResourceFile> resources, Budget budget) throws IOException {
-        budget.addEntry(0);
+        budget.addEntry();
         String resourcePath = decodeResourcePath(sourcePath.getFileName().toString());
         if (resourcePath == null) {
             return;
         }
 
-        long fileSize = Files.size(sourcePath);
-        budget.addBytes(fileSize);
+        budget.addBytes(Files.size(sourcePath));
         addResource(resources, resourcePath, Files.readAllBytes(sourcePath), sourcePath.toString());
     }
 
@@ -86,7 +67,7 @@ public final class ResourcePackAssembler {
                     continue;
                 }
 
-                budget.addEntry(0);
+                budget.addEntry();
                 byte[] data = readEntry(input, budget);
                 String entryName = fileName(entry.getName());
                 if (entryName.equals(METADATA_FILE_NAME)) {
@@ -155,77 +136,18 @@ public final class ResourcePackAssembler {
         }
     }
 
-    private static void writeAtomically(
-        Path outputFile,
-        byte[] metadata,
-        Map<String, ResourceFile> resources
-    ) throws IOException {
-        Path outputDirectory = outputFile.toAbsolutePath().getParent();
-        Files.createDirectories(outputDirectory);
-        Path temporaryFile = Files.createTempFile(outputDirectory, outputFile.getFileName().toString(), ".tmp");
-        try {
-            try (ZipOutputStream output = new ZipOutputStream(Files.newOutputStream(temporaryFile))) {
-                output.setLevel(9);
-                writeEntry(output, METADATA_FILE_NAME, metadata);
-                for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
-                    writeEntry(output, entry.getKey(), entry.getValue().data());
-                }
-            }
-            try {
-                Files.move(temporaryFile, outputFile, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
-            } catch (AtomicMoveNotSupportedException exception) {
-                Files.move(temporaryFile, outputFile, StandardCopyOption.REPLACE_EXISTING);
-            }
-        } finally {
-            Files.deleteIfExists(temporaryFile);
-        }
-    }
-
-    private static void writeEntry(ZipOutputStream output, String path, byte[] data) throws IOException {
-        ZipEntry entry = new ZipEntry(path);
-        entry.setTime(0L);
-        output.putNextEntry(entry);
-        output.write(data);
-        output.closeEntry();
-    }
-
-    private static String sha1(Path file) throws IOException {
-        MessageDigest digest;
-        try {
-            digest = MessageDigest.getInstance("SHA-1");
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-1 is unavailable", exception);
-        }
-
-        try (InputStream input = Files.newInputStream(file)) {
-            byte[] buffer = new byte[8_192];
-            int count;
-            while ((count = input.read(buffer)) >= 0) {
-                digest.update(buffer, 0, count);
-            }
-        }
-        return HexFormat.of().formatHex(digest.digest());
-    }
-
-    public record BuildResult(int resourceCount, long archiveSize, String sha1) {
-    }
-
     private record ResourceFile(byte[] data, String source) {
-    }
-
-    private record PackContents(byte[] metadata, TreeMap<String, ResourceFile> resources) {
     }
 
     private static final class Budget {
         private int entryCount;
         private long expandedBytes;
 
-        void addEntry(long size) throws IOException {
+        void addEntry() throws IOException {
             this.entryCount++;
             if (this.entryCount > MAX_ENTRY_COUNT) {
                 throw new IOException("Resource inputs contain more than " + MAX_ENTRY_COUNT + " entries");
             }
-            addBytes(size);
         }
 
         void addBytes(long size) throws IOException {

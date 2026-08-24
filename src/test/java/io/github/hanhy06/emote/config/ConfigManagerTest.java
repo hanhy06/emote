@@ -282,6 +282,16 @@ class ConfigManagerTest {
     }
 
     @Test
+    void createsResourceInputDirectoryWithoutStandalonePackMetadata(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+
+        manager.configureResourcePack();
+
+        assertTrue(Files.isDirectory(manager.getResourcePackDirectory()));
+        assertFalse(Files.exists(manager.getResourcePackDirectory().resolve("pack.mcmeta")));
+    }
+
+    @Test
     void accessConfigCopiesAndProtectsValues() {
         ArrayList<String> disabled = new ArrayList<>(List.of("demo:wave"));
         ArrayList<AccessConfig.PermissionEntry> permissions = new ArrayList<>();

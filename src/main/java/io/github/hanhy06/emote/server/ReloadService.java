@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.resource.ResourcePackService;
 
 public final class ReloadService {
     private final ConfigManager configManager;
@@ -22,37 +21,10 @@ public final class ReloadService {
         EmoteCatalog emoteCatalog,
         EmoteDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
-        WheelSyncService wheelSyncService
-    ) {
-        this(
-            configManager,
-            emoteCatalog,
-            directoryLoader::load,
-            playbackEngine,
-            wheelSyncService,
-            new ResourcePackService(configManager)::rebuild
-        );
-    }
-
-    public ReloadService(
-        ConfigManager configManager,
-        EmoteCatalog emoteCatalog,
-        EmoteDirectoryLoader directoryLoader,
-        PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService,
         Runnable resourcePackReloader
     ) {
         this(configManager, emoteCatalog, directoryLoader::load, playbackEngine, wheelSyncService, resourcePackReloader);
-    }
-
-    ReloadService(
-        ConfigManager configManager,
-        EmoteCatalog emoteCatalog,
-        LoadResultLoader directoryLoader,
-        PlaybackEngine playbackEngine,
-        WheelSyncService wheelSyncService
-    ) {
-        this(configManager, emoteCatalog, directoryLoader, playbackEngine, wheelSyncService, () -> {});
     }
 
     ReloadService(

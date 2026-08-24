@@ -76,7 +76,8 @@ class ReloadServiceTest {
             registry,
             ignored -> new EmoteDirectoryLoader.LoadResult(List.of(invalid, loaded), List.of(), 2),
             null,
-            null
+            null,
+            () -> {}
         );
 
         service.loadOnServerStart();

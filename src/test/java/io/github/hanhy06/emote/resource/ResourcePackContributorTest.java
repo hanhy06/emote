@@ -11,7 +11,6 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -19,14 +18,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-class ResourcePackAssemblerTest {
+class ResourcePackContributorTest {
     @Test
-    void assemblesLooseAndZippedFlatResourcesUsingOnlyRootMetadata(@TempDir Path tempDir) throws Exception {
+    void contributesLooseAndZippedFlatResources(@TempDir Path tempDir) throws Exception {
         Path sourceDirectory = tempDir.resolve("resource-pack");
-        Path metadataPath = sourceDirectory.resolve("pack.mcmeta");
         Path looseTexture = sourceDirectory.resolve("anything/deep/textures/demo]textures]item]chair]body.png");
         Files.createDirectories(looseTexture.getParent());
-        Files.writeString(metadataPath, "root metadata");
+        Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "root metadata");
         Files.write(looseTexture, new byte[] {1, 2, 3});
         writeZip(sourceDirectory.resolve("downloads/site.resources.zip"), Map.of(
             "pack.mcmeta", new byte[] {9},
@@ -34,53 +32,35 @@ class ResourcePackAssemblerTest {
             "models/demo]items]chair]body.json", new byte[] {5}
         ));
 
-        Path outputFile = tempDir.resolve("generated/emote-resource-pack.zip");
-        ResourcePackAssembler.BuildResult result = new ResourcePackAssembler().assemble(sourceDirectory, outputFile);
-        Map<String, byte[]> entries = readZip(outputFile);
+        Map<String, byte[]> entries = new HashMap<>();
+        int resourceCount = new ResourcePackContributor().addTo(sourceDirectory, builder(entries));
 
-        assertEquals(3, result.resourceCount());
-        assertTrue(result.archiveSize() > 0);
-        assertEquals(40, result.sha1().length());
-        assertArrayEquals("root metadata".getBytes(), entries.get("pack.mcmeta"));
+        assertEquals(3, resourceCount);
         assertArrayEquals(new byte[] {1, 2, 3}, entries.get("assets/demo/textures/item/chair/body.png"));
         assertArrayEquals(new byte[] {4}, entries.get("assets/demo/models/item/chair/body.json"));
         assertArrayEquals(new byte[] {5}, entries.get("assets/demo/items/chair/body.json"));
-        assertEquals(4, entries.size());
-
-        assertEquals(result.sha1(), new ResourcePackAssembler().assemble(sourceDirectory, outputFile).sha1());
+        assertEquals(3, entries.size());
     }
 
     @Test
-    void rejectsDifferentFilesForTheSameResourceWithoutReplacingThePreviousOutput(@TempDir Path tempDir) throws Exception {
+    void rejectsDifferentFilesForTheSameResource(@TempDir Path tempDir) throws Exception {
         Path sourceDirectory = tempDir.resolve("resource-pack");
         Files.createDirectories(sourceDirectory.resolve("loose"));
-        Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "metadata");
         Files.write(sourceDirectory.resolve("loose/demo]textures]item]shared.png"), new byte[] {1});
         writeZip(sourceDirectory.resolve("conflict.zip"), Map.of(
             "demo]textures]item]shared.png", new byte[] {2}
         ));
-        Path outputFile = tempDir.resolve("generated/emote-resource-pack.zip");
-        Files.createDirectories(outputFile.getParent());
-        Files.writeString(outputFile, "previous");
 
         IOException exception = assertThrows(
             IOException.class,
-            () -> new ResourcePackAssembler().assemble(sourceDirectory, outputFile)
+            () -> new ResourcePackContributor().addTo(sourceDirectory, builder(new HashMap<>()))
         );
 
         assertTrue(exception.getMessage().contains("Conflicting resource assets/demo/textures/item/shared.png"));
-        assertEquals("previous", Files.readString(outputFile));
     }
 
-    @Test
-    void contributesDecodedResourcesToOnePolymerPack(@TempDir Path tempDir) throws Exception {
-        Path sourceDirectory = tempDir.resolve("resource-pack");
-        Files.createDirectories(sourceDirectory);
-        Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "source metadata");
-        Files.write(sourceDirectory.resolve("demo]textures]item]chair.png"), new byte[] {1, 2, 3});
-
-        Map<String, byte[]> entries = new HashMap<>();
-        ResourcePackBuilder builder = (ResourcePackBuilder) Proxy.newProxyInstance(
+    private static ResourcePackBuilder builder(Map<String, byte[]> entries) {
+        return (ResourcePackBuilder) Proxy.newProxyInstance(
             ResourcePackBuilder.class.getClassLoader(),
             new Class<?>[] {ResourcePackBuilder.class},
             (ignoredProxy, method, arguments) -> {
@@ -91,10 +71,6 @@ class ResourcePackAssemblerTest {
                 throw new UnsupportedOperationException(method.toString());
             }
         );
-
-        assertEquals(1, new ResourcePackAssembler().addTo(sourceDirectory, builder));
-        assertArrayEquals(new byte[] {1, 2, 3}, entries.get("assets/demo/textures/item/chair.png"));
-        assertEquals(1, entries.size());
     }
 
     private static void writeZip(Path path, Map<String, byte[]> entries) throws IOException {
@@ -106,17 +82,5 @@ class ResourcePackAssemblerTest {
                 output.closeEntry();
             }
         }
-    }
-
-    private static Map<String, byte[]> readZip(Path path) throws IOException {
-        Map<String, byte[]> entries = new HashMap<>();
-        try (ZipFile zip = new ZipFile(path.toFile())) {
-            var iterator = zip.entries().asIterator();
-            while (iterator.hasNext()) {
-                ZipEntry entry = iterator.next();
-                entries.put(entry.getName(), zip.getInputStream(entry).readAllBytes());
-            }
-        }
-        return entries;
     }
 }

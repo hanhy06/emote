@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.EmoteMod;
 import net.fabricmc.loader.api.FabricLoader;
@@ -23,7 +22,6 @@ public class ConfigManager {
     private static final String EMOTE_DIRECTORY_NAME = "emote";
     private static final String RESOURCE_PACK_DIRECTORY_NAME = "resource-pack";
     private static final String GENERATED_RESOURCE_PACK_FILE_NAME = ".resource-pack.zip";
-    private static final String RESOURCE_PACK_METADATA_FILE_NAME = "pack.mcmeta";
     private static final String BUNDLED_EMOTE_DIRECTORY_NAME = "default-emotes";
 
     private final Path configDirPath;
@@ -117,26 +115,6 @@ public class ConfigManager {
 
     public void configureResourcePack() throws IOException {
         Files.createDirectories(getResourcePackDirectory());
-        writeResourcePackMetadataIfAbsent();
-    }
-
-    private void writeResourcePackMetadataIfAbsent() throws IOException {
-        Path metadataPath = getResourcePackDirectory().resolve(RESOURCE_PACK_METADATA_FILE_NAME);
-        if (Files.exists(metadataPath)) {
-            return;
-        }
-
-        JsonArray format = new JsonArray();
-        format.add(88);
-        format.add(0);
-        JsonObject pack = new JsonObject();
-        pack.addProperty("description", "Emote resources");
-        pack.add("min_format", format.deepCopy());
-        pack.add("max_format", format);
-        JsonObject metadata = new JsonObject();
-        metadata.add("pack", pack);
-        JsonFileStore.writeObjectAtomically(metadataPath, metadata, this.gson);
-        EmoteMod.LOGGER.info("Saved {}/{}", RESOURCE_PACK_DIRECTORY_NAME, RESOURCE_PACK_METADATA_FILE_NAME);
     }
 
     public boolean readConfig() {
