@@ -76,6 +76,31 @@ describe("bedrockAnimationAdapter", () => {
     expect(compiled.timeline.tracks.body_x.rotation?.[0].value).toEqual([-10, 0, 0]);
   });
 
+  it("preserves numeric Bedrock start delays before baked and runtime motion", async () => {
+    const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
+      format_version: "1.8.0",
+      animations: {
+        delayed: {
+          start_delay: "0.1",
+          animation_length: 0.1,
+          bones: { body: { position: [0, 2, 0], rotation: [0, "q.anim_time * 90", 0] } },
+        },
+      },
+    })));
+
+    const animation = imported.animations[0];
+    expect(animation.durationTicks).toBe(4);
+    expect(animation.tracks.body.transforms.map((frame) => frame.tick)).toEqual([0, 2, 3, 4]);
+    expect(animation.tracks.body.transforms[0].matrix).toEqual(imported.nodes.body.defaultMatrix);
+    expect(imported.diagnostics).toEqual([]);
+
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "delayed" });
+    expect(compiled.timeline.duration).toBe("4t");
+    expect(compiled.timeline.tracks.body_z.position?.map((frame) => frame.time)).toEqual(["0t", "2t"]);
+    expect(compiled.timeline.tracks.body_z.position?.[0].interpolation).toBe("step");
+    expect(compiled.timeline.tracks.body_y.rotation?.[1].value?.[1]).toBe("-((math.max(0, q.anim_time - 0.1)) * 90)");
+  });
+
   it("bakes linear, Catmull-Rom, pre/post, and off-grid keyframes at 20 TPS", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",

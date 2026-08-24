@@ -19,6 +19,12 @@ class MolangEngineTest {
     }
 
     @Test
+    void compilesBedrockStartDelayExpressions() throws Exception {
+        this.engine.compile("math.max(0, q.anim_time - 0.1)");
+        this.engine.compile("v.time = q.anim_time < 0.1 ? 0 : (v.time + q.delta_time);");
+    }
+
+    @Test
     void keepsVariablesButRecreatesTempsForEachEvaluation() throws Exception {
         MolangEngine.CompiledExpression variable = this.engine.compile(
             "v.count = v.count + 1; t.value = t.value + 1; return v.count * 10 + t.value;"
