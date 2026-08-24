@@ -358,12 +358,12 @@ describe("exportAnimation", () => {
 
     expect(result.fileName).toBe("emote.test.resources.zip");
     expect(Object.keys(files).sort()).toEqual([
-      "test+items+test.json",
-      "test+models+item+test.json",
-      "test+textures+entity+test.png",
-      "test+textures+entity+test.png.mcmeta",
+      "models/test]items]test.json",
+      "models/test]models]item]test.json",
+      "textures/test]textures]entity]test.png",
+      "textures/test]textures]entity]test.png.mcmeta",
     ]);
-    expect(files["test+textures+entity+test.png"]).toEqual(texture);
+    expect(files["textures/test]textures]entity]test.png"]).toEqual(texture);
     expect(files["pack.mcmeta"]).toBeUndefined();
   });
 

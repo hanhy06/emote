@@ -103,13 +103,13 @@ export function App() {
     }
   }
 
-  async function runExport(action: () => Promise<ExportResult>, fallbackMessage: string, progressMessage: string) {
+  async function runExport(action: () => Promise<readonly ExportResult[]>, fallbackMessage: string, progressMessage: string) {
     if (busy) return;
     dispatch({ type: "export_started", message: progressMessage });
 
     try {
       await showLoadingScreen();
-      downloadExport(await action());
+      downloadExports(await action());
     } catch (reason) {
       dispatch({ type: "export_failed", message: conversionErrorMessage(reason, fallbackMessage) });
     } finally {
@@ -122,7 +122,12 @@ export function App() {
 
     await runExport(async () => {
       const { exportDocumentAnimation } = await import("./export/projectExporter");
-      return exportDocumentAnimation(session.document, index);
+      const results = [exportDocumentAnimation(session.document, index)];
+      if (session.document.resources.size > 0) {
+        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
+        results.push(exportDocumentResourceBundle(session.document));
+      }
+      return results;
     }, "Conversion failed.", "Creating animation file");
   }
 
@@ -134,21 +139,17 @@ export function App() {
     try {
       await showLoadingScreen();
       const { exportDocumentAnimationFiles } = await import("./export/projectExporter");
-      downloadExports(exportDocumentAnimationFiles(session.document, includeSequence));
+      const results = exportDocumentAnimationFiles(session.document, includeSequence);
+      if (session.document.resources.size > 0) {
+        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
+        results.push(exportDocumentResourceBundle(session.document));
+      }
+      downloadExports(results);
     } catch (reason) {
       dispatch({ type: "export_failed", message: conversionErrorMessage(reason, "File export failed.") });
     } finally {
       dispatch({ type: "operation_finished" });
     }
-  }
-
-  async function handleResourceBundleDownload() {
-    if (!session) return;
-
-    await runExport(async () => {
-      const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
-      return exportDocumentResourceBundle(session.document);
-    }, "Resource export failed.", "Creating resource files");
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
@@ -376,13 +377,11 @@ export function App() {
               const itemAvailability = animationAvailability(item.source);
               return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
-            hasResources={project.resources.size > 0}
             error={exportError}
             disabled={busy}
             onDownloadAnimation={handleAnimationDownload}
             onDownloadAllAnimations={() => handleAnimationBundle(false)}
             onDownloadSequence={() => handleAnimationBundle(true)}
-            onDownloadResources={handleResourceBundleDownload}
           />}
         </>
       )}

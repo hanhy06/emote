@@ -8,25 +8,21 @@ interface DownloadItem {
 interface ExportPanelProps {
   assignmentSummary: string;
   animations: DownloadItem[];
-  hasResources: boolean;
   error: string;
   disabled: boolean;
   onDownloadAnimation: (index: number) => void;
   onDownloadAllAnimations: () => void;
   onDownloadSequence: () => void;
-  onDownloadResources: () => void;
 }
 
 export function ExportPanel({
   assignmentSummary,
   animations,
-  hasResources,
   error,
   disabled,
   onDownloadAnimation,
   onDownloadAllAnimations,
   onDownloadSequence,
-  onDownloadResources,
 }: ExportPanelProps) {
   const bundleDisabled = disabled || animations.some((animation) => !animation.exportable);
 
@@ -44,10 +40,6 @@ export function ExportPanel({
       {animations.length > 1 && <div className="bundle-actions">
         <button type="button" disabled={bundleDisabled} onClick={onDownloadAllAnimations}>Download all JSON</button>
         <button className="primary-button" type="button" disabled={bundleDisabled} onClick={onDownloadSequence}>Download sequence files</button>
-      </div>}
-      {hasResources && <div className="export-row">
-        <span><strong>Resource files</strong><small>Flat files named with their resource-pack locations.</small></span>
-        <button type="button" disabled={disabled} onClick={onDownloadResources}>Download resources ZIP</button>
       </div>}
       <h3>Animations</h3>
       <ul className="download-list">

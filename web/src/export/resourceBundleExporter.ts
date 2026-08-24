@@ -7,7 +7,7 @@ import type { ExportResult } from "./types";
 export function exportDocumentResourceBundle(document: ConversionDocument): ExportResult {
   const generatedResources = generatedResourceFiles(document, document.targetMinecraftVersion);
   const files: Record<string, Uint8Array> = {};
-  for (const [path, data] of generatedResources) files[flatResourceName(path)] = data;
+  for (const [path, data] of generatedResources) files[flatResourcePath(path)] = data;
 
   const sourceName = document.origin.sourceName.replace(/\.[^.]+$/, "");
   return {
@@ -16,6 +16,8 @@ export function exportDocumentResourceBundle(document: ConversionDocument): Expo
   };
 }
 
-export function flatResourceName(path: string): string {
-  return path.slice("assets/".length).replaceAll("/", "+");
+export function flatResourcePath(path: string): string {
+  const directory = path.includes("/models/") || path.includes("/items/") ? "models" : "textures";
+  const fileName = path.slice("assets/".length).replaceAll("/", "]");
+  return `${directory}/${fileName}`;
 }
