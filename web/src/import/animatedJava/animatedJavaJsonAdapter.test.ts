@@ -281,7 +281,13 @@ describe("animatedJavaJsonAdapter", () => {
     const input = rawBlueprint({
       format_version: 1,
       settings: { id: "demo:rig" },
-      textures: { skin: { type: "custom", base64_string: "iVBORw0KGgo=" } },
+      textures: {
+        skin: {
+          type: "custom",
+          base64_string: "iVBORw0KGgo=",
+          animation: { frametime: 3, interpolate: true, frames: [0, { index: 1, time: 5 }] },
+        },
+      },
       nodes: {
         body: {
           type: "bone",
@@ -296,9 +302,13 @@ describe("animatedJavaJsonAdapter", () => {
     const project = await animatedJavaJsonAdapter.import(input);
     expect([...project.resources.keys()]).toEqual([
       "assets/demo/textures/item/rig/skin.png",
+      "assets/demo/textures/item/rig/skin.png.mcmeta",
       "assets/demo/models/item/rig/body.json",
       "assets/demo/items/rig/body.json",
     ]);
+    expect(new TextDecoder().decode(project.resources.get("assets/demo/textures/item/rig/skin.png.mcmeta"))).toBe(
+      `${JSON.stringify({ animation: { frametime: 3, interpolate: true, frames: [0, { index: 1, time: 5 }] } }, null, 2)}\n`,
+    );
   });
 
   it("splits Animated Java bones into independently assignable player-head cubes", async () => {

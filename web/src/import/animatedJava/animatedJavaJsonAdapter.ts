@@ -565,7 +565,9 @@ function writeBoneResources(
     if (!source) throw new Error(`Animated Java bone ${nodeId} references unknown texture ${texture}.`);
     if (source.type === "reference") return [texture, source.resource_location];
     const texturePath = [resource.path, texture].filter(Boolean).join("/");
-    addResource(resources, `assets/${resource.namespace}/textures/item/${texturePath}.png`, decodeBase64(source.base64_string, texture));
+    const outputPath = `assets/${resource.namespace}/textures/item/${texturePath}.png`;
+    addResource(resources, outputPath, decodeBase64(source.base64_string, texture));
+    if (source.animation) addResource(resources, `${outputPath}.mcmeta`, jsonBytes({ animation: source.animation }));
     return [texture, `${resource.namespace}:item/${texturePath}`];
   }));
   addResource(resources, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements: modelElements }));

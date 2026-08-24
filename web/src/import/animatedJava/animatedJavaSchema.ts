@@ -1,6 +1,7 @@
 import {
   optionalArray,
   optionalBoolean,
+  optionalNumber,
   optionalRecord,
   optionalString,
   requireNumber,
@@ -21,8 +22,14 @@ export interface AjBlueprint {
 }
 
 export type AjTexture =
-  | { type: "custom"; base64_string: string; mime_type?: string }
+  | { type: "custom"; base64_string: string; mime_type?: string; animation?: AjTextureAnimation }
   | { type: "reference"; resource_location: string };
+
+export interface AjTextureAnimation {
+  frametime?: number;
+  interpolate?: boolean;
+  frames?: (number | { index: number; time: number })[];
+}
 
 export interface AjNode {
   type: "bone" | "item_display" | "block_display" | "text_display" | "structure" | "camera" | "locator";
@@ -100,6 +107,25 @@ export function requireAjBlueprint(value: unknown): AjBlueprint {
     if (type === "custom") {
       requireString(texture.base64_string, `${path}.base64_string`);
       optionalString(texture.mime_type, `${path}.mime_type`);
+      const animation = optionalRecord(texture.animation, `${path}.animation`);
+      if (animation) {
+        const frameTime = optionalNumber(animation.frametime, `${path}.animation.frametime`);
+        if (frameTime !== undefined && (!Number.isInteger(frameTime) || frameTime < 1)) {
+          throw new Error(`${path}.animation.frametime must be a positive integer.`);
+        }
+        optionalBoolean(animation.interpolate, `${path}.animation.interpolate`);
+        for (const [index, frameValue] of (optionalArray(animation.frames, `${path}.animation.frames`) ?? []).entries()) {
+          if (typeof frameValue === "number") {
+            if (!Number.isInteger(frameValue) || frameValue < 0) throw new Error(`${path}.animation.frames[${index}] must be a non-negative integer.`);
+            continue;
+          }
+          const frame = requireRecord(frameValue, `${path}.animation.frames[${index}]`);
+          const frameIndex = requireNumber(frame.index, `${path}.animation.frames[${index}].index`);
+          const frameDuration = requireNumber(frame.time, `${path}.animation.frames[${index}].time`);
+          if (!Number.isInteger(frameIndex) || frameIndex < 0) throw new Error(`${path}.animation.frames[${index}].index must be a non-negative integer.`);
+          if (!Number.isInteger(frameDuration) || frameDuration < 1) throw new Error(`${path}.animation.frames[${index}].time must be a positive integer.`);
+        }
+      }
     } else {
       requireString(texture.resource_location, `${path}.resource_location`);
     }
