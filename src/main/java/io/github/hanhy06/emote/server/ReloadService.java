@@ -7,7 +7,6 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.resource.ResourcePackService;
 
 public final class ReloadService {
     private final ConfigManager configManager;
@@ -15,7 +14,6 @@ public final class ReloadService {
     private final LoadResultLoader directoryLoader;
     private final PlaybackEngine playbackEngine;
     private final WheelSyncService wheelSyncService;
-    private final Runnable resourcePackReloader;
 
     public ReloadService(
         ConfigManager configManager,
@@ -24,14 +22,7 @@ public final class ReloadService {
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
-        this(
-            configManager,
-            emoteCatalog,
-            directoryLoader::load,
-            playbackEngine,
-            wheelSyncService,
-            new ResourcePackService(configManager)::rebuild
-        );
+        this(configManager, emoteCatalog, directoryLoader::load, playbackEngine, wheelSyncService);
     }
 
     ReloadService(
@@ -41,30 +32,17 @@ public final class ReloadService {
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService
     ) {
-        this(configManager, emoteCatalog, directoryLoader, playbackEngine, wheelSyncService, () -> {});
-    }
-
-    private ReloadService(
-        ConfigManager configManager,
-        EmoteCatalog emoteCatalog,
-        LoadResultLoader directoryLoader,
-        PlaybackEngine playbackEngine,
-        WheelSyncService wheelSyncService,
-        Runnable resourcePackReloader
-    ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
         this.playbackEngine = playbackEngine;
         this.wheelSyncService = wheelSyncService;
-        this.resourcePackReloader = resourcePackReloader;
     }
 
     public void loadOnServerStart() {
         this.configManager.configure();
         this.configManager.readConfig();
         this.configManager.readAccessConfig();
-        this.resourcePackReloader.run();
         ReloadStats stats = reloadRegistry();
         EmoteMod.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
     }
@@ -84,7 +62,6 @@ public final class ReloadService {
 
     private ReloadStats reloadLoadedConfig() {
         this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
-        this.resourcePackReloader.run();
         ReloadStats stats = reloadRegistry();
         this.wheelSyncService.syncAll();
         EmoteMod.LOGGER.info("reload emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());

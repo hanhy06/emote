@@ -20,6 +20,7 @@ public final class ResourcePackService {
 
     public void rebuild() {
         try {
+            this.configManager.configureResourcePack();
             ResourcePackAssembler.BuildResult result = this.assembler.assemble(
                 this.configManager.getResourcePackDirectory(),
                 this.configManager.getGeneratedResourcePackPath()

@@ -22,8 +22,7 @@ public class ConfigManager {
     private static final String ACCESS_CONFIG_FILE_NAME = "emotes.json";
     private static final String EMOTE_DIRECTORY_NAME = "emote";
     private static final String RESOURCE_PACK_DIRECTORY_NAME = "resource-pack";
-    private static final String GENERATED_DIRECTORY_NAME = "generated";
-    private static final String GENERATED_RESOURCE_PACK_FILE_NAME = "emote-resource-pack.zip";
+    private static final String GENERATED_RESOURCE_PACK_FILE_NAME = ".resource-pack.zip";
     private static final String RESOURCE_PACK_METADATA_FILE_NAME = "pack.mcmeta";
     private static final String BUNDLED_EMOTE_DIRECTORY_NAME = "default-emotes";
 
@@ -55,9 +54,6 @@ public class ConfigManager {
         try {
             Files.createDirectories(this.configDirPath);
             Files.createDirectories(getEmoteDirectory());
-            Files.createDirectories(getResourcePackDirectory());
-            Files.createDirectories(getGeneratedDirectory());
-            writeResourcePackMetadataIfAbsent();
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to create config files. Using default settings.", exception);
             return;
@@ -116,11 +112,12 @@ public class ConfigManager {
     }
 
     public Path getGeneratedResourcePackPath() {
-        return getGeneratedDirectory().resolve(GENERATED_RESOURCE_PACK_FILE_NAME);
+        return this.configDirPath.resolve(GENERATED_RESOURCE_PACK_FILE_NAME);
     }
 
-    private Path getGeneratedDirectory() {
-        return this.configDirPath.resolve(GENERATED_DIRECTORY_NAME);
+    public void configureResourcePack() throws IOException {
+        Files.createDirectories(getResourcePackDirectory());
+        writeResourcePackMetadataIfAbsent();
     }
 
     private void writeResourcePackMetadataIfAbsent() throws IOException {

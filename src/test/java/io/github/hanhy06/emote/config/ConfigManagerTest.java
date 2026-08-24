@@ -42,9 +42,9 @@ class ConfigManagerTest {
         manager.configure();
 
         assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
-        assertTrue(Files.isDirectory(manager.getResourcePackDirectory()));
-        assertTrue(Files.isDirectory(manager.getGeneratedResourcePackPath().getParent()));
-        assertTrue(Files.readString(manager.getResourcePackDirectory().resolve("pack.mcmeta")).contains("Emote resources"));
+        assertFalse(Files.exists(manager.getResourcePackDirectory()));
+        assertEquals(tempDir.resolve("emote/.resource-pack.zip"), manager.getGeneratedResourcePackPath());
+        assertFalse(Files.exists(manager.getGeneratedResourcePackPath()));
         assertFalse(Files.exists(manager.getEmoteDirectory().resolve("wave.json")));
     }
 

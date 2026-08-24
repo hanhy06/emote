@@ -9,16 +9,10 @@ The first server startup creates this structure:
 config/emote/
 ├── config.json
 ├── emotes.json
-├── emote/
-├── resource-pack/
-│   └── pack.mcmeta
-└── generated/
-    └── emote-resource-pack.zip
+└── emote/
 ```
 
 Place Emote JSON exported by the web converter under `emote/`.
-
-Resource ZIPs and loose resource files can be placed anywhere below `resource-pack/`. The mod recursively scans them on startup and reload, restores paths encoded with `]`, and assembles `generated/emote-resource-pack.zip`. The generated pack always uses the single `resource-pack/pack.mcmeta` file.
 
 ```text
 emote/
