@@ -50,6 +50,20 @@ describe("convertSequenceInput", () => {
       .toThrow("Unsupported sequence schema: 3");
   });
 
+  it("preserves transition times on schema 4 emote steps", () => {
+    const sequence = {
+      type: "sequence",
+      schema_version: 4,
+      id: "emote:sit",
+      metadata: { name: "Sit", description: "" },
+      settings: { cooldown: "5s", player: createDefaultPlayerBehavior() },
+      steps: [{ emote: "emote:sit_down" }, { emote: "emote:sit_idle", transition: "4t" }],
+    };
+
+    expect(convertSequenceInput({ name: "emote.sit.json", bytes: encoder.encode(JSON.stringify(sequence)) })?.steps)
+      .toEqual([{ emote: "emote:sit_down" }, { emote: "emote:sit_idle", transition: "4t" }]);
+  });
+
   it("ignores non-sequence JSON", () => {
     expect(convertSequenceInput({ name: "animation.json", bytes: encoder.encode('{"type":"animation"}') })).toBeNull();
   });

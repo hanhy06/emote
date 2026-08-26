@@ -91,16 +91,25 @@ function requireStep(value: unknown, index: number): RuntimeRecord {
   if (hasEmote === hasWait) throw invalid(path, "must contain exactly one of emote or wait");
   if (hasWait) {
     if (step.repeat !== undefined) throw invalid(`${path}.repeat`, "is not supported on a wait step");
+    if (step.transition !== undefined) throw invalid(`${path}.transition`, "is supported only on an emote step");
     const wait = requireString(step.wait, `${path}.wait`);
     parseTime(wait, 1, `${path}.wait`);
     return { wait };
   }
 
   const emote = requireEmoteChoice(step.emote, `${path}.emote`);
-  if (step.repeat === undefined) return { emote };
-  const repeat = requireNumber(step.repeat, `${path}.repeat`);
-  if (!Number.isInteger(repeat) || repeat < 1) throw invalid(`${path}.repeat`, "must be a positive integer");
-  return { emote, repeat };
+  const result: RuntimeRecord = { emote };
+  if (step.repeat !== undefined) {
+    const repeat = requireNumber(step.repeat, `${path}.repeat`);
+    if (!Number.isInteger(repeat) || repeat < 1) throw invalid(`${path}.repeat`, "must be a positive integer");
+    result.repeat = repeat;
+  }
+  if (step.transition !== undefined) {
+    const transition = requireString(step.transition, `${path}.transition`);
+    parseTime(transition, 0, `${path}.transition`);
+    result.transition = transition;
+  }
+  return result;
 }
 
 function requireEmoteChoice(value: unknown, path: string): string | unknown[] {

@@ -20,7 +20,7 @@ class SequenceJsonParserTest {
         EmoteSequence sequence = load(tempDir, "sit.json", baseJson("""
             {"emote": "example:sit_down"},
             {"wait": "0.5s"},
-            {"emote": "example:sit_idle", "repeat": 3}
+            {"emote": "example:sit_idle", "repeat": 3, "transition": "4t"}
             """));
 
         assertEquals("example:sit", sequence.id().toString());
@@ -30,6 +30,7 @@ class SequenceJsonParserTest {
         assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
         assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());
+        assertEquals(4, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).transitionTicks());
     }
 
     @Test
@@ -144,6 +145,20 @@ class SequenceJsonParserTest {
         assertEquals("$.steps[0].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(first)).fieldPath());
         assertEquals("$.steps[1].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(last)).fieldPath());
         assertEquals("$.steps[2].wait", assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(consecutive)).fieldPath());
+    }
+
+    @Test
+    void rejectsTransitionOnAWaitStep(@TempDir Path tempDir) throws Exception {
+        Path path = tempDir.resolve("wait-transition.json");
+        Files.writeString(path, baseJson("""
+            {"emote":"example:start"},
+            {"wait":"1t", "transition":"2t"},
+            {"emote":"example:end"}
+            """));
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> this.parser.parse(path));
+
+        assertEquals("$.steps[1].transition", exception.fieldPath());
     }
 
     @Test

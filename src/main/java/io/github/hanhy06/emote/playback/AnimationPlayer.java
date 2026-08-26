@@ -304,7 +304,7 @@ public final class AnimationPlayer {
         }
         for (int index = this.activePlaybackSegment + 1; index < segments.size(); index++) {
             PreparedAnimation.PlaybackSegment next = segments.get(index);
-            if (next.startTick() > tick) break;
+            if (next.transitionStartTick() > tick) break;
             if (tick <= next.endTick()) selected = index;
         }
         if (selected < 0) {
@@ -312,13 +312,20 @@ public final class AnimationPlayer {
         }
         PreparedAnimation.PlaybackSegment segment = segments.get(selected);
         int localTick = tick - segment.startTick();
-        if (selected != this.activePlaybackSegment) {
+        boolean segmentChanged = selected != this.activePlaybackSegment;
+        if (segmentChanged) {
             this.activePlaybackSegment = selected;
             this.mirroredNodes = segment.mirroredNodes();
             this.evaluator = new AnimationEvaluator(segment.animation(), this.querySource);
-            this.evaluator.beginCycle(localTick, 0);
-        } else {
+            this.evaluator.beginCycle(Math.max(localTick, 0), 0);
+        } else if (localTick > 0) {
             this.evaluator.evaluate(localTick, 0);
+        }
+        if (localTick < 0) {
+            if (segmentChanged) {
+                applyEvaluatorTransforms(segment.startTick() - segment.transitionStartTick(), this.mirroredNodes);
+            }
+            return;
         }
         applyEvaluator(tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
     }
@@ -329,13 +336,15 @@ public final class AnimationPlayer {
 
     private void applyEvaluator(int interpolationDurationTicks, Map<String, String> mirroredNodes) {
         for (int index = 0; index < this.evaluator.nodeCount(); index++) {
-            String nodeId = this.evaluator.nodeId(index);
-            Matrix4fc matrix = this.evaluator.matrix(index);
-            boolean preserveMatrix = this.evaluator.preservesMatrix(index);
-            applyTransform(nodeId, matrix, preserveMatrix, interpolationDurationTicks);
+            String nodeId = applyEvaluatorTransform(index, interpolationDurationTicks);
             String mirror = mirroredNodes.get(nodeId);
             if (mirror != null) {
-                applyTransform(mirror, matrix, preserveMatrix, interpolationDurationTicks);
+                applyTransform(
+                    mirror,
+                    this.evaluator.matrix(index),
+                    this.evaluator.preservesMatrix(index),
+                    interpolationDurationTicks
+                );
             }
             boolean visible = this.evaluator.visible(index);
             applyVisibility(nodeId, visible);
@@ -348,6 +357,32 @@ public final class AnimationPlayer {
                 if (mirror != null) applyNbt(mirror, nbt);
             }
         }
+    }
+
+    private void applyEvaluatorTransforms(int interpolationDurationTicks, Map<String, String> mirroredNodes) {
+        for (int index = 0; index < this.evaluator.nodeCount(); index++) {
+            String nodeId = applyEvaluatorTransform(index, interpolationDurationTicks);
+            String mirror = mirroredNodes.get(nodeId);
+            if (mirror != null) {
+                applyTransform(
+                    mirror,
+                    this.evaluator.matrix(index),
+                    this.evaluator.preservesMatrix(index),
+                    interpolationDurationTicks
+                );
+            }
+        }
+    }
+
+    private String applyEvaluatorTransform(int index, int interpolationDurationTicks) {
+        String nodeId = this.evaluator.nodeId(index);
+        applyTransform(
+            nodeId,
+            this.evaluator.matrix(index),
+            this.evaluator.preservesMatrix(index),
+            interpolationDurationTicks
+        );
+        return nodeId;
     }
 
     private void applyTransform(

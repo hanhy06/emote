@@ -130,6 +130,7 @@ public final class SequenceJsonParser {
                 throw reader.error(path, "must contain exactly one of emote, wait, or await_partner");
             }
             if (hasAwaitPartner) {
+                rejectTransition(stepObject, path, reader);
                 if (!allowAwaitPartner) {
                     throw reader.error(path + ".await_partner", "is not supported inside a collaboration branch");
                 }
@@ -137,6 +138,7 @@ public final class SequenceJsonParser {
                 continue;
             }
             if (hasWait) {
+                rejectTransition(stepObject, path, reader);
                 if (stepObject.has("repeat")) {
                     throw reader.error(path + ".repeat", "is not supported on a wait step");
                 }
@@ -156,9 +158,19 @@ public final class SequenceJsonParser {
             if (repeat < 1) {
                 throw reader.error(path + ".repeat", "must be at least 1");
             }
-            steps.add(new EmoteSequence.EmoteStep(choices, repeat));
+            int transitionTicks = stepObject.has("transition")
+                ? reader.requireTime(stepObject, "transition", path, 0)
+                : 0;
+            steps.add(new EmoteSequence.EmoteStep(choices, repeat, transitionTicks));
         }
         return List.copyOf(steps);
+    }
+
+    private void rejectTransition(JsonObject stepObject, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (stepObject.has("transition")) {
+            throw reader.error(path + ".transition", "is supported only on an emote step");
+        }
     }
 
     private EmoteSequence.AwaitPartnerStep parseAwaitPartner(

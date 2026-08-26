@@ -73,13 +73,21 @@ Sequences do not define `standalone`, `rotation_deadzone`, or `playback`. They a
 
 ## Animation steps
 
-Specify one Animation with `emote` and optionally add `repeat`.
+Specify one Animation with `emote` and optionally add `repeat` or `transition`.
 
 ```json
 {"emote": "example:sit_idle", "repeat": 3}
 ```
 
 `repeat` defaults to `1`. Each repetition runs one complete playback cycle of the Animation. Repeating Animations include their `loop_delay` between cycles.
+
+`transition` linearly moves the shared display nodes from the previous Animation's final pose to the next Animation's initial pose before its timeline begins:
+
+```json
+{"emote": "example:stand_up", "transition": "4t"}
+```
+
+It defaults to `0t` and applies before every real Animation selected by the step, including repetitions. The first Animation of a normal Sequence has no previous pose, so its transition is skipped. The first Animation of a cooperative `matched` or `timeout` branch transitions from the offer pose. Waits and loop delays hold the previous pose before the transition. Visibility, display data, timeline events, and Molang time change only when the next Animation begins.
 
 The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and Animations using `hold` or `server_sync` playback may not be referenced.
 

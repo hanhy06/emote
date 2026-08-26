@@ -25,6 +25,44 @@ import static org.junit.jupiter.api.Assertions.*;
 class SequenceCompilerTest {
 
     @Test
+    void insertsLinearTransitionBeforeEveryAnimationAfterTheFirst() {
+        PreparedAnimation first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
+        EmoteAnimation.TimelineEvent event = new EmoteAnimation.TimelineEvent(
+            1,
+            new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            List.of("say transitioned"),
+            List.of()
+        );
+        PreparedAnimation second = animation(
+            "demo:second",
+            3,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            Map.of(),
+            new EmoteAnimation.Events(List.of(), List.of(event), List.of(), List.of()),
+            Map.of("root", sceneAnchor())
+        );
+        PreparedSequence sequence = PreparedSequence.resolve(
+            sequence(
+                new EmoteSequence.EmoteStep(Identifier.parse(first.id()), 1, 4),
+                new EmoteSequence.EmoteStep(Identifier.parse(second.id()), 1, 4)
+            ),
+            Map.of(first.id(), first, second.id(), second)
+        );
+
+        PreparedAnimation compiled = sequence.compiledAnimation();
+
+        assertEquals(9, compiled.durationTicks());
+        assertEquals(List.of(0, 2), compiled.playbackSegments().stream()
+            .map(PreparedAnimation.PlaybackSegment::transitionStartTick).toList());
+        assertEquals(List.of(0, 6), compiled.playbackSegments().stream()
+            .map(PreparedAnimation.PlaybackSegment::startTick).toList());
+        assertEquals(List.of(7), compiled.animation().timeline().events().timeline().stream()
+            .map(EmoteAnimation.TimelineEvent::tick).toList());
+    }
+
+    @Test
     void keepsThePreviousPoseDuringAnExplicitWaitStep() {
         PreparedAnimation first = animation("demo:first", 2, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));
         PreparedAnimation second = animation("demo:second", 3, EmoteAnimation.LoopMode.ONCE, 0, Map.of(), EmoteAnimation.Events.empty(), Map.of("root", sceneAnchor()));

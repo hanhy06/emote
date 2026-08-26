@@ -96,7 +96,7 @@ public record EmoteSequence(
     public sealed interface Step permits EmoteStep, WaitStep, AwaitPartnerStep {
     }
 
-    public record EmoteStep(List<Choice> choices, int repeat) implements Step {
+    public record EmoteStep(List<Choice> choices, int repeat, int transitionTicks) implements Step {
         public EmoteStep {
             choices = List.copyOf(choices);
             if (choices.isEmpty()) {
@@ -118,14 +118,25 @@ public record EmoteSequence(
             if (repeat < 1) {
                 throw new IllegalArgumentException("sequence repeat must be at least 1");
             }
+            if (transitionTicks < 0) {
+                throw new IllegalArgumentException("sequence transition must not be negative");
+            }
+        }
+
+        public EmoteStep(List<Choice> choices, int repeat) {
+            this(choices, repeat, 0);
         }
 
         public EmoteStep(Identifier emoteId, int repeat) {
-            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat);
+            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat, 0);
+        }
+
+        public EmoteStep(Identifier emoteId, int repeat, int transitionTicks) {
+            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat, transitionTicks);
         }
 
         public EmoteStep(Collection<Identifier> emoteIds, int repeat) {
-            this(emoteIds.stream().map(emoteId -> new Choice(emoteId, 0)).toList(), repeat);
+            this(emoteIds.stream().map(emoteId -> new Choice(emoteId, 0)).toList(), repeat, 0);
         }
 
         public List<Identifier> emoteIds() {

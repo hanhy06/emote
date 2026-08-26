@@ -52,6 +52,42 @@ class SequencePlaybackTest {
     }
 
     @Test
+    void appliesTheNextPoseOnceAndWaitsForItsTransitionBeforeStartingTheSegment() throws Exception {
+        PreparedAnimation first = animation("example:first", 1);
+        PreparedAnimation second = animation("example:second", 10);
+        EmoteSequence sequence = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("example:sequence"),
+            new EmoteMetadata("Sequence", "test", Map.of()),
+            new EmoteSequence.Settings(0, playerBehavior()),
+            List.of(
+                new EmoteSequence.EmoteStep(first.animation().id(), 1),
+                new EmoteSequence.EmoteStep(second.animation().id(), 1, 2)
+            )
+        );
+        PreparedSequence prepared = PreparedSequence.resolve(sequence, Map.of(first.id(), first, second.id(), second));
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = new AnimationPlayer(prepared.compile(new Random(1)), target);
+
+        player.start();
+        player.advance();
+        player.advance();
+        int updateCountAfterTransitionStarted = target.transformUpdateCount;
+
+        assertEquals(2, target.lastInterpolationDuration);
+        assertEquals(11.0F, target.x("display"), 1.0E-5F);
+
+        player.advance();
+        assertEquals(updateCountAfterTransitionStarted, target.transformUpdateCount);
+
+        player.advance();
+        assertEquals(updateCountAfterTransitionStarted, target.transformUpdateCount);
+
+        player.advance();
+        assertEquals(12.0F, target.x("display"), 1.0E-5F);
+    }
+
+    @Test
     void duplicatesHierarchyAndTracksForGeneratedPartner() throws Exception {
         PreparedAnimation animation = animation("example:mirror", 1);
 
@@ -142,6 +178,8 @@ class SequencePlaybackTest {
 
     private static final class FakeTarget implements AnimationPlayer.TimelineTarget {
         private final Map<String, Transformation> transforms = new HashMap<>();
+        private int lastInterpolationDuration;
+        private int transformUpdateCount;
 
         @Override
         public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
@@ -151,6 +189,8 @@ class SequencePlaybackTest {
         @Override
         public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
             this.transforms.put(nodeId, createTransformation(nodeId, transform));
+            this.lastInterpolationDuration = interpolationDurationTicks;
+            this.transformUpdateCount++;
         }
 
         @Override

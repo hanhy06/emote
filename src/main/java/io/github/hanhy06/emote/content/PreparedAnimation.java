@@ -193,13 +193,14 @@ public final class PreparedAnimation implements PlayableEmote {
     }
 
     public record PlaybackSegment(
+        int transitionStartTick,
         int startTick,
         int endTick,
         PreparedAnimation animation,
         Map<String, String> mirroredNodes
     ) {
         public PlaybackSegment {
-            if (startTick < 0 || endTick < startTick) {
+            if (transitionStartTick < 0 || startTick < transitionStartTick || endTick < startTick) {
                 throw new IllegalArgumentException("invalid playback segment range");
             }
             Objects.requireNonNull(animation, "animation");
