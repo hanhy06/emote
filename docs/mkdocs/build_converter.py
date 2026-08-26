@@ -5,6 +5,7 @@ import subprocess
 
 PROJECT_DIR = Path(__file__).resolve().parents[2]
 WEB_DIR = PROJECT_DIR / "web"
+ASSETS_DIR = Path(__file__).resolve().parent / "assets"
 
 
 def on_post_build(config, **kwargs):
@@ -29,3 +30,5 @@ def on_post_build(config, **kwargs):
         cwd=WEB_DIR,
         check=True,
     )
+
+    shutil.copytree(ASSETS_DIR, Path(config.site_dir).resolve() / "assets", dirs_exist_ok=True)
