@@ -175,7 +175,7 @@ Combine animations for two players in a sequence to create a collaborative emote
 
 ## Mod API
 
-`EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, and playback lifecycle listeners. State changes must run on the server thread, and runtime registrations survive reloads.
+`EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, playback lifecycle listeners, and named animation callback listeners. State changes must run on the server thread, and runtime registrations survive reloads.
 
 ## Troubleshooting
 
