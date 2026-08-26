@@ -40,7 +40,7 @@ const IMPORT_FORMATS = [
   {
     label: "Animated Java Plugin Blueprint",
     extensions: ".json",
-    description: "Imports the Plugin Blueprint JSON exported by Animated Java, including models, animations, events, and player-skin assignment. Native .ajblueprint project files are not supported.",
+    description: "Imports Plugin Blueprint JSON exported by Animated Java, including models, animations, events, and player-skin assignment.",
   },
   {
     label: "Bedrock Edition",
