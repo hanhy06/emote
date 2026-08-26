@@ -9,9 +9,9 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
