@@ -121,9 +121,9 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { exportDocumentAnimation } = await import("./export/projectExporter");
+      const { documentAnimationUsesGeneratedResources, exportDocumentAnimation } = await import("./export/projectExporter");
       const results = [exportDocumentAnimation(session.document, index)];
-      if (session.document.resources.size > 0) {
+      if (documentAnimationUsesGeneratedResources(session.document, index)) {
         const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
         results.push(exportDocumentResourceBundle(session.document));
       }
@@ -138,9 +138,9 @@ export function App() {
 
     try {
       await showLoadingScreen();
-      const { exportDocumentAnimationFiles } = await import("./export/projectExporter");
+      const { documentAnimationsUseGeneratedResources, exportDocumentAnimationFiles } = await import("./export/projectExporter");
       const results = exportDocumentAnimationFiles(session.document, includeSequence);
-      if (session.document.resources.size > 0) {
+      if (documentAnimationsUseGeneratedResources(session.document)) {
         const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
         results.push(exportDocumentResourceBundle(session.document));
       }

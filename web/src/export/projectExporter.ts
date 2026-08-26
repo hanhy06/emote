@@ -3,12 +3,14 @@ import type { ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
-import { validateResourceVersion } from "./generatedResources";
+import { animationUsesGeneratedResources, validateResourceVersion } from "./generatedResources";
 import type { ExportResult } from "./types";
 
 export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
-  validateResourceVersion(document, document.targetMinecraftVersion);
   const animation = compileConversionAnimation(document, animationIndex);
+  if (animationUsesGeneratedResources(animation, document.resources)) {
+    validateResourceVersion(document, document.targetMinecraftVersion);
+  }
   const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
@@ -17,13 +19,15 @@ export function exportDocumentAnimation(document: ConversionDocument, animationI
 }
 
 export function exportDocumentAnimationFiles(document: ConversionDocument, includeSequence: boolean): ExportResult[] {
-  validateResourceVersion(document, document.targetMinecraftVersion);
   if (document.animations.length === 0) throw new Error("The project does not contain animations.");
   const animations = document.animations.map((_, index) => compileConversionAnimation(
     document,
     index,
     includeSequence ? { standalone: false } : undefined,
   ));
+  if (animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) {
+    validateResourceVersion(document, document.targetMinecraftVersion);
+  }
   const files: ExportResult[] = animations.map((animation, index) => ({
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
@@ -44,6 +48,14 @@ export function exportDocumentAnimationFiles(document: ConversionDocument, inclu
     });
   }
   return files;
+}
+
+export function documentAnimationUsesGeneratedResources(document: ConversionDocument, animationIndex: number): boolean {
+  return animationUsesGeneratedResources(compileConversionAnimation(document, animationIndex), document.resources);
+}
+
+export function documentAnimationsUseGeneratedResources(document: ConversionDocument): boolean {
+  return document.animations.some((_, index) => documentAnimationUsesGeneratedResources(document, index));
 }
 
 export function sanitizeAnimationFileName(value: string): string {

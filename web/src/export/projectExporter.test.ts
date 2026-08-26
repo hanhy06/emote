@@ -4,7 +4,11 @@ import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../f
 import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
-import { exportDocumentAnimation, exportDocumentAnimationFiles } from "./projectExporter";
+import {
+  documentAnimationUsesGeneratedResources,
+  exportDocumentAnimation,
+  exportDocumentAnimationFiles,
+} from "./projectExporter";
 import { exportDocumentResourceBundle } from "./resourceBundleExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
@@ -366,6 +370,61 @@ describe("exportAnimation", () => {
     ]);
     expect(files["textures/test]textures]entity]test.png"]).toEqual(texture);
     expect(files["pack.mcmeta"]).toBeUndefined();
+  });
+
+  it("does not require generated resources after every generated model is replaced with a skin part", () => {
+    const project: ImportedProject = {
+      source: "geckolib_bbmodel",
+      sourceName: "player.bbmodel",
+      suggestedMetadata: { name: "Player", description: "" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      resourceMinecraftVersion: "26.2",
+      nodes: {
+        head: {
+          id: "head",
+          type: "item_display",
+          defaultMatrix: IDENTITY,
+          visible: true,
+          itemDisplay: "none",
+          itemStackSnbt: '{id:"minecraft:paper",components:{"minecraft:item_model":"test:player/head"}}',
+          playerHeadConversion: { matrix: IDENTITY },
+          suggestedSkin: { part: "head", order: 0 },
+        },
+      },
+      animations: [{
+        id: "test",
+        name: "Test",
+        durationTicks: 1,
+        loop: "once",
+        loopDelayTicks: 0,
+        tracks: {},
+        events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [],
+      resources: new Map([
+        ["assets/test/items/player/head.json", new Uint8Array([1])],
+        ["assets/test/models/item/player/head.json", new Uint8Array([2])],
+      ]),
+    };
+    const options: FixtureExportOptions = {
+      minecraftVersion: "26.2",
+      namespace: "test",
+      playbackMode: "source",
+      name: "Player",
+      description: "",
+      player: project.suggestedPlayer,
+      additionalMetadata: {},
+    };
+
+    const skinned = exportDocument(project, options, { head: { part: "head", order: 0 } }, {});
+    const unskinned = exportDocument(project, options, { head: null }, {});
+    skinned.targetMinecraftVersion = "26.1";
+    unskinned.targetMinecraftVersion = "26.1";
+
+    expect(documentAnimationUsesGeneratedResources(skinned, 0)).toBe(false);
+    expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
+    expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
+    expect(() => exportDocumentAnimation(unskinned, 0)).toThrow("Generated resources require Minecraft 26.2.");
   });
 
   it.each([
