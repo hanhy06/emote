@@ -148,7 +148,7 @@ public final class PlaybackStressTest {
                         instance.timeline.start();
                     }
                 } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed while running stress-test emote {}", instance.emote.id(), exception);
+                    EmoteMod.LOGGER.warn("Failed to run stress-test emote {}", instance.emote.id(), exception);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
                     current.removeDisplayEntities(instance.nodes.displayEntityCount());

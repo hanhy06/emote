@@ -52,7 +52,7 @@ public final class PolymerResourcePackDistributor {
             int resourceCount = this.contributor.addTo(this.configManager.getResourcePackDirectory(), builder);
             EmoteMod.LOGGER.info("Added {} emote resources to the Polymer resource pack", resourceCount);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to add emote resources to the Polymer resource pack: {}", exception.getMessage());
+            EmoteMod.LOGGER.warn("Failed to add emote resources to the Polymer resource pack", exception);
         }
     }
 
@@ -86,7 +86,7 @@ public final class PolymerResourcePackDistributor {
                 }
             });
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to configure Polymer AutoHost: {}", exception.getMessage());
+            EmoteMod.LOGGER.warn("Failed to configure Polymer AutoHost", exception);
         }
     }
 

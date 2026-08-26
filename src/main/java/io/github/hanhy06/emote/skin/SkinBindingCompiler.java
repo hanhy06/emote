@@ -1,18 +1,15 @@
 package io.github.hanhy06.emote.skin;
 
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
 public final class SkinBindingCompiler {
-    private static final Logger LOGGER = LoggerFactory.getLogger(SkinBindingCompiler.class);
-
     public List<SkinBinding> compile(EmoteAnimation animation) {
         Map<ParticipantSkinPart, List<RawPart>> byPart = new HashMap<>();
         for (Map.Entry<String, EmoteAnimation.Node> entry : animation.nodes().entrySet()) {
@@ -51,7 +48,7 @@ public final class SkinBindingCompiler {
                 .toList();
         }
         if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
-            LOGGER.warn(
+            EmoteMod.LOGGER.warn(
                 "Too many vertical JSON skin segments for {} {}: {}",
                 participantSkinPart.participant(),
                 skinPart.id(),

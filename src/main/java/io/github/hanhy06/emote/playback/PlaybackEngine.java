@@ -256,7 +256,7 @@ public class PlaybackEngine implements ConfigListener {
             }
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to start emote {} for {}", emote.id(), player.getScoreboardName(), exception);
+            EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
             if (session != null && removeSession(session)) {
                 cleanupSession(session, false, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
@@ -385,7 +385,7 @@ public class PlaybackEngine implements ConfigListener {
                         }
                     }
                 } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed while playing emote {}", session.id(), exception);
+                    EmoteMod.LOGGER.warn("Failed to play emote {}", session.id(), exception);
                     stopReason = PlaybackStopReason.ERROR;
                 }
             }

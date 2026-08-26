@@ -45,7 +45,12 @@ public final class NamedCallbackDispatcher {
             try {
                 listener.onCallback(event);
             } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("An emote callback listener failed while handling {}", event.name(), exception);
+                EmoteMod.LOGGER.warn(
+                    "Emote callback listener {} failed while handling {}",
+                    listener.getClass().getName(),
+                    event.name(),
+                    exception
+                );
             }
         }
     }

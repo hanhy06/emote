@@ -92,7 +92,7 @@ public final class EmoteDirectoryLoader {
 
         Set<String> duplicateIds = pathsById.entrySet().stream()
             .filter(entry -> entry.getValue().size() > 1)
-            .peek(entry -> EmoteMod.LOGGER.warn("Ignoring emote files with duplicate id {}: {}", entry.getKey(), entry.getValue()))
+            .peek(entry -> EmoteMod.LOGGER.warn("Ignoring emote files with duplicate ID {}: {}", entry.getKey(), entry.getValue()))
             .map(Map.Entry::getKey)
             .collect(java.util.stream.Collectors.toUnmodifiableSet());
         List<LoadedAnimation> loaded = candidates.stream()

@@ -93,7 +93,7 @@ public class ServerLifecycle {
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();
-        EmoteMod.LOGGER.info("stop emotes, cleared API emotes={}", removedApiEmotes);
+        EmoteMod.LOGGER.info("Cleared {} API emotes during server shutdown", removedApiEmotes);
     }
 
     private void handleServerStopped(MinecraftServer ignoredServer) {

@@ -48,7 +48,7 @@ public final class ReloadService {
         this.configManager.readConfig();
         this.configManager.readAccessConfig();
         ReloadStats stats = reloadRegistry();
-        EmoteMod.LOGGER.info("emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
+        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
     }
 
     public ReloadResult reloadFromCommand() {
@@ -69,7 +69,7 @@ public final class ReloadService {
         this.resourcePackReloader.run();
         ReloadStats stats = reloadRegistry();
         this.wheelSyncService.syncAll();
-        EmoteMod.LOGGER.info("reload emote files detected={} loaded={}", stats.detectedFileCount(), stats.loadedEmoteCount());
+        EmoteMod.LOGGER.info("Reloaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
     }
 
@@ -92,7 +92,7 @@ public final class ReloadService {
         int ignoredCount = this.emoteCatalog.replace(definitions);
         if (ignoredCount > 0) {
             EmoteMod.LOGGER.warn(
-                "Ignoring {} enabled file emotes because of API id conflicts or the registry limit of {}",
+                "Ignoring {} enabled file emotes because of API ID conflicts or the {}-emote registry limit",
                 ignoredCount,
                 EmoteCatalog.MAX_EMOTE_COUNT
             );

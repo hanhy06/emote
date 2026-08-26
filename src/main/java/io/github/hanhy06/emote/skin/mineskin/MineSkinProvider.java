@@ -214,7 +214,7 @@ public final class MineSkinProvider implements PlayerSkinProvider {
             );
             if (result.totalFilesDeleted() > 0) {
                 EmoteMod.LOGGER.info(
-                    "Cleaned MineSkin cache: expired={}, capacity={}, transient={}, retained={} bytes",
+                    "Cleaned MineSkin cache by deleting {} expired, {} over-capacity, and {} transient files; retained {} bytes",
                     result.expiredFilesDeleted(),
                     result.capacityFilesDeleted(),
                     result.transientFilesDeleted(),
@@ -316,7 +316,7 @@ public final class MineSkinProvider implements PlayerSkinProvider {
                         bakeTask.queueGeneration()
                     );
                     EmoteMod.LOGGER.warn(
-                        "MineSkin bake rate limited for {} part {}. Retrying in {} ms ({}/{})",
+                        "MineSkin bake rate limited for {} part {}; retrying in {} ms ({}/{})",
                         source.playerName(),
                         textureKey,
                         retryDelayMillis,

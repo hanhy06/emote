@@ -207,13 +207,13 @@ public class WheelShortcutSettings {
         try {
             JsonObject root = JsonFileStore.readObject(this.filePath);
             if (root == null || readInt(root.get("schema_version")) != CURRENT_SCHEMA_VERSION) {
-                EmoteMod.LOGGER.warn("Wheel shortcut settings are empty or use an unsupported schema version.");
+                EmoteMod.LOGGER.warn("Wheel shortcut settings are empty or use an unsupported schema version");
                 return;
             }
 
             JsonElement serversElement = root.get("servers");
             if (serversElement == null || !serversElement.isJsonObject()) {
-                EmoteMod.LOGGER.warn("Wheel shortcut settings do not contain a valid servers object.");
+                EmoteMod.LOGGER.warn("Wheel shortcut settings do not contain a valid servers object");
                 return;
             }
 
@@ -233,8 +233,10 @@ public class WheelShortcutSettings {
                     }
                 }
             }
-        } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read wheel shortcut settings: {}", exception.getMessage());
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Failed to read wheel shortcut settings", exception);
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to parse wheel shortcut settings: {}", exception.getMessage());
         }
     }
 
@@ -259,7 +261,7 @@ public class WheelShortcutSettings {
         try {
             JsonFileStore.writeObjectAtomically(this.filePath, root, this.gson);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.error("Failed to save wheel shortcut settings: {}", exception.getMessage());
+            EmoteMod.LOGGER.error("Failed to save wheel shortcut settings", exception);
         }
     }
 

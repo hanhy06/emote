@@ -52,7 +52,7 @@ public class ConfigManager {
             Files.createDirectories(this.configDirPath);
             Files.createDirectories(getEmoteDirectory());
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to create config files. Using default settings.", exception);
+            EmoteMod.LOGGER.warn("Failed to create config files; using default settings", exception);
             return;
         }
 
@@ -60,7 +60,7 @@ public class ConfigManager {
             try {
                 installBundledEmotes(this.bundledEmoteDirectory);
             } catch (IOException exception) {
-                EmoteMod.LOGGER.warn("Failed to install bundled emotes.", exception);
+                EmoteMod.LOGGER.warn("Failed to install bundled emotes", exception);
             }
         }
 
@@ -76,7 +76,7 @@ public class ConfigManager {
 
     private void installBundledEmotes(@Nullable Path bundledEmoteDirectory) throws IOException {
         if (bundledEmoteDirectory == null) {
-            EmoteMod.LOGGER.warn("Bundled emotes were not found.");
+            EmoteMod.LOGGER.warn("Bundled emotes were not found");
             return;
         }
 
@@ -118,12 +118,12 @@ public class ConfigManager {
         try {
             loadedConfig = this.jsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Config contains invalid field values. Keeping current config.", exception);
+            EmoteMod.LOGGER.warn("Main config contains invalid field values; keeping the current config: {}", exception.getMessage());
             broadcastConfig();
             return false;
         }
         if (loadedConfig == null) {
-            EmoteMod.LOGGER.warn("Config is empty or invalid. Keeping current config.");
+            EmoteMod.LOGGER.warn("Main config is empty or invalid; keeping the current config");
             broadcastConfig();
             return false;
         }
@@ -140,13 +140,13 @@ public class ConfigManager {
         try {
             loadedConfig = this.jsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Emote access config contains invalid field values. Keeping current config.", exception);
+            EmoteMod.LOGGER.warn("Emote access config contains invalid field values; keeping the current config: {}", exception.getMessage());
             broadcastAccessConfig();
             return false;
         }
 
         if (loadedConfig == null) {
-            EmoteMod.LOGGER.warn("Emote access config is empty or invalid. Keeping current config.");
+            EmoteMod.LOGGER.warn("Emote access config is empty or invalid; keeping the current config");
             broadcastAccessConfig();
             return false;
         }
@@ -207,8 +207,11 @@ public class ConfigManager {
         Path filePath = this.configDirPath.resolve(fileName);
         try {
             return JsonFileStore.readObject(filePath);
-        } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read {}: {}", fileName, exception.getMessage());
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Failed to read {}", fileName, exception);
+            return null;
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to parse {}: {}", fileName, exception.getMessage());
             return null;
         }
     }
@@ -230,7 +233,7 @@ public class ConfigManager {
             EmoteMod.LOGGER.info("Saved {}", fileName);
             return true;
         } catch (IOException exception) {
-            EmoteMod.LOGGER.error("Failed to write {}: {}", fileName, exception.getMessage());
+            EmoteMod.LOGGER.error("Failed to write {}", fileName, exception);
             return false;
         }
     }

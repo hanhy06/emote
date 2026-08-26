@@ -32,7 +32,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
             try {
                 listener.beforePlay(event);
             } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("An emote play listener failed", exception);
+                EmoteMod.LOGGER.warn("Emote play listener {} failed", listener.getClass().getName(), exception);
                 event.cancel(Component.literal("Emote playback was cancelled because a listener failed."));
             }
             if (event.isCancelled()) {
@@ -49,7 +49,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
             try {
                 listener.onStarted(playback);
             } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("An emote playback listener failed while handling start", exception);
+                EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling start", listener.getClass().getName(), exception);
             }
         }
     }
@@ -66,7 +66,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
             try {
                 listener.onStopped(playback, reason);
             } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("An emote playback listener failed while handling stop", exception);
+                EmoteMod.LOGGER.warn("Emote playback listener {} failed while handling stop", listener.getClass().getName(), exception);
             }
         }
     }
