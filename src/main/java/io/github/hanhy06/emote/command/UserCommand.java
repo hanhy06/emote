@@ -10,12 +10,10 @@ import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.application.EmotePlayService;
 import io.github.hanhy06.emote.application.EmoteQueryService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.IdentifierArgument;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 
@@ -140,14 +138,7 @@ public final class UserCommand {
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        PlaybackSession session = this.playbackEngine.stop(player);
-        if (session == null) {
-            source.sendFailure(Component.literal("No active emote."));
-            return 0;
-        }
-
-        source.sendSuccess(() -> Component.literal("Stop: " + session.id()), false);
-        return 1;
+        return this.playbackEngine.stop(player) == null ? 0 : 1;
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {
