@@ -191,12 +191,12 @@ public final class AdminCommand {
     ) {
         String availability = !standalone
             ? "Sequence only"
-            : playerHidden ? "Hidden from players" : "Available";
+            : playerHidden ? "Hidden" : "Available";
         return Component.literal("\n• " + name).withStyle(ChatFormatting.WHITE)
+            .append(Component.literal("  " + description).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds · %s", durationTicks / 20.0D, availability))
-                .withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n  " + description).withStyle(ChatFormatting.GRAY));
+                .withStyle(ChatFormatting.GRAY));
     }
 
     private int stopAll(CommandSourceStack source) {

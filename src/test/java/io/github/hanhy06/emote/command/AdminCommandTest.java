@@ -48,10 +48,10 @@ final class AdminCommandTest {
             "A looping dance",
             85,
             true,
-            false
+            true
         );
 
-        assertEquals("\n• Dance\n  emote:dance · 4.3 seconds · Available\n  A looping dance", entry.getString());
+        assertEquals("\n• Dance  A looping dance\n  emote:dance · 4.3 seconds · Hidden", entry.getString());
     }
 
     @Test
