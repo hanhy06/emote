@@ -17,6 +17,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ResourcePackContributorTest {
     @Test
+    void detectsOnlyMeaningfulResourceInputs(@TempDir Path tempDir) throws Exception {
+        Path sourceDirectory = tempDir.resolve("resource-pack");
+        Files.createDirectories(sourceDirectory);
+        Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "metadata");
+
+        ResourcePackContributor contributor = new ResourcePackContributor();
+        assertFalse(contributor.hasResources(sourceDirectory));
+
+        Files.write(sourceDirectory.resolve("demo]textures]item]chair.png"), new byte[] {1});
+
+        assertTrue(contributor.hasResources(sourceDirectory));
+    }
+
+    @Test
     void contributesLooseAndZippedFlatResources(@TempDir Path tempDir) throws Exception {
         Path sourceDirectory = tempDir.resolve("resource-pack");
         Path looseTexture = sourceDirectory.resolve("anything/deep/textures/demo]textures]item]chair]body.png");

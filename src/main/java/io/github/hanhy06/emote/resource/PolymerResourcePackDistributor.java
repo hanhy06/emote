@@ -1,40 +1,40 @@
 package io.github.hanhy06.emote.resource;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonObject;
 import eu.pb4.polymer.autohost.api.ResourcePackDataProvider;
 import eu.pb4.polymer.resourcepack.api.PolymerResourcePackUtils;
 import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.ConfigManager;
-import io.github.hanhy06.emote.config.JsonFileStore;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.protocol.common.ClientboundResourcePackPushPacket;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Optional;
 import java.util.concurrent.ExecutionException;
-import java.util.function.Consumer;
 
 public final class PolymerResourcePackDistributor {
-    private static final String AUTO_HOST_FILE_NAME = "auto-host.json";
-
     private final ConfigManager configManager;
     private final ResourcePackContributor contributor;
-    private final Gson gson = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private volatile int lastContributedResourceCount;
 
     public PolymerResourcePackDistributor(ConfigManager configManager) {
         this.configManager = configManager;
         this.contributor = new ResourcePackContributor();
 
-        configureAutoHost();
         PolymerResourcePackUtils.RESOURCE_PACK_CREATION_EVENT.register(this::addEmoteResources);
     }
 
     public void rebuildAndPush() {
+        try {
+            if (!this.contributor.hasResources(this.configManager.getResourcePackDirectory())
+                && this.lastContributedResourceCount == 0) {
+                EmoteMod.LOGGER.info("Skipping Polymer resource pack rebuild because Emote contributes no resources");
+                return;
+            }
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Failed to inspect emote resource inputs", exception);
+            return;
+        }
+
         try {
             PolymerResourcePackUtils.getInstance().build(PolymerResourcePackUtils.getMainPath());
             pushToOnlinePlayers();
@@ -50,6 +50,7 @@ public final class PolymerResourcePackDistributor {
         try {
             this.configManager.configureResourcePack();
             int resourceCount = this.contributor.addTo(this.configManager.getResourcePackDirectory(), builder);
+            this.lastContributedResourceCount = resourceCount;
             EmoteMod.LOGGER.info("Added {} emote resources to the Polymer resource pack", resourceCount);
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to add emote resources to the Polymer resource pack", exception);
@@ -73,37 +74,5 @@ public final class PolymerResourcePackDistributor {
                 ));
             }
         }
-    }
-
-    private void configureAutoHost() {
-        Path polymerConfigDirectory = FabricLoader.getInstance().getConfigDir().resolve("polymer");
-        try {
-            updateJson(polymerConfigDirectory.resolve(AUTO_HOST_FILE_NAME), json -> {
-                json.addProperty("enabled", true);
-                json.addProperty("type", "polymer:automatic");
-                if (!json.has("settings")) {
-                    json.add("settings", new JsonObject());
-                }
-            });
-        } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to configure Polymer AutoHost", exception);
-        }
-    }
-
-    private void updateJson(Path path, Consumer<JsonObject> update) throws IOException {
-        JsonObject json = Files.isRegularFile(path)
-            ? JsonFileStore.readObject(path)
-            : new JsonObject();
-        if (json == null) {
-            throw new IOException("Expected a JSON object in " + path);
-        }
-
-        JsonObject previousJson = json.deepCopy();
-        update.accept(json);
-        if (json.equals(previousJson)) {
-            return;
-        }
-
-        JsonFileStore.writeObjectAtomically(path, json, this.gson);
     }
 }

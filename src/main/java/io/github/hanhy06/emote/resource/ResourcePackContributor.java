@@ -19,6 +19,10 @@ final class ResourcePackContributor {
     private static final int MAX_ENTRY_COUNT = 65_536;
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
+    boolean hasResources(Path sourceDirectory) throws IOException {
+        return Files.isDirectory(sourceDirectory) && !readResources(sourceDirectory).isEmpty();
+    }
+
     int addTo(Path sourceDirectory, ResourcePackBuilder builder) throws IOException {
         Map<String, ResourceFile> resources = readResources(sourceDirectory);
         for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
