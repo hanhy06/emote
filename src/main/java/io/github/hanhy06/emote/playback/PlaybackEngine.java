@@ -131,7 +131,7 @@ public class PlaybackEngine implements ConfigListener {
             offer.skinBindings(ParticipantRole.PARTNER)
         );
         if (skinPreparation.preparing()) {
-            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
+            return PlayResult.failure("Preparing your skin… " + skinPreparation.progressPercent() + "%");
         }
 
         PlaybackParticipant partner = new PlaybackParticipant(
@@ -169,10 +169,7 @@ public class PlaybackEngine implements ConfigListener {
             emote.displayNodeCount()
         );
         if (exceedsDisplayEntityLimit(projectedDisplayEntities, this.maxActiveDisplayEntities)) {
-            return PlayResult.failure(
-                "Active emote parts would exceed the server limit ("
-                    + projectedDisplayEntities + "/" + this.maxActiveDisplayEntities + ")."
-            );
+            return PlayResult.failure("Too many emotes are active right now. Try again shortly.");
         }
 
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
@@ -180,7 +177,7 @@ public class PlaybackEngine implements ConfigListener {
             emote.skinBindings(ParticipantRole.INITIATOR)
         );
         if (skinPreparation.preparing()) {
-            return PlayResult.failure("Preparing player skin... " + skinPreparation.progressPercent() + "%");
+            return PlayResult.failure("Preparing your skin… " + skinPreparation.progressPercent() + "%");
         }
         stop(player, PlaybackStopReason.REPLACED);
         return startPrepared(
@@ -262,7 +259,7 @@ public class PlaybackEngine implements ConfigListener {
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
-            return PlayResult.failure("Failed to start emote.");
+            return PlayResult.failure("Something went wrong while starting the emote.");
         }
     }
 

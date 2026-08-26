@@ -53,13 +53,13 @@ public final class PlaybackPolicyService implements AccessConfigListener {
 
         Rules rules = rulesFor(player, source);
         if (rules.checkStandalone() && !emote.standalone()) {
-            return Decision.denied("Sequence-only animation: " + emote.id());
+            return Decision.denied("This emote can only be played as part of a sequence.");
         }
         if (rules.checkDisabled() && this.disabled.contains(emote.id())) {
-            return Decision.denied("Disabled emote: " + emote.id());
+            return Decision.denied("This emote is currently unavailable.");
         }
         if (rules.checkPermission() && !hasEmotePermission(player, emote.id())) {
-            return Decision.denied("No emote permission.");
+            return Decision.denied("You do not have permission to use this emote.");
         }
         if (!rules.checkCooldown() || emote.cooldownTicks() <= 0) {
             return Decision.allowed();
@@ -69,7 +69,10 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         long currentTick = this.tickSource.applyAsLong(player);
         long remainingTicks = this.cooldowns.remainingTicks(playerId, emote.id(), currentTick);
         if (remainingTicks > 0L) {
-            return Decision.denied("Emote cooldown: " + (remainingTicks + 19) / 20 + "s remaining.");
+            long remainingSeconds = (remainingTicks + 19) / 20;
+            return Decision.denied(
+                "You can use this emote again in " + remainingSeconds + (remainingSeconds == 1 ? " second." : " seconds.")
+            );
         }
         return Decision.allowed(playerId, emote.id(), currentTick, emote.cooldownTicks());
     }

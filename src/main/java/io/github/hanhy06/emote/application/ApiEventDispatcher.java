@@ -33,7 +33,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
                 listener.beforePlay(event);
             } catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Emote play listener {} failed", listener.getClass().getName(), exception);
-                event.cancel(Component.literal("Emote playback was cancelled because a listener failed."));
+                event.cancel(Component.literal("Something went wrong while checking this emote."));
             }
             if (event.isCancelled()) {
                 break;

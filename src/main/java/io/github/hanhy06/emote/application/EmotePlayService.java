@@ -47,7 +47,7 @@ public class EmotePlayService {
     public PlayResult play(ServerPlayer player, String id, PlaySource source) {
         PlayableEmote emote = this.emoteCatalog.find(id);
         if (emote == null) {
-            return PlayResult.failure("Unknown: " + id);
+            return PlayResult.failure("That emote does not exist.");
         }
         PlaybackPolicyService.Decision decision = this.playbackPolicy.evaluate(player, emote, source);
         if (!decision.isAllowed()) {

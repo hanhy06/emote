@@ -91,7 +91,7 @@ public class PlayerSkinManager implements ConfigListener {
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
-                player.sendSystemMessage(Component.literal("Player skin is ready. Run the emote again."));
+                player.sendSystemMessage(Component.literal("Your skin is ready. Play the emote again."));
             }
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
@@ -104,7 +104,7 @@ public class PlayerSkinManager implements ConfigListener {
         server.execute(() -> {
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
-                player.sendSystemMessage(Component.literal("Player skin preparation failed. Try again later."));
+                player.sendSystemMessage(Component.literal("We could not prepare your skin. Try again later."));
             }
         });
     }
