@@ -11,8 +11,7 @@ import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart
 import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
-import { isAnimatedJavaProject, requireAnimatedJavaProject } from "./animatedJavaProjectSchema";
-import { blockArgumentToSnbt, importAnimatedJavaProject, itemArgumentToSnbt } from "./animatedJavaProjectImporter";
+import { blockArgumentToSnbt, itemArgumentToSnbt } from "./animatedJavaDisplayArguments";
 import { createAjBlueprintRuntime } from "./animatedJavaAnimationOutput";
 
 const encoder = new TextEncoder();
@@ -44,15 +43,12 @@ interface IndexedAjKeyframes {
 
 export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "animated_java_json",
-  label: "Animated Java project",
-  extensions: ["ajblueprint", "json"],
+  label: "Animated Java Plugin Blueprint JSON",
+  extensions: ["json"],
 
   probe(input: ImportInput): ProbeResult {
     try {
       const parsed = parseInputJson(input);
-      if (isAnimatedJavaProject(parsed)) {
-        return { confidence: 100, reason: "matches an Animated Java blueprint project" };
-      }
       const value = parsed as Partial<AjBlueprint>;
       return value.format_version === 1 && typeof value.settings?.id === "string" && isRecord(value.nodes) && isRecord(value.animations)
         ? { confidence: 100, reason: "matches Animated Java plugin blueprint format 1" }
@@ -64,7 +60,6 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
 
   async import(input: ImportInput): Promise<ImportedProject> {
     const parsed = parseInputJson(input);
-    if (isAnimatedJavaProject(parsed)) return importAnimatedJavaProject(input, requireAnimatedJavaProject(parsed));
     const blueprint = requireAjBlueprint(parsed);
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");

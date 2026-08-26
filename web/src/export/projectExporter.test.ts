@@ -327,7 +327,7 @@ describe("exportAnimation", () => {
     const texture = new Uint8Array([1, 2, 3]);
     const project: ImportedProject = {
       source: "animated_java_json",
-      sourceName: "test.ajblueprint",
+      sourceName: "test.json",
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
@@ -436,7 +436,7 @@ describe("exportAnimation", () => {
   ])("rejects invalid generated resource path %s", (path) => {
     const project: ImportedProject = {
       source: "animated_java_json",
-      sourceName: "test.ajblueprint",
+      sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
       resourceMinecraftVersion: "26.2",
@@ -453,7 +453,7 @@ describe("exportAnimation", () => {
   it("does not allow generated resources to replace pack metadata", () => {
     const project: ImportedProject = {
       source: "animated_java_json",
-      sourceName: "test.ajblueprint",
+      sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
       resourceMinecraftVersion: "26.2",

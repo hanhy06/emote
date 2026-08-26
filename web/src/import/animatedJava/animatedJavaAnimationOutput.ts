@@ -5,7 +5,6 @@ import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 import type { AjAnimation, AjKeyframe, AjNodeChannels } from "./animatedJavaSchema";
-import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
 
 type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 
@@ -47,38 +46,6 @@ export function createAjBlueprintRuntime(
   return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
 }
 
-export function createAjProjectRuntime(
-  animation: AjProjectAnimation,
-  durationTicks: number,
-  elements: AjProjectDisplayElement[],
-  importedNodes: Record<string, ImportedNode>,
-): NonNullable<ImportedAnimation["runtime"]> {
-  const nodes: Record<string, EmoteNode> = {};
-  const tracks: Record<string, EmoteNodeTracks> = {};
-  for (const element of elements) {
-    const sourceNode = importedNodes[element.uuid];
-    if (!sourceNode) continue;
-    const ids = ajAnchorIds(element.uuid);
-    const basePosition = element.position.map((value) => value / 16) as [number, number, number];
-    nodes[ids.z] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [0, 0, element.rotation[2]], scale: ONE_VECTOR } };
-    nodes[ids.y] = { type: "anchor", parent: ids.z, transform: { position: ZERO_VECTOR, rotation: [0, element.rotation[1], 0], scale: ONE_VECTOR } };
-    nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [element.rotation[0], 0, 0], scale: element.scale as [number, number, number] } };
-    nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, IDENTITY_TRANSFORM, ids.x);
-    const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affine(value, 1 / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value) => value);
-    const scale = ajProjectFrames(keyframes, "scale", element.scale, (value, axis) => multiply(value, element.scale[axis]));
-    if (position) tracks[ids.z] = { position };
-    if (rotation) {
-      tracks[ids.z] = { ...tracks[ids.z], rotation: isolateAjAxis(rotation, 2, (value) => affine(value, 1, element.rotation[2])) };
-      tracks[ids.y] = { rotation: isolateAjAxis(rotation, 1, (value) => affine(value, 1, element.rotation[1])) };
-      tracks[ids.x] = { ...tracks[ids.x], rotation: isolateAjAxis(rotation, 0, (value) => affine(value, 1, element.rotation[0])) };
-    }
-    if (scale) tracks[ids.x] = { ...tracks[ids.x], scale };
-  }
-  return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
-}
-
 function ajChannelFrames(
   channel: Record<string, AjKeyframe> | undefined,
   fallback: readonly [number, number, number],
@@ -95,27 +62,6 @@ function ajChannelFrames(
     return post
       ? { time: formatMinecraftTime(Math.round(time * 20) + startDelayTicks), pre: value, post, interpolation }
       : { time: formatMinecraftTime(Math.round(time * 20) + startDelayTicks), value, interpolation };
-  });
-  if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...fallback] as MolangVector, interpolation: "step" });
-  return withoutLastInterpolation(frames);
-}
-
-function ajProjectFrames(
-  keyframes: AjProjectKeyframe[],
-  channel: "position" | "rotation" | "scale",
-  fallback: readonly number[],
-  transform: (value: MolangScalar, axis: number) => MolangScalar,
-): EmoteVectorKeyframe[] | undefined {
-  const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
-  if (source.length === 0) return undefined;
-  const frames = source.map((frame): EmoteVectorKeyframe => {
-    const points = frame.data_points;
-    if (points.length < 1 || points.length > 2) throw new Error("Animated Java transform keyframes must contain one value or a pre/post pair.");
-    const vectors = points.map((point) => [point.x, point.y, point.z].map((value, axis) => transform(scalar(value), axis)) as MolangVector);
-    const interpolation = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
-    return vectors.length === 1
-      ? { time: formatMinecraftTime(Math.round(frame.time * 20)), value: vectors[0], interpolation }
-      : { time: formatMinecraftTime(Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation };
   });
   if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...fallback] as MolangVector, interpolation: "step" });
   return withoutLastInterpolation(frames);

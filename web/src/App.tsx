@@ -38,9 +38,9 @@ const IMPORT_FORMATS = [
     description: "Imports GeckoLib cube models, detects standard player-model cubes, and lets them be assigned to player-skin parts.",
   },
   {
-    label: "Animated Java",
-    extensions: ".ajblueprint, .json",
-    description: "Imports native cube rigs and plugin blueprints, detects player-model cubes, and supports player-skin assignment.",
+    label: "Animated Java Plugin Blueprint",
+    extensions: ".json",
+    description: "Imports the Plugin Blueprint JSON exported by Animated Java, including models, animations, events, and player-skin assignment. Native .ajblueprint project files are not supported.",
   },
   {
     label: "Bedrock Edition",
@@ -211,7 +211,7 @@ export function App() {
         <div>
           <span className="product-label">Emote tools</span>
           <h1>Emote Converter</h1>
-          <p>Convert BD Engine, GeckoLib, and Animated Java projects into server-ready Emote files with player-skin support.</p>
+          <p>Convert BD Engine and GeckoLib projects or Animated Java Plugin Blueprint exports into server-ready Emote files with player-skin support.</p>
         </div>
         {session && filePicker}
       </header>
