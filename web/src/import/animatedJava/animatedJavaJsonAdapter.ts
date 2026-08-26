@@ -19,7 +19,12 @@ const encoder = new TextEncoder();
 interface ImportedAjNodes {
   nodes: Record<string, ImportedNode>;
   nodeIdsBySource: Map<string, string[]>;
-  itemModelsByNodeAndPaletteState: Map<string, Map<string, string>>;
+  itemModelsByNodeAndPaletteState: Map<string, AjItemModelVariants>;
+}
+
+interface AjItemModelVariants {
+  models: Map<string, string>;
+  enchanted: boolean;
 }
 
 interface AjPaletteConfiguration {
@@ -121,7 +126,7 @@ function createPreviewOnlyAnimation(
   nodes: Record<string, ImportedNode>,
   nodeIdsBySource: ReadonlyMap<string, string[]>,
   blueprint: AjBlueprint,
-  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, AjItemModelVariants>,
 ): ImportedAnimation {
   const animationDurationTicks = Number.isFinite(animation.length) && animation.length > 0
     ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
@@ -205,13 +210,15 @@ function paletteStateKey(states: Record<string, string>): string {
   return JSON.stringify(Object.entries(states).sort(([first], [second]) => first.localeCompare(second)));
 }
 
-function boneItemStackSnbt(namespace: string, modelPath: string): string {
+function boneItemStackSnbt(namespace: string, modelPath: string, enchanted = false): string {
+  const components: [string, string][] = [
+    ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
+  ];
+  if (enchanted) components.push(["minecraft:enchantment_glint_override", "1b"]);
   return serializeSnbtCompound([
     ["id", serializeSnbtString("minecraft:paper")],
     ["count", "1"],
-    ["components", serializeSnbtCompound([
-      ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
-    ])],
+    ["components", serializeSnbtCompound(components)],
   ]);
 }
 
@@ -226,7 +233,7 @@ function importNodes(
   const nodeIdsBySource = new Map<string, string[]>();
   const skinCandidates: AjSkinCandidate[] = [];
   const usedIds = new Set(Object.keys(blueprint.nodes ?? {}));
-  const itemModelsByNodeAndPaletteState = new Map<string, Map<string, string>>();
+  const itemModelsByNodeAndPaletteState = new Map<string, AjItemModelVariants>();
   let sourceOrder = 0;
   for (const [id, node] of Object.entries(blueprint.nodes ?? {})) {
     if (node.type !== "bone") {
@@ -237,6 +244,7 @@ function importNodes(
 
     const defaultMatrix = readDefaultMatrix(node, id);
     const entityNbt = displayPropertiesToNbt(node.display_properties, node.type);
+    const enchanted = node.display_properties?.is_enchanted === true;
     const part = inferAjSkinPart(id);
     const elements = (node.elements ?? []).flatMap((element) => splitTallAjSkinElement(element, part));
     if (elements.length === 0) {
@@ -255,7 +263,7 @@ function importNodes(
         writeBoneResources(variantModelPath, id, [element], resource, blueprint, resources, configuration.states, customTextureBytes);
         itemModels.set(configuration.key, variantModelPath);
       }
-      itemModelsByNodeAndPaletteState.set(nodeId, itemModels);
+      itemModelsByNodeAndPaletteState.set(nodeId, { models: itemModels, enchanted });
       const conversionMatrix = ajElementPlayerHeadMatrix(element, `${id}.elements[${elementIndex}]`);
       nodes[nodeId] = {
         id: nodeId,
@@ -264,7 +272,7 @@ function importNodes(
         visible: true,
         ...(entityNbt ? { entityNbt } : {}),
         itemDisplay: "none",
-        itemStackSnbt: boneItemStackSnbt(resource.namespace, modelPath),
+        itemStackSnbt: boneItemStackSnbt(resource.namespace, modelPath, enchanted),
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
       };
       generatedIds.push(nodeId);
@@ -465,7 +473,7 @@ function importAnimation(
   nodes: Record<string, ImportedNode>,
   nodeIdsBySource: ReadonlyMap<string, string[]>,
   blueprint: AjBlueprint,
-  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, AjItemModelVariants>,
 ): ImportedAnimation {
   const blendWeight = animation.blend_weight ?? "1";
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
@@ -541,7 +549,7 @@ function addTextureNbtTracks(
   startDelayTicks: number,
   animationDurationTicks: number,
   blueprint: AjBlueprint,
-  itemModelsByNodeAndPaletteState: ReadonlyMap<string, ReadonlyMap<string, string>>,
+  itemModelsByNodeAndPaletteState: ReadonlyMap<string, AjItemModelVariants>,
   tracks: ImportedAnimation["tracks"],
 ): void {
   const sourceFrames = sortedTextureKeyframes(animation);
@@ -557,7 +565,8 @@ function addTextureNbtTracks(
     if (frames.at(-1)!.tick === tick) frames[frames.length - 1] = value;
     else frames.push(value);
   }
-  for (const [nodeId, models] of itemModelsByNodeAndPaletteState) {
+  for (const [nodeId, variants] of itemModelsByNodeAndPaletteState) {
+    const { models, enchanted } = variants;
     const node = models.size ? tracks[nodeId] ?? { transforms: [], visibility: [], nbt: [] } : undefined;
     if (!node) continue;
     node.nbt = frames.map(({ tick, key }) => {
@@ -568,6 +577,7 @@ function addTextureNbtTracks(
         value: serializeSnbtCompound([["item", boneItemStackSnbt(
           parseResourceLocation(blueprint.settings.id, "Animated Java settings.id").namespace,
           modelPath,
+          enchanted,
         )]]),
       };
     });

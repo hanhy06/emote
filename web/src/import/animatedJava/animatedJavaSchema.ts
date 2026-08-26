@@ -158,7 +158,8 @@ function requireAjNode(value: unknown, path: string): void {
   requireStringValue(node.type, ["bone", "item_display", "block_display", "text_display", "structure", "camera", "locator"] as const, `${path}.type`);
   const defaultTransformation = optionalRecord(node.default_transformation, `${path}.default_transformation`);
   if (defaultTransformation?.matrix !== undefined) requireNumberArray(defaultTransformation.matrix, `${path}.default_transformation.matrix`);
-  optionalRecord(node.display_properties, `${path}.display_properties`);
+  const displayProperties = optionalRecord(node.display_properties, `${path}.display_properties`);
+  if (displayProperties) optionalBoolean(displayProperties.is_enchanted, `${path}.display_properties.is_enchanted`);
   for (const [index, elementValue] of (optionalArray(node.elements, `${path}.elements`) ?? []).entries()) {
     const elementPath = `${path}.elements[${index}]`;
     const element = requireRecord(elementValue, elementPath);

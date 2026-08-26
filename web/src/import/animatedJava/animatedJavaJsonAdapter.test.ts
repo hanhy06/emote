@@ -196,6 +196,7 @@ describe("animatedJavaJsonAdapter", () => {
       nodes: {
         body: {
           type: "bone",
+          display_properties: { is_enchanted: true },
           elements: [{
             from: [0, 0, 0], to: [1, 1, 1], rotation: [0, 0, 0],
             faces: { north: { uv: [0, 0, 16, 16], texture_provider: { type: "texture_palette", texture_palette: "skin" } } },
@@ -216,9 +217,12 @@ describe("animatedJavaJsonAdapter", () => {
 
     expect(new TextDecoder().decode(project.resources.get("assets/demo/models/item/rig/body.json"))).toContain("minecraft:block/red_wool");
     expect(new TextDecoder().decode(project.resources.get("assets/demo/models/item/rig/body_palette_1.json"))).toContain("minecraft:block/blue_wool");
+    expect(project.nodes.body.type === "item_display" && project.nodes.body.itemStackSnbt).toBe(
+      '{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body","minecraft:enchantment_glint_override":1b}}',
+    );
     expect(animation.timeline.tracks.body.nbt).toEqual([
-      { time: "0t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body"}}}' },
-      { time: "1t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body_palette_1"}}}' },
+      { time: "0t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body","minecraft:enchantment_glint_override":1b}}}' },
+      { time: "1t", value: '{item:{id:"minecraft:paper",count:1,components:{"minecraft:item_model":"demo:rig/body_palette_1","minecraft:enchantment_glint_override":1b}}}' },
     ]);
   });
 
@@ -483,6 +487,16 @@ describe("animatedJavaJsonAdapter", () => {
     });
 
     await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow("animations.idle.loop_mode must be an object");
+  });
+
+  it("rejects a non-boolean bone enchantment flag", async () => {
+    const input = blueprint({
+      body: { type: "bone", display_properties: { is_enchanted: "yes" } },
+    }, { idle: { loop_mode: { type: "once" }, length: 0.05 } });
+
+    await expect(animatedJavaJsonAdapter.import(input)).rejects.toThrow(
+      "nodes.body.display_properties.is_enchanted must be a boolean",
+    );
   });
 });
 
