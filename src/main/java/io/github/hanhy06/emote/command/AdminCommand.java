@@ -142,26 +142,27 @@ public final class AdminCommand {
             ? ChatFormatting.GREEN
             : ChatFormatting.RED;
         return Component.empty()
-            .append(Component.literal("Emote reload").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal("\n Disabled: ").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(Integer.toString(result.disabledEmoteCount())).withStyle(ChatFormatting.RED))
-            .append(Component.literal("  Permissions: ").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(Integer.toString(result.permissionRuleCount())).withStyle(ChatFormatting.BLUE))
-            .append(Component.literal("\n Detected: ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("Emotes reloaded").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal("\n ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.loadedEmoteCount())).withStyle(loadedCountColor))
+            .append(Component.literal(" of ").withStyle(ChatFormatting.WHITE))
             .append(Component.literal(Integer.toString(result.detectedFileCount())))
-            .append(Component.literal("  Loaded: ").withStyle(ChatFormatting.WHITE))
-            .append(Component.literal(Integer.toString(result.loadedEmoteCount())).withStyle(loadedCountColor));
+            .append(Component.literal(" files loaded · ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.disabledEmoteCount())).withStyle(ChatFormatting.RED))
+            .append(Component.literal(" disabled · ").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(Integer.toString(result.permissionRuleCount())).withStyle(ChatFormatting.BLUE))
+            .append(Component.literal(" permission rules").withStyle(ChatFormatting.WHITE));
     }
 
     private int list(CommandSourceStack source) {
         List<PlayableEmote> emotes = this.emoteCatalog.emotes();
         if (emotes.isEmpty()) {
-            source.sendSuccess(() -> Component.literal("No emotes."), false);
+            source.sendSuccess(() -> Component.literal("No emotes are loaded."), false);
             return 0;
         }
 
         source.sendSuccess(
-            () -> Component.literal("Emotes").withStyle(ChatFormatting.GOLD, ChatFormatting.BOLD)
+            () -> Component.literal("Emotes").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(" (" + emotes.size() + ")").withStyle(ChatFormatting.YELLOW)),
             false
         );
@@ -171,10 +172,7 @@ public final class AdminCommand {
                 emote.id(),
                 emote.name(),
                 emote.description(),
-                emote.nodeCount(),
                 emote.durationTicks(),
-                emote.sourcePath().getFileName().toString(),
-                emote.loopMode().name().toLowerCase(Locale.ROOT),
                 emote.standalone(),
                 emote.playerBehavior().hidden()
             ));
@@ -187,35 +185,23 @@ public final class AdminCommand {
         String id,
         String name,
         String description,
-        int nodeCount,
         int durationTicks,
-        String sourceFileName,
-        String loopMode,
         boolean standalone,
         boolean playerHidden
     ) {
-        return Component.literal("\n• ").withStyle(ChatFormatting.DARK_GRAY)
-            .append(Component.literal(id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal("\n  " + name).withStyle(ChatFormatting.WHITE, ChatFormatting.BOLD))
-            .append(Component.literal(" — " + description).withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n  Nodes: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(Integer.toString(nodeCount)).withStyle(ChatFormatting.GREEN))
-            .append(Component.literal("  Time: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(String.format(Locale.ROOT, "%d ticks (%.1fs)", durationTicks, durationTicks / 20.0D))
-                .withStyle(ChatFormatting.GOLD))
-            .append(Component.literal("\n  Source: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(sourceFileName).withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal("\n  Loop: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(loopMode).withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal("  Standalone: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(standalone ? "yes" : "no").withStyle(standalone ? ChatFormatting.GREEN : ChatFormatting.RED))
-            .append(Component.literal("  Player: ").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal(playerHidden ? "hidden" : "visible").withStyle(ChatFormatting.AQUA));
+        String availability = !standalone
+            ? "Sequence only"
+            : playerHidden ? "Hidden from players" : "Available";
+        return Component.literal("\n• " + name).withStyle(ChatFormatting.WHITE)
+            .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds · %s", durationTicks / 20.0D, availability))
+                .withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n  " + description).withStyle(ChatFormatting.GRAY));
     }
 
     private int stopAll(CommandSourceStack source) {
         this.playbackEngine.stopAll();
-        source.sendSuccess(() -> Component.literal("Stopped all emotes."), true);
+        source.sendSuccess(() -> Component.literal("Stopped all active emotes."), true);
         return 1;
     }
 
@@ -224,12 +210,14 @@ public final class AdminCommand {
         ServerPlayer player = EntityArgument.getPlayer(context, "player");
         var session = this.playbackEngine.stop(player);
         if (session == null) {
-            source.sendFailure(Component.literal("No active emote: " + player.getName().getString()));
+            source.sendFailure(Component.literal(player.getName().getString() + " is not playing an emote."));
             return 0;
         }
 
+        PlayableEmote emote = this.emoteCatalog.find(session.id());
+        String displayName = emote == null ? session.id() : emote.name();
         source.sendSuccess(
-            () -> Component.literal("Stopped emote for " + player.getName().getString() + ": " + session.id()),
+            () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
             true
         );
         return 1;
@@ -259,10 +247,8 @@ public final class AdminCommand {
         int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
         source.sendSuccess(
             () -> Component.literal(
-                "Started stress test: instances=" + instanceCount
-                    + ", grid=" + gridSize + "x" + gridSize
-                    + ", emotes=" + emotes.size()
-                    + ", initialTicks=80..175"
+                "Started a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
+                    + " grid using " + emotes.size() + " emotes."
             ),
             true
         );
@@ -276,7 +262,7 @@ public final class AdminCommand {
             return 0;
         }
 
-        var message = Component.literal("\n\n\n\n\n-- Emote Stress Test Result --")
+        var message = Component.literal("Emote stress test results")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))
@@ -285,8 +271,8 @@ public final class AdminCommand {
             .append(Component.literal("  Failed: ").withStyle(ChatFormatting.RED))
             .append(Component.literal(Integer.toString(report.failedInstances())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.1fs", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\n-- Server Performance --").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal(String.format(Locale.ROOT, "%.1f s", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n\nServer performance").withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
@@ -304,18 +290,18 @@ public final class AdminCommand {
                 report.averageMspt(),
                 report.maximumMspt()
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n\n-- Emote Processing --").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n• Create: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.creationMillis())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.creationMillis())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "%.3fms avg / %.3fms max",
+                "%.3f ms avg / %.3f ms max",
                 report.averageManagerCpuMillis(),
                 report.maximumManagerCpuMillis()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• Cleanup: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.2fms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Samples: ").withStyle(ChatFormatting.LIGHT_PURPLE))
             .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE));
         source.sendSuccess(() -> message, true);
@@ -325,26 +311,26 @@ public final class AdminCommand {
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {
         if (enabled) {
             if (this.configManager.getAccessConfig().isEnabled(id)) {
-                source.sendFailure(Component.literal("Emote is not disabled: " + id));
+                source.sendFailure(Component.literal("That emote is already enabled: " + id));
                 return 0;
             }
         } else if (this.emoteCatalog.findFileEmote(id) == null) {
-            source.sendFailure(Component.literal("Emote is not enabled: " + id));
+            source.sendFailure(Component.literal("That emote is not currently enabled: " + id));
             return 0;
         }
 
         if (!this.configManager.setEmoteEnabled(id, enabled)) {
-            source.sendFailure(Component.literal("Failed to save emotes.json."));
+            source.sendFailure(Component.literal("Could not save the emote settings. Check the server log."));
             return 0;
         }
         if (!enabled) {
             this.playbackEngine.stopById(id);
         }
 
-        ReloadResult reloadResult = this.reloadService.reloadFromCommand();
+        this.reloadService.reloadFromCommand();
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
-            () -> Component.literal(action + " emote: " + id + " (loaded files=" + reloadResult.loadedEmoteCount() + ")"),
+            () -> Component.literal(action + " " + id + "."),
             true
         );
         return 1;

@@ -41,27 +41,24 @@ final class AdminCommandTest {
     }
 
     @Test
-    void listEntryProducesOutput() {
+    void listEntryUsesPlayerFriendlySummary() {
         var entry = AdminCommand.createListEntry(
             "emote:dance",
             "Dance",
             "A looping dance",
-            12,
             85,
-            "emote.dance.json",
-            "loop",
             true,
             false
         );
 
-        assertFalse(entry.getString().isBlank());
+        assertEquals("\n• Dance\n  emote:dance · 4.3 seconds · Available\n  A looping dance", entry.getString());
     }
 
     @Test
-    void reloadSummaryProducesOutput() {
+    void reloadSummaryUsesNaturalLanguage() {
         var summary = AdminCommand.createReloadSummary(new ReloadResult(2, 4, 5, 3));
 
-        assertFalse(summary.getString().isBlank());
+        assertEquals("Emotes reloaded\n 3 of 5 files loaded · 2 disabled · 4 permission rules", summary.getString());
     }
 
     private AdminCommand createCommand(boolean canManage) {
