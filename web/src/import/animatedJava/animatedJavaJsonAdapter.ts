@@ -64,12 +64,14 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
     validateRoot(blueprint);
     const resource = parseResourceLocation(blueprint.settings.id, "Animated Java settings.id");
     const resources = new Map<string, Uint8Array>();
+    const customTextureBytes = await prepareCustomTextureBytes(blueprint);
     const paletteConfigurations = collectPaletteConfigurations(blueprint);
     const { nodes, nodeIdsBySource, itemModelsByNodeAndPaletteState } = importNodes(
       blueprint,
       resource,
       resources,
       paletteConfigurations,
+      customTextureBytes,
     );
     const diagnostics: ImportDiagnostic[] = [];
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => {
@@ -218,6 +220,7 @@ function importNodes(
   resource: ResourceLocation,
   resources: Map<string, Uint8Array>,
   paletteConfigurations: AjPaletteConfiguration[],
+  customTextureBytes: ReadonlyMap<string, Uint8Array>,
 ): ImportedAjNodes {
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySource = new Map<string, string[]>();
@@ -249,7 +252,7 @@ function importNodes(
       const itemModels = new Map<string, string>();
       for (const [configurationIndex, configuration] of paletteConfigurations.entries()) {
         const variantModelPath = configurationIndex === 0 ? modelPath : `${modelPath}_palette_${configurationIndex}`;
-        writeBoneResources(variantModelPath, id, [element], resource, blueprint, resources, configuration.states);
+        writeBoneResources(variantModelPath, id, [element], resource, blueprint, resources, configuration.states, customTextureBytes);
         itemModels.set(configuration.key, variantModelPath);
       }
       itemModelsByNodeAndPaletteState.set(nodeId, itemModels);
@@ -711,6 +714,7 @@ function writeBoneResources(
   blueprint: AjBlueprint,
   resources: Map<string, Uint8Array>,
   paletteStates: Readonly<Record<string, string>>,
+  customTextureBytes: ReadonlyMap<string, Uint8Array>,
 ): void {
   const usedTextures = new Set<string>();
   const modelElements = elements.map((element) => ({
@@ -736,7 +740,9 @@ function writeBoneResources(
     if (source.type === "reference") return [texture, source.resource_location];
     const texturePath = [resource.path, texture].filter(Boolean).join("/");
     const outputPath = `assets/${resource.namespace}/textures/item/${texturePath}.png`;
-    addResource(resources, outputPath, decodeBase64(source.base64_string, texture));
+    const bytes = customTextureBytes.get(texture);
+    if (!bytes) throw new Error(`Animated Java custom texture ${texture} was not prepared.`);
+    addResource(resources, outputPath, bytes);
     if (source.animation) addResource(resources, `${outputPath}.mcmeta`, jsonBytes({ animation: source.animation }));
     return [texture, `${resource.namespace}:item/${texturePath}`];
   }));
@@ -819,6 +825,85 @@ function decodeBase64(value: string, texture: string): Uint8Array {
     return Uint8Array.from(binary, (character) => character.charCodeAt(0));
   } catch {
     throw new Error(`Animated Java texture ${texture} is not valid base64.`);
+  }
+}
+
+async function prepareCustomTextureBytes(blueprint: AjBlueprint): Promise<Map<string, Uint8Array>> {
+  const prepared = new Map<string, Uint8Array>();
+  for (const [textureId, texture] of Object.entries(blueprint.textures ?? {})) {
+    if (texture.type !== "custom") continue;
+
+    const bytes = decodeBase64(texture.base64_string, textureId);
+    const detectedType = detectImageType(bytes);
+    const declaredType = normalizeImageMimeType(texture.mime_type);
+    const path = `textures.${textureId}`;
+    if (texture.mime_type !== undefined && !declaredType) {
+      throw new ConversionError(
+        "unsupported_animated_java_texture_format",
+        `Animated Java texture ${textureId} uses unsupported MIME type ${texture.mime_type}. Only PNG and JPEG are supported.`,
+        `${path}.mime_type`,
+      );
+    }
+    if (!detectedType) {
+      throw new ConversionError(
+        "unsupported_animated_java_texture_format",
+        `Animated Java texture ${textureId} is not a PNG or JPEG image.`,
+        `${path}.base64_string`,
+      );
+    }
+    if (declaredType && declaredType !== detectedType) {
+      throw new ConversionError(
+        "animated_java_texture_mime_mismatch",
+        `Animated Java texture ${textureId} declares ${texture.mime_type} but contains ${detectedType === "png" ? "PNG" : "JPEG"} data.`,
+        `${path}.mime_type`,
+      );
+    }
+
+    prepared.set(textureId, detectedType === "png" ? bytes : await convertJpegToPng(bytes, textureId, path));
+  }
+  return prepared;
+}
+
+function normalizeImageMimeType(mimeType: string | undefined): "png" | "jpeg" | undefined {
+  const normalized = mimeType?.split(";", 1)[0].trim().toLowerCase();
+  if (normalized === "image/png") return "png";
+  if (normalized === "image/jpeg" || normalized === "image/jpg" || normalized === "image/pjpeg") return "jpeg";
+  return undefined;
+}
+
+function detectImageType(bytes: Uint8Array): "png" | "jpeg" | undefined {
+  if (
+    bytes.length >= 8
+    && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
+    && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
+  ) return "png";
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpeg";
+  return undefined;
+}
+
+async function convertJpegToPng(bytes: Uint8Array, textureId: string, path: string): Promise<Uint8Array> {
+  let bitmap: ImageBitmap | undefined;
+  try {
+    bitmap = await createImageBitmap(new Blob([bytes.slice().buffer], { type: "image/jpeg" }));
+    const canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("2D canvas is unavailable");
+    context.drawImage(bitmap, 0, 0);
+    const blob = await new Promise<Blob>((resolve, reject) => {
+      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG encoding failed")), "image/png");
+    });
+    return new Uint8Array(await blob.arrayBuffer());
+  } catch (reason) {
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    throw new ConversionError(
+      "animated_java_jpeg_conversion_failed",
+      `Animated Java texture ${textureId} could not be converted from JPEG to PNG: ${detail}`,
+      `${path}.base64_string`,
+    );
+  } finally {
+    bitmap?.close();
   }
 }
 

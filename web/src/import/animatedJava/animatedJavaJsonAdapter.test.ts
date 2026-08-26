@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { compileImportedProject } from "../../test/compileImportedFixture";
 import { serializeEmoteAnimation } from "../../format/serializer";
 import { animatedJavaJsonAdapter } from "./animatedJavaJsonAdapter";
@@ -124,6 +124,62 @@ describe("animatedJavaJsonAdapter", () => {
     expect(new TextDecoder().decode(project.resources.get("assets/demo/textures/item/rig/skin.png.mcmeta"))).toBe(
       `${JSON.stringify({ animation: { frametime: 3, interpolate: true, frames: [0, { index: 1, time: 5 }] } }, null, 2)}\n`,
     );
+  });
+
+  it("converts declared and signature-detected JPEG textures to PNG with browser image APIs", async () => {
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1]);
+    const close = vi.fn();
+    const drawImage = vi.fn();
+    const toBlob = vi.fn((callback: BlobCallback, type?: string) => {
+      expect(type).toBe("image/png");
+      callback(new Blob([pngBytes], { type: "image/png" }));
+    });
+    vi.stubGlobal("createImageBitmap", vi.fn(async () => ({ width: 2, height: 1, close }) as unknown as ImageBitmap));
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => ({ width: 0, height: 0, getContext: () => ({ drawImage }), toBlob })),
+    });
+
+    try {
+      for (const mimeType of ["image/jpeg", undefined]) {
+        const input = rawBlueprint({
+          format_version: 1,
+          settings: { id: "demo:jpeg" },
+          textures: { photo: { type: "custom", ...(mimeType ? { mime_type: mimeType } : {}), base64_string: "/9j/AA==" } },
+          nodes: {
+            body: {
+              type: "bone",
+              elements: [{
+                from: [0, 0, 0], to: [1, 1, 1], rotation: [0, 0, 0],
+                faces: { north: { uv: [0, 0, 16, 16], texture_provider: { type: "texture", texture: "photo" } } },
+              }],
+            },
+          },
+          animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
+        });
+
+        const project = await animatedJavaJsonAdapter.import(input);
+        expect(project.resources.get("assets/demo/textures/item/jpeg/photo.png")).toEqual(pngBytes);
+      }
+      expect(drawImage).toHaveBeenCalledTimes(2);
+      expect(close).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("rejects unsupported custom texture formats", async () => {
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:webp" },
+      textures: { photo: { type: "custom", mime_type: "image/webp", base64_string: "UklGRg==" } },
+      nodes: { item: { type: "item_display" } },
+      animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
+    });
+
+    await expect(animatedJavaJsonAdapter.import(input)).rejects.toMatchObject({
+      code: "unsupported_animated_java_texture_format",
+      sourcePath: "textures.photo.mime_type",
+    });
   });
 
   it("converts texture palette keyframes into item NBT tracks", async () => {
