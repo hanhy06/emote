@@ -247,7 +247,7 @@ public final class AdminCommand {
         int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
         source.sendSuccess(
             () -> Component.literal(
-                "Started a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
+                "\n\n\nStarted a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
                     + " grid using " + emotes.size() + " emotes."
             ),
             true
@@ -262,7 +262,7 @@ public final class AdminCommand {
             return 0;
         }
 
-        var message = Component.literal("Emote stress test results")
+        var message = Component.literal("\n\n\n\n\nEmote stress test results")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(report.activeInstances() + " / " + report.requestedInstances()).withStyle(ChatFormatting.WHITE))
