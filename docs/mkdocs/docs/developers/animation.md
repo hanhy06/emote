@@ -210,7 +210,7 @@ Supported parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `ri
 
 ## Timeline tracks
 
-`timeline.duration` is the positive total playback time. `timeline.tracks` maps node IDs to any combination of `position`, `rotation`, `scale`, and `visible` tracks. A node may omit tracks entirely; an omitted channel uses the node's `transform` or initial `visible` value.
+`timeline.duration` is the positive total playback time. `timeline.tracks` maps node IDs to any combination of `position`, `rotation`, `scale`, `visible`, and `nbt` tracks. A node may omit tracks entirely; an omitted channel uses the node's initial value.
 
 Position, rotation, and scale are independent vector tracks. Each is an array of keyframes:
 
@@ -268,6 +268,23 @@ Visibility tracks are stepped boolean states and do not support `interpolation`,
 ```
 
 The value may also be a [Molang](molang.md) string; zero is hidden and any other finite result is visible.
+
+### NBT tracks
+
+NBT tracks apply stepped display-entity data changes. Each `value` is compound SNBT, and each keyframe is merged with the state produced by the preceding keyframes.
+
+```json
+"nbt": [
+  {"time": "0t", "value": "{item:{id:'minecraft:stone',count:1},Glowing:false}"},
+  {"time": "10t", "value": "{item:{id:'minecraft:diamond',count:1},Glowing:true}"}
+]
+```
+
+- The first keyframe must be at `0t`; times must be strictly increasing and cannot exceed the timeline duration.
+- Keyframes support only `time` and `value`. Interpolation and Molang values are not supported.
+- Fields added after the `0t` keyframe are rejected. Declare every field the track may modify in the first keyframe.
+- Runtime-owned fields such as identity, position, transformation, interpolation, and passengers cannot be modified.
+- Anchor nodes do not support NBT tracks. A node displaying a participant's held item may use an NBT track, but the track cannot replace its `item` field.
 
 ## Events
 
