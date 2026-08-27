@@ -1,4 +1,4 @@
-import { decompressFrames, parseGIF, type ParsedFrame } from "gifuct-js";
+import type { ParsedFrame } from "gifuct-js";
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
@@ -933,6 +933,7 @@ async function convertJpegToPng(bytes: Uint8Array, textureId: string, path: stri
 
 async function convertGifToAnimatedPng(bytes: Uint8Array, textureId: string, path: string): Promise<PreparedCustomTexture> {
   try {
+    const { decompressFrames, parseGIF } = await import("gifuct-js");
     const gif = parseGIF(bytes.slice().buffer);
     const decodedFrames = decompressFrames(gif, true);
     const frameCount = decodedFrames.length;
