@@ -1,4 +1,5 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { decompressFrames, parseGIF, type ParsedFrame } from "gifuct-js";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { IDENTITY_MATRIX, matrix4ToRowMajor } from "../../format/matrix";
 import { parseResourceLocation, sanitizeResourcePath, type ResourceLocation } from "../../format/resourceLocation";
@@ -10,11 +11,15 @@ import { parseInputJson } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedSkinPart, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
-import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels } from "./animatedJavaSchema";
+import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels, type AjTextureAnimation } from "./animatedJavaSchema";
 import { blockArgumentToSnbt, itemArgumentToSnbt } from "./animatedJavaDisplayArguments";
 import { createAjBlueprintRuntime } from "./animatedJavaAnimationOutput";
 
 const encoder = new TextEncoder();
+const MINECRAFT_TICK_MILLISECONDS = 50;
+const MAX_GIF_FRAME_COUNT = 1_024;
+const MAX_GIF_ATLAS_DIMENSION = 16_384;
+const MAX_GIF_ATLAS_PIXELS = 67_108_864;
 
 interface ImportedAjNodes {
   nodes: Record<string, ImportedNode>;
@@ -25,6 +30,11 @@ interface ImportedAjNodes {
 interface AjItemModelVariants {
   models: Map<string, string>;
   enchanted: boolean;
+}
+
+interface PreparedCustomTexture {
+  bytes: Uint8Array;
+  animation?: AjTextureAnimation;
 }
 
 interface AjPaletteConfiguration {
@@ -227,7 +237,7 @@ function importNodes(
   resource: ResourceLocation,
   resources: Map<string, Uint8Array>,
   paletteConfigurations: AjPaletteConfiguration[],
-  customTextureBytes: ReadonlyMap<string, Uint8Array>,
+  customTextureBytes: ReadonlyMap<string, PreparedCustomTexture>,
 ): ImportedAjNodes {
   const nodes: Record<string, ImportedNode> = {};
   const nodeIdsBySource = new Map<string, string[]>();
@@ -724,7 +734,7 @@ function writeBoneResources(
   blueprint: AjBlueprint,
   resources: Map<string, Uint8Array>,
   paletteStates: Readonly<Record<string, string>>,
-  customTextureBytes: ReadonlyMap<string, Uint8Array>,
+  customTextureBytes: ReadonlyMap<string, PreparedCustomTexture>,
 ): void {
   const usedTextures = new Set<string>();
   const modelElements = elements.map((element) => ({
@@ -750,10 +760,10 @@ function writeBoneResources(
     if (source.type === "reference") return [texture, source.resource_location];
     const texturePath = [resource.path, texture].filter(Boolean).join("/");
     const outputPath = `assets/${resource.namespace}/textures/item/${texturePath}.png`;
-    const bytes = customTextureBytes.get(texture);
-    if (!bytes) throw new Error(`Animated Java custom texture ${texture} was not prepared.`);
-    addResource(resources, outputPath, bytes);
-    if (source.animation) addResource(resources, `${outputPath}.mcmeta`, jsonBytes({ animation: source.animation }));
+    const prepared = customTextureBytes.get(texture);
+    if (!prepared) throw new Error(`Animated Java custom texture ${texture} was not prepared.`);
+    addResource(resources, outputPath, prepared.bytes);
+    if (prepared.animation) addResource(resources, `${outputPath}.mcmeta`, jsonBytes({ animation: prepared.animation }));
     return [texture, `${resource.namespace}:item/${texturePath}`];
   }));
   addResource(resources, `assets/${resource.namespace}/models/item/${modelPath}.json`, jsonBytes({ textures, elements: modelElements }));
@@ -838,8 +848,8 @@ function decodeBase64(value: string, texture: string): Uint8Array {
   }
 }
 
-async function prepareCustomTextureBytes(blueprint: AjBlueprint): Promise<Map<string, Uint8Array>> {
-  const prepared = new Map<string, Uint8Array>();
+async function prepareCustomTextureBytes(blueprint: AjBlueprint): Promise<Map<string, PreparedCustomTexture>> {
+  const prepared = new Map<string, PreparedCustomTexture>();
   for (const [textureId, texture] of Object.entries(blueprint.textures ?? {})) {
     if (texture.type !== "custom") continue;
 
@@ -850,45 +860,59 @@ async function prepareCustomTextureBytes(blueprint: AjBlueprint): Promise<Map<st
     if (texture.mime_type !== undefined && !declaredType) {
       throw new ConversionError(
         "unsupported_animated_java_texture_format",
-        `Animated Java texture ${textureId} uses unsupported MIME type ${texture.mime_type}. Only PNG and JPEG are supported.`,
+        `Animated Java texture ${textureId} uses unsupported MIME type ${texture.mime_type}. Only PNG, JPEG, and GIF are supported.`,
         `${path}.mime_type`,
       );
     }
     if (!detectedType) {
       throw new ConversionError(
         "unsupported_animated_java_texture_format",
-        `Animated Java texture ${textureId} is not a PNG or JPEG image.`,
+        `Animated Java texture ${textureId} is not a PNG, JPEG, or GIF image.`,
         `${path}.base64_string`,
       );
     }
     if (declaredType && declaredType !== detectedType) {
       throw new ConversionError(
         "animated_java_texture_mime_mismatch",
-        `Animated Java texture ${textureId} declares ${texture.mime_type} but contains ${detectedType === "png" ? "PNG" : "JPEG"} data.`,
+        `Animated Java texture ${textureId} declares ${texture.mime_type} but contains ${imageTypeLabel(detectedType)} data.`,
         `${path}.mime_type`,
       );
     }
 
-    prepared.set(textureId, detectedType === "png" ? bytes : await convertJpegToPng(bytes, textureId, path));
+    if (detectedType === "png") prepared.set(textureId, { bytes, animation: texture.animation });
+    else if (detectedType === "jpeg") prepared.set(textureId, { bytes: await convertJpegToPng(bytes, textureId, path), animation: texture.animation });
+    else prepared.set(textureId, await convertGifToPngAnimation(bytes, textureId, path));
   }
   return prepared;
 }
 
-function normalizeImageMimeType(mimeType: string | undefined): "png" | "jpeg" | undefined {
+function normalizeImageMimeType(mimeType: string | undefined): "png" | "jpeg" | "gif" | undefined {
   const normalized = mimeType?.split(";", 1)[0].trim().toLowerCase();
   if (normalized === "image/png") return "png";
   if (normalized === "image/jpeg" || normalized === "image/jpg" || normalized === "image/pjpeg") return "jpeg";
+  if (normalized === "image/gif") return "gif";
   return undefined;
 }
 
-function detectImageType(bytes: Uint8Array): "png" | "jpeg" | undefined {
+function detectImageType(bytes: Uint8Array): "png" | "jpeg" | "gif" | undefined {
   if (
     bytes.length >= 8
     && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
     && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a
   ) return "png";
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "jpeg";
+  if (
+    bytes.length >= 6
+    && bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38
+    && (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61
+  ) return "gif";
   return undefined;
+}
+
+function imageTypeLabel(type: "png" | "jpeg" | "gif"): string {
+  if (type === "png") return "PNG";
+  if (type === "jpeg") return "JPEG";
+  return "GIF";
 }
 
 async function convertJpegToPng(bytes: Uint8Array, textureId: string, path: string): Promise<Uint8Array> {
@@ -901,10 +925,7 @@ async function convertJpegToPng(bytes: Uint8Array, textureId: string, path: stri
     const context = canvas.getContext("2d");
     if (!context) throw new Error("2D canvas is unavailable");
     context.drawImage(bitmap, 0, 0);
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG encoding failed")), "image/png");
-    });
-    return new Uint8Array(await blob.arrayBuffer());
+    return await canvasToPngBytes(canvas);
   } catch (reason) {
     const detail = reason instanceof Error ? reason.message : String(reason);
     throw new ConversionError(
@@ -915,6 +936,123 @@ async function convertJpegToPng(bytes: Uint8Array, textureId: string, path: stri
   } finally {
     bitmap?.close();
   }
+}
+
+async function convertGifToPngAnimation(bytes: Uint8Array, textureId: string, path: string): Promise<PreparedCustomTexture> {
+  try {
+    const gif = parseGIF(bytes.slice().buffer);
+    const decodedFrames = decompressFrames(gif, true);
+    const frameCount = decodedFrames.length;
+    if (frameCount < 1) throw new Error("GIF does not contain any frames");
+    if (frameCount > MAX_GIF_FRAME_COUNT) throw new Error(`GIF contains ${frameCount} frames; the limit is ${MAX_GIF_FRAME_COUNT}`);
+    const frameWidth = gif.lsd.width;
+    const frameHeight = gif.lsd.height;
+    if (frameWidth < 1 || frameHeight < 1) throw new Error("GIF has invalid frame dimensions");
+    const { columns, rows } = gifAtlasLayout(frameWidth, frameHeight, frameCount);
+    const frameCanvas = createCanvas(frameWidth, frameHeight);
+    const patchCanvas = createCanvas(1, 1);
+    const atlasCanvas = createCanvas(frameWidth * columns, frameHeight * rows);
+    const frameContext = requireCanvasContext(frameCanvas);
+    const patchContext = requireCanvasContext(patchCanvas);
+    const atlasContext = requireCanvasContext(atlasCanvas);
+    const frames: NonNullable<AjTextureAnimation["frames"]> = [];
+    let previousFrame: ParsedFrame | undefined;
+    let restoreBeforePreviousFrame: ImageData | undefined;
+    for (const [frameIndex, frame] of decodedFrames.entries()) {
+      applyGifDisposal(frameContext, previousFrame, restoreBeforePreviousFrame);
+      const restoreBeforeCurrentFrame = frame.disposalType === 3
+        ? frameContext.getImageData(0, 0, frameWidth, frameHeight)
+        : undefined;
+      validateGifPatch(frame, frameWidth, frameHeight, frameIndex);
+      patchCanvas.width = frame.dims.width;
+      patchCanvas.height = frame.dims.height;
+      const patch = new Uint8ClampedArray(frame.patch.length);
+      patch.set(frame.patch);
+      patchContext.putImageData(new ImageData(patch, frame.dims.width, frame.dims.height), 0, 0);
+      frameContext.drawImage(patchCanvas, frame.dims.left, frame.dims.top);
+      const x = frameIndex % columns * frameWidth;
+      const y = Math.floor(frameIndex / columns) * frameHeight;
+      atlasContext.drawImage(frameCanvas, x, y);
+      frames.push({ index: frameIndex, time: gifFrameTicks(frame.delay) });
+      previousFrame = frame;
+      restoreBeforePreviousFrame = restoreBeforeCurrentFrame;
+    }
+
+    return {
+      bytes: await canvasToPngBytes(atlasCanvas),
+      animation: { width: frameWidth, height: frameHeight, frames },
+    };
+  } catch (reason) {
+    if (reason instanceof ConversionError) throw reason;
+    const detail = reason instanceof Error ? reason.message : String(reason);
+    throw new ConversionError(
+      "animated_java_gif_conversion_failed",
+      `Animated Java texture ${textureId} could not be converted from GIF to an animated PNG texture: ${detail}`,
+      `${path}.base64_string`,
+    );
+  }
+}
+
+function applyGifDisposal(
+  context: CanvasRenderingContext2D,
+  previousFrame: ParsedFrame | undefined,
+  restoreBeforePreviousFrame: ImageData | undefined,
+): void {
+  if (previousFrame?.disposalType === 2) {
+    const { left, top, width, height } = previousFrame.dims;
+    context.clearRect(left, top, width, height);
+  } else if (previousFrame?.disposalType === 3 && restoreBeforePreviousFrame) {
+    context.putImageData(restoreBeforePreviousFrame, 0, 0);
+  }
+}
+
+function validateGifPatch(frame: ParsedFrame, frameWidth: number, frameHeight: number, frameIndex: number): void {
+  const { left, top, width, height } = frame.dims;
+  if (width < 1 || height < 1 || left < 0 || top < 0 || left + width > frameWidth || top + height > frameHeight) {
+    throw new Error(`GIF frame ${frameIndex} lies outside the animation bounds`);
+  }
+}
+
+function gifAtlasLayout(frameWidth: number, frameHeight: number, frameCount: number): { columns: number; rows: number } {
+  if (frameWidth * frameHeight * frameCount > MAX_GIF_ATLAS_PIXELS) {
+    throw new Error(`GIF animation exceeds the ${MAX_GIF_ATLAS_PIXELS}-pixel atlas limit`);
+  }
+  const maxColumns = Math.floor(MAX_GIF_ATLAS_DIMENSION / frameWidth);
+  const maxRows = Math.floor(MAX_GIF_ATLAS_DIMENSION / frameHeight);
+  if (maxColumns < 1 || maxRows < 1 || maxColumns * maxRows < frameCount) {
+    throw new Error(`GIF animation does not fit within a ${MAX_GIF_ATLAS_DIMENSION}px texture atlas`);
+  }
+  let columns = Math.min(maxColumns, Math.max(1, Math.ceil(Math.sqrt(frameCount * frameHeight / frameWidth))));
+  while (Math.ceil(frameCount / columns) > maxRows) columns++;
+  const rows = Math.ceil(frameCount / columns);
+  if (frameWidth * columns * frameHeight * rows > MAX_GIF_ATLAS_PIXELS) {
+    throw new Error(`GIF animation exceeds the ${MAX_GIF_ATLAS_PIXELS}-pixel atlas limit`);
+  }
+  return { columns, rows };
+}
+
+function createCanvas(width: number, height: number): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  return canvas;
+}
+
+function requireCanvasContext(canvas: HTMLCanvasElement): CanvasRenderingContext2D {
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("2D canvas is unavailable");
+  return context;
+}
+
+function gifFrameTicks(durationMilliseconds: number): number {
+  return Math.max(1, Math.round(durationMilliseconds / MINECRAFT_TICK_MILLISECONDS));
+}
+
+async function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error("PNG encoding failed")), "image/png");
+  });
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 function jsonBytes(value: unknown): Uint8Array {

@@ -167,6 +167,78 @@ describe("animatedJavaJsonAdapter", () => {
     }
   });
 
+  it("converts GIF frames and timings into a PNG atlas with Minecraft animation metadata", async () => {
+    const pngBytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 2]);
+    const contexts = Array.from({ length: 3 }, () => ({
+      clearRect: vi.fn(),
+      drawImage: vi.fn(),
+      getImageData: vi.fn(() => ({ data: new Uint8ClampedArray(4), width: 1, height: 1 })),
+      putImageData: vi.fn(),
+    }));
+    const canvases = contexts.map((context) => ({
+      width: 0,
+      height: 0,
+      getContext: () => context,
+      toBlob: (callback: BlobCallback) => callback(new Blob([pngBytes], { type: "image/png" })),
+    }));
+    let canvasIndex = 0;
+    vi.stubGlobal("ImageData", class {
+      constructor(readonly data: Uint8ClampedArray, readonly width: number, readonly height: number) {}
+    });
+    vi.stubGlobal("document", { createElement: vi.fn(() => canvases[canvasIndex++]) });
+
+    try {
+      const input = rawBlueprint({
+        format_version: 1,
+        settings: { id: "demo:gif" },
+        textures: {
+          effect: {
+            type: "custom",
+            mime_type: "image/gif",
+            base64_string: "R0lGODlhAQABAIAAAP///wAAACH5BAEFAAAALAAAAAABAAEAAAICRAEAIfkEAQoAAAAsAAAAAAEAAQAAAgJEAQA7",
+          },
+        },
+        nodes: {
+          body: {
+            type: "bone",
+            elements: [{
+              from: [0, 0, 0], to: [1, 1, 1], rotation: [0, 0, 0],
+              faces: { north: { uv: [0, 0, 16, 16], texture_provider: { type: "texture", texture: "effect" } } },
+            }],
+          },
+        },
+        animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
+      });
+
+      const project = await animatedJavaJsonAdapter.import(input);
+
+      expect(project.resources.get("assets/demo/textures/item/gif/effect.png")).toEqual(pngBytes);
+      expect(JSON.parse(new TextDecoder().decode(project.resources.get("assets/demo/textures/item/gif/effect.png.mcmeta")))).toEqual({
+        animation: { width: 1, height: 1, frames: [{ index: 0, time: 1 }, { index: 1, time: 2 }] },
+      });
+      expect(canvases[2]).toMatchObject({ width: 2, height: 1 });
+      expect(contexts[2].drawImage).toHaveBeenNthCalledWith(1, canvases[0], 0, 0);
+      expect(contexts[2].drawImage).toHaveBeenNthCalledWith(2, canvases[0], 1, 0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("rejects malformed GIF textures", async () => {
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:gif" },
+      textures: { effect: { type: "custom", base64_string: "R0lGODlh" } },
+      nodes: { item: { type: "item_display" } },
+      animations: { idle: { loop_mode: { type: "once" }, length: 0.05 } },
+    });
+
+    await expect(animatedJavaJsonAdapter.import(input)).rejects.toMatchObject({
+      code: "animated_java_gif_conversion_failed",
+      sourcePath: "textures.effect.base64_string",
+    });
+  });
+
   it("rejects unsupported custom texture formats", async () => {
     const input = rawBlueprint({
       format_version: 1,

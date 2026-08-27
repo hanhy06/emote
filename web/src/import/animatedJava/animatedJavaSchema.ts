@@ -26,6 +26,8 @@ export type AjTexture =
   | { type: "reference"; resource_location: string };
 
 export interface AjTextureAnimation {
+  width?: number;
+  height?: number;
   frametime?: number;
   interpolate?: boolean;
   frames?: (number | { index: number; time: number })[];
@@ -112,6 +114,12 @@ export function requireAjBlueprint(value: unknown): AjBlueprint {
       optionalString(texture.mime_type, `${path}.mime_type`);
       const animation = optionalRecord(texture.animation, `${path}.animation`);
       if (animation) {
+        for (const dimension of ["width", "height"] as const) {
+          const value = optionalNumber(animation[dimension], `${path}.animation.${dimension}`);
+          if (value !== undefined && (!Number.isInteger(value) || value < 1)) {
+            throw new Error(`${path}.animation.${dimension} must be a positive integer.`);
+          }
+        }
         const frameTime = optionalNumber(animation.frametime, `${path}.animation.frametime`);
         if (frameTime !== undefined && (!Number.isInteger(frameTime) || frameTime < 1)) {
           throw new Error(`${path}.animation.frametime must be a positive integer.`);
