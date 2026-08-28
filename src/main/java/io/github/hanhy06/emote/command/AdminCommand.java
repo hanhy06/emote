@@ -26,10 +26,7 @@ import net.minecraft.server.level.ServerPlayer;
 import java.util.List;
 import java.util.Locale;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
