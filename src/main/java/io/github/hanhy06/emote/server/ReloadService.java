@@ -12,8 +12,8 @@ public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
     private final LoadResultLoader directoryLoader;
-    private final PlaybackEngine playbackEngine;
-    private final WheelSyncService wheelSyncService;
+    private final PlaybackStopper playbackStopper;
+    private final Runnable wheelSynchronizer;
     private final Runnable resourcePackReloader;
 
     public ReloadService(
@@ -24,22 +24,29 @@ public final class ReloadService {
         WheelSyncService wheelSyncService,
         Runnable resourcePackReloader
     ) {
-        this(configManager, emoteCatalog, directoryLoader::load, playbackEngine, wheelSyncService, resourcePackReloader);
+        this(
+            configManager,
+            emoteCatalog,
+            directoryLoader::load,
+            playbackEngine::stopAll,
+            wheelSyncService::syncAll,
+            resourcePackReloader
+        );
     }
 
     ReloadService(
         ConfigManager configManager,
         EmoteCatalog emoteCatalog,
         LoadResultLoader directoryLoader,
-        PlaybackEngine playbackEngine,
-        WheelSyncService wheelSyncService,
+        PlaybackStopper playbackStopper,
+        Runnable wheelSynchronizer,
         Runnable resourcePackReloader
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
-        this.playbackEngine = playbackEngine;
-        this.wheelSyncService = wheelSyncService;
+        this.playbackStopper = playbackStopper;
+        this.wheelSynchronizer = wheelSynchronizer;
         this.resourcePackReloader = resourcePackReloader;
     }
 
@@ -48,7 +55,7 @@ public final class ReloadService {
         if (this.configManager.getConfig().mineSkinApiKey().isBlank()) {
             EmoteMod.LOGGER.error("MineSkin API key is not configured; player skin application is disabled");
         }
-        ReloadStats stats = reloadRegistry();
+        ReloadStats stats = replaceRegistry(prepareRegistry());
         EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
     }
 
@@ -66,15 +73,16 @@ public final class ReloadService {
     }
 
     private ReloadStats reloadLoadedConfig() {
-        this.playbackEngine.stopAll(PlaybackStopReason.RELOAD);
+        PreparedRegistry prepared = prepareRegistry();
+        ReloadStats stats = replaceRegistry(prepared);
+        this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
         this.resourcePackReloader.run();
-        ReloadStats stats = reloadRegistry();
-        this.wheelSyncService.syncAll();
+        this.wheelSynchronizer.run();
         EmoteMod.LOGGER.info("Reloaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
     }
 
-    private ReloadStats reloadRegistry() {
+    private PreparedRegistry prepareRegistry() {
         var contents = this.directoryLoader.load(this.configManager.getEmoteDirectory());
         var emotes = contents.animations().stream()
             .map(this::prepareAnimation)
@@ -90,7 +98,11 @@ public final class ReloadService {
             .toList();
         java.util.List<PlayableEmote> definitions = new java.util.ArrayList<>(emotes);
         definitions.addAll(sequences);
-        int ignoredCount = this.emoteCatalog.replace(definitions);
+        return new PreparedRegistry(contents.detectedFileCount(), definitions);
+    }
+
+    private ReloadStats replaceRegistry(PreparedRegistry prepared) {
+        int ignoredCount = this.emoteCatalog.replace(prepared.definitions());
         if (ignoredCount > 0) {
             EmoteMod.LOGGER.warn(
                 "Ignoring {} enabled file emotes because of API ID conflicts or the {}-emote registry limit",
@@ -98,7 +110,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return new ReloadStats(contents.detectedFileCount(), this.emoteCatalog.fileEmotes().size());
+        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size());
     }
 
     private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
@@ -127,6 +139,17 @@ public final class ReloadService {
         EmoteDirectoryLoader.LoadResult load(java.nio.file.Path directory);
     }
 
+    @FunctionalInterface
+    interface PlaybackStopper {
+        void stopAll(PlaybackStopReason reason);
+    }
+
     private record ReloadStats(int detectedFileCount, int loadedEmoteCount) {
+    }
+
+    private record PreparedRegistry(int detectedFileCount, java.util.List<PlayableEmote> definitions) {
+        private PreparedRegistry {
+            definitions = java.util.List.copyOf(definitions);
+        }
     }
 }

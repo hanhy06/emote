@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.LoadedAnimation;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import org.junit.jupiter.api.Test;
@@ -11,9 +12,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
@@ -85,5 +89,34 @@ class ReloadServiceTest {
 
         assertNotNull(registry.find("example:disabled"));
         assertNull(registry.find("example:invalid"));
+    }
+
+    @Test
+    void preparesAndReplacesRegistryBeforeStoppingCurrentPlayback(@TempDir Path tempDir) {
+        ConfigManager configManager = new ConfigManager(tempDir);
+        configManager.configure();
+        List<String> operations = new ArrayList<>();
+        EmoteCatalog registry = new EmoteCatalog() {
+            @Override
+            public synchronized int replace(Collection<? extends PlayableEmote> emotes) {
+                operations.add("replace");
+                return super.replace(emotes);
+            }
+        };
+        ReloadService service = new ReloadService(
+            configManager,
+            registry,
+            ignored -> {
+                operations.add("prepare");
+                return new EmoteDirectoryLoader.LoadResult(List.of(), List.of(), 0);
+            },
+            ignored -> operations.add("stop"),
+            () -> operations.add("sync"),
+            () -> operations.add("resources")
+        );
+
+        service.reloadFromCommand();
+
+        assertEquals(List.of("prepare", "replace", "stop", "resources", "sync"), operations);
     }
 }
