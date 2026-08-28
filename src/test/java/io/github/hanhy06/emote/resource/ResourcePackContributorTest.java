@@ -17,17 +17,20 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ResourcePackContributorTest {
     @Test
-    void detectsOnlyMeaningfulResourceInputs(@TempDir Path tempDir) throws Exception {
+    void snapshotsOnlyMeaningfulResourceInputs(@TempDir Path tempDir) throws Exception {
         Path sourceDirectory = tempDir.resolve("resource-pack");
         Files.createDirectories(sourceDirectory);
         Files.writeString(sourceDirectory.resolve("pack.mcmeta"), "metadata");
 
         ResourcePackContributor contributor = new ResourcePackContributor();
-        assertFalse(contributor.hasResources(sourceDirectory));
+        ResourcePackContributor.Snapshot empty = contributor.read(sourceDirectory);
+        assertTrue(empty.isEmpty());
 
         Files.write(sourceDirectory.resolve("demo]textures]item]chair.png"), new byte[] {1});
 
-        assertTrue(contributor.hasResources(sourceDirectory));
+        ResourcePackContributor.Snapshot populated = contributor.read(sourceDirectory);
+        assertFalse(populated.isEmpty());
+        assertFalse(populated.hasSameContent(empty));
     }
 
     @Test
@@ -44,7 +47,8 @@ class ResourcePackContributorTest {
         ));
 
         Map<String, byte[]> entries = new HashMap<>();
-        int resourceCount = new ResourcePackContributor().addTo(sourceDirectory, builder(entries));
+        ResourcePackContributor contributor = new ResourcePackContributor();
+        int resourceCount = contributor.addTo(contributor.read(sourceDirectory), builder(entries));
 
         assertEquals(3, resourceCount);
         assertArrayEquals(new byte[] {1, 2, 3}, entries.get("assets/demo/textures/item/chair/body.png"));
@@ -64,10 +68,49 @@ class ResourcePackContributorTest {
 
         IOException exception = assertThrows(
             IOException.class,
-            () -> new ResourcePackContributor().addTo(sourceDirectory, builder(new HashMap<>()))
+            () -> {
+                ResourcePackContributor contributor = new ResourcePackContributor();
+                contributor.addTo(contributor.read(sourceDirectory), builder(new HashMap<>()));
+            }
         );
 
         assertTrue(exception.getMessage().contains("Conflicting resource assets/demo/textures/item/shared.png"));
+    }
+
+    @Test
+    void treatsRepackedZipWithTheSameResourcesAsUnchanged(@TempDir Path tempDir) throws Exception {
+        Path sourceDirectory = tempDir.resolve("resource-pack");
+        Path zipPath = sourceDirectory.resolve("resources.zip");
+        ResourcePackContributor contributor = new ResourcePackContributor();
+
+        writeZip(zipPath, Map.of(
+            "first/demo]models]item]chair.json", new byte[] {1, 2},
+            "second/demo]textures]item]chair.png", new byte[] {3, 4}
+        ));
+        ResourcePackContributor.Snapshot first = contributor.read(sourceDirectory);
+
+        writeZip(zipPath, Map.of(
+            "moved/demo]textures]item]chair.png", new byte[] {3, 4},
+            "moved/demo]models]item]chair.json", new byte[] {1, 2}
+        ));
+        ResourcePackContributor.Snapshot repacked = contributor.read(sourceDirectory);
+
+        assertTrue(repacked.hasSameContent(first));
+    }
+
+    @Test
+    void detectsChangedResourceContent(@TempDir Path tempDir) throws Exception {
+        Path sourceDirectory = tempDir.resolve("resource-pack");
+        Path resource = sourceDirectory.resolve("demo]textures]item]chair.png");
+        Files.createDirectories(sourceDirectory);
+        ResourcePackContributor contributor = new ResourcePackContributor();
+
+        Files.write(resource, new byte[] {1, 2});
+        ResourcePackContributor.Snapshot first = contributor.read(sourceDirectory);
+        Files.write(resource, new byte[] {1, 3});
+        ResourcePackContributor.Snapshot changed = contributor.read(sourceDirectory);
+
+        assertFalse(changed.hasSameContent(first));
     }
 
     private static ResourcePackBuilder builder(Map<String, byte[]> entries) {

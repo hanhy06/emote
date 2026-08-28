@@ -6,8 +6,12 @@ import net.minecraft.resources.Identifier;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
@@ -19,18 +23,20 @@ final class ResourcePackContributor {
     private static final int MAX_ENTRY_COUNT = 65_536;
     private static final long MAX_EXPANDED_BYTES = 256L * 1024L * 1024L;
 
-    boolean hasResources(Path sourceDirectory) throws IOException {
-        return Files.isDirectory(sourceDirectory) && !readResources(sourceDirectory).isEmpty();
+    Snapshot read(Path sourceDirectory) throws IOException {
+        Map<String, ResourceFile> resources = Files.isDirectory(sourceDirectory)
+            ? readResources(sourceDirectory)
+            : Map.of();
+        return new Snapshot(resources, fingerprint(resources));
     }
 
-    int addTo(Path sourceDirectory, ResourcePackBuilder builder) throws IOException {
-        Map<String, ResourceFile> resources = readResources(sourceDirectory);
-        for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
+    int addTo(Snapshot snapshot, ResourcePackBuilder builder) throws IOException {
+        for (Map.Entry<String, ResourceFile> entry : snapshot.resources.entrySet()) {
             if (!builder.addData(entry.getKey(), entry.getValue().data())) {
                 throw new IOException("Polymer rejected resource " + entry.getKey());
             }
         }
-        return resources.size();
+        return snapshot.resourceCount();
     }
 
     private static Map<String, ResourceFile> readResources(Path sourceDirectory) throws IOException {
@@ -137,6 +143,45 @@ final class ResourcePackContributor {
             throw new IOException(
                 "Conflicting resource " + resourcePath + " from " + existing.source() + " and " + source
             );
+        }
+    }
+
+    private static byte[] fingerprint(Map<String, ResourceFile> resources) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
+                byte[] path = entry.getKey().getBytes(StandardCharsets.UTF_8);
+                byte[] data = entry.getValue().data();
+                digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(path.length).array());
+                digest.update(path);
+                digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(data.length).array());
+                digest.update(data);
+            }
+            return digest.digest();
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
+    static final class Snapshot {
+        private final Map<String, ResourceFile> resources;
+        private final byte[] fingerprint;
+
+        private Snapshot(Map<String, ResourceFile> resources, byte[] fingerprint) {
+            this.resources = resources;
+            this.fingerprint = fingerprint;
+        }
+
+        boolean hasSameContent(Snapshot other) {
+            return other != null && Arrays.equals(this.fingerprint, other.fingerprint);
+        }
+
+        boolean isEmpty() {
+            return this.resources.isEmpty();
+        }
+
+        int resourceCount() {
+            return this.resources.size();
         }
     }
 
