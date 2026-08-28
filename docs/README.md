@@ -33,13 +33,13 @@ Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order 
 
 ### Administration
 
-| Command | Description |
-|---|---|
-| `/emote list` | Lists loaded emotes with their IDs, durations, and availability. |
-| `/emote reload` | Reloads configuration and animations. |
-| `/emote enable/disable <id>` | Enables or disables an emote. |
-| `/emote stop <player>`, `/emote stop-all` | Stops one player's emote or all emotes. |
-| `/emote stress-test [count] [packets]` | Plays multiple emotes and encodes each packet through a configurable fanout (default 20) to measure server performance. Use `0` to disable packet load. |
+| Command                                   | Description                                                                                                             |
+|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `/emote list`                             | Lists loaded emotes with their IDs, durations, and availability.                                                        |
+| `/emote reload`                           | Reloads configuration and animations.                                                                                   |
+| `/emote enable/disable <id>`              | Enables or disables an emote.                                                                                           |
+| `/emote stop <player>`, `/emote stop-all` | Stops one player's emote or all emotes.                                                                                 |
+| `/emote stress-test [count] [packets]`    | Plays multiple emotes and encodes each packet through a configurable fanout (default 20) to measure server performance. |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
