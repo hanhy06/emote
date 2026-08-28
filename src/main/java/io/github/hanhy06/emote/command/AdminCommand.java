@@ -27,7 +27,9 @@ import java.util.List;
 import java.util.Locale;
 
 import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
 import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
@@ -88,15 +90,29 @@ public final class AdminCommand {
     LiteralArgumentBuilder<CommandSourceStack> createStressTestCommand() {
         return Commands.literal("stress-test")
             .requires(this.permissionService.requireManage())
-            .executes(context -> startStressTest(context.getSource(), DEFAULT_STRESS_TEST_INSTANCE_COUNT))
+            .executes(context -> startStressTest(
+                context.getSource(),
+                DEFAULT_STRESS_TEST_INSTANCE_COUNT,
+                DEFAULT_STRESS_TEST_PACKET_FANOUT
+            ))
             .then(Commands.argument(
                     "count",
                     IntegerArgumentType.integer(1, MAX_STRESS_TEST_INSTANCE_COUNT)
                 )
                 .executes(context -> startStressTest(
                     context.getSource(),
-                    IntegerArgumentType.getInteger(context, "count")
-                )))
+                    IntegerArgumentType.getInteger(context, "count"),
+                    DEFAULT_STRESS_TEST_PACKET_FANOUT
+                ))
+                .then(Commands.argument(
+                        "packets",
+                        IntegerArgumentType.integer(0, MAX_STRESS_TEST_PACKET_FANOUT)
+                    )
+                    .executes(context -> startStressTest(
+                        context.getSource(),
+                        IntegerArgumentType.getInteger(context, "count"),
+                        IntegerArgumentType.getInteger(context, "packets")
+                    ))))
             .then(Commands.literal("stop")
                 .executes(context -> stopStressTest(context.getSource())));
     }
@@ -223,7 +239,7 @@ public final class AdminCommand {
         return 1;
     }
 
-    private int startStressTest(CommandSourceStack source, int requestedInstanceCount) {
+    private int startStressTest(CommandSourceStack source, int requestedInstanceCount, int packetFanout) {
         List<PreparedAnimation> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -237,7 +253,8 @@ public final class AdminCommand {
                 source.getPosition(),
                 source.getRotation().y,
                 emotes,
-                requestedInstanceCount
+                requestedInstanceCount,
+                packetFanout
             );
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote stress test", exception);
@@ -248,7 +265,7 @@ public final class AdminCommand {
         source.sendSuccess(
             () -> Component.literal(
                 "\n\n\nStarted a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
-                    + " grid using " + emotes.size() + " emotes."
+                    + " grid using " + emotes.size() + " emotes and " + packetFanout + "× packet fanout."
             ),
             true
         );
@@ -303,9 +320,49 @@ public final class AdminCommand {
             .append(Component.literal("\n• Cleanup: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("  Samples: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE));
+            .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE))
+            .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
         return report.activeInstances();
+    }
+
+    static Component createPacketLoadSummary(PlaybackStressTestReport report) {
+        var packets = report.packetLoad();
+        if (packets.packetFanout() == 0) {
+            return Component.literal("\n\nPacket load\n• Fanout: disabled").withStyle(ChatFormatting.GRAY);
+        }
+
+        double elapsedSeconds = Math.max(report.elapsedSeconds(), 0.001D);
+        double packetsPerSecond = packets.runtimePackets() / elapsedSeconds;
+        double mebibytesPerSecond = packets.runtimeBytes() / 1_048_576.0D / elapsedSeconds;
+        double averageEncodingMillis = packets.runtimeSamples() == 0
+            ? 0.0D
+            : packets.runtimeEncodingNanos() / 1_000_000.0D / packets.runtimeSamples();
+        return Component.literal("\n\nPacket load").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal("\n• Fanout: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(packets.packetFanout() + "×").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Create: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "%,d packets / %.2f MiB",
+                packets.creationPackets(),
+                packets.creationBytes() / 1_048_576.0D
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Runtime: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "%,.0f packets/s / %.2f MiB/s",
+                packetsPerSecond,
+                mebibytesPerSecond
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Encode: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "%.3f ms avg / %.3f ms max · %.2f MiB peak/tick",
+                averageEncodingMillis,
+                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D,
+                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
+            )).withStyle(ChatFormatting.WHITE));
     }
 
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {

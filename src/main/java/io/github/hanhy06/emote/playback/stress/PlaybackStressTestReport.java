@@ -17,6 +17,7 @@ public record PlaybackStressTestReport(
     double minimumTps,
     double tpsDrop,
     double averageManagerCpuMillis,
-    double maximumManagerCpuMillis
+    double maximumManagerCpuMillis,
+    StressTestPacketLoad.PacketLoadResult packetLoad
 ) {
 }

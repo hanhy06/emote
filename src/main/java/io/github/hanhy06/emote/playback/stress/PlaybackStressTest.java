@@ -15,11 +15,14 @@ import java.util.*;
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 100;
     public static final int MAX_INSTANCE_COUNT = 1_000;
+    public static final int DEFAULT_PACKET_FANOUT = 20;
+    public static final int MAX_PACKET_FANOUT = 100;
     static final int MIN_INITIAL_TICK = 80;
     static final int MAX_INITIAL_TICK = 175;
     private static final long RANDOM_SEED = 0xE607EL;
 
     private final PlaybackEntityController entityController;
+    private final StressTestPacketLoad packetLoad = StressTestPacketLoad.INSTANCE;
 
     private @Nullable Session session;
 
@@ -27,15 +30,26 @@ public final class PlaybackStressTest {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
-    public int start(ServerLevel level, Vec3 origin, float yaw, List<PreparedAnimation> emotes, int instanceCount) {
+    public int start(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<PreparedAnimation> emotes,
+        int instanceCount,
+        int packetFanout
+    ) {
         if (emotes.isEmpty()) {
             throw new IllegalArgumentException("At least one emote is required for a stress test");
         }
         if (instanceCount < 1 || instanceCount > MAX_INSTANCE_COUNT) {
             throw new IllegalArgumentException("Stress-test instance count is out of range: " + instanceCount);
         }
+        if (packetFanout < 0 || packetFanout > MAX_PACKET_FANOUT) {
+            throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
+        }
 
         stop();
+        this.packetLoad.start(EmoteMod.SERVER, packetFanout);
         long startedNanos = System.nanoTime();
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
@@ -61,18 +75,22 @@ public final class PlaybackStressTest {
                 startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
                 this.entityController.add(level, nodes);
                 try {
+                    this.packetLoad.register(level, nodes);
                     instances.add(new StressTestInstance(emote, nodes, timeline));
                     displayEntityCount += nodes.displayEntityCount();
                 } catch (RuntimeException exception) {
+                    this.packetLoad.unregister(nodes);
                     this.entityController.remove(level, nodes);
                     throw exception;
                 }
             }
         } catch (RuntimeException exception) {
             removeInstances(level, instances);
+            this.packetLoad.stop();
             throw exception;
         }
 
+        this.packetLoad.beginRuntime();
         long creationNanos = System.nanoTime() - startedNanos;
         this.session = new Session(
             level,
@@ -96,10 +114,15 @@ public final class PlaybackStressTest {
 
         this.session = null;
         current.recordCompletedServerTick();
+        StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
         long cleanupStartedNanos = System.nanoTime();
-        removeInstances(current.level(), current.instances());
+        try {
+            removeInstances(current.level(), current.instances());
+        } finally {
+            this.packetLoad.stop();
+        }
         long cleanupNanos = System.nanoTime() - cleanupStartedNanos;
-        return current.createReport(cleanupNanos, System.nanoTime());
+        return current.createReport(packetLoadResult, cleanupNanos, System.nanoTime());
     }
 
     public int displayEntityCount() {
@@ -120,6 +143,7 @@ public final class PlaybackStressTest {
             if (!instance.emote.id().equals(id)) {
                 return false;
             }
+            this.packetLoad.unregister(instance.nodes);
             this.entityController.remove(current.level(), instance.nodes);
             current.removeDisplayEntities(instance.nodes.displayEntityCount());
             return true;
@@ -147,8 +171,10 @@ public final class PlaybackStressTest {
                         );
                         instance.timeline.start();
                     }
+                    this.packetLoad.sync(instance.nodes);
                 } catch (RuntimeException exception) {
                     EmoteMod.LOGGER.warn("Failed to run stress-test emote {}", instance.emote.id(), exception);
+                    this.packetLoad.unregister(instance.nodes);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
                     current.removeDisplayEntities(instance.nodes.displayEntityCount());
@@ -158,6 +184,7 @@ public final class PlaybackStressTest {
         } finally {
             current.recordManagerCpu(System.nanoTime() - managerStartedNanos);
         }
+        this.packetLoad.sampleRuntimeTick();
         current.recordCompletedServerTick();
     }
 
@@ -219,6 +246,7 @@ public final class PlaybackStressTest {
 
     private void removeInstances(ServerLevel level, List<StressTestInstance> instances) {
         for (StressTestInstance instance : instances) {
+            this.packetLoad.unregister(instance.nodes);
             this.entityController.remove(level, instance.nodes);
         }
     }
@@ -313,7 +341,11 @@ public final class PlaybackStressTest {
             this.maximumServerTickNanos = Math.max(this.maximumServerTickNanos, elapsedNanos);
         }
 
-        private PlaybackStressTestReport createReport(long cleanupNanos, long stoppedNanos) {
+        private PlaybackStressTestReport createReport(
+            StressTestPacketLoad.PacketLoadResult packetLoad,
+            long cleanupNanos,
+            long stoppedNanos
+        ) {
             double baselineMspt = nanosToMillis(this.baselineTickNanos);
             double averageMspt = this.serverTickSamples == 0
                 ? baselineMspt
@@ -344,7 +376,8 @@ public final class PlaybackStressTest {
                 minimumTps,
                 Math.max(0.0D, baselineTps - averageTps),
                 averageManagerCpuMillis,
-                nanosToMillis(this.maximumManagerCpuNanos)
+                nanosToMillis(this.maximumManagerCpuNanos),
+                packetLoad
             );
         }
 

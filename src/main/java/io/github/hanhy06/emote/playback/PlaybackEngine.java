@@ -35,6 +35,8 @@ import java.util.random.RandomGenerator;
 public class PlaybackEngine implements ConfigListener {
     public static final int DEFAULT_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
     public static final int MAX_STRESS_TEST_INSTANCE_COUNT = PlaybackStressTest.MAX_INSTANCE_COUNT;
+    public static final int DEFAULT_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.DEFAULT_PACKET_FANOUT;
+    public static final int MAX_STRESS_TEST_PACKET_FANOUT = PlaybackStressTest.MAX_PACKET_FANOUT;
     private final PlaybackSessionRegistry sessionRegistry = new PlaybackSessionRegistry();
     private final List<PlaybackStateListener> stateListeners = new ArrayList<>();
 
@@ -515,9 +517,10 @@ public class PlaybackEngine implements ConfigListener {
         Vec3 origin,
         float yaw,
         List<PreparedAnimation> emotes,
-        int instanceCount
+        int instanceCount,
+        int packetFanout
     ) {
-        return this.stressTest.start(level, origin, yaw, emotes, instanceCount);
+        return this.stressTest.start(level, origin, yaw, emotes, instanceCount, packetFanout);
     }
 
     public @Nullable PlaybackStressTestReport stopStressTest() {
