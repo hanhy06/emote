@@ -42,7 +42,7 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
             CommandSourceStack source = createSource(event.source())
                 .withPosition(origin)
                 .withLevel(this.player.level())
-                .withPermission(LevelBasedPermissionSet.OWNER)
+                .withPermission(LevelBasedPermissionSet.GAMEMASTER)
                 .withSuppressedOutput();
             for (String command : event.commands()) {
                 EmoteMod.SERVER.getCommands().performPrefixedCommand(source, command);

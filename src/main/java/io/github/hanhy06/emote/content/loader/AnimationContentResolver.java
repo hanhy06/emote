@@ -86,7 +86,7 @@ public final class AnimationContentResolver {
         }
 
         CommandSourceStack validationSource = server.createCommandSourceStack()
-            .withPermission(LevelBasedPermissionSet.OWNER)
+            .withPermission(LevelBasedPermissionSet.GAMEMASTER)
             .withSuppressedOutput();
         Events events = loaded.animation().timeline().events();
         validateEvents(events.start(), "$.timeline.events.start", validationSource, server, sourcePath);
