@@ -84,6 +84,23 @@ class EmoteCatalogTest {
     }
 
     @Test
+    void findsOnlyActiveFileEmotesById() {
+        EmoteCatalog registry = new EmoteCatalog();
+        PreparedAnimation fileWave = create("demo:wave", "File Wave");
+        PreparedAnimation fileDance = create("demo:dance", "File Dance");
+        UUID registrationId = registry.register(create("demo:wave", "API Wave"));
+
+        registry.replace(List.of(fileWave, fileDance));
+
+        assertNull(registry.findFileEmote("demo:wave"));
+        assertSame(fileDance, registry.findFileEmote("demo:dance"));
+
+        registry.unregister("demo:wave", registrationId);
+
+        assertSame(fileWave, registry.findFileEmote("demo:wave"));
+    }
+
+    @Test
     void apiRegistrationTemporarilyTakesARegistrySlotFromFileEmotes() {
         List<PreparedAnimation> fileEmotes = new ArrayList<>();
         for (int index = 0; index < EmoteCatalog.MAX_EMOTE_COUNT; index++) {

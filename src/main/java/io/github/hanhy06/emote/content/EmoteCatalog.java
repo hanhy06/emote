@@ -86,10 +86,7 @@ public class EmoteCatalog {
     }
 
     public PlayableEmote findFileEmote(String id) {
-        return this.state.fileEmotes().stream()
-            .filter(definition -> definition.id().equals(id))
-            .findFirst()
-            .orElse(null);
+        return this.state.fileEmotesById().get(id);
     }
 
     public int size() {
@@ -115,8 +112,13 @@ public class EmoteCatalog {
         for (PlayableEmote definition : combined) {
             emotesById.put(definition.id(), definition);
         }
+        LinkedHashMap<String, PlayableEmote> fileEmotesById = new LinkedHashMap<>();
+        for (PlayableEmote definition : fileList) {
+            fileEmotesById.put(definition.id(), definition);
+        }
         this.state = new RegistryState(
             Map.copyOf(emotesById),
+            Map.copyOf(fileEmotesById),
             List.copyOf(combined),
             combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
             List.copyOf(fileList)
@@ -128,12 +130,13 @@ public class EmoteCatalog {
 
     private record RegistryState(
         Map<String, PlayableEmote> emotesById,
+        Map<String, PlayableEmote> fileEmotesById,
         List<PlayableEmote> emotes,
         List<PreparedAnimation> animations,
         List<PlayableEmote> fileEmotes
     ) {
         private static RegistryState empty() {
-            return new RegistryState(Map.of(), List.of(), List.of(), List.of());
+            return new RegistryState(Map.of(), Map.of(), List.of(), List.of(), List.of());
         }
     }
 }
