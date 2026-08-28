@@ -45,6 +45,16 @@ public class ConfigManager {
         this.bundledEmoteDirectory = bundledEmoteDirectory;
     }
 
+    public void initialize() {
+        configure();
+        if (!readConfig()) {
+            broadcastConfig();
+        }
+        if (!readAccessConfig()) {
+            broadcastAccessConfig();
+        }
+    }
+
     public void configure() {
         boolean installBundledEmotes = Files.notExists(getEmoteDirectory());
 
@@ -119,12 +129,10 @@ public class ConfigManager {
             loadedConfig = this.jsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Main config contains invalid field values; keeping the current config: {}", exception.getMessage());
-            broadcastConfig();
             return false;
         }
         if (loadedConfig == null) {
             EmoteMod.LOGGER.warn("Main config is empty or invalid; keeping the current config");
-            broadcastConfig();
             return false;
         }
 
@@ -141,13 +149,11 @@ public class ConfigManager {
             loadedConfig = this.jsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Emote access config contains invalid field values; keeping the current config: {}", exception.getMessage());
-            broadcastAccessConfig();
             return false;
         }
 
         if (loadedConfig == null) {
             EmoteMod.LOGGER.warn("Emote access config is empty or invalid; keeping the current config");
-            broadcastAccessConfig();
             return false;
         }
 

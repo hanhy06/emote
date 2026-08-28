@@ -246,6 +246,40 @@ class ConfigManagerTest {
     }
 
     @Test
+    void doesNotNotifyListenersWhenReloadedConfigIsInvalid(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        List<Config> receivedConfigs = new ArrayList<>();
+        List<AccessConfig> receivedAccessConfigs = new ArrayList<>();
+        manager.addListener(receivedConfigs::add);
+        manager.addAccessConfigListener(receivedAccessConfigs::add);
+        Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":{}}");
+        Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":2,\"disabled\":{}}");
+
+        assertFalse(manager.readConfig());
+        assertFalse(manager.readAccessConfig());
+        assertTrue(receivedConfigs.isEmpty());
+        assertTrue(receivedAccessConfigs.isEmpty());
+    }
+
+    @Test
+    void initializesListenersWithCurrentDefaultsWhenInitialConfigIsInvalid(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        List<Config> receivedConfigs = new ArrayList<>();
+        List<AccessConfig> receivedAccessConfigs = new ArrayList<>();
+        manager.addListener(receivedConfigs::add);
+        manager.addAccessConfigListener(receivedAccessConfigs::add);
+        Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":{}}");
+        Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":2,\"disabled\":{}}");
+
+        manager.initialize();
+
+        assertEquals(List.of(manager.getConfig()), receivedConfigs);
+        assertEquals(List.of(manager.getAccessConfig()), receivedAccessConfigs);
+    }
+
+    @Test
     void keepsCurrentAccessConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
