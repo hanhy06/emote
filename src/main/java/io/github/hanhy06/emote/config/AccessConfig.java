@@ -25,7 +25,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             List.of(new PermissionEntry(
                 "emote.default",
                 List.of("*"),
-                Optional.of(new IdleSettings(6_000, List.of("drink:default")))
+                Optional.empty()
             ))
         );
     }

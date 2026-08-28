@@ -32,17 +32,30 @@ class ConfigManagerTest {
     }
 
     @Test
-    void doesNotInstallBundledEmotesWhenConfigDirectoryAlreadyExists(@TempDir Path tempDir) throws IOException {
+    void installsBundledEmotesAfterResourcePackDirectoryIsConfigured(@TempDir Path tempDir) throws IOException {
         Path bundledDirectory = tempDir.resolve("bundled");
         Files.createDirectories(bundledDirectory);
         Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
-        Files.createDirectories(tempDir.resolve("emote"));
+
+        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
+        manager.configureResourcePack();
+        manager.configure();
+
+        assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
+        assertTrue(Files.isDirectory(manager.getResourcePackDirectory()));
+        assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
+    }
+
+    @Test
+    void doesNotInstallBundledEmotesWhenEmoteDirectoryAlreadyExists(@TempDir Path tempDir) throws IOException {
+        Path bundledDirectory = tempDir.resolve("bundled");
+        Files.createDirectories(bundledDirectory);
+        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
+        Files.createDirectories(tempDir.resolve("emote/emote"));
 
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configure();
 
-        assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
-        assertFalse(Files.exists(manager.getResourcePackDirectory()));
         assertFalse(Files.exists(manager.getEmoteDirectory().resolve("wave.json")));
     }
 
@@ -57,13 +70,9 @@ class ConfigManagerTest {
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
         assertTrue(accessJson.contains("\"schema_version\": 2"));
-        assertTrue(accessJson.contains("\"delay\": \"6000t\""));
         assertTrue(accessJson.contains("\"emote.default\""));
-        AccessConfig.IdleSettings idle = manager.getAccessConfig()
-            .permissions().getFirst().idle().orElseThrow();
-        assertEquals(6_000, idle.delayTicks());
-        assertEquals(List.of("drink:default"), idle.emote());
-        assertTrue(accessJson.contains("\"drink:default\""));
+        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        assertFalse(accessJson.contains("\"idle\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertEquals(30, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(256, manager.getConfig().mineSkinCacheMaxMiB());
@@ -179,7 +188,7 @@ class ConfigManagerTest {
             """);
 
         assertFalse(manager.readAccessConfig());
-        assertEquals(List.of("drink:default"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
+        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
     }
 
     @Test
@@ -330,9 +339,6 @@ class ConfigManagerTest {
             """);
 
         assertFalse(manager.readAccessConfig());
-        assertEquals(
-            List.of("drink:default"),
-            manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote()
-        );
+        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
     }
 }

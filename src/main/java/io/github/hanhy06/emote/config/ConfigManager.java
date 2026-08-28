@@ -46,7 +46,7 @@ public class ConfigManager {
     }
 
     public void configure() {
-        boolean installBundledEmotes = Files.notExists(this.configDirPath);
+        boolean installBundledEmotes = Files.notExists(getEmoteDirectory());
 
         try {
             Files.createDirectories(this.configDirPath);
