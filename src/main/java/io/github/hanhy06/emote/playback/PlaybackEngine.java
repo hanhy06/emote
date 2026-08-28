@@ -204,6 +204,7 @@ public class PlaybackEngine implements ConfigListener {
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
+        boolean startedNotified = false;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
             this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
@@ -246,18 +247,16 @@ public class PlaybackEngine implements ConfigListener {
             );
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
-            session.animation().startEvents();
-            if (playbackChanged(session)) {
-                return PlayResult.SUCCESS;
-            }
             for (PlaybackStateListener stateListener : this.stateListeners) {
                 stateListener.onStarted(player, session, initiator);
             }
+            startedNotified = true;
+            session.animation().startEvents();
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
             if (session != null && removeSession(session)) {
-                cleanupSession(session, false, PlaybackStopReason.ERROR, null);
+                cleanupSession(session, startedNotified, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
             }
@@ -431,11 +430,11 @@ public class PlaybackEngine implements ConfigListener {
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
         this.entityController.updateHeldItems(session.nodes(), EmoteAnimation.NodeSpace.PARTNER, player);
-        animation.startEvents();
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
         }
+        animation.startEvents();
         return true;
     }
 
