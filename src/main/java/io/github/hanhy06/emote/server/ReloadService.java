@@ -46,6 +46,9 @@ public final class ReloadService {
     public void loadOnServerStart() {
         this.configManager.configure();
         this.configManager.readConfig();
+        if (this.configManager.getConfig().mineSkinApiKey().isBlank()) {
+            EmoteMod.LOGGER.error("MineSkin API key is not configured; player skin application is disabled");
+        }
         this.configManager.readAccessConfig();
         ReloadStats stats = reloadRegistry();
         EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
