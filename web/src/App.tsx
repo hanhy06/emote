@@ -29,23 +29,23 @@ const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => ada
 const IMPORT_FORMATS = [
   {
     label: "BD Engine",
-    extensions: ".bdengine, .zip",
-    description: "In BD Engine, open Get Command and export the animations as a datapack.",
+    extensions: ".zip",
+    description: "In BD Engine, open Get Command and export the animations as a datapack. Animations, display nodes, commands, and player-skin parts are imported.",
   },
   {
     label: "GeckoLib",
     extensions: ".bbmodel",
-    description: "Use the original .bbmodel project for an emote created in Blockbench with the GeckoLib model format.",
+    description: "Use the original .bbmodel project for an emote created in Blockbench with the GeckoLib model format. Cube models and standard player-model parts are imported.",
   },
   {
-    label: "Animated Java Plugin Blueprint",
+    label: "Animated Java",
     extensions: ".json",
-    description: "Export a Plugin Blueprint JSON from the Animated Java plugin in Blockbench.",
+    description: "Export a Plugin Blueprint JSON from the Animated Java plugin in Blockbench. Models, animations, events, and player-skin assignments are imported.",
   },
   {
     label: "Bedrock Edition",
     extensions: ".animation.json, .json",
-    description: "Export the animation JSON from a Bedrock Edition model project in Blockbench. Molang support is not yet complete.",
+    description: "Export the animation JSON from a Bedrock Edition model project in Blockbench. Player animations are imported, but Molang support is not yet complete.",
   },
 ] as const;
 
