@@ -44,7 +44,7 @@ const IMPORT_FORMATS = [
   },
   {
     label: "Bedrock Edition",
-    extensions: ".animation.json, .json",
+    extensions: ".json",
     description: "Export the animation JSON from a Bedrock Edition model project in Blockbench. Player animations are imported, but Molang support is not yet complete.",
   },
 ] as const;
