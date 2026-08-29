@@ -3,7 +3,7 @@ import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
-import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -30,8 +30,8 @@ export function createBedrockRuntime(
     nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO, rotation: ZERO, scale: ONE } };
-    if (bone.cube) {
-      nodes[bone.id] = {
+    for (const slice of BEDROCK_PLAYER_SLICES.filter((candidate) => candidate.bone.id === bone.id)) {
+      nodes[slice.id] = {
         type: "item_display",
         parent: `${bone.id}_x`,
         transform: { position: ZERO, rotation: ZERO, scale: ONE },

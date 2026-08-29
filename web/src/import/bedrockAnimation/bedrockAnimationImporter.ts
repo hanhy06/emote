@@ -17,6 +17,7 @@ import {
 } from "./bedrockAnimationBaker";
 import {
   BEDROCK_PLAYER_BONES,
+  BEDROCK_PLAYER_SLICES,
   BEDROCK_PLAYER_RENDER_SCALE,
   bedrockPlayerBoneById,
   createBedrockPlayerNodes,
@@ -122,18 +123,17 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
   const previewDurationTicks = previewAnimationDurationTicks + startDelayTicks;
   const samplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
-  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_BONES.filter((bone) => bone.cube).map((bone) => [bone.id, {
+  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
     transforms: [],
     visibility: [],
     nbt: [],
   }]));
   if (startDelayTicks > 0) {
     const bindMatrices = buildWorldMatrices(new Map());
-    for (const bone of BEDROCK_PLAYER_BONES) {
-      if (!bone.cube) continue;
-      tracks[bone.id].transforms.push({
+    for (const slice of BEDROCK_PLAYER_SLICES) {
+      tracks[slice.id].transforms.push({
         tick: 0,
-        matrix: matrix4ToRowMajor(bindMatrices.get(bone.id)!, `${name}/${bone.id}/0`),
+        matrix: matrix4ToRowMajor(bindMatrices.get(slice.bone.id)!, `${name}/${slice.id}/0`),
         interpolation: { type: "step" },
       });
     }
@@ -142,13 +142,12 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
     const outputTick = tick + startDelayTicks;
     const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
-    for (const bone of BEDROCK_PLAYER_BONES) {
-      if (!bone.cube) continue;
-      const matrix = worldMatrices.get(bone.id);
-      if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${bone.id}.`);
-      tracks[bone.id].transforms.push({
+    for (const slice of BEDROCK_PLAYER_SLICES) {
+      const matrix = worldMatrices.get(slice.bone.id);
+      if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${slice.bone.id}.`);
+      tracks[slice.id].transforms.push({
         tick: outputTick,
-        matrix: matrix4ToRowMajor(matrix, `${name}/${bone.id}/${outputTick}`),
+        matrix: matrix4ToRowMajor(matrix, `${name}/${slice.id}/${outputTick}`),
         interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }

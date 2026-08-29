@@ -35,22 +35,27 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.source).toBe("bedrock_animation_json");
-    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"]);
-    expect(imported.nodes.left_arm.type === "item_display" && imported.nodes.left_arm.suggestedSkin).toEqual({ part: "left_arm", order: 0 });
-    expect(imported.nodes.left_arm.defaultMatrix[3]).toBeCloseTo(-0.29296875);
-    expect(imported.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(0.29296875);
-    expect(imported.nodes.left_arm.type === "item_display" && imported.nodes.left_arm.playerHeadConversion?.matrix[3]).toBeCloseTo(-0.0625);
-    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.playerHeadConversion?.matrix[3]).toBeCloseTo(0.0625);
-    expect(imported.nodes.body.defaultMatrix[7]).toBeCloseTo(1.40625);
+    expect(Object.keys(imported.nodes)).toEqual([
+      "body_0", "body_1", "head", "left_arm_0", "left_arm_1", "right_arm_0", "right_arm_1",
+      "left_leg_0", "left_leg_1", "right_leg_0", "right_leg_1",
+    ]);
+    expect(imported.nodes.left_arm_0.type === "item_display" && imported.nodes.left_arm_0.suggestedSkin).toEqual({ part: "left_arm", order: 0 });
+    expect(imported.nodes.left_arm_1.type === "item_display" && imported.nodes.left_arm_1.suggestedSkin).toEqual({ part: "left_arm", order: 1 });
+    expect(imported.nodes.left_arm_0.defaultMatrix[3]).toBeCloseTo(-0.29296875);
+    expect(imported.nodes.right_arm_0.defaultMatrix[3]).toBeCloseTo(0.29296875);
+    expect(imported.nodes.left_arm_0.type === "item_display" && imported.nodes.left_arm_0.playerHeadConversion?.matrix[3]).toBeCloseTo(-0.0625);
+    expect(imported.nodes.right_arm_0.type === "item_display" && imported.nodes.right_arm_0.playerHeadConversion?.matrix[3]).toBeCloseTo(0.0625);
+    expect(imported.nodes.body_0.defaultMatrix[7]).toBeCloseTo(1.40625);
     expect(imported.animations[0].durationTicks).toBe(25);
     expect(imported.animations[0].loop).toBe("hold");
-    expect(imported.animations[0].tracks.body.transforms[0].matrix[7]).toBeCloseTo(1.5234375);
-    expect(imported.animations[0].tracks.left_arm.transforms[0].matrix).not.toEqual(imported.nodes.left_arm.defaultMatrix);
+    expect(imported.animations[0].tracks.body_0.transforms[0].matrix[7]).toBeCloseTo(1.5234375);
+    expect(imported.animations[0].tracks.left_arm_0.transforms[0].matrix).not.toEqual(imported.nodes.left_arm_0.defaultMatrix);
 
     const compiled = compileImportedProject(imported, {});
     expect(compiled).toHaveLength(1);
     expect(compiled[0].settings.rotation_deadzone).toBe(0);
-    expect(compiled[0].nodes.body.type === "item_display" && compiled[0].nodes.body.skin).toEqual({ participant: "initiator", part: "body", order: 0 });
+    expect(compiled[0].nodes.body_0.type === "item_display" && compiled[0].nodes.body_0.skin).toEqual({ participant: "initiator", part: "body", order: 0 });
+    expect(compiled[0].nodes.body_1.type === "item_display" && compiled[0].nodes.body_1.skin).toEqual({ participant: "initiator", part: "body", order: 1 });
     expect(compiled[0].nodes).not.toHaveProperty("right_item");
   });
 
@@ -65,7 +70,7 @@ describe("bedrockAnimationAdapter", () => {
       },
     })));
 
-    expect(imported.animations[0].tracks.body.transforms[0].matrix[3]).toBeCloseTo(-0.9375);
+    expect(imported.animations[0].tracks.body_0.transforms[0].matrix[3]).toBeCloseTo(-0.9375);
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "axes" });
     expect(compiled.nodes.body_y.parent).toBe("body_z");
@@ -90,8 +95,8 @@ describe("bedrockAnimationAdapter", () => {
 
     const animation = imported.animations[0];
     expect(animation.durationTicks).toBe(4);
-    expect(animation.tracks.body.transforms.map((frame) => frame.tick)).toEqual([0, 2, 3, 4]);
-    expect(animation.tracks.body.transforms[0].matrix).toEqual(imported.nodes.body.defaultMatrix);
+    expect(animation.tracks.body_0.transforms.map((frame) => frame.tick)).toEqual([0, 2, 3, 4]);
+    expect(animation.tracks.body_0.transforms[0].matrix).toEqual(imported.nodes.body_0.defaultMatrix);
     expect(imported.diagnostics).toEqual([]);
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "delayed" });
@@ -123,11 +128,11 @@ describe("bedrockAnimationAdapter", () => {
 
     const animation = imported.animations[0];
     expect(animation.durationTicks).toBe(4);
-    expect(animation.tracks.body.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2, 3, 4]);
-    const preserved = animation.tracks.body.transforms.find((frame) => frame.interpolation.type === "step" && frame.tick > 0);
+    expect(animation.tracks.body_0.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2, 3, 4]);
+    const preserved = animation.tracks.body_0.transforms.find((frame) => frame.interpolation.type === "step" && frame.tick > 0);
     expect([1, 2]).toContain(preserved?.tick);
     expect(preserved?.matrix[7]).toBeCloseTo(1.640625);
-    expect(animation.tracks.right_arm.transforms[3].matrix.every(Number.isFinite)).toBe(true);
+    expect(animation.tracks.right_arm_0.transforms[3].matrix.every(Number.isFinite)).toBe(true);
   });
 
   it("bakes deterministic Molang time expressions and constant anim_time_update rates", async () => {
@@ -143,7 +148,7 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations[0].durationTicks).toBe(10);
-    expect(imported.animations[0].tracks.body.transforms[10].matrix).not.toEqual(imported.nodes.body.defaultMatrix);
+    expect(imported.animations[0].tracks.body_0.transforms[10].matrix).not.toEqual(imported.nodes.body_0.defaultMatrix);
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "fast" });
     expect(compiled.timeline.duration).toBe("10t");
     expect(compiled.timeline.tracks.root_y.rotation?.[0].value?.[1]).toBe("-(-(q.anim_time * 2) * 90)");
@@ -161,7 +166,7 @@ describe("bedrockAnimationAdapter", () => {
 
     expect(imported.animations[0].durationTicks).toBe(12_000);
     expect(imported.animations[0].preview?.durationTicks).toBe(20);
-    expect(imported.animations[0].preview?.tracks.body.transforms.map((frame) => frame.tick)).toEqual(
+    expect(imported.animations[0].preview?.tracks.body_0.transforms.map((frame) => frame.tick)).toEqual(
       Array.from({ length: 21 }, (_, tick) => tick),
     );
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
@@ -213,7 +218,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.animations).toHaveLength(1);
     expect(imported.animations[0].availability).toBeUndefined();
     expect(imported.diagnostics).toEqual([]);
-    expect(imported.animations[0].tracks.body.transforms[0].matrix).toEqual(expect.any(Array));
+    expect(imported.animations[0].tracks.body_0.transforms[0].matrix).toEqual(expect.any(Array));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
     expect(compiled.timeline.duration).toBe("1t");
     expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe(`-(${playerQueries})`);
@@ -258,7 +263,10 @@ describe("bedrockAnimationAdapter", () => {
 
     expect(imported.animations[0].availability).toBeUndefined();
     expect(imported.diagnostics).toEqual([]);
-    expect(Object.keys(imported.nodes)).toEqual(["body", "head", "left_arm", "right_arm", "left_leg", "right_leg"]);
+    expect(Object.keys(imported.nodes)).toEqual([
+      "body_0", "body_1", "head", "left_arm_0", "left_arm_1", "right_arm_0", "right_arm_1",
+      "left_leg_0", "left_leg_1", "right_leg_0", "right_leg_1",
+    ]);
     expect(imported.animations[0].tracks).not.toHaveProperty("left_item");
     expect(imported.animations[0].tracks).not.toHaveProperty("right_item");
   });

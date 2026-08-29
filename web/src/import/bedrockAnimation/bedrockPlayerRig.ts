@@ -2,6 +2,7 @@ import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { bedrockBoundsToCanonical } from "../coordinateSpace";
+import { humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 
@@ -32,6 +33,26 @@ const BONES_BY_ID = new Map(BEDROCK_PLAYER_BONES.map((bone) => [bone.id, bone]))
 const BONES_BY_NORMALIZED_NAME = new Map(BEDROCK_PLAYER_BONES.map((bone) => [normalizeBedrockBoneName(bone.sourceName), bone]));
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 
+export interface BedrockPlayerSlice {
+  id: string;
+  bone: BedrockPlayerBone & { cube: NonNullable<BedrockPlayerBone["cube"]> };
+  order: number;
+  from: readonly [number, number, number];
+  to: readonly [number, number, number];
+}
+
+export const BEDROCK_PLAYER_SLICES: readonly BedrockPlayerSlice[] = BEDROCK_PLAYER_BONES.flatMap((bone) => {
+  if (!bone.cube) return [];
+  const height = bone.cube.to[1] - bone.cube.from[1];
+  return humanoidSkinSlices(bone.cube.skin, false).map((slice) => ({
+    id: bone.cube!.skin === "head" ? bone.id : `${bone.id}_${slice.order}`,
+    bone: bone as BedrockPlayerSlice["bone"],
+    order: slice.order,
+    from: [bone.cube!.from[0], bone.cube!.to[1] - height * slice.endY / 12, bone.cube!.from[2]] as const,
+    to: [bone.cube!.to[0], bone.cube!.to[1] - height * slice.startY / 12, bone.cube!.to[2]] as const,
+  }));
+});
+
 export function bedrockPlayerBoneById(id: string): BedrockPlayerBone {
   const bone = BONES_BY_ID.get(id);
   if (!bone) throw new Error(`Unknown Bedrock player bone ${id}.`);
@@ -48,28 +69,31 @@ export function isHiddenBedrockAccessoryBone(name: string): boolean {
 
 export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matrix4>): Record<string, ImportedNode> {
   const nodes: Record<string, ImportedNode> = {};
-  for (const bone of BEDROCK_PLAYER_BONES) {
-    const world = worldMatrices.get(bone.id);
-    if (!world) throw new Error(`Missing bind matrix for Bedrock player bone ${bone.id}.`);
-    if (!bone.cube) continue;
-    nodes[bone.id] = {
-      id: bone.id,
+  for (const slice of BEDROCK_PLAYER_SLICES) {
+    const world = worldMatrices.get(slice.bone.id);
+    if (!world) throw new Error(`Missing bind matrix for Bedrock player bone ${slice.bone.id}.`);
+    nodes[slice.id] = {
+      id: slice.id,
       type: "item_display",
-      defaultMatrix: matrix4ToRowMajor(world, `Bedrock player bone ${bone.id}`),
+      defaultMatrix: matrix4ToRowMajor(world, `Bedrock player slice ${slice.id}`),
       visible: true,
       itemDisplay: "none",
       itemStackSnbt: '{id:"minecraft:player_head",count:1}',
-      playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(bone) },
-      suggestedSkin: { part: bone.cube.skin, order: 0 },
+      playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(slice.bone, slice.from, slice.to) },
+      suggestedSkin: { part: slice.bone.cube.skin, order: slice.order },
     };
   }
   return nodes;
 }
 
-export function bedrockPlayerHeadConversionMatrix(bone: BedrockPlayerBone) {
+export function bedrockPlayerHeadConversionMatrix(
+  bone: BedrockPlayerBone,
+  boundsFrom: readonly number[] = bone.cube?.from ?? [],
+  boundsTo: readonly number[] = bone.cube?.to ?? [],
+) {
   if (!bone.cube) throw new Error(`Bedrock player bone ${bone.id} does not have geometry.`);
-  const sourceFrom = bone.cube.from.map((value, axis) => value - bone.pivot[axis]);
-  const sourceTo = bone.cube.to.map((value, axis) => value - bone.pivot[axis]);
+  const sourceFrom = boundsFrom.map((value, axis) => value - bone.pivot[axis]);
+  const sourceTo = boundsTo.map((value, axis) => value - bone.pivot[axis]);
   const canonical = bedrockBoundsToCanonical(sourceFrom, sourceTo);
   const from = canonical.from.map((value) => value / 16);
   const to = canonical.to.map((value) => value / 16);
