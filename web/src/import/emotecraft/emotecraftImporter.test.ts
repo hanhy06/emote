@@ -34,6 +34,9 @@ describe("importEmotecraftFile", () => {
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dance" });
     expect(Object.values(compiled.nodes).every((node) => node.parent === undefined)).toBe(true);
+    expect(compiled.nodes.head.transform.position).toEqual([0, 1.875, 0]);
+    expect(compiled.nodes.left_arm_0.transform.position).toEqual([-0.3515625, 1.40625, 0]);
+    expect(compiled.nodes.right_arm_0.transform.position).toEqual([0.3515625, 1.40625, 0]);
     expect(compiled.nodes.left_arm_2.type === "item_display" && compiled.nodes.left_arm_2.skin).toEqual({ participant: "initiator", part: "left_arm", order: 2 });
     expect(() => validateEmoteAnimation(compiled)).not.toThrow();
   });
