@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { Matrix4, Vector3 } from "three";
 import { compileImportedProject } from "../../test/compileImportedFixture";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { EmotecraftFile, PalAxisChannels, PalBoneAnimation, PalKeyframe } from "./emotecraftBinary";
@@ -7,7 +8,7 @@ import { importEmotecraftFile } from "./emotecraftImporter";
 const EMPTY_AXES: PalAxisChannels = [[], [], []];
 
 describe("importEmotecraftFile", () => {
-  it("flattens five bendable player parts into the sample's 19 independent skin slices", () => {
+  it("flattens bendable limbs into four skin slices and two joint fillers", () => {
     const imported = importEmotecraftFile(file({
       torso: bone(bend(Math.PI / 4)),
       left_arm: bone(bend(Math.PI / 2)),
@@ -16,7 +17,7 @@ describe("importEmotecraftFile", () => {
       right_leg: bone(bend(-Math.PI / 3)),
     }), "dance.emotecraft");
 
-    expect(Object.keys(imported.nodes)).toHaveLength(19);
+    expect(Object.keys(imported.nodes)).toHaveLength(27);
     expect(imported.nodes.left_arm_0.defaultMatrix[3]).toBeCloseTo(-0.29296875);
     expect(imported.nodes.right_arm_0.defaultMatrix[3]).toBeCloseTo(0.29296875);
     expect(Object.values(imported.nodes).every((node) => node.space === "initiator")).toBe(true);
@@ -24,13 +25,28 @@ describe("importEmotecraftFile", () => {
     expect(Object.values(imported.nodes).map((node) => node.type === "item_display" && node.suggestedSkin)).toEqual([
       { part: "head", order: 0 },
       { part: "body", order: 0 }, { part: "body", order: 1 },
-      { part: "right_arm", order: 0 }, { part: "right_arm", order: 1 }, { part: "right_arm", order: 2 }, { part: "right_arm", order: 3 },
-      { part: "left_arm", order: 0 }, { part: "left_arm", order: 1 }, { part: "left_arm", order: 2 }, { part: "left_arm", order: 3 },
-      { part: "left_leg", order: 0 }, { part: "left_leg", order: 1 }, { part: "left_leg", order: 2 }, { part: "left_leg", order: 3 },
-      { part: "right_leg", order: 0 }, { part: "right_leg", order: 1 }, { part: "right_leg", order: 2 }, { part: "right_leg", order: 3 },
+      { part: "right_arm", order: 0 }, { part: "right_arm", order: 1 }, { part: "right_arm", order: 1 },
+      { part: "right_arm", order: 2 }, { part: "right_arm", order: 2 }, { part: "right_arm", order: 3 },
+      { part: "left_arm", order: 0 }, { part: "left_arm", order: 1 }, { part: "left_arm", order: 1 },
+      { part: "left_arm", order: 2 }, { part: "left_arm", order: 2 }, { part: "left_arm", order: 3 },
+      { part: "left_leg", order: 0 }, { part: "left_leg", order: 1 }, { part: "left_leg", order: 1 },
+      { part: "left_leg", order: 2 }, { part: "left_leg", order: 2 }, { part: "left_leg", order: 3 },
+      { part: "right_leg", order: 0 }, { part: "right_leg", order: 1 }, { part: "right_leg", order: 1 },
+      { part: "right_leg", order: 2 }, { part: "right_leg", order: 2 }, { part: "right_leg", order: 3 },
     ]);
+    expect(imported.nodes.right_arm_joint_upper.type === "item_display" && imported.nodes.right_arm_joint_upper.skinAssignmentGroup).toBe("right_arm_1");
+    expect(imported.nodes.right_arm_joint_lower.type === "item_display" && imported.nodes.right_arm_joint_lower.skinAssignmentGroup).toBe("right_arm_2");
+    expect(imported.nodes.right_arm_joint_upper.type === "item_display"
+      && Math.abs(imported.nodes.right_arm_joint_upper.playerHeadConversion!.matrix[6])).toBeGreaterThan(0.1);
     expect(imported.animations[0].tracks.left_arm_0.transforms).toHaveLength(3);
     expect(imported.animations[0].tracks.left_arm_2.transforms[2].matrix).not.toEqual(imported.animations[0].tracks.left_arm_0.transforms[2].matrix);
+    for (const arm of ["left_arm", "right_arm"] as const) {
+      const upper = imported.animations[0].tracks[`${arm}_1`].transforms[2].matrix;
+      const lower = imported.animations[0].tracks[`${arm}_2`].transforms[2].matrix;
+      const upperJoint = new Vector3(0, -4 / 16, 0).applyMatrix4(new Matrix4().set(...upper));
+      const lowerJoint = new Vector3(0, 2 / 16, 0).applyMatrix4(new Matrix4().set(...lower));
+      expect(lowerJoint.distanceTo(upperJoint)).toBeLessThan(1e-10);
+    }
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dance" });
     expect(Object.values(compiled.nodes).every((node) => node.parent === undefined)).toBe(true);

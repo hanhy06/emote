@@ -59,6 +59,26 @@ class SkinBindingCompilerTest {
         assertEquals(new PlayerSkinSegment(8, 12), find(bindings, "lower").region().skinSegment());
     }
 
+    @Test
+    void sharesJointSegmentsWithDuplicateFillerNodes() {
+        LinkedHashMap<String, EmoteAnimation.Node> nodes = new LinkedHashMap<>();
+        nodes.put("upper", itemNode(0.5D, EmoteAnimation.SkinPart.RIGHT_ARM, 0));
+        nodes.put("upper_joint", itemNode(0.25D, EmoteAnimation.SkinPart.RIGHT_ARM, 1));
+        nodes.put("upper_joint_fill", itemNode(0.2625D, EmoteAnimation.SkinPart.RIGHT_ARM, 1));
+        nodes.put("lower_joint_fill", itemNode(0.26875D, EmoteAnimation.SkinPart.RIGHT_ARM, 2));
+        nodes.put("lower_joint", itemNode(0.25D, EmoteAnimation.SkinPart.RIGHT_ARM, 2));
+        nodes.put("lower", itemNode(0.5D, EmoteAnimation.SkinPart.RIGHT_ARM, 3));
+
+        List<SkinBinding> bindings = new SkinBindingCompiler().compile(animation(nodes));
+
+        assertEquals(new PlayerSkinSegment(0, 4), find(bindings, "upper").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(4, 6), find(bindings, "upper_joint").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(4, 6), find(bindings, "upper_joint_fill").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(6, 8), find(bindings, "lower_joint_fill").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(6, 8), find(bindings, "lower_joint").region().skinSegment());
+        assertEquals(new PlayerSkinSegment(8, 12), find(bindings, "lower").region().skinSegment());
+    }
+
     private SkinBinding find(List<SkinBinding> bindings, String nodeId) {
         return bindings.stream().filter(binding -> binding.nodeId().equals(nodeId)).findFirst().orElseThrow();
     }

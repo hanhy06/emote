@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSegment;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class SkinBindingCompiler {
     public List<SkinBinding> compile(EmoteAnimation animation) {
@@ -38,7 +39,12 @@ public final class SkinBindingCompiler {
 
     private List<SkinBinding> createParts(ParticipantSkinPart participantSkinPart, List<RawPart> parts) {
         PlayerSkinPart skinPart = participantSkinPart.skinPart();
-        if (skinPart == PlayerSkinPart.HEAD || parts.size() == 1) {
+        List<OrderGroup> orderGroups = parts.stream()
+            .collect(Collectors.groupingBy(RawPart::order, LinkedHashMap::new, Collectors.toList()))
+            .values().stream()
+            .map(OrderGroup::new)
+            .toList();
+        if (skinPart == PlayerSkinPart.HEAD || orderGroups.size() == 1) {
             return parts.stream()
                 .map(part -> new SkinBinding(
                     part.nodeId(),
@@ -47,12 +53,12 @@ public final class SkinBindingCompiler {
                 ))
                 .toList();
         }
-        if (parts.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
+        if (orderGroups.size() > PlayerSkinSegment.SIDE_FACE_HEIGHT) {
             EmoteMod.LOGGER.warn(
                 "Too many vertical JSON skin segments for {} {}: {}",
                 participantSkinPart.participant(),
                 skinPart.id(),
-                parts.size()
+                orderGroups.size()
             );
             return parts.stream()
                 .map(part -> new SkinBinding(
@@ -63,26 +69,25 @@ public final class SkinBindingCompiler {
                 .toList();
         }
 
-        double totalScale = parts.stream().mapToDouble(RawPart::localYScale).sum();
+        double totalScale = orderGroups.stream().mapToDouble(OrderGroup::localYScale).sum();
         if (totalScale <= 0.0D) {
-            totalScale = parts.size();
+            totalScale = orderGroups.size();
         }
         List<SkinBinding> result = new ArrayList<>();
         int segmentStart = 0;
         double accumulatedScale = 0.0D;
-        for (int index = 0; index < parts.size(); index++) {
-            RawPart part = parts.get(index);
-            accumulatedScale += part.localYScale() > 0.0D ? part.localYScale() : 1.0D;
-            int remaining = parts.size() - index - 1;
+        for (int index = 0; index < orderGroups.size(); index++) {
+            OrderGroup group = orderGroups.get(index);
+            accumulatedScale += group.localYScale() > 0.0D ? group.localYScale() : 1.0D;
+            int remaining = orderGroups.size() - index - 1;
             int minimumEnd = segmentStart + 1;
             int maximumEnd = Math.max(minimumEnd, PlayerSkinSegment.SIDE_FACE_HEIGHT - remaining);
             int suggestedEnd = (int) Math.round(accumulatedScale * PlayerSkinSegment.SIDE_FACE_HEIGHT / totalScale);
             int segmentEnd = Math.clamp(suggestedEnd, minimumEnd, maximumEnd);
-            result.add(new SkinBinding(
-                part.nodeId(),
-                participantSkinPart.participant(),
-                new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd))
-            ));
+            PlayerSkinRegion region = new PlayerSkinRegion(skinPart, new PlayerSkinSegment(segmentStart, segmentEnd));
+            for (RawPart part : group.parts()) {
+                result.add(new SkinBinding(part.nodeId(), participantSkinPart.participant(), region));
+            }
             segmentStart = segmentEnd;
         }
         return result;
@@ -100,6 +105,16 @@ public final class SkinBindingCompiler {
     }
 
     private record RawPart(String nodeId, int order, double localYScale) {
+    }
+
+    private record OrderGroup(List<RawPart> parts, double localYScale) {
+        private OrderGroup(List<RawPart> parts) {
+            this(parts, parts.stream()
+                .mapToDouble(RawPart::localYScale)
+                .filter(scale -> scale > 0.0D)
+                .min()
+                .orElse(0.0D));
+        }
     }
 
     private record ParticipantSkinPart(ParticipantRole participant, PlayerSkinPart skinPart) {

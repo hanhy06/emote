@@ -190,10 +190,17 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
     const skinNodes = Object.values(imported.nodes).filter((node) => node.type === "item_display" && node.suggestedSkin?.part === "right_arm");
 
-    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 2, 3]);
+    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 1, 2, 2, 3]);
     expect(Object.keys(imported.nodes)).toEqual([
-      "right_arm", "right_arm_right_arm_skin_1", "right_forearm", "right_forearm_right_arm_skin_3",
+      "right_arm", "right_arm_right_arm_skin_1", "right_arm_right_arm_skin_joint_upper_1",
+      "right_forearm", "right_forearm_right_arm_skin_2", "right_forearm_right_arm_skin_3",
     ]);
+    expect(imported.nodes.right_arm_right_arm_skin_1.type === "item_display"
+      && imported.nodes.right_arm_right_arm_skin_1.skinAssignmentGroup).toBe("right_arm_1");
+    expect(imported.nodes.right_arm_right_arm_skin_joint_upper_1.type === "item_display"
+      && imported.nodes.right_arm_right_arm_skin_joint_upper_1.skinAssignmentGroup).toBe("right_arm_1");
+    expect(imported.nodes.right_arm_right_arm_skin_joint_upper_1.type === "item_display"
+      && Math.abs(imported.nodes.right_arm_right_arm_skin_joint_upper_1.playerHeadConversion!.matrix[6])).toBeGreaterThan(0.1);
     expect(imported.animations[0].tracks.right_forearm.transforms[2].matrix)
       .not.toEqual(imported.animations[0].tracks.right_arm.transforms[2].matrix);
 

@@ -410,15 +410,21 @@ describe("animatedJavaJsonAdapter", () => {
 
     const project = await animatedJavaJsonAdapter.import(input);
 
-    expect(Object.keys(project.nodes)).toEqual(["right_arm", "right_arm_2", "right_arm_3", "right_arm_4", "right_forearm"]);
-    expect(["right_arm", "right_arm_2", "right_arm_3", "right_arm_4"].map((id) => {
+    expect(Object.keys(project.nodes)).toEqual([
+      "right_arm", "right_arm_2", "right_arm_3", "right_arm_4", "right_arm_5", "right_arm_6", "right_forearm",
+    ]);
+    expect(["right_arm", "right_arm_2", "right_arm_3", "right_arm_4", "right_arm_5", "right_arm_6"].map((id) => {
       const node = project.nodes[id];
       return node.type === "item_display" ? node.suggestedSkin?.order : undefined;
-    })).toEqual([0, 1, 2, 3]);
-    expect(project.animations[0].tracks.right_arm_3.transforms[1].matrix)
+    })).toEqual([0, 1, 1, 2, 2, 3]);
+    expect(project.nodes.right_arm_2.type === "item_display" && project.nodes.right_arm_2.skinAssignmentGroup).toBe("right_arm_1");
+    expect(project.nodes.right_arm_3.type === "item_display" && project.nodes.right_arm_3.skinAssignmentGroup).toBe("right_arm_1");
+    expect(project.nodes.right_arm_3.type === "item_display"
+      && Math.abs(project.nodes.right_arm_3.playerHeadConversion!.matrix[6])).toBeGreaterThan(0.1);
+    expect(project.animations[0].tracks.right_arm_4.transforms[1].matrix)
       .not.toEqual(project.animations[0].tracks.right_arm.transforms[1].matrix);
-    expect(project.animations[0].tracks.right_arm_4.transforms)
-      .toEqual(project.animations[0].tracks.right_arm_3.transforms);
+    expect(project.animations[0].tracks.right_arm_6.transforms)
+      .toEqual(project.animations[0].tracks.right_arm_4.transforms);
   });
 
   it("bakes a numeric blend weight into node transforms", async () => {

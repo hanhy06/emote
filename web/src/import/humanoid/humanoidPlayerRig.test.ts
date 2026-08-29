@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { humanoidSkinSlices } from "./humanoidPlayerRig";
+import { Matrix4, Quaternion, Vector3 } from "three";
+import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinSlices } from "./humanoidPlayerRig";
 
 describe("humanoidSkinSlices", () => {
   it("keeps the head whole", () => {
@@ -30,5 +31,37 @@ describe("humanoidSkinSlices", () => {
       [8, 12, "lower"],
     ]);
   });
+
+  it("adds two joint fillers that reuse the middle limb skin orders", () => {
+    expect(humanoidRenderPieces("right_arm", true).map((piece) => [piece.kind, piece.order, piece.motion, piece.jointSide])).toEqual([
+      ["slice", 0, "upper", undefined],
+      ["slice", 1, "upper", undefined],
+      ["joint_fill", 1, "upper", "upper"],
+      ["joint_fill", 2, "lower", "lower"],
+      ["slice", 2, "lower", undefined],
+      ["slice", 3, "lower", undefined],
+    ]);
+  });
+
+  it("matches the BDEngine default elbow filler pose", () => {
+    const base = new Matrix4().compose(new Vector3(), new Quaternion(), new Vector3(0.5, 0.25, 0.5));
+    const upperPosition = new Vector3();
+    const upperRotation = new Quaternion();
+    const upperScale = new Vector3();
+    humanoidJointFillMatrix(base, "right_arm", "upper").decompose(upperPosition, upperRotation, upperScale);
+    const lowerPosition = new Vector3();
+    const lowerRotation = new Quaternion();
+    const lowerScale = new Vector3();
+    humanoidJointFillMatrix(base, "right_arm", "lower").decompose(lowerPosition, lowerRotation, lowerScale);
+
+    expectVector(upperPosition, [0, -0.04875, 0.0475]);
+    expectVector(upperScale, [0.498, 0.2625, 0.445]);
+    expectVector(lowerPosition, [-0.003125, 0.015, -0.04625]);
+    expectVector(lowerScale, [0.498, 0.26875, 0.4375]);
+    expect(upperRotation.angleTo(lowerRotation)).toBeCloseTo(Math.PI / 2);
+  });
 });
 
+function expectVector(actual: Vector3, expected: readonly [number, number, number]): void {
+  expected.forEach((value, axis) => expect(actual.getComponent(axis)).toBeCloseTo(value));
+}

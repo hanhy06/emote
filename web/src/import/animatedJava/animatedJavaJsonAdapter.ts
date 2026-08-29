@@ -14,7 +14,7 @@ import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransfor
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels, type AjTextureAnimation } from "./animatedJavaSchema";
 import { blockArgumentToSnbt, itemArgumentToSnbt } from "./animatedJavaDisplayArguments";
 import { createAjBlueprintRuntime, type AjPoseTarget } from "./animatedJavaAnimationOutput";
-import { humanoidSkinPartHeight, humanoidSkinSlices, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv } from "../humanoid/humanoidPlayerRig";
+import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv, type HumanoidJointSide } from "../humanoid/humanoidPlayerRig";
 
 const encoder = new TextEncoder();
 const MINECRAFT_TICK_MILLISECONDS = 50;
@@ -50,6 +50,7 @@ interface AjSkinCandidate {
   part: ImportedSkinPart["part"];
   centerY: number;
   sourceOrder: number;
+  explicitOrder?: number;
 }
 
 interface IndexedAjKeyframes {
@@ -283,7 +284,7 @@ function importNodes(
         itemModels.set(configuration.key, variantModelPath);
       }
       itemModelsByNodeAndPaletteState.set(nodeId, { models: itemModels, enchanted });
-      const conversionMatrix = ajElementPlayerHeadMatrix(element, `${id}.elements[${elementIndex}]`);
+      const conversionMatrix = ajElementPlayerHeadMatrix(element, `${id}.elements[${elementIndex}]`, part, prepared.jointSide);
       nodes[nodeId] = {
         id: nodeId,
         type: "item_display",
@@ -302,6 +303,7 @@ function importNodes(
           part,
           centerY: (element.from[1] + element.to[1]) / 2,
           sourceOrder: sourceOrder++,
+          explicitOrder: prepared.skinOrder,
         });
       }
     }
@@ -380,6 +382,8 @@ function inferAjSkinPart(nodeId: string): ImportedSkinPart["part"] | undefined {
 interface PreparedAjElement {
   element: AjElement;
   motion: "upper" | "lower";
+  skinOrder?: number;
+  jointSide?: HumanoidJointSide;
 }
 
 function splitTallAjSkinElement(
@@ -390,14 +394,16 @@ function splitTallAjSkinElement(
   if (!part || !isStandardAjSkinElement(element, part)) return [{ element, motion: "upper" }];
   const height = element.to[1] - element.from[1];
   const skinHeight = humanoidSkinPartHeight(part);
-  return humanoidSkinSlices(part, jointed).map((slice) => ({
+  return humanoidRenderPieces(part, jointed).map((piece) => ({
     element: {
       ...element,
-      from: [element.from[0], element.to[1] - height * slice.endY / skinHeight, element.from[2]],
-      to: [element.to[0], element.to[1] - height * slice.startY / skinHeight, element.to[2]],
-      faces: sliceAjVerticalFaceUvs(element.faces, slice.startY / skinHeight, slice.endY / skinHeight),
+      from: [element.from[0], element.to[1] - height * piece.endY / skinHeight, element.from[2]],
+      to: [element.to[0], element.to[1] - height * piece.startY / skinHeight, element.to[2]],
+      faces: sliceAjVerticalFaceUvs(element.faces, piece.startY / skinHeight, piece.endY / skinHeight),
     },
-    motion: slice.motion,
+    motion: piece.motion,
+    skinOrder: piece.order,
+    ...(piece.jointSide ? { jointSide: piece.jointSide } : {}),
   }));
 }
 
@@ -467,12 +473,21 @@ function assignSuggestedAjSkinParts(nodes: Record<string, ImportedNode>, candida
       .sort((first, second) => second.centerY - first.centerY || first.sourceOrder - second.sourceOrder)
       .forEach((candidate, order) => {
         const node = nodes[candidate.nodeId];
-        if (node?.type === "item_display") node.suggestedSkin = { part, order };
+        const assignedOrder = candidate.explicitOrder ?? order;
+        if (node?.type === "item_display") {
+          node.suggestedSkin = { part, order: assignedOrder };
+          node.skinAssignmentGroup = `${part}_${assignedOrder}`;
+        }
       });
   }
 }
 
-function ajElementPlayerHeadMatrix(element: AjElement, path: string): Matrix16 | undefined {
+function ajElementPlayerHeadMatrix(
+  element: AjElement,
+  path: string,
+  part?: ImportedSkinPart["part"],
+  jointSide?: HumanoidJointSide,
+): Matrix16 | undefined {
   if (!Array.isArray(element.rotation) && !("axis" in element.rotation) && element.rotation.rescale) return undefined;
   const from = element.from.map((value) => (value - 8) / 16);
   const to = element.to.map((value) => (value - 8) / 16);
@@ -484,7 +499,9 @@ function ajElementPlayerHeadMatrix(element: AjElement, path: string): Matrix16 |
     .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
     .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
   const rotation = ajElementRotationMatrix(element);
-  return matrix4ToRowMajor(rotation ? rotation.multiply(fit) : fit, `Animated Java ${path} player head conversion`);
+  const base = rotation ? rotation.multiply(fit) : fit;
+  const conversion = jointSide && part ? humanoidJointFillMatrix(base, part, jointSide) : base;
+  return matrix4ToRowMajor(conversion, `Animated Java ${path} player head conversion`);
 }
 
 function ajElementRotationMatrix(element: AjElement): Matrix4 | undefined {

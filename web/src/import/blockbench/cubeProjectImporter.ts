@@ -98,7 +98,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
           ])],
         ]),
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
-        ...(skin ? { suggestedSkin: skin } : {}),
+        ...(skin ? { suggestedSkin: skin, skinAssignmentGroup: `${skin.part}_${skin.order}` } : {}),
       };
     }
     for (const [locatorIndex, locator] of bone.locators.entries()) {

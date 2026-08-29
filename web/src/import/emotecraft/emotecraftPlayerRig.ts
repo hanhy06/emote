@@ -1,7 +1,7 @@
 import { Matrix4, Vector3 } from "three";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
+import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, type HumanoidJointSide } from "../humanoid/humanoidPlayerRig";
 
 export const EMOTECRAFT_RENDER_SCALE = 0.9375;
 
@@ -17,6 +17,7 @@ export interface EmotecraftSlice {
   source: EmotecraftPlayerPart;
   order: number;
   lower: boolean;
+  jointSide?: HumanoidJointSide;
   bounds: EmotecraftPlayerPart["bounds"];
 }
 
@@ -41,15 +42,18 @@ export function createEmotecraftSlices(bentBones: ReadonlySet<string>): Emotecra
     const { from, to } = source.bounds;
     const height = to[1] - from[1];
     const skinHeight = humanoidSkinPartHeight(source.part);
-    for (const slice of humanoidSkinSlices(source.part, bentBones.has(source.bone))) {
-      const sliceFromY = to[1] - height * slice.endY / skinHeight;
-      const sliceToY = to[1] - height * slice.startY / skinHeight;
-      const id = source.part === "head" ? source.part : `${source.part}_${slice.order}`;
+    for (const piece of humanoidRenderPieces(source.part, bentBones.has(source.bone))) {
+      const sliceFromY = to[1] - height * piece.endY / skinHeight;
+      const sliceToY = to[1] - height * piece.startY / skinHeight;
+      const id = source.part === "head"
+        ? source.part
+        : piece.kind === "joint_fill" ? `${source.part}_joint_${piece.jointSide}` : `${source.part}_${piece.order}`;
       slices.push({
         id,
         source,
-        order: slice.order,
-        lower: slice.motion === "lower",
+        order: piece.order,
+        lower: piece.motion === "lower",
+        ...(piece.jointSide ? { jointSide: piece.jointSide } : {}),
         bounds: { from: [from[0], sliceFromY, from[2]], to: [to[0], sliceToY, to[2]] },
       });
     }
@@ -90,5 +94,6 @@ function slicePlayerHeadConversion(slice: EmotecraftSlice) {
   const fit = new Matrix4().makeTranslation(center[0], center[1], center[2])
     .scale(new Vector3(size[0] * 2, size[1] * 2, size[2] * 2))
     .multiply(new Matrix4().makeTranslation(0, 0.25, 0));
-  return matrix4ToRowMajor(fit, `Emotecraft ${slice.id} player head conversion`);
+  const conversion = slice.jointSide ? humanoidJointFillMatrix(fit, slice.source.part, slice.jointSide) : fit;
+  return matrix4ToRowMajor(conversion, `Emotecraft ${slice.id} player head conversion`);
 }

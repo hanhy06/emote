@@ -1,3 +1,4 @@
+import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 
 export type HumanoidPart = ImportedSkinPart["part"];
@@ -9,6 +10,19 @@ export interface HumanoidSliceSpec {
   endY: number;
   motion: HumanoidSliceMotion;
 }
+
+export type HumanoidJointSide = "upper" | "lower";
+
+export interface HumanoidRenderPieceSpec extends HumanoidSliceSpec {
+  kind: "slice" | "joint_fill";
+  jointSide?: HumanoidJointSide;
+}
+
+const JOINT_FILL_WIDTH_FACTOR = 0.996;
+const UPPER_JOINT_FILL_OFFSET = { y: -0.04875, z: 0.0475 };
+const LOWER_JOINT_FILL_OFFSET = { x: 1 / 320, y: 0.015, z: 0.04625 };
+const UPPER_JOINT_FILL_SCALE = new Vector3(JOINT_FILL_WIDTH_FACTOR, 1.05, 0.89);
+const LOWER_JOINT_FILL_SCALE = new Vector3(JOINT_FILL_WIDTH_FACTOR, 1.075, 0.875);
 
 const HEAD: readonly HumanoidSliceSpec[] = [
   { order: 0, startY: 0, endY: 8, motion: "upper" },
@@ -35,6 +49,44 @@ export function humanoidSkinSlices(part: HumanoidPart, jointed: boolean): readon
   if (part === "head") return HEAD;
   if (!jointed) return RIGID;
   return part === "body" ? BENT_BODY : BENT_LIMB;
+}
+
+export function humanoidRenderPieces(part: HumanoidPart, jointed: boolean): readonly HumanoidRenderPieceSpec[] {
+  const slices = humanoidSkinSlices(part, jointed).map((slice) => ({ ...slice, kind: "slice" as const }));
+  if (!jointed || part === "head" || part === "body") return slices;
+  return [
+    slices[0],
+    slices[1],
+    { ...slices[1], kind: "joint_fill", jointSide: "upper" },
+    { ...slices[2], kind: "joint_fill", jointSide: "lower" },
+    slices[2],
+    slices[3],
+  ];
+}
+
+export function humanoidJointFillMatrix(base: Matrix4, part: HumanoidPart, side: HumanoidJointSide): Matrix4 {
+  if (part === "head" || part === "body") throw new Error(`${part} does not support limb joint fillers.`);
+  const position = new Vector3();
+  const rotation = new Quaternion();
+  const scale = new Vector3();
+  base.decompose(position, rotation, scale);
+
+  const bendDirection = part.endsWith("arm") ? 1 : -1;
+  const handedDirection = part.startsWith("right") ? -1 : 1;
+  const offset = side === "upper"
+    ? new Vector3(0, UPPER_JOINT_FILL_OFFSET.y, bendDirection * UPPER_JOINT_FILL_OFFSET.z)
+    : new Vector3(
+      handedDirection * LOWER_JOINT_FILL_OFFSET.x,
+      LOWER_JOINT_FILL_OFFSET.y,
+      -bendDirection * LOWER_JOINT_FILL_OFFSET.z,
+    );
+  const fillRotation = side === "upper" ? bendDirection * Math.PI / 4 : -bendDirection * Math.PI / 4;
+  const scaleFactor = side === "upper" ? UPPER_JOINT_FILL_SCALE : LOWER_JOINT_FILL_SCALE;
+
+  position.add(offset.applyQuaternion(rotation));
+  rotation.multiply(new Quaternion().setFromEuler(new Euler(fillRotation, 0, 0, "ZYX")));
+  scale.multiply(scaleFactor);
+  return new Matrix4().compose(position, rotation, scale);
 }
 
 export function humanoidSkinPartHeight(part: HumanoidPart): number {

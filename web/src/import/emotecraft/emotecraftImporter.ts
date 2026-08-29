@@ -244,9 +244,8 @@ function pivotRotationMatrix(pivot: readonly [number, number, number], bend: num
 
 function lowerBendMatrix(bend: number): Matrix4 {
   const radius = 2 / 16;
-  const angle = Math.abs(bend);
   return new Matrix4().compose(
-    new Vector3(0, -6 / 16 + radius * (1 - Math.cos(angle)), -radius * Math.sin(angle)),
+    new Vector3(0, -6 / 16 + radius * (1 - Math.cos(bend)), radius * Math.sin(bend)),
     new Quaternion().setFromEuler(new Euler(-bend, 0, 0, "ZYX")),
     new Vector3(1, 1, 1),
   );
