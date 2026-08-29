@@ -1,7 +1,6 @@
 import { Matrix4, Vector3 } from "three";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { bedrockBoundsToCanonical } from "../coordinateSpace";
 
 export const EMOTECRAFT_RENDER_SCALE = 0.9375;
 
@@ -86,7 +85,7 @@ function slicePlayerHeadConversion(slice: EmotecraftSlice) {
     : slice.source.pivot;
   const sourceFrom = slice.bounds.from.map((value, axis) => value - geometryPivot[axis]);
   const sourceTo = slice.bounds.to.map((value, axis) => value - geometryPivot[axis]);
-  const canonical = bedrockBoundsToCanonical(sourceFrom, sourceTo);
+  const canonical = { from: sourceFrom, to: sourceTo };
   const from = canonical.from.map((value) => value / 16);
   const to = canonical.to.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);

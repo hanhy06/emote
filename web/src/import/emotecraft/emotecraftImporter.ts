@@ -210,9 +210,9 @@ function localBoneMatrix(name: string, parentName: string | undefined, pose: Bon
   const value = pose ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], bend: 0 };
   return new Matrix4().compose(
     new Vector3(
-      (-(pivot[0] - parentPivot[0]) + value.position[0]) / 16,
+      ((pivot[0] - parentPivot[0]) - value.position[0]) / 16,
       ((pivot[1] - parentPivot[1]) + value.position[1]) / 16,
-      (-(pivot[2] - parentPivot[2]) - value.position[2]) / 16,
+      ((pivot[2] - parentPivot[2]) + value.position[2]) / 16,
     ),
     new Quaternion().setFromEuler(new Euler(-value.rotation[0], -value.rotation[1], value.rotation[2], "ZYX")),
     new Vector3(value.scale[0], value.scale[1], value.scale[2]),
@@ -220,7 +220,7 @@ function localBoneMatrix(name: string, parentName: string | undefined, pose: Bon
 }
 
 function pivotRotationMatrix(pivot: readonly [number, number, number], bend: number): Matrix4 {
-  const p = new Vector3(-pivot[0] / 16, pivot[1] / 16, -pivot[2] / 16);
+  const p = new Vector3(pivot[0] / 16, pivot[1] / 16, pivot[2] / 16);
   return new Matrix4().makeTranslation(p.x, p.y, p.z)
     .multiply(new Matrix4().makeRotationX(-bend))
     .multiply(new Matrix4().makeTranslation(-p.x, -p.y, -p.z));
@@ -230,7 +230,7 @@ function lowerBendMatrix(bend: number): Matrix4 {
   const radius = 2 / 16;
   const angle = Math.abs(bend);
   return new Matrix4().compose(
-    new Vector3(0, -6 / 16 + radius * (1 - Math.cos(angle)), radius * Math.sin(angle)),
+    new Vector3(0, -6 / 16 + radius * (1 - Math.cos(angle)), -radius * Math.sin(angle)),
     new Quaternion().setFromEuler(new Euler(-bend, 0, 0, "ZYX")),
     new Vector3(1, 1, 1),
   );

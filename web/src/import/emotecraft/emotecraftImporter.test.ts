@@ -17,6 +17,8 @@ describe("importEmotecraftFile", () => {
     }), "dance.emotecraft");
 
     expect(Object.keys(imported.nodes)).toHaveLength(19);
+    expect(imported.nodes.left_arm_0.defaultMatrix[3]).toBeCloseTo(-0.29296875);
+    expect(imported.nodes.right_arm_0.defaultMatrix[3]).toBeCloseTo(0.29296875);
     expect(Object.values(imported.nodes).every((node) => node.space === "initiator")).toBe(true);
     expect(Object.values(imported.nodes).filter((node) => node.type === "anchor")).toEqual([]);
     expect(Object.values(imported.nodes).map((node) => node.type === "item_display" && node.suggestedSkin)).toEqual([
@@ -55,6 +57,7 @@ describe("importEmotecraftFile", () => {
     const numeric = importEmotecraftFile(file({ head: bone(undefined, undefined, axis(frame(0, Math.PI / 2))) }), "numeric.emotecraft");
     const expression = importEmotecraftFile(file({ head: bone(undefined, undefined, axis(frame(0, "90"))) }), "expression.emotecraft");
     expect(numeric.animations[0].tracks.head.transforms[2].matrix).toEqual(expression.animations[0].tracks.head.transforms[2].matrix);
+    expect(numeric.animations[0].tracks.head.transforms[2].matrix[6]).toBeCloseTo(0.9375);
   });
 });
 
