@@ -1,7 +1,7 @@
 import { Matrix4, Vector3 } from "three";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
+import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
 
 export const EMOTECRAFT_RENDER_SCALE = 0.9375;
 
@@ -40,9 +40,10 @@ export function createEmotecraftSlices(bentBones: ReadonlySet<string>): Emotecra
   for (const source of EMOTECRAFT_PLAYER_PARTS) {
     const { from, to } = source.bounds;
     const height = to[1] - from[1];
+    const skinHeight = humanoidSkinPartHeight(source.part);
     for (const slice of humanoidSkinSlices(source.part, bentBones.has(source.bone))) {
-      const sliceFromY = to[1] - height * slice.endY / 12;
-      const sliceToY = to[1] - height * slice.startY / 12;
+      const sliceFromY = to[1] - height * slice.endY / skinHeight;
+      const sliceToY = to[1] - height * slice.startY / skinHeight;
       const id = source.part === "head" ? source.part : `${source.part}_${slice.order}`;
       slices.push({
         id,

@@ -6,6 +6,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
 import type { BoneEntry } from "./cubeProjectImporter";
+import { humanoidSkinPartHeight, humanoidSkinSlices, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -38,10 +39,7 @@ export function prepareCubeModels(
       }
     }
   }
-  const playableCubesByBone = new Map(bones.map((bone) => [
-    bone.uuid,
-    splitTallSkinCubes(bone, removeDuplicateSkinLayers(bone.cubes)),
-  ]));
+  const playableCubesByBone = splitPlayerSkinCubesByPoseBone(bones);
   return { playableCubesByBone, skinAssignments: inferSkinAssignments(bones, playableCubesByBone) };
 }
 
@@ -110,64 +108,77 @@ function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
   }));
 }
 
-function splitTallSkinCubes(bone: BoneEntry, cubes: BbCube[]): BbCube[] {
-  const part = inferSkinPart(bone);
-  return cubes.flatMap((cube) => {
-    if (!part || part === "head" || !isStandardPlayerSkinCube(cube, part)) return [cube];
-    const height = cube.to[1] - cube.from[1];
-    const upperHeight = height / 3;
-    const splitY = cube.to[1] - upperHeight;
-    const [upperFaces, lowerFaces] = splitVerticalFaceUvs(cube.faces, upperHeight / height);
-    return [
-      {
-        ...cube,
-        uuid: `${cube.uuid}_skin_upper`,
-        name: `${cube.name ?? "Cube"} Upper`,
-        from: [cube.from[0], splitY, cube.from[2]],
-        faces: upperFaces,
-      },
-      {
-        ...cube,
-        uuid: `${cube.uuid}_skin_lower`,
-        name: `${cube.name ?? "Cube"} Lower`,
-        to: [cube.to[0], splitY, cube.to[2]],
-        faces: lowerFaces,
-      },
-    ];
-  });
+function splitPlayerSkinCubesByPoseBone(bones: BoneEntry[]): Map<string, BbCube[]> {
+  const result = new Map(bones.map((bone) => [bone.uuid, [] as BbCube[]]));
+  for (const bone of bones) {
+    const part = inferSkinPart(bone);
+    for (const cube of removeDuplicateSkinLayers(bone.cubes)) {
+      if (!part || !isStandardPlayerSkinCube(cube, part)) {
+        result.get(bone.uuid)!.push(cube);
+        continue;
+      }
+      const lowerBone = findLowerJointBone(bone, cube, part, bones);
+      const skinHeight = humanoidSkinPartHeight(part);
+      const slices = humanoidSkinSlices(part, lowerBone !== undefined);
+      for (const slice of slices) {
+        const height = cube.to[1] - cube.from[1];
+        const suffix = slices.length === 2 ? (slice.order === 0 ? "upper" : "lower") : `${slice.order}`;
+        const sliced: BbCube = {
+          ...cube,
+          uuid: `${cube.uuid}_skin_${suffix}`,
+          name: `${cube.name ?? "Cube"} ${suffix === "upper" ? "Upper" : suffix === "lower" ? "Lower" : `Skin ${suffix}`}`,
+          from: [cube.from[0], cube.to[1] - height * slice.endY / skinHeight, cube.from[2]],
+          to: [cube.to[0], cube.to[1] - height * slice.startY / skinHeight, cube.to[2]],
+          faces: sliceVerticalFaceUvs(cube.faces, slice.startY / skinHeight, slice.endY / skinHeight),
+        };
+        result.get(slice.motion === "lower" && lowerBone ? lowerBone.uuid : bone.uuid)!.push(sliced);
+      }
+    }
+  }
+  return result;
 }
 
-function splitVerticalFaceUvs(faces: BbCube["faces"], upperRatio: number): [BbCube["faces"], BbCube["faces"]] {
-  const upperFaces: BbCube["faces"] = {};
-  const lowerFaces: BbCube["faces"] = {};
+function sliceVerticalFaceUvs(faces: BbCube["faces"], startRatio: number, endRatio: number): BbCube["faces"] {
+  const slicedFaces: BbCube["faces"] = {};
   for (const [direction, face] of Object.entries(faces)) {
     if (!["north", "south", "east", "west"].includes(direction) || face.uv?.length !== 4) {
-      upperFaces[direction] = face;
-      lowerFaces[direction] = face;
+      slicedFaces[direction] = face;
       continue;
     }
 
     const [minU, minV, maxU, maxV] = face.uv;
     const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
     if (rotation === 90) {
-      const splitU = minU + (maxU - minU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [minU + (maxU - minU) * startRatio, minV, minU + (maxU - minU) * endRatio, maxV] };
     } else if (rotation === 180) {
-      const splitV = maxV + (minV - maxV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+      slicedFaces[direction] = { ...face, uv: [minU, maxV - (maxV - minV) * endRatio, maxU, maxV - (maxV - minV) * startRatio] };
     } else if (rotation === 270) {
-      const splitU = maxU + (minU - maxU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [maxU - (maxU - minU) * endRatio, minV, maxU - (maxU - minU) * startRatio, maxV] };
     } else {
-      const splitV = minV + (maxV - minV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
-      lowerFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [minU, minV + (maxV - minV) * startRatio, maxU, minV + (maxV - minV) * endRatio] };
     }
   }
-  return [upperFaces, lowerFaces];
+  return slicedFaces;
+}
+
+function findLowerJointBone(bone: BoneEntry, cube: BbCube, part: HumanoidPart, bones: BoneEntry[]): BoneEntry | undefined {
+  if (part === "head") return undefined;
+  const names = part === "body"
+    ? ["lowerbody", "abdomen"]
+    : part.endsWith("arm") ? ["forearm", "lowerarm", "elbow"] : ["lowerleg", "shin", "knee"];
+  const expectedY = (cube.from[1] + cube.to[1]) / 2;
+  const candidates = bones.filter((candidate) => candidate !== bone
+    && isDescendantOf(candidate, bone)
+    && names.some((name) => normalizeBlockbenchName(candidate.group.name)?.includes(name))
+    && Math.abs(candidate.group.origin[1] - expectedY) <= 2);
+  return candidates.length === 1 ? candidates[0] : undefined;
+}
+
+function isDescendantOf(candidate: BoneEntry, ancestor: BoneEntry): boolean {
+  for (let current = candidate.parent; current; current = current.parent) {
+    if (current === ancestor) return true;
+  }
+  return false;
 }
 
 function sameCubeBounds(first: BbCube, second: BbCube): boolean {
@@ -184,7 +195,7 @@ function inferSkinAssignments(
   for (const bone of bones) {
     const part = inferSkinPart(bone);
     for (const cube of playableCubesByBone.get(bone.uuid) ?? []) {
-      const isSplitSkinCube = cube.uuid.endsWith("_skin_upper") || cube.uuid.endsWith("_skin_lower");
+      const isSplitSkinCube = /_skin_(?:upper|lower|\d+)$/.test(cube.uuid);
       if (!part || (!isSplitSkinCube && !isStandardPlayerSkinCube(cube, part))) continue;
       candidates.push({ cube, part, centerY: (cube.from[1] + cube.to[1]) / 2, sourceOrder: sourceOrder++ });
     }

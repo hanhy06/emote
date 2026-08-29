@@ -2,7 +2,7 @@ import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { bedrockBoundsToCanonical } from "../coordinateSpace";
-import { humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
+import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 
@@ -44,12 +44,13 @@ export interface BedrockPlayerSlice {
 export const BEDROCK_PLAYER_SLICES: readonly BedrockPlayerSlice[] = BEDROCK_PLAYER_BONES.flatMap((bone) => {
   if (!bone.cube) return [];
   const height = bone.cube.to[1] - bone.cube.from[1];
+  const skinHeight = humanoidSkinPartHeight(bone.cube.skin);
   return humanoidSkinSlices(bone.cube.skin, false).map((slice) => ({
     id: bone.cube!.skin === "head" ? bone.id : `${bone.id}_${slice.order}`,
     bone: bone as BedrockPlayerSlice["bone"],
     order: slice.order,
-    from: [bone.cube!.from[0], bone.cube!.to[1] - height * slice.endY / 12, bone.cube!.from[2]] as const,
-    to: [bone.cube!.to[0], bone.cube!.to[1] - height * slice.startY / 12, bone.cube!.to[2]] as const,
+    from: [bone.cube!.from[0], bone.cube!.to[1] - height * slice.endY / skinHeight, bone.cube!.from[2]] as const,
+    to: [bone.cube!.to[0], bone.cube!.to[1] - height * slice.startY / skinHeight, bone.cube!.to[2]] as const,
   }));
 });
 

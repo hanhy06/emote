@@ -162,6 +162,45 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(lowerFaces.west.uv).toEqual([0, 0, 8, 4]);
   });
 
+  it("assigns lower limb skin slices to a matching descendant joint", async () => {
+    const value = project();
+    value.groups[0].name = "Right Arm";
+    value.outliner[0].name = "Right Arm";
+    value.elements[0].name = "Right Arm";
+    value.elements[0].from = [4, 12, -2];
+    value.elements[0].to = [8, 24, 2];
+    value.elements[0].faces.north = { uv: [0, 0, 4, 12], texture: 0 };
+    value.groups[1].name = "Right Forearm";
+    value.groups[1].origin = [5, 18, 0];
+    const child = value.outliner[0].children[1];
+    if (typeof child === "string") throw new Error("Expected child group.");
+    child.name = "Right Forearm";
+    child.origin = [5, 18, 0];
+    value.animations[0].animators = {
+      ...value.animations[0].animators,
+      child: {
+        name: "Right Forearm",
+        keyframes: [
+          { channel: "rotation", time: 0, interpolation: "linear", data_points: [{ x: 0, y: 0, z: 0 }] },
+          { channel: "rotation", time: 0.1, interpolation: "linear", data_points: [{ x: 45, y: 0, z: 0 }] },
+        ],
+      },
+    } as unknown as typeof value.animations[0]["animators"];
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const skinNodes = Object.values(imported.nodes).filter((node) => node.type === "item_display" && node.suggestedSkin?.part === "right_arm");
+
+    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 2, 3]);
+    expect(Object.keys(imported.nodes)).toEqual([
+      "right_arm", "right_arm_right_arm_skin_1", "right_forearm", "right_forearm_right_arm_skin_3",
+    ]);
+    expect(imported.animations[0].tracks.right_forearm.transforms[2].matrix)
+      .not.toEqual(imported.animations[0].tracks.right_arm.transforms[2].matrix);
+
+    expect(imported.animations[0].tracks.right_forearm_right_arm_skin_3.transforms[2].matrix)
+      .not.toEqual(imported.animations[0].tracks.right_arm_right_arm_skin_1.transforms[2].matrix);
+  });
+
   it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {
     const value = project();
     const rootAnimator = value.animations[0].animators.root;

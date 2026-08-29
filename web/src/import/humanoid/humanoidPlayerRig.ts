@@ -37,3 +37,6 @@ export function humanoidSkinSlices(part: HumanoidPart, jointed: boolean): readon
   return part === "body" ? BENT_BODY : BENT_LIMB;
 }
 
+export function humanoidSkinPartHeight(part: HumanoidPart): number {
+  return part === "head" ? 8 : 12;
+}
