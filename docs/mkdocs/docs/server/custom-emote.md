@@ -6,9 +6,9 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 | Source format    | Files                         |
 |------------------|-------------------------------|
-| BD Engine        | `.bdengine`, `.zip`           |
+| BD Engine        | `.zip`                        |
 | GeckoLib         | `.bbmodel`                    |
-| Animated Java    | `.ajblueprint`, `.json`       |
+| Animated Java    | `.json`                       |
 | Bedrock Edition  | `.animation.json`, `.json`    |
 | Emote            | Existing Emote Animation JSON |
 
