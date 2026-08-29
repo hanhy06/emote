@@ -7,6 +7,7 @@ export const IMPORT_ADAPTERS: readonly ImportAdapterLoader[] = [
   lazyAdapter("animated_java_json", "Animated Java Plugin Blueprint JSON", ["json"], () => import("./animatedJava/animatedJavaJsonAdapter").then((module) => module.animatedJavaJsonAdapter)),
   lazyAdapter("geckolib_bbmodel", "GeckoLib Blockbench project", ["bbmodel"], () => import("./geckoLibBbmodel/geckoLibBbmodelAdapter").then((module) => module.geckoLibBbmodelAdapter)),
   lazyAdapter("bedrock_animation_json", "Bedrock player animation JSON", ["json"], () => import("./bedrockAnimation/bedrockAnimationAdapter").then((module) => module.bedrockAnimationAdapter)),
+  lazyAdapter("emotecraft_binary", "Emotecraft binary", ["emotecraft"], () => import("./emotecraft/emotecraftAdapter").then((module) => module.emotecraftAdapter)),
   lazyAdapter("emote_json", "Emote animation JSON", ["json"], () => import("./emoteJson/emoteJsonAdapter").then((module) => module.emoteJsonAdapter)),
 ];
 

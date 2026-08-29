@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
+import { emotecraftAdapter } from "./emotecraftAdapter";
 import { decodeLatestEmotecraft, probeLatestEmotecraft } from "./emotecraftBinary";
 
 describe("latest Emotecraft binary", () => {
-  it("decodes the current v8 container and compact v6 animation", () => {
+  it("decodes and imports the current v8 container and compact v6 animation", async () => {
     const bytes = file([
       packet(0x99, 6, animation()),
       packet(0x11, 2, header()),
@@ -32,6 +33,10 @@ describe("latest Emotecraft binary", () => {
       { startTick: 0, endTick: 1, start: 10, end: 10, easing: "linear", easingArgs: [] },
       { startTick: 1, endTick: 3, start: 10, end: "((q.anim_time)*(20))", easing: "easeinquad", easingArgs: [] },
     ]);
+    expect(emotecraftAdapter.probe({ name: "wave.emotecraft", bytes })).toMatchObject({ confidence: 100 });
+    const imported = await emotecraftAdapter.import({ name: "wave.emotecraft", bytes });
+    expect(imported.source).toBe("emotecraft_binary");
+    expect(imported.animations[0].durationTicks).toBe(20);
   });
 
   it("rejects legacy animation versions and malformed packet boundaries", () => {

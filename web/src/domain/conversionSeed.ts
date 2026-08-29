@@ -3,7 +3,7 @@ import type { ConversionIssue } from "../foundation/diagnostics";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
 
-export type ImportSource = "bd_datapack" | "animated_java_json" | "geckolib_bbmodel" | "bedrock_animation_json" | "emote_json" | "emote_sequence";
+export type ImportSource = "bd_datapack" | "animated_java_json" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
 
 export interface ImportedProject {
   source: ImportSource;
