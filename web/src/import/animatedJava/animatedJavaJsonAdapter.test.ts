@@ -376,6 +376,51 @@ describe("animatedJavaJsonAdapter", () => {
     expect([...project.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(6);
   });
 
+  it("assigns lower limb slices to a matching animated joint", async () => {
+    const face = { uv: [0, 0, 4, 12], texture_provider: { type: "texture", texture: "skin" } };
+    const identity = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+    const lowerJoint = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, -0.375, 0, 1];
+    const input = rawBlueprint({
+      format_version: 1,
+      settings: { id: "demo:jointed_rig" },
+      textures: { skin: { type: "custom", base64_string: "iVBORw0KGgo=" } },
+      nodes: {
+        right_arm: {
+          type: "bone",
+          default_transformation: { matrix: identity },
+          elements: [{ from: [8, 0, 6], to: [12, 12, 10], rotation: [0, 0, 0], faces: { north: face } }],
+        },
+        right_forearm: {
+          type: "bone",
+          default_transformation: { matrix: lowerJoint },
+          elements: [],
+        },
+      },
+      animations: {
+        bend: {
+          loop_mode: { type: "once" },
+          length: 0.05,
+          node_keyframes: {
+            right_arm: { rotation: { "0.0": baked(["0", "0", "0"]), "0.05": baked(["0", "0", "0"]) } },
+            right_forearm: { rotation: { "0.0": baked(["0", "0", "0"]), "0.05": baked(["45", "0", "0"]) } },
+          },
+        },
+      },
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(Object.keys(project.nodes)).toEqual(["right_arm", "right_arm_2", "right_arm_3", "right_arm_4", "right_forearm"]);
+    expect(["right_arm", "right_arm_2", "right_arm_3", "right_arm_4"].map((id) => {
+      const node = project.nodes[id];
+      return node.type === "item_display" ? node.suggestedSkin?.order : undefined;
+    })).toEqual([0, 1, 2, 3]);
+    expect(project.animations[0].tracks.right_arm_3.transforms[1].matrix)
+      .not.toEqual(project.animations[0].tracks.right_arm.transforms[1].matrix);
+    expect(project.animations[0].tracks.right_arm_4.transforms)
+      .toEqual(project.animations[0].tracks.right_arm_3.transforms);
+  });
+
   it("bakes a numeric blend weight into node transforms", async () => {
     const input = blueprint({ item: { type: "item_display" } }, {
       blended: {

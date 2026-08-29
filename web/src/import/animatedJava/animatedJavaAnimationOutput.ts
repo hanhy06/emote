@@ -1,5 +1,5 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
-import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
+import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, Matrix16, MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
@@ -8,10 +8,15 @@ import type { AjAnimation, AjKeyframe, AjNodeChannels } from "./animatedJavaSche
 
 type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 
+export interface AjPoseTarget {
+  id: string;
+  localMatrix?: Matrix16;
+}
+
 export function createAjBlueprintRuntime(
   animation: AjAnimation,
   durationTicks: number,
-  nodesBySource: ReadonlyMap<string, string[]>,
+  targetsBySource: ReadonlyMap<string, readonly AjPoseTarget[]>,
   importedNodes: Record<string, ImportedNode>,
 ): NonNullable<ImportedAnimation["runtime"]> {
   const nodes: Record<string, EmoteNode> = {};
@@ -19,16 +24,21 @@ export function createAjBlueprintRuntime(
   const animatedNodeIds = new Set<string>();
   const startDelayTicks = numericTicks(animation.start_delay);
   for (const [sourceId, channels] of Object.entries(animation.node_keyframes ?? {})) {
-    const generated = nodesBySource.get(sourceId) ?? [];
-    const sourceNode = importedNodes[generated[0]];
+    const targets = targetsBySource.get(sourceId) ?? [];
+    const sourceNode = importedNodes[targets[0]?.id];
     if (!sourceNode) continue;
-    generated.forEach((id) => animatedNodeIds.add(id));
+    targets.forEach(({ id }) => animatedNodeIds.add(id));
     const base = blueprintTransform(sourceNode);
     const ids = ajAnchorIds(sourceId);
     nodes[ids.y] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: base.position, rotation: [0, 180 - base.ajRotation[1], 0], scale: ONE_VECTOR } };
     nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [-base.ajRotation[0], 0, 0], scale: ONE_VECTOR } };
     nodes[ids.z] = { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, 0, base.ajRotation[2]], scale: base.scale } };
-    for (const id of generated) nodes[id] = importedNodeToRuntimeNode(importedNodes[id], IDENTITY_TRANSFORM, ids.z);
+    for (const target of targets) {
+      const transform = target.localMatrix
+        ? matrixToLocalTransform(target.localMatrix, `Animated Java runtime target ${target.id}`)
+        : IDENTITY_TRANSFORM;
+      nodes[target.id] = importedNodeToRuntimeNode(importedNodes[target.id], transform, ids.z);
+    }
     const position = ajChannelFrames(channels.position, base.position, startDelayTicks, animation.blend_weight ?? "1", (value) => value);
     const rotation = ajChannelFrames(channels.rotation, base.ajRotation, startDelayTicks, animation.blend_weight ?? "1", (value) => value);
     const scale = ajChannelFrames(channels.scale, base.scale, startDelayTicks, animation.blend_weight ?? "1", (value) => value);

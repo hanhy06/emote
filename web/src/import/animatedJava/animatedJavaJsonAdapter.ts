@@ -13,7 +13,8 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransformValues } from "./animatedJavaAnimationBaker";
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels, type AjTextureAnimation } from "./animatedJavaSchema";
 import { blockArgumentToSnbt, itemArgumentToSnbt } from "./animatedJavaDisplayArguments";
-import { createAjBlueprintRuntime } from "./animatedJavaAnimationOutput";
+import { createAjBlueprintRuntime, type AjPoseTarget } from "./animatedJavaAnimationOutput";
+import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
 
 const encoder = new TextEncoder();
 const MINECRAFT_TICK_MILLISECONDS = 50;
@@ -23,7 +24,7 @@ const MAX_GIF_ATLAS_AREA = 67_108_864;
 
 interface ImportedAjNodes {
   nodes: Record<string, ImportedNode>;
-  nodeIdsBySource: Map<string, string[]>;
+  targetsBySource: Map<string, AjPoseTarget[]>;
   itemModelsByNodeAndPaletteState: Map<string, AjItemModelVariants>;
 }
 
@@ -83,7 +84,7 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
     const resources = new Map<string, Uint8Array>();
     const preparedTextures = await prepareCustomTextures(blueprint);
     const paletteConfigurations = collectPaletteConfigurations(blueprint);
-    const { nodes, nodeIdsBySource, itemModelsByNodeAndPaletteState } = importNodes(
+    const { nodes, targetsBySource, itemModelsByNodeAndPaletteState } = importNodes(
       blueprint,
       resource,
       resources,
@@ -93,7 +94,7 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
     const diagnostics: ImportDiagnostic[] = [];
     const animations = Object.entries(blueprint.animations ?? {}).map(([id, animation]) => {
       try {
-        return importAnimation(id, animation, nodes, nodeIdsBySource, blueprint, itemModelsByNodeAndPaletteState);
+        return importAnimation(id, animation, nodes, targetsBySource, blueprint, itemModelsByNodeAndPaletteState);
       } catch (reason) {
         if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
         const message = `${id}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -108,7 +109,7 @@ export const animatedJavaJsonAdapter: ImportAdapter<ImportedProject> = {
           animation,
           message,
           nodes,
-          nodeIdsBySource,
+          targetsBySource,
           blueprint,
           itemModelsByNodeAndPaletteState,
         );
@@ -136,7 +137,7 @@ function createPreviewOnlyAnimation(
   animation: AjAnimation,
   reason: string,
   nodes: Record<string, ImportedNode>,
-  nodeIdsBySource: ReadonlyMap<string, string[]>,
+  targetsBySource: ReadonlyMap<string, readonly AjPoseTarget[]>,
   blueprint: AjBlueprint,
   itemModelsByNodeAndPaletteState: ReadonlyMap<string, AjItemModelVariants>,
 ): ImportedAnimation {
@@ -145,7 +146,7 @@ function createPreviewOnlyAnimation(
     : TICKS_PER_SECOND;
   const startDelayTicks = secondsToTicks(numericExpression(animation.start_delay ?? "0", `${id}.start_delay`), `${id}.start_delay`);
   const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
-  const runtime = createAjBlueprintRuntime(animation, durationTicks, nodeIdsBySource, nodes);
+  const runtime = createAjBlueprintRuntime(animation, durationTicks, targetsBySource, nodes);
   const callbacks = compileAjCallbackEvents(id, animation, startDelayTicks, durationTicks, blueprint);
   if (callbacks.length > 0) {
     runtime.timeline.events = { timeline: callbacks.map(({ tick, ...event }) => ({ ...event, time: formatMinecraftTime(tick) })) };
@@ -242,15 +243,17 @@ function importNodes(
   preparedTextures: ReadonlyMap<string, PreparedCustomTexture>,
 ): ImportedAjNodes {
   const nodes: Record<string, ImportedNode> = {};
-  const nodeIdsBySource = new Map<string, string[]>();
+  const generatedIdsBySource = new Map<string, string[]>();
   const skinCandidates: AjSkinCandidate[] = [];
   const usedIds = new Set(Object.keys(blueprint.nodes ?? {}));
   const itemModelsByNodeAndPaletteState = new Map<string, AjItemModelVariants>();
+  const lowerJointByUpper = findAjLowerJoints(blueprint);
+  const jointTargets: { upperId: string; lowerId: string; upperTargets: string[]; lowerTargets: string[] }[] = [];
   let sourceOrder = 0;
   for (const [id, node] of Object.entries(blueprint.nodes ?? {})) {
     if (node.type !== "bone") {
       nodes[id] = importDisplayNode(id, node);
-      nodeIdsBySource.set(id, [id]);
+      generatedIdsBySource.set(id, [id]);
       continue;
     }
 
@@ -258,15 +261,19 @@ function importNodes(
     const entityNbt = displayPropertiesToNbt(node.display_properties, node.type);
     const enchanted = node.display_properties?.is_enchanted === true;
     const part = inferAjSkinPart(id);
-    const elements = (node.elements ?? []).flatMap((element) => splitTallAjSkinElement(element, part));
+    const lowerId = lowerJointByUpper.get(id);
+    const elements = (node.elements ?? []).flatMap((element) => splitTallAjSkinElement(element, part, lowerId !== undefined));
     if (elements.length === 0) {
       nodes[id] = { id, type: "anchor", defaultMatrix };
-      nodeIdsBySource.set(id, [id]);
+      generatedIdsBySource.set(id, [id]);
       continue;
     }
 
     const generatedIds: string[] = [];
-    for (const [elementIndex, element] of elements.entries()) {
+    const upperTargets: string[] = [];
+    const lowerTargets: string[] = [];
+    for (const [elementIndex, prepared] of elements.entries()) {
+      const element = prepared.element;
       const nodeId = elementIndex === 0 ? id : uniqueAjElementNodeId(id, elementIndex, usedIds);
       const modelPath = [resource.path, nodeId].filter(Boolean).join("/");
       const itemModels = new Map<string, string>();
@@ -288,6 +295,7 @@ function importNodes(
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
       };
       generatedIds.push(nodeId);
+      (prepared.motion === "lower" ? lowerTargets : upperTargets).push(nodeId);
       if (conversionMatrix && part && isAjSkinSegment(element, part)) {
         skinCandidates.push({
           nodeId,
@@ -297,10 +305,26 @@ function importNodes(
         });
       }
     }
-    nodeIdsBySource.set(id, generatedIds);
+    generatedIdsBySource.set(id, generatedIds);
+    if (lowerId && lowerTargets.length > 0) jointTargets.push({ upperId: id, lowerId, upperTargets, lowerTargets });
   }
   assignSuggestedAjSkinParts(nodes, skinCandidates);
-  return { nodes, nodeIdsBySource, itemModelsByNodeAndPaletteState };
+  const targetsBySource = new Map([...generatedIdsBySource].map(([id, ids]) => [id, ids.map((targetId) => ({ id: targetId }))]));
+  for (const binding of jointTargets) {
+    targetsBySource.set(binding.upperId, binding.upperTargets.map((id) => ({ id })));
+    const lowerTargets = targetsBySource.get(binding.lowerId) ?? [];
+    const upperMatrix = readDefaultMatrix(blueprint.nodes![binding.upperId], binding.upperId);
+    const lowerMatrix = readDefaultMatrix(blueprint.nodes![binding.lowerId], binding.lowerId);
+    const localMatrix = matrix4ToRowMajor(
+      new Matrix4().set(...lowerMatrix).invert().multiply(new Matrix4().set(...upperMatrix)),
+      `Animated Java ${binding.lowerId} to ${binding.upperId} joint offset`,
+    );
+    targetsBySource.set(binding.lowerId, [
+      ...lowerTargets,
+      ...binding.lowerTargets.map((id) => ({ id, localMatrix })),
+    ]);
+  }
+  return { nodes, targetsBySource, itemModelsByNodeAndPaletteState };
 }
 
 function importDisplayNode(id: string, node: AjNode): ImportedNode {
@@ -360,48 +384,82 @@ function inferAjSkinPart(nodeId: string): ImportedSkinPart["part"] | undefined {
   return undefined;
 }
 
-function splitTallAjSkinElement(element: AjElement, part: ImportedSkinPart["part"] | undefined): AjElement[] {
-  if (!part || part === "head" || !isStandardAjSkinElement(element, part)) return [element];
-  const height = element.to[1] - element.from[1];
-  const upperHeight = height / 3;
-  const splitY = element.to[1] - upperHeight;
-  const [upperFaces, lowerFaces] = splitAjVerticalFaceUvs(element.faces, upperHeight / height);
-  return [
-    { ...element, from: [element.from[0], splitY, element.from[2]], faces: upperFaces },
-    { ...element, to: [element.to[0], splitY, element.to[2]], faces: lowerFaces },
-  ];
+interface PreparedAjElement {
+  element: AjElement;
+  motion: "upper" | "lower";
 }
 
-function splitAjVerticalFaceUvs(faces: AjElement["faces"], upperRatio: number): [AjElement["faces"], AjElement["faces"]] {
-  const upperFaces: AjElement["faces"] = {};
-  const lowerFaces: AjElement["faces"] = {};
+function splitTallAjSkinElement(
+  element: AjElement,
+  part: ImportedSkinPart["part"] | undefined,
+  jointed: boolean,
+): PreparedAjElement[] {
+  if (!part || !isStandardAjSkinElement(element, part)) return [{ element, motion: "upper" }];
+  const height = element.to[1] - element.from[1];
+  const skinHeight = humanoidSkinPartHeight(part);
+  return humanoidSkinSlices(part, jointed).map((slice) => ({
+    element: {
+      ...element,
+      from: [element.from[0], element.to[1] - height * slice.endY / skinHeight, element.from[2]],
+      to: [element.to[0], element.to[1] - height * slice.startY / skinHeight, element.to[2]],
+      faces: sliceAjVerticalFaceUvs(element.faces, slice.startY / skinHeight, slice.endY / skinHeight),
+    },
+    motion: slice.motion,
+  }));
+}
+
+function sliceAjVerticalFaceUvs(faces: AjElement["faces"], startRatio: number, endRatio: number): AjElement["faces"] {
+  const slicedFaces: AjElement["faces"] = {};
   for (const [direction, face] of Object.entries(faces)) {
     if (!["north", "south", "east", "west"].includes(direction) || face.uv.length !== 4) {
-      upperFaces[direction] = face;
-      lowerFaces[direction] = face;
+      slicedFaces[direction] = face;
       continue;
     }
     const [minU, minV, maxU, maxV] = face.uv;
     const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
     if (rotation === 90) {
-      const splitU = minU + (maxU - minU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [maxU - (maxU - minU) * endRatio, minV, maxU - (maxU - minU) * startRatio, maxV] };
     } else if (rotation === 180) {
-      const splitV = maxV - (maxV - minV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
+      slicedFaces[direction] = { ...face, uv: [minU, maxV - (maxV - minV) * endRatio, maxU, maxV - (maxV - minV) * startRatio] };
     } else if (rotation === 270) {
-      const splitU = maxU - (maxU - minU) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, splitU, maxV] };
-      lowerFaces[direction] = { ...face, uv: [splitU, minV, maxU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [minU + (maxU - minU) * startRatio, minV, minU + (maxU - minU) * endRatio, maxV] };
     } else {
-      const splitV = minV + (maxV - minV) * upperRatio;
-      upperFaces[direction] = { ...face, uv: [minU, minV, maxU, splitV] };
-      lowerFaces[direction] = { ...face, uv: [minU, splitV, maxU, maxV] };
+      slicedFaces[direction] = { ...face, uv: [minU, minV + (maxV - minV) * startRatio, maxU, minV + (maxV - minV) * endRatio] };
     }
   }
-  return [upperFaces, lowerFaces];
+  return slicedFaces;
+}
+
+function findAjLowerJoints(blueprint: AjBlueprint): Map<string, string> {
+  const result = new Map<string, string>();
+  const animatedIds = new Set(Object.values(blueprint.animations ?? {}).flatMap((animation) => Object.keys(animation.node_keyframes ?? {})));
+  const bones = Object.entries(blueprint.nodes ?? {}).filter((entry): entry is [string, AjNode] => entry[1].type === "bone");
+  for (const [upperId, upper] of bones) {
+    const part = inferAjSkinPart(upperId);
+    if (!part || part === "head" || !(upper.elements ?? []).some((element) => isStandardAjSkinElement(element, part))) continue;
+    const names = part === "body"
+      ? ["lowerbody", "abdomen"]
+      : part.endsWith("arm") ? ["forearm", "lowerarm", "elbow"] : ["lowerleg", "shin", "knee"];
+    const upperPosition = ajNodePosition(upper, upperId);
+    const candidates = bones.filter(([candidateId, candidate]) => candidateId !== upperId
+      && inferAjSkinPart(candidateId) === part
+      && names.some((name) => candidateId.toLowerCase().replaceAll(/[^a-z0-9]/g, "").includes(name))
+      && animatedIds.has(candidateId)
+      && jointDistance(upperPosition, ajNodePosition(candidate, candidateId)) >= 0.2
+      && jointDistance(upperPosition, ajNodePosition(candidate, candidateId)) <= 0.55);
+    if (candidates.length === 1) result.set(upperId, candidates[0][0]);
+  }
+  return result;
+}
+
+function ajNodePosition(node: AjNode, id: string): number[] {
+  const position = new Vector3();
+  new Matrix4().set(...readDefaultMatrix(node, id)).decompose(position, new Quaternion(), new Vector3());
+  return position.toArray();
+}
+
+function jointDistance(first: number[], second: number[]): number {
+  return Math.hypot(...first.map((value, axis) => value - second[axis]));
 }
 
 function isStandardAjSkinElement(element: AjElement, part: ImportedSkinPart["part"]): boolean {
@@ -418,7 +476,7 @@ function isAjSkinSegment(element: AjElement, part: ImportedSkinPart["part"]): bo
   const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
   const expectedWidth = part === "body" ? [8] : [3, 4];
   return expectedWidth.some((width) => closeTo(size[0], width))
-    && (closeTo(size[1], 4) || closeTo(size[1], 8))
+    && (closeTo(size[1], 2) || closeTo(size[1], 4) || closeTo(size[1], 8))
     && closeTo(size[2], 4);
 }
 
@@ -483,7 +541,7 @@ function importAnimation(
   id: string,
   animation: AjAnimation,
   nodes: Record<string, ImportedNode>,
-  nodeIdsBySource: ReadonlyMap<string, string[]>,
+  targetsBySource: ReadonlyMap<string, readonly AjPoseTarget[]>,
   blueprint: AjBlueprint,
   itemModelsByNodeAndPaletteState: ReadonlyMap<string, AjItemModelVariants>,
 ): ImportedAnimation {
@@ -493,12 +551,18 @@ function importAnimation(
   const durationTicks = requireAnimationDurationTicks(animationDurationTicks + startDelayTicks, `${id} duration`);
   const tracks: ImportedAnimation["tracks"] = {};
   for (const [sourceNodeId, channels] of Object.entries(animation.node_keyframes ?? {})) {
-    const generatedNodeIds = nodeIdsBySource.get(sourceNodeId);
-    const node = generatedNodeIds?.length ? nodes[generatedNodeIds[0]] : undefined;
-    if (!node || !generatedNodeIds) throw new Error(`Animated Java animation ${id} references unknown node ${sourceNodeId}.`);
+    const targets = targetsBySource.get(sourceNodeId);
+    const node = targets?.length ? nodes[targets[0].id] : undefined;
+    if (!node || !targets) throw new Error(`Animated Java animation ${id} references unknown node ${sourceNodeId}.`);
     const transforms = compileNodeChannels(id, sourceNodeId, channels, node.defaultMatrix, startDelayTicks, animationDurationTicks, blendWeight);
-    for (const nodeId of generatedNodeIds) tracks[nodeId] = {
-      transforms,
+    for (const target of targets) tracks[target.id] = {
+      transforms: target.localMatrix ? transforms.map((frame) => ({
+        ...frame,
+        matrix: matrix4ToRowMajor(
+          new Matrix4().set(...frame.matrix).multiply(new Matrix4().set(...target.localMatrix!)),
+          `Animated Java ${id}/${target.id}/${frame.tick}`,
+        ),
+      })) : transforms,
       visibility: [],
       nbt: [],
     };
