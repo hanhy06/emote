@@ -105,7 +105,6 @@ config/emote/emote/sit/
   },
   "settings": {
     "cooldown": "5s",
-    "rotation_deadzone": 50,
     "player": {
       "hidden": true,
       "stop_conditions": {
