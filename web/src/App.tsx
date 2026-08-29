@@ -30,22 +30,22 @@ const IMPORT_FORMATS = [
   {
     label: "BD Engine",
     extensions: ".zip",
-    description: "In BD Engine, open Get Command and export the animations as a datapack. Animations, display nodes, commands, and player-skin parts are imported.",
+    description: "BD Engine에서 Get Command를 열고 애니메이션을 데이터팩으로 내보냅니다.",
   },
   {
     label: "GeckoLib",
     extensions: ".bbmodel",
-    description: "Use the original .bbmodel project for an emote created in Blockbench with the GeckoLib model format. Cube models and standard player-model parts are imported.",
+    description: "Blockbench에서 GeckoLib 형식으로 제작한 이모트의 원본 .bbmodel 파일을 사용합니다. 모델, 애니메이션, 스킨 정보를 불러옵니다.",
   },
   {
     label: "Animated Java",
     extensions: ".json",
-    description: "Export a Plugin Blueprint JSON from the Animated Java plugin in Blockbench. Models, animations, events, and player-skin assignments are imported.",
+    description: "Blockbench의 Animated Java 플러그인에서 Plugin Blueprint JSON 파일로 내보냅니다. 모델, 애니메이션, 스킨 정보를 불러옵니다.",
   },
   {
     label: "Bedrock Edition",
     extensions: ".json",
-    description: "Export the animation JSON from a Bedrock Edition model project in Blockbench. Player animations are imported, but Molang support is not yet complete.",
+    description: "Imports Bedrock Edition player animation files. Molang support is not yet complete, so converted animations may look incorrect.",
   },
 ] as const;
 
