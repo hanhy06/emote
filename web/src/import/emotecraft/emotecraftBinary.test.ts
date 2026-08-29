@@ -39,13 +39,34 @@ describe("latest Emotecraft binary", () => {
     expect(imported.animations[0].durationTicks).toBe(20);
   });
 
-  it("rejects legacy animation versions and malformed packet boundaries", () => {
+  it("rejects unsupported animation versions and malformed packet boundaries", () => {
     expect(probeLatestEmotecraft(file([packet(0x99, 5, [])]))).toBe(false);
     expect(() => decodeLatestEmotecraft(file([packet(0x99, 5, [])]))).toThrow("version must be 6");
     const malformed = file([packet(0x99, 6, animation())]);
     malformed[8] = 0x7f;
     expect(probeLatestEmotecraft(malformed)).toBe(false);
     expect(() => decodeLatestEmotecraft(malformed)).toThrow("sub-packet size");
+  });
+
+  it("accepts the v1 EmoteDataPacket variant found inside v8 Emotecraft files", async () => {
+    const bytes = file([
+      packet(0, 1, legacyAnimationV1()),
+      packet(0x11, 1, concat(legacy("Partner Waltz"), legacy("Paired emote"), legacy("Author"))),
+    ]);
+
+    expect(probeLatestEmotecraft(bytes)).toBe(true);
+    const decoded = decodeLatestEmotecraft(bytes);
+    expect(decoded).toMatchObject({
+      metadata: { name: "Partner Waltz", description: "Paired emote", author: "Author", badges: [] },
+      animation: { lengthTicks: 2, loop: "loop_from_tick", loopStartTick: 0, format: "player_animator" },
+    });
+    const rotation = decoded.animation.bones.head.rotation[0][0];
+    expect(rotation).toMatchObject({ startTick: 0, endTick: 2 });
+    expect(rotation.start).toBeCloseTo(Math.PI / 2);
+    expect(rotation.end).toBeCloseTo(Math.PI / 2);
+    const imported = await emotecraftAdapter.import({ name: "partner.emotecraft", bytes });
+    expect(imported.animations[0].durationTicks).toBe(2);
+    expect(Object.keys(imported.nodes)).toHaveLength(6);
   });
 });
 
@@ -70,6 +91,22 @@ function animation(): number[] {
 
 function header(): number[] {
   return concat(legacy("Wave"), legacy("Description"), legacy("Author"), legacy("Folder"), varint(1), legacy("Badge"));
+}
+
+function legacyAnimationV1(): number[] {
+  const disabled = i32(-1);
+  const head = concat(
+    disabled, disabled, disabled,
+    i32(1), i32(2), f32(Math.PI / 2), [0],
+    disabled, disabled,
+  );
+  const otherPart = concat(disabled, disabled, disabled, disabled, disabled, disabled, disabled, disabled);
+  return concat(
+    i32(0),
+    i32(0), i32(2), i32(2), [1], i32(1), [1, 0, 9],
+    head, otherPart, otherPart, otherPart, otherPart, otherPart,
+    hex("00112233445566778899aabbccddeeff"),
+  );
 }
 
 function file(packets: number[][]): Uint8Array {
