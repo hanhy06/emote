@@ -14,7 +14,7 @@ import { bakeAjNodeChannels, evaluateAjMolang, requiresAjBaking, type AjTransfor
 import { requireAjBlueprint, type AjAnimation, type AjBlueprint, type AjElement, type AjKeyframe, type AjNode, type AjNodeChannels, type AjTextureAnimation } from "./animatedJavaSchema";
 import { blockArgumentToSnbt, itemArgumentToSnbt } from "./animatedJavaDisplayArguments";
 import { createAjBlueprintRuntime, type AjPoseTarget } from "./animatedJavaAnimationOutput";
-import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
+import { humanoidSkinPartHeight, humanoidSkinSlices, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv } from "../humanoid/humanoidPlayerRig";
 
 const encoder = new TextEncoder();
 const MINECRAFT_TICK_MILLISECONDS = 50;
@@ -374,14 +374,7 @@ function uniqueAjElementNodeId(sourceId: string, elementIndex: number, usedIds: 
 }
 
 function inferAjSkinPart(nodeId: string): ImportedSkinPart["part"] | undefined {
-  const name = nodeId.toLowerCase().replaceAll(/[^a-z0-9]/g, "");
-  if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
-  if (name.includes("right") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "right_arm";
-  if (name.includes("left") && (name.includes("leg") || name.includes("foot"))) return "left_leg";
-  if (name.includes("right") && (name.includes("leg") || name.includes("foot"))) return "right_leg";
-  if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
-  if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
-  return undefined;
+  return inferHumanoidPart(nodeId);
 }
 
 interface PreparedAjElement {
@@ -415,17 +408,7 @@ function sliceAjVerticalFaceUvs(faces: AjElement["faces"], startRatio: number, e
       slicedFaces[direction] = face;
       continue;
     }
-    const [minU, minV, maxU, maxV] = face.uv;
-    const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
-    if (rotation === 90) {
-      slicedFaces[direction] = { ...face, uv: [maxU - (maxU - minU) * endRatio, minV, maxU - (maxU - minU) * startRatio, maxV] };
-    } else if (rotation === 180) {
-      slicedFaces[direction] = { ...face, uv: [minU, maxV - (maxV - minV) * endRatio, maxU, maxV - (maxV - minV) * startRatio] };
-    } else if (rotation === 270) {
-      slicedFaces[direction] = { ...face, uv: [minU + (maxU - minU) * startRatio, minV, minU + (maxU - minU) * endRatio, maxV] };
-    } else {
-      slicedFaces[direction] = { ...face, uv: [minU, minV + (maxV - minV) * startRatio, maxU, minV + (maxV - minV) * endRatio] };
-    }
+    slicedFaces[direction] = { ...face, uv: sliceVerticalUv(face.uv, face.rotation ?? 0, startRatio, endRatio, "high") };
   }
   return slicedFaces;
 }
@@ -464,10 +447,7 @@ function jointDistance(first: number[], second: number[]): number {
 
 function isStandardAjSkinElement(element: AjElement, part: ImportedSkinPart["part"]): boolean {
   const size = element.to.map((value, axis) => Math.abs(value - element.from[axis]));
-  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
-  if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
-  if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);
-  return (closeTo(size[0], 3) || closeTo(size[0], 4)) && closeTo(size[1], 12) && closeTo(size[2], 4);
+  return isStandardHumanoidPartSize(part, size);
 }
 
 function isAjSkinSegment(element: AjElement, part: ImportedSkinPart["part"]): boolean {

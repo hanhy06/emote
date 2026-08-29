@@ -6,7 +6,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
 import type { BoneEntry } from "./cubeProjectImporter";
-import { humanoidSkinPartHeight, humanoidSkinSlices, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
+import { humanoidSkinPartHeight, humanoidSkinSlices, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -146,17 +146,7 @@ function sliceVerticalFaceUvs(faces: BbCube["faces"], startRatio: number, endRat
       continue;
     }
 
-    const [minU, minV, maxU, maxV] = face.uv;
-    const rotation = ((face.rotation ?? 0) % 360 + 360) % 360;
-    if (rotation === 90) {
-      slicedFaces[direction] = { ...face, uv: [minU + (maxU - minU) * startRatio, minV, minU + (maxU - minU) * endRatio, maxV] };
-    } else if (rotation === 180) {
-      slicedFaces[direction] = { ...face, uv: [minU, maxV - (maxV - minV) * endRatio, maxU, maxV - (maxV - minV) * startRatio] };
-    } else if (rotation === 270) {
-      slicedFaces[direction] = { ...face, uv: [maxU - (maxU - minU) * endRatio, minV, maxU - (maxU - minU) * startRatio, maxV] };
-    } else {
-      slicedFaces[direction] = { ...face, uv: [minU, minV + (maxV - minV) * startRatio, maxU, minV + (maxV - minV) * endRatio] };
-    }
+    slicedFaces[direction] = { ...face, uv: sliceVerticalUv(face.uv, face.rotation ?? 0, startRatio, endRatio, "low") };
   }
   return slicedFaces;
 }
@@ -213,21 +203,13 @@ function inferSkinAssignments(
 
 function isStandardPlayerSkinCube(cube: BbCube, part: ImportedSkinPart["part"]): boolean {
   const size = cube.to.map((value, axis) => Math.abs(value - cube.from[axis]));
-  const closeTo = (value: number, expected: number) => Math.abs(value - expected) <= 1e-3;
-  if (part === "head") return closeTo(size[0], 8) && closeTo(size[1], 8) && closeTo(size[2], 8);
-  if (part === "body") return closeTo(size[0], 8) && closeTo(size[1], 12) && closeTo(size[2], 4);
-  return (closeTo(size[0], 3) || closeTo(size[0], 4)) && closeTo(size[1], 12) && closeTo(size[2], 4);
+  return isStandardHumanoidPartSize(part, size);
 }
 
 function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
   for (let current: BoneEntry | undefined = bone; current; current = current.parent) {
-    const name = normalizeBlockbenchName(current.group.name) ?? "";
-    if (name.includes("left") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "left_arm";
-    if (name.includes("right") && (name.includes("arm") || name.includes("hand") || name.includes("wing"))) return "right_arm";
-    if (name.includes("left") && (name.includes("leg") || name.includes("foot"))) return "left_leg";
-    if (name.includes("right") && (name.includes("leg") || name.includes("foot"))) return "right_leg";
-    if (name.includes("head") || name.includes("face") || name.includes("skull")) return "head";
-    if (name.includes("body") || name.includes("torso") || name.includes("chest") || name.includes("waist")) return "body";
+    const part = inferHumanoidPart(current.group.name);
+    if (part) return part;
   }
   return undefined;
 }
