@@ -66,7 +66,7 @@ describe("latest Emotecraft binary", () => {
     expect(rotation.end).toBeCloseTo(Math.PI / 2);
     const imported = await emotecraftAdapter.import({ name: "partner.emotecraft", bytes });
     expect(imported.animations[0].durationTicks).toBe(2);
-    expect(Object.keys(imported.nodes)).toHaveLength(6);
+    expect(Object.keys(imported.nodes)).toHaveLength(11);
   });
 });
 
