@@ -41,7 +41,7 @@ describe("importEmotecraftFile", () => {
     expect(() => validateEmoteAnimation(compiled)).not.toThrow();
   });
 
-  it("keeps an unbent pose to six skin nodes and bakes custom pivot parents into world tracks", () => {
+  it("keeps an unbent pose in eleven resolution-preserving skin slices and bakes custom pivot parents into world tracks", () => {
     const source = file({
       body: bone(undefined, axis(frame(0, 16))),
       hand_control: bone(undefined, axis(frame(0, 8))),
@@ -51,7 +51,10 @@ describe("importEmotecraftFile", () => {
     source.animation.parents.head = "hand_control";
     const imported = importEmotecraftFile(source, "parent.emotecraft");
 
-    expect(Object.keys(imported.nodes)).toEqual(["head", "body", "right_arm", "left_arm", "left_leg", "right_leg"]);
+    expect(Object.keys(imported.nodes)).toEqual([
+      "head", "body_0", "body_1", "right_arm_0", "right_arm_1", "left_arm_0", "left_arm_1",
+      "left_leg_0", "left_leg_1", "right_leg_0", "right_leg_1",
+    ]);
     expect(imported.animations[0].tracks.head.transforms[2].matrix[3]).not.toBeCloseTo(0);
     expect(imported.animations[0].tracks.head.transforms).toHaveLength(3);
   });

@@ -1,6 +1,7 @@
 import { Matrix4, Vector3 } from "three";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
+import { humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
 
 export const EMOTECRAFT_RENDER_SCALE = 0.9375;
 
@@ -37,24 +38,20 @@ export const EMOTECRAFT_PIVOTS: Readonly<Record<string, readonly [number, number
 export function createEmotecraftSlices(bentBones: ReadonlySet<string>): EmotecraftSlice[] {
   const slices: EmotecraftSlice[] = [];
   for (const source of EMOTECRAFT_PLAYER_PARTS) {
-    if (!bentBones.has(source.bone)) {
-      slices.push({ id: source.part, source, order: 0, lower: false, bounds: source.bounds });
-      continue;
-    }
     const { from, to } = source.bounds;
-    if (source.bone === "torso") {
-      slices.push(
-        { id: "body", source, order: 0, lower: false, bounds: { from: [from[0], 20, from[2]], to } },
-        { id: "body_1", source, order: 1, lower: true, bounds: { from, to: [to[0], 20, to[2]] } },
-      );
-      continue;
+    const height = to[1] - from[1];
+    for (const slice of humanoidSkinSlices(source.part, bentBones.has(source.bone))) {
+      const sliceFromY = to[1] - height * slice.endY / 12;
+      const sliceToY = to[1] - height * slice.startY / 12;
+      const id = source.part === "head" ? source.part : `${source.part}_${slice.order}`;
+      slices.push({
+        id,
+        source,
+        order: slice.order,
+        lower: slice.motion === "lower",
+        bounds: { from: [from[0], sliceFromY, from[2]], to: [to[0], sliceToY, to[2]] },
+      });
     }
-    slices.push(
-      { id: `${source.part}_0`, source, order: 0, lower: false, bounds: { from: [from[0], from[1] + 8, from[2]], to } },
-      { id: `${source.part}_1`, source, order: 1, lower: false, bounds: { from: [from[0], from[1] + 6, from[2]], to: [to[0], from[1] + 8, to[2]] } },
-      { id: `${source.part}_2`, source, order: 2, lower: true, bounds: { from: [from[0], from[1] + 4, from[2]], to: [to[0], from[1] + 6, to[2]] } },
-      { id: `${source.part}_3`, source, order: 3, lower: true, bounds: { from, to: [to[0], from[1] + 4, to[2]] } },
-    );
   }
   return slices;
 }
