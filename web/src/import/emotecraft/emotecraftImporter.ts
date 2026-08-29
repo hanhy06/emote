@@ -16,7 +16,18 @@ import {
   type EmotecraftSlice,
 } from "./emotecraftPlayerRig";
 
-interface BonePose { position: number[]; rotation: number[]; scale: number[]; bend: number }
+type Vector3Tuple = [number, number, number];
+type ChannelKind = "position" | "rotation" | "scale";
+
+interface BonePose { position: Vector3Tuple; rotation: Vector3Tuple; scale: Vector3Tuple; bend: number }
+
+const DEFAULT_POSE: BonePose = { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], bend: 0 };
+const ZERO_PIVOT = [0, 0, 0] as const;
+const CHANNEL_DEFAULTS: Readonly<Record<ChannelKind, Vector3Tuple>> = {
+  position: [0, 0, 0],
+  rotation: [0, 0, 0],
+  scale: [1, 1, 1],
+};
 
 const EVALUATOR = new MolangBakeEvaluator({
   rejectNondeterministic: true,
@@ -85,22 +96,23 @@ function emptyTrack(): ImportedNodeTrack {
 
 function evaluatePoses(animation: PalAnimation, tick: number): Map<string, BonePose> {
   return new Map(Object.entries(animation.bones).map(([name, bone]) => [name, {
-    position: evaluateAxes(bone.position, tick, animation, "position"),
-    rotation: evaluateAxes(bone.rotation, tick, animation, "rotation").map((value) => value),
-    scale: evaluateAxes(bone.scale, tick, animation, "scale"),
-    bend: evaluateChannel(bone.bend, tick, animation, `bones.${name}.bend`, true),
+    position: evaluateAxes(name, bone.position, tick, animation, "position"),
+    rotation: evaluateAxes(name, bone.rotation, tick, animation, "rotation"),
+    scale: evaluateAxes(name, bone.scale, tick, animation, "scale"),
+    bend: evaluateChannel(bone.bend, tick, animation, `bones.${name}.bend`, 0, true),
   }]));
 }
 
-function evaluateAxes(channels: PalAxisChannels, tick: number, animation: PalAnimation, type: "position" | "rotation" | "scale"): number[] {
-  const defaults = type === "scale" ? [1, 1, 1] : [0, 0, 0];
-  return channels.map((channel, axis) => channel.length
-    ? evaluateChannel(channel, tick, animation, `${type}.${axis}`, type === "rotation")
-    : defaults[axis]);
+function evaluateAxes(name: string, channels: PalAxisChannels, tick: number, animation: PalAnimation, type: ChannelKind): Vector3Tuple {
+  const defaults = CHANNEL_DEFAULTS[type];
+  const evaluateAxis = (axis: 0 | 1 | 2) => evaluateChannel(
+    channels[axis], tick, animation, `bones.${name}.${type}.${axis}`, defaults[axis], type === "rotation",
+  );
+  return [evaluateAxis(0), evaluateAxis(1), evaluateAxis(2)];
 }
 
-function evaluateChannel(frames: readonly PalKeyframe[], tick: number, animation: PalAnimation, path: string, angular: boolean): number {
-  if (frames.length === 0) return angular ? 0 : path.startsWith("scale") ? 1 : 0;
+function evaluateChannel(frames: readonly PalKeyframe[], tick: number, animation: PalAnimation, path: string, defaultValue: number, angular: boolean): number {
+  if (frames.length === 0) return defaultValue;
   const frame = frames.find((candidate) => candidate.endTick > tick) ?? frames.at(-1)!;
   const rawProgress = frame.endTick > frame.startTick ? (tick - frame.startTick) / (frame.endTick - frame.startTick) : 0;
   const progress = Math.max(0, Math.min(1, rawProgress));
@@ -111,10 +123,10 @@ function evaluateChannel(frames: readonly PalKeyframe[], tick: number, animation
   let value = interpolateFrame(frame, start, end, progress, args);
 
   const begin = animation.beginTick;
-  if (begin !== undefined && begin > 0 && tick < begin) value = defaultValue(path, angular) + (value - defaultValue(path, angular)) * easeInOutSine(tick / begin);
+  if (begin !== undefined && begin > 0 && tick < begin) value = defaultValue + (value - defaultValue) * easeInOutSine(tick / begin);
   const endTick = animation.endTick;
   if (endTick !== undefined && animation.lengthTicks > endTick && tick >= endTick) {
-    value += (defaultValue(path, angular) - value) * easeInOutSine((tick - endTick) / (animation.lengthTicks - endTick));
+    value += (defaultValue - value) * easeInOutSine((tick - endTick) / (animation.lengthTicks - endTick));
   }
   return value;
 }
@@ -160,10 +172,6 @@ function cubic(t: number, p0: number, p1: number, p2: number, p3: number): numbe
   return inverse ** 3 * p0 + 3 * inverse ** 2 * t * p1 + 3 * inverse * t ** 2 * p2 + t ** 3 * p3;
 }
 
-function defaultValue(path: string, angular: boolean): number {
-  return !angular && path.startsWith("scale") ? 1 : 0;
-}
-
 function easeInOutSine(progress: number): number {
   const clamped = Math.max(0, Math.min(1, progress));
   return -(Math.cos(Math.PI * clamped) - 1) / 2;
@@ -205,18 +213,26 @@ function buildSliceMatrices(animation: PalAnimation, slices: readonly Emotecraft
 }
 
 function localBoneMatrix(name: string, parentName: string | undefined, pose: BonePose | undefined, animation: PalAnimation): Matrix4 {
-  const pivot = animation.pivots[name] ?? EMOTECRAFT_PIVOTS[name] ?? [0, 0, 0];
-  const parentPivot = parentName ? animation.pivots[parentName] ?? EMOTECRAFT_PIVOTS[parentName] ?? [0, 0, 0] : [0, 0, 0];
-  const value = pose ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], bend: 0 };
+  const pivot = animation.pivots[name] ?? EMOTECRAFT_PIVOTS[name] ?? ZERO_PIVOT;
+  const parentPivot = parentName ? animation.pivots[parentName] ?? EMOTECRAFT_PIVOTS[parentName] ?? ZERO_PIVOT : ZERO_PIVOT;
+  const value = pose ?? DEFAULT_POSE;
   return new Matrix4().compose(
-    new Vector3(
-      ((pivot[0] - parentPivot[0]) - value.position[0]) / 16,
-      ((pivot[1] - parentPivot[1]) + value.position[1]) / 16,
-      ((pivot[2] - parentPivot[2]) + value.position[2]) / 16,
-    ),
-    new Quaternion().setFromEuler(new Euler(-value.rotation[0], -value.rotation[1], value.rotation[2], "ZYX")),
+    new Vector3(...palLocalPosition(pivot, parentPivot, value.position)),
+    new Quaternion().setFromEuler(new Euler(...palRotation(value.rotation), "ZYX")),
     new Vector3(value.scale[0], value.scale[1], value.scale[2]),
   );
+}
+
+function palLocalPosition(pivot: readonly [number, number, number], parentPivot: readonly [number, number, number], position: Vector3Tuple): Vector3Tuple {
+  return [
+    ((pivot[0] - parentPivot[0]) - position[0]) / 16,
+    ((pivot[1] - parentPivot[1]) + position[1]) / 16,
+    ((pivot[2] - parentPivot[2]) + position[2]) / 16,
+  ];
+}
+
+function palRotation(rotation: Vector3Tuple): Vector3Tuple {
+  return [-rotation[0], -rotation[1], rotation[2]];
 }
 
 function pivotRotationMatrix(pivot: readonly [number, number, number], bend: number): Matrix4 {

@@ -85,9 +85,8 @@ function slicePlayerHeadConversion(slice: EmotecraftSlice) {
     : slice.source.pivot;
   const sourceFrom = slice.bounds.from.map((value, axis) => value - geometryPivot[axis]);
   const sourceTo = slice.bounds.to.map((value, axis) => value - geometryPivot[axis]);
-  const canonical = { from: sourceFrom, to: sourceTo };
-  const from = canonical.from.map((value) => value / 16);
-  const to = canonical.to.map((value) => value / 16);
+  const from = sourceFrom.map((value) => value / 16);
+  const to = sourceTo.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);
   const center = from.map((value, axis) => (value + to[axis]) / 2);
   const fit = new Matrix4().makeTranslation(center[0], center[1], center[2])
