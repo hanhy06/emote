@@ -34,8 +34,8 @@ theme:
   language: en
   palette:
     - scheme: slate
-      primary: blue
-      accent: blue
+      primary: deep purple
+      accent: deep purple
   features:
     - navigation.sections
     - navigation.tabs
