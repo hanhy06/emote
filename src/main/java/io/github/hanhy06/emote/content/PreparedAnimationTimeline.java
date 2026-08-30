@@ -104,21 +104,28 @@ public final class PreparedAnimationTimeline {
     private static CompiledScalar compile(ScalarValue value) {
         return switch (value) {
             case ConstantValue constant -> new CompiledScalar(constant.value(), null, null);
-            case MolangValue molang -> {
-                validateValueProgram(molang.source(), molang.path());
-                yield new CompiledScalar(0.0D, compileProgram(molang.source(), molang.path()), molang.path());
-            }
+            case MolangValue molang -> new CompiledScalar(
+                0.0D,
+                compileValueProgram(molang.source(), molang.path()),
+                molang.path()
+            );
         };
     }
 
-    private static CompiledVisibility compile(VisibilityValue value) {
+    private static CompiledScalar compile(VisibilityValue value) {
         return switch (value) {
-            case ConstantVisibility constant -> new CompiledVisibility(constant.value(), null, null);
-            case MolangVisibility molang -> {
-                validateValueProgram(molang.source(), molang.path());
-                yield new CompiledVisibility(false, compileProgram(molang.source(), molang.path()), molang.path());
-            }
+            case ConstantVisibility constant -> new CompiledScalar(constant.value() ? 1.0D : 0.0D, null, null);
+            case MolangVisibility molang -> new CompiledScalar(
+                0.0D,
+                compileValueProgram(molang.source(), molang.path()),
+                molang.path()
+            );
         };
+    }
+
+    private static MolangEngine.CompiledExpression compileValueProgram(String source, String path) {
+        validateValueProgram(source, path);
+        return compileProgram(source, path);
     }
 
     private static MolangEngine.CompiledExpression compileProgram(String source, String path) {
@@ -212,7 +219,7 @@ public final class PreparedAnimationTimeline {
         }
     }
 
-    public record CompiledVisibilityKeyframe(int tick, CompiledVisibility value) {
+    public record CompiledVisibilityKeyframe(int tick, CompiledScalar value) {
     }
 
     public record CompiledNbtKeyframe(int tick, CompoundTag value) {
@@ -226,20 +233,4 @@ public final class PreparedAnimationTimeline {
         }
     }
 
-    public record CompiledVisibility(
-        boolean constant,
-        MolangEngine.CompiledExpression expression,
-        String path
-    ) {
-        public boolean evaluate(MolangEngine.Session session) {
-            if (this.expression == null) {
-                return this.constant;
-            }
-            double result = session.evaluate(this.expression);
-            if (!Double.isFinite(result)) {
-                throw new IllegalStateException(this.path + " evaluated to a non-finite value");
-            }
-            return result != 0.0D;
-        }
-    }
 }

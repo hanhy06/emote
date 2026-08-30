@@ -232,7 +232,7 @@ final class AnimationEvaluator {
         int currentIndex = advanceVisibilityCursor(tracks.visible(), state.visibilityCursor, tick);
         CompiledVisibilityKeyframe current = tracks.visible().get(currentIndex);
         this.session.setQuery("key_frame_lerp_time", 0.0D);
-        state.visible = current.value().evaluate(this.session);
+        state.visible = current.value().evaluate(this.session) != 0.0D;
         return currentIndex;
     }
 
