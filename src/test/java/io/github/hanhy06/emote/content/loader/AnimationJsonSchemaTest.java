@@ -46,10 +46,56 @@ class AnimationJsonSchemaTest {
                 """));
 
         EmoteAnimation.NodeTracks tracks = parse(root).animation().timeline().tracks().get("display");
+        EmoteAnimation.FixedNbtValue last = assertInstanceOf(
+            EmoteAnimation.FixedNbtValue.class,
+            tracks.nbt().getLast().value()
+        );
 
         assertEquals(2, tracks.nbt().size());
-        assertTrue(tracks.nbt().getLast().value().getBooleanOr("Glowing", false));
-        assertTrue(tracks.nbt().getLast().value().toString().contains("minecraft:diamond"));
+        assertTrue(last.value().getBooleanOr("Glowing", false));
+        assertTrue(last.value().toString().contains("minecraft:diamond"));
+    }
+
+    @Test
+    void loadsMolangSelectedNbtOptions() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "select":"math.random_integer(0, 3)",
+                    "options":[
+                      "{item:{id:'minecraft:poppy',count:1}}",
+                      "{item:{id:'minecraft:dandelion',count:1}}",
+                      "{item:{id:'minecraft:blue_orchid',count:1}}"
+                    ]
+                  }
+                }]
+                """));
+
+        EmoteAnimation.NbtValue value = parse(root).animation().timeline().tracks().get("display").nbt().getFirst().value();
+        EmoteAnimation.SelectedNbtValue selected = assertInstanceOf(EmoteAnimation.SelectedNbtValue.class, value);
+
+        assertEquals("math.random_integer(0, 3)", selected.selector().source());
+        assertEquals(3, selected.options().size());
+    }
+
+    @Test
+    void rejectsMismatchedFieldsInInitialNbtOptions() {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "select":"0",
+                    "options":["{item:{id:'minecraft:poppy',count:1}}", "{Glowing:true}"]
+                  }
+                }]
+                """));
+
+        assertEquals("$.timeline.tracks.display.nbt[0].value.options[1]", assertInvalid(root).fieldPath());
     }
 
     @Test

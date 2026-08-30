@@ -286,14 +286,48 @@ public record EmoteAnimation(
         }
     }
 
-    public record NbtKeyframe(int tick, CompoundTag value) {
+    public record NbtKeyframe(int tick, NbtValue value) {
         public NbtKeyframe {
+            Objects.requireNonNull(value, "value");
+        }
+
+        public NbtKeyframe(int tick, CompoundTag value) {
+            this(tick, new FixedNbtValue(value));
+        }
+    }
+
+    public sealed interface NbtValue permits FixedNbtValue, SelectedNbtValue {
+        List<CompoundTag> options();
+    }
+
+    public record FixedNbtValue(CompoundTag value) implements NbtValue {
+        public FixedNbtValue {
             value = copy(value);
         }
 
         @Override
         public CompoundTag value() {
             return this.value.copy();
+        }
+
+        @Override
+        public List<CompoundTag> options() {
+            return List.of(value());
+        }
+    }
+
+    public record SelectedNbtValue(MolangValue selector, List<CompoundTag> options) implements NbtValue {
+        public SelectedNbtValue {
+            Objects.requireNonNull(selector, "selector");
+            options = options.stream().map(EmoteAnimation::copy).toList();
+            if (options.size() < 2) {
+                throw new IllegalArgumentException("selected NBT must contain at least two options");
+            }
+        }
+
+        @Override
+        public List<CompoundTag> options() {
+            return this.options.stream().map(EmoteAnimation::copy).toList();
         }
     }
 

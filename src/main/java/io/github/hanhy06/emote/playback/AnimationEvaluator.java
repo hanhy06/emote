@@ -104,8 +104,7 @@ final class AnimationEvaluator {
 
     CompoundTag nbt(int index) {
         NodeState state = this.nodes[index];
-        if (state.tracks == null || state.tracks.nbt().isEmpty()) return null;
-        return state.tracks.nbt().get(state.nbtCursor).value();
+        return state.nbtCursor < 0 ? null : state.nbtState.copy();
     }
 
     private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
@@ -148,7 +147,7 @@ final class AnimationEvaluator {
                 state.worldMatrix.set(this.nodes[state.parentIndex].worldMatrix).mul(this.localMatrix);
             }
             state.visibilityCursor = visible(state, tick);
-            state.nbtCursor = advanceNbtCursor(tracks == null ? List.of() : tracks.nbt(), state.nbtCursor, tick);
+            evaluateNbt(state, tick);
         }
     }
 
@@ -250,11 +249,13 @@ final class AnimationEvaluator {
         return currentIndex;
     }
 
-    private int advanceNbtCursor(List<CompiledNbtKeyframe> frames, int currentIndex, int tick) {
-        while (currentIndex + 1 < frames.size() && frames.get(currentIndex + 1).tick() <= tick) {
-            currentIndex++;
+    private void evaluateNbt(NodeState state, int tick) {
+        List<CompiledNbtKeyframe> frames = state.tracks == null ? List.of() : state.tracks.nbt();
+        while (state.nbtCursor + 1 < frames.size() && frames.get(state.nbtCursor + 1).tick() <= tick) {
+            CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
+            this.session.setQuery("key_frame_lerp_time", 0.0D);
+            state.nbtState.merge(frame.select(this.session));
         }
-        return currentIndex;
     }
 
     private double progress(CompiledVectorKeyframe current, CompiledVectorKeyframe next, int tick) {
@@ -361,17 +362,6 @@ final class AnimationEvaluator {
         return Math.max(0, low - 1);
     }
 
-    private static int findNbtCursor(List<CompiledNbtKeyframe> frames, int tick) {
-        int low = 1;
-        int high = frames.size();
-        while (low < high) {
-            int middle = (low + high) >>> 1;
-            if (frames.get(middle).tick() <= tick) low = middle + 1;
-            else high = middle;
-        }
-        return Math.max(0, low - 1);
-    }
-
     private static final class NodeState {
         private final String id;
         private final Node node;
@@ -383,7 +373,8 @@ final class AnimationEvaluator {
         private int rotationCursor;
         private int scaleCursor;
         private int visibilityCursor;
-        private int nbtCursor;
+        private int nbtCursor = -1;
+        private CompoundTag nbtState = new CompoundTag();
         private boolean visible;
 
         private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
@@ -402,8 +393,8 @@ final class AnimationEvaluator {
                 ? 0 : findVectorCursor(this.tracks.scale(), tick);
             this.visibilityCursor = this.tracks == null || this.tracks.visible().isEmpty()
                 ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
-            this.nbtCursor = this.tracks == null || this.tracks.nbt().isEmpty()
-                ? 0 : findNbtCursor(this.tracks.nbt(), tick);
+            this.nbtCursor = -1;
+            this.nbtState = new CompoundTag();
         }
     }
 

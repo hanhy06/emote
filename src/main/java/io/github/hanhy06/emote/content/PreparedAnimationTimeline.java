@@ -78,13 +78,22 @@ public final class PreparedAnimationTimeline {
     }
 
     private static List<CompiledNbtKeyframe> compileNbt(List<NbtKeyframe> frames) {
-        CompoundTag state = new CompoundTag();
-        List<CompiledNbtKeyframe> compiled = new ArrayList<>(frames.size());
-        for (NbtKeyframe frame : frames) {
-            state.merge(frame.value());
-            compiled.add(new CompiledNbtKeyframe(frame.tick(), state.copy()));
-        }
-        return List.copyOf(compiled);
+        return frames.stream().map(frame -> switch (frame.value()) {
+            case FixedNbtValue fixed -> new CompiledNbtKeyframe(
+                frame.tick(),
+                null,
+                fixed.options()
+            );
+            case SelectedNbtValue selected -> new CompiledNbtKeyframe(
+                frame.tick(),
+                new CompiledScalar(
+                    0.0D,
+                    compileValueProgram(selected.selector().source(), selected.selector().path()),
+                    selected.selector().path()
+                ),
+                selected.options()
+            );
+        }).toList();
     }
 
     private static List<CompiledVectorKeyframe> compileVectors(List<VectorKeyframe> frames) {
@@ -222,14 +231,35 @@ public final class PreparedAnimationTimeline {
     public record CompiledVisibilityKeyframe(int tick, CompiledScalar value) {
     }
 
-    public record CompiledNbtKeyframe(int tick, CompoundTag value) {
+    public record CompiledNbtKeyframe(
+        int tick,
+        CompiledScalar selector,
+        List<CompoundTag> options
+    ) {
         public CompiledNbtKeyframe {
-            value = value.copy();
+            options = options.stream().map(CompoundTag::copy).toList();
+        }
+
+        public CompoundTag select(MolangEngine.Session session) {
+            if (this.selector == null) {
+                return this.options.getFirst().copy();
+            }
+            double result = this.selector.evaluate(session);
+            if (result != Math.rint(result)) {
+                throw new IllegalStateException(this.selector.path() + " must evaluate to an integer option index");
+            }
+            if (result < 0.0D || result >= this.options.size()) {
+                throw new IllegalStateException(
+                    this.selector.path() + " evaluated to option index " + (long) result
+                        + ", but only " + this.options.size() + " options exist"
+                );
+            }
+            return this.options.get((int) result).copy();
         }
 
         @Override
-        public CompoundTag value() {
-            return this.value.copy();
+        public List<CompoundTag> options() {
+            return this.options.stream().map(CompoundTag::copy).toList();
         }
     }
 

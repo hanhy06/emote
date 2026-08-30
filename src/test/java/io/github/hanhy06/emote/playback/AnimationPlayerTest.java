@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -143,6 +144,89 @@ class AnimationPlayerTest {
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(3, target.nbtApplyCount);
         assertTrue(target.nbt.get("display").toString().contains("minecraft:stone"));
+    }
+
+    @Test
+    void selectsNbtOncePerKeyframeAndAgainForANewLoop() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "select":"q.is_sneaking ? 1 : 0",
+                    "options":[
+                      "{item:{id:'minecraft:poppy',count:1}}",
+                      "{item:{id:'minecraft:blue_orchid',count:1}}"
+                    ]
+                  }
+                }]
+                """));
+        AtomicBoolean sneaking = new AtomicBoolean();
+        MolangQueries.Source queries = session -> session.setQuery("is_sneaking", sneaking.get() ? 1.0D : 0.0D);
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
+
+        player.start();
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+
+        sneaking.set(true);
+        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(1, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2, target.nbtApplyCount);
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:blue_orchid"));
+    }
+
+    @Test
+    void rejectsNbtSelectorResultOutsideItsOptions() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{
+                  "time":"0t",
+                  "value":{
+                    "select":"2",
+                    "options":["{Glowing:false}", "{Glowing:true}"]
+                  }
+                }]
+                """));
+        AnimationPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("only 2 options exist"));
+    }
+
+    @Test
+    void rebuildsSelectedNbtStateWhenStartingInsideTheTimeline() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [
+                  {"time":"0t","value":"{item:{id:'minecraft:poppy',count:1},Glowing:false}"},
+                  {
+                    "time":"5t",
+                    "value":{
+                      "select":"1",
+                      "options":["{Glowing:false}", "{Glowing:true}"]
+                    }
+                  }
+                ]
+                """));
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+
+        player.startAtCyclePhase(5L);
+
+        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+        assertTrue(target.nbt.get("display").getBooleanOr("Glowing", false));
     }
 
     @Test

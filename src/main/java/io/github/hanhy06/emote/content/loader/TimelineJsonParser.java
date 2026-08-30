@@ -67,7 +67,7 @@ final class TimelineJsonParser {
                 throw reader.error(path + ".nbt", "anchor nodes do not support nbt tracks");
             }
             if (node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource
-                && nbt.stream().anyMatch(frame -> frame.value().contains("item"))) {
+                && nbt.stream().flatMap(frame -> frame.value().options().stream()).anyMatch(option -> option.contains("item"))) {
                 throw reader.error(path + ".nbt", "participant hand item nodes do not support item changes in nbt tracks");
             }
             if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty() && nbt.isEmpty()) {
@@ -94,22 +94,27 @@ final class TimelineJsonParser {
             String keyframePath = path + "[" + index + "]";
             JsonObject object = reader.requireObject(array.get(index), keyframePath);
             int tick = parseTrackTime(object, keyframePath, durationTicks, previousTick, index, reader);
-            String value = reader.requireString(object, "value", keyframePath);
-            CompoundTag parsed;
-            try {
-                parsed = TagParser.parseCompoundFully(value);
-            } catch (Exception exception) {
-                throw reader.error(keyframePath + ".value", "invalid compound SNBT", exception);
-            }
-            for (String field : RUNTIME_OWNED_NBT_FIELDS) {
-                if (parsed.contains(field)) {
-                    throw reader.error(keyframePath + ".value", "must not modify runtime-owned field " + field);
-                }
-            }
+            NbtValue parsed = parseNbtValue(reader.requireElement(object, "value", keyframePath), keyframePath + ".value", reader);
+            List<CompoundTag> options = parsed.options();
             if (index == 0) {
-                initialFields = Set.copyOf(parsed.keySet());
-            } else if (!initialFields.containsAll(parsed.keySet())) {
-                throw reader.error(keyframePath + ".value", "must only modify fields declared by the 0t keyframe");
+                initialFields = Set.copyOf(options.getFirst().keySet());
+                for (int optionIndex = 1; optionIndex < options.size(); optionIndex++) {
+                    if (!initialFields.equals(options.get(optionIndex).keySet())) {
+                        throw reader.error(
+                            keyframePath + ".value.options[" + optionIndex + "]",
+                            "0t NBT options must declare the same fields"
+                        );
+                    }
+                }
+            } else {
+                for (int optionIndex = 0; optionIndex < options.size(); optionIndex++) {
+                    if (!initialFields.containsAll(options.get(optionIndex).keySet())) {
+                        throw reader.error(
+                            nbtOptionPath(keyframePath + ".value", parsed, optionIndex),
+                            "must only modify fields declared by the 0t keyframe"
+                        );
+                    }
+                }
             }
             if (object.size() != 2) {
                 throw reader.error(keyframePath, "nbt keyframes only support time and value");
@@ -118,6 +123,54 @@ final class TimelineJsonParser {
             previousTick = tick;
         }
         return List.copyOf(keyframes);
+    }
+
+    private NbtValue parseNbtValue(JsonElement element, String path, EmoteJsonReader reader)
+        throws EmoteAnimationLoadException {
+        if (!reader.isNotString(element)) {
+            return new FixedNbtValue(parseNbt(element.getAsString(), path, reader));
+        }
+        JsonObject object = reader.requireObject(element, path);
+        String selector = reader.requireString(object, "select", path);
+        if (selector.isBlank()) {
+            throw reader.error(path + ".select", "must not be blank");
+        }
+        AnimationJsonParser.compileMolang(selector, path + ".select", reader);
+        JsonArray optionArray = reader.requireArray(object, "options", path);
+        if (optionArray.size() < 2) {
+            throw reader.error(path + ".options", "must contain at least two options");
+        }
+        if (object.size() != 2) {
+            throw reader.error(path, "selected NBT only supports select and options");
+        }
+        List<CompoundTag> options = new ArrayList<>(optionArray.size());
+        for (int index = 0; index < optionArray.size(); index++) {
+            String optionPath = path + ".options[" + index + "]";
+            if (reader.isNotString(optionArray.get(index))) {
+                throw reader.error(optionPath, "must be a compound SNBT string");
+            }
+            options.add(parseNbt(optionArray.get(index).getAsString(), optionPath, reader));
+        }
+        return new SelectedNbtValue(new MolangValue(selector, path + ".select"), options);
+    }
+
+    private CompoundTag parseNbt(String source, String path, EmoteJsonReader reader) throws EmoteAnimationLoadException {
+        CompoundTag parsed;
+        try {
+            parsed = TagParser.parseCompoundFully(source);
+        } catch (Exception exception) {
+            throw reader.error(path, "invalid compound SNBT", exception);
+        }
+        for (String field : RUNTIME_OWNED_NBT_FIELDS) {
+            if (parsed.contains(field)) {
+                throw reader.error(path, "must not modify runtime-owned field " + field);
+            }
+        }
+        return parsed;
+    }
+
+    private String nbtOptionPath(String path, NbtValue value, int optionIndex) {
+        return value instanceof FixedNbtValue ? path : path + ".options[" + optionIndex + "]";
     }
 
     private List<VectorKeyframe> parseVectorTrack(
