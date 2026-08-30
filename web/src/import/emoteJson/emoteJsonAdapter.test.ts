@@ -133,6 +133,17 @@ describe("emoteJsonAdapter", () => {
               { time: "5t", value: [0, 90, 0] },
             ],
             visible: [{ time: "0t", value: "q.is_moving" }],
+            nbt: [{
+              time: "0t",
+              value: {
+                select: "math.random_integer(0, 3)",
+                options: [
+                  "{item:{id:'minecraft:poppy',count:1}}",
+                  "{item:{id:'minecraft:dandelion',count:1}}",
+                  "{item:{id:'minecraft:blue_orchid',count:1}}",
+                ],
+              },
+            }],
           },
         },
       },
@@ -150,6 +161,10 @@ describe("emoteJsonAdapter", () => {
     expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[0]).toBeCloseTo(0);
     expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[2]).toBeCloseTo(1);
     expect(project.animations[0].preview?.tracks.child.visibility).toEqual([{ tick: 0, visible: false }]);
+    expect(project.animations[0].preview?.tracks.child.nbt).toEqual([{
+      tick: 0,
+      value: "{item:{id:'minecraft:poppy',count:1}}",
+    }]);
     expect(project.nodes.child.defaultMatrix[3]).toBeCloseTo(1);
     expect(project.nodes.child.defaultMatrix[7]).toBeCloseTo(2);
 

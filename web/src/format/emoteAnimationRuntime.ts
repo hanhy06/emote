@@ -186,7 +186,11 @@ function requireNbtTrack(value: unknown, path: string): void {
     const framePath = `${path}[${index}]`;
     const frame = requireRecord(frameValue, framePath);
     requireString(frame.time, `${framePath}.time`);
-    requireString(frame.value, `${framePath}.value`);
+    const valuePath = `${framePath}.value`;
+    if (typeof frame.value === "string") return;
+    const selected = requireRecord(frame.value, valuePath);
+    requireString(selected.select, `${valuePath}.select`);
+    requireStringArray(selected.options, `${valuePath}.options`);
   });
 }
 

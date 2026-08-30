@@ -143,8 +143,13 @@ export interface EmoteVisibilityKeyframe {
 
 export interface EmoteNbtKeyframe {
   time: MinecraftTime;
-  value: string;
+  value: EmoteNbtValue;
 }
+
+export type EmoteNbtValue = string | {
+  select: string;
+  options: string[];
+};
 
 export interface EmoteEvents {
   start?: EmoteEvent[];

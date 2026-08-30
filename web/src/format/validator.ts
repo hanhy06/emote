@@ -77,7 +77,9 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     if (node?.type === "anchor" && tracks.visible) add(issues, `${path}.visible`, "anchor does not support visible state");
     if (node?.type === "anchor" && tracks.nbt) add(issues, `${path}.nbt`, "anchor does not support nbt state");
     if (node?.type === "item_display" && node.item_source && tracks.nbt?.some((frame) => {
-      try { return parseSnbtCompound(frame.value).some((field) => field.name === "item"); } catch { return false; }
+      return nbtOptions(frame.value).some((option) => {
+        try { return parseSnbtCompound(option).some((field) => field.name === "item"); } catch { return false; }
+      });
     })) add(issues, `${path}.nbt`, "participant hand item nodes do not support item changes");
   }
 
@@ -226,17 +228,42 @@ function validateNbtTrack(
       if (durationTicks !== null && tick > durationTicks) add(issues, `${framePath}.time`, "must be within 0..duration");
       previousTick = tick;
     }
-    try {
-      const fields = parseSnbtCompound(frame.value).map((field) => field.name);
-      if (index === 0) initialFields = new Set(fields);
-      for (const field of fields) {
-        if (RUNTIME_OWNED_NBT_FIELDS.has(field)) add(issues, `${framePath}.value`, `must not modify runtime-owned field ${field}`);
-        if (index > 0 && !initialFields.has(field)) add(issues, `${framePath}.value`, "must only modify fields declared by the 0t keyframe");
+    const valuePath = `${framePath}.value`;
+    if (typeof frame.value !== "string") {
+      if (!frame.value.select.trim()) add(issues, `${valuePath}.select`, "Molang must not be blank");
+      if (frame.value.options.length < 2) add(issues, `${valuePath}.options`, "must contain at least two options");
+    }
+    const optionFields: Set<string>[] = [];
+    nbtOptions(frame.value).forEach((option, optionIndex) => {
+      const optionPath = typeof frame.value === "string" ? valuePath : `${valuePath}.options[${optionIndex}]`;
+      try {
+        const fields = new Set(parseSnbtCompound(option).map((field) => field.name));
+        optionFields.push(fields);
+        for (const field of fields) {
+          if (RUNTIME_OWNED_NBT_FIELDS.has(field)) add(issues, optionPath, `must not modify runtime-owned field ${field}`);
+          if (index > 0 && !initialFields.has(field)) add(issues, optionPath, "must only modify fields declared by the 0t keyframe");
+        }
+      } catch (reason) {
+        add(issues, optionPath, reason instanceof Error ? reason.message : "must be compound SNBT");
       }
-    } catch (reason) {
-      add(issues, `${framePath}.value`, reason instanceof Error ? reason.message : "must be compound SNBT");
+    });
+    if (index === 0 && optionFields.length > 0) {
+      initialFields = optionFields[0];
+      optionFields.slice(1).forEach((fields, optionIndex) => {
+        if (!sameStrings(initialFields, fields)) {
+          add(issues, `${valuePath}.options[${optionIndex + 1}]`, "0t NBT options must declare the same fields");
+        }
+      });
     }
   });
+}
+
+function nbtOptions(value: EmoteNbtKeyframe["value"]): readonly string[] {
+  return typeof value === "string" ? [value] : value.options;
+}
+
+function sameStrings(first: Set<string>, second: Set<string>): boolean {
+  return first.size === second.size && [...first].every((value) => second.has(value));
 }
 
 function validateMolangVec3(values: readonly MolangScalar[], path: string, issues: ValidationIssue[]): void {

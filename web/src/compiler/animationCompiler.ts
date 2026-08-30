@@ -1,5 +1,6 @@
 import type {
   EmoteAnimation,
+  EmoteNbtValue,
   EmoteNode,
   EmoteNodeTracks,
   EmoteTimelineEvent,
@@ -212,13 +213,24 @@ function compileRuntimeTimeline(
   const tracks = Object.fromEntries(Object.entries(timeline.tracks).map(([nodeId, track]) => {
     if (!track.nbt?.length) return [nodeId, track];
     const nbt = track.nbt.flatMap((frame) => {
-      const value = compileNodeNbt(document, nodeId, frame.value);
+      const value = compileRuntimeNbtValue(document, nodeId, frame.value);
       return value === undefined ? [] : [{ ...frame, value }];
     });
     const { nbt: _nbt, ...remaining } = track;
     return [nodeId, nbt.length > 0 ? { ...remaining, nbt } : remaining];
   }));
   return { ...timeline, duration: formatMinecraftTime(requireTick(durationTicks, `${animationId} duration`)), tracks };
+}
+
+function compileRuntimeNbtValue(
+  document: ConversionDocument,
+  nodeId: string,
+  value: EmoteNbtValue,
+): typeof value | undefined {
+  if (typeof value === "string") return compileNodeNbt(document, nodeId, value);
+  const compiled = value.options.map((option) => compileNodeNbt(document, nodeId, option));
+  if (compiled.every((option) => option === undefined)) return undefined;
+  return { ...value, options: compiled.map((option) => option ?? "{}") };
 }
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: string): string | undefined {

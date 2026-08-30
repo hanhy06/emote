@@ -53,7 +53,10 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
   const result = Object.fromEntries(states.map((state) => [state.id, {
     transforms: [],
     visibility: [],
-    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value })),
+    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({
+      tick: parseMinecraftTime(frame.time),
+      value: typeof frame.value === "string" ? frame.value : frame.value.options[0],
+    })),
   }])) as Record<string, ImportedNodeTrack>;
 
   session.setTick(0, 0);

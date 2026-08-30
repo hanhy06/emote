@@ -79,6 +79,30 @@ describe("validateEmoteAnimation", () => {
     });
   });
 
+  it("validates every option of a Molang-selected NBT keyframe", () => {
+    const value = animation();
+    value.timeline.tracks.display.nbt = [{
+      time: "0t",
+      value: {
+        select: "math.random_integer(0, 3)",
+        options: [
+          "{item:{id:'minecraft:poppy',count:1}}",
+          "{item:{id:'minecraft:dandelion',count:1}}",
+          "{item:{id:'minecraft:blue_orchid',count:1}}",
+        ],
+      },
+    }];
+    expect(validateEmoteAnimation(value)).toEqual([]);
+
+    const selected = value.timeline.tracks.display.nbt[0].value;
+    if (typeof selected === "string") throw new Error("Expected selected NBT fixture.");
+    selected.options[1] = "{Glowing:true}";
+    expect(validateEmoteAnimation(value)).toContainEqual({
+      path: "timeline.tracks.display.nbt[0].value.options[1]",
+      message: "0t NBT options must declare the same fields",
+    });
+  });
+
   it("accepts hold mode only with zero loop delay", () => {
     const value = animation();
     value.settings.playback = { mode: "hold", loop_delay: "0t" };

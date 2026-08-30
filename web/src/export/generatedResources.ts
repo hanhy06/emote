@@ -23,7 +23,10 @@ export function animationUsesGeneratedResources(
   if (Object.values(animation.nodes).some((node) => node.type === "item_display" && referencesGeneratedModel(node.item_stack_snbt))) {
     return true;
   }
-  return Object.values(animation.timeline.tracks).some((track) => track.nbt?.some((frame) => referencesGeneratedModel(frame.value)));
+  return Object.values(animation.timeline.tracks).some((track) => track.nbt?.some((frame) => {
+    const options = typeof frame.value === "string" ? [frame.value] : frame.value.options;
+    return options.some(referencesGeneratedModel);
+  }));
 }
 
 export function generatedResourceFiles(project: GeneratedResourceSource, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
