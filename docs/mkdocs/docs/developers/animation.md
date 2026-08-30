@@ -271,18 +271,32 @@ The value may also be a [Molang](molang.md) string; zero is hidden and any other
 
 ### NBT tracks
 
-NBT tracks apply stepped display-entity data changes. Each `value` is compound SNBT, and each keyframe is merged with the state produced by the preceding keyframes.
+NBT tracks apply stepped display-entity data changes. A `value` may be compound SNBT or a Molang-selected set of compound SNBT options. The selected compound is merged with the state produced by the preceding keyframes.
 
 ```json
 "nbt": [
-  {"time": "0t", "value": "{item:{id:'minecraft:stone',count:1},Glowing:false}"},
-  {"time": "10t", "value": "{item:{id:'minecraft:diamond',count:1},Glowing:true}"}
+  {
+    "time": "0t",
+    "value": {
+      "select": "math.random_integer(0, 3)",
+      "options": [
+        "{item:{id:'minecraft:poppy',count:1},Glowing:false}",
+        "{item:{id:'minecraft:dandelion',count:1},Glowing:false}",
+        "{item:{id:'minecraft:blue_orchid',count:1},Glowing:false}"
+      ]
+    }
+  },
+  {"time": "10t", "value": "{Glowing:true}"}
 ]
 ```
 
 - The first keyframe must be at `0t`; times must be strictly increasing and cannot exceed the timeline duration.
-- Keyframes support only `time` and `value`. Interpolation and Molang values are not supported.
+- Keyframes support only `time` and `value`; NBT changes are stepped and cannot declare interpolation.
+- A selected value contains a nonblank Molang `select` expression and at least two `options`. There is no fixed upper option limit beyond the 8 MiB Animation file limit.
+- `select` must produce a finite integer index from `0` through `options.length - 1`. Any other result stops playback as a runtime failure.
+- A selector is evaluated once when its keyframe is first applied. Starting from a later synchronized tick evaluates each preceding keyframe once in order, and a new loop or Sequence segment selects again.
 - Fields added after the `0t` keyframe are rejected. Declare every field the track may modify in the first keyframe.
+- Every option at `0t` must declare the same top-level fields so later keyframes have one stable state shape.
 - Runtime-owned fields such as identity, position, transformation, interpolation, and passengers cannot be modified.
 - Anchor nodes do not support NBT tracks. A node displaying a participant's held item may use an NBT track, but the track cannot replace its `item` field.
 

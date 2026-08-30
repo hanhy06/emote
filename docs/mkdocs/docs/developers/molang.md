@@ -1,6 +1,6 @@
 # Molang
 
-Animation schema 4 accepts Molang in animation programs, vector track components, and visibility track values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and NBT option selectors. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
 ## Programs
 
@@ -38,6 +38,23 @@ Each position, rotation, or scale component may be a number or a Molang string:
 Visibility values may be booleans or Molang strings. A finite result of `0` is hidden; any other finite result is visible.
 
 Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
+
+### NBT option selectors
+
+An NBT keyframe can use Molang to choose one of two or more compound SNBT options:
+
+```json
+"value": {
+  "select": "math.random_integer(0, 3)",
+  "options": [
+    "{item:{id:'minecraft:poppy',count:1}}",
+    "{item:{id:'minecraft:dandelion',count:1}}",
+    "{item:{id:'minecraft:blue_orchid',count:1}}"
+  ]
+}
+```
+
+The selector follows the same read-only track-expression rules as vector and visibility values. Its result must be a finite integer within the option array. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during selector evaluation.
 
 ## Queries
 
@@ -79,6 +96,6 @@ Player-state queries always refer to the initiator, including partner Animations
 
 ## Validation and preview
 
-Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure.
+Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure; an NBT selector also fails if its result is fractional or outside its option array.
 
-The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries are `0`. If an expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries are `0`. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
