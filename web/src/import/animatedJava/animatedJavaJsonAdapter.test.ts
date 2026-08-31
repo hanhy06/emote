@@ -56,7 +56,8 @@ describe("animatedJavaJsonAdapter", () => {
 
     expect(project.sourceName).toBe("unnamed.ajblueprint");
     expect(project.nodes.block.type).toBe("block_display");
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(-0.5);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(-0.5);
   });
 
   it("imports native Animated Java cube rigs", async () => {
@@ -94,6 +95,8 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.sourceName).toBe("humanoid.ajblueprint");
     expect(Object.keys(project.nodes).length).toBeGreaterThan(0);
     expect(project.animations).toHaveLength(1);
+    expect(project.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(-0.29296875);
+    expect(project.animations[0].tracks.right_arm.transforms[0].matrix[3]).toBeCloseTo(-0.29296875);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -364,7 +367,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(animation.loop).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
-    expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2);
+    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2);
   });
 
