@@ -31,12 +31,7 @@ export function prepareCubeModels(
   resources: Map<string, Uint8Array>,
 ): PreparedCubeModels {
   if (bones.some((bone) => bone.cubes.length > 0)) {
-    const texture = requireEmbeddedTexture(project.textures);
-    const texturePath = `assets/${namespace}/textures/item/${projectPath}/texture.png`;
-    const textureBytes = decodeTexture(texture);
-    resources.set(texturePath, textureBytes);
-    const textureMetadata = animatedTextureMetadata(texture, textureBytes);
-    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, jsonBytes(textureMetadata));
+    writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
     const resourceNodeIds = new Set(bones.map((bone) => bone.id));
     for (const bone of bones) {
       for (const [cubeIndex, cube] of bone.cubes.entries()) {
@@ -83,9 +78,13 @@ export function writeCubeResources(
   modelPath: string,
   resources: Map<string, Uint8Array>,
 ): void {
+  const textures = Object.fromEntries(project.textures.map((_, index) => [
+    `layer${index}`,
+    `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
+  ]));
   const model = {
-    textures: { layer0: `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/texture` },
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution)],
+    textures,
+    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, project.textures)],
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
   resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
@@ -240,7 +239,7 @@ function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
   return undefined;
 }
 
-function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }): Record<string, unknown> {
+function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[]): Record<string, unknown> {
   const inflate = cube.inflate ?? 0;
   const offset = (value: number, axis: number, direction: -1 | 1) => value - boneOrigin[axis] + 8 + inflate * direction;
   const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
@@ -252,7 +251,7 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
         face.uv[2] * 16 / resolution.width,
         face.uv[3] * 16 / resolution.height,
       ],
-      texture: "#layer0",
+      texture: `#layer${resolveFaceTextureIndex(face.texture, textures)}`,
       ...(face.rotation == null || face.rotation === 0 ? {} : { rotation: face.rotation }),
     }]];
   }));
@@ -263,21 +262,40 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
   };
 }
 
-function requireEmbeddedTexture(textures: BbTexture[]): BbTexture {
-  if (textures.length !== 1) throw new Error(`GeckoLib bbmodel must contain exactly one texture; found ${textures.length}.`);
-  const texture = textures[0];
-  if (!texture.source?.startsWith("data:image/png;base64,")) {
-    throw new ConversionError("geckolib_external_texture", "GeckoLib texture must be embedded in the bbmodel as PNG data.", "textures[0].source");
+function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, Uint8Array>): void {
+  if (textures.length === 0) throw new Error("GeckoLib bbmodel must contain at least one texture.");
+  for (const [index, texture] of textures.entries()) {
+    if (!texture.source?.startsWith("data:image/png;base64,")) {
+      throw new ConversionError("geckolib_external_texture", "GeckoLib textures must be embedded in the bbmodel as PNG data.", `textures[${index}].source`);
+    }
+    const texturePath = `assets/${namespace}/textures/item/${projectPath}/${textureFileStem(textures.length, index)}.png`;
+    const textureBytes = decodeTexture(texture, index);
+    resources.set(texturePath, textureBytes);
+    const textureMetadata = animatedTextureMetadata(texture, textureBytes);
+    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, jsonBytes(textureMetadata));
   }
-  return texture;
 }
 
-function decodeTexture(texture: BbTexture): Uint8Array {
+function textureFileStem(textureCount: number, index: number): string {
+  return textureCount === 1 ? "texture" : `texture_${index}`;
+}
+
+function resolveFaceTextureIndex(reference: number | string | null | undefined, textures: BbTexture[]): number {
+  if (reference === undefined && textures.length === 1) return 0;
+  const numeric = typeof reference === "number" ? reference : typeof reference === "string" && /^#?\d+$/.test(reference) ? Number(reference.replace(/^#/, "")) : undefined;
+  const index = numeric ?? textures.findIndex((texture) => reference === texture.uuid || reference === texture.id || reference === texture.name);
+  if (!Number.isInteger(index) || index < 0 || index >= textures.length) {
+    throw new ConversionError("invalid_geckolib_face_texture", `Cube face references unknown texture ${String(reference)}.`, "elements.faces.texture");
+  }
+  return index;
+}
+
+function decodeTexture(texture: BbTexture, index: number): Uint8Array {
   const base64 = texture.source!.slice("data:image/png;base64,".length);
   try {
     return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
   } catch (error) {
-    throw new ConversionError("invalid_geckolib_texture", "GeckoLib embedded texture is not valid base64.", "textures[0].source", { cause: error });
+    throw new ConversionError("invalid_geckolib_texture", "GeckoLib embedded texture is not valid base64.", `textures[${index}].source`, { cause: error });
   }
 }
 

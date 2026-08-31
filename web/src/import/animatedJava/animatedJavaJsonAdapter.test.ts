@@ -122,6 +122,42 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.nodes.label.type).toBe("text_display");
   });
 
+  it("preserves multiple embedded textures and face texture references", async () => {
+    const cube = (uuid: string, texture: number | string) => ({
+      uuid,
+      name: uuid,
+      type: "cube",
+      from: [0, 0, 0],
+      to: [8, 8, 8],
+      faces: { north: { uv: [0, 0, 8, 8], texture } },
+    });
+    const input = {
+      name: "textures.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [cube("first", 0), cube("second", "texture_b")],
+        groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "root", children: ["first", "second"] }],
+        textures: [
+          { uuid: "texture_a", source: "data:image/png;base64,iVBORw0KGgo=" },
+          { uuid: "texture_b", source: "data:image/png;base64,iVBORw0KGgo=" },
+        ],
+        animations: [{ name: "idle", loop: "once", length: 0.05, animators: {} }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const paths = [...project.resources.keys()];
+    const models = [...project.resources.entries()]
+      .filter(([path]) => path.includes("/models/item/") && path.endsWith(".json"))
+      .map(([, bytes]) => new TextDecoder().decode(bytes));
+
+    expect(paths.some((path) => path.endsWith("/texture_0.png"))).toBe(true);
+    expect(paths.some((path) => path.endsWith("/texture_1.png"))).toBe(true);
+    expect(models.some((model) => model.includes('"texture": "#layer1"'))).toBe(true);
+  });
+
   it("creates an idle animation for static native projects", async () => {
     const project = await animatedJavaJsonAdapter.import(nativeProject({
       elements: [{
