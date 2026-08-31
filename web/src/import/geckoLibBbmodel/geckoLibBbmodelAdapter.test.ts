@@ -208,6 +208,41 @@ describe("geckoLibBbmodelAdapter", () => {
       .not.toEqual(imported.animations[0].tracks.right_arm_right_arm_skin_1.transforms[2].matrix);
   });
 
+  it("converts presegmented limb cubes and removes their skin-layer duplicates", async () => {
+    const value = project();
+    value.groups[0].name = "Right Arm";
+    value.groups[0].origin = [6, 24, 0];
+    value.outliner[0].name = "Right Arm";
+    value.outliner[0].origin = [6, 24, 0];
+    value.elements[0].name = "Right Arm";
+    value.elements[0].from = [4, 18, -2];
+    value.elements[0].to = [8, 24, 2];
+    value.elements[0].faces.north = { uv: [0, 0, 4, 6], texture: 0 };
+    value.groups[1].name = "Right Hand";
+    value.groups[1].origin = [6, 18, 0];
+    const child = value.outliner[0].children[1];
+    if (typeof child === "string") throw new Error("Expected child group.");
+    child.name = "Right Hand";
+    child.origin = [6, 18, 0];
+    child.children = ["lower", "lower_sleeve"] as typeof child.children;
+    value.elements.push(
+      { ...value.elements[0], uuid: "lower", name: "Right Arm", from: [4, 12, -2], to: [8, 18, 2], faces: { ...value.elements[0].faces, north: { uv: [0, 6, 4, 12], texture: 0 } } },
+      { ...value.elements[0], uuid: "upper_sleeve", name: "Right Sleeve", from: [4, 18.25, -2], to: [8, 24, 2] },
+      { ...value.elements[0], uuid: "lower_sleeve", name: "Right Sleeve", from: [4, 12, -2], to: [8, 17.75, 2] },
+    );
+    const rootChildren = value.outliner[0].children;
+    rootChildren.splice(1, 0, "upper_sleeve");
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const skinNodes = Object.values(imported.nodes).filter((node) => node.type === "item_display" && node.suggestedSkin?.part === "right_arm");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
+    const compiledItems = Object.values(compiled.nodes).filter((node) => node.type === "item_display");
+
+    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 1, 2, 2, 3]);
+    expect(Object.keys(imported.nodes).some((id) => id.includes("sleeve"))).toBe(false);
+    expect(compiledItems.every((node) => node.type === "item_display" && node.item_stack_snbt?.includes("minecraft:player_head") === true)).toBe(true);
+  });
+
   it("reconnects stale animator UUIDs by a unique normalized bone name", async () => {
     const value = project();
     const rootAnimator = value.animations[0].animators.root;

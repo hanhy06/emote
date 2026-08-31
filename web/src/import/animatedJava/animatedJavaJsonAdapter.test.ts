@@ -150,6 +150,48 @@ describe("animatedJavaJsonAdapter", () => {
     expect([...project.resources.keys()].some((path) => path.endsWith(".png"))).toBe(false);
   });
 
+  it("compiles presegmented native limbs entirely as player skin heads", async () => {
+    const cube = (uuid: string, name: string, fromY: number, toY: number) => ({
+      uuid,
+      name,
+      type: "cube",
+      from: [4, fromY, -2],
+      to: [8, toY, 2],
+      faces: { north: { uv: [0, 24 - toY, 4, 24 - fromY] } },
+    });
+    const input = {
+      name: "presegmented_player.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 64, height: 64 },
+        elements: [
+          cube("upper", "right_arm", 18, 24),
+          cube("upper_layer", "right_sleeve", 18.25, 24),
+          cube("lower", "right_arm", 12, 18),
+          cube("lower_layer", "right_sleeve", 12, 17.75),
+        ],
+        groups: [
+          { uuid: "upper_bone", name: "right_arm", origin: [6, 24, 0], rotation: [0, 0, 0] },
+          { uuid: "lower_bone", name: "right_hand", origin: [6, 18, 0], rotation: [0, 0, 0] },
+        ],
+        outliner: [{
+          uuid: "upper_bone",
+          children: ["upper", "upper_layer", { uuid: "lower_bone", children: ["lower", "lower_layer"] }],
+        }],
+        textures: [],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const skinNodes = Object.values(project.nodes).filter((node) => node.type === "item_display" && node.suggestedSkin?.part === "right_arm");
+    const [compiled] = compileImportedProject(project, { minecraftVersion: "26.2" });
+    const itemNodes = Object.values(compiled.nodes).filter((node) => node.type === "item_display");
+
+    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 1, 2, 2, 3]);
+    expect(Object.keys(project.nodes).some((id) => id.includes("sleeve"))).toBe(false);
+    expect(itemNodes.every((node) => node.type === "item_display" && node.item_stack_snbt?.includes("minecraft:player_head") === true)).toBe(true);
+  });
+
   it("imports mixed cube, locator, and display projects", async () => {
     const input = {
       name: "mixed.ajblueprint",
