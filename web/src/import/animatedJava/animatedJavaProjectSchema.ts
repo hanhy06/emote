@@ -175,7 +175,12 @@ export function requireAnimatedJavaProject(value: unknown): AjProject {
   requireArray(root.outliner, "outliner").forEach((entry, index) => requireOutlinerEntry(entry, `outliner[${index}]`));
   requireArray(root.textures, "textures").forEach((entry, index) => requireTexture(entry, `textures[${index}]`));
   (optionalArray(root.animations, "animations") ?? []).forEach((entry, index) => requireAnimation(entry, `animations[${index}]`));
-  return value as AjProject;
+  const project = value as AjProject;
+  return {
+    ...project,
+    groups: project.groups ?? [],
+    animations: project.animations ?? [],
+  };
 }
 
 function requireElement(value: unknown, path: string): void {

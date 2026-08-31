@@ -64,16 +64,17 @@ describe("Animated Java project schema", () => {
     expect(project.animations[0].animators.effects.keyframes?.[0].data_points[0].function).toBe("say hello");
   });
 
-  it("accepts static projects without animations", () => {
-    expect(requireAnimatedJavaProject({
+  it("supplies empty optional arrays for static projects", () => {
+    const project = requireAnimatedJavaProject({
       meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
       resolution: { width: 16, height: 16 },
       elements: [],
-      groups: [],
       outliner: [],
       textures: [],
-      animations: [],
-    }).animations).toEqual([]);
+    });
+
+    expect(project.groups).toEqual([]);
+    expect(project.animations).toEqual([]);
   });
 
   it("recognizes the legacy native Blueprint format id", () => {
