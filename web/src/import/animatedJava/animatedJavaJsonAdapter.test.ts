@@ -122,6 +122,34 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.diagnostics.map((issue) => issue.code)).not.toContain("geckolib_cube_player_head_unavailable");
   });
 
+  it("imports textureless native player rigs", async () => {
+    const input = {
+      name: "textureless_player.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [{
+          uuid: "head_cube",
+          name: "head",
+          type: "cube",
+          from: [-4, 24, -4],
+          to: [4, 32, 4],
+          faces: { north: { uv: [8, 8, 16, 16] } },
+        }],
+        groups: [{ uuid: "head", name: "head", origin: [0, 24, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "head", children: ["head_cube"] }],
+        textures: [],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const model = [...project.resources.entries()].find(([path]) => path.endsWith("/models/item/textureless_player/head.json"));
+
+    expect(project.nodes.head.type === "item_display" && project.nodes.head.suggestedSkin).toEqual({ part: "head", order: 0 });
+    expect(model && new TextDecoder().decode(model[1])).toContain("minecraft:block/white_concrete");
+    expect([...project.resources.keys()].some((path) => path.endsWith(".png"))).toBe(false);
+  });
+
   it("imports mixed cube, locator, and display projects", async () => {
     const input = {
       name: "mixed.ajblueprint",

@@ -12,6 +12,7 @@ const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 const SPLIT_SKIN_CUBE_PATTERN = /_skin_(upper|lower|(\d+)|joint_(upper|lower)_(\d+))$/;
+const TEXTURELESS_MODEL_TEXTURE = "minecraft:block/white_concrete";
 
 interface SplitSkinCube {
   order: number;
@@ -78,13 +79,16 @@ export function writeCubeResources(
   modelPath: string,
   resources: Map<string, Uint8Array>,
 ): void {
-  const textures = Object.fromEntries(project.textures.map((_, index) => [
-    `layer${index}`,
-    `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
-  ]));
+  const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
+  const textures = project.textures.length > 0
+    ? Object.fromEntries(project.textures.map((_, index) => [
+        `layer${index}`,
+        `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
+      ]))
+    : { layer0: TEXTURELESS_MODEL_TEXTURE };
   const model = {
     textures,
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, project.textures)],
+    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures)],
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
   resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
@@ -263,7 +267,7 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
 }
 
 function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, Uint8Array>): void {
-  if (textures.length === 0) throw new Error("GeckoLib bbmodel must contain at least one texture.");
+  if (textures.length === 0) return;
   for (const [index, texture] of textures.entries()) {
     if (!texture.source?.startsWith("data:image/png;base64,")) {
       throw new ConversionError("geckolib_external_texture", "GeckoLib textures must be embedded in the bbmodel as PNG data.", `textures[${index}].source`);
