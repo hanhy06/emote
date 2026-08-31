@@ -29,6 +29,7 @@ import {
   writeCubeResources,
 } from "./cubeModelResources";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
+import { blockbenchPositionToCanonical, blockbenchRotationToCanonical } from "../coordinateSpace";
 
 const PLAYER_RENDER_SCALE = 0.9375;
 
@@ -181,24 +182,29 @@ function createGeckoRuntime(
   for (const bone of bones) {
     const parent = bone.parent ? `${bone.parent.id}_x` : sceneId;
     const parentOrigin = bone.parent?.group.origin ?? ZERO_VECTOR;
-    const basePosition = bone.group.origin.map((value, axis) => (value - parentOrigin[axis]) / 16) as [number, number, number];
-    nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: [0, 0, bone.group.rotation[2]], scale: ONE_VECTOR } };
-    nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO_VECTOR, rotation: [0, bone.group.rotation[1], 0], scale: ONE_VECTOR } };
-    nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO_VECTOR, rotation: [bone.group.rotation[0], 0, 0], scale: ONE_VECTOR } };
+    const basePosition = blockbenchPositionToCanonical(
+      bone.group.origin.map((value, axis) => value - parentOrigin[axis]),
+      (value) => -value,
+    ).map((value) => value / 16) as [number, number, number];
+    const baseRotation = blockbenchRotationToCanonical(bone.group.rotation, (value) => -value);
+    nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: [0, 0, baseRotation[2]], scale: ONE_VECTOR } };
+    nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
+    nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
     for (const entry of bone.nodes) {
       const imported = importedNodes[entry.id];
       if (imported) nodes[entry.id] = importedNodeToRuntimeNode(imported, matrixToLocalTransform(matrix4ToRowMajor(entry.localMatrix, `GeckoLib runtime node ${entry.id}`), `GeckoLib runtime node ${entry.id}`), `${bone.id}_x`);
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = geckoChannelFrames(animator, "position", basePosition, (values) => values.map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => values);
+    const position = geckoChannelFrames(animator, "position", ZERO_VECTOR, (values) => blockbenchPositionToCanonical(values, negateMolang)
+      .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
+    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => blockbenchRotationToCanonical(values, negateMolang));
     const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
-      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateGeckoAxis(rotation, 2, bone.group.rotation[2]) };
-      tracks[`${bone.id}_y`] = { rotation: isolateGeckoAxis(rotation, 1, bone.group.rotation[1]) };
-      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateGeckoAxis(rotation, 0, bone.group.rotation[0]) };
+      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateGeckoAxis(rotation, 2, baseRotation[2]) };
+      tracks[`${bone.id}_y`] = { rotation: isolateGeckoAxis(rotation, 1, baseRotation[1]) };
+      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateGeckoAxis(rotation, 0, baseRotation[0]) };
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
@@ -248,6 +254,10 @@ function affineMolang(value: MolangScalar, factor: number, offset: number): Mola
   if (typeof value === "number") return value * factor + offset;
   const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
   return offset === 0 ? scaled : `(${scaled} + ${offset})`;
+}
+
+function negateMolang(value: MolangScalar): MolangScalar {
+  return typeof value === "number" ? -value : `-(${value})`;
 }
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
@@ -314,8 +324,8 @@ function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>): Matrix1
 function bindLocalMatrix(bone: BoneEntry): Matrix4 {
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   return composeTransform(
-    bone.group.origin.map((value, index) => (value - parentOrigin[index]) / 16),
-    bone.group.rotation,
+    blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16),
+    blockbenchRotationToCanonical(bone.group.rotation, (value) => -value),
     [1, 1, 1],
   );
 }
@@ -720,12 +730,15 @@ function animatedWorldMatrix(
   if (cached) return cached;
   const animator = boneAnimators.get(bone.uuid);
   const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
-  const position = evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath).map((value) => value * blendWeight / 16);
+  const position = blockbenchPositionToCanonical(
+    evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
+    (value) => -value,
+  ).map((value) => value * blendWeight / 16);
   const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
   const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
-  const basePosition = bone.group.origin.map((value, index) => (value - parentOrigin[index]) / 16);
-  const baseRotation = bone.group.rotation.map((value, index) => value + rotationDelta[index]);
+  const basePosition = blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16);
+  const baseRotation = blockbenchRotationToCanonical(bone.group.rotation.map((value, index) => value + rotationDelta[index]), (value) => -value);
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
     ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight).clone().multiply(local)
@@ -748,17 +761,20 @@ function composeTransform(position: number[], rotation: number[], scale: number[
 }
 
 function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
-  const rotation = cube.rotation ?? [0, 0, 0];
+  const rotation = blockbenchRotationToCanonical(cube.rotation ?? [0, 0, 0], (value) => -value);
   if (rotation.every((value) => Math.abs(value) <= 1e-7)) return new Matrix4();
-  const origin = (cube.origin ?? bone.group.origin).map((value, axis) => (value - bone.group.origin[axis]) / 16);
+  const origin = blockbenchPositionToCanonical(
+    (cube.origin ?? bone.group.origin).map((value, axis) => value - bone.group.origin[axis]),
+    (value) => -value,
+  ).map((value) => value / 16);
   return composeTransform(origin, rotation, [1, 1, 1])
     .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
 }
 
 function locatorLocalMatrix(locator: BbLocator, bone: BoneEntry): Matrix4 {
   return composeTransform(
-    locator.position.map((value, axis) => (value - bone.group.origin[axis]) / 16),
-    locator.rotation,
+    blockbenchPositionToCanonical(locator.position.map((value, axis) => value - bone.group.origin[axis]), (value) => -value).map((value) => value / 16),
+    blockbenchRotationToCanonical(locator.rotation, (value) => -value),
     [1, 1, 1],
   );
 }

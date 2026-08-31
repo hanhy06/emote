@@ -32,7 +32,7 @@ describe("geckoLibBbmodelAdapter", () => {
       0, 0, 0, 1,
     ]);
     expect(imported.nodes.root.type === "item_display" && imported.nodes.root.playerHeadConversion?.matrix).toEqual([
-      0.5, 0, 0, 0.125,
+      0.5, 0, 0, -0.125,
       0, 0.5, 0, 0.25,
       0, 0, 0.5, 0.125,
       0, 0, 0, 1,
@@ -48,23 +48,23 @@ describe("geckoLibBbmodelAdapter", () => {
     const model = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/models/item/test_model/root.json"))) as {
       elements: { from: number[]; to: number[] }[];
     };
-    expect(model.elements[0].from).toEqual([8, 8, 8]);
-    expect(model.elements[0].to).toEqual([12, 12, 12]);
+    expect(model.elements[0].from).toEqual([4, 8, 8]);
+    expect(model.elements[0].to).toEqual([8, 12, 12]);
 
     const animation = imported.animations[0];
     expect(animation.durationTicks).toBe(2);
     expect(animation.loop).toBe("loop");
     expect(animation.loopDelayTicks).toBe(1);
     expect(animation.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
-    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
-    expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(-0.9375);
+    expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(-0.9375);
     expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(0.9375);
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 
-  it("keeps GeckoLib bbmodel coordinates in Blockbench space at the import boundary", async () => {
+  it("converts GeckoLib bbmodel coordinates to canonical emote space", async () => {
     const value = project();
     value.groups[0].origin = [16, 0, 0];
     value.groups[0].rotation = [10, 20, 30];
@@ -74,9 +74,9 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     const expected = [
-      0.7629353263, -0.4134090099, 0.3548646622, 0.9375,
-      0.440480916, 0.8274038618, 0.0169015418, 0,
-      -0.3206438844, 0.1529774167, 0.8675780422, 0,
+      0.7629353263, -0.4134090099, -0.3548646622, -0.9375,
+      0.440480916, 0.8274038618, -0.0169015418, 0,
+      0.3206438844, -0.1529774167, 0.8675780422, 0,
       0, 0, 0, 1,
     ];
     imported.nodes.root.defaultMatrix.forEach((value, index) => expect(value).toBeCloseTo(expected[index]));
@@ -252,7 +252,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(-0.9375);
   });
 
   it("bakes Catmull-Rom interpolation", async () => {
@@ -293,8 +293,8 @@ describe("geckoLibBbmodelAdapter", () => {
     const transforms = imported.animations[0].tracks.root.transforms;
     expect(transforms).toHaveLength(5);
     expect(transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
-    expect(transforms[0].matrix[3]).toBeCloseTo(0.234375);
-    expect(transforms[4].matrix[3]).toBeCloseTo(1.171875);
+    expect(transforms[0].matrix[3]).toBeCloseTo(-0.234375);
+    expect(transforms[4].matrix[3]).toBeCloseTo(-1.171875);
   });
 
   it("bakes GeckoLib easing into transform tracks", async () => {
@@ -303,7 +303,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
+    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(-Math.sqrt(0.75) * 0.9375);
   });
 
   it("preserves an easing key pose that falls between Minecraft ticks", async () => {
@@ -320,7 +320,7 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
     const translations = imported.animations[0].tracks.root.transforms.map((frame) => frame.matrix[3]);
 
-    expect(translations).toContainEqual(expect.closeTo(0.9375));
+    expect(translations).toContainEqual(expect.closeTo(-0.9375));
   });
 
   it("keeps GeckoLib step transitions instantaneous after tick placement", async () => {
@@ -333,7 +333,7 @@ describe("geckoLibBbmodelAdapter", () => {
     ];
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
-    const transition = imported.animations[0].tracks.root.transforms.find((frame) => Math.abs(frame.matrix[3] - 0.9375) < 1e-8);
+    const transition = imported.animations[0].tracks.root.transforms.find((frame) => Math.abs(frame.matrix[3] + 0.9375) < 1e-8);
 
     expect(transition?.interpolation).toEqual({ type: "step" });
   });
@@ -360,7 +360,7 @@ describe("geckoLibBbmodelAdapter", () => {
       sourcePath: "animations[0].animators.root",
     }));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
-    expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((v.runtime_speed * 16) * 0.0625)");
+    expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((-(v.runtime_speed * 16)) * 0.0625)");
     expect(compiled.nodes.root.type).toBe("item_display");
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
@@ -466,7 +466,7 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.root_hand_socket.type).toBe("anchor");
     expect(imported.nodes.root_hand_socket.defaultMatrix[7]).toBeCloseTo(1);
     expect(imported.animations[0].tracks.root_hand_socket.transforms).toHaveLength(3);
-    expect(imported.animations[0].tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(imported.animations[0].tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(-0.9375);
   });
 
   it("converts GeckoLib sound, particle, and slash-command effect keyframes", async () => {

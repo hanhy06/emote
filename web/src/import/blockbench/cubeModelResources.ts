@@ -7,6 +7,7 @@ import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
 import type { BoneEntry } from "./cubeProjectImporter";
 import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
+import { blockbenchBoundsToCanonical } from "../coordinateSpace";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -102,8 +103,11 @@ export function writeCubeResources(
 
 export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | undefined {
   const inflate = cube.inflate ?? 0;
-  const from = cube.from.map((value, axis) => (value - bone.group.origin[axis] - inflate) / 16);
-  const to = cube.to.map((value, axis) => (value - bone.group.origin[axis] + inflate) / 16);
+  const sourceFrom = cube.from.map((value, axis) => value - bone.group.origin[axis] - inflate);
+  const sourceTo = cube.to.map((value, axis) => value - bone.group.origin[axis] + inflate);
+  const canonical = blockbenchBoundsToCanonical(sourceFrom, sourceTo);
+  const from = canonical.from.map((value) => value / 16);
+  const to = canonical.to.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);
   if (size.some((value) => value < 0)) return undefined;
 
@@ -352,7 +356,9 @@ function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[]): Record<string, unknown> {
   const inflate = cube.inflate ?? 0;
-  const offset = (value: number, axis: number, direction: -1 | 1) => value - boneOrigin[axis] + 8 + inflate * direction;
+  const sourceFrom = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate);
+  const sourceTo = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate);
+  const canonical = blockbenchBoundsToCanonical(sourceFrom, sourceTo);
   const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
     return [[direction, {
@@ -367,8 +373,8 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
     }]];
   }));
   return {
-    from: cube.from.map((value, axis) => offset(value, axis, -1)),
-    to: cube.to.map((value, axis) => offset(value, axis, 1)),
+    from: canonical.from.map((value) => value + 8),
+    to: canonical.to.map((value) => value + 8),
     faces,
   };
 }

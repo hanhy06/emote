@@ -19,3 +19,7 @@ export function bedrockBoundsToCanonical(
     to: [-from[0], to[1], to[2]],
   };
 }
+
+export const blockbenchPositionToCanonical = bedrockPositionToCanonical;
+export const blockbenchRotationToCanonical = bedrockRotationToCanonical;
+export const blockbenchBoundsToCanonical = bedrockBoundsToCanonical;
