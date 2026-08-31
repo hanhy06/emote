@@ -121,7 +121,10 @@ function ajProjectFrames(
   const frames = source.map((frame): EmoteVectorKeyframe => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new Error("Animated Java transform keyframes must contain one value or a pre/post pair.");
-    const vectors = points.map((point) => [point.x, point.y, point.z].map((value, axis) => transform(scalar(value), axis)) as MolangVector);
+    const vectors = points.map((point) => {
+      if (point.x === undefined || point.y === undefined || point.z === undefined) throw new Error("Animated Java transform keyframe is missing an axis value.");
+      return [point.x, point.y, point.z].map((value, axis) => transform(scalar(value), axis)) as MolangVector;
+    });
     const interpolation = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
     return vectors.length === 1
       ? { time: formatMinecraftTime(Math.round(frame.time * 20)), value: vectors[0], interpolation }

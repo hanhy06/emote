@@ -283,6 +283,9 @@ function projectKeyframeVector(keyframe: AjProjectKeyframe, animationIndex: numb
     );
   }
   const point = keyframe.data_points[0];
+  if (point.x === undefined || point.y === undefined || point.z === undefined) {
+    throw new ConversionError("invalid_animated_java_keyframe", "Animated Java transform keyframe is missing an axis value.", `animations[${animationIndex}].animators.${animatorId}`);
+  }
   return [point.x, point.y, point.z].map((value, axis) => projectNumeric(value, `animations[${animationIndex}].animators.${animatorId}.${keyframe.channel}[${axis}]`));
 }
 
