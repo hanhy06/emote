@@ -272,7 +272,9 @@ function isDescendantOf(candidate: BoneEntry, ancestor: BoneEntry): boolean {
 }
 
 function isRelatedBone(first: BoneEntry, second: BoneEntry): boolean {
-  return isDescendantOf(first, second) || isDescendantOf(second, first);
+  return isDescendantOf(first, second)
+    || isDescendantOf(second, first)
+    || (first.parent !== undefined && first.parent === second.parent);
 }
 
 function sameCubeBounds(first: BbCube, second: BbCube): boolean {

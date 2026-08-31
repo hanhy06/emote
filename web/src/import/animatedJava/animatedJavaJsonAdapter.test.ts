@@ -192,6 +192,49 @@ describe("animatedJavaJsonAdapter", () => {
     expect(itemNodes.every((node) => node.type === "item_display" && node.item_stack_snbt?.includes("minecraft:player_head") === true)).toBe(true);
   });
 
+  it("joins presegmented skin limbs stored in sibling bones", async () => {
+    const cube = (uuid: string, name: string, fromY: number, toY: number) => ({
+      uuid,
+      name,
+      type: "cube",
+      from: [0, fromY, -2],
+      to: [4, toY, 2],
+      faces: { north: { uv: [0, 12 - toY, 4, 12 - fromY] } },
+    });
+    const input = {
+      name: "sibling_legs.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 64, height: 64 },
+        elements: [
+          cube("upper", "right_leg", 6, 12),
+          cube("upper_layer", "right_pants", 6.25, 12),
+          cube("lower", "right_leg", 0, 6),
+          cube("lower_layer", "right_pants", 0, 5.75),
+        ],
+        groups: [
+          { uuid: "leg", name: "right_leg", origin: [2, 12, 0], rotation: [0, 0, 0] },
+          { uuid: "upper_bone", name: "upper_right_leg", origin: [0, 12, 0], rotation: [0, 0, 0] },
+          { uuid: "lower_bone", name: "lower_right_leg", origin: [0, 6, 0], rotation: [0, 0, 0] },
+        ],
+        outliner: [{
+          uuid: "leg",
+          children: [
+            { uuid: "upper_bone", children: ["upper", "upper_layer"] },
+            { uuid: "lower_bone", children: ["lower", "lower_layer"] },
+          ],
+        }],
+        textures: [],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const skinNodes = Object.values(project.nodes).filter((node) => node.type === "item_display" && node.suggestedSkin?.part === "right_leg");
+
+    expect(skinNodes.map((node) => node.type === "item_display" && node.suggestedSkin?.order)).toEqual([0, 1, 1, 2, 2, 3]);
+    expect(Object.keys(project.nodes).some((id) => id.includes("pants"))).toBe(false);
+  });
+
   it("imports mixed cube, locator, and display projects", async () => {
     const input = {
       name: "mixed.ajblueprint",
