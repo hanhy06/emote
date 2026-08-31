@@ -48,6 +48,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
+  appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
       return importProjectAnimation(animation, index, displayElements, transformGraph);
@@ -184,6 +185,7 @@ function enrichProjectAnimation(
   const startDelayTicks = secondsToTicks(projectOptionalNumeric(source.start_delay, 0, `animations[${animationIndex}].start_delay`), `${source.name}.start_delay`);
   const timeline = [...imported.events.timeline, ...nativeFunctionEvents(source, startDelayTicks, diagnostics, animationIndex)]
     .sort((first, second) => first.tick - second.tick);
+  const start = [...imported.events.start, ...nativeStartEvents(project, nodes, graph)];
   const variants = nativeVariants(project);
   for (const [animatorId, animator] of Object.entries(source.animators)) {
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
@@ -197,11 +199,88 @@ function enrichProjectAnimation(
           diagnostics.push({ severity: "warning", code: "animated_java_unknown_variant", message: `Animation ${source.name} references unknown variant ${variantId}.`, sourcePath: `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]` });
           continue;
         }
+        if (isRecord(variant.texture_map) && Object.keys(variant.texture_map).length > 0) diagnostics.push({
+          severity: "warning",
+          code: "animated_java_variant_texture_map_ignored",
+          message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
+          sourcePath: `variants.${variantId}.texture_map`,
+        });
         applyVariantFrame(imported, project, nodes, graph, variantId, variant, tick);
+        const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
+        if (onApply) timeline.push({ tick, source: { type: "player" }, origin: { type: "root" }, commands: functionCommands(onApply) });
       }
     }
   }
-  return { ...imported, events: { ...imported.events, timeline } };
+  return { ...imported, events: { ...imported.events, start, timeline: timeline.sort((first, second) => first.tick - second.tick) } };
+}
+
+function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph): ImportedAnimation["events"]["start"] {
+  const events: ImportedAnimation["events"]["start"] = [];
+  const settings = project.blueprint_settings;
+  const rootFunction = settings ? stringField(settings, "custom_summon_commands") ?? stringField(settings, "on_summon_function") : undefined;
+  if (rootFunction) events.push({ source: { type: "player" }, origin: { type: "root" }, commands: functionCommands(rootFunction) });
+  for (const element of project.elements) {
+    const value = isRecord(element) ? stringField(element, "onSummonFunction") ?? stringField(element, "on_summon_function") : undefined;
+    if (value && nodes[element.uuid]) events.push({ source: { type: "player" }, origin: { type: "node", node: element.uuid }, commands: functionCommands(value) });
+  }
+  for (const group of project.groups) {
+    const value = group.onSummonFunction?.trim();
+    if (!value) continue;
+    const nodeId = projectOutputNodeIds(group.uuid, nodes, graph, false)[0];
+    events.push({ source: { type: "player" }, origin: nodeId ? { type: "node", node: nodeId } : { type: "root" }, commands: functionCommands(value) });
+  }
+  return events;
+}
+
+function appendProjectCapabilityDiagnostics(project: AjProject, diagnostics: ImportDiagnostic[]): void {
+  const supported = new Set(["cube", "locator", "camera", "animated_java:vanilla_block_display", "animated_java:vanilla_item_display", "animated_java:vanilla_text_display", "animated_java:text_display"]);
+  for (const [index, element] of project.elements.entries()) {
+    if (supported.has(element.type)) continue;
+    diagnostics.push({
+      severity: "warning",
+      code: element.type.includes("interaction") ? "unsupported_animated_java_interaction" : "unsupported_animated_java_element",
+      message: `Animated Java element ${element.name} (${element.type}) was not imported because the Emote format has no matching node type.`,
+      sourcePath: `elements[${index}]`,
+    });
+  }
+  if ((project.animation_controllers?.length ?? 0) > 0) diagnostics.push({
+    severity: "warning",
+    code: "unsupported_animated_java_animation_controllers",
+    message: "Animated Java animation controllers were not imported; individual animations remain available.",
+    sourcePath: "animation_controllers",
+  });
+  if ((project.collections?.length ?? 0) > 0) diagnostics.push({
+    severity: "warning",
+    code: "unsupported_animated_java_collections",
+    message: "Animated Java collection metadata was not imported.",
+    sourcePath: "collections",
+  });
+  collectContinuousFunctionDiagnostics(project, "", diagnostics);
+}
+
+function collectContinuousFunctionDiagnostics(value: unknown, path: string, diagnostics: ImportDiagnostic[]): void {
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => collectContinuousFunctionDiagnostics(entry, `${path}[${index}]`, diagnostics));
+    return;
+  }
+  if (!isRecord(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = path ? `${path}.${key}` : key;
+    if (/^(?:on_?(?:pre_?|post_?)?tick_?function|onTickFunction)$/i.test(key) && typeof child === "string" && child.trim()) {
+      diagnostics.push({ severity: "warning", code: "unsupported_animated_java_tick_function", message: "Continuous Animated Java tick functions cannot be represented by an Emote timeline.", sourcePath: childPath });
+      continue;
+    }
+    collectContinuousFunctionDiagnostics(child, childPath, diagnostics);
+  }
+}
+
+function functionCommands(value: string): string[] {
+  return value.split(/\r?\n/).map((line) => line.trim().replace(/^\//, "")).filter(Boolean);
+}
+
+function stringField(record: Record<string, unknown>, key: string): string | undefined {
+  const value = record[key];
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
 }
 
 function nativeFunctionEvents(source: AjProjectAnimation, startDelayTicks: number, diagnostics: ImportDiagnostic[], animationIndex: number): ImportedAnimation["events"]["timeline"] {

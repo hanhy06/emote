@@ -237,6 +237,7 @@ describe("animatedJavaJsonAdapter", () => {
       bytes: encoder.encode(JSON.stringify({
         meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
         resolution: { width: 16, height: 16 },
+        blueprint_settings: { custom_summon_commands: "/say summoned" },
         elements: [{
           uuid: "item",
           name: "Item",
@@ -247,10 +248,10 @@ describe("animatedJavaJsonAdapter", () => {
           visibility: true,
           item: "minecraft:stick",
           configs: {
-            default: { billboard: "vertical", glowing: true },
+            default: { billboard: "vertical", glowing: true, on_tick_function: "say ticking" },
             variants: { [variantId]: { glowing: false, invisible: true } },
           },
-        }],
+        }, { uuid: "interaction", name: "Hitbox", type: "animated_java:interaction" }],
         groups: [{
           uuid: "root",
           name: "root",
@@ -260,7 +261,9 @@ describe("animatedJavaJsonAdapter", () => {
         }],
         outliner: [{ uuid: "root", children: ["item"] }],
         textures: [],
-        variants: { default: { uuid: "default", name: "default" }, list: [{ uuid: variantId, name: "alt", excluded_nodes: [] }] },
+        variants: { default: { uuid: "default", name: "default" }, list: [{ uuid: variantId, name: "alt", excluded_nodes: [], texture_map: { old: "new" }, on_apply_function: "/say applied" }] },
+        collections: [{}],
+        animation_controllers: [{}],
         animations: [{
           name: "configured",
           loop: "once",
@@ -280,9 +283,18 @@ describe("animatedJavaJsonAdapter", () => {
     expect(node.type !== "anchor" && node.entityNbt).toContain('billboard:"vertical"');
     expect(node.type !== "anchor" && node.entityNbt).toContain("shadow_radius:2");
     expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 1, commands: ["say hello"] }));
+    expect(animation.events.start).toContainEqual(expect.objectContaining({ commands: ["say summoned"] }));
+    expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 2, commands: ["say applied"] }));
     expect(animation.tracks.item.visibility).toContainEqual({ tick: 2, visible: false });
     expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("Glowing:0b") });
     expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("shadow_radius:1") });
+    expect(project.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
+      "unsupported_animated_java_interaction",
+      "unsupported_animated_java_animation_controllers",
+      "unsupported_animated_java_collections",
+      "unsupported_animated_java_tick_function",
+      "animated_java_variant_texture_map_ignored",
+    ]));
   });
 
   it("imports baked display tracks and locator anchors", async () => {
