@@ -88,4 +88,24 @@ describe("Animated Java project schema", () => {
       animations: [],
     }).meta.format).toBe("animated_java_blueprint");
   });
+
+  it("normalizes legacy string display visibility", () => {
+    const project = requireAnimatedJavaProject({
+      meta: { format: "animated_java_blueprint", format_version: "1.5.2" },
+      resolution: { width: 16, height: 16 },
+      elements: [{
+        uuid: "text",
+        name: "Text",
+        type: "animated_java:text_display",
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visibility: "false",
+      }],
+      outliner: ["text"],
+      textures: [],
+    });
+
+    expect((project.elements[0] as { visibility?: boolean }).visibility).toBe(false);
+  });
 });

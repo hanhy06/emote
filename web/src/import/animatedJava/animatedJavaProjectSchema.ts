@@ -178,6 +178,11 @@ export function requireAnimatedJavaProject(value: unknown): AjProject {
   const project = value as AjProject;
   return {
     ...project,
+    elements: project.elements.map((element) => {
+      const visibility = (element as { visibility?: unknown }).visibility;
+      if (visibility !== "true" && visibility !== "false") return element;
+      return { ...element, visibility: visibility === "true" };
+    }),
     groups: project.groups ?? [],
     animations: project.animations ?? [],
   };
@@ -209,7 +214,7 @@ function requireElement(value: unknown, path: string): void {
     requireVector(element.position, `${path}.position`);
     requireVector(element.rotation, `${path}.rotation`);
     requireVector(element.scale, `${path}.scale`);
-    optionalBoolean(element.visibility, `${path}.visibility`);
+    optionalLegacyBoolean(element.visibility, `${path}.visibility`);
     optionalString(element.block, `${path}.block`);
     optionalString(element.item, `${path}.item`);
     optionalString(element.item_display, `${path}.item_display`);
@@ -340,6 +345,11 @@ function requireVector(value: unknown, path: string): void {
 
 function optionalExpression(value: unknown, path: string): void {
   if (value !== undefined) requireExpression(value, path);
+}
+
+function optionalLegacyBoolean(value: unknown, path: string): void {
+  if (value === "true" || value === "false") return;
+  optionalBoolean(value, path);
 }
 
 function requireExpression(value: unknown, path: string): void {
