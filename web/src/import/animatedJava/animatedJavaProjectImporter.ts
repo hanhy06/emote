@@ -53,7 +53,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     try {
       return importProjectAnimation(animation, index, displayElements, transformGraph);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
+      if (!(reason instanceof ConversionError) || !["unsupported_animated_java_molang", "unsupported_geckolib_molang"].includes(reason.code)) throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
@@ -158,6 +158,7 @@ function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: Re
 
 function mergeProjectAnimation(base: ImportedAnimation | undefined, display: ImportedAnimation): ImportedAnimation {
   if (!base) return display;
+  const runtime = mergeProjectRuntime(base.runtime, display.runtime);
   return {
     ...base,
     durationTicks: Math.max(base.durationTicks, display.durationTicks),
@@ -169,6 +170,32 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
       timeline: [...base.events.timeline, ...display.events.timeline].sort((first, second) => first.tick - second.tick),
       loop: [...base.events.loop, ...display.events.loop],
       stop: [...base.events.stop, ...display.events.stop],
+    },
+    ...(runtime ? { runtime } : {}),
+  };
+}
+
+function mergeProjectRuntime(
+  base: ImportedAnimation["runtime"],
+  display: ImportedAnimation["runtime"],
+): ImportedAnimation["runtime"] {
+  if (!base) return display;
+  if (!display) return base;
+  const events = {
+    start: [...(base.timeline.events?.start ?? []), ...(display.timeline.events?.start ?? [])],
+    timeline: [...(base.timeline.events?.timeline ?? []), ...(display.timeline.events?.timeline ?? [])],
+    loop: [...(base.timeline.events?.loop ?? []), ...(display.timeline.events?.loop ?? [])],
+    stop: [...(base.timeline.events?.stop ?? []), ...(display.timeline.events?.stop ?? [])],
+  };
+  const initialize = [base.molang?.initialize, display.molang?.initialize].filter((value): value is string => Boolean(value)).join("\n");
+  const tick = [base.molang?.tick, display.molang?.tick].filter((value): value is string => Boolean(value)).join("\n");
+  return {
+    ...((initialize || tick) ? { molang: { ...(initialize ? { initialize } : {}), ...(tick ? { tick } : {}) } } : {}),
+    nodes: { ...base.nodes, ...display.nodes },
+    timeline: {
+      duration: base.timeline.duration,
+      tracks: { ...base.timeline.tracks, ...display.timeline.tracks },
+      ...(Object.values(events).some((entries) => entries.length > 0) ? { events } : {}),
     },
   };
 }

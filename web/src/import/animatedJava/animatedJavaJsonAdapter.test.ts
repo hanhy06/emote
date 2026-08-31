@@ -173,6 +173,40 @@ describe("animatedJavaJsonAdapter", () => {
     expect(itemMatrix[6]).toBeGreaterThan(0);
   });
 
+  it("merges mixed native Molang runtimes without moving displays to the origin", async () => {
+    const input = {
+      name: "mixed_runtime.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [
+          { uuid: "cube", name: "Cube", type: "cube", from: [-4, -4, -4], to: [4, 4, 4], faces: { north: { uv: [0, 0, 8, 8] } } },
+          { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [16, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" },
+        ],
+        groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "root", children: ["cube"] }, "item"],
+        textures: [],
+        animations: [{
+          name: "runtime",
+          loop: "once",
+          length: 0.1,
+          animators: {
+            root: { name: "root", type: "bone", keyframes: [projectFrame("position", 0.05, ["v.bone_x", "0", "0"])] },
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("position", 0.05, ["v.item_x", "0", "0"])] },
+          },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "runtime" });
+
+    expect(animation.nodes.root).toBeDefined();
+    expect(animation.nodes.item).toBeDefined();
+    expect(animation.timeline.tracks.root_z.position).toBeDefined();
+    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-1, 0, 0]);
+  });
+
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
     const input = {
       name: "plane.ajblueprint",
