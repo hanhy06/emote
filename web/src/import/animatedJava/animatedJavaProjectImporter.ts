@@ -566,8 +566,8 @@ function projectElementMatrix(
     .map((value) => 1 + (value - 1) * blendWeight);
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
   const local = composeProjectMatrix4(
-    basePosition.map((value, axis) => value + positionOffset[axis]),
-    element.rotation.map((value, axis) => value + rotationOffset[axis]),
+    basePosition.map((value, axis) => value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
+    element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
@@ -597,8 +597,8 @@ function projectGroupMatrix(
   const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
   const local = composeProjectMatrix4(
-    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
-    group.rotation.map((value, axis) => value + rotationOffset[axis]),
+    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
+    group.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     scale,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, cache).multiply(local) : local;

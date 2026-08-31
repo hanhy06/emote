@@ -76,8 +76,8 @@ export function createAjProjectRuntime(
     nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: element.scale as [number, number, number] } };
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, IDENTITY_TRANSFORM, ids.x);
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, (value, axis) => affine(value, axis === 0 ? -1 / 16 : 1 / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 0 ? value : affine(value, -1, 0));
+    const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, (value, axis) => affine(value, 1 / 16, basePosition[axis]));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 1 ? value : affine(value, -1, 0));
     const scale = ajProjectFrames(keyframes, "scale", element.scale, (value, axis) => multiply(value, element.scale[axis]));
     if (position) tracks[ids.z] = { position };
     if (rotation) {

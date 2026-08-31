@@ -56,7 +56,7 @@ describe("animatedJavaJsonAdapter", () => {
 
     expect(project.sourceName).toBe("unnamed.ajblueprint");
     expect(project.nodes.block.type).toBe("block_display");
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(-0.5);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
   });
@@ -128,6 +128,41 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.nodes.child.defaultMatrix[3]).toBeCloseTo(0);
     expect(project.nodes.child.defaultMatrix[7]).toBeCloseTo(0.9375);
     expect(project.nodes.child.defaultMatrix[11]).toBeCloseTo(0);
+  });
+
+  it("moves native cubes and direct displays along the same animation axes", async () => {
+    const input = {
+      name: "shared_axes.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [
+          { uuid: "cube", name: "Cube", type: "cube", from: [-4, -4, -4], to: [4, 4, 4], faces: { north: { uv: [0, 0, 8, 8] } } },
+          { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" },
+        ],
+        groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "root", children: ["cube"] }, "item"],
+        textures: [],
+        animations: [{
+          name: "move",
+          loop: "once",
+          length: 0.05,
+          animators: {
+            root: { name: "root", type: "bone", keyframes: [projectFrame("position", 0, ["8", "0", "-8"])] },
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("position", 0, ["8", "0", "-8"])] },
+          },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const cubeMatrix = project.animations[0].tracks.root.transforms[0].matrix;
+    const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
+
+    expect(cubeMatrix[3]).toBeCloseTo(0.46875);
+    expect(itemMatrix[3]).toBeCloseTo(0.5);
+    expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
+    expect(itemMatrix[11]).toBeCloseTo(-0.5);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
