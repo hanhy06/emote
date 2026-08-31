@@ -76,8 +76,7 @@ describe("animatedJavaJsonAdapter", () => {
         name: "Humanoid",
         resolution: { width: 64, height: 64 },
         elements: [cube],
-        groups: [{ uuid: "arm_uuid", name: "right_arm", origin: [5, 22, 0], rotation: [0, 0, 0] }],
-        outliner: [{ uuid: "arm_uuid", children: ["arm_cube"] }],
+        outliner: [{ uuid: "arm_uuid", name: "right_arm", origin: [5, 22, 0], children: ["arm_cube"] }],
         textures: [{ uuid: "skin_uuid", source: "data:image/png;base64,iVBORw0KGgo=" }],
         animations: [{
           name: "wave",

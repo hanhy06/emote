@@ -104,9 +104,9 @@ function buildProjectTransformGraph(project: AjProject): ProjectTransformGraph {
     }
     const saved = savedGroups.get(entry.uuid);
     const name = entry.name ?? saved?.name;
-    const origin = entry.origin ?? saved?.origin;
-    const rotation = entry.rotation ?? saved?.rotation;
-    if (!name || !origin || !rotation) throw new Error(`Animated Java group ${entry.uuid} is missing its saved group data.`);
+    const origin = entry.origin ?? saved?.origin ?? [0, 0, 0];
+    const rotation = entry.rotation ?? saved?.rotation ?? [0, 0, 0];
+    if (!name) throw new Error(`Animated Java group ${entry.uuid} is missing its name.`);
     groups.set(entry.uuid, { ...saved, ...entry, uuid: entry.uuid, name, origin, rotation });
     groupParents.set(entry.uuid, parent);
     entry.children.forEach((child) => visit(child, entry.uuid));
