@@ -95,7 +95,7 @@ export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | 
   const from = cube.from.map((value, axis) => (value - bone.group.origin[axis] - inflate) / 16);
   const to = cube.to.map((value, axis) => (value - bone.group.origin[axis] + inflate) / 16);
   const size = to.map((value, axis) => value - from[axis]);
-  if (size.some((value) => value <= 0)) return undefined;
+  if (size.some((value) => value < 0)) return undefined;
 
   const center = from.map((value, axis) => (value + to[axis]) / 2);
   const fit = new Matrix4()

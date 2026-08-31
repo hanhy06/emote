@@ -96,7 +96,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations).toHaveLength(1);
   });
 
-  it("keeps planar native cubes as item displays without player-head assignment", async () => {
+  it("assigns planar native cubes to player heads with a zero scale axis", async () => {
     const input = {
       name: "plane.ajblueprint",
       bytes: encoder.encode(JSON.stringify({
@@ -118,8 +118,8 @@ describe("animatedJavaJsonAdapter", () => {
     const project = await animatedJavaJsonAdapter.import(input);
 
     expect(project.nodes.root.type).toBe("item_display");
-    expect(project.nodes.root.type === "item_display" && project.nodes.root.playerHeadConversion).toBeUndefined();
-    expect(project.diagnostics.map((issue) => issue.code)).toContain("geckolib_cube_player_head_unavailable");
+    expect(project.nodes.root.type === "item_display" && project.nodes.root.playerHeadConversion?.matrix[0]).toBe(0);
+    expect(project.diagnostics.map((issue) => issue.code)).not.toContain("geckolib_cube_player_head_unavailable");
   });
 
   it("imports mixed cube, locator, and display projects", async () => {

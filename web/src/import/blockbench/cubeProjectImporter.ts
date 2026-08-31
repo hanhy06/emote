@@ -49,11 +49,7 @@ export interface BoneEntry {
   nodes: BoneNodeEntry[];
 }
 
-interface CubeProjectImportOptions {
-  allowUnfittedCubes?: boolean;
-}
-
-export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string, options: CubeProjectImportOptions = {}): ImportedProject {
+export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
   if (project.elements.some((element) => element.type && element.type !== "cube" && element.type !== "locator")) {
     throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
@@ -83,15 +79,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
       const hiddenAccessory = isHiddenAccessoryBone(bone);
       const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone);
-      if (!hiddenAccessory && !conversionMatrix) {
-        if (!options.allowUnfittedCubes) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
-        diagnostics.push({
-          severity: "warning",
-          code: "geckolib_cube_player_head_unavailable",
-          message: `Cube ${cube.name ?? cube.uuid} is imported as an item display but cannot be assigned to a player head.`,
-          sourcePath: cube.uuid,
-        });
-      }
+      if (!hiddenAccessory && !conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
       const localMatrix = cubeLocalMatrix(cube, bone);
       bone.nodes.push({ id: nodeId, localMatrix });
