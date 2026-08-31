@@ -129,6 +129,10 @@ export interface AjProjectKeyframe {
   interpolation?: string;
   easing?: string;
   easingArgs?: number[];
+  bezier_left_time?: number[];
+  bezier_left_value?: number[];
+  bezier_right_time?: number[];
+  bezier_right_value?: number[];
   data_points: AjProjectDataPoint[];
 }
 
@@ -287,6 +291,11 @@ function requireKeyframe(value: unknown, path: string): void {
   optionalString(keyframe.interpolation, `${path}.interpolation`);
   optionalString(keyframe.easing, `${path}.easing`);
   if (keyframe.easingArgs !== undefined) requireNumberArray(keyframe.easingArgs, `${path}.easingArgs`);
+  for (const property of ["bezier_left_time", "bezier_left_value", "bezier_right_time", "bezier_right_value"] as const) {
+    if (keyframe[property] === undefined) continue;
+    const values = requireNumberArray(keyframe[property], `${path}.${property}`);
+    if (values.length !== 3) throw new Error(`${path}.${property} must contain three numbers.`);
+  }
   requireArray(keyframe.data_points, `${path}.data_points`).forEach((pointValue, pointIndex) => {
     const pointPath = `${path}.data_points[${pointIndex}]`;
     const point = requireRecord(pointValue, pointPath);

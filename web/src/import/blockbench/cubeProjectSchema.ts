@@ -83,6 +83,8 @@ export interface BbAnimation {
   length: number;
   loop?: string;
   loop_delay?: string | number;
+  start_delay?: string | number;
+  blend_weight?: string | number;
   animators: Record<string, BbAnimator>;
 }
 
@@ -215,6 +217,11 @@ function requireAnimation(value: unknown, path: string): void {
   optionalString(animation.loop, `${path}.loop`);
   if (animation.loop_delay !== undefined && typeof animation.loop_delay !== "string" && typeof animation.loop_delay !== "number") {
     throw new Error(`${path}.loop_delay must be a string or number.`);
+  }
+  for (const property of ["start_delay", "blend_weight"] as const) {
+    if (animation[property] !== undefined && typeof animation[property] !== "string" && typeof animation[property] !== "number") {
+      throw new Error(`${path}.${property} must be a string or number.`);
+    }
   }
   const animators = requireRecord(animation.animators, `${path}.animators`);
   for (const [id, animatorValue] of Object.entries(animators)) {

@@ -325,9 +325,11 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
+  const startDelaySeconds = numericValue(animation.start_delay ?? 0, `animations[${index}].start_delay`);
+  const blendWeight = numericValue(animation.blend_weight ?? 1, `animations[${index}].blend_weight`);
   const effectEvents = importEffectEvents(animation, index, bones, diagnostics);
   const durationTicks = requireAnimationDurationTicks(
-    Math.max(1, Math.round(animation.length * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
+    Math.max(1, Math.round((animation.length + startDelaySeconds) * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones);
@@ -338,10 +340,10 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
-      const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
+      const sourceTime = startDelaySeconds > 0 ? tick / TICKS_PER_SECOND - startDelaySeconds : samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -712,20 +714,21 @@ function animatedWorldMatrix(
   time: number,
   cache: Map<string, Matrix4>,
   animationIndex: number,
+  blendWeight = 1,
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
   const animator = boneAnimators.get(bone.uuid);
   const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
-  const position = evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath).map((value) => value / 16);
-  const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath);
-  const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath);
+  const position = evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath).map((value) => value * blendWeight / 16);
+  const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
+  const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = bone.group.origin.map((value, index) => (value - parentOrigin[index]) / 16);
   const baseRotation = bone.group.rotation.map((value, index) => value + rotationDelta[index]);
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
-    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex).clone().multiply(local)
+    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight).clone().multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;

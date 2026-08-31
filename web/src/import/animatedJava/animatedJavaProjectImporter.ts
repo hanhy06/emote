@@ -7,21 +7,24 @@ import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
-import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
+import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
+import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,
   AjProjectDisplayElement,
+  AjProjectGroup,
   AjProjectLocator,
   AjProjectOutlinerEntry,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
 
-interface ProjectChannelCursor {
-  frames: AjProjectKeyframe[];
-  nextIndex: number;
+interface ProjectTransformGraph {
+  groups: ReadonlyMap<string, AjProjectGroup>;
+  groupParents: ReadonlyMap<string, string | undefined>;
+  elementParents: ReadonlyMap<string, string | undefined>;
 }
 
 export function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
@@ -33,18 +36,19 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   }
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
+  const transformGraph = buildProjectTransformGraph(project);
   const cubeProject = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
-  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element));
-  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element));
+  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
+  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
-      return importProjectAnimation(animation, index, displayElements);
+      return importProjectAnimation(animation, index, displayElements, transformGraph);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -77,6 +81,29 @@ function staticProjectAnimation(): AjProjectAnimation {
   return { name: "idle", length: 0.05, loop: "once", animators: {} };
 }
 
+function buildProjectTransformGraph(project: AjProject): ProjectTransformGraph {
+  const savedGroups = new Map(project.groups.map((group) => [group.uuid, group]));
+  const groups = new Map<string, AjProjectGroup>();
+  const groupParents = new Map<string, string | undefined>();
+  const elementParents = new Map<string, string | undefined>();
+  const visit = (entry: AjProjectOutlinerEntry, parent: string | undefined): void => {
+    if (typeof entry === "string") {
+      elementParents.set(entry, parent);
+      return;
+    }
+    const saved = savedGroups.get(entry.uuid);
+    const name = entry.name ?? saved?.name;
+    const origin = entry.origin ?? saved?.origin;
+    const rotation = entry.rotation ?? saved?.rotation;
+    if (!name || !origin || !rotation) throw new Error(`Animated Java group ${entry.uuid} is missing its saved group data.`);
+    groups.set(entry.uuid, { ...saved, ...entry, uuid: entry.uuid, name, origin, rotation });
+    groupParents.set(entry.uuid, parent);
+    entry.children.forEach((child) => visit(child, entry.uuid));
+  };
+  project.outliner.forEach((entry) => visit(entry, undefined));
+  return { groups, groupParents, elementParents };
+}
+
 function addProjectNode(nodes: Record<string, ImportedNode>, id: string, node: ImportedNode): void {
   if (nodes[id]) throw new ConversionError("animated_java_node_collision", `Animated Java project produces more than one node named ${id}.`, `elements.${id}`);
   nodes[id] = node;
@@ -87,6 +114,13 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     .filter((element) => element.type === "cube" || element.type === "locator")
     .map((element) => element.uuid));
   if (supportedIds.size === 0 && project.outliner.every((entry) => typeof entry === "string")) return undefined;
+  const groupIds = new Set(project.groups.map((group) => group.uuid));
+  const collectGroupIds = (entry: AjProjectOutlinerEntry): void => {
+    if (typeof entry === "string") return;
+    groupIds.add(entry.uuid);
+    entry.children.forEach(collectGroupIds);
+  };
+  project.outliner.forEach(collectGroupIds);
   const cubeProject = requireBlockbenchCubeProject({
     ...project,
     meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
@@ -94,7 +128,10 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
     elements: project.elements.filter((element) => supportedIds.has(element.uuid)),
     outliner: project.outliner.flatMap((entry) => filterCubeOutlinerEntry(entry, supportedIds)),
-    animations,
+    animations: animations.map((animation) => ({
+      ...animation,
+      animators: Object.fromEntries(Object.entries(animation.animators).filter(([id, animator]) => groupIds.has(id) || id === "effects" || animator.type === "effect")),
+    })),
   });
   return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
 }
@@ -108,6 +145,9 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
   if (!base) return display;
   return {
     ...base,
+    durationTicks: Math.max(base.durationTicks, display.durationTicks),
+    loop: display.loop,
+    loopDelayTicks: display.loopDelayTicks,
     tracks: { ...base.tracks, ...display.tracks },
     events: {
       start: [...base.events.start, ...display.events.start],
@@ -149,17 +189,16 @@ function isDirectDisplay(type: string): type is AjProjectDisplayElement["type"] 
   ].includes(type);
 }
 
-function importProjectAnchor(element: AjProjectLocator): ImportedNode {
+function importProjectAnchor(element: AjProjectLocator, defaultMatrix: Matrix16): ImportedNode {
   return {
     id: element.uuid,
     type: "anchor",
-    defaultMatrix: composeProjectMatrix(element.position, element.rotation, [1, 1, 1], `Animated Java ${element.type} ${element.name}`),
+    defaultMatrix,
   };
 }
 
-function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
+function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: Matrix16): ImportedNode {
   ensureEmptyProjectConfigs(element);
-  const defaultMatrix = composeProjectMatrix(element.position, element.rotation, element.scale, `Animated Java node ${element.name}`);
   if (element.type === "animated_java:vanilla_block_display") {
     return {
       id: element.uuid,
@@ -204,40 +243,37 @@ function importProjectAnimation(
   animation: AjProjectAnimation,
   animationIndex: number,
   elements: AjProjectDisplayElement[],
+  graph: ProjectTransformGraph,
 ): ImportedAnimation {
-  if (animation.loop !== "once" && animation.loop !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
+  const playbackMode = animation.loop === "hold_on_last_frame" ? "hold" : animation.loop;
+  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
+  const startDelaySeconds = projectNumeric(animation.start_delay ?? 0, `animations[${animationIndex}].start_delay`);
+  const startDelayTicks = secondsToTicks(startDelaySeconds, `${animation.name}.start_delay`);
+  const blendWeight = projectNumeric(animation.blend_weight ?? 1, `animations[${animationIndex}].blend_weight`);
   const durationTicks = requireAnimationDurationTicks(
-    secondsToTicks(animation.length, `${animation.name}.length`),
+    secondsToTicks(animation.length, `${animation.name}.length`) + startDelayTicks,
     `${animation.name}.length`,
   );
   const tracks: ImportedAnimation["tracks"] = {};
   for (const element of elements) {
-    const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    validateProjectKeyframes(keyframes, animationIndex, element.uuid);
-    const channels = indexProjectChannels(keyframes);
+    validateProjectKeyframes(animation.animators[element.uuid]?.keyframes ?? [], animationIndex, element.uuid);
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
-      const time = tick / 20;
-      const positionOffset = evaluateProjectChannel(channels.position, time, [0, 0, 0], animationIndex, element.uuid);
-      const rotationOffset = evaluateProjectChannel(channels.rotation, time, [0, 0, 0], animationIndex, element.uuid);
-      const scaleMultiplier = evaluateProjectChannel(channels.scale, time, [1, 1, 1], animationIndex, element.uuid);
-      const position = element.position.map((value, axis) => value + positionOffset[axis]);
-      const rotation = element.rotation.map((value, axis) => value + rotationOffset[axis]);
-      const scale = element.scale.map((value, axis) => value * scaleMultiplier[axis]);
+      const sourceTime = tick / 20 - startDelaySeconds;
       transforms.push({
         tick,
-        matrix: composeProjectMatrix(position, rotation, scale, `${animation.name}/${element.name}/${tick}`),
-        interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
+        matrix: projectElementMatrix(element, animation, sourceTime, graph, blendWeight),
+        interpolation: tick === 0 || projectStepAt(animation, element.uuid, sourceTime) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    tracks[element.uuid] = { transforms, visibility: [], nbt: [] };
+    tracks[element.uuid] = { transforms, visibility: projectVisibilityFrames(animation, element, startDelayTicks), nbt: [] };
   }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    loop: animation.loop,
-    loopDelayTicks: animation.loop === "loop"
+    loop: playbackMode,
+    loopDelayTicks: playbackMode === "loop"
       ? secondsToTicks(projectNumeric(animation.loop_delay || "0", `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
     tracks,
@@ -247,84 +283,107 @@ function importProjectAnimation(
 
 function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex: number, animatorId: string): void {
   for (const [index, keyframe] of keyframes.entries()) {
-    if (!["position", "rotation", "scale"].includes(keyframe.channel)) {
+    if (!["position", "rotation", "scale", "visibility"].includes(keyframe.channel)) {
       throw new ConversionError(
         "unsupported_animated_java_channel",
         `Animated Java project uses unsupported channel ${keyframe.channel}.`,
         `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
       );
     }
-    if (keyframe.interpolation !== "linear" && keyframe.interpolation !== "step") {
-      throw new ConversionError(
-        "unsupported_animated_java_interpolation",
-        `Animated Java project uses unsupported interpolation ${keyframe.interpolation}.`,
-        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
-      );
-    }
-    if (keyframe.easing && keyframe.easing !== "linear" && keyframe.easing !== "step") {
-      throw new ConversionError(
-        "unsupported_animated_java_interpolation",
-        `Animated Java project uses unsupported easing ${keyframe.easing}.`,
-        `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`,
-      );
+    if (keyframe.channel !== "visibility" && (keyframe.data_points.length < 1 || keyframe.data_points.length > 2)) {
+      throw new ConversionError("unsupported_animated_java_keyframe", "Animated Java transform keyframes must contain one value or a pre/post pair.", `animations[${animationIndex}].animators.${animatorId}.keyframes[${index}]`);
     }
   }
 }
 
-function indexProjectChannels(keyframes: AjProjectKeyframe[]): Record<"position" | "rotation" | "scale", ProjectChannelCursor> {
-  const channels = {
-    position: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
-    rotation: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
-    scale: { frames: [] as AjProjectKeyframe[], nextIndex: 0 },
-  };
-  for (const keyframe of keyframes) {
-    if (keyframe.channel === "position") channels.position.frames.push(keyframe);
-    else if (keyframe.channel === "rotation") channels.rotation.frames.push(keyframe);
-    else if (keyframe.channel === "scale") channels.scale.frames.push(keyframe);
-  }
-  for (const cursor of Object.values(channels)) cursor.frames.sort((first, second) => first.time - second.time);
-  return channels;
+function projectElementMatrix(
+  element: AjProjectDisplayElement | AjProjectLocator,
+  animation: AjProjectAnimation | undefined,
+  sourceTime: number,
+  graph: ProjectTransformGraph,
+  blendWeight: number,
+): Matrix16 {
+  const parentId = graph.elementParents.get(element.uuid);
+  const parent = parentId ? graph.groups.get(parentId) : undefined;
+  const animator = animation?.animators[element.uuid];
+  const path = `Animated Java ${animation?.name ?? "default"}/${element.name}`;
+  const positionOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "position", sourceTime, [0, 0, 0], `${path}/position`)
+    .map((value) => value * blendWeight);
+  const rotationOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "rotation", sourceTime, [0, 0, 0], `${path}/rotation`)
+    .map((value) => value * blendWeight);
+  const scaleMultiplier = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
+    .map((value) => 1 + (value - 1) * blendWeight);
+  const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
+  const local = composeProjectMatrix4(
+    basePosition.map((value, axis) => value + positionOffset[axis]),
+    element.rotation.map((value, axis) => value + rotationOffset[axis]),
+    "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
+  );
+  const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
+  return matrix4ToRowMajor(world.multiply(local), path);
 }
 
-function evaluateProjectChannel(
-  cursor: ProjectChannelCursor,
-  time: number,
-  fallback: number[],
-  animationIndex: number,
-  animatorId: string,
-): number[] {
-  const frames = cursor.frames;
-  if (frames.length === 0) return [...fallback];
-  while (cursor.nextIndex < frames.length && frames[cursor.nextIndex].time <= time) cursor.nextIndex++;
-  const nextIndex = cursor.nextIndex;
-  if (nextIndex === 0) return [...fallback];
-  if (nextIndex === frames.length) return projectKeyframeVector(frames[frames.length - 1], animationIndex, animatorId);
-  const previous = frames[nextIndex - 1];
-  const next = frames[nextIndex];
-  const previousValue = projectKeyframeVector(previous, animationIndex, animatorId);
-  if (next.interpolation === "step" || next.easing === "step") return previousValue;
-  const nextValue = projectKeyframeVector(next, animationIndex, animatorId);
-  const progress = (time - previous.time) / (next.time - previous.time);
-  return previousValue.map((value, axis) => value + (nextValue[axis] - value) * progress);
+function projectGroupMatrix(
+  id: string,
+  animation: AjProjectAnimation | undefined,
+  sourceTime: number,
+  graph: ProjectTransformGraph,
+  blendWeight: number,
+  cache: Map<string, Matrix4>,
+): Matrix4 {
+  const cached = cache.get(id);
+  if (cached) return cached.clone();
+  const group = graph.groups.get(id);
+  if (!group) throw new Error(`Animated Java outliner references unknown group ${id}.`);
+  const parentId = graph.groupParents.get(id);
+  const parent = parentId ? graph.groups.get(parentId) : undefined;
+  const animator = animation?.animators[id];
+  const path = `Animated Java ${animation?.name ?? "default"}/${group.name}`;
+  const positionOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "position", sourceTime, [0, 0, 0], `${path}/position`)
+    .map((value) => value * blendWeight);
+  const rotationOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "rotation", sourceTime, [0, 0, 0], `${path}/rotation`)
+    .map((value) => value * blendWeight);
+  const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
+    .map((value) => 1 + (value - 1) * blendWeight);
+  const local = composeProjectMatrix4(
+    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
+    group.rotation.map((value, axis) => value + rotationOffset[axis]),
+    scale,
+  );
+  const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, cache).multiply(local) : local;
+  cache.set(id, world.clone());
+  return world;
 }
 
-function projectKeyframeVector(keyframe: AjProjectKeyframe, animationIndex: number, animatorId: string): number[] {
-  if (keyframe.data_points.length !== 1) {
-    throw new ConversionError(
-      "unsupported_animated_java_keyframe",
-      "Animated Java project pre/post keyframes are not yet supported.",
-      `animations[${animationIndex}].animators.${animatorId}`,
-    );
-  }
-  const point = keyframe.data_points[0];
-  if (point.x === undefined || point.y === undefined || point.z === undefined) {
-    throw new ConversionError("invalid_animated_java_keyframe", "Animated Java transform keyframe is missing an axis value.", `animations[${animationIndex}].animators.${animatorId}`);
-  }
-  return [point.x, point.y, point.z].map((value, axis) => projectNumeric(value, `animations[${animationIndex}].animators.${animatorId}.${keyframe.channel}[${axis}]`));
+function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
+  if (sourceTime < 0) return [...fallback];
+  return evaluateGeckoChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
 }
 
-function composeProjectMatrix(position: number[], rotation: number[], scale: number[], label: string): Matrix16 {
-  return matrix4ToRowMajor(new Matrix4().compose(
+function projectStepAt(animation: AjProjectAnimation, elementId: string, sourceTime: number): boolean {
+  if (sourceTime < 0) return true;
+  return (animation.animators[elementId]?.keyframes ?? []).some((frame) => frame.interpolation === "step" && Math.abs(frame.time - sourceTime) < 1e-9);
+}
+
+function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): ImportedAnimation["tracks"][string]["visibility"] {
+  const frames = (animation.animators[element.uuid]?.keyframes ?? [])
+    .filter((frame) => frame.channel === "visibility")
+    .map((frame) => ({ tick: startDelayTicks + Math.round(frame.time * 20), visible: projectVisibility(frame, element) }))
+    .sort((first, second) => first.tick - second.tick);
+  return frames;
+}
+
+function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayElement): boolean {
+  const value = frame.data_points.at(-1)?.x;
+  if (value === undefined) throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility keyframe for ${element.name} has no value.`);
+  if (typeof value === "number") return value !== 0;
+  if (value === "true" || value === "1") return true;
+  if (value === "false" || value === "0") return false;
+  throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility value ${value} is not boolean.`);
+}
+
+function composeProjectMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
+  return new Matrix4().compose(
     new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
     new Quaternion().setFromEuler(new Euler(
       MathUtils.degToRad(rotation[0]),
@@ -333,7 +392,7 @@ function composeProjectMatrix(position: number[], rotation: number[], scale: num
       "ZYX",
     )),
     new Vector3(scale[0], scale[1], scale[2]),
-  ), label);
+  );
 }
 
 function projectNumeric(value: string | number, path: string): number {

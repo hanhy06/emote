@@ -179,6 +179,57 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations[0].id).toBe("idle");
   });
 
+  it("applies parent animation, easing, start delay, blend weight, hold, and visibility to displays", async () => {
+    const input = {
+      name: "display_animation.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [{
+          uuid: "item",
+          name: "Item",
+          type: "animated_java:vanilla_item_display",
+          position: [16, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          visibility: true,
+          item: "minecraft:stick",
+        }],
+        groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "root", children: ["item"] }],
+        textures: [],
+        animations: [{
+          name: "turn",
+          loop: "hold",
+          length: 0.1,
+          start_delay: 0.05,
+          blend_weight: 0.5,
+          animators: {
+            root: { keyframes: [
+              projectFrame("rotation", 0, ["0", "0", "0"]),
+              {
+                ...projectFrame("rotation", 0.1, ["0", "0", "90"]),
+                data_points: [{ x: "0", y: "0", z: "45" }, { x: "0", y: "0", z: "90" }],
+                easing: "easeInOutExpo",
+              },
+            ] },
+            item: { keyframes: [{ channel: "visibility", time: 0.05, interpolation: "step", data_points: [{ x: 0 }] }] },
+          },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const animation = project.animations[0];
+    const finalMatrix = animation.tracks.item.transforms.at(-1)!.matrix;
+
+    expect(animation.loop).toBe("hold");
+    expect(animation.durationTicks).toBe(3);
+    expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
+    expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2);
+    expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2);
+  });
+
   it("imports baked display tracks and locator anchors", async () => {
     const input = blueprint({
       item: {
