@@ -96,6 +96,32 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations).toHaveLength(1);
   });
 
+  it("keeps planar native cubes as item displays without player-head assignment", async () => {
+    const input = {
+      name: "plane.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated_java_blueprint", format_version: "1.5.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [{
+          uuid: "plane",
+          name: "Plane",
+          type: "cube",
+          from: [0, 0, 0],
+          to: [0, 8, 8],
+          faces: { east: { uv: [0, 0, 8, 8], texture: 0 } },
+        }],
+        outliner: [{ uuid: "root", name: "root", origin: [0, 0, 0], children: ["plane"] }],
+        textures: [{ source: "data:image/png;base64,iVBORw0KGgo=" }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(project.nodes.root.type).toBe("item_display");
+    expect(project.nodes.root.type === "item_display" && project.nodes.root.playerHeadConversion).toBeUndefined();
+    expect(project.diagnostics.map((issue) => issue.code)).toContain("geckolib_cube_player_head_unavailable");
+  });
+
   it("imports mixed cube, locator, and display projects", async () => {
     const input = {
       name: "mixed.ajblueprint",

@@ -148,7 +148,7 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
       })),
     })),
   });
-  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
+  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { allowUnfittedCubes: true });
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
