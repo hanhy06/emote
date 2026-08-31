@@ -142,8 +142,8 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     animations: animations.map((animation) => ({
       ...animation,
       animators: Object.fromEntries(Object.entries(animation.animators).flatMap(([id, animator]) => {
-        if (id === "effects" || animator.type === "effect") return [[id, { ...animator, keyframes: animator.keyframes.filter((frame) => ["sound", "particle", "timeline"].includes(frame.channel)) }]];
-        if (groupIds.has(id)) return [[id, { ...animator, keyframes: animator.keyframes.filter((frame) => ["position", "rotation", "scale"].includes(frame.channel)) }]];
+        if (id === "effects" || animator.type === "effect") return [[id, { ...animator, keyframes: (animator.keyframes ?? []).filter((frame) => ["sound", "particle", "timeline"].includes(frame.channel)) }]];
+        if (groupIds.has(id)) return [[id, { ...animator, keyframes: (animator.keyframes ?? []).filter((frame) => ["position", "rotation", "scale"].includes(frame.channel)) }]];
         return [];
       })),
     })),

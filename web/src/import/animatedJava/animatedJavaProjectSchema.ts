@@ -119,7 +119,7 @@ export interface AjProjectAnimation {
 export interface AjProjectAnimator {
   name?: string;
   type?: string;
-  keyframes: AjProjectKeyframe[];
+  keyframes?: AjProjectKeyframe[];
 }
 
 export interface AjProjectKeyframe {

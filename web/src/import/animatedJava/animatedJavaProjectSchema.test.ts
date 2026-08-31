@@ -49,6 +49,7 @@ describe("Animated Java project schema", () => {
               data_points: [{ function: "say hello", execute_condition: "1" }],
             }],
           },
+          idle_bone: { name: "idle_bone", type: "bone" },
         },
       }],
       animation_controllers: [],
@@ -60,7 +61,7 @@ describe("Animated Java project schema", () => {
       "animated_java:text_display",
       "animated_java:interaction",
     ]);
-    expect(project.animations[0].animators.effects.keyframes[0].data_points[0].function).toBe("say hello");
+    expect(project.animations[0].animators.effects.keyframes?.[0].data_points[0].function).toBe("say hello");
   });
 
   it("accepts static projects without animations", () => {
