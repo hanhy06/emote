@@ -13,6 +13,8 @@ import type {
   AjProject,
   AjProjectAnimation,
   AjProjectDisplayElement,
+  AjProjectLocator,
+  AjProjectOutlinerEntry,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
@@ -29,24 +31,18 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   if (!project.meta.format_version.startsWith("1.")) {
     throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
   }
-  const cubeElements = project.elements.filter((element) => element.type === "cube");
-  if (cubeElements.length > 0 && cubeElements.length === project.elements.length) {
-    return importAnimatedJavaCubeProject(input, project);
-  }
-  if (project.groups.length > 0 || project.elements.some((element) => !isDirectDisplay(element.type))) {
-    throw new ConversionError(
-      "unsupported_animated_java_project_nodes",
-      "This Animated Java project contains groups or model cubes. Export the plugin blueprint JSON until native group conversion is added.",
-      "elements",
-    );
-  }
-  if (project.elements.length === 0) throw new Error("Animated Java project does not contain display nodes.");
-  if (project.animations.length === 0) throw new Error("Animated Java project does not contain animations.");
+  const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
+  const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
+  const cubeProject = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
+  const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
+  const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
+  const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
+  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element));
+  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element));
+  if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const displayElements = project.elements as AjProjectDisplayElement[];
-  const nodes = Object.fromEntries(displayElements.map((element) => [element.uuid, importProjectElement(element)]));
-  const diagnostics: ImportDiagnostic[] = [];
-  const animations = project.animations.map((animation, index) => {
+  const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
+  const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
       return importProjectAnimation(animation, index, displayElements);
     } catch (reason) {
@@ -61,7 +57,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes);
     }
   });
-  const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || "Animated Java";
+  const animations = displayAnimations.map((animation, index) => mergeProjectAnimation(cubeProject?.animations[index], animation));
   const name = prettify(sourceStem);
   return {
     source: "animated_java_json",
@@ -71,7 +67,54 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     nodes,
     animations,
     diagnostics,
-    resources: new Map(),
+    resources: cubeProject?.resources ?? new Map(),
+    ...(cubeProject?.suggestedNamespace ? { suggestedNamespace: cubeProject.suggestedNamespace } : {}),
+    ...(cubeProject?.resourceMinecraftVersion ? { resourceMinecraftVersion: cubeProject.resourceMinecraftVersion } : {}),
+  };
+}
+
+function staticProjectAnimation(): AjProjectAnimation {
+  return { name: "idle", length: 0.05, loop: "once", animators: {} };
+}
+
+function addProjectNode(nodes: Record<string, ImportedNode>, id: string, node: ImportedNode): void {
+  if (nodes[id]) throw new ConversionError("animated_java_node_collision", `Animated Java project produces more than one node named ${id}.`, `elements.${id}`);
+  nodes[id] = node;
+}
+
+function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedProject | undefined {
+  const supportedIds = new Set(project.elements
+    .filter((element) => element.type === "cube" || element.type === "locator")
+    .map((element) => element.uuid));
+  if (supportedIds.size === 0 && project.outliner.every((entry) => typeof entry === "string")) return undefined;
+  const cubeProject = requireBlockbenchCubeProject({
+    ...project,
+    meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
+    name: project.name?.trim() || sourceStem,
+    geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
+    elements: project.elements.filter((element) => supportedIds.has(element.uuid)),
+    outliner: project.outliner.flatMap((entry) => filterCubeOutlinerEntry(entry, supportedIds)),
+    animations,
+  });
+  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
+}
+
+function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
+  if (typeof entry === "string") return supportedIds.has(entry) ? [entry] : [];
+  return [{ ...entry, children: entry.children.flatMap((child) => filterCubeOutlinerEntry(child, supportedIds)) }];
+}
+
+function mergeProjectAnimation(base: ImportedAnimation | undefined, display: ImportedAnimation): ImportedAnimation {
+  if (!base) return display;
+  return {
+    ...base,
+    tracks: { ...base.tracks, ...display.tracks },
+    events: {
+      start: [...base.events.start, ...display.events.start],
+      timeline: [...base.events.timeline, ...display.events.timeline].sort((first, second) => first.tick - second.tick),
+      loop: [...base.events.loop, ...display.events.loop],
+      stop: [...base.events.stop, ...display.events.stop],
+    },
   };
 }
 
@@ -97,30 +140,21 @@ function createPreviewOnlyProjectAnimation(
   };
 }
 
-function importAnimatedJavaCubeProject(input: ImportInput, project: AjProject): ImportedProject {
-  const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
-  const cubeProject = requireBlockbenchCubeProject({
-    ...project,
-    meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
-    name: project.name?.trim() || sourceStem,
-    geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
-  });
-  const imported = importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
-  const name = prettify(sourceStem);
-  return {
-    ...imported,
-    source: "animated_java_json",
-    sourceName: input.name,
-    suggestedMetadata: { name, description: `${name} emote.` },
-  };
-}
-
-function isDirectDisplay(type: string): boolean {
+function isDirectDisplay(type: string): type is AjProjectDisplayElement["type"] {
   return [
     "animated_java:vanilla_block_display",
     "animated_java:vanilla_item_display",
     "animated_java:vanilla_text_display",
+    "animated_java:text_display",
   ].includes(type);
+}
+
+function importProjectAnchor(element: AjProjectLocator): ImportedNode {
+  return {
+    id: element.uuid,
+    type: "anchor",
+    defaultMatrix: composeProjectMatrix(element.position, element.rotation, [1, 1, 1], `Animated Java ${element.type} ${element.name}`),
+  };
 }
 
 function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
@@ -131,7 +165,7 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
       id: element.uuid,
       type: "block_display",
       defaultMatrix,
-      visible: element.visibility,
+      visible: element.visibility !== false,
       blockStateSnbt: blockArgumentToSnbt(element.block ?? "minecraft:air"),
     };
   }
@@ -140,8 +174,8 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
       id: element.uuid,
       type: "item_display",
       defaultMatrix,
-      visible: element.visibility,
-      itemDisplay: "none",
+      visible: element.visibility !== false,
+      itemDisplay: element.item_display ?? "none",
       itemStackSnbt: itemArgumentToSnbt(element.item ?? "minecraft:air"),
     };
   }
@@ -149,7 +183,7 @@ function importProjectElement(element: AjProjectDisplayElement): ImportedNode {
     id: element.uuid,
     type: "text_display",
     defaultMatrix,
-    visible: element.visibility,
+    visible: element.visibility !== false,
     text: element.text ?? { text: element.name },
   };
 }

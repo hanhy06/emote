@@ -160,7 +160,7 @@ export function requireAnimatedJavaProject(value: unknown): AjProject {
   requireString(meta.format_version, "meta.format_version");
   optionalString(root.name, "name");
   optionalRecord(root.blueprint_settings, "blueprint_settings");
-  optionalRecord(root.variants, "variants");
+  if (root.variants !== null) optionalRecord(root.variants, "variants");
   optionalArray(root.collections, "collections");
   optionalArray(root.animation_controllers, "animation_controllers");
   const resolution = requireRecord(root.resolution, "resolution");
@@ -331,4 +331,3 @@ function optionalExpression(value: unknown, path: string): void {
 function requireExpression(value: unknown, path: string): void {
   if (typeof value !== "number" && typeof value !== "string") throw new Error(`${path} must be a number or expression.`);
 }
-

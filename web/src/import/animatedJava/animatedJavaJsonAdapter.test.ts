@@ -97,6 +97,52 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.animations).toHaveLength(1);
   });
 
+  it("imports mixed cube, locator, and display projects", async () => {
+    const input = {
+      name: "mixed.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [
+          { uuid: "cube", name: "Cube", type: "cube", from: [0, 0, 0], to: [8, 8, 8], faces: { north: { uv: [0, 0, 8, 8], texture: "texture" } } },
+          { uuid: "locator", name: "hand", type: "locator", position: [0, 8, 0], rotation: [0, 0, 0] },
+          { uuid: "label", name: "Label", type: "animated_java:text_display", position: [0, 8, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, text: { text: "Label" } },
+        ],
+        groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "root", children: ["cube", "locator", "label"] }],
+        textures: [{ uuid: "texture", source: "data:image/png;base64,iVBORw0KGgo=" }],
+        animations: [{ name: "idle", loop: "once", length: 0.05, animators: {} }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(project.nodes.root.type).toBe("item_display");
+    expect(project.nodes.root_hand.type).toBe("anchor");
+    expect(project.nodes.label.type).toBe("text_display");
+  });
+
+  it("creates an idle animation for static native projects", async () => {
+    const project = await animatedJavaJsonAdapter.import(nativeProject({
+      elements: [{
+        uuid: "item",
+        name: "Item",
+        type: "animated_java:vanilla_item_display",
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [1, 1, 1],
+        visibility: true,
+        item: "minecraft:stick",
+      }],
+      outliner: ["item"],
+      animations: [],
+    }));
+
+    expect(project.nodes.item.type).toBe("item_display");
+    expect(project.animations).toHaveLength(1);
+    expect(project.animations[0].id).toBe("idle");
+  });
+
   it("imports baked display tracks and locator anchors", async () => {
     const input = blueprint({
       item: {
