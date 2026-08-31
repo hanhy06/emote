@@ -39,8 +39,8 @@ const IMPORT_FORMATS = [
   },
   {
     label: "Animated Java",
-    extensions: ".json",
-    description: "Export a Plugin Blueprint JSON file from the Animated Java plugin in Blockbench. Model, animation, and skin data are imported.",
+    extensions: ".ajblueprint, .json",
+    description: "Use the original .ajblueprint project or export a Plugin Blueprint JSON file from Animated Java. Model, animation, and skin data are imported.",
   },
   {
     label: "Bedrock Edition",

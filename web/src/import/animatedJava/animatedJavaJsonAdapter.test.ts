@@ -6,9 +6,9 @@ import { animatedJavaJsonAdapter } from "./animatedJavaJsonAdapter";
 const encoder = new TextEncoder();
 
 describe("animatedJavaJsonAdapter", () => {
-  it("accepts only Animated Java Plugin Blueprint JSON files", async () => {
-    expect(animatedJavaJsonAdapter.extensions).toEqual(["json"]);
-    expect(animatedJavaJsonAdapter.label).toBe("Animated Java Plugin Blueprint JSON");
+  it("accepts Animated Java projects and Plugin Blueprint JSON files", async () => {
+    expect(animatedJavaJsonAdapter.extensions).toEqual(["ajblueprint", "json"]);
+    expect(animatedJavaJsonAdapter.label).toBe("Animated Java project");
     expect((await animatedJavaJsonAdapter.probe(rawBlueprint({
       meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
       resolution: { width: 16, height: 16 },
@@ -17,7 +17,84 @@ describe("animatedJavaJsonAdapter", () => {
       outliner: [],
       textures: [],
       animations: [],
-    }))).confidence).toBe(0);
+    }))).confidence).toBe(100);
+  });
+
+  it("imports native Animated Java project files", async () => {
+    const input = nativeProject({
+      elements: [{
+        name: "block_display",
+        position: [0, 0, 0],
+        rotation: [0, 0, 0],
+        scale: [0.5, 0.5, 0.5],
+        visibility: true,
+        block: "minecraft:stone",
+        configs: { default: {}, variants: {} },
+        uuid: "block",
+        type: "animated_java:vanilla_block_display",
+      }],
+      outliner: ["block"],
+      animations: [{
+        name: "animation",
+        loop: "once",
+        length: 0.1,
+        loop_delay: "0",
+        animators: {
+          block: {
+            name: "block_display",
+            type: "animated_java:vanilla_block_display",
+            keyframes: [
+              projectFrame("position", 0, ["0", "0", "0"]),
+              projectFrame("position", 0.1, ["8", "0", "0"]),
+            ],
+          },
+        },
+      }],
+    });
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(project.sourceName).toBe("unnamed.ajblueprint");
+    expect(project.nodes.block.type).toBe("block_display");
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
+  });
+
+  it("imports native Animated Java cube rigs", async () => {
+    const cube = {
+      uuid: "arm_cube",
+      name: "Right Arm",
+      type: "cube",
+      from: [4, 12, -2],
+      to: [8, 24, 2],
+      origin: [0, 0, 0],
+      faces: { north: { uv: [0, 0, 4, 12], texture: "skin_uuid" } },
+    };
+    const input = {
+      name: "humanoid.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        name: "Humanoid",
+        resolution: { width: 64, height: 64 },
+        elements: [cube],
+        groups: [{ uuid: "arm_uuid", name: "right_arm", origin: [5, 22, 0], rotation: [0, 0, 0] }],
+        outliner: [{ uuid: "arm_uuid", children: ["arm_cube"] }],
+        textures: [{ uuid: "skin_uuid", source: "data:image/png;base64,iVBORw0KGgo=" }],
+        animations: [{
+          name: "wave",
+          loop: "once",
+          length: 0.05,
+          animators: {
+            arm_uuid: { name: "right_arm", type: "bone", keyframes: [projectFrame("rotation", 0, ["0", "0", "0"])] },
+          },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+
+    expect(project.sourceName).toBe("humanoid.ajblueprint");
+    expect(Object.keys(project.nodes).length).toBeGreaterThan(0);
+    expect(project.animations).toHaveLength(1);
   });
 
   it("imports baked display tracks and locator anchors", async () => {
@@ -629,6 +706,31 @@ function blueprint(nodes: Record<string, unknown>, animations: Record<string, un
 
 function rawBlueprint(value: unknown) {
   return { name: "blueprint.json", bytes: encoder.encode(JSON.stringify(value)) };
+}
+
+function nativeProject(value: { elements: unknown[]; outliner: unknown[]; animations: unknown[] }) {
+  return {
+    name: "unnamed.ajblueprint",
+    bytes: encoder.encode(JSON.stringify({
+      meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+      resolution: { width: 16, height: 16 },
+      blueprint_settings: { enable_plugin_mode: true },
+      groups: [],
+      textures: [],
+      variants: null,
+      ...value,
+    })),
+  };
+}
+
+function projectFrame(channel: string, time: number, values: [string, string, string]) {
+  return {
+    channel,
+    time,
+    data_points: [{ x: values[0], y: values[1], z: values[2] }],
+    interpolation: "linear",
+    easing: "linear",
+  };
 }
 
 function baked(value: string[]) {
