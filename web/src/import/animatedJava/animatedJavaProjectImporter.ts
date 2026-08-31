@@ -2,7 +2,8 @@ import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
-import { serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
+import { isRecord } from "../../format/runtimeValue";
+import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
@@ -43,6 +44,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
   for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
+  applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
@@ -61,7 +63,15 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes);
     }
   });
-  const animations = displayAnimations.map((animation, index) => mergeProjectAnimation(cubeProject?.animations[index], animation));
+  const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
+    mergeProjectAnimation(cubeProject?.animations[index], animation),
+    sourceAnimations[index],
+    project,
+    nodes,
+    transformGraph,
+    diagnostics,
+    index,
+  ));
   const name = prettify(sourceStem);
   return {
     source: "animated_java_json",
@@ -130,7 +140,11 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     outliner: project.outliner.flatMap((entry) => filterCubeOutlinerEntry(entry, supportedIds)),
     animations: animations.map((animation) => ({
       ...animation,
-      animators: Object.fromEntries(Object.entries(animation.animators).filter(([id, animator]) => groupIds.has(id) || id === "effects" || animator.type === "effect")),
+      animators: Object.fromEntries(Object.entries(animation.animators).flatMap(([id, animator]) => {
+        if (id === "effects" || animator.type === "effect") return [[id, { ...animator, keyframes: animator.keyframes.filter((frame) => ["sound", "particle", "timeline"].includes(frame.channel)) }]];
+        if (groupIds.has(id)) return [[id, { ...animator, keyframes: animator.keyframes.filter((frame) => ["position", "rotation", "scale"].includes(frame.channel)) }]];
+        return [];
+      })),
     })),
   });
   return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`);
@@ -156,6 +170,171 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
       stop: [...base.events.stop, ...display.events.stop],
     },
   };
+}
+
+function enrichProjectAnimation(
+  imported: ImportedAnimation,
+  source: AjProjectAnimation,
+  project: AjProject,
+  nodes: Record<string, ImportedNode>,
+  graph: ProjectTransformGraph,
+  diagnostics: ImportDiagnostic[],
+  animationIndex: number,
+): ImportedAnimation {
+  const startDelayTicks = secondsToTicks(projectOptionalNumeric(source.start_delay, 0, `animations[${animationIndex}].start_delay`), `${source.name}.start_delay`);
+  const timeline = [...imported.events.timeline, ...nativeFunctionEvents(source, startDelayTicks, diagnostics, animationIndex)]
+    .sort((first, second) => first.tick - second.tick);
+  const variants = nativeVariants(project);
+  for (const [animatorId, animator] of Object.entries(source.animators)) {
+    for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
+      if (frame.channel !== "variant") continue;
+      const tick = startDelayTicks + Math.round(frame.time * 20);
+      for (const point of frame.data_points) {
+        const variantId = point.variant?.trim();
+        if (!variantId) continue;
+        const variant = variants.get(variantId);
+        if (!variant) {
+          diagnostics.push({ severity: "warning", code: "animated_java_unknown_variant", message: `Animation ${source.name} references unknown variant ${variantId}.`, sourcePath: `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]` });
+          continue;
+        }
+        applyVariantFrame(imported, project, nodes, graph, variantId, variant, tick);
+      }
+    }
+  }
+  return { ...imported, events: { ...imported.events, timeline } };
+}
+
+function nativeFunctionEvents(source: AjProjectAnimation, startDelayTicks: number, diagnostics: ImportDiagnostic[], animationIndex: number): ImportedAnimation["events"]["timeline"] {
+  const result: ImportedAnimation["events"]["timeline"] = [];
+  for (const [animatorId, animator] of Object.entries(source.animators)) {
+    for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
+      if (frame.channel !== "function" && frame.channel !== "commands") continue;
+      const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
+      for (const point of frame.data_points) {
+        const text = point.function ?? point.commands ?? "";
+        const commands = text.split(/\r?\n/).map((line) => line.trim().replace(/^\//, "")).filter(Boolean);
+        if (commands.length === 0) continue;
+        if (point.execute_condition?.trim()) diagnostics.push({ severity: "warning", code: "animated_java_execute_condition_ignored", message: `Execute condition was not converted: ${point.execute_condition.trim()}`, sourcePath });
+        if (point.repeat) diagnostics.push({ severity: "warning", code: "animated_java_repeating_function_ignored", message: "Repeating function behavior was converted to a single timeline event.", sourcePath });
+        result.push({ tick: startDelayTicks + Math.round(frame.time * 20), source: { type: "player" }, origin: { type: "root" }, commands });
+      }
+    }
+  }
+  return result;
+}
+
+function nativeVariants(project: AjProject): Map<string, Record<string, unknown>> {
+  const variants = new Map<string, Record<string, unknown>>();
+  if (!isRecord(project.variants)) return variants;
+  const entries = Array.isArray(project.variants.list) ? project.variants.list : [];
+  if (isRecord(project.variants.default)) entries.unshift(project.variants.default);
+  for (const value of entries) {
+    if (!isRecord(value)) continue;
+    const uuid = typeof value.uuid === "string" ? value.uuid : undefined;
+    const name = typeof value.name === "string" ? value.name : undefined;
+    if (uuid) variants.set(uuid, value);
+    if (name) variants.set(name, value);
+  }
+  return variants;
+}
+
+function applyVariantFrame(
+  animation: ImportedAnimation,
+  project: AjProject,
+  nodes: Record<string, ImportedNode>,
+  graph: ProjectTransformGraph,
+  variantId: string,
+  variant: Record<string, unknown>,
+  tick: number,
+): void {
+  const excluded = new Set(Array.isArray(variant.excluded_nodes) ? variant.excluded_nodes.filter((value): value is string => typeof value === "string") : []);
+  for (const sourceId of excluded) {
+    for (const nodeId of projectOutputNodeIds(sourceId, nodes, graph)) projectTrack(animation, nodeId).visibility.push({ tick, visible: false });
+  }
+  for (const element of project.elements) {
+    if (!isDirectDisplay(element.type)) continue;
+    const display = element as AjProjectDisplayElement;
+    const config = display.configs?.variants?.[variantId];
+    if (isRecord(config)) applyVariantConfig(animation, display.uuid, config, tick);
+  }
+  for (const group of project.groups) {
+    const config = group.configs?.variants?.[variantId];
+    if (!isRecord(config)) continue;
+    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) applyVariantConfig(animation, nodeId, config, tick);
+  }
+}
+
+function applyVariantConfig(animation: ImportedAnimation, nodeId: string, config: Record<string, unknown>, tick: number): void {
+  const track = projectTrack(animation, nodeId);
+  if (typeof config.invisible === "boolean") track.visibility.push({ tick, visible: !config.invisible });
+  const nbt = nativeDisplayConfigNbt(config);
+  if (nbt) track.nbt.push({ tick, value: nbt });
+}
+
+function projectTrack(animation: ImportedAnimation, nodeId: string) {
+  return animation.tracks[nodeId] ??= { transforms: [], visibility: [], nbt: [] };
+}
+
+function projectOutputNodeIds(sourceId: string, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, includeDescendants = true): string[] {
+  const result = new Set<string>();
+  if (nodes[sourceId]) result.add(sourceId);
+  const groupIds = [sourceId, ...(includeDescendants ? [...graph.groups.keys()].filter((id) => projectGroupDescendsFrom(id, sourceId, graph)) : [])];
+  for (const groupId of groupIds) {
+    const group = graph.groups.get(groupId);
+    if (!group) continue;
+    const boneId = sanitizeResourcePath(group.name, "bone").replaceAll("/", "_");
+    for (const nodeId of Object.keys(nodes)) if (nodeId === boneId || nodeId.startsWith(`${boneId}_`)) result.add(nodeId);
+    for (const [elementId, parentId] of graph.elementParents) if (parentId === groupId && nodes[elementId]) result.add(elementId);
+  }
+  return [...result];
+}
+
+function projectGroupDescendsFrom(id: string, ancestorId: string, graph: ProjectTransformGraph): boolean {
+  for (let current = graph.groupParents.get(id); current; current = graph.groupParents.get(current)) if (current === ancestorId) return true;
+  return false;
+}
+
+function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, project: AjProject, graph: ProjectTransformGraph): void {
+  for (const group of project.groups) {
+    const config = group.configs?.default;
+    if (!isRecord(config)) continue;
+    const nbt = nativeDisplayConfigNbt(config);
+    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) {
+      const node = nodes[nodeId];
+      if (!node || node.type === "anchor") continue;
+      if (config.invisible === true) node.visible = false;
+      if (nbt) node.entityNbt = mergeSnbt(node.entityNbt, nbt);
+    }
+  }
+}
+
+function nativeDefaultConfig(element: AjProjectDisplayElement): Record<string, unknown> | undefined {
+  const config = { ...(isRecord(element.config) ? element.config : {}), ...(isRecord(element.configs?.default) ? element.configs.default : {}) };
+  return Object.keys(config).length ? config : undefined;
+}
+
+function nativeDisplayConfigNbt(config: Record<string, unknown> | undefined): string | undefined {
+  if (!config) return undefined;
+  const fields = new Map<string, string>();
+  if (typeof config.billboard === "string") fields.set("billboard", serializeSnbtString(config.billboard));
+  for (const key of ["shadow_radius", "shadow_strength"] as const) if (typeof config[key] === "number" && Number.isFinite(config[key])) fields.set(key, String(config[key]));
+  if (typeof config.glowing === "boolean") fields.set("Glowing", config.glowing ? "1b" : "0b");
+  if (typeof config.glow_color === "string" && /^#[0-9a-f]{6}$/i.test(config.glow_color)) fields.set("glow_color_override", String(Number.parseInt(config.glow_color.slice(1), 16)));
+  const brightness = typeof config.brightness_override === "number" ? config.brightness_override : undefined;
+  if ((config.override_brightness === true || brightness !== undefined) && brightness !== undefined) {
+    fields.set("brightness", serializeSnbtCompound([["sky", String(brightness)], ["block", String(brightness)]]));
+  }
+  if (config.use_nbt === true && typeof config.nbt === "string" && config.nbt.trim()) {
+    for (const field of parseSnbtCompound(config.nbt, "Animated Java display config NBT")) fields.set(field.name, field.value);
+  }
+  return fields.size ? serializeSnbtCompound(fields) : undefined;
+}
+
+function mergeSnbt(first: string | undefined, second: string): string {
+  const fields = new Map<string, string>();
+  if (first) for (const field of parseSnbtCompound(first)) fields.set(field.name, field.value);
+  for (const field of parseSnbtCompound(second)) fields.set(field.name, field.value);
+  return serializeSnbtCompound(fields);
 }
 
 function createPreviewOnlyProjectAnimation(
@@ -198,13 +377,16 @@ function importProjectAnchor(element: AjProjectLocator, defaultMatrix: Matrix16)
 }
 
 function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: Matrix16): ImportedNode {
-  ensureEmptyProjectConfigs(element);
+  const config = nativeDefaultConfig(element);
+  const entityNbt = nativeDisplayConfigNbt(config);
+  const visible = element.visibility !== false && config?.invisible !== true;
   if (element.type === "animated_java:vanilla_block_display") {
     return {
       id: element.uuid,
       type: "block_display",
       defaultMatrix,
-      visible: element.visibility !== false,
+      visible,
+      ...(entityNbt ? { entityNbt } : {}),
       blockStateSnbt: blockArgumentToSnbt(element.block ?? "minecraft:air"),
     };
   }
@@ -213,7 +395,8 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       id: element.uuid,
       type: "item_display",
       defaultMatrix,
-      visible: element.visibility !== false,
+      visible,
+      ...(entityNbt ? { entityNbt } : {}),
       itemDisplay: element.item_display ?? "none",
       itemStackSnbt: itemArgumentToSnbt(element.item ?? "minecraft:air"),
     };
@@ -222,21 +405,10 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
     id: element.uuid,
     type: "text_display",
     defaultMatrix,
-    visible: element.visibility !== false,
+    visible,
+    ...(entityNbt ? { entityNbt } : {}),
     text: element.text ?? { text: element.name },
   };
-}
-
-function ensureEmptyProjectConfigs(element: AjProjectDisplayElement): void {
-  const defaults = Object.keys(element.configs?.default ?? {});
-  const variants = Object.keys(element.configs?.variants ?? {});
-  if (defaults.length || variants.length) {
-    throw new ConversionError(
-      "unsupported_animated_java_display_config",
-      `Animated Java node ${element.name} contains display configuration that cannot yet be preserved.`,
-      `elements.${element.uuid}.configs`,
-    );
-  }
 }
 
 function importProjectAnimation(
@@ -247,9 +419,9 @@ function importProjectAnimation(
 ): ImportedAnimation {
   const playbackMode = animation.loop === "hold_on_last_frame" ? "hold" : animation.loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
-  const startDelaySeconds = projectNumeric(animation.start_delay ?? 0, `animations[${animationIndex}].start_delay`);
+  const startDelaySeconds = projectOptionalNumeric(animation.start_delay, 0, `animations[${animationIndex}].start_delay`);
   const startDelayTicks = secondsToTicks(startDelaySeconds, `${animation.name}.start_delay`);
-  const blendWeight = projectNumeric(animation.blend_weight ?? 1, `animations[${animationIndex}].blend_weight`);
+  const blendWeight = projectOptionalNumeric(animation.blend_weight, 1, `animations[${animationIndex}].blend_weight`);
   const durationTicks = requireAnimationDurationTicks(
     secondsToTicks(animation.length, `${animation.name}.length`) + startDelayTicks,
     `${animation.name}.length`,
@@ -274,7 +446,7 @@ function importProjectAnimation(
     durationTicks,
     loop: playbackMode,
     loopDelayTicks: playbackMode === "loop"
-      ? secondsToTicks(projectNumeric(animation.loop_delay || "0", `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
+      ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -401,6 +573,11 @@ function projectNumeric(value: string | number, path: string): number {
     throw new ConversionError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);
   }
   return parsed;
+}
+
+function projectOptionalNumeric(value: string | number | undefined, fallback: number, path: string): number {
+  if (value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
+  return projectNumeric(value, path);
 }
 
 export function itemArgumentToSnbt(value: string): string {

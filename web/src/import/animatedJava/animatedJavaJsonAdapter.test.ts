@@ -230,6 +230,61 @@ describe("animatedJavaJsonAdapter", () => {
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2);
   });
 
+  it("converts native functions and display variants to events and NBT tracks", async () => {
+    const variantId = "variant-alt";
+    const input = {
+      name: "config.ajblueprint",
+      bytes: encoder.encode(JSON.stringify({
+        meta: { format: "animated-java:format/blueprint", format_version: "1.10.2" },
+        resolution: { width: 16, height: 16 },
+        elements: [{
+          uuid: "item",
+          name: "Item",
+          type: "animated_java:vanilla_item_display",
+          position: [0, 0, 0],
+          rotation: [0, 0, 0],
+          scale: [1, 1, 1],
+          visibility: true,
+          item: "minecraft:stick",
+          configs: {
+            default: { billboard: "vertical", glowing: true },
+            variants: { [variantId]: { glowing: false, invisible: true } },
+          },
+        }],
+        groups: [{
+          uuid: "root",
+          name: "root",
+          origin: [0, 0, 0],
+          rotation: [0, 0, 0],
+          configs: { default: { shadow_radius: 2 }, variants: { [variantId]: { shadow_radius: 1 } } },
+        }],
+        outliner: [{ uuid: "root", children: ["item"] }],
+        textures: [],
+        variants: { default: { uuid: "default", name: "default" }, list: [{ uuid: variantId, name: "alt", excluded_nodes: [] }] },
+        animations: [{
+          name: "configured",
+          loop: "once",
+          length: 0.1,
+          animators: { effects: { type: "effect", keyframes: [
+            { channel: "function", time: 0.05, data_points: [{ function: "/say hello", repeat: false }] },
+            { channel: "variant", time: 0.1, data_points: [{ variant: variantId }] },
+          ] } },
+        }],
+      })),
+    };
+
+    const project = await animatedJavaJsonAdapter.import(input);
+    const node = project.nodes.item;
+    const animation = project.animations[0];
+
+    expect(node.type !== "anchor" && node.entityNbt).toContain('billboard:"vertical"');
+    expect(node.type !== "anchor" && node.entityNbt).toContain("shadow_radius:2");
+    expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 1, commands: ["say hello"] }));
+    expect(animation.tracks.item.visibility).toContainEqual({ tick: 2, visible: false });
+    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("Glowing:0b") });
+    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("shadow_radius:1") });
+  });
+
   it("imports baked display tracks and locator anchors", async () => {
     const input = blueprint({
       item: {

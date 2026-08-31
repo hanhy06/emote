@@ -325,8 +325,8 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
   if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
-  const startDelaySeconds = numericValue(animation.start_delay ?? 0, `animations[${index}].start_delay`);
-  const blendWeight = numericValue(animation.blend_weight ?? 1, `animations[${index}].blend_weight`);
+  const startDelaySeconds = optionalNumericValue(animation.start_delay, 0, `animations[${index}].start_delay`);
+  const blendWeight = optionalNumericValue(animation.blend_weight, 1, `animations[${index}].blend_weight`);
   const effectEvents = importEffectEvents(animation, index, bones, diagnostics);
   const durationTicks = requireAnimationDurationTicks(
     Math.max(1, Math.round((animation.length + startDelaySeconds) * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
@@ -774,6 +774,11 @@ function numericValue(value: string | number, path: string): number {
   const number = typeof value === "number" ? value : Number(value.trim());
   if (!Number.isFinite(number)) throw new ConversionError("unsupported_geckolib_molang", `GeckoLib expression ${String(value)} is not a numeric constant.`, path);
   return number;
+}
+
+function optionalNumericValue(value: string | number | undefined, fallback: number, path: string): number {
+  if (value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
+  return numericValue(value, path);
 }
 
 function validNamespace(value: string | undefined): string | undefined {
