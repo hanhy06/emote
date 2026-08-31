@@ -50,7 +50,11 @@ export interface BoneEntry {
   nodes: BoneNodeEntry[];
 }
 
-export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string): ImportedProject {
+export interface CubeProjectImportOptions {
+  rotationConvention?: "geckolib" | "blockbench";
+}
+
+export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string, options: CubeProjectImportOptions = {}): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
   if (project.elements.some((element) => element.type && element.type !== "cube" && element.type !== "locator")) {
     throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
@@ -60,6 +64,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
   const resources = new Map<string, Uint8Array>();
+  const rotationConvention = options.rotationConvention ?? "geckolib";
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(project, bones, namespace, projectPath, resources);
@@ -67,7 +72,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
-    const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map()));
+    const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map(), rotationConvention));
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
@@ -82,7 +87,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone);
       if (!hiddenAccessory && !conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
-      const localMatrix = cubeLocalMatrix(cube, bone);
+      const localMatrix = cubeLocalMatrix(cube, bone, rotationConvention);
       bone.nodes.push({ id: nodeId, localMatrix });
       const modelPath = `${projectPath}/${nodeId}`;
       writeCubeResources(project, bone, cube, namespace, modelPath, resources);
@@ -105,7 +110,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     }
     for (const [locatorIndex, locator] of bone.locators.entries()) {
       const nodeId = uniqueLocatorNodeId(bone, locator, locatorIndex, nodeIds);
-      const localMatrix = locatorLocalMatrix(locator, bone);
+      const localMatrix = locatorLocalMatrix(locator, bone, rotationConvention);
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
@@ -119,7 +124,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
   const animations = project.animations.map((animation, index) => {
     try {
-      return importAnimation(animation, index, bones, diagnostics);
+      return importAnimation(animation, index, bones, diagnostics, rotationConvention);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -129,7 +134,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyAnimation(animation, index, message, bones, nodes);
+      return createPreviewOnlyAnimation(animation, index, message, bones, nodes, rotationConvention);
     }
   });
   return {
@@ -146,7 +151,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   };
 }
 
-function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string, bones: BoneEntry[], nodes: Record<string, ImportedNode>): ImportedAnimation {
+function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string, bones: BoneEntry[], nodes: Record<string, ImportedNode>, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): ImportedAnimation {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   const durationTicks = Number.isFinite(animation.length) && animation.length > 0
@@ -162,7 +167,7 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
     preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createGeckoRuntime(animation, index, durationTicks, bones, nodes),
+    runtime: createGeckoRuntime(animation, index, durationTicks, bones, nodes, rotationConvention),
   };
 }
 
@@ -172,6 +177,7 @@ function createGeckoRuntime(
   durationTicks: number,
   bones: BoneEntry[],
   importedNodes: Record<string, ImportedNode>,
+  rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>,
 ): NonNullable<ImportedAnimation["runtime"]> {
   const sceneId = "geckolib_scene";
   const nodes: Record<string, EmoteNode> = {
@@ -186,7 +192,7 @@ function createGeckoRuntime(
       bone.group.origin.map((value, axis) => value - parentOrigin[axis]),
       (value) => -value,
     ).map((value) => value / 16) as [number, number, number];
-    const baseRotation = blockbenchRotationToCanonical(bone.group.rotation, (value) => -value);
+    const baseRotation = cubeRotationToCanonical(bone.group.rotation, (value) => -value, rotationConvention);
     nodes[`${bone.id}_z`] = { type: "anchor", parent, transform: { position: basePosition, rotation: [0, 0, baseRotation[2]], scale: ONE_VECTOR } };
     nodes[`${bone.id}_y`] = { type: "anchor", parent: `${bone.id}_z`, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
@@ -198,7 +204,7 @@ function createGeckoRuntime(
     if (!animator) continue;
     const position = geckoChannelFrames(animator, "position", ZERO_VECTOR, (values) => blockbenchPositionToCanonical(values, negateMolang)
       .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => blockbenchRotationToCanonical(values, negateMolang));
+    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => cubeRotationToCanonical(values, negateMolang, rotationConvention));
     const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
@@ -309,28 +315,28 @@ function uniqueLocatorNodeId(bone: BoneEntry, locator: BbLocator, locatorIndex: 
   return id;
 }
 
-function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>): Matrix16 {
+function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix16 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
-  const local = bindLocalMatrix(bone);
+  const local = bindLocalMatrix(bone, rotationConvention);
   const world = bone.parent
-    ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache)).multiply(local)
+    ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache, rotationConvention)).multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   const result = matrix4ToRowMajor(world, `GeckoLib bone ${bone.id}`);
   cache.set(bone.uuid, result);
   return result;
 }
 
-function bindLocalMatrix(bone: BoneEntry): Matrix4 {
+function bindLocalMatrix(bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   return composeTransform(
     blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16),
-    blockbenchRotationToCanonical(bone.group.rotation, (value) => -value),
+    cubeRotationToCanonical(bone.group.rotation, (value) => -value, rotationConvention),
     [1, 1, 1],
   );
 }
 
-function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[]): ImportedAnimation {
+function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[], rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): ImportedAnimation {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
@@ -343,7 +349,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones);
-  const samplePlan = planAnimationSamples(animation, index, bones, boneAnimators, durationTicks);
+  const samplePlan = planAnimationSamples(animation, index, bones, boneAnimators, durationTicks, rotationConvention);
   const tracks: ImportedAnimation["tracks"] = {};
   for (const bone of bones) {
     validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
@@ -353,7 +359,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       const sourceTime = startDelaySeconds > 0 ? tick / TICKS_PER_SECOND - startDelaySeconds : samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, rotationConvention), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -415,6 +421,7 @@ function planAnimationSamples(
   bones: BoneEntry[],
   boneAnimators: Map<string, BbAnimator>,
   durationTicks: number,
+  rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>,
 ): AnimationSamplePlan {
   const anchors = collectAnimationAnchors(animation, animationIndex);
   if (anchors.length === 0) return { sourceTimes: new Map(), stepTicks: new Set() };
@@ -425,7 +432,7 @@ function planAnimationSamples(
     const cached = snapshots.get(key);
     if (cached) return cached;
     const cache = new Map<string, Matrix4>();
-    const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, animationIndex).clone());
+    const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, animationIndex, 1, rotationConvention).clone());
     snapshots.set(key, result);
     return result;
   };
@@ -725,6 +732,7 @@ function animatedWorldMatrix(
   cache: Map<string, Matrix4>,
   animationIndex: number,
   blendWeight = 1,
+  rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]> = "geckolib",
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
@@ -738,10 +746,10 @@ function animatedWorldMatrix(
   const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16);
-  const baseRotation = blockbenchRotationToCanonical(bone.group.rotation.map((value, index) => value + rotationDelta[index]), (value) => -value);
+  const baseRotation = cubeRotationToCanonical(bone.group.rotation.map((value, index) => value + rotationDelta[index]), (value) => -value, rotationConvention);
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
-    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight).clone().multiply(local)
+    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight, rotationConvention).clone().multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;
@@ -760,8 +768,8 @@ function composeTransform(position: number[], rotation: number[], scale: number[
   );
 }
 
-function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
-  const rotation = blockbenchRotationToCanonical(cube.rotation ?? [0, 0, 0], (value) => -value);
+function cubeLocalMatrix(cube: BbCube, bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
+  const rotation = cubeRotationToCanonical(cube.rotation ?? [0, 0, 0], (value) => -value, rotationConvention);
   if (rotation.every((value) => Math.abs(value) <= 1e-7)) return new Matrix4();
   const origin = blockbenchPositionToCanonical(
     (cube.origin ?? bone.group.origin).map((value, axis) => value - bone.group.origin[axis]),
@@ -771,12 +779,18 @@ function cubeLocalMatrix(cube: BbCube, bone: BoneEntry): Matrix4 {
     .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
 }
 
-function locatorLocalMatrix(locator: BbLocator, bone: BoneEntry): Matrix4 {
+function locatorLocalMatrix(locator: BbLocator, bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
   return composeTransform(
     blockbenchPositionToCanonical(locator.position.map((value, axis) => value - bone.group.origin[axis]), (value) => -value).map((value) => value / 16),
-    blockbenchRotationToCanonical(locator.rotation, (value) => -value),
+    cubeRotationToCanonical(locator.rotation, (value) => -value, rotationConvention),
     [1, 1, 1],
   );
+}
+
+function cubeRotationToCanonical<T>(values: readonly T[], negate: (value: T) => T, convention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): [T, T, T] {
+  return convention === "geckolib"
+    ? blockbenchRotationToCanonical(values, negate)
+    : [values[0], negate(values[1]), negate(values[2])];
 }
 
 function matrixWithoutScale(matrix: Matrix4): Matrix4 {

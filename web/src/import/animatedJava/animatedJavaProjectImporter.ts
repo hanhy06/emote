@@ -148,35 +148,7 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
       })),
     })),
   });
-  return applyAnimatedJavaSceneOrientation(importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`));
-}
-
-function applyAnimatedJavaSceneOrientation(project: ImportedProject): ImportedProject {
-  const orientTrack = (track: ImportedAnimation["tracks"][string]): ImportedAnimation["tracks"][string] => ({
-    ...track,
-    transforms: track.transforms.map((frame) => ({
-      ...frame,
-      matrix: applyAnimatedJavaSceneRotation(frame.matrix, `Animated Java animation frame ${frame.tick}`),
-    })),
-  });
-  const orientAnimation = (animation: ImportedAnimation): ImportedAnimation => ({
-    ...animation,
-    tracks: Object.fromEntries(Object.entries(animation.tracks).map(([id, track]) => [id, orientTrack(track)])),
-    ...(animation.preview ? {
-      preview: {
-        ...animation.preview,
-        tracks: Object.fromEntries(Object.entries(animation.preview.tracks).map(([id, track]) => [id, orientTrack(track)])),
-      },
-    } : {}),
-  });
-  return {
-    ...project,
-    nodes: Object.fromEntries(Object.entries(project.nodes).map(([id, node]) => [id, {
-      ...node,
-      defaultMatrix: applyAnimatedJavaSceneRotation(node.defaultMatrix, `Animated Java node ${id}`),
-    }])),
-    animations: project.animations.map(orientAnimation),
-  };
+  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { rotationConvention: "blockbench" });
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
@@ -599,7 +571,7 @@ function projectElementMatrix(
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
-  return applyAnimatedJavaSceneRotation(matrix4ToRowMajor(world.multiply(local), path), path);
+  return matrix4ToRowMajor(world.multiply(local), path);
 }
 
 function projectGroupMatrix(
@@ -662,7 +634,7 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
 }
 
 function composeProjectMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
-  return new Matrix4().compose(
+  const source = new Matrix4().compose(
     new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
     new Quaternion().setFromEuler(new Euler(
       MathUtils.degToRad(rotation[0]),
@@ -672,12 +644,8 @@ function composeProjectMatrix4(position: number[], rotation: number[], scale: nu
     )),
     new Vector3(scale[0], scale[1], scale[2]),
   );
-}
-
-function applyAnimatedJavaSceneRotation(matrix: Matrix16, path: string): Matrix16 {
-  const source = new Matrix4().set(...matrix);
-  const sceneRotation = new Matrix4().makeRotationY(Math.PI);
-  return matrix4ToRowMajor(sceneRotation.multiply(source), `${path} scene orientation`);
+  const reflectX = new Matrix4().makeScale(-1, 1, 1);
+  return reflectX.clone().multiply(source).multiply(reflectX);
 }
 
 function projectNumeric(value: string | number, path: string): number {
