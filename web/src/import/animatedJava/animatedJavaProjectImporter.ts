@@ -29,7 +29,7 @@ interface ProjectTransformGraph {
 }
 
 export function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
-  if (project.meta.format !== "animated-java:format/blueprint") {
+  if (!["animated-java:format/blueprint", "animated_java_blueprint"].includes(project.meta.format)) {
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
   }
   if (!project.meta.format_version.startsWith("1.")) {

@@ -74,5 +74,16 @@ describe("Animated Java project schema", () => {
       animations: [],
     }).animations).toEqual([]);
   });
-});
 
+  it("recognizes the legacy native Blueprint format id", () => {
+    expect(requireAnimatedJavaProject({
+      meta: { format: "animated_java_blueprint", format_version: "1.5.2" },
+      resolution: { width: 16, height: 16 },
+      elements: [],
+      groups: [],
+      outliner: [],
+      textures: [],
+      animations: [],
+    }).meta.format).toBe("animated_java_blueprint");
+  });
+});

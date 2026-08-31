@@ -154,7 +154,7 @@ export function isAnimatedJavaProject(value: unknown): boolean {
   return typeof meta === "object"
     && meta !== null
     && !Array.isArray(meta)
-    && (meta as Record<string, unknown>).format === "animated-java:format/blueprint";
+    && ["animated-java:format/blueprint", "animated_java_blueprint"].includes(String((meta as Record<string, unknown>).format));
 }
 
 export function requireAnimatedJavaProject(value: unknown): AjProject {
