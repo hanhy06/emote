@@ -130,7 +130,7 @@ describe("animatedJavaJsonAdapter", () => {
     expect(project.nodes.child.defaultMatrix[11]).toBeCloseTo(0);
   });
 
-  it("moves native cubes and direct displays along the same animation axes", async () => {
+  it("preserves separate native bone and direct display animation conventions", async () => {
     const input = {
       name: "shared_axes.ajblueprint",
       bytes: encoder.encode(JSON.stringify({
@@ -148,8 +148,14 @@ describe("animatedJavaJsonAdapter", () => {
           loop: "once",
           length: 0.05,
           animators: {
-            root: { name: "root", type: "bone", keyframes: [projectFrame("position", 0, ["8", "0", "-8"])] },
-            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("position", 0, ["8", "0", "-8"])] },
+            root: { name: "root", type: "bone", keyframes: [
+              projectFrame("position", 0, ["8", "0", "-8"]),
+              projectFrame("rotation", 0, ["45", "0", "0"]),
+            ] },
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [
+              projectFrame("position", 0, ["8", "0", "-8"]),
+              projectFrame("rotation", 0, ["45", "0", "0"]),
+            ] },
           },
         }],
       })),
@@ -159,10 +165,12 @@ describe("animatedJavaJsonAdapter", () => {
     const cubeMatrix = project.animations[0].tracks.root.transforms[0].matrix;
     const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
 
-    expect(cubeMatrix[3]).toBeCloseTo(0.46875);
+    expect(cubeMatrix[3]).toBeCloseTo(-0.46875);
     expect(itemMatrix[3]).toBeCloseTo(0.5);
     expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
     expect(itemMatrix[11]).toBeCloseTo(-0.5);
+    expect(cubeMatrix[6]).toBeLessThan(0);
+    expect(itemMatrix[6]).toBeGreaterThan(0);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {

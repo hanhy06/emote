@@ -597,8 +597,8 @@ function projectGroupMatrix(
   const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
   const local = composeProjectMatrix4(
-    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
-    group.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
+    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
+    group.rotation.map((value, axis) => value + rotationOffset[axis]),
     scale,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, cache).multiply(local) : local;

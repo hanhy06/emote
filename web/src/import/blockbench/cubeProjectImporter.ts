@@ -202,9 +202,9 @@ function createGeckoRuntime(
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = geckoChannelFrames(animator, "position", ZERO_VECTOR, (values) => cubeAnimationPositionToCanonical(values, negateMolang, rotationConvention)
+    const position = geckoChannelFrames(animator, "position", ZERO_VECTOR, (values) => blockbenchPositionToCanonical(values, negateMolang)
       .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => cubeAnimationRotationToCanonical(values, negateMolang, rotationConvention));
+    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => cubeRotationToCanonical(values, negateMolang, rotationConvention));
     const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
@@ -738,19 +738,19 @@ function animatedWorldMatrix(
   if (cached) return cached;
   const animator = boneAnimators.get(bone.uuid);
   const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
-  const sourcePosition = evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath);
-  const position = (rotationConvention === "geckolib"
-    ? blockbenchPositionToCanonical(sourcePosition, (value) => -value)
-    : sourcePosition
+  const position = blockbenchPositionToCanonical(
+    evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
+    (value) => -value,
   ).map((value) => value * blendWeight / 16);
   const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
   const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16);
-  const sourceRotation = rotationConvention === "geckolib"
-    ? bone.group.rotation.map((value, index) => value + rotationDelta[index])
-    : bone.group.rotation.map((value, index) => value + (index < 2 ? -rotationDelta[index] : rotationDelta[index]));
-  const baseRotation = cubeRotationToCanonical(sourceRotation, (value) => -value, rotationConvention);
+  const baseRotation = cubeRotationToCanonical(
+    bone.group.rotation.map((value, index) => value + rotationDelta[index]),
+    (value) => -value,
+    rotationConvention,
+  );
   const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
     ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight, rotationConvention).clone().multiply(local)
@@ -795,18 +795,6 @@ function cubeRotationToCanonical<T>(values: readonly T[], negate: (value: T) => 
   return convention === "geckolib"
     ? blockbenchRotationToCanonical(values, negate)
     : [values[0], negate(values[1]), negate(values[2])];
-}
-
-function cubeAnimationPositionToCanonical<T>(values: readonly T[], negate: (value: T) => T, convention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): [T, T, T] {
-  return convention === "geckolib"
-    ? blockbenchPositionToCanonical(values, negate)
-    : [values[0], values[1], values[2]];
-}
-
-function cubeAnimationRotationToCanonical<T>(values: readonly T[], negate: (value: T) => T, convention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): [T, T, T] {
-  return convention === "geckolib"
-    ? blockbenchRotationToCanonical(values, negate)
-    : [negate(values[0]), values[1], negate(values[2])];
 }
 
 function matrixWithoutScale(matrix: Matrix4): Matrix4 {
