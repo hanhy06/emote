@@ -8,10 +8,12 @@ import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -71,8 +73,7 @@ public final class IdleButterflyCallbackExample {
             case START -> spawnAllay(event);
             case TIMELINE -> moveAllay(event);
             case STOP -> removeAllay(event.player().getUUID());
-            case LOOP -> {
-            }
+            case LOOP -> {}
         }
     }
 
@@ -104,7 +105,16 @@ public final class IdleButterflyCallbackExample {
         Allay allay = this.allaysByPlayer.get(event.player().getUUID());
         if (allay == null || allay.isRemoved()) return;
 
-        allay.teleportTo(event.origin().x, event.origin().y, event.origin().z);
+        Vec3 destination = event.origin();
+        Vec3 movement = destination.subtract(allay.position());
+        if (movement.horizontalDistanceSqr() > 1.0E-6D) {
+            float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
+            float yaw = Mth.rotLerp(0.35F, allay.getYRot(), targetYaw);
+            allay.setYRot(yaw);
+            allay.setYBodyRot(yaw);
+            allay.setYHeadRot(yaw);
+        }
+        allay.teleportTo(destination.x, destination.y, destination.z);
     }
 
     private void removeAllay(UUID playerUuid) {
