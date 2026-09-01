@@ -90,7 +90,7 @@ public final class IdleButterflyCallbackExample {
 
         allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
         allay.setNoAi(true);
-        allay.setInvulnerable(true);
+        allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
         Objects.requireNonNull(allay.getAttribute(Attributes.SCALE), "Allay scale attribute").setBaseValue(ALLAY_SCALE);
