@@ -27,7 +27,7 @@ import java.util.UUID;
  *   "source": {"type": "server"},
  *   "origin": {"type": "node", "node": "butterfly"},
  *   "commands": [],
- *   "callbacks": [{"name": "emote:idle_butterfly_callback"}]
+ *   "callbacks": [{"name": "emote:idle_butterfly_callback", "payload": "spawn"}]
  * }
  * }</pre>
  */
@@ -43,7 +43,7 @@ public final class IdleButterflyCallbackExample {
     private boolean registered = true;
 
     private IdleButterflyCallbackExample(EmoteApi api) {
-        this.callbackRegistration = api.addCallbackListener(CALLBACK_ID, this::spawnAllay);
+        this.callbackRegistration = api.addCallbackListener(CALLBACK_ID, this::handleCallback);
         this.playbackRegistration = api.addPlaybackListener(new EmotePlaybackListener() {
             @Override
             public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
@@ -65,6 +65,14 @@ public final class IdleButterflyCallbackExample {
         this.allaysByPlayer.values().forEach(Allay::discard);
         this.allaysByPlayer.clear();
         return callbackRemoved || playbackRemoved;
+    }
+
+    private void handleCallback(EmoteCallbackEvent event) {
+        switch (event.payload()) {
+            case "spawn" -> spawnAllay(event);
+            case "remove" -> removeAllay(event.player().getUUID());
+            default -> throw new IllegalArgumentException("Unsupported idle butterfly callback payload: " + event.payload());
+        }
     }
 
     private void spawnAllay(EmoteCallbackEvent event) {
