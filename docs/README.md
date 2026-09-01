@@ -130,19 +130,18 @@ Connect short animation clips in order and combine waits, weighted random choice
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "example:sit",
+  "id": "emote:sit",
   "steps": [
-    {"emote": "example:sit_down"},
-    {"wait": "10t"},
+    {"emote": "emote:sit_down"},
     {
       "emote": [
-        "example:sit_idle_1", 45,
-        "example:sit_idle_2", 45,
-        "emote:break", 10
+        "emote:idle_sky", 40,
+        "emote:idle_butterfly", 35,
+        "emote:idle_flower", 25
       ],
-      "repeat": 3
+      "repeat": 2
     },
-    {"emote": "example:stand_up"}
+    {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
   ]
 }
 ```
