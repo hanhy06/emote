@@ -8,7 +8,7 @@ import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
 import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
@@ -118,63 +118,43 @@ function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedN
     return root;
   };
 
-  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
+  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     const root = rootId(id);
     const space = animation.nodes[root].space!;
     const defaultMatrix = worldMatrix(id);
-    const assignment = { space, spaceAssignmentGroup: root };
-    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix, ...assignment }];
-    const common = {
-      id,
-      defaultMatrix,
-      visible: node.visible ?? true,
-      ...assignment,
-      ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
-    };
-    if (node.type === "item_display") {
-      if (node.item_source) {
-        return [id, { id, type: "anchor", defaultMatrix, ...assignment }];
-      }
-      return [id, {
-        ...common,
-        type: "item_display",
-        itemStackSnbt: node.item_stack_snbt!,
-        itemDisplay: node.item_display,
-        ...(node.skin ? { skin: { ...node.skin } } : {}),
-      }];
-    }
-    if (node.type === "block_display") return [id, { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt }];
-    return [id, { ...common, type: "text_display", text: node.text }];
+    return [id, importNode(id, node, { defaultMatrix, space, spaceAssignmentGroup: root })];
   }));
 }
 
 function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
-  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, ImportedNode] => {
+  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     if (node.parent) throw unsupportedSchema4(`${id}.parent`, "parented schema 4 nodes cannot be represented by the web editor");
     const defaultMatrix = localTransformToMatrix(node.transform, `${id}.transform`);
-    if (node.type === "anchor") return [id, { id, type: "anchor", defaultMatrix, space: node.space }];
-    const common = {
-      id,
-      defaultMatrix,
-      visible: node.visible ?? true,
-      space: node.space,
-      ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
-    };
-    if (node.type === "item_display") {
-      if (node.item_source) {
-        return [id, { id, type: "anchor", defaultMatrix, space: node.space }];
-      }
-      return [id, {
-        ...common,
-        type: "item_display",
-        itemStackSnbt: node.item_stack_snbt!,
-        itemDisplay: node.item_display,
-        ...(node.skin ? { skin: { ...node.skin } } : {}),
-      }];
-    }
-    if (node.type === "block_display") return [id, { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt }];
-    return [id, { ...common, type: "text_display", text: node.text }];
+    return [id, importNode(id, node, { defaultMatrix, space: node.space })];
   }));
+}
+
+function importNode(
+  id: string,
+  node: EmoteAnimation["nodes"][string],
+  placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "spaceAssignmentGroup">,
+): ImportedNode {
+  if (node.type === "anchor" || (node.type === "item_display" && node.item_source)) return { id, type: "anchor", ...placement };
+  const common = {
+    id,
+    ...placement,
+    visible: node.visible ?? true,
+    ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
+  };
+  if (node.type === "item_display") return {
+    ...common,
+    type: "item_display",
+    itemStackSnbt: node.item_stack_snbt!,
+    itemDisplay: node.item_display,
+    ...(node.skin ? { skin: { ...node.skin } } : {}),
+  };
+  if (node.type === "block_display") return { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt };
+  return { ...common, type: "text_display", text: node.text };
 }
 
 function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimation {
