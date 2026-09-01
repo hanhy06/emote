@@ -99,7 +99,7 @@ public final class IdleButterflyCallbackExample {
             allay.discard();
             throw new IllegalStateException("Failed to add the idle butterfly Allay to the level");
         }
-        level.sendParticles(ParticleTypes.CLOUD, allay.getX(), allay.getY(0.5D), allay.getZ(), 3, 0.08D, 0.08D, 0.08D, 0.02D);
+        level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
         this.allaysByPlayer.put(playerUuid, allay);
     }
 
@@ -123,7 +123,7 @@ public final class IdleButterflyCallbackExample {
         Allay allay = this.allaysByPlayer.remove(playerUuid);
         if (allay != null) {
             if (!allay.isRemoved() && allay.level() instanceof ServerLevel level) {
-                level.sendParticles(ParticleTypes.CLOUD, allay.getX(), allay.getY(0.5D), allay.getZ(), 3, 0.08D, 0.08D, 0.08D, 0.02D);
+                level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
             }
             allay.discard();
         }

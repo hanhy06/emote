@@ -1,0 +1,36 @@
+{
+  "type": "sequence",
+  "schema_version": 4,
+  "id": "emote:sit",
+  "metadata": {
+    "name": "Emote sit",
+    "description": "Idle emote sit down emote."
+  },
+  "settings": {
+    "cooldown": "0t",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "steps": [
+    {
+      "emote": "emote:sit_down"
+    },
+    {
+        "emote": ["emote:idle_sky",40,"emote:idle_butterfly",35,"emote:idle_flower",25],
+        "repeat": 2
+    },
+    {
+      "emote": ["emote:stand_up1",60,"emote:stand_up2",40]
+    }
+  ]
+}
