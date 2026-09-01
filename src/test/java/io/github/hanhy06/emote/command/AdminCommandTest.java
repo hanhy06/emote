@@ -1,7 +1,11 @@
 package io.github.hanhy06.emote.command;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
+import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.stress.StressTestPacketLoad;
@@ -12,6 +16,8 @@ import net.minecraft.commands.Commands;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import java.util.LinkedHashMap;
 
 import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
 import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
@@ -47,17 +53,30 @@ final class AdminCommandTest {
     }
 
     @Test
-    void listEntryUsesPlayerFriendlySummary() {
+    void listEntryShowsAdditionalMetadataWithoutStandaloneStatus() {
+        var additional = new LinkedHashMap<String, JsonElement>();
+        additional.put("creator", new JsonPrimitive("Hanhy"));
+        additional.put("tags", new JsonArray());
         var entry = AdminCommand.createListEntry(
             "emote:dance",
-            "Dance",
-            "A looping dance",
+            new EmoteMetadata("Dance", "A looping dance", additional),
             85,
-            true,
             true
         );
 
-        assertEquals("\n• Dance  A looping dance\n  emote:dance · 4.3 seconds · Hidden", entry.getString());
+        assertEquals("\n• Dance  A looping dance\n  emote:dance · 4.3 seconds\n  creator: Hanhy\n  tags: []", entry.getString());
+    }
+
+    @Test
+    void listEntryMarksSequenceOnlyAnimations() {
+        var entry = AdminCommand.createListEntry(
+            "emote:dance_part",
+            new EmoteMetadata("Dance part", "Used by a sequence"),
+            20,
+            false
+        );
+
+        assertEquals("\n• Dance part  Used by a sequence\n  emote:dance_part · 1.0 seconds · Sequence only", entry.getString());
     }
 
     @Test

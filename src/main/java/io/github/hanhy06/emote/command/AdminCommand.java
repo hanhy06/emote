@@ -1,10 +1,12 @@
 package io.github.hanhy06.emote.command;
 
+import com.google.gson.JsonElement;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
@@ -25,6 +27,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
 
@@ -183,11 +186,9 @@ public final class AdminCommand {
         for (PlayableEmote emote : emotes) {
             source.sendSystemMessage(createListEntry(
                 emote.id(),
-                emote.name(),
-                emote.description(),
+                emote.metadata(),
                 emote.durationTicks(),
-                emote.standalone(),
-                emote.playerBehavior().hidden()
+                emote.standalone()
             ));
         }
 
@@ -196,20 +197,25 @@ public final class AdminCommand {
 
     static Component createListEntry(
         String id,
-        String name,
-        String description,
+        EmoteMetadata metadata,
         int durationTicks,
-        boolean standalone,
-        boolean playerHidden
+        boolean standalone
     ) {
-        String availability = !standalone
-            ? "Sequence only"
-            : playerHidden ? "Hidden" : "Available";
-        return Component.literal("\n• " + name).withStyle(ChatFormatting.WHITE)
-            .append(Component.literal("  " + description).withStyle(ChatFormatting.GRAY))
+        var entry = Component.literal("\n• " + metadata.name()).withStyle(ChatFormatting.WHITE)
+            .append(Component.literal("  " + metadata.description()).withStyle(ChatFormatting.GRAY))
             .append(Component.literal("\n  " + id).withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds · %s", durationTicks / 20.0D, availability))
+            .append(Component.literal(String.format(Locale.ROOT, " · %.1f seconds", durationTicks / 20.0D))
                 .withStyle(ChatFormatting.GRAY));
+        if (!standalone) {
+            entry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
+        }
+        for (Map.Entry<String, JsonElement> metadataEntry : metadata.additional().entrySet()) {
+            JsonElement value = metadataEntry.getValue();
+            String formattedValue = value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
+            entry.append(Component.literal("\n  " + metadataEntry.getKey() + ": ").withStyle(ChatFormatting.DARK_GRAY))
+                .append(Component.literal(formattedValue).withStyle(ChatFormatting.GRAY));
+        }
+        return entry;
     }
 
     private int stopAll(CommandSourceStack source) {
