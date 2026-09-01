@@ -11,7 +11,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.animal.allay.Allay;
 
 import java.util.HashMap;
@@ -86,10 +85,10 @@ public final class IdleButterflyCallbackExample {
         }
 
         allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
+        allay.setNoAi(true);
         allay.setInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
-        allay.getBrain().setMemory(MemoryModuleType.LIKED_PLAYER, playerUuid);
         Objects.requireNonNull(allay.getAttribute(Attributes.SCALE), "Allay scale attribute").setBaseValue(ALLAY_SCALE);
 
         if (!level.addFreshEntity(allay)) {
