@@ -18,7 +18,7 @@ export function createAjProjectRuntime(
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
     const ids = ajAnchorIds(element.uuid);
-    const basePosition = [-element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
+    const basePosition = [element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
     const baseRotation = [element.rotation[0], -element.rotation[1], -element.rotation[2]] as [number, number, number];
     nodes[ids.z] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [0, 0, baseRotation[2]], scale: ONE_VECTOR } };
     nodes[ids.y] = { type: "anchor", parent: ids.z, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
@@ -29,7 +29,7 @@ export function createAjProjectRuntime(
       : IDENTITY_TRANSFORM;
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.x);
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affineMolang(value, sceneScale / 16, basePosition[axis]));
+    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 1 ? value : affineMolang(value, -1, 0));
     const scale = ajProjectFrames(keyframes, "scale", baseScale, (value, axis) => multiply(value, baseScale[axis]));
     if (position) tracks[ids.z] = { position };

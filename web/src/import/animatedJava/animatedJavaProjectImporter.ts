@@ -1,6 +1,6 @@
-import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -597,8 +597,8 @@ function projectElementMatrix(
   const scaleMultiplier = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
-  const local = composeAnimatedJavaDisplayMatrix4(
-    basePosition.map((value, axis) => value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
+  const local = composeDegreesTransform(
+    basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
@@ -630,8 +630,8 @@ function projectGroupMatrix(
     .map((value) => value * blendWeight);
   const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
-  const local = composeAnimatedJavaDisplayMatrix4(
-    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
+  const local = composeDegreesTransform(
+    group.origin.map((value, axis) => (value - (parent?.origin[axis] ?? 0) + positionOffset[axis]) / 16),
     group.rotation.map((value, axis) => value + rotationOffset[axis]),
     scale,
   );
@@ -665,23 +665,6 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
   if (value === "true" || value === "1") return true;
   if (value === "false" || value === "0") return false;
   throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility value ${value} is not boolean.`);
-}
-
-function composeAnimatedJavaDisplayMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
-  // AJ samples display mesh.matrixWorld after a scene reflection. Display animators already
-  // subtract X position and X/Y rotation, so their deltas intentionally use different signs.
-  const source = new Matrix4().compose(
-    new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
-    new Quaternion().setFromEuler(new Euler(
-      MathUtils.degToRad(rotation[0]),
-      MathUtils.degToRad(rotation[1]),
-      MathUtils.degToRad(rotation[2]),
-      "ZYX",
-    )),
-    new Vector3(scale[0], scale[1], scale[2]),
-  );
-  const reflectX = new Matrix4().makeScale(-1, 1, 1);
-  return reflectX.clone().multiply(source).multiply(reflectX);
 }
 
 function projectNumeric(value: string | number, path: string): number {

@@ -69,9 +69,9 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     expect(project.sourceName).toBe("unnamed.ajblueprint");
     expect(project.nodes.block.type).toBe("block_display");
-    expect(project.nodes.block.defaultMatrix[3]).toBeCloseTo(-1);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(-0.5);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(0.5);
+    expect(project.nodes.block.defaultMatrix[3]).toBeCloseTo(1);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(-0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
   });
@@ -181,7 +181,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
 
     expect(cubeMatrix[3]).toBeCloseTo(0.46875);
-    expect(itemMatrix[3]).toBeCloseTo(0.46875);
+    expect(itemMatrix[3]).toBeCloseTo(-0.46875);
     expect(cubeMatrix[7]).toBeCloseTo(0.234375);
     expect(itemMatrix[7]).toBeCloseTo(0.234375);
     expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
@@ -222,7 +222,8 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
     expect(animation.nodes.aj_item_x.transform.scale).toEqual([0.9375, 0.9375, 0.9375]);
-    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-0.9375, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([0.9375, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_z.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.05859375) + 0.9375)");
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -388,7 +389,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.nodes.root_hand.type).toBe("anchor");
     expect(project.nodes.label.type).toBe("text_display");
     expect(project.nodes.root_hand.defaultMatrix[3]).toBeCloseTo(0.46875);
-    expect(project.nodes.label.defaultMatrix[3]).toBeCloseTo(-0.46875);
+    expect(project.nodes.label.defaultMatrix[3]).toBeCloseTo(0.46875);
     expect(project.nodes.label.defaultMatrix[0]).toBeCloseTo(-0.9375);
     expect(project.nodes.label.defaultMatrix[10]).toBeCloseTo(-0.9375);
   });
@@ -497,7 +498,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.loop).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
-    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2 * 0.9375);
+    expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
   });
 
