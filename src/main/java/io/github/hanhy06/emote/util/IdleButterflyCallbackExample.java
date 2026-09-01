@@ -89,6 +89,7 @@ public final class IdleButterflyCallbackExample {
 
         allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
         allay.setNoAi(true);
+        allay.noPhysics = true;
         allay.setInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
