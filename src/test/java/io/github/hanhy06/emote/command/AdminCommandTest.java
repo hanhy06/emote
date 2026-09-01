@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.command;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
@@ -55,8 +56,16 @@ final class AdminCommandTest {
     @Test
     void listEntryShowsAdditionalMetadataWithoutStandaloneStatus() {
         var additional = new LinkedHashMap<String, JsonElement>();
-        additional.put("creator", new JsonPrimitive("Hanhy"));
-        additional.put("tags", new JsonArray());
+        additional.put("author", new JsonPrimitive("@soji2318"));
+        var credit = new JsonObject();
+        credit.addProperty("author", "@soji2318");
+        credit.addProperty("animation", "@animator");
+        credit.addProperty("sound", "@composer");
+        additional.put("credit", credit);
+        var contributors = new JsonArray();
+        contributors.add("@alice");
+        contributors.add("@bob");
+        additional.put("contributors", contributors);
         var entry = AdminCommand.createListEntry(
             "emote:dance",
             new EmoteMetadata("Dance", "A looping dance", additional),
@@ -64,7 +73,18 @@ final class AdminCommandTest {
             true
         );
 
-        assertEquals("\n• Dance  A looping dance\n  emote:dance · 4.3 seconds\n  creator: Hanhy\n  tags: []", entry.getString());
+        assertEquals(
+            "\n• Dance  A looping dance\n  emote:dance · 4.3 seconds"
+                + "\n  • author @soji2318"
+                + "\n  • credit"
+                + "\n      author @soji2318"
+                + "\n      animation @animator"
+                + "\n      sound @composer"
+                + "\n  • contributors"
+                + "\n      @alice"
+                + "\n      @bob",
+            entry.getString()
+        );
     }
 
     @Test

@@ -23,6 +23,7 @@ import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.IdentifierArgument;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
@@ -210,12 +211,45 @@ public final class AdminCommand {
             entry.append(Component.literal(" · Sequence only").withStyle(ChatFormatting.GRAY));
         }
         for (Map.Entry<String, JsonElement> metadataEntry : metadata.additional().entrySet()) {
-            JsonElement value = metadataEntry.getValue();
-            String formattedValue = value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
-            entry.append(Component.literal("\n  " + metadataEntry.getKey() + ": ").withStyle(ChatFormatting.DARK_GRAY))
-                .append(Component.literal(formattedValue).withStyle(ChatFormatting.GRAY));
+            appendMetadata(entry, metadataEntry.getKey(), metadataEntry.getValue(), 0);
         }
         return entry;
+    }
+
+    private static void appendMetadata(MutableComponent entry, String key, JsonElement value, int depth) {
+        String indentation = "  " + "    ".repeat(depth);
+        String bullet = depth == 0 ? "• " : "";
+        if (value.isJsonObject()) {
+            if (!key.isEmpty()) {
+                entry.append(Component.literal("\n" + indentation + bullet + key).withStyle(ChatFormatting.DARK_GRAY));
+            }
+            if (value.getAsJsonObject().isEmpty()) {
+                String emptyObject = key.isEmpty() ? "\n" + indentation + bullet + "{}" : " {}";
+                entry.append(Component.literal(emptyObject).withStyle(ChatFormatting.GRAY));
+                return;
+            }
+            int childDepth = key.isEmpty() ? depth : depth + 1;
+            value.getAsJsonObject().entrySet().forEach(child -> appendMetadata(entry, child.getKey(), child.getValue(), childDepth));
+            return;
+        }
+        if (value.isJsonArray()) {
+            if (!key.isEmpty()) {
+                entry.append(Component.literal("\n" + indentation + bullet + key).withStyle(ChatFormatting.DARK_GRAY));
+            }
+            if (value.getAsJsonArray().isEmpty()) {
+                String emptyArray = key.isEmpty() ? "\n" + indentation + bullet + "[]" : " []";
+                entry.append(Component.literal(emptyArray).withStyle(ChatFormatting.GRAY));
+                return;
+            }
+            int childDepth = key.isEmpty() ? depth : depth + 1;
+            value.getAsJsonArray().forEach(child -> appendMetadata(entry, "", child, childDepth));
+            return;
+        }
+
+        String formattedValue = value.isJsonPrimitive() && value.getAsJsonPrimitive().isString() ? value.getAsString() : value.toString();
+        String label = key.isEmpty() ? "" : key + " ";
+        entry.append(Component.literal("\n" + indentation + bullet + label).withStyle(ChatFormatting.DARK_GRAY))
+            .append(Component.literal(formattedValue).withStyle(ChatFormatting.GRAY));
     }
 
     private int stopAll(CommandSourceStack source) {
