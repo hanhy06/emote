@@ -1,6 +1,6 @@
 import type { ImportedProject } from "../../domain/conversionSeed";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { parseInputJson } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../inputCache";
 import { importAnimatedJavaProject } from "./animatedJavaProjectImporter";
 import { isAnimatedJavaProject, requireAnimatedJavaProject } from "./animatedJavaProjectSchema";
 
@@ -10,13 +10,9 @@ export const animatedJavaBlueprintAdapter: ImportAdapter<ImportedProject> = {
   extensions: ["ajblueprint"],
 
   probe(input: ImportInput): ProbeResult {
-    try {
-      return isAnimatedJavaProject(parseInputJson(input))
+    return probeParsedInput(input, parseInputJson, (value) => isAnimatedJavaProject(value)
         ? { confidence: 100, reason: "matches an Animated Java blueprint project" }
-        : { confidence: 0, reason: "does not match an Animated Java blueprint project" };
-    } catch {
-      return { confidence: 0, reason: "not JSON" };
-    }
+        : { confidence: 0, reason: "does not match an Animated Java blueprint project" }, "not JSON");
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {

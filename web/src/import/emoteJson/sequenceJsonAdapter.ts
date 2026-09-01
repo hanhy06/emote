@@ -1,5 +1,5 @@
 import type { ImportAdapter, ImportedSequenceSource, ImportInput, ProbeResult } from "../adapter";
-import { parseInputJson } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../inputCache";
 import { isRecord } from "../../format/runtimeValue";
 import { convertSequenceInput } from "./sequenceJsonConverter";
 
@@ -9,14 +9,9 @@ export const sequenceJsonAdapter: ImportAdapter<ImportedSequenceSource> = {
   extensions: ["json"],
 
   probe(input: ImportInput): ProbeResult {
-    try {
-      const value = parseInputJson(input);
-      return isRecord(value) && value.type === "sequence"
+    return probeParsedInput(input, parseInputJson, (value) => isRecord(value) && value.type === "sequence"
         ? { confidence: 100, reason: "matches an Emote sequence" }
-        : { confidence: 0, reason: "not an Emote sequence" };
-    } catch {
-      return { confidence: 0, reason: "not JSON" };
-    }
+        : { confidence: 0, reason: "not an Emote sequence" }, "not JSON");
   },
 
   async import(input: ImportInput) {

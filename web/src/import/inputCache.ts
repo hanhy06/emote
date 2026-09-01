@@ -1,5 +1,5 @@
 import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
-import type { ImportInput } from "./adapter";
+import type { ImportInput, ProbeResult } from "./adapter";
 
 const inputCaches = new WeakMap<ImportInput, Map<string, unknown>>();
 
@@ -34,6 +34,15 @@ export function parseInputJsonc(input: ImportInput): unknown {
     if (error) throw new Error(`Invalid JSONC at offset ${error.offset}: ${printParseErrorCode(error.error)}.`);
     return value;
   });
+}
+
+export function probeParsedInput(
+  input: ImportInput,
+  parseInput: (input: ImportInput) => unknown,
+  probe: (value: unknown) => ProbeResult,
+  invalidReason: string,
+): ProbeResult {
+  try { return probe(parseInput(input)); } catch { return { confidence: 0, reason: invalidReason }; }
 }
 
 function cacheFor(input: ImportInput): Map<string, unknown> {

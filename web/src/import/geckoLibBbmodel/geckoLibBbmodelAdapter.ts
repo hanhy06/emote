@@ -1,7 +1,7 @@
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
 import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
-import { parseInputJson } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../inputCache";
 import type { ImportedProject } from "../../domain/conversionSeed";
 
 export const geckoLibBbmodelAdapter: ImportAdapter<ImportedProject> = {
@@ -10,14 +10,9 @@ export const geckoLibBbmodelAdapter: ImportAdapter<ImportedProject> = {
   extensions: ["bbmodel"],
 
   probe(input: ImportInput): ProbeResult {
-    try {
-      const value = parseInputJson(input) as { meta?: { model_format?: unknown } };
-      return value.meta?.model_format === "geckolib_model"
+    return probeParsedInput(input, parseInputJson, (value) => (value as { meta?: { model_format?: unknown } }).meta?.model_format === "geckolib_model"
         ? { confidence: 100, reason: "matches a GeckoLib Blockbench project" }
-        : { confidence: 0, reason: "not a GeckoLib Blockbench project" };
-    } catch {
-      return { confidence: 0, reason: "not JSON" };
-    }
+        : { confidence: 0, reason: "not a GeckoLib Blockbench project" }, "not JSON");
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {

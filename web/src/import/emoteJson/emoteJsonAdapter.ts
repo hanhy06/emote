@@ -7,7 +7,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { parseInputJson } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
@@ -21,8 +21,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   extensions: ["json"],
 
   probe(input: ImportInput): ProbeResult {
-    try {
-      const value = parseInputJson(input);
+    return probeParsedInput(input, parseInputJson, (value) => {
       if (!isRecord(value) || !isRecord(value.nodes) || !isRecord(value.timeline)) {
         return { confidence: 0, reason: "does not match an emote animation schema" };
       }
@@ -30,9 +29,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       return value.type === "animation" && (value.schema_version === 3 || value.schema_version === 4)
         ? { confidence: 100, reason: `matches emote animation schema ${value.schema_version}` }
         : { confidence: 0, reason: "does not match a supported emote animation schema" };
-    } catch {
-      return { confidence: 0, reason: "not JSON" };
-    }
+    }, "not JSON");
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
