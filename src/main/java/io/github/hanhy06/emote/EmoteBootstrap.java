@@ -20,6 +20,7 @@ import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.util.IdleButterflyCallbackExample;
 import net.fabricmc.loader.api.FabricLoader;
 
 final class EmoteBootstrap {
@@ -50,7 +51,7 @@ final class EmoteBootstrap {
             resourcePackDistributor::rebuildAndPush
         );
 
-        new EmoteApiImpl(
+        EmoteApiImpl api = new EmoteApiImpl(
             catalog,
             play,
             playback,
@@ -59,6 +60,7 @@ final class EmoteBootstrap {
             wheelSync::syncAll,
             new AnimationContentResolver()
         );
+        IdleButterflyCallbackExample.register(api);
         CommandRegistrar commands = new CommandRegistrar(
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
             new AdminCommand(catalog, playback, permissions, reload, configManager)

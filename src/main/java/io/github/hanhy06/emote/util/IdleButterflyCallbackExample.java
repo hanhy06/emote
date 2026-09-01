@@ -30,9 +30,6 @@ import java.util.UUID;
  *   "callbacks": [{"name": "emote:idle_butterfly_callback"}]
  * }
  * }</pre>
- *
- * <p>This class is intentionally not registered by the mod. Call {@link #register(EmoteApi)}
- * from an integration mod to enable the example.</p>
  */
 public final class IdleButterflyCallbackExample {
     public static final Identifier CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
