@@ -7,7 +7,7 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
+import { importBlockbenchCubeProject, PLAYER_RENDER_SCALE } from "../blockbench/cubeProjectImporter";
 import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -39,11 +39,12 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
   const cubeProject = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
+  const sceneScale = cubeProject ? PLAYER_RENDER_SCALE : 1;
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
-  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
-  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1)));
+  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
+  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
@@ -51,7 +52,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
-      return importProjectAnimation(animation, index, displayElements, transformGraph);
+      return importProjectAnimation(animation, index, displayElements, transformGraph, sceneScale);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || !["unsupported_animated_java_molang", "unsupported_geckolib_molang"].includes(reason.code)) throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -61,7 +62,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes);
+      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, sceneScale);
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
@@ -449,6 +450,7 @@ function createPreviewOnlyProjectAnimation(
   reason: string,
   elements: AjProjectDisplayElement[],
   nodes: Record<string, ImportedNode>,
+  sceneScale: number,
 ): ImportedAnimation {
   const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
   return {
@@ -461,7 +463,7 @@ function createPreviewOnlyProjectAnimation(
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
     preview: { durationTicks: 20, tracks: {} },
-    runtime: createAjProjectRuntime(animation, durationTicks, elements, nodes),
+    runtime: createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale),
   };
 }
 
@@ -522,6 +524,7 @@ function importProjectAnimation(
   animationIndex: number,
   elements: AjProjectDisplayElement[],
   graph: ProjectTransformGraph,
+  sceneScale: number,
 ): ImportedAnimation {
   const playbackMode = animation.loop === "hold_on_last_frame" ? "hold" : animation.loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
@@ -540,7 +543,7 @@ function importProjectAnimation(
       const sourceTime = tick / 20 - startDelaySeconds;
       transforms.push({
         tick,
-        matrix: projectElementMatrix(element, animation, sourceTime, graph, blendWeight),
+        matrix: projectElementMatrix(element, animation, sourceTime, graph, blendWeight, sceneScale),
         interpolation: tick === 0 || projectStepAt(animation, element.uuid, sourceTime) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -580,6 +583,7 @@ function projectElementMatrix(
   sourceTime: number,
   graph: ProjectTransformGraph,
   blendWeight: number,
+  sceneScale: number,
 ): Matrix16 {
   const parentId = graph.elementParents.get(element.uuid);
   const parent = parentId ? graph.groups.get(parentId) : undefined;
@@ -598,7 +602,7 @@ function projectElementMatrix(
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
-  return matrix4ToRowMajor(world.multiply(local), path);
+  return matrix4ToRowMajor(new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local), path);
 }
 
 function projectGroupMatrix(

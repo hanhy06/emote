@@ -62,6 +62,7 @@ export function createAjProjectRuntime(
   durationTicks: number,
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
+  sceneScale: number,
 ): NonNullable<ImportedAnimation["runtime"]> {
   const nodes: Record<string, EmoteNode> = {};
   const tracks: Record<string, EmoteNodeTracks> = {};
@@ -69,16 +70,17 @@ export function createAjProjectRuntime(
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
     const ids = ajAnchorIds(element.uuid);
-    const basePosition = [-element.position[0] / 16, element.position[1] / 16, element.position[2] / 16] as [number, number, number];
+    const basePosition = [-element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
     const baseRotation = [element.rotation[0], -element.rotation[1], -element.rotation[2]] as [number, number, number];
     nodes[ids.z] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [0, 0, baseRotation[2]], scale: ONE_VECTOR } };
     nodes[ids.y] = { type: "anchor", parent: ids.z, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
-    nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: element.scale as [number, number, number] } };
+    const baseScale = element.scale.map((value) => value * sceneScale) as [number, number, number];
+    nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: baseScale } };
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, IDENTITY_TRANSFORM, ids.x);
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affine(value, 1 / 16, basePosition[axis]));
+    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affine(value, sceneScale / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 1 ? value : affine(value, -1, 0));
-    const scale = ajProjectFrames(keyframes, "scale", element.scale, (value, axis) => multiply(value, element.scale[axis]));
+    const scale = ajProjectFrames(keyframes, "scale", baseScale, (value, axis) => multiply(value, baseScale[axis]));
     if (position) tracks[ids.z] = { position };
     if (rotation) {
       tracks[ids.z] = { ...tracks[ids.z], rotation: isolateAjAxis(rotation, 2, (value) => affine(value, 1, baseRotation[2])) };

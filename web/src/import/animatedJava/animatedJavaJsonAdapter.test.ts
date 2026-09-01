@@ -166,9 +166,9 @@ describe("animatedJavaJsonAdapter", () => {
     const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
 
     expect(cubeMatrix[3]).toBeCloseTo(-0.46875);
-    expect(itemMatrix[3]).toBeCloseTo(0.5);
+    expect(itemMatrix[3]).toBeCloseTo(0.46875);
     expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
-    expect(itemMatrix[11]).toBeCloseTo(-0.5);
+    expect(itemMatrix[11]).toBeCloseTo(-0.46875);
     expect(cubeMatrix[6]).toBeLessThan(0);
     expect(itemMatrix[6]).toBeGreaterThan(0);
   });
@@ -204,7 +204,8 @@ describe("animatedJavaJsonAdapter", () => {
     expect(animation.nodes.root).toBeDefined();
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
-    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-1, 0, 0]);
+    expect(animation.nodes.aj_item_x.transform.scale).toEqual([0.9375, 0.9375, 0.9375]);
+    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-0.9375, 0, 0]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -475,8 +476,8 @@ describe("animatedJavaJsonAdapter", () => {
     expect(animation.loop).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
-    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2);
-    expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2);
+    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2 * 0.9375);
+    expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
   });
 
   it("converts native functions and display variants to events and NBT tracks", async () => {

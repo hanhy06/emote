@@ -31,7 +31,7 @@ import {
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 import { blockbenchPositionToCanonical, blockbenchRotationToCanonical } from "../coordinateSpace";
 
-const PLAYER_RENDER_SCALE = 0.9375;
+export const PLAYER_RENDER_SCALE = 0.9375;
 
 interface BoneNodeEntry {
   id: string;
