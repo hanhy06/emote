@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.api.EmotePlaybackListener;
 import io.github.hanhy06.emote.api.ListenerRegistration;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
@@ -89,7 +90,6 @@ public final class IdleButterflyCallbackExample {
 
         allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
         allay.setNoAi(true);
-        allay.noPhysics = true;
         allay.setInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
@@ -99,6 +99,7 @@ public final class IdleButterflyCallbackExample {
             allay.discard();
             throw new IllegalStateException("Failed to add the idle butterfly Allay to the level");
         }
+        level.sendParticles(ParticleTypes.CLOUD, allay.getX(), allay.getY(0.5D), allay.getZ(), 3, 0.08D, 0.08D, 0.08D, 0.02D);
         this.allaysByPlayer.put(playerUuid, allay);
     }
 
@@ -121,6 +122,9 @@ public final class IdleButterflyCallbackExample {
     private void removeAllay(UUID playerUuid) {
         Allay allay = this.allaysByPlayer.remove(playerUuid);
         if (allay != null) {
+            if (!allay.isRemoved() && allay.level() instanceof ServerLevel level) {
+                level.sendParticles(ParticleTypes.CLOUD, allay.getX(), allay.getY(0.5D), allay.getZ(), 3, 0.08D, 0.08D, 0.08D, 0.02D);
+            }
             allay.discard();
         }
     }
