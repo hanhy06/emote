@@ -71,8 +71,11 @@ class ConfigManagerTest {
         assertTrue(accessJson.contains("\"permissions\""));
         assertTrue(accessJson.contains("\"schema_version\": 2"));
         assertTrue(accessJson.contains("\"emote.default\""));
-        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
-        assertFalse(accessJson.contains("\"idle\""));
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(3 * 60 * 20, idle.delayTicks());
+        assertEquals(List.of("emote:sit"), idle.emote());
+        assertTrue(accessJson.contains("\"delay\": \"3600t\""));
+        assertTrue(accessJson.contains("\"emote:sit\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertEquals(30, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(256, manager.getConfig().mineSkinCacheMaxMiB());
@@ -188,7 +191,9 @@ class ConfigManagerTest {
             """);
 
         assertFalse(manager.readAccessConfig());
-        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(3 * 60 * 20, idle.delayTicks());
+        assertEquals(List.of("emote:sit"), idle.emote());
     }
 
     @Test
@@ -373,6 +378,8 @@ class ConfigManagerTest {
             """);
 
         assertFalse(manager.readAccessConfig());
-        assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(3 * 60 * 20, idle.delayTicks());
+        assertEquals(List.of("emote:sit"), idle.emote());
     }
 }
