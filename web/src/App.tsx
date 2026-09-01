@@ -133,23 +133,15 @@ export function App() {
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
-    if (busy) return;
-    dispatch({ type: "export_started", message: includeSequence ? "Creating sequence files" : "Creating animation files" });
-
-    try {
-      await showLoadingScreen();
+    await runExport(async () => {
       const { documentAnimationsUseGeneratedResources, exportDocumentAnimationFiles } = await import("./export/projectExporter");
       const results = exportDocumentAnimationFiles(session.document, includeSequence);
       if (documentAnimationsUseGeneratedResources(session.document)) {
         const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
         results.push(exportDocumentResourceBundle(session.document));
       }
-      downloadExports(results);
-    } catch (reason) {
-      dispatch({ type: "export_failed", message: conversionErrorMessage(reason, "File export failed.") });
-    } finally {
-      dispatch({ type: "operation_finished" });
-    }
+      return results;
+    }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
   const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
