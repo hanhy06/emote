@@ -2,6 +2,7 @@ import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } fr
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
+import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
@@ -41,14 +42,14 @@ export function createBedrockRuntime(
     }
     if (!source) continue;
     const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, startDelayTicks, (values) =>
-      bedrockPositionToCanonical(values, negate).map((value, axis) => affine(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = convertChannel(source.rotation, ZERO, timelineRate, playbackRate, startDelayTicks, (values) => bedrockRotationToCanonical(values, negate));
+      bedrockPositionToCanonical(values, negateMolang).map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
+    const rotation = convertChannel(source.rotation, ZERO, timelineRate, playbackRate, startDelayTicks, (values) => bedrockRotationToCanonical(values, negateMolang));
     const scale = convertChannel(source.scale, ONE, timelineRate, playbackRate, startDelayTicks, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
-      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateAxis(rotation, 2) };
-      tracks[`${bone.id}_y`] = { rotation: isolateAxis(rotation, 1) };
-      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateAxis(rotation, 0) };
+      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2) };
+      tracks[`${bone.id}_y`] = { rotation: isolateMolangAxis(rotation, 1) };
+      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateMolangAxis(rotation, 0) };
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
@@ -62,8 +63,6 @@ export function createBedrockRuntime(
     : undefined;
   return { ...(molang ? { molang } : {}), nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
 }
-
-type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 
 function convertChannel(
   channel: BedrockChannel | undefined,
@@ -91,16 +90,6 @@ function convertChannel(
   return unique.map((frame, index) => index + 1 < unique.length ? { ...frame, interpolation: frame.interpolation ?? "linear" } : frame);
 }
 
-function isolateAxis(frames: EmoteVectorKeyframe[], axis: number): EmoteVectorKeyframe[] {
-  const isolate = (values: readonly MolangScalar[]): MolangVector => values.map((value, index) => index === axis ? value : 0) as MolangVector;
-  return frames.map((frame) => ({
-    ...frame,
-    ...(frame.value ? { value: isolate(frame.value) } : {}),
-    ...(frame.pre ? { pre: isolate(frame.pre) } : {}),
-    ...(frame.post ? { post: isolate(frame.post) } : {}),
-  }));
-}
-
 function vector(value: BedrockVector, playbackRate: number | null, startDelayTicks: number): MolangVector {
   const values = Array.isArray(value) ? value : [value];
   const expanded = values.length === 1 ? [values[0], values[0], values[0]] : values;
@@ -118,16 +107,6 @@ function rewriteExpression(value: BedrockExpression, playbackRate: number | null
 
 function rewriteProgramExpression(value: BedrockExpression): string {
   return String(value).trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
-}
-
-function negate(value: MolangScalar): MolangScalar {
-  return typeof value === "number" ? -value : `-(${value})`;
-}
-
-function affine(value: MolangScalar, factor: number, offset: number): MolangScalar {
-  if (typeof value === "number") return value * factor + offset;
-  const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
-  return offset === 0 ? scaled : `(${scaled} + ${offset})`;
 }
 
 function isKeyframed(channel: BedrockChannel): channel is Record<string, BedrockKeyframe> {

@@ -30,6 +30,7 @@ import {
 } from "./cubeModelResources";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 import { blockbenchPositionToCanonical, blockbenchRotationToCanonical } from "../coordinateSpace";
+import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../molangVector";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
 
@@ -208,16 +209,14 @@ function createGeckoRuntime(
     const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
-      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateGeckoAxis(rotation, 2, baseRotation[2]) };
-      tracks[`${bone.id}_y`] = { rotation: isolateGeckoAxis(rotation, 1, baseRotation[1]) };
-      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateGeckoAxis(rotation, 0, baseRotation[0]) };
+      tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
+      tracks[`${bone.id}_y`] = { rotation: isolateMolangAxis(rotation, 1, (value) => affineMolang(value, 1, baseRotation[1])) };
+      tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], rotation: isolateMolangAxis(rotation, 0, (value) => affineMolang(value, 1, baseRotation[0])) };
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
   return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
 }
-
-type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 
 function geckoChannelFrames(
   animator: BbAnimator,
@@ -243,27 +242,6 @@ function geckoChannelFrames(
 function geckoPointVector(point: BbKeyframe["data_points"][number]): MolangVector {
   if (point.x === undefined || point.y === undefined || point.z === undefined) throw new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.");
   return [point.x, point.y, point.z].map(molangScalar) as MolangVector;
-}
-
-function isolateGeckoAxis(frames: EmoteVectorKeyframe[], axis: number, base: number): EmoteVectorKeyframe[] {
-  const isolate = (values: readonly MolangScalar[]): MolangVector => values.map((value, index) => index === axis ? affineMolang(value, 1, base) : 0) as MolangVector;
-  return frames.map((frame) => ({ ...frame, ...(frame.value ? { value: isolate(frame.value) } : {}), ...(frame.pre ? { pre: isolate(frame.pre) } : {}), ...(frame.post ? { post: isolate(frame.post) } : {}) }));
-}
-
-function molangScalar(value: string | number): MolangScalar {
-  if (typeof value === "number") return value;
-  const numeric = Number(value.trim());
-  return Number.isFinite(numeric) ? numeric : value.trim();
-}
-
-function affineMolang(value: MolangScalar, factor: number, offset: number): MolangScalar {
-  if (typeof value === "number") return value * factor + offset;
-  const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
-  return offset === 0 ? scaled : `(${scaled} + ${offset})`;
-}
-
-function negateMolang(value: MolangScalar): MolangScalar {
-  return typeof value === "number" ? -value : `-(${value})`;
 }
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
