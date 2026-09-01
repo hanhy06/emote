@@ -1,4 +1,4 @@
-import { Matrix4 } from "three";
+import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import type { Matrix16 } from "./emoteAnimation";
 
 const SHEAR_EPSILON = 1e-6;
@@ -32,6 +32,19 @@ export function matrix4ToRowMajor(matrix: Matrix4, label: string): Matrix16 {
 
 export function multiplyMatrix16(left: Matrix16, right: Matrix16, label: string): Matrix16 {
   return matrix4ToRowMajor(new Matrix4().set(...left).multiply(new Matrix4().set(...right)), label);
+}
+
+export function composeDegreesTransform(position: readonly number[], rotation: readonly number[], scale: readonly number[]): Matrix4 {
+  return new Matrix4().compose(
+    new Vector3(position[0], position[1], position[2]),
+    new Quaternion().setFromEuler(new Euler(
+      MathUtils.degToRad(rotation[0]),
+      MathUtils.degToRad(rotation[1]),
+      MathUtils.degToRad(rotation[2]),
+      "ZYX",
+    )),
+    new Vector3(scale[0], scale[1], scale[2]),
+  );
 }
 
 export function stabilizeDisplayMatrix(values: readonly number[], label: string): Matrix16 {

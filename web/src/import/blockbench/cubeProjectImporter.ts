@@ -1,7 +1,7 @@
-import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteNode, type EmoteNodeTracks, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
@@ -307,7 +307,7 @@ function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>, rotation
 
 function bindLocalMatrix(bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
-  return composeTransform(
+  return composeDegreesTransform(
     blockbenchPositionToCanonical(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16),
     cubeRotationToCanonical(bone.group.rotation, (value) => -value, rotationConvention),
     [1, 1, 1],
@@ -729,25 +729,12 @@ function animatedWorldMatrix(
     (value) => -value,
     rotationConvention,
   );
-  const local = composeTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
+  const local = composeDegreesTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
     ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight, rotationConvention).clone().multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;
-}
-
-function composeTransform(position: number[], rotation: number[], scale: number[]): Matrix4 {
-  return new Matrix4().compose(
-    new Vector3(position[0], position[1], position[2]),
-    new Quaternion().setFromEuler(new Euler(
-      MathUtils.degToRad(rotation[0]),
-      MathUtils.degToRad(rotation[1]),
-      MathUtils.degToRad(rotation[2]),
-      "ZYX",
-    )),
-    new Vector3(scale[0], scale[1], scale[2]),
-  );
 }
 
 function cubeLocalMatrix(cube: BbCube, bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
@@ -757,12 +744,12 @@ function cubeLocalMatrix(cube: BbCube, bone: BoneEntry, rotationConvention: NonN
     (cube.origin ?? bone.group.origin).map((value, axis) => value - bone.group.origin[axis]),
     (value) => -value,
   ).map((value) => value / 16);
-  return composeTransform(origin, rotation, [1, 1, 1])
+  return composeDegreesTransform(origin, rotation, [1, 1, 1])
     .multiply(new Matrix4().makeTranslation(-origin[0], -origin[1], -origin[2]));
 }
 
 function locatorLocalMatrix(locator: BbLocator, bone: BoneEntry, rotationConvention: NonNullable<CubeProjectImportOptions["rotationConvention"]>): Matrix4 {
-  return composeTransform(
+  return composeDegreesTransform(
     blockbenchPositionToCanonical(locator.position.map((value, axis) => value - bone.group.origin[axis]), (value) => -value).map((value) => value / 16),
     cubeRotationToCanonical(locator.rotation, (value) => -value, rotationConvention),
     [1, 1, 1],

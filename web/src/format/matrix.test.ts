@@ -1,6 +1,6 @@
 import { Matrix4 } from "three";
 import { describe, expect, it } from "vitest";
-import { IDENTITY_MATRIX, asMatrix16, matrix4ToRowMajor, stabilizeDisplayMatrix } from "./matrix";
+import { IDENTITY_MATRIX, asMatrix16, composeDegreesTransform, matrix4ToRowMajor, stabilizeDisplayMatrix } from "./matrix";
 
 describe("matrix utilities", () => {
   it("converts Three.js matrices to the emote row-major layout", () => {
@@ -17,6 +17,18 @@ describe("matrix utilities", () => {
 
   it("rejects malformed matrices", () => {
     expect(() => asMatrix16([1, 2, 3], "short matrix")).toThrow("short matrix must contain 16 finite numbers");
+  });
+
+  it("composes degree-based ZYX transforms", () => {
+    const matrix = composeDegreesTransform([1, 2, 3], [0, 0, 90], [2, 3, 4]);
+
+    const expected = [
+      0, -3, 0, 1,
+      2, 0, 0, 2,
+      0, 0, 4, 3,
+      0, 0, 0, 1,
+    ];
+    matrix4ToRowMajor(matrix, "composed matrix").forEach((value, index) => expect(value).toBeCloseTo(expected[index], 12));
   });
 
   it("removes shear while preserving translation", () => {

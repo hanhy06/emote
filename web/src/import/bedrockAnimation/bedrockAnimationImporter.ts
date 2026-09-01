@@ -1,6 +1,6 @@
-import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -188,7 +188,7 @@ function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<str
     const parent = bone.parent ? bedrockPlayerBoneById(bone.parent) : undefined;
     const transform = transforms.get(id) ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
     const sourcePosition = bone.pivot.map((value, axis) => (value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]);
-    const local = composeTransform(
+    const local = composeDegreesTransform(
       bedrockPositionToCanonical(sourcePosition, (value) => -value).map((value) => value / 16),
       bedrockRotationToCanonical(transform.rotation, (value) => -value),
       transform.scale,
@@ -247,17 +247,4 @@ function numericStartDelayTicks(animation: BedrockAnimation): number | null {
   const numeric = typeof value === "number" ? value : Number(value.trim());
   if (!Number.isFinite(numeric) || numeric < 0) return null;
   return Math.round(numeric * TICKS_PER_SECOND);
-}
-
-function composeTransform(position: number[], rotation: number[], scale: number[]): Matrix4 {
-  return new Matrix4().compose(
-    new Vector3(position[0], position[1], position[2]),
-    new Quaternion().setFromEuler(new Euler(
-      MathUtils.degToRad(rotation[0]),
-      MathUtils.degToRad(rotation[1]),
-      MathUtils.degToRad(rotation[2]),
-      "ZYX",
-    )),
-    new Vector3(scale[0], scale[1], scale[2]),
-  );
 }
