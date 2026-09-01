@@ -334,6 +334,8 @@ Timeline events must be ordered by time and occur before the end of the timeline
 
 Named callbacks are dispatched to server-side listeners registered through `EmoteApi.addCallbackListener`. An unregistered name is ignored with a warning; one failing listener does not interrupt playback or the remaining listeners.
 
+Callback events identify both the top-level playback and the Animation that declared the callback. `playbackId` is the requested Animation or Sequence ID, while `animationId` is the currently executing Animation ID. `playbackTick` and `animationTick` provide the corresponding timeline positions, and `phase` is `START`, `TIMELINE`, `LOOP`, or `STOP`. For standalone playback, both IDs and both ticks refer to the same Animation.
+
 ## Migrating older Animations
 
 The web converter can import published schema 1 and schema 3 Animations and export schema 4. The server only loads schema 4 directly.

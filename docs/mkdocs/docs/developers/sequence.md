@@ -91,6 +91,8 @@ It defaults to `0t` and applies before every real Animation selected by the step
 
 The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and Animations using `hold` or `server_sync` playback may not be referenced.
 
+Referenced Animations retain all four event groups. `start` runs when the Animation segment begins, timeline events use the segment-local tick, `loop` runs when a loop segment completes, and `stop` runs when the segment completes or when the Sequence is interrupted while that segment is active. At a shared boundary, the outgoing Animation stops before the incoming Animation starts.
+
 ## Random selection
 
 An array of IDs selects one with equal probability on each repetition.

@@ -8,8 +8,11 @@ import java.util.Objects;
 
 public record EmoteCallbackEvent(
     ServerPlayer player,
-    Identifier emoteId,
-    int currentTick,
+    Identifier playbackId,
+    Identifier animationId,
+    int playbackTick,
+    int animationTick,
+    EmoteCallbackPhase phase,
     ParticipantRole participant,
     Vec3 origin,
     Identifier name,
@@ -17,7 +20,9 @@ public record EmoteCallbackEvent(
 ) {
     public EmoteCallbackEvent {
         Objects.requireNonNull(player, "player");
-        Objects.requireNonNull(emoteId, "emoteId");
+        Objects.requireNonNull(playbackId, "playbackId");
+        Objects.requireNonNull(animationId, "animationId");
+        Objects.requireNonNull(phase, "phase");
         Objects.requireNonNull(participant, "participant");
         Objects.requireNonNull(origin, "origin");
         Objects.requireNonNull(name, "name");

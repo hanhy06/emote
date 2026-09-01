@@ -80,12 +80,6 @@ final class SequenceNodeLayout {
                         "Sequence animations must use the same skin layout: " + first.id() + " and " + animation.id()
                     );
                 }
-                EmoteAnimation.Events events = animation.animation().timeline().events();
-                if (!events.start().isEmpty() || !events.loop().isEmpty() || !events.stop().isEmpty()) {
-                    throw new IllegalArgumentException(
-                        "Sequence animation lifecycle events are not supported by compiled sequences: " + animation.id()
-                    );
-                }
                 mergeNodes(first, animation, nodes, preparedDisplayData);
             }
         }

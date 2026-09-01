@@ -107,7 +107,7 @@ class AnimationEventTest {
         PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("callback-test.json"), "test", animation));
         AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
         List<EmoteAnimation.Callback> executed = new ArrayList<>();
-        player.bindEvents(dispatched -> executed.addAll(dispatched.callbacks()));
+        player.bindEvents(dispatched -> executed.addAll(dispatched.event().callbacks()));
 
         player.start();
         player.startEvents();
@@ -121,7 +121,7 @@ class AnimationEventTest {
         EmoteAnimation animation = animation(durationTicks, loopMode, loopDelayTicks);
         PreparedAnimation emote = PreparedAnimation.from(new LoadedAnimation(Path.of("event-test.json"), "test", animation));
         AnimationPlayer player = new AnimationPlayer(emote, new EmptyTimelineTarget());
-        player.bindEvents(event -> executed.addAll(event.commands()));
+        player.bindEvents(event -> executed.addAll(event.event().commands()));
         return new AnimationFixture(player, executed);
     }
 

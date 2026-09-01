@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmoteCallbackEvent;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -36,7 +37,8 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
     }
 
     @Override
-    public void execute(EmoteAnimation.Event event) {
+    public void execute(PreparedAnimation.PreparedEvent preparedEvent) {
+        EmoteAnimation.Event event = preparedEvent.event();
         Vec3 origin = resolveOrigin(event.origin());
         if (!event.commands().isEmpty()) {
             CommandSourceStack source = createSource(event.source())
@@ -53,7 +55,10 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
             this.callbacks.dispatch(new EmoteCallbackEvent(
                 this.player,
                 this.timeline.emoteId(),
+                preparedEvent.animationId(),
                 this.timeline.currentTick(),
+                preparedEvent.animationTick(),
+                preparedEvent.phase(),
                 participant,
                 origin,
                 callback.name(),

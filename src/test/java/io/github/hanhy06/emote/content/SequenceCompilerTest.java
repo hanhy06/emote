@@ -2,10 +2,13 @@ package io.github.hanhy06.emote.content;
 
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
+import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteCallbackPhase;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
 import net.minecraft.commands.arguments.coordinates.RotationArgument;
 import net.minecraft.commands.arguments.coordinates.Vec3Argument;
 import net.minecraft.nbt.CompoundTag;
@@ -196,32 +199,80 @@ class SequenceCompilerTest {
     }
 
     @Test
-    void rejectsLifecycleEventsWhoseStepBoundaryMeaningWouldBeLost() {
+    void compilesLifecycleEventsWithTheirSourceAnimationContext() {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
             List.of("say start"),
             List.of()
         );
+        EmoteAnimation.Event loopEvent = new EmoteAnimation.Event(
+            startEvent.source(), startEvent.origin(), List.of("say loop"), List.of()
+        );
+        EmoteAnimation.Event stopEvent = new EmoteAnimation.Event(
+            startEvent.source(), startEvent.origin(), List.of("say stop"), List.of()
+        );
         PreparedAnimation animation = animation(
             "demo:eventful",
-            1,
-            EmoteAnimation.LoopMode.ONCE,
+            2,
+            EmoteAnimation.LoopMode.LOOP,
             0,
             Map.of(),
-            new EmoteAnimation.Events(List.of(startEvent), List.of(), List.of(), List.of()),
+            new EmoteAnimation.Events(List.of(startEvent), List.of(), List.of(loopEvent), List.of(stopEvent)),
             Map.of("root", sceneAnchor())
         );
 
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> PreparedSequence.resolve(
+        PreparedAnimation compiled = PreparedSequence.resolve(
             sequence(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1)),
             Map.of(animation.id(), animation)
-        ));
+        ).compiledAnimation();
 
+        assertEquals(List.of(EmoteCallbackPhase.START), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::phase).toList());
         assertEquals(
-            "Sequence animation lifecycle events are not supported by compiled sequences: demo:eventful",
-            exception.getMessage()
+            List.of(EmoteCallbackPhase.LOOP, EmoteCallbackPhase.STOP),
+            compiled.timelineEvents(2).stream().map(PreparedAnimation.PreparedEvent::phase).toList()
         );
+        assertTrue(compiled.timelineEvents(0).stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:eventful"))));
+        assertEquals(List.of(0), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
+        assertEquals(List.of(2, 2), compiled.timelineEvents(2).stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
+    }
+
+    @Test
+    void runsTheActiveInnerAnimationStopEventOnceWhenASequenceIsInterrupted() {
+        EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
+            new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
+            List.of("start"),
+            List.of()
+        );
+        EmoteAnimation.Event stopEvent = new EmoteAnimation.Event(
+            startEvent.source(), startEvent.origin(), List.of("stop"), List.of()
+        );
+        PreparedAnimation animation = animation(
+            "demo:interruptible",
+            4,
+            EmoteAnimation.LoopMode.ONCE,
+            0,
+            Map.of(),
+            new EmoteAnimation.Events(List.of(startEvent), List.of(), List.of(), List.of(stopEvent)),
+            Map.of()
+        );
+        PreparedAnimation compiled = PreparedSequence.resolve(
+            sequence(new EmoteSequence.EmoteStep(Identifier.parse(animation.id()), 1)),
+            Map.of(animation.id(), animation)
+        ).compiledAnimation();
+        List<PreparedAnimation.PreparedEvent> executed = new java.util.ArrayList<>();
+        AnimationPlayer player = new AnimationPlayer(compiled, new EmptyTimelineTarget());
+        player.bindEvents(executed::add);
+
+        player.start();
+        player.startEvents();
+        player.stop();
+        player.stop();
+
+        assertEquals(List.of(EmoteCallbackPhase.START, EmoteCallbackPhase.STOP), executed.stream().map(PreparedAnimation.PreparedEvent::phase).toList());
+        assertEquals(List.of(0, 0), executed.stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
+        assertTrue(executed.stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:interruptible"))));
     }
 
     @Test
@@ -626,6 +677,29 @@ class SequenceCompilerTest {
             List.of(),
             List.of()
         );
+    }
+
+    private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+        @Override
+        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
+        }
+
+        @Override
+        public void setVisible(String nodeId, boolean visible) {
+        }
+
+        @Override
+        public void applyNbt(String nodeId, CompoundTag nbt) {
+        }
+
+        @Override
+        public void resetAll() {
+        }
     }
 
     private static EmoteAnimation.VectorValue vector(double x) {

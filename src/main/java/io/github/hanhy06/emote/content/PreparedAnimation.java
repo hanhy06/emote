@@ -2,11 +2,13 @@ package io.github.hanhy06.emote.content;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.EmoteCallbackPhase;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.SkinBindingCompiler;
+import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
@@ -20,7 +22,7 @@ public final class PreparedAnimation implements PlayableEmote {
     private final List<SkinBinding> skinBindings;
     private final EmoteAnimation animation;
     private final PreparedAnimationTimeline preparedTimeline;
-    private final Map<Integer, List<EmoteAnimation.Event>> timelineEvents;
+    private final Map<Integer, List<PreparedEvent>> timelineEvents;
     private final Map<String, PreparedTransform> defaultTransforms;
     private final int displayNodeCount;
     private final List<PlaybackSegment> playbackSegments;
@@ -31,7 +33,7 @@ public final class PreparedAnimation implements PlayableEmote {
         List<SkinBinding> skinBindings,
         EmoteAnimation animation,
         PreparedAnimationTimeline preparedTimeline,
-        Map<Integer, List<EmoteAnimation.Event>> timelineEvents,
+        Map<Integer, List<PreparedEvent>> timelineEvents,
         Map<String, PreparedTransform> defaultTransforms,
         int displayNodeCount,
         List<PlaybackSegment> playbackSegments,
@@ -63,9 +65,11 @@ public final class PreparedAnimation implements PlayableEmote {
             nodeId,
             PreparedTransform.create(node.transform(), node instanceof EmoteAnimation.AnchorNode)
         ));
-        Map<Integer, List<EmoteAnimation.Event>> eventsByTick = new HashMap<>();
+        Map<Integer, List<PreparedEvent>> eventsByTick = new HashMap<>();
         for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
-            eventsByTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(event.event());
+            eventsByTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(new PreparedEvent(
+                event.event(), animation.id(), event.tick(), EmoteCallbackPhase.TIMELINE
+            ));
         }
 
         return new PreparedAnimation(
@@ -94,7 +98,7 @@ public final class PreparedAnimation implements PlayableEmote {
             layout.skinBindings,
             layout.animation,
             layout.preparedTimeline,
-            layout.timelineEvents,
+            compileSequenceEvents(playbackSegments),
             layout.defaultTransforms,
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
@@ -162,8 +166,58 @@ public final class PreparedAnimation implements PlayableEmote {
         return this.skinBindings.stream().filter(binding -> binding.participant() == participant).toList();
     }
 
-    public List<EmoteAnimation.Event> timelineEvents(int tick) {
+    public List<PreparedEvent> timelineEvents(int tick) {
         return this.timelineEvents.getOrDefault(tick, List.of());
+    }
+
+    private static Map<Integer, List<PreparedEvent>> compileSequenceEvents(List<PlaybackSegment> segments) {
+        Map<Integer, List<PreparedEvent>> eventsByTick = new HashMap<>();
+        for (PlaybackSegment segment : segments) {
+            EmoteAnimation animation = segment.animation().animation();
+            addEvents(eventsByTick, segment.startTick(), animation.timeline().events().start(), animation.id(), 0, EmoteCallbackPhase.START);
+            for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
+                addEvent(eventsByTick, segment.startTick() + event.tick(), new PreparedEvent(
+                    event.event(), animation.id(), event.tick(), EmoteCallbackPhase.TIMELINE
+                ));
+            }
+            if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
+                || animation.settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                addEvents(
+                    eventsByTick,
+                    segment.endTick(),
+                    animation.timeline().events().loop(),
+                    animation.id(),
+                    animation.timeline().durationTicks(),
+                    EmoteCallbackPhase.LOOP
+                );
+            }
+            addEvents(
+                eventsByTick,
+                segment.endTick(),
+                animation.timeline().events().stop(),
+                animation.id(),
+                animation.timeline().durationTicks(),
+                EmoteCallbackPhase.STOP
+            );
+        }
+        return copyListMap(eventsByTick);
+    }
+
+    private static void addEvents(
+        Map<Integer, List<PreparedEvent>> eventsByTick,
+        int tick,
+        List<EmoteAnimation.Event> events,
+        Identifier animationId,
+        int animationTick,
+        EmoteCallbackPhase phase
+    ) {
+        for (EmoteAnimation.Event event : events) {
+            addEvent(eventsByTick, tick, new PreparedEvent(event, animationId, animationTick, phase));
+        }
+    }
+
+    private static void addEvent(Map<Integer, List<PreparedEvent>> eventsByTick, int tick, PreparedEvent event) {
+        eventsByTick.computeIfAbsent(tick, ignored -> new ArrayList<>()).add(event);
     }
 
     public int displayNodeCount() {
@@ -205,6 +259,19 @@ public final class PreparedAnimation implements PlayableEmote {
             }
             Objects.requireNonNull(animation, "animation");
             mirroredNodes = Map.copyOf(mirroredNodes);
+        }
+    }
+
+    public record PreparedEvent(
+        EmoteAnimation.Event event,
+        Identifier animationId,
+        int animationTick,
+        EmoteCallbackPhase phase
+    ) {
+        public PreparedEvent {
+            Objects.requireNonNull(event, "event");
+            Objects.requireNonNull(animationId, "animationId");
+            Objects.requireNonNull(phase, "phase");
         }
     }
 

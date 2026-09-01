@@ -57,4 +57,6 @@ The API currently provides:
 
 API calls that change state must run on the Minecraft server thread.
 
+`EmoteCallbackEvent` exposes `playbackId`, `animationId`, `playbackTick`, `animationTick`, and `phase`. The playback ID identifies the requested Animation or Sequence; the animation ID identifies the Animation that declared the callback. The phase is one of `START`, `TIMELINE`, `LOOP`, or `STOP`.
+
 `EmoteApi.play` is a trusted server-side playback entry point. The calling mod is responsible for applying any desired `standalone`, disabled-ID, player-permission, and cooldown policy. Emote still requires a loaded ID, dispatches cancellable playback-request events, and enforces playback-engine limits and failures.

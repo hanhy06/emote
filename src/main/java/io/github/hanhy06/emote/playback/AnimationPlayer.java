@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.EmoteCallbackPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.molang.MolangQueries;
@@ -142,7 +143,14 @@ public final class AnimationPlayer {
             throw new IllegalStateException("Events already started");
         }
         this.eventsStarted = true;
-        execute(this.animation.timeline().events().start());
+        if (this.emote.playbackSegments().isEmpty()) {
+            execute(
+                this.animation.timeline().events().start(),
+                this.animation.id(),
+                this.currentTick,
+                EmoteCallbackPhase.START
+            );
+        }
         if (this.currentTick == 0) {
             execute(this.emote.timelineEvents(0));
         }
@@ -159,7 +167,12 @@ public final class AnimationPlayer {
             execute(this.emote.timelineEvents(this.currentTick));
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
-            execute(this.animation.timeline().events().loop());
+            execute(
+                this.animation.timeline().events().loop(),
+                this.animation.id(),
+                this.animation.timeline().durationTicks(),
+                EmoteCallbackPhase.LOOP
+            );
             if (continueAfterLoopBoundary) {
                 result = continueAfterLoopEvent();
             }
@@ -248,7 +261,24 @@ public final class AnimationPlayer {
             return;
         }
         this.eventsStopped = true;
-        execute(this.animation.timeline().events().stop());
+        if (this.emote.playbackSegments().isEmpty()) {
+            execute(
+                this.animation.timeline().events().stop(),
+                this.animation.id(),
+                this.currentTick,
+                EmoteCallbackPhase.STOP
+            );
+            return;
+        }
+        PreparedAnimation.PlaybackSegment segment = activeLifecycleSegment();
+        if (segment != null) {
+            execute(
+                segment.animation().animation().timeline().events().stop(),
+                segment.animation().animation().id(),
+                this.currentTick - segment.startTick(),
+                EmoteCallbackPhase.STOP
+            );
+        }
     }
 
     public Transformation currentTransformation(String nodeId) {
@@ -419,18 +449,36 @@ public final class AnimationPlayer {
         FINISHED
     }
 
-    private void execute(List<EmoteAnimation.Event> events) {
+    private PreparedAnimation.PlaybackSegment activeLifecycleSegment() {
+        for (PreparedAnimation.PlaybackSegment segment : this.emote.playbackSegments()) {
+            if (this.currentTick >= segment.startTick() && this.currentTick < segment.endTick()) {
+                return segment;
+            }
+        }
+        return null;
+    }
+
+    private void execute(
+        List<EmoteAnimation.Event> events,
+        Identifier animationId,
+        int animationTick,
+        EmoteCallbackPhase phase
+    ) {
+        execute(events.stream().map(event -> new PreparedAnimation.PreparedEvent(event, animationId, animationTick, phase)).toList());
+    }
+
+    private void execute(List<PreparedAnimation.PreparedEvent> events) {
         if (this.eventExecutor == null) {
             return;
         }
-        for (EmoteAnimation.Event event : events) {
+        for (PreparedAnimation.PreparedEvent event : events) {
             this.eventExecutor.execute(event);
         }
     }
 
     @FunctionalInterface
     public interface EventExecutor {
-        void execute(EmoteAnimation.Event event);
+        void execute(PreparedAnimation.PreparedEvent event);
     }
 
     public interface TimelineTarget {
