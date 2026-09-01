@@ -109,8 +109,8 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.sourceName).toBe("humanoid.ajblueprint");
     expect(Object.keys(project.nodes).length).toBeGreaterThan(0);
     expect(project.animations).toHaveLength(1);
-    expect(project.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(-0.29296875);
-    expect(project.animations[0].tracks.right_arm.transforms[0].matrix[3]).toBeCloseTo(-0.29296875);
+    expect(project.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(0.29296875);
+    expect(project.animations[0].tracks.right_arm.transforms[0].matrix[3]).toBeCloseTo(0.29296875);
   });
 
   it("reflects native cube rotations without reversing the Z axis", async () => {
@@ -143,7 +143,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.nodes.child.defaultMatrix[11]).toBeCloseTo(0);
   });
 
-  it("preserves separate native bone and direct display animation conventions", async () => {
+  it("moves native bones and direct displays along the same canonical axes", async () => {
     const input = {
       name: "shared_axes.ajblueprint",
       bytes: encoder.encode(JSON.stringify({
@@ -178,7 +178,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     const cubeMatrix = project.animations[0].tracks.root.transforms[0].matrix;
     const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
 
-    expect(cubeMatrix[3]).toBeCloseTo(-0.46875);
+    expect(cubeMatrix[3]).toBeCloseTo(0.46875);
     expect(itemMatrix[3]).toBeCloseTo(0.46875);
     expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
     expect(itemMatrix[11]).toBeCloseTo(-0.46875);
@@ -218,7 +218,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
     expect(animation.nodes.aj_item_x.transform.scale).toEqual([0.9375, 0.9375, 0.9375]);
-    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-0.9375, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([0.9375, 0, 0]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -489,7 +489,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.loop).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
-    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2 * 0.9375);
+    expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
   });
 

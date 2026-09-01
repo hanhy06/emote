@@ -6,8 +6,8 @@ import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
 import type { BoneEntry } from "./cubeProjectImporter";
+import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
 import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
-import { blockbenchBoundsToCanonical } from "../coordinateSpace";
 
 const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -37,6 +37,7 @@ export function prepareCubeModels(
   namespace: string,
   projectPath: string,
   resources: Map<string, Uint8Array>,
+  transforms: CubeProjectTransformConvention,
 ): PreparedCubeModels {
   if (bones.some((bone) => bone.cubes.length > 0)) {
     writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
@@ -44,7 +45,7 @@ export function prepareCubeModels(
     for (const bone of bones) {
       for (const [cubeIndex, cube] of bone.cubes.entries()) {
         const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-        writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources);
+        writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources, transforms);
       }
     }
   }
@@ -85,6 +86,7 @@ export function writeCubeResources(
   namespace: string,
   modelPath: string,
   resources: Map<string, Uint8Array>,
+  transforms: CubeProjectTransformConvention,
 ): void {
   const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
   const textures = project.textures.length > 0
@@ -95,17 +97,17 @@ export function writeCubeResources(
     : { layer0: TEXTURELESS_MODEL_TEXTURE };
   const model = {
     textures,
-    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures)],
+    elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures, transforms)],
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
   resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
 }
 
-export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry): Matrix16 | undefined {
+export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, transforms: CubeProjectTransformConvention): Matrix16 | undefined {
   const inflate = cube.inflate ?? 0;
   const sourceFrom = cube.from.map((value, axis) => value - bone.group.origin[axis] - inflate);
   const sourceTo = cube.to.map((value, axis) => value - bone.group.origin[axis] + inflate);
-  const canonical = blockbenchBoundsToCanonical(sourceFrom, sourceTo);
+  const canonical = transforms.bounds(sourceFrom, sourceTo);
   const from = canonical.from.map((value) => value / 16);
   const to = canonical.to.map((value) => value / 16);
   const size = to.map((value, axis) => value - from[axis]);
@@ -354,11 +356,11 @@ function inferSkinPart(bone: BoneEntry): ImportedSkinPart["part"] | undefined {
   return undefined;
 }
 
-function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[]): Record<string, unknown> {
+function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[], transforms: CubeProjectTransformConvention): Record<string, unknown> {
   const inflate = cube.inflate ?? 0;
   const sourceFrom = cube.from.map((value, axis) => value - boneOrigin[axis] - inflate);
   const sourceTo = cube.to.map((value, axis) => value - boneOrigin[axis] + inflate);
-  const canonical = blockbenchBoundsToCanonical(sourceFrom, sourceTo);
+  const canonical = transforms.bounds(sourceFrom, sourceTo);
   const faces = Object.fromEntries(Object.entries(cube.faces).flatMap(([direction, face]) => {
     if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) return [];
     return [[direction, {

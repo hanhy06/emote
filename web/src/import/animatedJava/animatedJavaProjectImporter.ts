@@ -1,6 +1,6 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -8,6 +8,7 @@ import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeProject, PLAYER_RENDER_SCALE } from "../blockbench/cubeProjectImporter";
+import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "../blockbench/cubeProjectTransformConvention";
 import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -149,7 +150,7 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
       })),
     })),
   });
-  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { rotationConvention: "blockbench" });
+  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS });
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
@@ -596,8 +597,8 @@ function projectElementMatrix(
   const scaleMultiplier = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
-  const local = composeProjectMatrix4(
-    basePosition.map((value, axis) => value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
+  const local = composeAnimatedJavaDisplayMatrix4(
+    basePosition.map((value, axis) => axis === 0 ? -value - positionOffset[axis] : value + positionOffset[axis]),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
@@ -627,8 +628,8 @@ function projectGroupMatrix(
     .map((value) => value * blendWeight);
   const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
-  const local = composeProjectMatrix4(
-    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
+  const local = composeDegreesTransform(
+    group.origin.map((value, axis) => (value - (parent?.origin[axis] ?? 0) + positionOffset[axis]) / 16),
     group.rotation.map((value, axis) => value + rotationOffset[axis]),
     scale,
   );
@@ -664,7 +665,7 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
   throw new ConversionError("invalid_animated_java_visibility", `Animated Java visibility value ${value} is not boolean.`);
 }
 
-function composeProjectMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
+function composeAnimatedJavaDisplayMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
   const source = new Matrix4().compose(
     new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
     new Quaternion().setFromEuler(new Euler(
