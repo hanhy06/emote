@@ -594,13 +594,14 @@ function projectElementMatrix(
     .map((value) => value * blendWeight);
   const rotationOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "rotation", sourceTime, [0, 0, 0], `${path}/rotation`)
     .map((value) => value * blendWeight);
-  const scaleMultiplier = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
-    .map((value) => 1 + (value - 1) * blendWeight);
+  const baseScale = "scale" in element ? element.scale : [1, 1, 1];
+  const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, baseScale, `${path}/scale`)
+    .map((value, axis) => baseScale[axis] + (value - baseScale[axis]) * blendWeight);
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
   const local = composeDegreesTransform(
     basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
-    "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
+    scale,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
   const result = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local);

@@ -31,7 +31,7 @@ export function createAjProjectRuntime(
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 1 ? value : affineMolang(value, -1, 0));
-    const scale = ajProjectFrames(keyframes, "scale", baseScale, (value, axis) => multiply(value, baseScale[axis]));
+    const scale = ajProjectFrames(keyframes, "scale", baseScale, (value) => multiply(value, sceneScale));
     if (position) tracks[ids.z] = { position };
     if (rotation) {
       tracks[ids.z] = { ...tracks[ids.z], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };

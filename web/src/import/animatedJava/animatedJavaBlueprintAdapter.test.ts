@@ -198,7 +198,7 @@ describe("animatedJavaBlueprintAdapter", () => {
         resolution: { width: 16, height: 16 },
         elements: [
           { uuid: "cube", name: "Cube", type: "cube", from: [-4, -4, -4], to: [4, 4, 4], faces: { north: { uv: [0, 0, 8, 8] } } },
-          { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [16, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" },
+          { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [16, 0, 0], rotation: [0, 0, 0], scale: [0, 0, 0], visibility: true, item: "minecraft:stick" },
         ],
         groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
         outliner: [{ uuid: "root", children: ["cube"] }, "item"],
@@ -209,7 +209,10 @@ describe("animatedJavaBlueprintAdapter", () => {
           length: 0.1,
           animators: {
             root: { name: "root", type: "bone", keyframes: [projectFrame("position", 0.05, ["v.bone_x", "0", "0"])] },
-            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("position", 0.05, ["v.item_x", "0", "0"])] },
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [
+              projectFrame("position", 0.05, ["v.item_x", "0", "0"]),
+              projectFrame("scale", 0, ["0.5", "0.5", "0.5"]),
+            ] },
           },
         }],
       })),
@@ -221,9 +224,36 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.root).toBeDefined();
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
-    expect(animation.nodes.aj_item_x.transform.scale).toEqual([0.9375, 0.9375, 0.9375]);
+    expect(animation.nodes.aj_item_x.transform.scale).toEqual([0, 0, 0]);
     expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([0.9375, 0, 0]);
     expect(animation.timeline.tracks.aj_item_z.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.05859375) + 0.9375)");
+    expect(animation.timeline.tracks.aj_item_x.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+  });
+
+  it("restores a zero-scale direct display from an animation keyframe before applying scene scale", async () => {
+    const input = nativeProject({
+      elements: [
+        { uuid: "cube", name: "Cube", type: "cube", from: [-4, -4, -4], to: [4, 4, 4], faces: { north: { uv: [0, 0, 8, 8] } } },
+        { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [0, 0, 0], visibility: true, item: "minecraft:poppy" },
+      ],
+      outliner: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0], children: ["cube"] }, "item"],
+      animations: [{
+        name: "show_item",
+        loop: "once",
+        length: 0.05,
+        animators: {
+          item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("scale", 0, ["0.5", "0.5", "0.5"])] },
+        },
+      }],
+    });
+
+    const project = await animatedJavaBlueprintAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
+
+    expect(project.nodes.item.defaultMatrix[0]).toBe(0);
+    expect(project.animations[0].tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
+    expect(animation.nodes.item.transform.scale).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(animation.timeline.tracks.item.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
