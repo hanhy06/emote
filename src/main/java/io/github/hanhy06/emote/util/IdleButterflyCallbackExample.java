@@ -12,6 +12,7 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.allay.Allay;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -69,6 +70,7 @@ public final class IdleButterflyCallbackExample {
     private void handleCallback(EmoteCallbackEvent event) {
         switch (event.payload()) {
             case "spawn" -> spawnAllay(event);
+            case "move" -> moveAllay(event);
             case "remove" -> removeAllay(event.player().getUUID());
             default -> throw new IllegalArgumentException("Unsupported idle butterfly callback payload: " + event.payload());
         }
@@ -96,6 +98,14 @@ public final class IdleButterflyCallbackExample {
             throw new IllegalStateException("Failed to add the idle butterfly Allay to the level");
         }
         this.allaysByPlayer.put(playerUuid, allay);
+    }
+
+    private void moveAllay(EmoteCallbackEvent event) {
+        Allay allay = this.allaysByPlayer.get(event.player().getUUID());
+        if (allay == null || allay.isRemoved()) return;
+
+        Vec3 movement = event.origin().subtract(allay.position());
+        allay.setDeltaMovement(movement);
     }
 
     private void removeAllay(UUID playerUuid) {
