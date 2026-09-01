@@ -230,30 +230,43 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.timeline.tracks.aj_item_x.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
   });
 
-  it("restores a zero-scale direct display from an animation keyframe before applying scene scale", async () => {
+  it("preserves and restores a zero-scale direct display before applying scene scale", async () => {
     const input = nativeProject({
       elements: [
         { uuid: "cube", name: "Cube", type: "cube", from: [-4, -4, -4], to: [4, 4, 4], faces: { north: { uv: [0, 0, 8, 8] } } },
         { uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [0, 0, 0], visibility: true, item: "minecraft:poppy" },
       ],
       outliner: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0], children: ["cube"] }, "item"],
-      animations: [{
-        name: "show_item",
-        loop: "once",
-        length: 0.05,
-        animators: {
-          item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("scale", 0, ["0.5", "0.5", "0.5"])] },
+      animations: [
+        {
+          name: "hide_item",
+          loop: "once",
+          length: 0.05,
+          animators: {
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("scale", 0, ["0", "0", "0"])] },
+          },
         },
-      }],
+        {
+          name: "show_item",
+          loop: "once",
+          length: 0.05,
+          animators: {
+            item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("scale", 0, ["0.5", "0.5", "0.5"])] },
+          },
+        },
+      ],
     });
 
     const project = await animatedJavaBlueprintAdapter.import(input);
-    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
+    const [hidden, shown] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
 
     expect(project.nodes.item.defaultMatrix[0]).toBe(0);
-    expect(project.animations[0].tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
-    expect(animation.nodes.item.transform.scale).toEqual([0.46875, 0.46875, 0.46875]);
-    expect(animation.timeline.tracks.item.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(project.animations[0].tracks.item.transforms[0].matrix[0]).toBe(0);
+    expect(hidden.nodes.item.transform.scale).toEqual([0, 0, 0]);
+    expect(hidden.timeline.tracks.item.scale?.[0].value).toEqual([0, 0, 0]);
+    expect(project.animations[1].tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
+    expect(shown.nodes.item.transform.scale).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(shown.timeline.tracks.item.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {

@@ -2,12 +2,17 @@ import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type { LocalTransform, Matrix16, Vec3 } from "./emoteAnimation";
 import { matrix4ToRowMajor, stabilizeDisplayMatrix } from "./matrix";
 
+const ZERO_SCALE_EPSILON = 1e-12;
+
 export function matrixToLocalTransform(matrix: Matrix16, label: string): LocalTransform {
   const stable = stabilizeDisplayMatrix(matrix, label);
   const position = new Vector3();
   const rotation = new Quaternion();
   const scale = new Vector3();
   new Matrix4().set(...stable).decompose(position, rotation, scale);
+  if (Math.hypot(stable[0], stable[4], stable[8]) <= ZERO_SCALE_EPSILON) scale.x = 0;
+  if (Math.hypot(stable[1], stable[5], stable[9]) <= ZERO_SCALE_EPSILON) scale.y = 0;
+  if (Math.hypot(stable[2], stable[6], stable[10]) <= ZERO_SCALE_EPSILON) scale.z = 0;
   const euler = new Euler().setFromQuaternion(rotation, "XYZ");
   return {
     position: cleanVec3([position.x, position.y, position.z]),
