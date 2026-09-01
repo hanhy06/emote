@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "fflate": "^0.8.3",
-    "gifuct-js": "^2.1.2",
     "jsonc-parser": "^3.3.1",
     "molangjs": "^1.7.0",
     "preact": "^10.29.7",

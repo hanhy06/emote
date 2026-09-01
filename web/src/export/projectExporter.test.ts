@@ -326,7 +326,7 @@ describe("exportAnimation", () => {
   it("exports generated resources as flat self-locating files without pack metadata", async () => {
     const texture = new Uint8Array([1, 2, 3]);
     const project: ImportedProject = {
-      source: "animated_java_json",
+      source: "animated_java_blueprint",
       sourceName: "test.json",
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
@@ -435,7 +435,7 @@ describe("exportAnimation", () => {
     "assets/test//test.png",
   ])("rejects invalid generated resource path %s", (path) => {
     const project: ImportedProject = {
-      source: "animated_java_json",
+      source: "animated_java_blueprint",
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
@@ -452,7 +452,7 @@ describe("exportAnimation", () => {
 
   it("does not allow generated resources to replace pack metadata", () => {
     const project: ImportedProject = {
-      source: "animated_java_json",
+      source: "animated_java_blueprint",
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),

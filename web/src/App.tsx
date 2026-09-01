@@ -39,8 +39,8 @@ const IMPORT_FORMATS = [
   },
   {
     label: "Animated Java",
-    extensions: ".ajblueprint, .json",
-    description: "Use the original .ajblueprint project or export a Plugin Blueprint JSON file from Animated Java. Model, animation, and skin data are imported.",
+    extensions: ".ajblueprint",
+    description: "Use the original .ajblueprint project from Animated Java. Model, animation, and skin data are imported.",
   },
   {
     label: "Bedrock Edition",
@@ -211,7 +211,7 @@ export function App() {
         <div>
           <span className="product-label">Emote tools</span>
           <h1>Emote Converter</h1>
-          <p>Convert BD Engine and GeckoLib projects or Animated Java Plugin Blueprint exports into server-ready Emote files with player-skin support.</p>
+          <p>Convert BD Engine, GeckoLib, and Animated Java projects into server-ready Emote files with player-skin support.</p>
         </div>
         {session && filePicker}
       </header>

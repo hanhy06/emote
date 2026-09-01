@@ -8,7 +8,7 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 |------------------|-------------------------------|
 | BD Engine        | `.zip`                        |
 | GeckoLib         | `.bbmodel`                    |
-| Animated Java    | `.json`                       |
+| Animated Java    | `.ajblueprint`                |
 | Bedrock Edition  | `.animation.json`, `.json`    |
 | Emote            | Existing Emote Animation JSON |
 

@@ -76,7 +76,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   ));
   const name = prettify(sourceStem);
   return {
-    source: "animated_java_json",
+    source: "animated_java_blueprint",
     sourceName: input.name,
     suggestedMetadata: { name, description: `${name} emote.` },
     suggestedPlayer: createDefaultPlayerBehavior(),
