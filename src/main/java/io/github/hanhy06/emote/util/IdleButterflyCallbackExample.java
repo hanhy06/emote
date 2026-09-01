@@ -26,7 +26,7 @@ import java.util.UUID;
  *   "source": {"type": "server"},
  *   "origin": {"type": "node", "node": "butterfly"},
  *   "commands": [],
- *   "callbacks": [{"name": "emote:idle_butterfly_callback", "payload": "spawn"}]
+ *   "callbacks": [{"name": "emote:idle_butterfly_callback"}]
  * }
  * }</pre>
  */
@@ -67,11 +67,12 @@ public final class IdleButterflyCallbackExample {
     }
 
     private void handleCallback(EmoteCallbackEvent event) {
-        switch (event.payload()) {
-            case "spawn" -> spawnAllay(event);
-            case "move" -> moveAllay(event);
-            case "remove" -> removeAllay(event.player().getUUID());
-            default -> throw new IllegalArgumentException("Unsupported idle butterfly callback payload: " + event.payload());
+        switch (event.phase()) {
+            case START -> spawnAllay(event);
+            case TIMELINE -> moveAllay(event);
+            case STOP -> removeAllay(event.player().getUUID());
+            case LOOP -> {
+            }
         }
     }
 
