@@ -1,6 +1,6 @@
 import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
-import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
+import { matrix4ToRowMajor } from "../../format/matrix";
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
@@ -598,12 +598,14 @@ function projectElementMatrix(
     .map((value) => 1 + (value - 1) * blendWeight);
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
   const local = composeAnimatedJavaDisplayMatrix4(
-    basePosition.map((value, axis) => axis === 0 ? -value - positionOffset[axis] : value + positionOffset[axis]),
+    basePosition.map((value, axis) => value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     "scale" in element ? element.scale.map((value, axis) => value * scaleMultiplier[axis]) : scaleMultiplier,
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
-  return matrix4ToRowMajor(new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local), path);
+  const result = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local);
+  if (element.type === "animated_java:vanilla_text_display" || element.type === "animated_java:text_display") result.multiply(new Matrix4().makeRotationY(Math.PI));
+  return matrix4ToRowMajor(result, path);
 }
 
 function projectGroupMatrix(
@@ -628,8 +630,8 @@ function projectGroupMatrix(
     .map((value) => value * blendWeight);
   const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, [1, 1, 1], `${path}/scale`)
     .map((value) => 1 + (value - 1) * blendWeight);
-  const local = composeDegreesTransform(
-    group.origin.map((value, axis) => (value - (parent?.origin[axis] ?? 0) + positionOffset[axis]) / 16),
+  const local = composeAnimatedJavaDisplayMatrix4(
+    group.origin.map((value, axis) => value - (parent?.origin[axis] ?? 0) + positionOffset[axis]),
     group.rotation.map((value, axis) => value + rotationOffset[axis]),
     scale,
   );
@@ -666,6 +668,8 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
 }
 
 function composeAnimatedJavaDisplayMatrix4(position: number[], rotation: number[], scale: number[]): Matrix4 {
+  // AJ samples display mesh.matrixWorld after a scene reflection. Display animators already
+  // subtract X position and X/Y rotation, so their deltas intentionally use different signs.
   const source = new Matrix4().compose(
     new Vector3(position[0] / 16, position[1] / 16, position[2] / 16),
     new Quaternion().setFromEuler(new Euler(

@@ -37,7 +37,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     const input = nativeProject({
       elements: [{
         name: "block_display",
-        position: [0, 0, -16],
+        position: [16, 0, -16],
         rotation: [0, 0, 0],
         scale: [0.5, 0.5, 0.5],
         visibility: true,
@@ -69,7 +69,9 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     expect(project.sourceName).toBe("unnamed.ajblueprint");
     expect(project.nodes.block.type).toBe("block_display");
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
+    expect(project.nodes.block.defaultMatrix[3]).toBeCloseTo(-1);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(-0.5);
+    expect(project.animations[0].tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
   });
@@ -143,7 +145,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.nodes.child.defaultMatrix[11]).toBeCloseTo(0);
   });
 
-  it("moves native bones and direct displays along the same canonical axes", async () => {
+  it("preserves separate native bone and direct display animation conventions", async () => {
     const input = {
       name: "shared_axes.ajblueprint",
       bytes: encoder.encode(JSON.stringify({
@@ -162,11 +164,11 @@ describe("animatedJavaBlueprintAdapter", () => {
           length: 0.05,
           animators: {
             root: { name: "root", type: "bone", keyframes: [
-              projectFrame("position", 0, ["8", "0", "-8"]),
+              projectFrame("position", 0, ["8", "4", "-8"]),
               projectFrame("rotation", 0, ["45", "0", "0"]),
             ] },
             item: { name: "Item", type: "animated_java:vanilla_item_display", keyframes: [
-              projectFrame("position", 0, ["8", "0", "-8"]),
+              projectFrame("position", 0, ["8", "4", "-8"]),
               projectFrame("rotation", 0, ["45", "0", "0"]),
             ] },
           },
@@ -180,6 +182,8 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     expect(cubeMatrix[3]).toBeCloseTo(0.46875);
     expect(itemMatrix[3]).toBeCloseTo(0.46875);
+    expect(cubeMatrix[7]).toBeCloseTo(0.234375);
+    expect(itemMatrix[7]).toBeCloseTo(0.234375);
     expect(cubeMatrix[11]).toBeCloseTo(-0.46875);
     expect(itemMatrix[11]).toBeCloseTo(-0.46875);
     expect(cubeMatrix[6]).toBeLessThan(0);
@@ -218,7 +222,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
     expect(animation.nodes.aj_item_x.transform.scale).toEqual([0.9375, 0.9375, 0.9375]);
-    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([0.9375, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([-0.9375, 0, 0]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -368,8 +372,8 @@ describe("animatedJavaBlueprintAdapter", () => {
         resolution: { width: 16, height: 16 },
         elements: [
           { uuid: "cube", name: "Cube", type: "cube", from: [0, 0, 0], to: [8, 8, 8], faces: { north: { uv: [0, 0, 8, 8], texture: "texture" } } },
-          { uuid: "locator", name: "hand", type: "locator", position: [0, 8, 0], rotation: [0, 0, 0] },
-          { uuid: "label", name: "Label", type: "animated_java:text_display", position: [0, 8, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, text: { text: "Label" } },
+          { uuid: "locator", name: "hand", type: "locator", position: [8, 8, 0], rotation: [0, 0, 0] },
+          { uuid: "label", name: "Label", type: "animated_java:text_display", position: [8, 8, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, text: { text: "Label" } },
         ],
         groups: [{ uuid: "root", name: "root", origin: [0, 0, 0], rotation: [0, 0, 0] }],
         outliner: [{ uuid: "root", children: ["cube", "locator", "label"] }],
@@ -383,6 +387,10 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.nodes.root.type).toBe("item_display");
     expect(project.nodes.root_hand.type).toBe("anchor");
     expect(project.nodes.label.type).toBe("text_display");
+    expect(project.nodes.root_hand.defaultMatrix[3]).toBeCloseTo(0.46875);
+    expect(project.nodes.label.defaultMatrix[3]).toBeCloseTo(-0.46875);
+    expect(project.nodes.label.defaultMatrix[0]).toBeCloseTo(-0.9375);
+    expect(project.nodes.label.defaultMatrix[10]).toBeCloseTo(-0.9375);
   });
 
   it("preserves multiple embedded textures and face texture references", async () => {
@@ -489,7 +497,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.loop).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
-    expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
+    expect(finalMatrix[3]).toBeCloseTo(-Math.SQRT1_2 * 0.9375);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
   });
 
