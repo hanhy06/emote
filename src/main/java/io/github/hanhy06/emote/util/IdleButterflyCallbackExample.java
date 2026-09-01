@@ -12,7 +12,6 @@ import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.allay.Allay;
-import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -104,8 +103,7 @@ public final class IdleButterflyCallbackExample {
         Allay allay = this.allaysByPlayer.get(event.player().getUUID());
         if (allay == null || allay.isRemoved()) return;
 
-        Vec3 movement = event.origin().subtract(allay.position());
-        allay.setDeltaMovement(movement);
+        allay.teleportTo(event.origin().x, event.origin().y, event.origin().z);
     }
 
     private void removeAllay(UUID playerUuid) {
