@@ -108,6 +108,24 @@ class SequencePlaybackTest {
         );
     }
 
+    @Test
+    void composesTheSequenceBasePoseThroughParentAnchors() throws Exception {
+        PreparedAnimation animation = zeroScaleParentAnimation();
+        EmoteSequence sequence = new EmoteSequence(
+            Path.of("sequence.json"),
+            Identifier.parse("example:sequence"),
+            new EmoteMetadata("Sequence", "test", Map.of()),
+            new EmoteSequence.Settings(0, playerBehavior()),
+            List.of(new EmoteSequence.EmoteStep(animation.animation().id(), 1))
+        );
+
+        PreparedAnimation playback = PreparedSequence.resolve(sequence, Map.of(animation.id(), animation)).compile(new Random(1));
+
+        assertEquals(0.0F, playback.defaultTransform("display").scale().x(), 1.0E-5F);
+        assertEquals(0.0F, playback.defaultTransform("display").scale().y(), 1.0E-5F);
+        assertEquals(0.0F, playback.defaultTransform("display").scale().z(), 1.0E-5F);
+    }
+
     private PreparedAnimation animation(String id, int initialValue) throws Exception {
         String json = """
             {
@@ -165,6 +183,56 @@ class SequencePlaybackTest {
             """.formatted(id, initialValue);
         LoadedAnimation loaded = new AnimationJsonParser().parse(
             Path.of(id.replace(':', '_') + ".json"),
+            json.getBytes(StandardCharsets.UTF_8)
+        );
+        return PreparedAnimation.from(loaded);
+    }
+
+    private PreparedAnimation zeroScaleParentAnimation() throws Exception {
+        String json = """
+            {
+              "type":"animation",
+              "schema_version":4,
+              "id":"example:hidden_flower",
+              "metadata":{"name":"Hidden flower","description":"test"},
+              "settings":{
+                "standalone":false,
+                "cooldown":"0t",
+                "rotation_deadzone":50,
+                "player":{
+                  "hidden":true,
+                  "stop_conditions":{
+                    "movement_distance":0,
+                    "jump":true,
+                    "submerge":true,
+                    "ride":true,
+                    "damage":true,
+                    "attack":true,
+                    "game_mode_change":true
+                  }
+                },
+                "playback":{"mode":"once","loop_delay":"0t"}
+              },
+              "nodes":{
+                "root":{
+                  "type":"anchor",
+                  "space":"initiator",
+                  "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[0,0,0]}
+                },
+                "display":{
+                  "type":"item_display",
+                  "parent":"root",
+                  "visible":true,
+                  "item_display":"none",
+                  "item_stack_snbt":"{id:'minecraft:poppy',count:1}",
+                  "transform":{"position":[0,0,0],"rotation":[0,0,0],"scale":[1,1,1]}
+                }
+              },
+              "timeline":{"duration":"1t","tracks":{},"events":{}}
+            }
+            """;
+        LoadedAnimation loaded = new AnimationJsonParser().parse(
+            Path.of("hidden_flower.json"),
             json.getBytes(StandardCharsets.UTF_8)
         );
         return PreparedAnimation.from(loaded);

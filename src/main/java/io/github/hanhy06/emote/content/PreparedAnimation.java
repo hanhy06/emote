@@ -99,11 +99,26 @@ public final class PreparedAnimation implements PlayableEmote {
             layout.animation,
             layout.preparedTimeline,
             compileSequenceEvents(playbackSegments),
-            layout.defaultTransforms,
+            compileSequenceDefaultTransforms(layout),
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
             Map.copyOf(copiedHiddenNodes)
         );
+    }
+
+    private static Map<String, PreparedTransform> compileSequenceDefaultTransforms(PreparedAnimation layout) {
+        Map<String, Matrix4f> worldMatrices = new HashMap<>();
+        Map<String, PreparedTransform> transforms = new HashMap<>();
+        for (String nodeId : layout.preparedTimeline.nodeOrder()) {
+            EmoteAnimation.Node node = layout.animation.nodes().get(nodeId);
+            Matrix4f world = new Matrix4f(layout.defaultTransforms.get(nodeId).localMatrix());
+            if (node.parentId() != null) {
+                world.set(worldMatrices.get(node.parentId())).mul(layout.defaultTransforms.get(nodeId).localMatrix());
+            }
+            worldMatrices.put(nodeId, world);
+            transforms.put(nodeId, PreparedTransform.create(world, node instanceof EmoteAnimation.AnchorNode));
+        }
+        return Map.copyOf(transforms);
     }
 
     public LoadedAnimation source() {
