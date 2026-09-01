@@ -4,7 +4,8 @@
   "id": "emote:sit",
   "metadata": {
     "name": "Emote sit",
-    "description": "Idle emote sit down emote."
+    "description": "Idle emote sit down emote.",
+    "author": "@soji2318"
   },
   "settings": {
     "cooldown": "0t",
@@ -26,8 +27,9 @@
       "emote": "emote:sit_down"
     },
     {
-        "emote": ["emote:idle_sky",40,"emote:idle_butterfly",35,"emote:idle_flower",25],
-        "repeat": 2
+      "emote": ["emote:idle_sky",40,"emote:idle_butterfly",35,"emote:idle_flower",25],
+      "transition": "2t",
+      "repeat": 2
     },
     {
       "emote": ["emote:stand_up1",60,"emote:stand_up2",40]
