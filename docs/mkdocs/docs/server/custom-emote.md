@@ -4,13 +4,12 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 ## Supported formats
 
-| Source format    | Files                         |
-|------------------|-------------------------------|
-| BD Engine        | `.zip`                        |
-| GeckoLib         | `.bbmodel`                    |
-| Animated Java    | `.ajblueprint`                |
-| Bedrock Edition  | `.animation.json`, `.json`    |
-| Emote            | Existing Emote Animation JSON |
+| Source format   | Files          |
+|-----------------|----------------|
+| BD Engine       | `.zip`         |
+| GeckoLib        | `.bbmodel`     |
+| Animated Java   | `.ajblueprint` |
+| Bedrock Edition | `.json`        |
 
 ## 1. Open a file
 
