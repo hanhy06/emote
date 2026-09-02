@@ -355,9 +355,12 @@ public final class AdminCommand {
             .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\nServer performance").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• TPS").withStyle(ChatFormatting.AQUA))
-            .append(createStressStatistic("\n  ", "avg", "%.2f", ChatFormatting.GREEN, report.averageTps()))
-            .append(createStressStatistic("  ", "min (worst)", "%.2f", ChatFormatting.RED, report.minimumTps()))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "\n• TPS: avg %.2f / min (worst) %.2f",
+                report.averageTps(),
+                report.minimumTps()
+            )))
             .append(Component.literal("\n• MSPT").withStyle(ChatFormatting.GREEN))
             .append(createStressStatistic("\n  ", "baseline", "%.2f ms", ChatFormatting.GRAY, report.baselineMspt()))
             .append(createStressStatistic("  ", "avg", "%.2f ms", ChatFormatting.GREEN, report.averageMspt()))
@@ -366,10 +369,14 @@ public final class AdminCommand {
             .append(createStressStatistic("\n  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
             .append(createStressStatistic("  ", "samples", "%.0f", ChatFormatting.LIGHT_PURPLE, report.measuredServerTicks()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
-            .append(createStressStatistic("\n  ", "create", "%.2f ms", ChatFormatting.YELLOW, report.creationMillis()))
-            .append(createStressStatistic("  ", "cleanup", "%.2f ms", ChatFormatting.GOLD, report.cleanupMillis()))
-            .append(createStressStatistic("\n  ", "avg", "%.3f ms", ChatFormatting.GREEN, report.averageManagerCpuMillis()))
-            .append(createStressStatistic("  ", "max", "%.3f ms", ChatFormatting.RED, report.maximumManagerCpuMillis()))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "\n• create %.2f ms / cleanup %.2f ms / avg %.3f ms / max %.3f ms",
+                report.creationMillis(),
+                report.cleanupMillis(),
+                report.averageManagerCpuMillis(),
+                report.maximumManagerCpuMillis()
+            )))
             .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
     }
@@ -406,14 +413,18 @@ public final class AdminCommand {
                 packetsPerSecond,
                 mebibytesPerSecond
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Encode").withStyle(ChatFormatting.GOLD))
-            .append(createStressStatistic("\n  ", "avg", "%.3f ms", ChatFormatting.GREEN, averageEncodingMillis))
-            .append(createStressStatistic("  ", "max", "%.3f ms", ChatFormatting.RED,
-                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D))
-            .append(Component.literal("\n• Traffic/tick").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(createStressStatistic("\n  ", "avg", "%.2f MiB", ChatFormatting.GREEN, averageMebibytesPerTick))
-            .append(createStressStatistic("  ", "max", "%.2f MiB", ChatFormatting.RED,
-                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D));
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "\n• Encode: avg %.3f ms / max %.3f ms",
+                averageEncodingMillis,
+                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D
+            )))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "\n• Traffic/tick: avg %.2f MiB / max %.2f MiB",
+                averageMebibytesPerTick,
+                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
+            )));
     }
 
     static MutableComponent createStressStatistic(
