@@ -14,37 +14,22 @@
       unit: "ms",
       summary: "동시 진행 인원이 늘수록 MSPT가 전반적으로 증가했다. 75명에서는 평균이 50 ms를 넘었고, 100명 측정에서는 p95가 88.11 ms까지 상승했다.",
       datasets: [
-        { label: "평균", data: [9.66, 13.33, 26.93, 50.66, 31.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
+        { label: "평균", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
         { label: "p95", data: [16.78, 21.59, 33.60, 56.37, 88.11], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "최대", data: [23.46, 30.38, 40.12, 66.20, 98.04], borderColor: "#ffb74d", backgroundColor: "#ffb74d" }
-      ]
-    },
-    emote: {
-      title: "에모트 Tick 처리 시간",
-      unit: "ms",
-      summary: "에모트 처리 시간은 100명에서도 평균 4.109 ms, 최대 8.931 ms로 측정되어 20 TPS의 50 ms 틱 예산 안에 머물렀다.",
-      datasets: [
-        { label: "평균", data: [0.710, 1.030, 1.982, 3.006, 4.109], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
-        { label: "최대", data: [7.872, 8.403, 7.196, 6.333, 8.931], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
-        { label: "20 TPS 틱 예산", data: [50, 50, 50, 50, 50], borderColor: "#ef6c6c", backgroundColor: "#ef6c6c", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
+        { label: "최대", data: [23.46, 30.38, 40.12, 66.20, 98.04], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
+        { label: "20 TPS 기준", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
       ]
     },
     packets: {
-      title: "런타임 패킷 처리량",
-      unit: "패킷/초",
-      summary: "런타임 패킷 처리량은 75명까지 빠르게 증가했으며, 100명에서는 초당 약 153만 패킷으로 측정됐다.",
-      datasets: [
-        { label: "런타임", data: [33912, 159004, 650309, 1414816, 1534801], borderColor: "#66d17a", backgroundColor: "#66d17a" }
-      ]
-    },
-    encode: {
-      title: "틱당 패킷 처리 시간",
+      title: "패킷 처리",
       unit: "ms",
-      summary: "틱당 패킷 처리 시간은 인원수와 함께 증가해 100명에서 평균 60.895 ms, 최대 89.756 ms로 측정됐다.",
+      summary: "패킷 처리 시간과 런타임 처리량을 함께 표시한다. 100명에서 평균 60.895 ms, 최대 89.756 ms와 초당 약 153만 패킷이 측정됐다.",
       datasets: [
-        { label: "평균", data: [1.740, 5.749, 18.473, 40.456, 60.895], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "최대", data: [6.142, 16.079, 30.780, 50.546, 89.756], borderColor: "#ffb74d", backgroundColor: "#ffb74d" }
-      ]
+        { label: "틱 평균", data: [1.740, 5.749, 18.473, 40.456, 60.895], unit: "ms", yAxisID: "y", borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
+        { label: "틱 최대", data: [6.142, 16.079, 30.780, 50.546, 89.756], unit: "ms", yAxisID: "y", borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
+        { label: "처리량", data: [33912, 159004, 650309, 1414816, 1534801], unit: "패킷/초", yAxisID: "y1", borderColor: "#66d17a", backgroundColor: "#66d17a" }
+      ],
+      secondaryAxis: true
     }
   };
 
@@ -76,7 +61,7 @@
       return;
     }
 
-    const selectedMetric = root.dataset.selectedMetric || "emote";
+    const selectedMetric = root.dataset.selectedMetric || "mspt";
     const metric = metrics[selectedMetric];
     root.querySelector(".stress-chart__summary").textContent = metric.summary;
     root.querySelectorAll("[data-metric]").forEach(button => {
@@ -124,7 +109,7 @@
                   const measurement = measurements[context[0].dataIndex];
                   return `${measurement.players}명 동시 진행 · 약 ${measurement.displays.toLocaleString("ko-KR")} 디스플레이`;
                 },
-                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${metric.unit}`
+                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`
               }
             }
           },
@@ -139,12 +124,28 @@
               beginAtZero: true,
               title: {
                 display: true,
-                text: metric.unit
+                text: "처리 시간 (ms)"
               },
               ticks: {
-                callback: value => metric.unit === "패킷/초" ? Number(value).toLocaleString("ko-KR") : value
+                callback: value => value
               }
-            }
+            },
+            ...(metric.secondaryAxis ? {
+              y1: {
+                beginAtZero: true,
+                position: "right",
+                grid: {
+                  drawOnChartArea: false
+                },
+                title: {
+                  display: true,
+                  text: "처리량 (패킷/초)"
+                },
+                ticks: {
+                  callback: value => Number(value).toLocaleString("ko-KR")
+                }
+              }
+            } : {})
           }
         }
       });
