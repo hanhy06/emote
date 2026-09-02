@@ -61,7 +61,6 @@ public final class PlaybackStressTest {
         long startedNanos = System.nanoTime();
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
-        float targetTps = EmoteMod.SERVER.tickRateManager().tickrate();
         Random random = new Random(RANDOM_SEED);
         List<PreparedAnimation> selection = createRandomizedSelection(emotes, random, instanceCount);
         List<StressTestInstance> instances = new ArrayList<>(instanceCount);
@@ -111,7 +110,6 @@ public final class PlaybackStressTest {
             startedNanos,
             startedServerTick,
             baselineTickNanos,
-            targetTps,
             creationNanos
         );
         return instances.size();
@@ -281,13 +279,6 @@ public final class PlaybackStressTest {
         }
     }
 
-    static double estimatedTps(double mspt, double targetTps) {
-        if (mspt <= 0.0D) {
-            return targetTps;
-        }
-        return Math.min(targetTps, 1_000.0D / mspt);
-    }
-
     static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
         return completedTicks >= durationTicks;
     }
@@ -302,7 +293,6 @@ public final class PlaybackStressTest {
         private final long startedNanos;
         private final int startedServerTick;
         private final long baselineTickNanos;
-        private final float targetTps;
         private final long creationNanos;
 
         private int lastSampledServerTick = Integer.MIN_VALUE;
@@ -316,10 +306,8 @@ public final class PlaybackStressTest {
         private int processingSamples;
         private long emoteProcessingNanos;
         private long maximumEmoteProcessingNanos;
-        private final List<Long> emoteProcessingNanosSamples = new ArrayList<>();
         private long networkProcessingNanos;
         private long maximumNetworkProcessingNanos;
-        private final List<Long> networkProcessingNanosSamples = new ArrayList<>();
 
         private Session(
             ServerLevel level,
@@ -331,7 +319,6 @@ public final class PlaybackStressTest {
             long startedNanos,
             int startedServerTick,
             long baselineTickNanos,
-            float targetTps,
             long creationNanos
         ) {
             this.level = level;
@@ -344,7 +331,6 @@ public final class PlaybackStressTest {
             this.startedNanos = startedNanos;
             this.startedServerTick = startedServerTick;
             this.baselineTickNanos = baselineTickNanos;
-            this.targetTps = targetTps;
             this.creationNanos = creationNanos;
         }
 
@@ -368,10 +354,8 @@ public final class PlaybackStressTest {
             this.processingSamples++;
             this.emoteProcessingNanos += emoteNanos;
             this.maximumEmoteProcessingNanos = Math.max(this.maximumEmoteProcessingNanos, emoteNanos);
-            this.emoteProcessingNanosSamples.add(emoteNanos);
             this.networkProcessingNanos += networkNanos;
             this.maximumNetworkProcessingNanos = Math.max(this.maximumNetworkProcessingNanos, networkNanos);
-            this.networkProcessingNanosSamples.add(networkNanos);
         }
 
         private void recordCompletedServerTick() {
@@ -404,65 +388,33 @@ public final class PlaybackStressTest {
             double maximumMspt = this.serverTickSamples == 0
                 ? baselineMspt
                 : nanosToMillis(this.maximumServerTickNanos);
-            double medianMspt = this.serverTickSamples == 0
-                ? baselineMspt
-                : nanosToMillis(StressTestStatistics.median(this.serverTickNanosSamples));
             double percentile95Mspt = this.serverTickSamples == 0
                 ? baselineMspt
                 : nanosToMillis(StressTestStatistics.percentile95(this.serverTickNanosSamples));
-            double baselineTps = estimatedTps(baselineMspt, this.targetTps);
-            double averageTps = estimatedTps(averageMspt, this.targetTps);
-            double medianTps = estimatedTps(medianMspt, this.targetTps);
-            double percentile5Tps = estimatedTps(percentile95Mspt, this.targetTps);
-            double minimumTps = estimatedTps(maximumMspt, this.targetTps);
             double averageEmoteProcessingMillis = this.processingSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.emoteProcessingNanos) / this.processingSamples;
-            double medianEmoteProcessingMillis = nanosToMillis(
-                StressTestStatistics.median(this.emoteProcessingNanosSamples)
-            );
-            double percentile95EmoteProcessingMillis = nanosToMillis(
-                StressTestStatistics.percentile95(this.emoteProcessingNanosSamples)
-            );
             double averageNetworkProcessingMillis = this.processingSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.networkProcessingNanos) / this.processingSamples;
-            double medianNetworkProcessingMillis = nanosToMillis(
-                StressTestStatistics.median(this.networkProcessingNanosSamples)
-            );
-            double percentile95NetworkProcessingMillis = nanosToMillis(
-                StressTestStatistics.percentile95(this.networkProcessingNanosSamples)
-            );
             return new PlaybackStressTestReport(
                 this.requestedInstances,
                 this.instances.size(),
                 this.peakDisplayEntities,
                 this.failedInstances,
                 this.completedTicks,
-                this.serverTickSamples,
                 (stoppedNanos - this.startedNanos) / 1_000_000_000.0D,
                 nanosToMillis(this.creationNanos),
                 nanosToMillis(cleanupNanos),
                 baselineMspt,
                 averageMspt,
-                medianMspt,
                 percentile95Mspt,
                 maximumMspt,
-                baselineTps,
-                averageTps,
-                medianTps,
-                percentile5Tps,
-                minimumTps,
-                Math.max(0.0D, baselineTps - averageTps),
                 this.emoteProcessingNanos / 1_000_000_000.0D,
                 averageEmoteProcessingMillis,
-                medianEmoteProcessingMillis,
-                percentile95EmoteProcessingMillis,
                 nanosToMillis(this.maximumEmoteProcessingNanos),
                 this.networkProcessingNanos / 1_000_000_000.0D,
                 averageNetworkProcessingMillis,
-                medianNetworkProcessingMillis,
-                percentile95NetworkProcessingMillis,
                 nanosToMillis(this.maximumNetworkProcessingNanos),
                 packetLoad
             );

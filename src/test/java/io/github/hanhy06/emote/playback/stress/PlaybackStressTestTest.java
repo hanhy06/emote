@@ -58,25 +58,13 @@ class PlaybackStressTestTest {
     }
 
     @Test
-    void estimatesTpsFromMeasuredServerTickDuration() {
-        assertEquals(20.0D, PlaybackStressTest.estimatedTps(10.0D, 20.0D), 0.0001D);
-        assertEquals(20.0D, PlaybackStressTest.estimatedTps(50.0D, 20.0D), 0.0001D);
-        assertEquals(10.0D, PlaybackStressTest.estimatedTps(100.0D, 20.0D), 0.0001D);
-    }
-
-    @Test
-    void calculatesMedianAndNinetyFifthPercentileFromTickSamples() {
-        List<Long> oddSamples = List.of(50L, 10L, 40L, 20L, 30L);
-        List<Long> evenSamples = List.of(40L, 10L, 30L, 20L);
+    void calculatesNinetyFifthPercentileFromTickSamples() {
         List<Long> percentileSamples = new java.util.ArrayList<>();
         for (long value = 1L; value <= 100L; value++) {
             percentileSamples.add(value);
         }
 
-        assertEquals(30L, StressTestStatistics.median(oddSamples));
-        assertEquals(25L, StressTestStatistics.median(evenSamples));
         assertEquals(95L, StressTestStatistics.percentile95(percentileSamples));
-        assertEquals(0L, StressTestStatistics.median(List.of()));
         assertEquals(0L, StressTestStatistics.percentile95(List.of()));
     }
 
