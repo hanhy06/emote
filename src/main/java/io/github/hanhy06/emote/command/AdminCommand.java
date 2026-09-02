@@ -355,43 +355,27 @@ public final class AdminCommand {
             .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\nServer performance").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "%.2f -> avg %.2f / median %.2f / p5 %.2f / min %.2f  (drop %.2f)",
-                report.baselineTps(),
-                report.averageTps(),
-                report.medianTps(),
-                report.percentile5Tps(),
-                report.minimumTps(),
-                report.tpsDrop()
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• MSPT: ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "%.2f -> avg %.2f / median %.2f / p95 %.2f / max %.2f",
-                report.baselineMspt(),
-                report.averageMspt(),
-                report.medianMspt(),
-                report.percentile95Mspt(),
-                report.maximumMspt()
-            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• TPS").withStyle(ChatFormatting.AQUA))
+            .append(createStressStatistic("\n  ", "baseline", "%.2f", ChatFormatting.GRAY, report.baselineTps()))
+            .append(createStressStatistic("  ", "avg", "%.2f", ChatFormatting.GREEN, report.averageTps()))
+            .append(createStressStatistic("\n  ", "median", "%.2f", ChatFormatting.AQUA, report.medianTps()))
+            .append(createStressStatistic("  ", "p5", "%.2f", ChatFormatting.GOLD, report.percentile5Tps()))
+            .append(createStressStatistic("\n  ", "min", "%.2f", ChatFormatting.RED, report.minimumTps()))
+            .append(createStressStatistic("  ", "drop", "%.2f", ChatFormatting.LIGHT_PURPLE, report.tpsDrop()))
+            .append(Component.literal("\n• MSPT").withStyle(ChatFormatting.GREEN))
+            .append(createStressStatistic("\n  ", "baseline", "%.2f ms", ChatFormatting.GRAY, report.baselineMspt()))
+            .append(createStressStatistic("  ", "avg", "%.2f ms", ChatFormatting.GREEN, report.averageMspt()))
+            .append(createStressStatistic("\n  ", "median", "%.2f ms", ChatFormatting.AQUA, report.medianMspt()))
+            .append(createStressStatistic("  ", "p95", "%.2f ms", ChatFormatting.GOLD, report.percentile95Mspt()))
+            .append(createStressStatistic("\n  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
+            .append(createStressStatistic("  ", "samples", "%.0f", ChatFormatting.LIGHT_PURPLE, report.measuredServerTicks()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
-            .append(Component.literal("\n• Create: ").withStyle(ChatFormatting.YELLOW))
-            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.creationMillis())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "avg %.3f ms / median %.3f ms / p95 %.3f ms / max %.3f ms",
-                report.averageManagerCpuMillis(),
-                report.medianManagerCpuMillis(),
-                report.percentile95ManagerCpuMillis(),
-                report.maximumManagerCpuMillis()
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Cleanup: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("  Samples: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE))
+            .append(createStressStatistic("\n  ", "create", "%.2f ms", ChatFormatting.YELLOW, report.creationMillis()))
+            .append(createStressStatistic("  ", "cleanup", "%.2f ms", ChatFormatting.GOLD, report.cleanupMillis()))
+            .append(createStressStatistic("\n  ", "avg", "%.3f ms", ChatFormatting.GREEN, report.averageManagerCpuMillis()))
+            .append(createStressStatistic("  ", "median", "%.3f ms", ChatFormatting.AQUA, report.medianManagerCpuMillis()))
+            .append(createStressStatistic("\n  ", "p95", "%.3f ms", ChatFormatting.GOLD, report.percentile95ManagerCpuMillis()))
+            .append(createStressStatistic("  ", "max", "%.3f ms", ChatFormatting.RED, report.maximumManagerCpuMillis()))
             .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
     }
@@ -408,6 +392,9 @@ public final class AdminCommand {
         double averageEncodingMillis = packets.runtimeSamples() == 0
             ? 0.0D
             : packets.runtimeEncodingNanos() / 1_000_000.0D / packets.runtimeSamples();
+        double averageMebibytesPerTick = packets.runtimeSamples() == 0
+            ? 0.0D
+            : packets.runtimeBytes() / 1_048_576.0D / packets.runtimeSamples();
         return Component.literal("\n\nPacket load").withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Fanout: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(packets.packetFanout() + "×").withStyle(ChatFormatting.WHITE))
@@ -425,23 +412,33 @@ public final class AdminCommand {
                 packetsPerSecond,
                 mebibytesPerSecond
             )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Encode: ").withStyle(ChatFormatting.GOLD))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "avg %.3f ms / median %.3f ms / p95 %.3f ms / max %.3f ms",
-                averageEncodingMillis,
-                packets.medianRuntimeEncodingNanosPerTick() / 1_000_000.0D,
-                packets.percentile95RuntimeEncodingNanosPerTick() / 1_000_000.0D,
-                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D
-            )).withStyle(ChatFormatting.WHITE))
-            .append(Component.literal("\n• Traffic/tick: ").withStyle(ChatFormatting.LIGHT_PURPLE))
-            .append(Component.literal(String.format(
-                Locale.ROOT,
-                "median %.2f MiB / p95 %.2f MiB / max %.2f MiB",
-                packets.medianRuntimeBytesPerTick() / 1_048_576.0D,
-                packets.percentile95RuntimeBytesPerTick() / 1_048_576.0D,
-                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
-            )).withStyle(ChatFormatting.WHITE));
+            .append(Component.literal("\n• Encode").withStyle(ChatFormatting.GOLD))
+            .append(createStressStatistic("\n  ", "avg", "%.3f ms", ChatFormatting.GREEN, averageEncodingMillis))
+            .append(createStressStatistic("  ", "median", "%.3f ms", ChatFormatting.AQUA,
+                packets.medianRuntimeEncodingNanosPerTick() / 1_000_000.0D))
+            .append(createStressStatistic("\n  ", "p95", "%.3f ms", ChatFormatting.GOLD,
+                packets.percentile95RuntimeEncodingNanosPerTick() / 1_000_000.0D))
+            .append(createStressStatistic("  ", "max", "%.3f ms", ChatFormatting.RED,
+                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D))
+            .append(Component.literal("\n• Traffic/tick").withStyle(ChatFormatting.LIGHT_PURPLE))
+            .append(createStressStatistic("\n  ", "avg", "%.2f MiB", ChatFormatting.GREEN, averageMebibytesPerTick))
+            .append(createStressStatistic("  ", "median", "%.2f MiB", ChatFormatting.AQUA,
+                packets.medianRuntimeBytesPerTick() / 1_048_576.0D))
+            .append(createStressStatistic("\n  ", "p95", "%.2f MiB", ChatFormatting.GOLD,
+                packets.percentile95RuntimeBytesPerTick() / 1_048_576.0D))
+            .append(createStressStatistic("  ", "max", "%.2f MiB", ChatFormatting.RED,
+                packets.maximumRuntimeBytesPerTick() / 1_048_576.0D));
+    }
+
+    static MutableComponent createStressStatistic(
+        String prefix,
+        String label,
+        String valueFormat,
+        ChatFormatting labelColor,
+        double value
+    ) {
+        return Component.literal(prefix + label + ": ").withStyle(labelColor)
+            .append(Component.literal(String.format(Locale.ROOT, valueFormat, value)).withStyle(ChatFormatting.WHITE));
     }
 
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {

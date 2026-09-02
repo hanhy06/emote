@@ -11,10 +11,12 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.stress.StressTestPacketLoad;
 import io.github.hanhy06.emote.server.ReloadResult;
+import net.minecraft.ChatFormatting;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.TimeArgument;
+import net.minecraft.network.chat.Style;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -162,9 +164,18 @@ final class AdminCommandTest {
         String summary = AdminCommand.createPacketLoadSummary(report).getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
-        assertTrue(summary.contains("median 0.900 ms / p95 1.500 ms / max 2.000 ms"));
-        assertTrue(summary.contains("median 0.13 MiB / p95 0.20 MiB / max 0.25 MiB"));
+        assertTrue(summary.contains("avg: 1.000 ms  median: 0.900 ms\n  p95: 1.500 ms  max: 2.000 ms"));
+        assertTrue(summary.contains("avg: 0.10 MiB  median: 0.13 MiB\n  p95: 0.20 MiB  max: 0.25 MiB"));
         assertFalse(summary.toLowerCase().contains("client"));
+    }
+
+    @Test
+    void stressTestStatisticColorsItsLabelAndKeepsItsValueWhite() {
+        var statistic = AdminCommand.createStressStatistic("\n  ", "avg", "%.2f ms", ChatFormatting.GREEN, 12.5D);
+
+        assertEquals("\n  avg: 12.50 ms", statistic.getString());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GREEN), statistic.getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), statistic.getSiblings().getFirst().getStyle());
     }
 
     private AdminCommand createCommand(boolean canManage) {
