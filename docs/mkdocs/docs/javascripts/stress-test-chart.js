@@ -32,6 +32,26 @@
       secondaryAxis: true
     }
   };
+  const hoverLinePlugin = {
+    id: "hoverLine",
+    afterDatasetsDraw(chart) {
+      const activeElements = chart.tooltip?.getActiveElements();
+      if (!activeElements?.length) {
+        return;
+      }
+
+      const { ctx, chartArea } = chart;
+      const x = activeElements[0].element.x;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(x, chartArea.top);
+      ctx.lineTo(x, chartArea.bottom);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+      ctx.stroke();
+      ctx.restore();
+    }
+  };
 
   let chartLibraryPromise = null;
   let stressTestChart = null;
@@ -75,6 +95,7 @@
 
       stressTestChart = new Chart(canvas.getContext("2d"), {
         type: "line",
+        plugins: [hoverLinePlugin],
         data: {
           labels,
           datasets: metric.datasets.map(dataset => ({
