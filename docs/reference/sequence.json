@@ -3,11 +3,11 @@
     "schema_version": 4,
     "id": "emote:sit",
     "metadata": {
-        "name": "Sit",
-        "description": "Sit down, wait for three cycles, and stand up."
+        "name": "Emote sit",
+        "description": "Idle emote sit down emote."
     },
     "settings": {
-        "cooldown": "5s",
+        "cooldown": "0t",
         "player": {
             "hidden": true,
             "stop_conditions": {
@@ -26,18 +26,18 @@
             "emote": "emote:sit_down"
         },
         {
-            "wait": "10t"
+            "emote": [
+                "emote:idle_sky", 40,
+                "emote:idle_butterfly", 35,
+                "emote:idle_flower", 25
+            ],
+            "repeat": 2
         },
         {
             "emote": [
-                "emote:sit_idle", 30,
-                "emote:sit_idle_2", 40,
-                "emote:sit_idle_3", 30
-            ],
-            "repeat": 3
-        },
-        {
-            "emote": "emote:stand_up"
+                "emote:stand_up1", 60,
+                "emote:stand_up2", 40
+            ]
         }
     ]
 }
