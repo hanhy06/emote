@@ -1,0 +1,235 @@
+import groovy.json.JsonOutput
+import groovy.json.JsonSlurper
+
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.charset.StandardCharsets
+import java.nio.file.Files
+
+def runCommand = { List<String> command, File directory, boolean captureOutput ->
+    ProcessBuilder builder = new ProcessBuilder(command)
+        .directory(directory)
+        .redirectErrorStream(true)
+
+    Process process = builder.start()
+    if (captureOutput) {
+        String output = process.inputStream.getText(StandardCharsets.UTF_8.name())
+        int exitCode = process.waitFor()
+        if (exitCode != 0) {
+            throw new GradleException("Command failed (${command.join(' ')}):\n${output}")
+        }
+        return output.trim()
+    }
+
+    process.inputStream.transferTo(System.out)
+    int exitCode = process.waitFor()
+    if (exitCode != 0) {
+        throw new GradleException("Command failed with exit code ${exitCode}: ${command.join(' ')}")
+    }
+    return ""
+}
+
+def sendRequest = { HttpClient client, HttpRequest request ->
+    HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8))
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+        throw new GradleException("Modrinth API request failed (${response.statusCode()}): ${response.body()}")
+    }
+    return response
+}
+
+def createMultipartBody = { Map<String, Object> metadata, File artifact, String boundary ->
+    ByteArrayOutputStream output = new ByteArrayOutputStream()
+    byte[] lineBreak = "\r\n".getBytes(StandardCharsets.UTF_8)
+
+    output.write("--${boundary}\r\n".getBytes(StandardCharsets.UTF_8))
+    output.write('Content-Disposition: form-data; name="data"\r\n'.getBytes(StandardCharsets.UTF_8))
+    output.write('Content-Type: application/json\r\n\r\n'.getBytes(StandardCharsets.UTF_8))
+    output.write(JsonOutput.toJson(metadata).getBytes(StandardCharsets.UTF_8))
+    output.write(lineBreak)
+
+    output.write("--${boundary}\r\n".getBytes(StandardCharsets.UTF_8))
+    output.write('Content-Disposition: form-data; name="file"; filename="'.getBytes(StandardCharsets.UTF_8))
+    output.write(artifact.name.getBytes(StandardCharsets.UTF_8))
+    output.write('"\r\n'.getBytes(StandardCharsets.UTF_8))
+    output.write('Content-Type: application/java-archive\r\n\r\n'.getBytes(StandardCharsets.UTF_8))
+    artifact.withInputStream { it.transferTo(output) }
+    output.write(lineBreak)
+    output.write("--${boundary}--\r\n".getBytes(StandardCharsets.UTF_8))
+
+    return output.toByteArray()
+}
+
+def resolveGameVersions = { Object requirement, List<String> availableVersions, File fabricLoaderJar ->
+    List<String> predicates = requirement instanceof List ? requirement.collect { it.toString() } : [requirement.toString()]
+
+    URLClassLoader versionLoader = new URLClassLoader([fabricLoaderJar.toURI().toURL()] as URL[], ClassLoader.getPlatformClassLoader())
+    try {
+        Class<?> versionClass = versionLoader.loadClass("net.fabricmc.loader.api.Version")
+        Class<?> predicateClass = versionLoader.loadClass("net.fabricmc.loader.api.metadata.version.VersionPredicate")
+        List<Object> parsedPredicates = predicates.collect { predicateClass.getMethod("parse", String).invoke(null, it) }
+
+        List<String> matches = availableVersions.findAll { String gameVersion ->
+            Object parsedVersion = versionClass.getMethod("parse", String).invoke(null, gameVersion)
+            parsedPredicates.any { predicateClass.getMethod("test", Object).invoke(it, parsedVersion) as boolean }
+        }
+        if (matches.isEmpty()) {
+            throw new GradleException("No Modrinth game versions match fabric.mod.json requirement ${requirement}.")
+        }
+        return matches
+    } finally {
+        versionLoader.close()
+    }
+}
+
+tasks.register("modrinth") {
+    group = "publishing"
+    description = "Builds every local branch except dev, then publishes all artifacts to Modrinth."
+
+    doLast {
+        File repository = rootProject.projectDir.canonicalFile
+        boolean debugMode = providers.gradleProperty("modrinthDebug").map { it.toBoolean() }.getOrElse(false)
+        String token = providers.gradleProperty("modrinthToken").orElse(providers.environmentVariable("MODRINTH_TOKEN")).getOrNull()
+        String versionType = providers.gradleProperty("modrinthVersionType").getOrElse("release")
+
+        if (!debugMode && !token) {
+            throw new GradleException("Set modrinthToken in the user Gradle properties or MODRINTH_TOKEN in the environment.")
+        }
+        if (!(versionType in ["release", "beta", "alpha"])) {
+            throw new GradleException("modrinthVersionType must be release, beta, or alpha.")
+        }
+
+        String trackedChanges = runCommand(["git", "status", "--porcelain", "--untracked-files=no"], repository, true)
+        if (!debugMode && trackedChanges) {
+            throw new GradleException("Commit or discard tracked working-tree changes before publishing every branch.")
+        }
+
+        List<String> branches = runCommand(
+            ["git", "for-each-ref", "--format=%(refname:short)", "refs/heads"], repository, true
+        ).readLines().findAll { it && it != "dev" }.sort()
+        if (branches.isEmpty()) {
+            throw new GradleException("No local branches are available to publish after excluding dev.")
+        }
+
+        File temporaryRoot = Files.createTempDirectory("emote-modrinth-").toFile()
+        List<Map<String, Object>> builds = []
+        List<File> worktrees = []
+
+        try {
+            logger.lifecycle("Building branches before any upload: ${branches.join(', ')}")
+            branches.each { String branch ->
+                File worktree = new File(temporaryRoot, branch.replaceAll('[^A-Za-z0-9._-]', '_'))
+                runCommand(["git", "worktree", "add", "--detach", worktree.absolutePath, branch], repository, false)
+                worktrees.add(worktree)
+
+                boolean windows = System.getProperty("os.name").toLowerCase(Locale.ROOT).contains("windows")
+                String wrapper = new File(worktree, windows ? "gradlew.bat" : "gradlew").absolutePath
+                runCommand([wrapper, "assemble", "--no-daemon"], worktree, false)
+
+                Properties properties = new Properties()
+                new File(worktree, "gradle.properties").withInputStream { properties.load(it) }
+                String modVersion = properties.getProperty("mod_version")
+                String minecraftVersion = properties.getProperty("minecraft_version")
+                String archiveName = properties.getProperty("archives_base_name")
+                Map modMetadata = new JsonSlurper().parse(new File(worktree, "src/main/resources/fabric.mod.json")) as Map
+                Object minecraftRequirement = (modMetadata.depends as Map).minecraft
+                File artifact = new File(worktree, "build/libs/${archiveName}-${modVersion}.jar")
+                if (!artifact.isFile()) {
+                    throw new GradleException("Built artifact was not found for ${branch}: ${artifact}")
+                }
+
+                builds.add([
+                    branch: branch,
+                    artifact: artifact,
+                    modVersion: modVersion,
+                    minecraftVersion: minecraftVersion,
+                    minecraftRequirement: minecraftRequirement,
+                    versionNumber: "${modVersion}+${minecraftVersion}"
+                ])
+            }
+
+            HttpClient client = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL).build()
+            String userAgent = "hanhy06/emote Gradle publisher (https://github.com/hanhy06/emote)"
+            HttpRequest gameVersionsRequest = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/tag/game_version"))
+                .header("User-Agent", userAgent)
+                .GET()
+                .build()
+            List gameVersionTags = new JsonSlurper().parseText(sendRequest(client, gameVersionsRequest).body()) as List
+            List<String> availableGameVersions = gameVersionTags.collect { it.version as String }
+            File fabricLoaderJar = configurations.compileClasspath.files.find { it.name.startsWith("fabric-loader-") && !it.name.endsWith("-sources.jar") }
+            if (!fabricLoaderJar) {
+                throw new GradleException("Fabric Loader was not found on the compile classpath.")
+            }
+            builds.each { build ->
+                build.gameVersions = resolveGameVersions(build.minecraftRequirement, availableGameVersions, fabricLoaderJar)
+            }
+
+            logger.lifecycle("All ${builds.size()} branches built successfully. No upload has started yet.")
+            builds.each { build ->
+                logger.lifecycle("  ${build.branch}: ${build.versionNumber}, Minecraft ${build.minecraftRequirement} -> ${build.gameVersions.join(', ')} (${build.artifact.name})")
+            }
+
+            List<String> repeatedNumbers = builds.groupBy { it.versionNumber }.findAll { ignored, grouped -> grouped.size() > 1 }.keySet() as List
+            if (!repeatedNumbers.isEmpty()) {
+                throw new GradleException("Multiple branches produced the same version number: ${repeatedNumbers.join(', ')}")
+            }
+
+            if (debugMode) {
+                logger.lifecycle("Modrinth debug mode is enabled. Public uploads were skipped.")
+                return
+            }
+
+            HttpRequest versionsRequest = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/project/qUF0jygw/version"))
+                .header("Authorization", token)
+                .header("User-Agent", userAgent)
+                .GET()
+                .build()
+            List existingVersions = new JsonSlurper().parseText(sendRequest(client, versionsRequest).body()) as List
+            Set<String> existingNumbers = existingVersions.collect { it.version_number as String } as Set
+            List<String> duplicates = builds.collect { it.versionNumber as String }.findAll { it in existingNumbers }
+            if (!duplicates.isEmpty()) {
+                throw new GradleException("These Modrinth versions already exist; nothing was uploaded: ${duplicates.join(', ')}")
+            }
+
+            builds.each { build ->
+                Map<String, Object> metadata = [
+                    name: "Emote ${build.modVersion}",
+                    version_number: build.versionNumber,
+                    changelog: "",
+                    dependencies: [
+                        [project_id: "P7dR8mSH", dependency_type: "required"],
+                        [project_id: "lzVo0Dll", dependency_type: "embedded"]
+                    ],
+                    game_versions: build.gameVersions,
+                    version_type: versionType,
+                    loaders: ["fabric"],
+                    featured: false,
+                    status: "listed",
+                    project_id: "qUF0jygw",
+                    file_parts: ["file"],
+                    primary_file: "file",
+                    environment: "client_and_server"
+                ]
+                String boundary = "----emote-${UUID.randomUUID()}"
+                byte[] body = createMultipartBody(metadata, build.artifact as File, boundary)
+                HttpRequest uploadRequest = HttpRequest.newBuilder(URI.create("https://api.modrinth.com/v2/version"))
+                    .header("Authorization", token)
+                    .header("User-Agent", userAgent)
+                    .header("Content-Type", "multipart/form-data; boundary=${boundary}")
+                    .POST(HttpRequest.BodyPublishers.ofByteArray(body))
+                    .build()
+                Map response = new JsonSlurper().parseText(sendRequest(client, uploadRequest).body()) as Map
+                logger.lifecycle("Published ${build.branch} as Modrinth version ${response.id} (${build.versionNumber}).")
+            }
+        } finally {
+            worktrees.reverseEach { File worktree ->
+                try {
+                    runCommand(["git", "worktree", "remove", "--force", worktree.absolutePath], repository, false)
+                } catch (Exception cleanupError) {
+                    logger.warn("Could not remove temporary worktree ${worktree}: ${cleanupError.message}")
+                }
+            }
+            Files.deleteIfExists(temporaryRoot.toPath())
+        }
+    }
+}

@@ -108,6 +108,8 @@ jar {
     }
 }
 
+apply from: "gradle/modrinth.gradle"
+
 // configure the maven publication
 publishing {
     publications {
