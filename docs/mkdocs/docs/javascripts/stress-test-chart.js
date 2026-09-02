@@ -7,12 +7,12 @@
     { players: 75, displays: 1340 },
     { players: 100, displays: 1760 }
   ];
-  const labels = measurements.map(({ players, displays }) => [`${players}명`, `약 ${displays.toLocaleString("ko-KR")} 디스플레이`]);
+  const labels = measurements.map(({ players, displays }) => [`${players}명 상당`, `약 ${displays.toLocaleString("ko-KR")} 디스플레이`]);
   const metrics = {
     mspt: {
       title: "서버 MSPT",
       unit: "ms",
-      summary: "동시 진행 인원이 늘수록 MSPT가 전반적으로 증가했다. 75명에서는 평균이 50 ms를 넘었고, 100명 측정에서는 p95가 88.11 ms까지 상승했다.",
+      summary: "합성 부하가 커질수록 MSPT가 증가했다. 75명 상당에서는 평균이 50 ms를 넘었고, 100명 상당에서는 평균 81.21 ms와 p95 88.11 ms가 측정됐다.",
       datasets: [
         { label: "평균", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
         { label: "p95", data: [16.78, 21.59, 33.60, 56.37, 88.11], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
@@ -23,7 +23,7 @@
     packets: {
       title: "패킷 처리",
       unit: "ms",
-      summary: "패킷 처리 시간과 런타임 처리량을 함께 표시한다. 100명에서 평균 60.895 ms, 최대 89.756 ms와 초당 약 153만 패킷이 측정됐다.",
+      summary: "패킷 처리 시간과 런타임 처리량을 함께 표시한다. 100명 상당에서 평균 60.895 ms, 최대 89.756 ms와 초당 약 153만 패킷이 측정됐다.",
       datasets: [
         { label: "틱 평균", data: [1.740, 5.749, 18.473, 40.456, 60.895], unit: "ms", yAxisID: "y", borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
         { label: "틱 최대", data: [6.142, 16.079, 30.780, 50.546, 89.756], unit: "ms", yAxisID: "y", borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
@@ -128,7 +128,7 @@
               callbacks: {
                 title: context => {
                   const measurement = measurements[context[0].dataIndex];
-                  return `${measurement.players}명 동시 진행 · 약 ${measurement.displays.toLocaleString("ko-KR")} 디스플레이`;
+                  return `${measurement.players}명 상당 · ${measurement.players} 인스턴스 / fanout ${measurement.players}`;
                 },
                 label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`
               }
@@ -138,7 +138,7 @@
             x: {
               title: {
                 display: true,
-                text: "동시 진행 플레이어 수 / 디스플레이 수"
+                text: "동시 진행 상당 부하 / 디스플레이 수"
               }
             },
             y: {
