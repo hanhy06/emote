@@ -161,7 +161,8 @@ final class AdminCommandTest {
             packetLoad
         );
 
-        String summary = AdminCommand.createPacketLoadSummary(report).getString();
+        var summaryComponent = AdminCommand.createPacketLoadSummary(report);
+        String summary = summaryComponent.getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
         assertTrue(summary.contains("Encode: avg 1.000 ms / max 2.000 ms"));
@@ -169,6 +170,10 @@ final class AdminCommandTest {
         assertFalse(summary.contains("median:"));
         assertFalse(summary.contains("p95:"));
         assertFalse(summary.toLowerCase().contains("client"));
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD), summaryComponent.getSiblings().get(6).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(7).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.LIGHT_PURPLE), summaryComponent.getSiblings().get(8).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(9).getStyle());
     }
 
     @Test

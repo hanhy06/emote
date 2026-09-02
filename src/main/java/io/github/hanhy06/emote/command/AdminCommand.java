@@ -355,12 +355,13 @@ public final class AdminCommand {
             .append(Component.literal("  Duration: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(Locale.ROOT, "%.1f s", report.elapsedSeconds())).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\nServer performance").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "\n• TPS: avg %.2f / min (worst) %.2f",
+                "avg %.2f / min (worst) %.2f",
                 report.averageTps(),
                 report.minimumTps()
-            )))
+            )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• MSPT").withStyle(ChatFormatting.GREEN))
             .append(createStressStatistic("\n  ", "baseline", "%.2f ms", ChatFormatting.GRAY, report.baselineMspt()))
             .append(createStressStatistic("  ", "avg", "%.2f ms", ChatFormatting.GREEN, report.averageMspt()))
@@ -369,14 +370,21 @@ public final class AdminCommand {
             .append(createStressStatistic("\n  ", "max", "%.2f ms", ChatFormatting.RED, report.maximumMspt()))
             .append(createStressStatistic("  ", "samples", "%.0f", ChatFormatting.LIGHT_PURPLE, report.measuredServerTicks()))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n• Create: ").withStyle(ChatFormatting.YELLOW))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "\n• create %.2f ms / cleanup %.2f ms / avg %.3f ms / max %.3f ms",
-                report.creationMillis(),
-                report.cleanupMillis(),
+                "%.2f ms",
+                report.creationMillis()
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Cleanup: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(String.format(Locale.ROOT, "%.2f ms", report.cleanupMillis())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "avg %.3f ms / max %.3f ms",
                 report.averageManagerCpuMillis(),
                 report.maximumManagerCpuMillis()
-            )))
+            )).withStyle(ChatFormatting.WHITE))
             .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
     }
@@ -413,18 +421,20 @@ public final class AdminCommand {
                 packetsPerSecond,
                 mebibytesPerSecond
             )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Encode: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "\n• Encode: avg %.3f ms / max %.3f ms",
+                "avg %.3f ms / max %.3f ms",
                 averageEncodingMillis,
                 packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D
-            )))
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Traffic/tick: ").withStyle(ChatFormatting.LIGHT_PURPLE))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "\n• Traffic/tick: avg %.2f MiB / max %.2f MiB",
+                "avg %.2f MiB / max %.2f MiB",
                 averageMebibytesPerTick,
                 packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
-            )));
+            )).withStyle(ChatFormatting.WHITE));
     }
 
     static MutableComponent createStressStatistic(
