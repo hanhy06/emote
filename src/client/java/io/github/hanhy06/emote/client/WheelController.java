@@ -45,7 +45,7 @@ public class WheelController {
             return;
         }
 
-        client.gui.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
+        client.setScreen(new WheelScreen(this, getShortcutEmotes(), findInitialPageIndex(), keyMapping));
     }
 
     public void play(EmoteSummary emoteSummary) {
@@ -59,7 +59,7 @@ public class WheelController {
     }
 
     public void openShortcutEditor() {
-        Minecraft.getInstance().gui.setScreen(new WheelShortcutScreen(this));
+        Minecraft.getInstance().setScreen(new WheelShortcutScreen(this));
     }
 
     public List<EmoteSummary> getShortcutEmotes() {
@@ -99,7 +99,7 @@ public class WheelController {
     }
 
     private void tickBinding(Minecraft client, KeyMapping keyMapping) {
-        if (client.gui.screen() != null || client.player == null) {
+        if (client.screen != null || client.player == null) {
             return;
         }
 

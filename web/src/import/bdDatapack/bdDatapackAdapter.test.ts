@@ -23,7 +23,7 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
 
     expect((await bdDatapackAdapter.probe(input)).confidence).toBe(100);
     const project = await bdDatapackAdapter.import(input);
-    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2" });
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.1" });
 
     expect(project).toMatchObject({ source: "bd_datapack", suggestedNamespace: "dance" });
     expect(project.nodes.display_0).toMatchObject({ skinAssignmentGroup: "display_0" });

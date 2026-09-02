@@ -23,7 +23,7 @@ import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.SlotAccess;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -239,9 +239,9 @@ public final class PlaybackEntityController {
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {
         Display display = switch (node) {
-            case EmoteAnimation.ItemNode ignored -> EntityTypes.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.BlockNode ignored -> EntityTypes.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
-            case EmoteAnimation.TextNode ignored -> EntityTypes.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.ItemNode ignored -> EntityType.ITEM_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.BlockNode ignored -> EntityType.BLOCK_DISPLAY.create(level, EntitySpawnReason.COMMAND);
+            case EmoteAnimation.TextNode ignored -> EntityType.TEXT_DISPLAY.create(level, EntitySpawnReason.COMMAND);
             case EmoteAnimation.AnchorNode ignored ->
                 throw new IllegalArgumentException("Anchor nodes do not have display entities");
         };

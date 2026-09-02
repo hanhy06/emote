@@ -60,7 +60,7 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(0.9375);
     expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(0.9375);
 
-    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.1" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
 

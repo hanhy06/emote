@@ -11,7 +11,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
-import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
@@ -83,7 +83,7 @@ public final class IdleButterflyCallbackExample {
         removeAllay(playerUuid);
 
         ServerLevel level = event.player().level();
-        Allay allay = EntityTypes.ALLAY.create(level, EntitySpawnReason.COMMAND);
+        Allay allay = EntityType.ALLAY.create(level, EntitySpawnReason.COMMAND);
         if (allay == null) {
             throw new IllegalStateException("Failed to create the idle butterfly Allay");
         }
