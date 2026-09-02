@@ -381,9 +381,10 @@ public final class AdminCommand {
             .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "avg %.3f ms / max %.3f ms",
-                report.averageManagerCpuMillis(),
-                report.maximumManagerCpuMillis()
+                "total %.1f s / avg %.3f ms / max %.3f ms",
+                report.emoteProcessingSeconds(),
+                report.averageEmoteProcessingMillis(),
+                report.maximumEmoteProcessingMillis()
             )).withStyle(ChatFormatting.WHITE))
             .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
@@ -413,6 +414,14 @@ public final class AdminCommand {
                 "%,d packets / %.2f MiB",
                 packets.creationPackets(),
                 packets.creationBytes() / 1_048_576.0D
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Processing: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "total %.1f s / avg %.3f ms / max %.3f ms",
+                report.networkProcessingSeconds(),
+                report.averageNetworkProcessingMillis(),
+                report.maximumNetworkProcessingMillis()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• Runtime: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(

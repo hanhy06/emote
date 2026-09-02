@@ -167,22 +167,34 @@ public final class PlaybackStressTest {
             return;
         }
 
-        long managerStartedNanos = System.nanoTime();
+        long emoteProcessingNanos = 0L;
+        long networkProcessingNanos = 0L;
         try {
             Iterator<StressTestInstance> iterator = current.instances().iterator();
             while (iterator.hasNext()) {
                 StressTestInstance instance = iterator.next();
                 try {
-                    AnimationPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
-                    if (result == AnimationPlayer.AdvanceResult.FINISHED) {
-                        instance.timeline = new AnimationPlayer(
-                            instance.emote,
-                            instance.nodes,
-                            this.entityController
-                        );
-                        instance.timeline.start();
+                    long emoteStartedNanos = System.nanoTime();
+                    try {
+                        AnimationPlayer.AdvanceResult result = advanceTimeline(instance.timeline);
+                        if (result == AnimationPlayer.AdvanceResult.FINISHED) {
+                            instance.timeline = new AnimationPlayer(
+                                instance.emote,
+                                instance.nodes,
+                                this.entityController
+                            );
+                            instance.timeline.start();
+                        }
+                    } finally {
+                        emoteProcessingNanos += System.nanoTime() - emoteStartedNanos;
                     }
-                    this.packetLoad.sync(instance.nodes);
+
+                    long networkStartedNanos = System.nanoTime();
+                    try {
+                        this.packetLoad.sync(instance.nodes);
+                    } finally {
+                        networkProcessingNanos += System.nanoTime() - networkStartedNanos;
+                    }
                 } catch (RuntimeException exception) {
                     EmoteMod.LOGGER.warn("Failed to run stress-test emote {}", instance.emote.id(), exception);
                     this.packetLoad.unregister(instance.nodes);
@@ -193,7 +205,7 @@ public final class PlaybackStressTest {
                 }
             }
         } finally {
-            current.recordManagerCpu(System.nanoTime() - managerStartedNanos);
+            current.recordProcessing(emoteProcessingNanos, networkProcessingNanos);
         }
         this.packetLoad.sampleRuntimeTick();
         current.recordCompletedServerTick();
@@ -301,10 +313,13 @@ public final class PlaybackStressTest {
         private long serverTickNanos;
         private long maximumServerTickNanos;
         private final List<Long> serverTickNanosSamples = new ArrayList<>();
-        private int managerCpuSamples;
-        private long managerCpuNanos;
-        private long maximumManagerCpuNanos;
-        private final List<Long> managerCpuNanosSamples = new ArrayList<>();
+        private int processingSamples;
+        private long emoteProcessingNanos;
+        private long maximumEmoteProcessingNanos;
+        private final List<Long> emoteProcessingNanosSamples = new ArrayList<>();
+        private long networkProcessingNanos;
+        private long maximumNetworkProcessingNanos;
+        private final List<Long> networkProcessingNanosSamples = new ArrayList<>();
 
         private Session(
             ServerLevel level,
@@ -349,11 +364,14 @@ public final class PlaybackStressTest {
             this.activeDisplayEntities -= count;
         }
 
-        private void recordManagerCpu(long elapsedNanos) {
-            this.managerCpuSamples++;
-            this.managerCpuNanos += elapsedNanos;
-            this.maximumManagerCpuNanos = Math.max(this.maximumManagerCpuNanos, elapsedNanos);
-            this.managerCpuNanosSamples.add(elapsedNanos);
+        private void recordProcessing(long emoteNanos, long networkNanos) {
+            this.processingSamples++;
+            this.emoteProcessingNanos += emoteNanos;
+            this.maximumEmoteProcessingNanos = Math.max(this.maximumEmoteProcessingNanos, emoteNanos);
+            this.emoteProcessingNanosSamples.add(emoteNanos);
+            this.networkProcessingNanos += networkNanos;
+            this.maximumNetworkProcessingNanos = Math.max(this.maximumNetworkProcessingNanos, networkNanos);
+            this.networkProcessingNanosSamples.add(networkNanos);
         }
 
         private void recordCompletedServerTick() {
@@ -397,12 +415,23 @@ public final class PlaybackStressTest {
             double medianTps = estimatedTps(medianMspt, this.targetTps);
             double percentile5Tps = estimatedTps(percentile95Mspt, this.targetTps);
             double minimumTps = estimatedTps(maximumMspt, this.targetTps);
-            double averageManagerCpuMillis = this.managerCpuSamples == 0
+            double averageEmoteProcessingMillis = this.processingSamples == 0
                 ? 0.0D
-                : nanosToMillis(this.managerCpuNanos) / this.managerCpuSamples;
-            double medianManagerCpuMillis = nanosToMillis(StressTestStatistics.median(this.managerCpuNanosSamples));
-            double percentile95ManagerCpuMillis = nanosToMillis(
-                StressTestStatistics.percentile95(this.managerCpuNanosSamples)
+                : nanosToMillis(this.emoteProcessingNanos) / this.processingSamples;
+            double medianEmoteProcessingMillis = nanosToMillis(
+                StressTestStatistics.median(this.emoteProcessingNanosSamples)
+            );
+            double percentile95EmoteProcessingMillis = nanosToMillis(
+                StressTestStatistics.percentile95(this.emoteProcessingNanosSamples)
+            );
+            double averageNetworkProcessingMillis = this.processingSamples == 0
+                ? 0.0D
+                : nanosToMillis(this.networkProcessingNanos) / this.processingSamples;
+            double medianNetworkProcessingMillis = nanosToMillis(
+                StressTestStatistics.median(this.networkProcessingNanosSamples)
+            );
+            double percentile95NetworkProcessingMillis = nanosToMillis(
+                StressTestStatistics.percentile95(this.networkProcessingNanosSamples)
             );
             return new PlaybackStressTestReport(
                 this.requestedInstances,
@@ -424,10 +453,16 @@ public final class PlaybackStressTest {
                 percentile5Tps,
                 minimumTps,
                 Math.max(0.0D, baselineTps - averageTps),
-                averageManagerCpuMillis,
-                medianManagerCpuMillis,
-                percentile95ManagerCpuMillis,
-                nanosToMillis(this.maximumManagerCpuNanos),
+                this.emoteProcessingNanos / 1_000_000_000.0D,
+                averageEmoteProcessingMillis,
+                medianEmoteProcessingMillis,
+                percentile95EmoteProcessingMillis,
+                nanosToMillis(this.maximumEmoteProcessingNanos),
+                this.networkProcessingNanos / 1_000_000_000.0D,
+                averageNetworkProcessingMillis,
+                medianNetworkProcessingMillis,
+                percentile95NetworkProcessingMillis,
+                nanosToMillis(this.maximumNetworkProcessingNanos),
                 packetLoad
             );
         }

@@ -20,10 +20,16 @@ public record PlaybackStressTestReport(
     double percentile5Tps,
     double minimumTps,
     double tpsDrop,
-    double averageManagerCpuMillis,
-    double medianManagerCpuMillis,
-    double percentile95ManagerCpuMillis,
-    double maximumManagerCpuMillis,
+    double emoteProcessingSeconds,
+    double averageEmoteProcessingMillis,
+    double medianEmoteProcessingMillis,
+    double percentile95EmoteProcessingMillis,
+    double maximumEmoteProcessingMillis,
+    double networkProcessingSeconds,
+    double averageNetworkProcessingMillis,
+    double medianNetworkProcessingMillis,
+    double percentile95NetworkProcessingMillis,
+    double maximumNetworkProcessingMillis,
     StressTestPacketLoad.PacketLoadResult packetLoad
 ) {
 }

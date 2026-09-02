@@ -157,7 +157,8 @@ final class AdminCommandTest {
             100, 100, 500, 0, 20, 2.0D, 10.0D, 5.0D,
             10.0D, 20.0D, 18.0D, 25.0D, 30.0D,
             20.0D, 20.0D, 20.0D, 20.0D, 20.0D, 0.0D,
-            1.0D, 0.9D, 1.5D, 2.0D,
+            0.02D, 1.0D, 0.9D, 1.5D, 2.0D,
+            4.0D, 2.0D, 1.8D, 3.0D, 4.0D,
             packetLoad
         );
 
@@ -165,15 +166,16 @@ final class AdminCommandTest {
         String summary = summaryComponent.getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
+        assertTrue(summary.contains("Processing: total 4.0 s / avg 2.000 ms / max 4.000 ms"));
         assertTrue(summary.contains("Encode: avg 1.000 ms / max 2.000 ms"));
         assertTrue(summary.contains("Traffic/tick: avg 0.10 MiB / max 0.25 MiB"));
         assertFalse(summary.contains("median:"));
         assertFalse(summary.contains("p95:"));
         assertFalse(summary.toLowerCase().contains("client"));
-        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD), summaryComponent.getSiblings().get(6).getStyle());
-        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(7).getStyle());
-        assertEquals(Style.EMPTY.withColor(ChatFormatting.LIGHT_PURPLE), summaryComponent.getSiblings().get(8).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD), summaryComponent.getSiblings().get(8).getStyle());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(9).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.LIGHT_PURPLE), summaryComponent.getSiblings().get(10).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(11).getStyle());
     }
 
     @Test
