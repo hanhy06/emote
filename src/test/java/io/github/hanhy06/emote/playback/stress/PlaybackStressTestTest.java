@@ -74,4 +74,16 @@ class PlaybackStressTestTest {
         assertTrue(PlaybackStressTest.hasCompletedDuration(200, 200));
         assertTrue(PlaybackStressTest.hasCompletedDuration(201, 200));
     }
+
+    @Test
+    void includesEndServerTickProcessingInTheCurrentServerTickSample() {
+        long[] tickTimesNanos = new long[100];
+        tickTimesNanos[41] = 8_000_000L;
+        tickTimesNanos[42] = 9_000_000L;
+
+        assertEquals(
+            79_000_000L,
+            PlaybackStressTest.measureCompletedTickNanos(42, tickTimesNanos, 70_000_000L)
+        );
+    }
 }
