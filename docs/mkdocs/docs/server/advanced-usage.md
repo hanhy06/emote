@@ -86,25 +86,28 @@ A Sequence connects multiple Animations in order and presents them to the player
 
 ```text
 config/emote/emote/sit/
-├── sit-down.json
-├── sit-idle.json
-├── stand-up.json
-└── sit.json
+├── emote.1.sit_down.json
+├── emote.2.idle_sky.json
+├── emote.3.idle_butterfly.json
+├── emote.4.idle_flower.json
+├── emote.5.stand_up1.json
+├── emote.6.stand_up2.json
+└── emote.sit.json
 ```
 
-`sit.json`:
+`emote.sit.json`:
 
 ```json
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "example:sit",
+  "id": "emote:sit",
   "metadata": {
-    "name": "Sit",
-    "description": "Sit down and stand up after waiting."
+    "name": "Emote sit",
+    "description": "Idle emote sit down emote."
   },
   "settings": {
-    "cooldown": "5s",
+    "cooldown": "0t",
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -119,9 +122,16 @@ config/emote/emote/sit/
     }
   },
   "steps": [
-    {"emote": "example:sit-down"},
-    {"emote": "example:sit-idle", "repeat": 3},
-    {"emote": "example:stand-up"}
+    {"emote": "emote:sit_down"},
+    {
+      "emote": [
+        "emote:idle_sky", 40,
+        "emote:idle_butterfly", 35,
+        "emote:idle_flower", 25
+      ],
+      "repeat": 2
+    },
+    {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
   ]
 }
 ```
@@ -140,11 +150,11 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 1. Place all JSON files under `emote/` on the same server.
 2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
-3. Run `/emote play example:sit` with normal player permissions.
+3. Run `/emote play emote:sit` with normal player permissions.
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
 !!! note "Complete example pack"
-    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
+    The repository includes the ready-to-install [sit sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/sit) shown above and a [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake).
 
 To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).
