@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import java.util.LinkedHashMap;
 
 import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
 import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -117,13 +118,18 @@ final class AdminCommandTest {
         assertInstanceOf(TimeArgument.class, time.getType());
         assertNotNull(time.getCommand());
 
-        var count = time.getChild("count");
+        var count = (ArgumentCommandNode<?, ?>) time.getChild("count");
         assertNotNull(count);
+        var countType = (IntegerArgumentType) count.getType();
+        assertEquals(1, countType.getMinimum());
+        assertEquals(500, countType.getMaximum());
+        assertEquals(MAX_STRESS_TEST_INSTANCE_COUNT, countType.getMaximum());
 
         var packets = (ArgumentCommandNode<?, ?>) count.getChild("packets");
         assertNotNull(packets);
         var packetsType = (IntegerArgumentType) packets.getType();
         assertEquals(0, packetsType.getMinimum());
+        assertEquals(500, packetsType.getMaximum());
         assertEquals(MAX_STRESS_TEST_PACKET_FANOUT, packetsType.getMaximum());
         assertEquals(20, DEFAULT_STRESS_TEST_PACKET_FANOUT);
     }
