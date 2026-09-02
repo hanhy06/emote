@@ -133,7 +133,7 @@
               callbacks: {
                 title: context => {
                   const measurement = measurements[context[0].dataIndex];
-                  return `${measurement.players}명 상당 · ${measurement.players} 인스턴스 / fanout ${measurement.players}`;
+                  return `${measurement.players}명 상당 · 약 ${measurement.displays.toLocaleString("ko-KR")} 디스플레이`;
                 },
                 label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`,
                 footer: context => metric.stacked
