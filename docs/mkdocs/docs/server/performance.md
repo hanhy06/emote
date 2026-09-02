@@ -15,13 +15,13 @@
 <div id="stress-test-chart" class="stress-chart" data-selected-metric="mspt">
   <div class="stress-chart__controls" role="group" aria-label="그래프 지표 선택">
     <button type="button" data-metric="mspt" aria-pressed="true">MSPT</button>
-    <button type="button" data-metric="packets" aria-pressed="false">패킷 처리</button>
+    <button type="button" data-metric="duration" aria-pressed="false">실제 시간 구성</button>
   </div>
   <div class="stress-chart__canvas">
     <canvas id="stressTestChart" aria-label="동시 에모트 합성 부하 증가에 따른 스트레스 테스트 결과"></canvas>
   </div>
   <p class="stress-chart__summary" aria-live="polite"></p>
-  <noscript>그래프를 보려면 JavaScript를 활성화해야 한다. 전체 측정값은 아래 상세 결과에서 확인할 수 있다.</noscript>
+  <noscript>그래프를 보려면 JavaScript를 활성화해야 한다.</noscript>
 </div>
 
 ## 측정 방식
@@ -38,8 +38,6 @@
 ## 해석
 
 - 평균 MSPT는 10명 상당 9.66 ms, 25명 상당 13.33 ms, 50명 상당 26.93 ms까지 50 ms 기준 아래에 머물렀다. 75명 상당에서는 50.66 ms로 기준을 막 넘었고, 100명 상당에서는 81.21 ms까지 상승했다. 이 서버와 테스트 구성에서는 75×75 부하부터 20 TPS를 지속하기 어려워지는 경계가 나타난다.
-- 패킷 처리 시간은 75명 상당 평균 40.456 ms에서 100명 상당 60.895 ms로 약 51% 증가했지만, 처리량은 초당 1,414,816개에서 1,534,801개로 약 8.5%만 증가했다. 100명 상당 구간은 패킷 직렬화·압축 처리량이 포화에 가까워지면서 추가 부하가 처리량보다 지연 시간으로 나타난 것으로 해석할 수 있다.
-- 100명 상당에서 에모트 타임라인 자체의 평균 처리 시간은 4.109 ms인 반면 패킷 처리 시간은 60.895 ms였다. 이 측정에서 주된 병목은 애니메이션 계산보다 변경 패킷 비교·생성·인코딩 쪽이다.
+- 600틱은 20 TPS에서 30초가 걸린다. 10~50명 상당에서는 전체 시간이 30초로 유지됐지만 75명 상당에서는 32.0초, 100명 상당에서는 51.4초로 늘어 서버가 목표 틱 속도를 유지하지 못했다.
+- 부하가 커질수록 `Server/idle`이 줄고 `Network`가 1.0초에서 41.3초까지 증가했다. 100명 상당에서는 전체 51.4초 중 약 80%를 차지하므로, 주된 병목은 에모트 타임라인 계산보다 변경 감지와 패킷 직렬화·압축이다.
 - 이 결과로 실제 서버의 최대 접속 인원을 바로 정할 수는 없다. 실제 한계는 동시에 에모트를 사용하는 비율, 플레이어 간 추적 범위, 에모트별 디스플레이 수, 서버 CPU, 압축 설정, 다른 모드와 월드 부하에 따라 달라진다.
-
-## 해석

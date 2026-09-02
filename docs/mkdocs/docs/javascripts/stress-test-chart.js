@@ -20,16 +20,20 @@
         { label: "20 TPS 기준", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
       ]
     },
-    packets: {
-      title: "패킷 처리",
-      unit: "ms",
-      summary: "패킷 처리 시간과 런타임 처리량을 함께 표시한다. 100명 상당에서 평균 60.895 ms, 최대 89.756 ms와 초당 약 153만 패킷이 측정됐다.",
+    duration: {
+      type: "bar",
+      title: "실제 시간 구성",
+      unit: "초",
+      axisTitle: "시간 (초)",
+      stacked: true,
+      summary: "600틱의 실제 경과 시간과 구성을 표시한다. 100명 상당에서는 총 51.4초 중 패킷 변경 감지와 인코딩에 해당하는 Network가 41.3초를 차지했다.",
       datasets: [
-        { label: "틱 평균", data: [1.740, 5.749, 18.473, 40.456, 60.895], unit: "ms", yAxisID: "y", borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "틱 최대", data: [6.142, 16.079, 30.780, 50.546, 89.756], unit: "ms", yAxisID: "y", borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
-        { label: "처리량", data: [33912, 159004, 650309, 1414816, 1534801], unit: "패킷/초", yAxisID: "y1", borderColor: "#66d17a", backgroundColor: "#66d17a" }
-      ],
-      secondaryAxis: true
+        { label: "Setup", data: [0.2, 0.2, 0.7, 1.5, 2.5], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
+        { label: "Emote", data: [0.4, 0.6, 1.1, 1.8, 2.5], backgroundColor: "#43a047", borderColor: "#66bb6a" },
+        { label: "Network", data: [1.0, 3.4, 11.1, 24.3, 41.3], backgroundColor: "#00acc1", borderColor: "#26c6da" },
+        { label: "Server/idle", data: [28.4, 25.8, 17.1, 4.3, 5.0], backgroundColor: "#78909c", borderColor: "#90a4ae" },
+        { label: "Cleanup", data: [0.0, 0.0, 0.0, 0.1, 0.1], backgroundColor: "#fb8c00", borderColor: "#ffa726" }
+      ]
     }
   };
   const hoverLinePlugin = {
@@ -94,14 +98,15 @@
       }
 
       stressTestChart = new Chart(canvas.getContext("2d"), {
-        type: "line",
+        type: metric.type || "line",
         plugins: [hoverLinePlugin],
         data: {
           labels,
           datasets: metric.datasets.map(dataset => ({
             ...dataset,
             tension: 0.15,
-            borderWidth: 3,
+            borderWidth: dataset.borderWidth ?? (metric.type === "bar" ? 1 : 3),
+            borderRadius: metric.type === "bar" ? 2 : undefined,
             pointRadius: dataset.pointRadius ?? 4,
             pointHoverRadius: dataset.pointHoverRadius ?? 6
           }))
@@ -124,18 +129,22 @@
               }
             },
             tooltip: {
-              itemSort: (a, b) => b.parsed.y - a.parsed.y,
+              itemSort: metric.type === "bar" ? (a, b) => a.datasetIndex - b.datasetIndex : (a, b) => b.parsed.y - a.parsed.y,
               callbacks: {
                 title: context => {
                   const measurement = measurements[context[0].dataIndex];
                   return `${measurement.players}명 상당 · ${measurement.players} 인스턴스 / fanout ${measurement.players}`;
                 },
-                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`
+                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`,
+                footer: context => metric.stacked
+                  ? `합계: ${context.reduce((total, item) => total + item.parsed.y, 0).toFixed(1)} ${metric.unit}`
+                  : undefined
               }
             }
           },
           scales: {
             x: {
+              stacked: metric.stacked || false,
               title: {
                 display: true,
                 text: "동시 진행 상당 부하 / 디스플레이 수"
@@ -143,30 +152,15 @@
             },
             y: {
               beginAtZero: true,
+              stacked: metric.stacked || false,
               title: {
                 display: true,
-                text: "처리 시간 (ms)"
+                text: metric.axisTitle || "MSPT (ms)"
               },
               ticks: {
                 callback: value => value
               }
-            },
-            ...(metric.secondaryAxis ? {
-              y1: {
-                beginAtZero: true,
-                position: "right",
-                grid: {
-                  drawOnChartArea: false
-                },
-                title: {
-                  display: true,
-                  text: "처리량 (패킷/초)"
-                },
-                ticks: {
-                  callback: value => Number(value).toLocaleString("ko-KR")
-                }
-              }
-            } : {})
+            }
           }
         }
       });
