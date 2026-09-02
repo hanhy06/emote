@@ -164,8 +164,10 @@ final class AdminCommandTest {
         String summary = AdminCommand.createPacketLoadSummary(report).getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
-        assertTrue(summary.contains("avg: 1.000 ms  median: 0.900 ms\n  p95: 1.500 ms  max: 2.000 ms"));
-        assertTrue(summary.contains("avg: 0.10 MiB  median: 0.13 MiB\n  p95: 0.20 MiB  max: 0.25 MiB"));
+        assertTrue(summary.contains("avg: 1.000 ms  max: 2.000 ms"));
+        assertTrue(summary.contains("avg: 0.10 MiB  max: 0.25 MiB"));
+        assertFalse(summary.contains("median:"));
+        assertFalse(summary.contains("p95:"));
         assertFalse(summary.toLowerCase().contains("client"));
     }
 
