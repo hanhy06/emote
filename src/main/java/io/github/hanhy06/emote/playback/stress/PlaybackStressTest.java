@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
@@ -39,6 +40,7 @@ public final class PlaybackStressTest {
         int durationTicks,
         int instanceCount,
         int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
@@ -79,6 +81,7 @@ public final class PlaybackStressTest {
                     this.entityController
                 );
                 startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
+                this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
                 this.entityController.add(level, nodes);
                 try {
                     this.packetLoad.register(level, nodes);

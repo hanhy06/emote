@@ -22,6 +22,7 @@ import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.timeline.EventCommandExecutor;
 import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.server.level.ServerLevel;
@@ -520,9 +521,25 @@ public class PlaybackEngine implements ConfigListener {
         int durationTicks,
         int instanceCount,
         int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
         Consumer<PlaybackStressTestReport> completion
     ) {
-        return this.stressTest.start(level, origin, yaw, emotes, durationTicks, instanceCount, packetFanout, completion);
+        return this.stressTest.start(
+            level,
+            origin,
+            yaw,
+            emotes,
+            durationTicks,
+            instanceCount,
+            packetFanout,
+            preparedSkin,
+            completion
+        );
+    }
+
+    public PlayerSkinPreparation prepareStressTestSkin(ServerPlayer player, List<PreparedAnimation> emotes) {
+        List<SkinBinding> bindings = emotes.stream().flatMap(emote -> emote.skinBindings().stream()).distinct().toList();
+        return this.playerSkinManager.preparePlayerSkin(player, bindings);
     }
 
     public @Nullable PlaybackStressTestReport stopStressTest() {

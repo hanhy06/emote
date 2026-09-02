@@ -16,6 +16,8 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -288,6 +290,18 @@ public final class AdminCommand {
             return 0;
         }
 
+        PreparedPlayerSkin preparedSkin = null;
+        if (source.getEntity() instanceof ServerPlayer player) {
+            PlayerSkinPreparation skinPreparation = this.playbackEngine.prepareStressTestSkin(player, emotes);
+            if (skinPreparation.preparing()) {
+                source.sendFailure(Component.literal(
+                    "Preparing your skin… " + skinPreparation.progressPercent() + "% Run the stress test again when it is ready."
+                ));
+                return 0;
+            }
+            preparedSkin = skinPreparation.preparedPlayerSkin();
+        }
+
         int instanceCount;
         try {
             instanceCount = this.playbackEngine.startStressTest(
@@ -298,6 +312,7 @@ public final class AdminCommand {
                 durationTicks,
                 requestedInstanceCount,
                 packetFanout,
+                preparedSkin,
                 report -> sendStressTestReport(source, report)
             );
         } catch (RuntimeException exception) {
