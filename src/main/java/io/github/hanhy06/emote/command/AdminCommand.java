@@ -22,6 +22,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.IdentifierArgument;
+import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.level.ServerPlayer;
@@ -91,29 +92,33 @@ public final class AdminCommand {
     LiteralArgumentBuilder<CommandSourceStack> createStressTestCommand() {
         return Commands.literal("stress-test")
             .requires(this.permissionService.requireManage())
-            .executes(context -> startStressTest(
-                context.getSource(),
-                DEFAULT_STRESS_TEST_INSTANCE_COUNT,
-                DEFAULT_STRESS_TEST_PACKET_FANOUT
-            ))
-            .then(Commands.argument(
-                    "count",
-                    IntegerArgumentType.integer(1, MAX_STRESS_TEST_INSTANCE_COUNT)
-                )
+            .then(Commands.argument("time", TimeArgument.time(1))
                 .executes(context -> startStressTest(
                     context.getSource(),
-                    IntegerArgumentType.getInteger(context, "count"),
+                    IntegerArgumentType.getInteger(context, "time"),
+                    DEFAULT_STRESS_TEST_INSTANCE_COUNT,
                     DEFAULT_STRESS_TEST_PACKET_FANOUT
                 ))
                 .then(Commands.argument(
-                        "packets",
-                        IntegerArgumentType.integer(0, MAX_STRESS_TEST_PACKET_FANOUT)
+                        "count",
+                        IntegerArgumentType.integer(1, MAX_STRESS_TEST_INSTANCE_COUNT)
                     )
                     .executes(context -> startStressTest(
                         context.getSource(),
+                        IntegerArgumentType.getInteger(context, "time"),
                         IntegerArgumentType.getInteger(context, "count"),
-                        IntegerArgumentType.getInteger(context, "packets")
-                    ))))
+                        DEFAULT_STRESS_TEST_PACKET_FANOUT
+                    ))
+                    .then(Commands.argument(
+                            "packets",
+                            IntegerArgumentType.integer(0, MAX_STRESS_TEST_PACKET_FANOUT)
+                        )
+                        .executes(context -> startStressTest(
+                            context.getSource(),
+                            IntegerArgumentType.getInteger(context, "time"),
+                            IntegerArgumentType.getInteger(context, "count"),
+                            IntegerArgumentType.getInteger(context, "packets")
+                        )))))
             .then(Commands.literal("stop")
                 .executes(context -> stopStressTest(context.getSource())));
     }
@@ -276,7 +281,7 @@ public final class AdminCommand {
         return 1;
     }
 
-    private int startStressTest(CommandSourceStack source, int requestedInstanceCount, int packetFanout) {
+    private int startStressTest(CommandSourceStack source, int durationTicks, int requestedInstanceCount, int packetFanout) {
         List<PreparedAnimation> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -290,8 +295,10 @@ public final class AdminCommand {
                 source.getPosition(),
                 source.getRotation().y,
                 emotes,
+                durationTicks,
                 requestedInstanceCount,
-                packetFanout
+                packetFanout,
+                report -> sendStressTestReport(source, report)
             );
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote stress test", exception);
@@ -302,7 +309,8 @@ public final class AdminCommand {
         source.sendSuccess(
             () -> Component.literal(
                 "\n\n\nStarted a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
-                    + " grid using " + emotes.size() + " emotes and " + packetFanout + "× packet fanout."
+                    + " grid for " + String.format(Locale.ROOT, "%.1f", durationTicks / 20.0D) + " seconds using "
+                    + emotes.size() + " emotes and " + packetFanout + "× packet fanout."
             ),
             true
         );
@@ -316,6 +324,11 @@ public final class AdminCommand {
             return 0;
         }
 
+        sendStressTestReport(source, report);
+        return report.activeInstances();
+    }
+
+    private void sendStressTestReport(CommandSourceStack source, PlaybackStressTestReport report) {
         var message = Component.literal("\n\n\n\n\nEmote stress test results")
             .withStyle(ChatFormatting.GRAY)
             .append(Component.literal("\n• Instances: ").withStyle(ChatFormatting.YELLOW))
@@ -360,7 +373,6 @@ public final class AdminCommand {
             .append(Component.literal(Integer.toString(report.measuredServerTicks())).withStyle(ChatFormatting.WHITE))
             .append(createPacketLoadSummary(report));
         source.sendSuccess(() -> message, true);
-        return report.activeInstances();
     }
 
     static Component createPacketLoadSummary(PlaybackStressTestReport report) {

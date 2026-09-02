@@ -14,6 +14,7 @@ import io.github.hanhy06.emote.server.ReloadResult;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -107,9 +108,16 @@ final class AdminCommandTest {
     }
 
     @Test
-    void stressTestAcceptsAnOptionalPacketFanoutAfterTheInstanceCount() {
+    void stressTestRequiresTimeBeforeTheOptionalInstanceCountAndPacketFanout() {
         var command = createCommand(true).createStressTestCommand().build();
-        var count = command.getChild("count");
+        assertNull(command.getCommand());
+
+        var time = (ArgumentCommandNode<?, ?>) command.getChild("time");
+        assertNotNull(time);
+        assertInstanceOf(TimeArgument.class, time.getType());
+        assertNotNull(time.getCommand());
+
+        var count = time.getChild("count");
         assertNotNull(count);
 
         var packets = (ArgumentCommandNode<?, ?>) count.getChild("packets");

@@ -30,6 +30,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 import java.util.random.RandomGenerator;
 
 public class PlaybackEngine implements ConfigListener {
@@ -516,10 +517,12 @@ public class PlaybackEngine implements ConfigListener {
         Vec3 origin,
         float yaw,
         List<PreparedAnimation> emotes,
+        int durationTicks,
         int instanceCount,
-        int packetFanout
+        int packetFanout,
+        Consumer<PlaybackStressTestReport> completion
     ) {
-        return this.stressTest.start(level, origin, yaw, emotes, instanceCount, packetFanout);
+        return this.stressTest.start(level, origin, yaw, emotes, durationTicks, instanceCount, packetFanout, completion);
     }
 
     public @Nullable PlaybackStressTestReport stopStressTest() {

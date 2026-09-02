@@ -11,6 +11,7 @@ import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 100;
@@ -35,14 +36,19 @@ public final class PlaybackStressTest {
         Vec3 origin,
         float yaw,
         List<PreparedAnimation> emotes,
+        int durationTicks,
         int instanceCount,
-        int packetFanout
+        int packetFanout,
+        Consumer<PlaybackStressTestReport> completion
     ) {
         if (emotes.isEmpty()) {
             throw new IllegalArgumentException("At least one emote is required for a stress test");
         }
         if (instanceCount < 1 || instanceCount > MAX_INSTANCE_COUNT) {
             throw new IllegalArgumentException("Stress-test instance count is out of range: " + instanceCount);
+        }
+        if (durationTicks < 1) {
+            throw new IllegalArgumentException("Stress-test duration must be at least one tick");
         }
         if (packetFanout < 0 || packetFanout > MAX_PACKET_FANOUT) {
             throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
@@ -97,6 +103,8 @@ public final class PlaybackStressTest {
             instances,
             instanceCount,
             displayEntityCount,
+            durationTicks,
+            completion,
             startedNanos,
             startedServerTick,
             baselineTickNanos,
@@ -186,6 +194,13 @@ public final class PlaybackStressTest {
         }
         this.packetLoad.sampleRuntimeTick();
         current.recordCompletedServerTick();
+        current.completedTicks++;
+        if (hasCompletedDuration(current.completedTicks, current.durationTicks)) {
+            PlaybackStressTestReport report = stop();
+            if (report != null) {
+                current.completion.accept(report);
+            }
+        }
     }
 
     static int gridSize(int instanceCount) {
@@ -258,11 +273,17 @@ public final class PlaybackStressTest {
         return Math.min(targetTps, 1_000.0D / mspt);
     }
 
+    static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
+        return completedTicks >= durationTicks;
+    }
+
     private static final class Session {
         private final ServerLevel level;
         private final List<StressTestInstance> instances;
         private final int requestedInstances;
         private final int peakDisplayEntities;
+        private final int durationTicks;
+        private final Consumer<PlaybackStressTestReport> completion;
         private final long startedNanos;
         private final int startedServerTick;
         private final long baselineTickNanos;
@@ -271,6 +292,7 @@ public final class PlaybackStressTest {
 
         private int lastSampledServerTick = Integer.MIN_VALUE;
         private int activeDisplayEntities;
+        private int completedTicks;
         private int failedInstances;
         private int serverTickSamples;
         private long serverTickNanos;
@@ -284,6 +306,8 @@ public final class PlaybackStressTest {
             List<StressTestInstance> instances,
             int requestedInstances,
             int peakDisplayEntities,
+            int durationTicks,
+            Consumer<PlaybackStressTestReport> completion,
             long startedNanos,
             int startedServerTick,
             long baselineTickNanos,
@@ -294,6 +318,8 @@ public final class PlaybackStressTest {
             this.instances = instances;
             this.requestedInstances = requestedInstances;
             this.peakDisplayEntities = peakDisplayEntities;
+            this.durationTicks = durationTicks;
+            this.completion = completion;
             this.activeDisplayEntities = peakDisplayEntities;
             this.startedNanos = startedNanos;
             this.startedServerTick = startedServerTick;

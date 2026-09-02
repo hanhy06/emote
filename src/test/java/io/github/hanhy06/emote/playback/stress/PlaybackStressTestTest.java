@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Random;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class PlaybackStressTestTest {
@@ -61,5 +62,12 @@ class PlaybackStressTestTest {
         assertEquals(20.0D, PlaybackStressTest.estimatedTps(10.0D, 20.0D), 0.0001D);
         assertEquals(20.0D, PlaybackStressTest.estimatedTps(50.0D, 20.0D), 0.0001D);
         assertEquals(10.0D, PlaybackStressTest.estimatedTps(100.0D, 20.0D), 0.0001D);
+    }
+
+    @Test
+    void completesOnlyAfterTheRequestedTickDuration() {
+        assertFalse(PlaybackStressTest.hasCompletedDuration(199, 200));
+        assertTrue(PlaybackStressTest.hasCompletedDuration(200, 200));
+        assertTrue(PlaybackStressTest.hasCompletedDuration(201, 200));
     }
 }
