@@ -358,7 +358,7 @@ public final class AdminCommand {
             .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "avg %.2f / min (worst) %.2f",
+                "avg %.2f / min %.2f",
                 report.averageTps(),
                 report.minimumTps()
             )).withStyle(ChatFormatting.WHITE))
