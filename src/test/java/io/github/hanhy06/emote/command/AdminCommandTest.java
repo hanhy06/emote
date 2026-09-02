@@ -138,18 +138,26 @@ final class AdminCommandTest {
             2_097_152,
             20,
             262_144,
+            131_072,
+            209_715,
             20_000_000,
+            900_000,
+            1_500_000,
             2_000_000
         );
         var report = new PlaybackStressTestReport(
             100, 100, 500, 0, 20, 2.0D, 10.0D, 5.0D,
-            10.0D, 20.0D, 30.0D, 20.0D, 20.0D, 20.0D, 0.0D, 1.0D, 2.0D,
+            10.0D, 20.0D, 18.0D, 25.0D, 30.0D,
+            20.0D, 20.0D, 20.0D, 20.0D, 20.0D, 0.0D,
+            1.0D, 0.9D, 1.5D, 2.0D,
             packetLoad
         );
 
         String summary = AdminCommand.createPacketLoadSummary(report).getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
+        assertTrue(summary.contains("median 0.900 ms / p95 1.500 ms / max 2.000 ms"));
+        assertTrue(summary.contains("median 0.13 MiB / p95 0.20 MiB / max 0.25 MiB"));
         assertFalse(summary.toLowerCase().contains("client"));
     }
 

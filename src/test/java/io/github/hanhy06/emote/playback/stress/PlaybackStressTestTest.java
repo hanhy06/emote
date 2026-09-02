@@ -65,6 +65,22 @@ class PlaybackStressTestTest {
     }
 
     @Test
+    void calculatesMedianAndNinetyFifthPercentileFromTickSamples() {
+        List<Long> oddSamples = List.of(50L, 10L, 40L, 20L, 30L);
+        List<Long> evenSamples = List.of(40L, 10L, 30L, 20L);
+        List<Long> percentileSamples = new java.util.ArrayList<>();
+        for (long value = 1L; value <= 100L; value++) {
+            percentileSamples.add(value);
+        }
+
+        assertEquals(30L, StressTestStatistics.median(oddSamples));
+        assertEquals(25L, StressTestStatistics.median(evenSamples));
+        assertEquals(95L, StressTestStatistics.percentile95(percentileSamples));
+        assertEquals(0L, StressTestStatistics.median(List.of()));
+        assertEquals(0L, StressTestStatistics.percentile95(List.of()));
+    }
+
+    @Test
     void completesOnlyAfterTheRequestedTickDuration() {
         assertFalse(PlaybackStressTest.hasCompletedDuration(199, 200));
         assertTrue(PlaybackStressTest.hasCompletedDuration(200, 200));

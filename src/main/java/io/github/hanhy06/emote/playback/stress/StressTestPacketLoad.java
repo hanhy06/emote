@@ -201,10 +201,16 @@ public final class StressTestPacketLoad {
         long runtimeBytes,
         int runtimeSamples,
         long maximumRuntimeBytesPerTick,
+        long medianRuntimeBytesPerTick,
+        long percentile95RuntimeBytesPerTick,
         long runtimeEncodingNanos,
+        long medianRuntimeEncodingNanosPerTick,
+        long percentile95RuntimeEncodingNanosPerTick,
         long maximumRuntimeEncodingNanosPerTick
     ) {
-        private static final PacketLoadResult EMPTY = new PacketLoadResult(0, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L);
+        private static final PacketLoadResult EMPTY = new PacketLoadResult(
+            0, 0L, 0L, 0L, 0L, 0, 0L, 0L, 0L, 0L, 0L, 0L, 0L
+        );
     }
 
     private static final class Session {
@@ -220,6 +226,8 @@ public final class StressTestPacketLoad {
         private int runtimeSamples;
         private long maximumRuntimeBytesPerTick;
         private long maximumRuntimeEncodingNanosPerTick;
+        private final List<Long> runtimeBytesPerTickSamples = new ArrayList<>();
+        private final List<Long> runtimeEncodingNanosPerTickSamples = new ArrayList<>();
 
         private Session(int packetFanout, List<EncodingSink> sinks) {
             this.packetFanout = packetFanout;
@@ -250,12 +258,16 @@ public final class StressTestPacketLoad {
         private void sampleRuntimeTick() {
             long bytes = totalBytes();
             long encodingNanos = this.encodingNanos;
+            long bytesThisTick = bytes - this.lastSampledBytes;
+            long encodingNanosThisTick = encodingNanos - this.lastSampledEncodingNanos;
             this.runtimeSamples++;
-            this.maximumRuntimeBytesPerTick = Math.max(this.maximumRuntimeBytesPerTick, bytes - this.lastSampledBytes);
+            this.maximumRuntimeBytesPerTick = Math.max(this.maximumRuntimeBytesPerTick, bytesThisTick);
             this.maximumRuntimeEncodingNanosPerTick = Math.max(
                 this.maximumRuntimeEncodingNanosPerTick,
-                encodingNanos - this.lastSampledEncodingNanos
+                encodingNanosThisTick
             );
+            this.runtimeBytesPerTickSamples.add(bytesThisTick);
+            this.runtimeEncodingNanosPerTickSamples.add(encodingNanosThisTick);
             this.lastSampledBytes = bytes;
             this.lastSampledEncodingNanos = encodingNanos;
         }
@@ -269,7 +281,11 @@ public final class StressTestPacketLoad {
                 totalBytes(),
                 this.runtimeSamples,
                 this.maximumRuntimeBytesPerTick,
+                StressTestStatistics.median(this.runtimeBytesPerTickSamples),
+                StressTestStatistics.percentile95(this.runtimeBytesPerTickSamples),
                 this.encodingNanos,
+                StressTestStatistics.median(this.runtimeEncodingNanosPerTickSamples),
+                StressTestStatistics.percentile95(this.runtimeEncodingNanosPerTickSamples),
                 this.maximumRuntimeEncodingNanosPerTick
             );
         }

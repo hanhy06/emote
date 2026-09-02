@@ -297,9 +297,11 @@ public final class PlaybackStressTest {
         private int serverTickSamples;
         private long serverTickNanos;
         private long maximumServerTickNanos;
+        private final List<Long> serverTickNanosSamples = new ArrayList<>();
         private int managerCpuSamples;
         private long managerCpuNanos;
         private long maximumManagerCpuNanos;
+        private final List<Long> managerCpuNanosSamples = new ArrayList<>();
 
         private Session(
             ServerLevel level,
@@ -348,6 +350,7 @@ public final class PlaybackStressTest {
             this.managerCpuSamples++;
             this.managerCpuNanos += elapsedNanos;
             this.maximumManagerCpuNanos = Math.max(this.maximumManagerCpuNanos, elapsedNanos);
+            this.managerCpuNanosSamples.add(elapsedNanos);
         }
 
         private void recordCompletedServerTick() {
@@ -365,6 +368,7 @@ public final class PlaybackStressTest {
             this.serverTickSamples++;
             this.serverTickNanos += elapsedNanos;
             this.maximumServerTickNanos = Math.max(this.maximumServerTickNanos, elapsedNanos);
+            this.serverTickNanosSamples.add(elapsedNanos);
         }
 
         private PlaybackStressTestReport createReport(
@@ -379,12 +383,24 @@ public final class PlaybackStressTest {
             double maximumMspt = this.serverTickSamples == 0
                 ? baselineMspt
                 : nanosToMillis(this.maximumServerTickNanos);
+            double medianMspt = this.serverTickSamples == 0
+                ? baselineMspt
+                : nanosToMillis(StressTestStatistics.median(this.serverTickNanosSamples));
+            double percentile95Mspt = this.serverTickSamples == 0
+                ? baselineMspt
+                : nanosToMillis(StressTestStatistics.percentile95(this.serverTickNanosSamples));
             double baselineTps = estimatedTps(baselineMspt, this.targetTps);
             double averageTps = estimatedTps(averageMspt, this.targetTps);
+            double medianTps = estimatedTps(medianMspt, this.targetTps);
+            double percentile5Tps = estimatedTps(percentile95Mspt, this.targetTps);
             double minimumTps = estimatedTps(maximumMspt, this.targetTps);
             double averageManagerCpuMillis = this.managerCpuSamples == 0
                 ? 0.0D
                 : nanosToMillis(this.managerCpuNanos) / this.managerCpuSamples;
+            double medianManagerCpuMillis = nanosToMillis(StressTestStatistics.median(this.managerCpuNanosSamples));
+            double percentile95ManagerCpuMillis = nanosToMillis(
+                StressTestStatistics.percentile95(this.managerCpuNanosSamples)
+            );
             return new PlaybackStressTestReport(
                 this.requestedInstances,
                 this.instances.size(),
@@ -396,12 +412,18 @@ public final class PlaybackStressTest {
                 nanosToMillis(cleanupNanos),
                 baselineMspt,
                 averageMspt,
+                medianMspt,
+                percentile95Mspt,
                 maximumMspt,
                 baselineTps,
                 averageTps,
+                medianTps,
+                percentile5Tps,
                 minimumTps,
                 Math.max(0.0D, baselineTps - averageTps),
                 averageManagerCpuMillis,
+                medianManagerCpuMillis,
+                percentile95ManagerCpuMillis,
                 nanosToMillis(this.maximumManagerCpuNanos),
                 packetLoad
             );

@@ -343,18 +343,22 @@ public final class AdminCommand {
             .append(Component.literal("\n• TPS: ").withStyle(ChatFormatting.AQUA))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "%.2f -> %.2f  (min %.2f, drop %.2f)",
+                "%.2f -> avg %.2f / median %.2f / p5 %.2f / min %.2f  (drop %.2f)",
                 report.baselineTps(),
                 report.averageTps(),
+                report.medianTps(),
+                report.percentile5Tps(),
                 report.minimumTps(),
                 report.tpsDrop()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• MSPT: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "%.2f -> %.2f  (max %.2f)",
+                "%.2f -> avg %.2f / median %.2f / p95 %.2f / max %.2f",
                 report.baselineMspt(),
                 report.averageMspt(),
+                report.medianMspt(),
+                report.percentile95Mspt(),
                 report.maximumMspt()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n\nEmote processing").withStyle(ChatFormatting.GRAY))
@@ -363,8 +367,10 @@ public final class AdminCommand {
             .append(Component.literal("  Tick: ").withStyle(ChatFormatting.GREEN))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "%.3f ms avg / %.3f ms max",
+                "avg %.3f ms / median %.3f ms / p95 %.3f ms / max %.3f ms",
                 report.averageManagerCpuMillis(),
+                report.medianManagerCpuMillis(),
+                report.percentile95ManagerCpuMillis(),
                 report.maximumManagerCpuMillis()
             )).withStyle(ChatFormatting.WHITE))
             .append(Component.literal("\n• Cleanup: ").withStyle(ChatFormatting.GOLD))
@@ -407,9 +413,18 @@ public final class AdminCommand {
             .append(Component.literal("\n• Encode: ").withStyle(ChatFormatting.GOLD))
             .append(Component.literal(String.format(
                 Locale.ROOT,
-                "%.3f ms avg / %.3f ms max · %.2f MiB peak/tick",
+                "avg %.3f ms / median %.3f ms / p95 %.3f ms / max %.3f ms",
                 averageEncodingMillis,
-                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D,
+                packets.medianRuntimeEncodingNanosPerTick() / 1_000_000.0D,
+                packets.percentile95RuntimeEncodingNanosPerTick() / 1_000_000.0D,
+                packets.maximumRuntimeEncodingNanosPerTick() / 1_000_000.0D
+            )).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Traffic/tick: ").withStyle(ChatFormatting.LIGHT_PURPLE))
+            .append(Component.literal(String.format(
+                Locale.ROOT,
+                "median %.2f MiB / p95 %.2f MiB / max %.2f MiB",
+                packets.medianRuntimeBytesPerTick() / 1_048_576.0D,
+                packets.percentile95RuntimeBytesPerTick() / 1_048_576.0D,
                 packets.maximumRuntimeBytesPerTick() / 1_048_576.0D
             )).withStyle(ChatFormatting.WHITE));
     }
