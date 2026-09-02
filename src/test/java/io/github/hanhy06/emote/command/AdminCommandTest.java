@@ -148,34 +148,43 @@ final class AdminCommandTest {
             262_144,
             131_072,
             209_715,
-            20_000_000,
+            34_875_500_000L,
             900_000,
             1_500_000,
             2_000_000
         );
         var report = new PlaybackStressTestReport(
-            100, 100, 500, 0, 20, 2.0D, 10.0D, 5.0D,
+            100, 100, 500, 0, 600, 20, 46.7D, 3_049.55D, 124.04D,
             10.0D, 20.0D, 18.0D, 25.0D, 30.0D,
             20.0D, 20.0D, 20.0D, 20.0D, 20.0D, 0.0D,
-            0.02D, 1.0D, 0.9D, 1.5D, 2.0D,
-            4.0D, 2.0D, 1.8D, 3.0D, 4.0D,
+            2.5D, 1.0D, 0.9D, 1.5D, 2.0D,
+            37.3D, 2.0D, 1.8D, 3.0D, 4.0D,
             packetLoad
         );
 
         var summaryComponent = AdminCommand.createPacketLoadSummary(report);
         String summary = summaryComponent.getString();
         assertTrue(summary.contains("Fanout: 20×"));
-        assertTrue(summary.contains("1,000 packets/s / 1.00 MiB/s"));
-        assertTrue(summary.contains("Processing: total 4.0 s / avg 2.000 ms / max 4.000 ms"));
-        assertTrue(summary.contains("Encode: avg 1.000 ms / max 2.000 ms"));
+        assertTrue(summary.contains("Throughput: 46 packets/s / 0.05 MiB/s"));
+        assertTrue(summary.contains("Tick: avg 2.000 ms / max 4.000 ms"));
+        assertTrue(summary.contains("Encoding share: 93.5%"));
         assertTrue(summary.contains("Traffic/tick: avg 0.10 MiB / max 0.25 MiB"));
         assertFalse(summary.contains("median:"));
         assertFalse(summary.contains("p95:"));
         assertFalse(summary.toLowerCase().contains("client"));
-        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD), summaryComponent.getSiblings().get(8).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GOLD), summaryComponent.getSiblings().get(6).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(7).getStyle());
+        assertEquals(Style.EMPTY.withColor(ChatFormatting.GREEN), summaryComponent.getSiblings().get(8).getStyle());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(9).getStyle());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.LIGHT_PURPLE), summaryComponent.getSiblings().get(10).getStyle());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.WHITE), summaryComponent.getSiblings().get(11).getStyle());
+
+        assertEquals(
+            "\n• Duration: 46.7 s\n  Setup 3.0 s + Emote 2.5 s + Network 37.3 s\n  + Server/idle 3.8 s + Cleanup 0.1 s",
+            AdminCommand.createStressDurationSummary(report).getString()
+        );
+        assertEquals(43.52641D, report.runtimeSeconds(), 0.00001D);
+        assertEquals(13.78473D, report.observedTps(), 0.00001D);
     }
 
     @Test

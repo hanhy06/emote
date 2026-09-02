@@ -438,6 +438,7 @@ public final class PlaybackStressTest {
                 this.instances.size(),
                 this.peakDisplayEntities,
                 this.failedInstances,
+                this.completedTicks,
                 this.serverTickSamples,
                 (stoppedNanos - this.startedNanos) / 1_000_000_000.0D,
                 nanosToMillis(this.creationNanos),

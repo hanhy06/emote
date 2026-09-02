@@ -5,6 +5,7 @@ public record PlaybackStressTestReport(
     int activeInstances,
     int peakDisplayEntities,
     int failedInstances,
+    int completedTicks,
     int measuredServerTicks,
     double elapsedSeconds,
     double creationMillis,
@@ -32,4 +33,12 @@ public record PlaybackStressTestReport(
     double maximumNetworkProcessingMillis,
     StressTestPacketLoad.PacketLoadResult packetLoad
 ) {
+    public double runtimeSeconds() {
+        return Math.max(0.0D, this.elapsedSeconds - this.creationMillis / 1_000.0D - this.cleanupMillis / 1_000.0D);
+    }
+
+    public double observedTps() {
+        double runtimeSeconds = runtimeSeconds();
+        return runtimeSeconds == 0.0D ? 0.0D : this.completedTicks / runtimeSeconds;
+    }
 }
