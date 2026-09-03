@@ -689,12 +689,12 @@ function projectOptionalNumeric(value: string | number | undefined, fallback: nu
 export function itemArgumentToData(value: string): ItemStackData {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
-  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component): [string, string][] => {
+  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component) => {
     const pair = splitSnbtPair(component, "=");
     if (!pair?.[0] || !pair[1]) return [];
-    return [[normalizeResourceLocation(pair[0]), pair[1]]];
+    return [{ name: normalizeResourceLocation(pair[0]), value: pair[1] }];
   }) : [];
-  return { id, count: 1, ...(components.length ? { components: components.map(([name, value]) => ({ name, value })) } : {}) };
+  return { id, count: 1, ...(components.length ? { components } : {}) };
 }
 
 export function blockArgumentToData(value: string): BlockStateData {

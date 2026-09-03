@@ -74,19 +74,20 @@ export function compileConversionAnimation(
 
 function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<string, RuntimeNode>, profile: MinecraftVersionProfile): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
-  return Object.fromEntries(Object.entries(sourceNodes).map(([id, node]) => {
+  return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
     const editorNode = document.nodes[id];
-    const common = {
-      ...node,
-      ...(!node.parent && editorNode ? { space: editorNode.space } : {}),
+    const node = {
+      ...sourceNode,
+      ...(!sourceNode.parent && editorNode ? { space: editorNode.space } : {}),
     };
-    if (common.type === "block_display") {
-      const { blockState, ...output } = common;
+    if (node.type === "block_display") {
+      const { blockState, ...output } = node;
       return [id, { ...output, block_state_snbt: writeBlockState(blockState, profile) }];
     }
-    if (node.type !== "item_display" || common.type !== "item_display") return [id, common];
-    const { itemStack, ...itemOutput } = common;
+    if (node.type !== "item_display") return [id, node];
+    const { itemStack, ...itemOutput } = node;
     const assignment = assignments[id];
+    const outputItem = assignment ? PLAYER_HEAD : itemStack;
     const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
       ? matrixToLocalTransform(
           multiplyMatrix16(localTransformToMatrix(node.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
@@ -96,13 +97,10 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
     return [id, {
       ...itemOutput,
       transform,
-      ...(itemStack ? { item_stack_snbt: writeItemStack(itemStack, profile) } : {}),
-      ...(assignment ? {
-        item_stack_snbt: writeItemStack(PLAYER_HEAD, profile),
-        skin: { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order },
-      } : { skin: undefined }),
+      ...(outputItem ? { item_stack_snbt: writeItemStack(outputItem, profile) } : {}),
+      skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
-  })) as Record<string, EmoteNode>;
+  }));
 }
 
 function validateAnimationIds(document: ConversionDocument): void {

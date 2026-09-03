@@ -1,7 +1,7 @@
 import type { BlockStateData, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RawNbtField } from "../domain/minecraftData";
 import type { EmoteNbtValue } from "./emoteAnimation";
 import type { MinecraftVersionProfile } from "./minecraftVersionProfiles";
-import { parseSnbtCompound, readSnbtStringField, serializeSnbtCompound, serializeSnbtString } from "./snbt";
+import { parseSnbtCompound, readSnbtString, serializeSnbtCompound, serializeSnbtString } from "./snbt";
 
 export function readBlockState(value: string): BlockStateData;
 export function readBlockState(value: string, partial: true): Partial<BlockStateData>;
@@ -67,7 +67,7 @@ export function readDisplayNbt(value: string): DisplayNbtPatch {
 
 export function writeDisplayNbt(value: DisplayNbtPatch, profile: MinecraftVersionProfile): string {
   return serializeSnbtCompound([
-    ...(value.rawFields ?? []).map(({ name, value }) => [name, value] as const),
+    ...value.rawFields.map(({ name, value }) => [name, value] as const),
     ["block_state", value.blockState === undefined ? undefined : writeBlockState(value.blockState, profile)],
     ["item", value.itemStack === undefined ? undefined : writeItemStack(value.itemStack, profile)],
   ]);
@@ -78,6 +78,6 @@ export function readDisplayNbtValue(value: EmoteNbtValue): DisplayNbtValue {
 }
 
 function snbtString(value: string): string {
-  const decoded = readSnbtStringField(serializeSnbtCompound([["value", value]]), "value");
-  return decoded ?? value.trim();
+  const raw = value.trim();
+  return readSnbtString(raw) ?? raw;
 }
