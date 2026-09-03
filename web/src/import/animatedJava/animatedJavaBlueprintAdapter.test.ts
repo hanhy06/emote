@@ -1,3 +1,4 @@
+import { generatedResourceFiles } from "../../export/generatedResources";
 import { describe, expect, it } from "vitest";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { compileImportedProject } from "../../test/compileImportedFixture";
@@ -365,7 +366,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     };
 
     const project = await animatedJavaBlueprintAdapter.import(input);
-    const model = [...project.resources.entries()].find(([path]) => path.endsWith("/models/item/textureless_player/head.json"));
+    const model = [...generatedResourceFiles(project, "26.2").entries()].find(([path]) => path.endsWith("/models/item/textureless_player/head.json"));
 
     expect(project.nodes.head.type === "item_display" && project.nodes.head.suggestedSkin).toEqual({ part: "head", order: 0 });
     expect(model && new TextDecoder().decode(model[1])).toContain("minecraft:block/white_concrete");
@@ -513,7 +514,7 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     const project = await animatedJavaBlueprintAdapter.import(input);
     const paths = [...project.resources.keys()];
-    const models = [...project.resources.entries()]
+    const models = [...generatedResourceFiles(project, "26.2").entries()]
       .filter(([path]) => path.includes("/models/item/") && path.endsWith(".json"))
       .map(([, bytes]) => new TextDecoder().decode(bytes));
 

@@ -3,14 +3,11 @@ import type { ConversionDocument } from "../domain/conversionDocument";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
-import { animationUsesGeneratedResources, validateResourceVersion } from "./generatedResources";
+import { animationUsesGeneratedResources } from "./generatedResources";
 import type { ExportResult } from "./types";
 
 export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
   const animation = compileConversionAnimation(document, animationIndex);
-  if (animationUsesGeneratedResources(animation, document.resources)) {
-    validateResourceVersion(document, document.targetMinecraftVersion);
-  }
   const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
   return {
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
@@ -25,9 +22,6 @@ export function exportDocumentAnimationFiles(document: ConversionDocument, inclu
     index,
     includeSequence ? { standalone: false } : undefined,
   ));
-  if (animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) {
-    validateResourceVersion(document, document.targetMinecraftVersion);
-  }
   const files: ExportResult[] = animations.map((animation, index) => ({
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
     fileName: `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,

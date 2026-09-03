@@ -332,7 +332,6 @@ describe("exportAnimation", () => {
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [{
         id: "test",
@@ -379,7 +378,6 @@ describe("exportAnimation", () => {
       sourceName: "player.bbmodel",
       suggestedMetadata: { name: "Player", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {
         head: {
           id: "head",
@@ -425,7 +423,7 @@ describe("exportAnimation", () => {
     expect(documentAnimationUsesGeneratedResources(skinned, 0)).toBe(false);
     expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
     expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
-    expect(() => exportDocumentAnimation(unskinned, 0)).toThrow("Generated resources require Minecraft 26.2.");
+    expect(() => exportDocumentAnimation(unskinned, 0)).not.toThrow();
   });
 
   it.each([
@@ -440,7 +438,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],
@@ -457,7 +454,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],

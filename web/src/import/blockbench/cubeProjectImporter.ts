@@ -1,4 +1,5 @@
 import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4, Quaternion, Vector3 } from "three";
 import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
@@ -65,7 +66,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
-  const resources = new Map<string, Uint8Array>();
+  const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms ?? GECKOLIB_BBMODEL_TRANSFORMS;
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
@@ -143,7 +144,6 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     animations,
     diagnostics,
     resources,
-    ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
   };
 }
 

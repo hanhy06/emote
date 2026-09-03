@@ -2,6 +2,7 @@ import type { ConversionIssue } from "../foundation/diagnostics";
 import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
+import type { GeneratedResource } from "./generatedResource";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -74,8 +75,7 @@ export interface ConversionDocument {
   animations: ConversionAnimation[];
   sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
-  resources: Map<string, Uint8Array>;
-  resourceMinecraftVersion?: string;
+  resources: Map<string, GeneratedResource>;
 }
 
 export function createConversionDocument(project: ImportedProject, adapterLabel: string): ConversionDocument {
@@ -147,7 +147,6 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     },
     diagnostics: project.diagnostics,
     resources: project.resources,
-    ...(project.resourceMinecraftVersion ? { resourceMinecraftVersion: project.resourceMinecraftVersion } : {}),
   };
 }
 

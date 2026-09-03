@@ -88,7 +88,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     diagnostics,
     resources: cubeProject?.resources ?? new Map(),
     ...(cubeProject?.suggestedNamespace ? { suggestedNamespace: cubeProject.suggestedNamespace } : {}),
-    ...(cubeProject?.resourceMinecraftVersion ? { resourceMinecraftVersion: cubeProject.resourceMinecraftVersion } : {}),
   };
 }
 
