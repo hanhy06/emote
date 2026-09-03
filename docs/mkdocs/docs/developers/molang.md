@@ -91,8 +91,23 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.sleep_rotation` | Yaw of the bed occupied by the initiator, or `0` while not sleeping. |
 | `q.is_on_fire` | `1` while the initiator is on fire, otherwise `0`. |
 | `q.is_in_water` | `1` while the initiator is in water, otherwise `0`. |
+| `q.health`, `q.max_health` | Initiator current and maximum health in health points (two points per heart). |
+| `q.is_alive` | `1` while the initiator is alive, otherwise `0`. |
+| `q.is_spectator` | `1` while the initiator is in spectator mode, otherwise `0`. |
+| `q.head_is_in_water` | `1` while the initiator's eyes are in water, otherwise `0`. |
+| `q.is_in_lava` | `1` while the initiator is in lava, otherwise `0`. |
+| `q.is_in_water_or_rain` | `1` while the initiator is in water or exposed to rain, otherwise `0`. |
+| `q.hurt_time` | Remaining initiator hurt-animation time in ticks. |
+| `q.death_ticks` | Elapsed initiator death-animation time in ticks. |
+| `q.invulnerable_ticks` | Remaining initiator invulnerability timer in ticks; this is not the permanent invulnerability flag. |
+| `q.player_level` | Initiator experience level. |
+| `q.item_in_use_duration` | Elapsed active item-use time in seconds, capped at the item's maximum use duration. |
+| `q.item_remaining_use_duration` | Remaining active item-use time in seconds. |
+| `q.item_max_use_duration` | Maximum active item-use duration in seconds. |
 
 Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
+
+The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used. They are scalar queries without arguments; hand-slot selection and normalization arguments are not supported.
 
 ## Validation and preview
 

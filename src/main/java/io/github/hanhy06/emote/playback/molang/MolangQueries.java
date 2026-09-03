@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback.molang;
 
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.phys.Vec3;
@@ -42,7 +43,21 @@ public final class MolangQueries {
         "item_is_charged",
         "sleep_rotation",
         "is_on_fire",
-        "is_in_water"
+        "is_in_water",
+        "health",
+        "max_health",
+        "is_alive",
+        "is_spectator",
+        "head_is_in_water",
+        "is_in_lava",
+        "is_in_water_or_rain",
+        "hurt_time",
+        "death_ticks",
+        "invulnerable_ticks",
+        "player_level",
+        "item_in_use_duration",
+        "item_remaining_use_duration",
+        "item_max_use_duration"
     );
     public static final Source EMPTY = session -> setPlayerQueries(session, PlayerQueryValues.EMPTY);
 
@@ -57,6 +72,9 @@ public final class MolangQueries {
             double xRotation = player.getXRot();
             var bedOrientation = player.getBedOrientation();
             double sleepRotation = bedOrientation == null ? 0.0D : bedOrientation.toYRot();
+            boolean usingItem = player.isUsingItem();
+            int maxUseTicks = usingItem ? player.getUseItem().getUseDuration(player) : 0;
+            int remainingUseTicks = usingItem ? Mth.clamp(player.getUseItemRemainingTicks(), 0, maxUseTicks) : 0;
             PlayerQueryValues values = new PlayerQueryValues(
                 player.getKnownMovement(),
                 xRotation,
@@ -72,12 +90,25 @@ public final class MolangQueries {
                 player.isSwimming(),
                 player.isFallFlying(),
                 player.isPassenger(),
-                player.isUsingItem(),
+                usingItem,
                 player.isSleeping(),
                 true,
                 CrossbowItem.isCharged(player.getMainHandItem()),
                 player.isOnFire(),
-                player.isInWater()
+                player.isInWater(),
+                player.getHealth(),
+                player.getMaxHealth(),
+                player.isAlive(),
+                player.isSpectator(),
+                player.isEyeInFluid(FluidTags.WATER),
+                player.isInLava(),
+                player.isInWaterOrRain(),
+                player.hurtTime,
+                player.deathTime,
+                player.getInvulnerableTime(),
+                player.experienceLevel,
+                maxUseTicks,
+                remainingUseTicks
             );
             setPlayerQueries(session, values);
         };
@@ -111,6 +142,20 @@ public final class MolangQueries {
         session.setQuery("sleep_rotation", values.sleepRotation());
         session.setQuery("is_on_fire", values.onFire() ? 1.0D : 0.0D);
         session.setQuery("is_in_water", values.inWater() ? 1.0D : 0.0D);
+        session.setQuery("health", values.health());
+        session.setQuery("max_health", values.maxHealth());
+        session.setQuery("is_alive", values.alive() ? 1.0D : 0.0D);
+        session.setQuery("is_spectator", values.spectator() ? 1.0D : 0.0D);
+        session.setQuery("head_is_in_water", values.headInWater() ? 1.0D : 0.0D);
+        session.setQuery("is_in_lava", values.inLava() ? 1.0D : 0.0D);
+        session.setQuery("is_in_water_or_rain", values.inWaterOrRain() ? 1.0D : 0.0D);
+        session.setQuery("hurt_time", values.hurtTicks());
+        session.setQuery("death_ticks", values.deathTicks());
+        session.setQuery("invulnerable_ticks", values.invulnerableTicks());
+        session.setQuery("player_level", values.playerLevel());
+        session.setQuery("item_in_use_duration", (values.maxUseTicks() - values.remainingUseTicks()) / 20.0D);
+        session.setQuery("item_remaining_use_duration", values.remainingUseTicks() / 20.0D);
+        session.setQuery("item_max_use_duration", values.maxUseTicks() / 20.0D);
     }
 
     private record PlayerQueryValues(
@@ -133,13 +178,29 @@ public final class MolangQueries {
         boolean emoting,
         boolean itemCharged,
         boolean onFire,
-        boolean inWater
+        boolean inWater,
+        double health,
+        double maxHealth,
+        boolean alive,
+        boolean spectator,
+        boolean headInWater,
+        boolean inLava,
+        boolean inWaterOrRain,
+        int hurtTicks,
+        int deathTicks,
+        int invulnerableTicks,
+        int playerLevel,
+        int maxUseTicks,
+        int remainingUseTicks
     ) {
         private static final PlayerQueryValues EMPTY = new PlayerQueryValues(
             Vec3.ZERO,
             0.0D, 0.0D, 0.0D, 0.0D,
             0.0D, 0.0D, 0.0D,
-            false, false, false, false, false, false, false, false, false, false, false, false
+            false, false, false, false, false, false, false, false, false, false, false, false,
+            0.0D, 0.0D,
+            false, false, false, false, false,
+            0, 0, 0, 0, 0, 0
         );
     }
 
