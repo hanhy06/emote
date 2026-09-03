@@ -264,6 +264,10 @@ class AnimationPlayerTest {
                 + " + q.head_x_rotation + q.head_y_rotation + q.eye_target_x_rotation + q.eye_target_y_rotation"
                 + " + q.modified_distance_moved + q.walk_distance + q.is_sneaking + q.is_sleeping"
                 + " + q.is_emoting + q.item_is_charged + q.sleep_rotation"
+                + " + q.health + query.max_health + q.is_alive + query.is_spectator"
+                + " + q.head_is_in_water + query.is_in_lava + q.is_in_water_or_rain"
+                + " + q.hurt_time + query.death_ticks + q.invulnerable_ticks + query.player_level"
+                + " + q.item_in_use_duration + query.item_remaining_use_duration + q.item_max_use_duration"
         ));
 
         assertDoesNotThrow(() -> PreparedAnimation.from(load(root)));

@@ -44,8 +44,15 @@ class MolangEngineTest {
                 + " + q.head_x_rotation + q.head_y_rotation + q.eye_target_x_rotation + q.eye_target_y_rotation"
                 + " + q.modified_distance_moved + q.walk_distance + q.is_sneaking + q.is_sleeping"
                 + " + q.is_emoting + q.item_is_charged + q.sleep_rotation"
+                + " + q.health + q.max_health + q.is_alive + q.is_spectator"
+                + " + q.head_is_in_water + q.is_in_lava + q.is_in_water_or_rain"
+                + " + q.hurt_time + q.death_ticks + q.invulnerable_ticks + q.player_level"
+                + " + q.item_in_use_duration + q.item_remaining_use_duration + q.item_max_use_duration"
         );
         MolangEngine.Session session = this.engine.createSession();
+        for (String name : MolangQueries.SUPPORTED_NAMES) {
+            session.setQuery(name, 99.0D);
+        }
 
         MolangQueries.EMPTY.apply(session);
 

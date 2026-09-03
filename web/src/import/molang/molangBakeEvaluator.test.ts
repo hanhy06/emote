@@ -44,6 +44,18 @@ describe("MolangBakeEvaluator", () => {
     }
   });
 
+  it.each([
+    "health", "max_health", "is_alive", "is_spectator",
+    "head_is_in_water", "is_in_lava", "is_in_water_or_rain",
+    "hurt_time", "death_ticks", "invulnerable_ticks", "player_level",
+    "item_in_use_duration", "item_remaining_use_duration", "item_max_use_duration",
+  ])("bakes %s with both query prefixes and synthetic state", (name) => {
+    expect(evaluator().evaluate(`q.${name} + query.${name} + 1`, {
+      animationTime: 0,
+      keyframeLerpTime: 0,
+    }, "queries")).toBe(1);
+  });
+
   it("can reject nondeterministic functions before evaluation", () => {
     expect(() => evaluator(true).evaluate("math.random(0, 1)", {
       animationTime: 0,
