@@ -99,8 +99,9 @@ tasks.register("modrinth") {
             throw new GradleException("modrinthVersionType must be release, beta, or alpha.")
         }
 
+        String currentBranch = runCommand(["git", "branch", "--show-current"], repository, true)
         String trackedChanges = runCommand(["git", "status", "--porcelain", "--untracked-files=no"], repository, true)
-        if (!debugMode && trackedChanges) {
+        if (!debugMode && currentBranch != "dev" && trackedChanges) {
             throw new GradleException("Commit or discard tracked working-tree changes before publishing every branch.")
         }
 
