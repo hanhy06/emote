@@ -114,7 +114,7 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 ### Cooldown and rotation
 
 - `cooldown`: Nonnegative playback cooldown. It starts only after playback begins successfully.
-- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback and partner offer/wait states, the display root follows the initiator's yaw only when the difference exceeds this angle. `0` follows every yaw change; `180` keeps the initial orientation.
+- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback and partner offer/wait states, the display root follows the initiator's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
 
 ### Player behavior
 
