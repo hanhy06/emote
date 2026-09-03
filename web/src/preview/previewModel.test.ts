@@ -1,3 +1,4 @@
+import { readItemStack } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createConversionDocument } from "../domain/conversionDocument";
 import type { ImportedProject } from "../domain/conversionSeed";
@@ -28,7 +29,7 @@ function session(previewFrameIndex: number): ConversionSession {
       head: {
         id: "head",
         type: "item_display",
-        itemStackSnbt: "{id:player_head}",
+        itemStack: readItemStack("{id:player_head}"),
         itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX,
         visible: true,

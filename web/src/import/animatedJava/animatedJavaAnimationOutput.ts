@@ -1,4 +1,5 @@
-import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
+import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../molangVector";
@@ -12,8 +13,8 @@ export function createAjProjectRuntime(
   importedNodes: Record<string, ImportedNode>,
   sceneScale: number,
 ): NonNullable<ImportedAnimation["runtime"]> {
-  const nodes: Record<string, EmoteNode> = {};
-  const tracks: Record<string, EmoteNodeTracks> = {};
+  const nodes: Record<string, RuntimeNode> = {};
+  const tracks: Record<string, RuntimeNodeTracks> = {};
   for (const element of elements) {
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;

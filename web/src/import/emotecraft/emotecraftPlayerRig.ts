@@ -72,7 +72,7 @@ export function createEmotecraftNodes(slices: readonly EmotecraftSlice[], matric
       defaultMatrix: matrix4ToRowMajor(matrix, `Emotecraft ${slice.id} bind matrix`),
       visible: true,
       itemDisplay: "none",
-      itemStackSnbt: '{id:"minecraft:player_head",count:1}',
+      itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: slicePlayerHeadConversion(slice) },
       skinAssignmentGroup: group,
       suggestedSkin: { part: slice.source.part, order: slice.order },

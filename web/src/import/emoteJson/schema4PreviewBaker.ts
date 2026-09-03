@@ -1,3 +1,4 @@
+import { readDisplayNbt } from "../../format/minecraftData";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
@@ -55,7 +56,7 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
     visibility: [],
     nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({
       tick: parseMinecraftTime(frame.time),
-      value: typeof frame.value === "string" ? frame.value : frame.value.options[0],
+      value: readDisplayNbt(typeof frame.value === "string" ? frame.value : frame.value.options[0]),
     })),
   }])) as Record<string, ImportedNodeTrack>;
 

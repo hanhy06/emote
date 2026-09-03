@@ -1,3 +1,4 @@
+import { readItemStack, readDisplayNbt } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
 import type { ImportedProject } from "../domain/conversionSeed";
@@ -98,7 +99,7 @@ describe("compileImportedProject time handling", () => {
         type: "item_display",
         defaultMatrix: IDENTITY,
         visible: true,
-        itemStackSnbt: '{id:"minecraft:paper",count:1}',
+        itemStack: readItemStack('{id:"minecraft:paper",count:1}'),
         itemDisplay: "none",
         suggestedSkin: { part: "head", order: 0 },
         playerHeadConversion: { matrix: IDENTITY },
@@ -110,7 +111,7 @@ describe("compileImportedProject time handling", () => {
         visibility: [],
         nbt: [{
           tick: 0,
-          value: '{item:{id:"minecraft:paper",count:1},brightness:{block:15,sky:15}}',
+          value: readDisplayNbt('{item:{id:"minecraft:paper",count:1},brightness:{block:15,sky:15}}'),
         }],
       },
     };

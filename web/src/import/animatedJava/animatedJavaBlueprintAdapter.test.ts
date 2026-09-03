@@ -650,8 +650,8 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.events.start).toContainEqual(expect.objectContaining({ commands: ["say summoned"] }));
     expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 2, commands: ["say applied"] }));
     expect(animation.tracks.item.visibility).toContainEqual({ tick: 2, visible: false });
-    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("Glowing:0b") });
-    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.stringContaining("shadow_radius:1") });
+    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "Glowing", value: "0b" }]) }) });
+    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "shadow_radius", value: "1" }]) }) });
     expect(project.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
       "unsupported_animated_java_interaction",
       "unsupported_animated_java_animation_controllers",

@@ -37,7 +37,7 @@ describe("geckoLibBbmodelAdapter", () => {
       0, 0, 0.5, 0.125,
       0, 0, 0, 1,
     ]);
-    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStackSnbt).toContain("minecraft:item_model");
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStack.components).toContainEqual(expect.objectContaining({ name: "minecraft:item_model" }));
     expect(imported.nodes.root.type === "item_display" && imported.nodes.root.suggestedSkin).toBeUndefined();
     expect([...imported.resources.keys()]).toEqual([
       "assets/demo/textures/item/test_model/texture.png",
@@ -157,7 +157,7 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.playerHeadConversion?.matrix[5]).toBeCloseTo(0.5);
     expect(imported.nodes.right_arm_right_arm_lower.type === "item_display"
       && imported.nodes.right_arm_right_arm_lower.playerHeadConversion?.matrix[5]).toBeCloseTo(1);
-    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStackSnbt).toContain("minecraft:item_model");
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStack.components).toContainEqual(expect.objectContaining({ name: "minecraft:item_model" }));
     expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(4);
 
     const decodeModel = (path: string) => JSON.parse(new TextDecoder().decode(imported.resources.get(path))) as {

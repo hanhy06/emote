@@ -1,4 +1,5 @@
-import type { EmoteNode, EmoteNodeTracks, EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
+import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
@@ -16,10 +17,10 @@ export function createBedrockRuntime(
   startDelayTicks: number,
 ): NonNullable<ImportedAnimation["runtime"]> {
   const timelineRate = playbackRate ?? 1;
-  const nodes: Record<string, EmoteNode> = {
+  const nodes: Record<string, RuntimeNode> = {
     bedrock_scene: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
-  const tracks: Record<string, EmoteNodeTracks> = {};
+  const tracks: Record<string, RuntimeNodeTracks> = {};
   for (const bone of BEDROCK_PLAYER_BONES) {
     const source = Object.entries(animation.bones ?? {}).find(([name]) => resolveBedrockPlayerBone(name)?.id === bone.id)?.[1];
     const parent = bone.parent ? `${bone.parent}_x` : "bedrock_scene";
@@ -36,7 +37,7 @@ export function createBedrockRuntime(
         type: "item_display",
         parent: `${bone.id}_x`,
         transform: { position: ZERO, rotation: ZERO, scale: ONE },
-        item_stack_snbt: '{id:"minecraft:player_head",count:1}',
+        itemStack: { id: "minecraft:player_head", count: 1 },
         item_display: "none",
       };
     }

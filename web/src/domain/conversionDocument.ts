@@ -1,7 +1,6 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
-import { readSnbtRawField, readSnbtStringField } from "../format/snbt";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -270,15 +269,8 @@ export function updateDocumentAnimationOutput(
   };
 }
 
-function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
-  const quotedId = readSnbtStringField(itemStackSnbt, "id");
-  const rawId = quotedId === null ? readSnbtRawField(itemStackSnbt, "id") : null;
-  const id = quotedId ?? (rawId && /^[A-Za-z0-9._+-]+$/.test(rawId) ? rawId : null);
-  return id !== null && normalizeResourceLocation(id) === "minecraft:player_head";
-}
-
 function isSkinCandidate(node: ImportedItemNode): boolean {
-  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || isPlayerHeadItemStack(node.itemStackSnbt));
+  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head");
 }
 
 function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {

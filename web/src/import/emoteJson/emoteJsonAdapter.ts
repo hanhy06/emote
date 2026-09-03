@@ -1,3 +1,5 @@
+import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
+import { readRuntimeNodes, readRuntimeTimeline } from "../runtimeOutput";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -146,11 +148,11 @@ function importNode(
   if (node.type === "item_display") return {
     ...common,
     type: "item_display",
-    itemStackSnbt: node.item_stack_snbt!,
+    itemStack: readItemStack(node.item_stack_snbt!),
     itemDisplay: node.item_display,
     ...(node.skin ? { skin: { ...node.skin } } : {}),
   };
-  if (node.type === "block_display") return { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt };
+  if (node.type === "block_display") return { ...common, type: "block_display", blockState: readBlockState(node.block_state_snbt) };
   return { ...common, type: "text_display", text: node.text };
 }
 
@@ -167,7 +169,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
       visibility: [],
-      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value as string })),
+      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbt(frame.value as string) })),
     } as ImportedAnimation["tracks"][string];
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
@@ -211,8 +213,8 @@ function importRuntimeTimeline(
         }),
     runtime: {
       ...(animation.molang ? { molang: animation.molang } : {}),
-      nodes: animation.nodes,
-      timeline: animation.timeline,
+      nodes: readRuntimeNodes(animation.nodes),
+      timeline: readRuntimeTimeline(animation.timeline),
     },
   };
 }
