@@ -7,23 +7,23 @@
     { players: 75, displays: 1340 },
     { players: 100, displays: 1760 }
   ];
-  const labels = measurements.map(({ players, displays }) => [`${players}명 상당`, `약 ${displays.toLocaleString("ko-KR")} 디스플레이`]);
+  const labels = measurements.map(({ players, displays }) => [`${players}-player equivalent`, `~${displays.toLocaleString("en-US")} displays`]);
   const metrics = {
     mspt: {
-      title: "서버 MSPT",
+      title: "Server MSPT",
       unit: "ms",
       datasets: [
-        { label: "평균", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
+        { label: "Average", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
         { label: "p95", data: [16.78, 21.59, 33.60, 56.37, 88.11], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "최대", data: [23.46, 30.38, 40.12, 66.20, 98.04], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
-        { label: "20 TPS 기준", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
+        { label: "Maximum", data: [23.46, 30.38, 40.12, 66.20, 98.04], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
+        { label: "20 TPS threshold", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
       ]
     },
     duration: {
       type: "bar",
-      title: "실제 시간 구성",
-      unit: "초",
-      axisTitle: "시간 (초)",
+      title: "Elapsed time breakdown",
+      unit: "s",
+      axisTitle: "Time (s)",
       stacked: true,
       datasets: [
         { label: "Setup", data: [0.2, 0.2, 0.7, 1.5, 2.5], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
@@ -131,11 +131,11 @@
               callbacks: {
                 title: context => {
                   const measurement = measurements[context[0].dataIndex];
-                  return `${measurement.players}명 상당 · 약 ${measurement.displays.toLocaleString("ko-KR")} 디스플레이`;
+                  return `${measurement.players}-player equivalent · ~${measurement.displays.toLocaleString("en-US")} displays`;
                 },
-                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("ko-KR")} ${context.dataset.unit || metric.unit}`,
+                label: context => `${context.dataset.label}: ${context.parsed.y.toLocaleString("en-US")} ${context.dataset.unit || metric.unit}`,
                 footer: context => metric.stacked
-                  ? `합계: ${context.reduce((total, item) => total + item.parsed.y, 0).toFixed(1)} ${metric.unit}`
+                  ? `Total: ${context.reduce((total, item) => total + item.parsed.y, 0).toFixed(1)} ${metric.unit}`
                   : undefined
               }
             }
@@ -145,7 +145,7 @@
               stacked: metric.stacked || false,
               title: {
                 display: true,
-                text: "동시 진행 상당 부하 / 디스플레이 수"
+                text: "Equivalent concurrent load / display count"
               }
             },
             y: {
@@ -163,7 +163,7 @@
         }
       });
     }).catch(() => {
-      root.querySelector(".stress-chart__canvas").textContent = "그래프 라이브러리를 불러오지 못했다. 전체 결과는 아래 표에서 확인할 수 있다.";
+      root.querySelector(".stress-chart__canvas").textContent = "The chart library could not be loaded.";
     });
   }
 
