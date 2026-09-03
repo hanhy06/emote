@@ -82,7 +82,7 @@ public final class PlaybackEntityController {
             if (nodeRoot == null) {
                 throw new IllegalArgumentException("Missing root for node space " + entry.getValue().space());
             }
-            NodeInstance instance = createNode(level, nodeRoot, entry.getKey(), entry.getValue(), preparedData);
+            NodeInstance instance = createNode(level, nodeRoot, entry.getKey(), entry.getValue(), preparedData, emote.animation().settings().rotationDeadzone());
             instances.put(entry.getKey(), instance);
         }
         return new PlaybackNodes(spaces, instances);
@@ -113,15 +113,17 @@ public final class PlaybackEntityController {
         float previousRelativeYaw = nodes.root().relativeYaw(nodes.viewYaw());
         float viewYaw = nodes.updateViewYaw(currentYaw, rotationDeadzone);
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
-        if (Mth.packDegrees(previousRelativeYaw) == Mth.packDegrees(relativeYaw)) {
-            return false;
-        }
+        boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
+        int interpolationTicks = rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS;
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
-                node.entity().setYRot(relativeYaw);
+                ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
+                if (rotationChanged) {
+                    node.entity().setYRot(relativeYaw);
+                }
             }
         }
-        return true;
+        return rotationChanged;
     }
 
     public void setVisible(NodeInstance node, boolean visible) {
@@ -218,7 +220,8 @@ public final class PlaybackEntityController {
         RootTransform root,
         String nodeId,
         EmoteAnimation.Node node,
-        PreparedDisplayData preparedData
+        PreparedDisplayData preparedData,
+        float rotationDeadzone
     ) {
         if (node instanceof EmoteAnimation.AnchorNode) {
             return new NodeInstance(nodeId, node, null, null);
@@ -226,7 +229,7 @@ public final class PlaybackEntityController {
 
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
-        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(VIEW_ROTATION_INTERPOLATION_TICKS);
+        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS);
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
