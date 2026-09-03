@@ -4,12 +4,12 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
 import type { BoneEntry } from "./cubeProjectImporter";
 import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
 import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, inferHumanoidPart, isStandardHumanoidPartSize, sliceVerticalUv, type HumanoidPart } from "../humanoid/humanoidPlayerRig";
 
-const encoder = new TextEncoder();
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 const SPLIT_SKIN_CUBE_PATTERN = /_skin_(upper|lower|(\d+)|joint_(upper|lower)_(\d+))$/;
@@ -36,7 +36,7 @@ export function prepareCubeModels(
   bones: BoneEntry[],
   namespace: string,
   projectPath: string,
-  resources: Map<string, Uint8Array>,
+  resources: Map<string, GeneratedResource>,
   transforms: CubeProjectTransformConvention,
 ): PreparedCubeModels {
   if (bones.some((bone) => bone.cubes.length > 0)) {
@@ -85,7 +85,7 @@ export function writeCubeResources(
   cube: BbCube,
   namespace: string,
   modelPath: string,
-  resources: Map<string, Uint8Array>,
+  resources: Map<string, GeneratedResource>,
   transforms: CubeProjectTransformConvention,
 ): void {
   const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
@@ -96,11 +96,12 @@ export function writeCubeResources(
       ]))
     : { layer0: TEXTURELESS_MODEL_TEXTURE };
   const model = {
+    kind: "cuboid_model" as const,
     textures,
     elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures, transforms)],
   };
-  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, jsonBytes(model));
-  resources.set(`assets/${namespace}/items/${modelPath}.json`, jsonBytes({ model: { type: "minecraft:model", model: `${namespace}:item/${modelPath}` } }));
+  resources.set(`assets/${namespace}/models/item/${modelPath}.json`, model);
+  resources.set(`assets/${namespace}/items/${modelPath}.json`, { kind: "item_model", model: `${namespace}:item/${modelPath}` });
 }
 
 export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, transforms: CubeProjectTransformConvention): Matrix16 | undefined {
@@ -381,7 +382,7 @@ function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { widt
   };
 }
 
-function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, Uint8Array>): void {
+function writeEmbeddedTextures(textures: BbTexture[], namespace: string, projectPath: string, resources: Map<string, GeneratedResource>): void {
   if (textures.length === 0) return;
   for (const [index, texture] of textures.entries()) {
     if (!texture.source?.startsWith("data:image/png;base64,")) {
@@ -391,7 +392,7 @@ function writeEmbeddedTextures(textures: BbTexture[], namespace: string, project
     const textureBytes = decodeTexture(texture, index);
     resources.set(texturePath, textureBytes);
     const textureMetadata = animatedTextureMetadata(texture, textureBytes);
-    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, jsonBytes(textureMetadata));
+    if (textureMetadata) resources.set(`${texturePath}.mcmeta`, { kind: "json", value: textureMetadata });
   }
 }
 
@@ -463,8 +464,4 @@ function pngFrameCount(bytes: Uint8Array): number | undefined {
 
 function readUint32(bytes: Uint8Array, offset: number): number {
   return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
-}
-
-function jsonBytes(value: unknown): Uint8Array {
-  return encoder.encode(`${JSON.stringify(value, null, 2)}\n`);
 }

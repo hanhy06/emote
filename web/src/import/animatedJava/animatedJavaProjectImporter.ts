@@ -1,3 +1,5 @@
+import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
+import { readDisplayNbt } from "../../format/minecraftData";
 import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
@@ -86,7 +88,6 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     diagnostics,
     resources: cubeProject?.resources ?? new Map(),
     ...(cubeProject?.suggestedNamespace ? { suggestedNamespace: cubeProject.suggestedNamespace } : {}),
-    ...(cubeProject?.resourceMinecraftVersion ? { resourceMinecraftVersion: cubeProject.resourceMinecraftVersion } : {}),
   };
 }
 
@@ -376,7 +377,7 @@ function applyVariantConfig(animation: ImportedAnimation, nodeId: string, config
   const track = projectTrack(animation, nodeId);
   if (typeof config.invisible === "boolean") track.visibility.push({ tick, visible: !config.invisible });
   const nbt = nativeDisplayConfigNbt(config);
-  if (nbt) track.nbt.push({ tick, value: nbt });
+  if (nbt) track.nbt.push({ tick, value: readDisplayNbt(nbt) });
 }
 
 function projectTrack(animation: ImportedAnimation, nodeId: string) {
@@ -496,7 +497,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       defaultMatrix,
       visible,
       ...(entityNbt ? { entityNbt } : {}),
-      blockStateSnbt: blockArgumentToSnbt(element.block ?? "minecraft:air"),
+      blockState: blockArgumentToData(element.block ?? "minecraft:air"),
     };
   }
   if (element.type === "animated_java:vanilla_item_display") {
@@ -507,7 +508,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       visible,
       ...(entityNbt ? { entityNbt } : {}),
       itemDisplay: element.item_display ?? "none",
-      itemStackSnbt: itemArgumentToSnbt(element.item ?? "minecraft:air"),
+      itemStack: itemArgumentToData(element.item ?? "minecraft:air"),
     };
   }
   return {
@@ -685,33 +686,26 @@ function projectOptionalNumeric(value: string | number | undefined, fallback: nu
   return projectNumeric(value, path);
 }
 
-export function itemArgumentToSnbt(value: string): string {
+export function itemArgumentToData(value: string): ItemStackData {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
-  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component): [string, string][] => {
+  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component) => {
     const pair = splitSnbtPair(component, "=");
     if (!pair?.[0] || !pair[1]) return [];
-    return [[normalizeResourceLocation(pair[0]), pair[1]]];
+    return [{ name: normalizeResourceLocation(pair[0]), value: pair[1] }];
   }) : [];
-  return serializeSnbtCompound([
-    ["id", serializeSnbtString(id)],
-    ["count", "1"],
-    ["components", components.length ? serializeSnbtCompound(components) : undefined],
-  ]);
+  return { id, count: 1, ...(components.length ? { components } : {}) };
 }
 
-export function blockArgumentToSnbt(value: string): string {
+export function blockArgumentToData(value: string): BlockStateData {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
   const properties = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((property): [string, string][] => {
     const pair = splitSnbtPair(property, "=");
     if (!pair?.[0] || !pair[1]) return [];
-    return [[pair[0], serializeSnbtString(pair[1])]];
+    return [[pair[0], pair[1]]];
   }) : [];
-  return serializeSnbtCompound([
-    ["Name", serializeSnbtString(id)],
-    ["Properties", properties.length ? serializeSnbtCompound(properties) : undefined],
-  ]);
+  return { id, ...(properties.length ? { properties: Object.fromEntries(properties) } : {}) };
 }
 
 function prettify(value: string): string {

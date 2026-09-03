@@ -49,6 +49,7 @@ Complete examples: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/d
 |---|---|
 | `type` | Must be `sequence`. |
 | `schema_version` | Must be `4`. |
+| `target_minecraft_version` | Optional converter output target, such as `26.3`. Reference information only; it does not constrain the server version or guarantee compatibility of referenced animations. |
 | `id` | A lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and custom metadata. |
 | `participants` | Participant placement required by two-player Sequences; omitted for single-player Sequences. |

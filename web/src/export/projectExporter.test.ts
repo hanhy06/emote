@@ -1,3 +1,4 @@
+import { readItemStack } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
@@ -142,7 +143,7 @@ describe("exportAnimation", () => {
           type: "item_display",
           defaultMatrix: IDENTITY,
           visible: true,
-          itemStackSnbt: "{id:\"minecraft:player_head\",count:1}",
+          itemStack: readItemStack("{id:\"minecraft:player_head\",count:1}"),
           itemDisplay: "none",
         },
       },
@@ -187,7 +188,7 @@ describe("exportAnimation", () => {
       nodes: {
         body: {
           id: "body", type: "item_display", defaultMatrix: IDENTITY, visible: true,
-          itemStackSnbt: "{id:\"minecraft:player_head\",count:1}", itemDisplay: "none",
+          itemStack: readItemStack("{id:\"minecraft:player_head\",count:1}"), itemDisplay: "none",
         },
         origin: { id: "origin", type: "anchor", defaultMatrix: IDENTITY },
       },
@@ -229,7 +230,7 @@ describe("exportAnimation", () => {
           type: "item_display",
           defaultMatrix: IDENTITY,
           visible: true,
-          itemStackSnbt: '{id:"minecraft:paper",count:1}',
+          itemStack: readItemStack('{id:"minecraft:paper",count:1}'),
           itemDisplay: "none",
           playerHeadConversion: { matrix: conversion },
         },
@@ -331,7 +332,6 @@ describe("exportAnimation", () => {
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [{
         id: "test",
@@ -378,7 +378,6 @@ describe("exportAnimation", () => {
       sourceName: "player.bbmodel",
       suggestedMetadata: { name: "Player", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {
         head: {
           id: "head",
@@ -386,7 +385,7 @@ describe("exportAnimation", () => {
           defaultMatrix: IDENTITY,
           visible: true,
           itemDisplay: "none",
-          itemStackSnbt: '{id:"minecraft:paper",components:{"minecraft:item_model":"test:player/head"}}',
+          itemStack: readItemStack('{id:"minecraft:paper",components:{"minecraft:item_model":"test:player/head"}}'),
           playerHeadConversion: { matrix: IDENTITY },
           suggestedSkin: { part: "head", order: 0 },
         },
@@ -424,7 +423,7 @@ describe("exportAnimation", () => {
     expect(documentAnimationUsesGeneratedResources(skinned, 0)).toBe(false);
     expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
     expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
-    expect(() => exportDocumentAnimation(unskinned, 0)).toThrow("Generated resources require Minecraft 26.2.");
+    expect(() => exportDocumentAnimation(unskinned, 0)).not.toThrow();
   });
 
   it.each([
@@ -439,7 +438,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],
@@ -456,7 +454,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],

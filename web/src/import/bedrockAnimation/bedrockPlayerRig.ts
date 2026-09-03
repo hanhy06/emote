@@ -79,7 +79,7 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
       defaultMatrix: matrix4ToRowMajor(world, `Bedrock player slice ${slice.id}`),
       visible: true,
       itemDisplay: "none",
-      itemStackSnbt: '{id:"minecraft:player_head",count:1}',
+      itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(slice.bone, slice.from, slice.to) },
       suggestedSkin: { part: slice.bone.cube.skin, order: slice.order },
     };

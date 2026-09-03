@@ -1,9 +1,11 @@
+import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4, Quaternion, Vector3 } from "three";
-import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteNode, type EmoteNodeTracks, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
 import { matrixToLocalTransform } from "../../format/localTransform";
 import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
-import { serializeSnbtCompound, serializeSnbtString } from "../../format/snbt";
+import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -64,7 +66,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
   const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
-  const resources = new Map<string, Uint8Array>();
+  const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms ?? GECKOLIB_BBMODEL_TRANSFORMS;
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
@@ -98,13 +100,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
         visible: true,
         itemDisplay: "none",
-        itemStackSnbt: serializeSnbtCompound([
-          ["id", serializeSnbtString("minecraft:paper")],
-          ["count", "1"],
-          ["components", serializeSnbtCompound([
-            ["minecraft:item_model", serializeSnbtString(`${namespace}:${modelPath}`)],
-          ])],
-        ]),
+        itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
         ...(skin ? { suggestedSkin: skin, skinAssignmentGroup: `${skin.part}_${skin.order}` } : {}),
       };
@@ -148,7 +144,6 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     animations,
     diagnostics,
     resources,
-    ...(resources.size ? { resourceMinecraftVersion: "26.2" } : {}),
   };
 }
 
@@ -181,10 +176,10 @@ function createGeckoRuntime(
   transforms: CubeProjectTransformConvention,
 ): NonNullable<ImportedAnimation["runtime"]> {
   const sceneId = "geckolib_scene";
-  const nodes: Record<string, EmoteNode> = {
+  const nodes: Record<string, RuntimeNode> = {
     [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
   };
-  const tracks: Record<string, EmoteNodeTracks> = {};
+  const tracks: Record<string, RuntimeNodeTracks> = {};
   const animators = resolveBoneAnimators(animation, animationIndex, bones);
   for (const bone of bones) {
     const parent = bone.parent ? `${bone.parent.id}_x` : sceneId;

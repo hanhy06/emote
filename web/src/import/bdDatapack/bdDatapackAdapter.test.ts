@@ -28,14 +28,14 @@ data merge entity @e[type=item_display,tag=dance_0,distance=..1,limit=1,sort=nea
     expect(project).toMatchObject({ source: "bd_datapack", suggestedNamespace: "dance" });
     expect(project.nodes.display_0).toMatchObject({ skinAssignmentGroup: "display_0" });
     expect(project.nodes.display_0_variant_1).toBeUndefined();
-    expect(animation.nodes.display_0).toMatchObject({ type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",Count:1}" });
+    expect(animation.nodes.display_0).toMatchObject({ type: "item_display", item_stack_snbt: "{id:\"minecraft:stone\",count:1}" });
     expect(animation.timeline.duration).toBe("4t");
     expect(animation.timeline.tracks.display_0.position?.map((frame) => frame.time)).toEqual(["0t", "2t"]);
     expect(animation.timeline.tracks.display_0.position?.[0]).toMatchObject({ interpolation: "linear", value: [0, 0, 0] });
     expect(animation.timeline.tracks.display_0.position?.[1].value).toEqual([2, 0, 0]);
     expect(animation.timeline.tracks.display_0.nbt).toEqual([
-      { time: "0t", value: "{item:{id:\"minecraft:stone\",Count:1}}" },
-      { time: "2t", value: "{item:{id:\"minecraft:dirt\",Count:1}}" },
+      { time: "0t", value: "{item:{id:\"minecraft:stone\",count:1}}" },
+      { time: "2t", value: "{item:{id:\"minecraft:dirt\",count:1}}" },
     ]);
     expect(() => serializeEmoteAnimation(animation)).not.toThrow();
   });
@@ -52,7 +52,7 @@ tp @e[type=minecraft:block_display,tag=project_camera,limit=1] ~1 ~2 ~3 0 0`,
     const project = await bdDatapackAdapter.import(input);
 
     expect(project.animations.map((animation) => animation.id)).toEqual(["closing", "opening"]);
-    expect(project.nodes.display_0).toMatchObject({ type: "block_display", blockStateSnbt: "{Name:\"minecraft:stone\"}" });
+    expect(project.nodes.display_0).toMatchObject({ type: "block_display", blockState: { id: "minecraft:stone" } });
     expect(project.diagnostics).toEqual([expect.objectContaining({ code: "bd_datapack_camera_ignored" })]);
   });
 

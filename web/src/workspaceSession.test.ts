@@ -1,3 +1,4 @@
+import { readItemStack } from "./format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
@@ -83,7 +84,7 @@ function project(): ImportedProject {
       head: {
         id: "head",
         type: "item_display",
-        itemStackSnbt: "{id:player_head}",
+        itemStack: readItemStack("{id:player_head}"),
         itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX,
         visible: true,
@@ -93,7 +94,7 @@ function project(): ImportedProject {
       head_variant: {
         id: "head_variant",
         type: "item_display",
-        itemStackSnbt: "{id:player_head}",
+        itemStack: readItemStack("{id:player_head}"),
         itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX,
         visible: true,

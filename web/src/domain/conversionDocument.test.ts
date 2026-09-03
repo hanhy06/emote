@@ -1,3 +1,4 @@
+import { readItemStack } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { IDENTITY_MATRIX } from "../format/matrix";
@@ -68,15 +69,15 @@ describe("ConversionDocument", () => {
     const source = project();
     source.nodes = {
       quoted: {
-        id: "quoted", type: "item_display", itemStackSnbt: '{id:"minecraft:player_head",count:1}', itemDisplay: "none",
+        id: "quoted", type: "item_display", itemStack: readItemStack('{id:"minecraft:player_head",count:1}'), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
       bare: {
-        id: "bare", type: "item_display", itemStackSnbt: "{id:player_head,count:1}", itemDisplay: "none",
+        id: "bare", type: "item_display", itemStack: readItemStack("{id:player_head,count:1}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
       other: {
-        id: "other", type: "item_display", itemStackSnbt: "{id:stone,count:1}", itemDisplay: "none",
+        id: "other", type: "item_display", itemStack: readItemStack("{id:stone,count:1}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
     };
@@ -94,12 +95,12 @@ function project(): ImportedProject {
     suggestedNamespace: "test",
     nodes: {
       head: {
-        id: "head", type: "item_display", itemStackSnbt: "{id:player_head}", itemDisplay: "none",
+        id: "head", type: "item_display", itemStack: readItemStack("{id:player_head}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true, skinAssignmentGroup: "head",
         suggestedSkin: { participant: "partner", part: "head", order: 2 },
       },
       head_variant: {
-        id: "head_variant", type: "item_display", itemStackSnbt: "{id:player_head}", itemDisplay: "none",
+        id: "head_variant", type: "item_display", itemStack: readItemStack("{id:player_head}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true, skinAssignmentGroup: "head",
         suggestedSkin: { part: "head", order: 2 },
       },

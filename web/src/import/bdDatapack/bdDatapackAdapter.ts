@@ -1,3 +1,4 @@
+import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
 import { unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { asMatrix16 } from "../../format/matrix";
@@ -111,7 +112,7 @@ function hasZipHeader(bytes: Uint8Array): boolean {
 }
 
 function importDisplays(createFunction: string, namespace: string): ImportedDisplays {
-  const found: { index: number; tag: string; node: ImportedNode }[] = [];
+  const found: { index: number; tag: string; node: ImportedNode; payload: string }[] = [];
   const entityStart = /\{\s*id\s*:\s*["'](?:minecraft:)?(item_display|block_display|text_display)["']/g;
   for (const match of createFunction.matchAll(entityStart)) {
     const start = match.index!;
@@ -121,7 +122,8 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
       .find((value) => new RegExp(`^${escapeRegExp(namespace)}_(\\d+)$`).test(value));
     if (!tag) continue;
     const index = Number(new RegExp(`^${escapeRegExp(namespace)}_(\\d+)$`).exec(tag)![1]);
-    found.push({ index, tag, node: importDisplay(`display_${index}`, match[1], compound) });
+    const node = importDisplay(`display_${index}`, match[1], compound);
+    found.push({ index, tag, node, payload: readDisplayPayloadUpdate(node, compound)! });
   }
   found.sort((first, second) => first.index - second.index);
   if (found.length === 0) throw new Error("BD Engine datapack create function does not contain display nodes.");
@@ -132,7 +134,7 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
   }
   const nodes = Object.fromEntries(found.map((display) => [display.node.id, display.node]));
   const nodeIdsByTag = new Map(found.map((display) => [display.tag, display.node.id]));
-  const payloadByNodeId = new Map(found.map((display) => [display.node.id, displayPayload(display.node)]));
+  const payloadByNodeId = new Map(found.map((display) => [display.node.id, display.payload]));
   return {
     nodes,
     nodeIdsByTag,
@@ -150,14 +152,14 @@ function importDisplay(id: string, type: string, compound: string): ImportedNode
     return {
       ...common,
       type: "item_display",
-      itemStackSnbt: item,
+      itemStack: readItemStack(item),
       itemDisplay: readSnbtStringField(compound, "item_display") ?? readBareField(compound, "item_display") ?? "none",
     };
   }
   if (type === "block_display") {
     const blockState = readSnbtRawField(compound, "block_state");
     if (!blockState) throw new Error(`BD Engine datapack node ${id} does not contain block_state.`);
-    return { ...common, type: "block_display", blockStateSnbt: blockState };
+    return { ...common, type: "block_display", blockState: readBlockState(blockState) };
   }
   const text = readSnbtStringField(compound, "text") ?? readBareField(compound, "text") ?? "";
   return { ...common, type: "text_display", text: parseText(text) };
@@ -264,13 +266,6 @@ function readDisplayPayloadUpdate(node: ImportedNode, compound: string): string 
   return null;
 }
 
-function displayPayload(node: ImportedNode): string {
-  if (node.type === "item_display") return node.itemStackSnbt;
-  if (node.type === "block_display") return node.blockStateSnbt;
-  if (node.type === "text_display") return JSON.stringify(node.text);
-  throw new Error(`Node ${node.id} is not a display.`);
-}
-
 function setNbtFrame(
   track: ImportedNodeTrack,
   tick: number,
@@ -278,8 +273,8 @@ function setNbtFrame(
   initialPayload: string,
   payload: string,
 ): void {
-  if (track.nbt.length === 0) track.nbt.push({ tick: 0, value: displayPayloadNbt(node, initialPayload) });
-  const frame = { tick, value: displayPayloadNbt(node, payload) };
+  if (track.nbt.length === 0) track.nbt.push({ tick: 0, value: readDisplayNbt(displayPayloadNbt(node, initialPayload)) });
+  const frame = { tick, value: readDisplayNbt(displayPayloadNbt(node, payload)) };
   if (track.nbt.at(-1)!.tick === tick) track.nbt[track.nbt.length - 1] = frame;
   else track.nbt.push(frame);
 }

@@ -1,3 +1,9 @@
+import { generatedResourceFiles } from "../../export/generatedResources";
+import { createConversionDocument } from "../../domain/conversionDocument";
+import { exportDocumentAnimation } from "../../export/projectExporter";
+import { exportDocumentResourceBundle } from "../../export/resourceBundleExporter";
+import { readBlockState } from "../../format/minecraftData";
+import { unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { compileImportedProject } from "../../test/compileImportedFixture";
 import { serializeEmoteAnimation } from "../../format/serializer";
@@ -6,6 +12,35 @@ import { geckoLibBbmodelAdapter } from "./geckoLibBbmodelAdapter";
 const encoder = new TextEncoder();
 
 describe("geckoLibBbmodelAdapter", () => {
+  it.each(["26.1", "26.2", "26.3"])("exports intermediate models and display data together for %s", async (version) => {
+    const imported = await geckoLibBbmodelAdapter.import(input(project()));
+    expect(imported.resources.get("assets/demo/models/item/test_model/root.json")).toMatchObject({ kind: "cuboid_model" });
+    expect(imported.resources.get("assets/demo/items/test_model/root.json")).toEqual({ kind: "item_model", model: "demo:item/test_model/root" });
+    imported.nodes.block = {
+      id: "block", type: "block_display", visible: true, defaultMatrix: imported.nodes.root.defaultMatrix,
+      blockState: readBlockState('{Name:"minecraft:oak_log",Properties:{axis:"y"}}'),
+    };
+    const document = createConversionDocument(imported, "test");
+    document.targetMinecraftVersion = version;
+    const animation = JSON.parse(await exportDocumentAnimation(document, 0).blob.text());
+    const bundle = exportDocumentResourceBundle(document);
+    const files = unzipSync(new Uint8Array(await bundle.blob.arrayBuffer()));
+    const decoder = new TextDecoder();
+    const item = JSON.parse(decoder.decode(files["models/demo]items]test_model]root.json"]));
+    const model = JSON.parse(decoder.decode(files["models/demo]models]item]test_model]root.json"]));
+
+    expect(animation.target_minecraft_version).toBe(version);
+    expect(animation.nodes.root.item_stack_snbt).toContain('"minecraft:item_model":"demo:test_model/root"');
+    expect(animation.nodes.block.block_state_snbt).toBe(version === "26.3"
+      ? '{id:"minecraft:oak_log",properties:{axis:"y"}}' : '{Name:"minecraft:oak_log",Properties:{axis:"y"}}');
+    expect(item).toEqual({ model: { type: "minecraft:model", model: "demo:item/test_model/root" } });
+    expect(Object.keys(model)).toEqual(["textures", "elements"]);
+    expect(model.elements).toHaveLength(1);
+    expect(model.textures.layer0).toBe("demo:item/test_model/texture");
+    expect(files["textures/demo]textures]item]test_model]texture.png"]).toEqual(imported.resources.get("assets/demo/textures/item/test_model/texture.png"));
+    expect(files["pack.mcmeta"]).toBeUndefined();
+  });
+
   it("detects only GeckoLib Blockbench projects", () => {
     expect(geckoLibBbmodelAdapter.probe(input(project()))).toEqual({
       confidence: 100,
@@ -37,7 +72,7 @@ describe("geckoLibBbmodelAdapter", () => {
       0, 0, 0.5, 0.125,
       0, 0, 0, 1,
     ]);
-    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStackSnbt).toContain("minecraft:item_model");
+    expect(imported.nodes.root.type === "item_display" && imported.nodes.root.itemStack.components).toContainEqual(expect.objectContaining({ name: "minecraft:item_model" }));
     expect(imported.nodes.root.type === "item_display" && imported.nodes.root.suggestedSkin).toBeUndefined();
     expect([...imported.resources.keys()]).toEqual([
       "assets/demo/textures/item/test_model/texture.png",
@@ -45,7 +80,7 @@ describe("geckoLibBbmodelAdapter", () => {
       "assets/demo/items/test_model/root.json",
     ]);
 
-    const model = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/models/item/test_model/root.json"))) as {
+    const model = JSON.parse(new TextDecoder().decode(generatedResourceFiles(imported, "26.2").get("assets/demo/models/item/test_model/root.json"))) as {
       elements: { from: number[]; to: number[] }[];
     };
     expect(model.elements[0].from).toEqual([8, 8, 8]);
@@ -157,10 +192,10 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.playerHeadConversion?.matrix[5]).toBeCloseTo(0.5);
     expect(imported.nodes.right_arm_right_arm_lower.type === "item_display"
       && imported.nodes.right_arm_right_arm_lower.playerHeadConversion?.matrix[5]).toBeCloseTo(1);
-    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStackSnbt).toContain("minecraft:item_model");
+    expect(imported.nodes.right_arm.type === "item_display" && imported.nodes.right_arm.itemStack.components).toContainEqual(expect.objectContaining({ name: "minecraft:item_model" }));
     expect([...imported.resources.keys()].filter((path) => path.endsWith(".json"))).toHaveLength(4);
 
-    const decodeModel = (path: string) => JSON.parse(new TextDecoder().decode(imported.resources.get(path))) as {
+    const decodeModel = (path: string) => JSON.parse(new TextDecoder().decode(generatedResourceFiles(imported, "26.2").get(path))) as {
       elements: { faces: Record<string, { uv: number[] }> }[];
     };
     const upperFaces = decodeModel("assets/demo/models/item/test_model/right_arm.json").elements[0].faces;
@@ -395,7 +430,6 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(imported.nodes.root.type).toBe("anchor");
     expect(imported.resources.size).toBe(0);
-    expect(imported.resourceMinecraftVersion).toBeUndefined();
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
 
@@ -453,7 +487,7 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(imported.nodes.root.defaultMatrix.slice(0, 12).some((entry, index) => index % 5 !== 0 && Math.abs(entry) > 1e-5)).toBe(true);
-    const model = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/models/item/test_model/root.json"))) as {
+    const model = JSON.parse(new TextDecoder().decode(generatedResourceFiles(imported, "26.2").get("assets/demo/models/item/test_model/root.json"))) as {
       elements: { rotation?: unknown }[];
     };
     expect(model.elements[0].rotation).toBeUndefined();
@@ -521,7 +555,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    const metadata = JSON.parse(new TextDecoder().decode(imported.resources.get("assets/demo/textures/item/test_model/texture.png.mcmeta")));
+    const metadata = JSON.parse(new TextDecoder().decode(generatedResourceFiles(imported, "26.2").get("assets/demo/textures/item/test_model/texture.png.mcmeta")));
     expect(metadata).toEqual({ animation: { frametime: 3, interpolate: true, frames: [0, 2, 1] } });
   });
 

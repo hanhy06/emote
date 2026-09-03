@@ -16,6 +16,7 @@ import { parseInputJson } from "../inputCache";
 export interface EmoteSequence {
   type: "sequence";
   schema_version: 4;
+  target_minecraft_version?: string;
   id: string;
   metadata: RuntimeRecord;
   settings: {
@@ -70,7 +71,11 @@ function requireSequence(value: unknown): EmoteSequence {
     if (index === 0 || index === steps.length - 1) throw invalid(`steps[${index}].wait`, "must be between emote steps");
     if ("wait" in steps[index - 1]) throw invalid(`steps[${index}].wait`, "must not follow another wait step");
   });
-  return { type: "sequence", schema_version: 4, id, metadata, settings: { cooldown, player }, steps };
+  return {
+    type: "sequence", schema_version: 4,
+    ...(typeof root.target_minecraft_version === "string" ? { target_minecraft_version: root.target_minecraft_version } : {}),
+    id, metadata, settings: { cooldown, player }, steps,
+  };
 }
 
 function requirePlayer(player: RuntimeRecord): void {

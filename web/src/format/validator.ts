@@ -310,9 +310,6 @@ function validateEvent(event: EmoteEvent, path: string, animation: EmoteAnimatio
   if (event.origin.offset && (event.origin.offset.length !== 3 || event.origin.offset.some((value) => !Number.isFinite(value)))) {
     add(issues, `${path}.origin.offset`, "must contain three finite numbers");
   }
-  event.commands.forEach((command, index) => {
-    if (!command.trim() || command.startsWith("/")) add(issues, `${path}.commands[${index}]`, "must be non-empty and omit the leading slash");
-  });
   event.callbacks?.forEach((callback, index) => {
     const callbackPath = `${path}.callbacks[${index}]`;
     if (!isResourceLocation(callback.name)) add(issues, `${callbackPath}.name`, "must be a namespaced identifier");
