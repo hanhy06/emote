@@ -82,6 +82,7 @@ A complete [Animation reference JSON](https://github.com/hanhy06/emote/blob/dev/
 |-----------------------|----------------------------------------------------------------------|
 | `type`                | Must be `animation`.                                                 |
 | `schema_version`      | Must be `4`.                                                         |
+| `target_minecraft_version` | Optional converter output target, such as `26.3`. Reference information only; the server does not use it to accept, reject, or migrate the animation. |
 | `id`                  | A lowercase Minecraft identifier in `namespace:path` form.           |
 | `metadata`            | Display name, description, and custom metadata.                      |
 | `settings`            | Selection visibility, player behavior, and playback settings.        |

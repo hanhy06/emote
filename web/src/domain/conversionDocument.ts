@@ -1,6 +1,7 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
+import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -65,6 +66,7 @@ export interface ConversionDocument {
     source: ImportSource;
     sourceName: string;
     adapterLabel: string;
+    minecraftVersion?: string;
   };
   targetMinecraftVersion: string;
   nodes: Record<string, ConversionNode>;
@@ -109,8 +111,9 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     .filter(([key]) => key !== "name" && key !== "description"));
   const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
   return {
-    origin: { source: project.source, sourceName: project.sourceName, adapterLabel },
-    targetMinecraftVersion: project.suggestedMinecraftVersion ?? DEFAULT_TARGET_MINECRAFT_VERSION,
+    origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
+    targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
+      ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes,
     skinGroups,
     animations: project.animations.map((animation) => {

@@ -51,6 +51,7 @@ export function compileConversionAnimation(
   return {
     type: "animation",
     schema_version: 4,
+    target_minecraft_version: document.targetMinecraftVersion,
     id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: documentMetadata(output),
     settings: {

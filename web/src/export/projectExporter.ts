@@ -37,6 +37,7 @@ export function exportDocumentAnimationFiles(document: ConversionDocument, inclu
     const sequence = {
       type: "sequence",
       schema_version: 4,
+      target_minecraft_version: document.targetMinecraftVersion,
       id: `${sanitizeNamespace(sequenceOutput.namespace)}:${sanitizeResourcePath(sequenceOutput.displayName)}`,
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
       settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },

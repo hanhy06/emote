@@ -12,6 +12,7 @@ export type MinecraftTime = string;
 export interface EmoteAnimation {
   type: "animation";
   schema_version: 4;
+  target_minecraft_version?: string;
   id: string;
   metadata: EmoteMetadata;
   settings: EmoteAnimationSettings;
