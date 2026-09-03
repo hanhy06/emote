@@ -23,6 +23,7 @@ nav:
       - Access Control: server/access-control.md
       - Custom Emote: server/custom-emote.md
       - Advanced Usage: server/advanced-usage.md
+      - Performance: server/performance.md
   - Developers:
       - Animation: developers/animation.md
       - Sequence: developers/sequence.md
@@ -52,6 +53,12 @@ theme:
     - search.share
 plugins:
   - search
+
+extra_javascript:
+  - javascripts/stress-test-chart.js
+
+extra_css:
+  - stylesheets/stress-test-chart.css
 
 markdown_extensions:
   - admonition

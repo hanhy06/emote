@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
+import MolangParser from "molangjs/dist/molang.esm.js";
 import { compileImportedProject } from "../../test/compileImportedFixture";
 import { animatedJavaBlueprintAdapter } from "./animatedJavaBlueprintAdapter";
 
 const encoder = new TextEncoder();
+const displayTypes = ["animated_java:vanilla_block_display", "animated_java:text_display", "animated_java:vanilla_text_display", "animated_java:vanilla_item_display"];
 
 describe("animatedJavaBlueprintAdapter", () => {
   it("accepts Animated Java project files", async () => {
@@ -74,6 +76,53 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.animations[0].tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(-0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
     expect(project.animations[0].tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
+  });
+
+  it.each(displayTypes)("applies native scale semantics and blend weights for %s", async (type) => {
+    const input = nativeProject({
+      elements: [{ uuid: "display", name: "Display", type, position: [0, 0, 0], rotation: [0, 0, 0], scale: [0.5, 2, 3], visibility: true, block: "minecraft:stone", item: "minecraft:stick", text: { text: "Test" } }],
+      outliner: ["display"],
+      animations: [
+        { name: "default", loop: "once", length: 0.05, animators: {} },
+        ...[1, 0.5].map((weight) => ({
+          name: `scale_${weight}`, loop: "once", length: 0.1, start_delay: "0.05", blend_weight: String(weight),
+          animators: { display: { name: "Display", type, keyframes: [projectFrame("scale", 0, ["2", "3", "4"])] } },
+        })),
+      ],
+    });
+    const project = await animatedJavaBlueprintAdapter.import(input);
+    const expected = type === "animated_java:vanilla_item_display"
+      ? [[0.5, 2, 3], [2, 3, 4], [1.25, 2.5, 3.5]]
+      : [[0.5, 2, 3], [1, 6, 12], [0.75, 4, 7.5]];
+
+    for (const [index, animation] of project.animations.entries()) {
+      const initial = animation.tracks.display.transforms[0].matrix;
+      const animated = animation.tracks.display.transforms.at(-1)!.matrix;
+      for (let axis = 0; axis < 3; axis++) {
+        expect(Math.hypot(initial[axis], initial[axis + 4], initial[axis + 8])).toBeCloseTo([0.5, 2, 3][axis]);
+        expect(Math.hypot(animated[axis], animated[axis + 4], animated[axis + 8])).toBeCloseTo(expected[index][axis]);
+      }
+    }
+  });
+
+  it.each(displayTypes)("preserves native scale semantics in Molang output for %s", async (type) => {
+    const input = nativeProject({
+      elements: [{ uuid: "display", name: "Display", type, position: [0, 0, 0], rotation: [0, 0, 0], scale: [0.5, 2, 3], visibility: true, block: "minecraft:stone", item: "minecraft:stick", text: { text: "Test" } }],
+      outliner: ["display"],
+      animations: [{
+        name: "runtime", loop: "once", length: 0.1,
+        animators: { display: { name: "Display", type, keyframes: [projectFrame("scale", 0.05, ["v.scale", "3", "4"])] } },
+      }],
+    });
+    const project = await animatedJavaBlueprintAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
+    const frames = animation.timeline.tracks.aj_display_x.scale!;
+    const parser = new MolangParser();
+    const values = frames[1].value!.map((value) => typeof value === "number" ? value : parser.parse(value, { "variable.scale": 2 }));
+
+    expect(animation.nodes.aj_display_x.transform.scale).toEqual([0.5, 2, 3]);
+    expect(frames[0].value).toEqual([0.5, 2, 3]);
+    expect(values).toEqual(type === "animated_java:vanilla_item_display" ? [2, 3, 4] : [1, 6, 12]);
   });
 
   it("imports native Animated Java cube rigs", async () => {

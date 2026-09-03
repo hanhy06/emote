@@ -595,8 +595,12 @@ function projectElementMatrix(
   const rotationOffset = evaluateProjectTransformChannel(animator?.keyframes ?? [], "rotation", sourceTime, [0, 0, 0], `${path}/rotation`)
     .map((value) => value * blendWeight);
   const baseScale = "scale" in element ? element.scale : [1, 1, 1];
-  const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, baseScale, `${path}/scale`)
-    .map((value, axis) => baseScale[axis] + (value - baseScale[axis]) * blendWeight);
+  // AJ item displays replace scale; block and text displays multiply their base scale.
+  const absoluteScale = element.type === "animated_java:vanilla_item_display";
+  const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, absoluteScale ? baseScale : [1, 1, 1], `${path}/scale`)
+    .map((value, axis) => absoluteScale
+      ? baseScale[axis] + (value - baseScale[axis]) * blendWeight
+      : baseScale[axis] * (1 + (value - 1) * blendWeight));
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
   const local = composeDegreesTransform(
     basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),

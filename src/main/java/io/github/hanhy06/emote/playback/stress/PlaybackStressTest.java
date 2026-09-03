@@ -122,7 +122,6 @@ public final class PlaybackStressTest {
         }
 
         this.session = null;
-        current.recordCompletedServerTick();
         StressTestPacketLoad.PacketLoadResult packetLoadResult = this.packetLoad.finishRuntime();
         long cleanupStartedNanos = System.nanoTime();
         try {
@@ -165,6 +164,7 @@ public final class PlaybackStressTest {
             return;
         }
 
+        long stressTickStartedNanos = System.nanoTime();
         long emoteProcessingNanos = 0L;
         long networkProcessingNanos = 0L;
         try {
@@ -206,7 +206,7 @@ public final class PlaybackStressTest {
             current.recordProcessing(emoteProcessingNanos, networkProcessingNanos);
         }
         this.packetLoad.sampleRuntimeTick();
-        current.recordCompletedServerTick();
+        current.recordCompletedServerTick(System.nanoTime() - stressTickStartedNanos);
         current.completedTicks++;
         if (hasCompletedDuration(current.completedTicks, current.durationTicks)) {
             PlaybackStressTestReport report = stop();
@@ -281,6 +281,10 @@ public final class PlaybackStressTest {
 
     static boolean hasCompletedDuration(int completedTicks, int durationTicks) {
         return completedTicks >= durationTicks;
+    }
+
+    static long measureCompletedTickNanos(int completedTick, long[] tickTimesNanos, long stressTickNanos) {
+        return tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)] + stressTickNanos;
     }
 
     private static final class Session {
@@ -358,14 +362,14 @@ public final class PlaybackStressTest {
             this.maximumNetworkProcessingNanos = Math.max(this.maximumNetworkProcessingNanos, networkNanos);
         }
 
-        private void recordCompletedServerTick() {
-            int completedTick = EmoteMod.SERVER.getTickCount() - 1;
+        private void recordCompletedServerTick(long stressTickNanos) {
+            int completedTick = EmoteMod.SERVER.getTickCount();
             if (completedTick < this.startedServerTick || completedTick == this.lastSampledServerTick) {
                 return;
             }
 
             long[] tickTimesNanos = EmoteMod.SERVER.getTickTimesNanos();
-            long elapsedNanos = tickTimesNanos[Math.floorMod(completedTick, tickTimesNanos.length)];
+            long elapsedNanos = measureCompletedTickNanos(completedTick, tickTimesNanos, stressTickNanos);
             this.lastSampledServerTick = completedTick;
             if (elapsedNanos <= 0L) {
                 return;

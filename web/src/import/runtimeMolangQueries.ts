@@ -32,6 +32,20 @@ const MOD_SUPPORTED_QUERY_NAMES = [
   "sleep_rotation",
   "is_on_fire",
   "is_in_water",
+  "health",
+  "max_health",
+  "is_alive",
+  "is_spectator",
+  "head_is_in_water",
+  "is_in_lava",
+  "is_in_water_or_rain",
+  "hurt_time",
+  "death_ticks",
+  "invulnerable_ticks",
+  "player_level",
+  "item_in_use_duration",
+  "item_remaining_use_duration",
+  "item_max_use_duration",
 ] as const;
 
 export const PREVIEW_PLAYER_STATE_QUERIES: Readonly<Record<string, number>> = Object.fromEntries(
