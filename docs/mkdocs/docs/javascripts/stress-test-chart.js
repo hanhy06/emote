@@ -12,7 +12,6 @@
     mspt: {
       title: "서버 MSPT",
       unit: "ms",
-      summary: "합성 부하가 커질수록 MSPT가 증가했다. 75명 상당에서는 평균이 50 ms를 넘었고, 100명 상당에서는 평균 81.21 ms와 p95 88.11 ms가 측정됐다.",
       datasets: [
         { label: "평균", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
         { label: "p95", data: [16.78, 21.59, 33.60, 56.37, 88.11], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
@@ -26,7 +25,6 @@
       unit: "초",
       axisTitle: "시간 (초)",
       stacked: true,
-      summary: "600틱의 실제 경과 시간과 구성을 표시한다. 100명 상당에서는 총 51.4초 중 패킷 변경 감지와 인코딩에 해당하는 Network가 41.3초를 차지했다.",
       datasets: [
         { label: "Setup", data: [0.2, 0.2, 0.7, 1.5, 2.5], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
         { label: "Emote", data: [0.4, 0.6, 1.1, 1.8, 2.5], backgroundColor: "#43a047", borderColor: "#66bb6a" },
@@ -87,7 +85,7 @@
 
     const selectedMetric = root.dataset.selectedMetric || "mspt";
     const metric = metrics[selectedMetric];
-    root.querySelector(".stress-chart__summary").textContent = metric.summary;
+    root.querySelector(".stress-chart__summary").textContent = metric.summary || "";
     root.querySelectorAll("[data-metric]").forEach(button => {
       button.setAttribute("aria-pressed", String(button.dataset.metric === selectedMetric));
     });
