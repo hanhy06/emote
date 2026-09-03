@@ -3,7 +3,7 @@
 		"format": "animated-java:format/blueprint",
 		"format_version": "1.10.2",
 		"uuid": "18c4cfb2-6bf0-3816-96f1-f4b76ea87357",
-		"save_location": "C:\\Users\\whghk\\Desktop\\emote.ajblueprint",
+		"save_location": "C:\\dev\\minecraft\\emote\\docs\\reference\\aj\\emote.ajblueprint",
 		"last_used_blueprint_id": "aj:my_blueprint"
 	},
 	"resolution": {
@@ -731,7 +731,7 @@
 			"visibility": true,
 			"autouv": 0,
 			"isOpen": true,
-			"primary_selected": true
+			"primary_selected": false
 		},
 		{
 			"name": "left_arm",
@@ -1145,9 +1145,9 @@
 							"channel": "scale",
 							"data_points": [
 								{
-									"x": "1\n",
-									"y": "1",
-									"z": "1"
+									"x": "10\n",
+									"y": "10",
+									"z": "10"
 								}
 							],
 							"uuid": "780109a6-390f-48eb-3523-f8aad9839259",
