@@ -138,13 +138,15 @@ class AnimationJsonParserTest {
         try (var paths = Files.walk(Path.of("docs/sample"))) {
             examplePaths = paths.filter(Files::isRegularFile)
                 .filter(path -> path.getFileName().toString().endsWith(".json"))
-                .filter(path -> !path.getFileName().toString().endsWith(".sequence.json"))
                 .sorted()
                 .toList();
         }
 
         assertFalse(examplePaths.isEmpty());
         for (Path examplePath : examplePaths) {
+            if (!EmoteJsonDocument.read(examplePath).type().equals("animation")) {
+                continue;
+            }
             LoadedAnimation loaded = this.parser.parse(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
