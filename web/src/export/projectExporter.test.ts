@@ -6,6 +6,8 @@ import { createConversionDocument, type AnimationOutputSettings } from "../domai
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
 import {
+  createDocumentAnimationBundleDownload,
+  createDocumentAnimationDownload,
   documentAnimationUsesGeneratedResources,
   exportDocumentAnimation,
   exportDocumentAnimationFiles,
@@ -129,6 +131,7 @@ describe("exportAnimation", () => {
 
     const singleResult = exportDocumentAnimation(document, 0);
     expect(singleResult.fileName).toBe("emote.entry_display.json");
+    expect((await createDocumentAnimationBundleDownload(document, true)).map((file) => file.fileName)).toEqual(files.map((file) => file.fileName));
   });
 
   it("writes a manually assigned order without replacing it with zero", async () => {
@@ -372,7 +375,7 @@ describe("exportAnimation", () => {
     expect(files["pack.mcmeta"]).toBeUndefined();
   });
 
-  it("does not require generated resources after every generated model is replaced with a skin part", () => {
+  it("does not require generated resources after every generated model is replaced with a skin part", async () => {
     const project: ImportedProject = {
       source: "geckolib_bbmodel",
       sourceName: "player.bbmodel",
@@ -424,6 +427,11 @@ describe("exportAnimation", () => {
     expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
     expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
     expect(() => exportDocumentAnimation(unskinned, 0)).not.toThrow();
+    expect((await createDocumentAnimationDownload(skinned, 0)).map((file) => file.fileName)).toEqual(["emote.player.json"]);
+    expect((await createDocumentAnimationDownload(unskinned, 0)).map((file) => file.fileName)).toEqual([
+      "emote.player.json",
+      "emote.player.resources.zip",
+    ]);
   });
 
   it.each([

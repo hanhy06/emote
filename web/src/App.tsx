@@ -121,26 +121,16 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { documentAnimationUsesGeneratedResources, exportDocumentAnimation } = await import("./export/projectExporter");
-      const results = [exportDocumentAnimation(session.document, index)];
-      if (documentAnimationUsesGeneratedResources(session.document, index)) {
-        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
-        results.push(exportDocumentResourceBundle(session.document));
-      }
-      return results;
+      const { createDocumentAnimationDownload } = await import("./export/projectExporter");
+      return createDocumentAnimationDownload(session.document, index);
     }, "Conversion failed.", "Creating animation file");
   }
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
     await runExport(async () => {
-      const { documentAnimationsUseGeneratedResources, exportDocumentAnimationFiles } = await import("./export/projectExporter");
-      const results = exportDocumentAnimationFiles(session.document, includeSequence);
-      if (documentAnimationsUseGeneratedResources(session.document)) {
-        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
-        results.push(exportDocumentResourceBundle(session.document));
-      }
-      return results;
+      const { createDocumentAnimationBundleDownload } = await import("./export/projectExporter");
+      return createDocumentAnimationBundleDownload(session.document, includeSequence);
     }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
