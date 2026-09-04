@@ -12,6 +12,7 @@ import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
@@ -212,8 +213,7 @@ public class PlaybackEngine implements ConfigListener {
             this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
             AnimationPlayer timeline = new AnimationPlayer(
                 emote,
-                nodes,
-                this.entityController,
+                new EntityTimelineTarget(emote, nodes, this.entityController),
                 MolangQueries.forPlayer(player)
             );
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline, this.callbacks));
@@ -452,8 +452,7 @@ public class PlaybackEngine implements ConfigListener {
         ServerPlayer initiator = sessionInitiatorPlayer(session);
         AnimationPlayer animation = new AnimationPlayer(
             emote,
-            session.nodes(),
-            this.entityController,
+            new EntityTimelineTarget(emote, session.nodes(), this.entityController),
             MolangQueries.forPlayer(initiator)
         );
         animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation, this.callbacks));

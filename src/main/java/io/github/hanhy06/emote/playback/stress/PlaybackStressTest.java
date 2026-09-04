@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
@@ -76,8 +77,7 @@ public final class PlaybackStressTest {
                 );
                 AnimationPlayer timeline = new AnimationPlayer(
                     emote,
-                    nodes,
-                    this.entityController
+                    new EntityTimelineTarget(emote, nodes, this.entityController)
                 );
                 startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
                 this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
@@ -178,8 +178,7 @@ public final class PlaybackStressTest {
                         if (result == AnimationPlayer.AdvanceResult.FINISHED) {
                             instance.timeline = new AnimationPlayer(
                                 instance.emote,
-                                instance.nodes,
-                                this.entityController
+                                new EntityTimelineTarget(instance.emote, instance.nodes, this.entityController)
                             );
                             instance.timeline.start();
                         }
