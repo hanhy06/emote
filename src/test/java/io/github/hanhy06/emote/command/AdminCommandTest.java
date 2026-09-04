@@ -23,9 +23,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class AdminCommandTest {
