@@ -19,7 +19,12 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
+import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
+import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.util.IdleButterflyCallbackExample;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -32,7 +37,12 @@ final class EmoteBootstrap {
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
-        PlayerSkinManager skins = new PlayerSkinManager();
+        PlayerSkinManager skins = new PlayerSkinManager(new MineSkinProvider(
+            new PlayerSkinBaker(),
+            new MineSkinCache(),
+            new MineSkinClient(),
+            new MineSkinTaskQueue()
+        ));
         NamedCallbackDispatcher callbacks = new NamedCallbackDispatcher();
         PlaybackEngine playback = new PlaybackEngine(skins, callbacks);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();

@@ -6,10 +6,6 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -27,16 +23,8 @@ public class PlayerSkinManager implements ConfigListener {
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
 
-    public PlayerSkinManager() {
-        this(
-            new MineSkinProvider(
-                new PlayerSkinBaker(),
-                new MineSkinCache(),
-                new MineSkinClient(),
-                new MineSkinTaskQueue()
-            ),
-            PlayerSkinManager::readPlayerSkinSource
-        );
+    public PlayerSkinManager(PlayerSkinProvider provider) {
+        this(provider, PlayerSkinManager::readPlayerSkinSource);
     }
 
     PlayerSkinManager(
