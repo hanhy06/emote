@@ -1,11 +1,14 @@
 package io.github.hanhy06.emote.config;
 
+import net.minecraft.resources.Identifier;
+
 import java.util.*;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
-    public static final int CURRENT_SCHEMA_VERSION = 2;
+    public static final int CURRENT_SCHEMA_VERSION = 3;
+    public static final int LEGACY_SCHEMA_VERSION = 2;
 
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank", false);
@@ -86,6 +89,9 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         }
 
         private Pattern compilePattern(String source) {
+            if (Identifier.tryParse(source) != null) {
+                return Pattern.compile(source, Pattern.LITERAL);
+            }
             try {
                 return Pattern.compile(source);
             } catch (PatternSyntaxException exception) {

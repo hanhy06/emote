@@ -69,7 +69,7 @@ class ConfigManagerTest {
         String accessJson = Files.readString(accessPath);
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
-        assertTrue(accessJson.contains("\"schema_version\": 2"));
+        assertTrue(accessJson.contains("\"schema_version\": 3"));
         assertTrue(accessJson.contains("\"emote.default\""));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
@@ -143,6 +143,27 @@ class ConfigManagerTest {
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().get(1).idle().orElseThrow();
         assertEquals(12_000, idle.delayTicks());
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
+    }
+
+    @Test
+    void migratesSchemaTwoAccessConfigWithoutChangingEmoteRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Path accessConfigPath = tempDir.resolve("emote/emotes.json");
+        Files.writeString(accessConfigPath, """
+            {
+              "schema_version": 2,
+              "permissions": [
+                {"permission":"emote.default","emotes":["demo:sample.1"]}
+              ]
+            }
+            """);
+
+        assertTrue(manager.readAccessConfig());
+        String migratedJson = Files.readString(accessConfigPath);
+        assertTrue(migratedJson.contains("\"schema_version\": 3"));
+        assertTrue(migratedJson.contains("\"demo:sample.1\""));
+        assertEquals(List.of("demo:sample.1"), manager.getAccessConfig().permissions().getFirst().emotes());
     }
 
     @Test

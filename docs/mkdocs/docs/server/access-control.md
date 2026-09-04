@@ -33,7 +33,7 @@ API and bypass playback must still meet the minimum playback requirements.
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "disabled": ["example:broken"],
   "permissions": [
     {
@@ -54,11 +54,11 @@ API and bypass playback must still meet the minimum playback requirements.
 
 | Field            | Behavior                                                                          |
 |------------------|-----------------------------------------------------------------------------------|
-| `schema_version` | Must be `2`.                                                                      |
+| `schema_version` | Must be `3`. Version `2` is upgraded automatically.                              |
 | `disabled`       | Hidden from normal players. Only players with `emote.bypass` can use them.        |
 | `permissions`    | Permission groups used to assemble each player's available emote IDs.             |
 | `permission`     | Permission checked through the installed permission provider.                     |
-| `emotes`         | Java regular expressions matched against complete IDs. `"*"` grants every enabled standalone emote. |
+| `emotes`         | Valid emote IDs match literally. Other entries are full Java regular expressions. `"*"` grants every enabled standalone emote. |
 | `idle`           | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes).    |
 
-Regular-expression backslashes must also be escaped for JSON. For example, use `"example:wave\\.v2"` to match a literal dot.
+Regular-expression backslashes must also be escaped for JSON. Valid IDs such as `"example:wave.v2"` do not need escaping and match literally.

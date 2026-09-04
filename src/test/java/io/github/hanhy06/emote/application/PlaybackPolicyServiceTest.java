@@ -174,6 +174,21 @@ class PlaybackPolicyServiceTest {
     }
 
     @Test
+    void treatsValidEmoteIdsAsLiteralRules() {
+        PlaybackPolicyService service = service(
+            (ignoredPlayer, permission, ignoredDefault) -> permission.equals("emote.literal"),
+            new AtomicLong()
+        );
+        loadRules(service, new AccessConfig(
+            List.of(),
+            List.of(entry("emote.literal", List.of("demo:sample.1")))
+        ), "demo:sample.1", "demo:samplex1");
+
+        assertAllowed(service.evaluate(null, create("demo:sample.1", "Literal"), PlaySource.COMMAND));
+        assertDenied(service.evaluate(null, create("demo:samplex1", "Regex Lookalike"), PlaySource.COMMAND));
+    }
+
+    @Test
     void wildcardRuleAppliesWithoutAResolvedCatalogId() {
         PlaybackPolicyService service = service(
             (ignoredPlayer, permission, ignoredDefault) -> permission.equals("emote.vip"),

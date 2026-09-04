@@ -157,7 +157,11 @@ public class ConfigManager {
             return false;
         }
 
+        boolean requiresMigration = configJson.get("schema_version").getAsInt() == AccessConfig.LEGACY_SCHEMA_VERSION;
         this.accessConfig = loadedConfig;
+        if (requiresMigration) {
+            writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(loadedConfig));
+        }
         broadcastAccessConfig();
         EmoteMod.LOGGER.info("Loaded emote access rules from {}", ACCESS_CONFIG_FILE_NAME);
         return true;
