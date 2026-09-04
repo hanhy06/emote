@@ -15,7 +15,7 @@ function adapter(id: string, confidence: number, extensions: readonly string[] =
 }
 
 function loader(value: ImportAdapter): ImportAdapterLoader {
-  return { id: value.id, label: value.label, extensions: value.extensions, load: vi.fn(async () => value) };
+  return { id: value.id, label: value.label, extensions: value.extensions, description: value.label, load: vi.fn(async () => value) };
 }
 
 describe("detectAdapter", () => {

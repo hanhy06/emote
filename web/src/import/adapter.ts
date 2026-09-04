@@ -33,5 +33,6 @@ export function isImportedSequence(source: ImportedSource): source is Extract<Im
 }
 
 export interface ImportAdapterLoader extends Pick<ImportAdapter, "id" | "label" | "extensions"> {
+  readonly description: string;
   load(): Promise<ImportAdapter>;
 }

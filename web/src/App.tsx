@@ -26,28 +26,11 @@ const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
   .join(",");
-const IMPORT_FORMATS = [
-  {
-    label: "BD Engine",
-    extensions: ".zip",
-    description: "In BD Engine, open Get Command and export the animation as a datapack.",
-  },
-  {
-    label: "GeckoLib",
-    extensions: ".bbmodel",
-    description: "Use the original .bbmodel file for an emote created in Blockbench with the GeckoLib format. Model, animation, and skin data are imported.",
-  },
-  {
-    label: "Animated Java",
-    extensions: ".ajblueprint",
-    description: "Use the original .ajblueprint project from Animated Java. Model, animation, and skin data are imported.",
-  },
-  {
-    label: "Bedrock Edition",
-    extensions: ".json",
-    description: "Imports Bedrock Edition player animation files. Molang support is not yet complete, so converted animations may look incorrect.",
-  },
-] as const;
+const IMPORT_FORMATS = IMPORT_ADAPTERS.map((adapter) => ({
+  label: adapter.label,
+  extensions: adapter.extensions.map((extension) => `.${extension}`).join(", "),
+  description: adapter.description,
+}));
 
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
