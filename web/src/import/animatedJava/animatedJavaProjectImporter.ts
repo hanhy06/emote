@@ -9,7 +9,7 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeProject, PLAYER_RENDER_SCALE } from "../blockbench/cubeProjectImporter";
+import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../blockbench/cubeProjectImporter";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "../blockbench/cubeProjectTransformConvention";
 import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
@@ -41,23 +41,23 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
-  const cubeProject = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
-  const sceneScale = cubeProject ? PLAYER_RENDER_SCALE : 1;
+  const cubeContent = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
+  const sceneScale = cubeContent ? PLAYER_RENDER_SCALE : 1;
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
-  const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
+  const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
   for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
+  const diagnostics: ImportDiagnostic[] = [...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
       return importProjectAnimation(animation, index, displayElements, transformGraph, sceneScale);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || !["unsupported_animated_java_molang", "unsupported_geckolib_molang"].includes(reason.code)) throw reason;
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
@@ -69,7 +69,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
-    mergeProjectAnimation(cubeProject?.animations[index], animation),
+    mergeProjectAnimation(cubeContent?.animations[index], animation),
     sourceAnimations[index],
     project,
     nodes,
@@ -86,8 +86,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     nodes,
     animations,
     diagnostics,
-    resources: cubeProject?.resources ?? new Map(),
-    ...(cubeProject?.suggestedNamespace ? { suggestedNamespace: cubeProject.suggestedNamespace } : {}),
+    resources: cubeContent?.resources ?? new Map(),
+    ...(cubeContent?.namespace ? { suggestedNamespace: cubeContent.namespace } : {}),
   };
 }
 
@@ -123,7 +123,7 @@ function addProjectNode(nodes: Record<string, ImportedNode>, id: string, node: I
   nodes[id] = node;
 }
 
-function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedProject | undefined {
+function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedCubeProjectContent | undefined {
   const supportedIds = new Set(project.elements
     .filter((element) => element.type === "cube" || element.type === "locator")
     .map((element) => element.uuid));
@@ -151,7 +151,11 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
       })),
     })),
   });
-  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS });
+  return importBlockbenchCubeContent(cubeProject, `${sourceStem}.bbmodel`, {
+    transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
+    formatLabel: "Animated Java",
+    molangDiagnosticCode: "animated_java_animation_molang_unavailable",
+  });
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
@@ -648,7 +652,12 @@ function projectGroupMatrix(
 
 function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
   if (sourceTime < 0) return [...fallback];
-  return evaluateGeckoChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+  try {
+    return evaluateGeckoChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+  } catch (reason) {
+    if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
+    throw new ConversionError("unsupported_animated_java_molang", reason.message.replace("GeckoLib", "Animated Java"), reason.sourcePath, { cause: reason });
+  }
 }
 
 function projectStepAt(animation: AjProjectAnimation, elementId: string, sourceTime: number): boolean {

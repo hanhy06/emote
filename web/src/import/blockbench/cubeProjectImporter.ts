@@ -56,6 +56,17 @@ export interface BoneEntry {
 
 export interface CubeProjectImportOptions {
   transforms?: CubeProjectTransformConvention;
+  formatLabel?: string;
+  molangDiagnosticCode?: string;
+}
+
+export interface ImportedCubeProjectContent {
+  sourceStem: string;
+  namespace: string;
+  nodes: Record<string, ImportedNode>;
+  animations: ImportedAnimation[];
+  diagnostics: ImportDiagnostic[];
+  resources: Map<string, GeneratedResource>;
 }
 
 export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string, options: CubeProjectImportOptions = {}): ImportedProject {
@@ -64,13 +75,33 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
   }
 
+  const imported = importBlockbenchCubeContent(project, sourceName, options);
+  return {
+    source: "geckolib_bbmodel",
+    sourceName,
+    suggestedMetadata: { name: imported.sourceStem, description: `${imported.sourceStem} emote.` },
+    suggestedPlayer: createDefaultPlayerBehavior(),
+    suggestedNamespace: imported.namespace,
+    nodes: imported.nodes,
+    animations: imported.animations,
+    diagnostics: imported.diagnostics,
+    resources: imported.resources,
+  };
+}
+
+export function importBlockbenchCubeContent(
+  project: BbmodelProject,
+  sourceName: string,
+  options: CubeProjectImportOptions = {},
+): ImportedCubeProjectContent {
   const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
   const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms ?? GECKOLIB_BBMODEL_TRANSFORMS;
+  const formatLabel = options.formatLabel ?? "GeckoLib";
   const bones = buildBoneEntries(project);
-  if (bones.length === 0) throw new Error("GeckoLib bbmodel does not contain bones.");
+  if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(project, bones, namespace, projectPath, resources, transforms);
   const diagnostics: ImportDiagnostic[] = [];
   const nodes: Record<string, ImportedNode> = {};
@@ -119,7 +150,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     }
   }
 
-  if (project.animations.length === 0) throw new Error("GeckoLib bbmodel does not contain animations.");
+  if (project.animations.length === 0) throw new Error(`${formatLabel} cube project does not contain animations.`);
   const animations = project.animations.map((animation, index) => {
     try {
       return importAnimation(animation, index, bones, diagnostics, transforms);
@@ -128,7 +159,7 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
-        code: "geckolib_animation_molang_unavailable",
+        code: options.molangDiagnosticCode ?? "geckolib_animation_molang_unavailable",
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
@@ -136,11 +167,8 @@ export function importBlockbenchCubeProject(project: BbmodelProject, sourceName:
     }
   });
   return {
-    source: "geckolib_bbmodel",
-    sourceName,
-    suggestedMetadata: { name: sourceStem, description: `${sourceStem} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
-    suggestedNamespace: namespace,
+    sourceStem,
+    namespace,
     nodes,
     animations,
     diagnostics,
