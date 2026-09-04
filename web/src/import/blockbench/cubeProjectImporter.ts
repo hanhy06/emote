@@ -22,14 +22,17 @@ import {
 } from "./cubeProjectSchema";
 import { evaluateGeckoChannel } from "./cubeAnimationBaker";
 import {
+  uniqueCubeNodeId,
+  writeCubeResources,
+  writeSourceCubeResources,
+} from "./cubeModelResources";
+import {
   cubePlayerHeadMatrix,
   isHiddenAccessoryBone,
   isHiddenAccessoryName,
   normalizeBlockbenchName,
   prepareCubeModels,
-  uniqueCubeNodeId,
-  writeCubeResources,
-} from "./cubeModelResources";
+} from "./cubeSkinPreparation";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../molangVector";
 import { GECKOLIB_BBMODEL_TRANSFORMS, type CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
@@ -102,7 +105,8 @@ export function importBlockbenchCubeContent(
   const formatLabel = options.formatLabel ?? "GeckoLib";
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
-  const { playableCubesByBone, skinAssignments } = prepareCubeModels(project, bones, namespace, projectPath, resources, transforms);
+  writeSourceCubeResources(project, bones, namespace, projectPath, resources, transforms);
+  const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
   const diagnostics: ImportDiagnostic[] = [];
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
