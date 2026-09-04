@@ -31,7 +31,7 @@ final class EmoteBootstrap {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
-        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions);
+        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
         PlayerSkinManager skins = new PlayerSkinManager();
         NamedCallbackDispatcher callbacks = new NamedCallbackDispatcher();
         PlaybackEngine playback = new PlaybackEngine(skins, callbacks);

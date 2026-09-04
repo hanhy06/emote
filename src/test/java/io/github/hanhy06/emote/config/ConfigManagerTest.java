@@ -238,6 +238,22 @@ class ConfigManagerTest {
     }
 
     @Test
+    void rejectsInvalidPermissionRegexAndKeepsCurrentRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        AccessConfig currentConfig = manager.getAccessConfig();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":2,
+              "permissions":[{"permission":"emote.vip","emotes":["demo:["]}]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertSame(currentConfig, manager.getAccessConfig());
+    }
+
+    @Test
     void keepsCurrentConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();

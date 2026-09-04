@@ -42,7 +42,7 @@ API and bypass playback must still meet the minimum playback requirements.
     },
     {
       "permission": "emote.vip",
-      "emotes": ["example:dance", "example:sit"]
+      "emotes": ["example:(dance|sit)"]
     },
     {
       "permission": "emote.admin",
@@ -58,5 +58,7 @@ API and bypass playback must still meet the minimum playback requirements.
 | `disabled`       | Hidden from normal players. Only players with `emote.bypass` can use them.        |
 | `permissions`    | Permission groups used to assemble each player's available emote IDs.             |
 | `permission`     | Permission checked through the installed permission provider.                     |
-| `emotes`         | Exact allowed IDs. `"*"` grants every enabled standalone emote.                   |
+| `emotes`         | Java regular expressions matched against complete IDs. `"*"` grants every enabled standalone emote. |
 | `idle`           | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes).    |
+
+Regular-expression backslashes must also be escaped for JSON. For example, use `"example:wave\\.v2"` to match a literal dot.

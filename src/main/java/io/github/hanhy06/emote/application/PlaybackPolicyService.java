@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
+import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
 import net.minecraft.server.level.ServerPlayer;
@@ -14,7 +15,6 @@ import java.util.function.ToLongFunction;
 
 public final class PlaybackPolicyService implements AccessConfigListener {
     private static final String DEFAULT_PERMISSION = "emote.default";
-    private static final String ALL_IDS = "*";
     private static final Rules COMMAND_RULES = new Rules(true, true, true, true);
     private static final Rules IDLE_RULES = new Rules(true, true, true, false);
     private static final Rules UNRESTRICTED_RULES = new Rules(false, false, false, false);
@@ -25,10 +25,14 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     private final Cooldowns cooldowns = new Cooldowns();
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
+    private List<AccessConfig.PermissionEntry> allEmotePermissionEntries = List.of();
+    private Map<String, List<AccessConfig.PermissionEntry>> permissionEntriesByEmoteId = Map.of();
+    private List<String> emoteIds = List.of();
     private Set<String> disabled = Set.of();
 
-    public PlaybackPolicyService(PermissionService permissionService) {
+    public PlaybackPolicyService(PermissionService permissionService, EmoteCatalog emoteCatalog) {
         this(permissionService::has, ServerPlayer::getUUID, player -> player.level().getGameTime());
+        Objects.requireNonNull(emoteCatalog, "emote catalog").addListener(this::onEmoteCatalogChanged);
     }
 
     PlaybackPolicyService(
@@ -45,6 +49,12 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.permissionEntries = newConfig.permissions();
         this.disabled = Set.copyOf(newConfig.disabled());
+        rebuildPermissionIndex();
+    }
+
+    void onEmoteCatalogChanged(List<? extends PlayableEmote> emotes) {
+        this.emoteIds = emotes.stream().map(PlayableEmote::id).toList();
+        rebuildPermissionIndex();
     }
 
     Decision evaluate(ServerPlayer player, PlayableEmote emote, PlaySource source) {
@@ -123,17 +133,37 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     }
 
     private boolean hasEmotePermission(ServerPlayer player, String id) {
-        for (AccessConfig.PermissionEntry entry : this.permissionEntries) {
-            List<String> ids = entry.emotes();
-            if (!ids.contains(ALL_IDS) && !ids.contains(id)) {
-                continue;
-            }
+        if (hasAnyPermission(player, this.allEmotePermissionEntries)) {
+            return true;
+        }
+        return hasAnyPermission(player, this.permissionEntriesByEmoteId.getOrDefault(id, List.of()));
+    }
+
+    private boolean hasAnyPermission(ServerPlayer player, List<AccessConfig.PermissionEntry> entries) {
+        for (AccessConfig.PermissionEntry entry : entries) {
             boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
             if (this.permissionChecker.test(player, entry.permission(), grantedByDefault)) {
                 return true;
             }
         }
         return false;
+    }
+
+    private void rebuildPermissionIndex() {
+        this.allEmotePermissionEntries = this.permissionEntries.stream()
+            .filter(AccessConfig.PermissionEntry::appliesToAllEmotes)
+            .toList();
+
+        Map<String, List<AccessConfig.PermissionEntry>> entriesById = new HashMap<>();
+        for (String id : this.emoteIds) {
+            List<AccessConfig.PermissionEntry> matches = this.permissionEntries.stream()
+                .filter(entry -> !entry.appliesToAllEmotes() && entry.matchesEmote(id))
+                .toList();
+            if (!matches.isEmpty()) {
+                entriesById.put(id, matches);
+            }
+        }
+        this.permissionEntriesByEmoteId = Map.copyOf(entriesById);
     }
 
     private static final class Cooldowns {

@@ -82,7 +82,7 @@ Set `mineskin_api_key` to apply player skins.
   "permissions": [
     {
       "permission": "emote.vip",
-      "emotes": ["example:dance", "example:cry"],
+      "emotes": ["example:(dance|cry)"],
       "idle": {
         "delay": "300s",
         "emote": ["example:dance", 70, "example:cry", 30]
@@ -100,7 +100,7 @@ Set `mineskin_api_key` to apply player skins.
 }
 ```
 
-`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Every player receives `emote.default`, and `*` grants every enabled emote. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Entries in `emotes` are Java regular expressions matched against the complete emote ID; `*` is a special value that grants every enabled emote. Remember to escape regular-expression backslashes for JSON, such as `"example:wave\\.v2"` for a literal dot. Every player receives `emote.default`. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
 
 ## Web converter
 

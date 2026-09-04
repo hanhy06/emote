@@ -1,6 +1,8 @@
 package io.github.hanhy06.emote.config;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
     public static final int CURRENT_SCHEMA_VERSION = 2;
@@ -34,20 +36,87 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         return !disabled.contains(id);
     }
 
-    public record PermissionEntry(String permission, List<String> emotes, Optional<IdleSettings> idle) {
-        public PermissionEntry {
+    public static final class PermissionEntry {
+        private static final String ALL_EMOTES = "*";
+
+        private final String permission;
+        private final List<String> emotes;
+        private final Optional<IdleSettings> idle;
+        private final boolean allEmotes;
+        private final List<Pattern> emotePatterns;
+
+        public PermissionEntry(String permission, List<String> emotes, Optional<IdleSettings> idle) {
             if (permission == null || permission.isBlank()) {
                 throw new IllegalArgumentException("permission must not be blank");
             }
-            permission = permission.trim();
+            this.permission = permission.trim();
 
-            emotes = normalizeIds(
+            this.emotes = normalizeIds(
                 emotes,
                 "permission emotes",
-                "permission emote id must not be blank",
+                "permission emote pattern must not be blank",
                 false
             );
-            Objects.requireNonNull(idle, "idle");
+            this.idle = Objects.requireNonNull(idle, "idle");
+            this.allEmotes = this.emotes.contains(ALL_EMOTES);
+            this.emotePatterns = this.emotes.stream()
+                .filter(pattern -> !pattern.equals(ALL_EMOTES))
+                .map(this::compilePattern)
+                .toList();
+        }
+
+        public String permission() {
+            return this.permission;
+        }
+
+        public List<String> emotes() {
+            return this.emotes;
+        }
+
+        public Optional<IdleSettings> idle() {
+            return this.idle;
+        }
+
+        public boolean appliesToAllEmotes() {
+            return this.allEmotes;
+        }
+
+        public boolean matchesEmote(String id) {
+            return this.emotePatterns.stream().anyMatch(pattern -> pattern.matcher(id).matches());
+        }
+
+        private Pattern compilePattern(String source) {
+            try {
+                return Pattern.compile(source);
+            } catch (PatternSyntaxException exception) {
+                throw new IllegalArgumentException(
+                    "invalid emote pattern '" + source + "' for permission '" + this.permission + "': " + exception.getDescription(),
+                    exception
+                );
+            }
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) {
+                return true;
+            }
+            if (!(object instanceof PermissionEntry other)) {
+                return false;
+            }
+            return this.permission.equals(other.permission)
+                && this.emotes.equals(other.emotes)
+                && this.idle.equals(other.idle);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.permission, this.emotes, this.idle);
+        }
+
+        @Override
+        public String toString() {
+            return "PermissionEntry[permission=" + this.permission + ", emotes=" + this.emotes + ", idle=" + this.idle + "]";
         }
     }
 

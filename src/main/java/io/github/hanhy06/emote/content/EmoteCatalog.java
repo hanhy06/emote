@@ -1,11 +1,13 @@
 package io.github.hanhy06.emote.content;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public class EmoteCatalog {
     public static final int MAX_EMOTE_COUNT = 512;
 
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
+    private final List<Consumer<List<PlayableEmote>>> listeners = new ArrayList<>();
 
     private volatile RegistryState state = RegistryState.empty();
     private Map<String, PlayableEmote> fileEmotes = Map.of();
@@ -93,6 +95,12 @@ public class EmoteCatalog {
         return this.state.emotes().size();
     }
 
+    public synchronized void addListener(Consumer<List<PlayableEmote>> listener) {
+        Consumer<List<PlayableEmote>> validatedListener = Objects.requireNonNull(listener, "listener");
+        this.listeners.add(validatedListener);
+        validatedListener.accept(this.state.emotes());
+    }
+
     private void rebuildState() {
         List<PreparedAnimation> apiList = this.apiEmotes.values().stream()
             .map(ApiEntry::emote)
@@ -123,6 +131,9 @@ public class EmoteCatalog {
             combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
             List.copyOf(fileList)
         );
+        for (Consumer<List<PlayableEmote>> listener : this.listeners) {
+            listener.accept(this.state.emotes());
+        }
     }
 
     private record ApiEntry(UUID registrationId, PreparedAnimation emote) {
