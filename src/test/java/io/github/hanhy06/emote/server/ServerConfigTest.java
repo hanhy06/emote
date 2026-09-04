@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class ServerConfigTest {
+    private static final long SERVER_TIMEOUT_SECONDS = 60;
     private static final Path RUN_DIRECTORY = Path.of("run").toAbsolutePath().normalize();
     private static final Path CONFIG_DIRECTORY = RUN_DIRECTORY.resolve("config/emote");
     private static final Path SERVER_LOG = Path.of("build/test-results/server-config.log").toAbsolutePath();
@@ -30,7 +31,12 @@ class ServerConfigTest {
 
     @BeforeAll
     static void deleteConfigAndStartServer() throws Exception {
-        assertTrue(Files.readString(RUN_DIRECTORY.resolve("eula.txt")).matches("(?s).*\\beula=true\\b.*"), "run/eula.txt must already accept the Minecraft EULA");
+        Files.createDirectories(RUN_DIRECTORY);
+        Path eula = RUN_DIRECTORY.resolve("eula.txt");
+        if (Files.notExists(eula)) {
+            Files.writeString(eula, "eula=true\n", StandardCharsets.UTF_8);
+        }
+        assertTrue(Files.readString(eula).matches("(?s).*\\beula=true\\b.*"), "run/eula.txt must accept the Minecraft EULA");
         if (Files.exists(CONFIG_DIRECTORY)) {
             assertEquals(CONFIG_DIRECTORY, CONFIG_DIRECTORY.toRealPath(), "Refusing to delete a redirected config directory");
             try (var paths = Files.walk(CONFIG_DIRECTORY)) {
@@ -58,8 +64,8 @@ class ServerConfigTest {
         Files.createDirectories(SERVER_LOG.getParent());
         server = new ProcessBuilder(command).directory(RUN_DIRECTORY.toFile())
             .redirectErrorStream(true).redirectOutput(SERVER_LOG.toFile()).start();
-        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
-        server.onExit().orTimeout(60, TimeUnit.SECONDS).exceptionally(exception -> {
+        deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(SERVER_TIMEOUT_SECONDS);
+        server.onExit().orTimeout(SERVER_TIMEOUT_SECONDS, TimeUnit.SECONDS).exceptionally(exception -> {
             server.destroyForcibly();
             return server;
         });
