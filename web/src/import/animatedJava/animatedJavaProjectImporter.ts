@@ -169,7 +169,7 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
   return {
     ...base,
     durationTicks: Math.max(base.durationTicks, display.durationTicks),
-    loop: display.loop,
+    playbackMode: display.playbackMode,
     loopDelayTicks: display.loopDelayTicks,
     tracks: { ...base.tracks, ...display.tracks },
     events: {
@@ -463,7 +463,7 @@ function createPreviewOnlyProjectAnimation(
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    loop: animation.loop === "loop" ? "loop" : "once",
+    playbackMode: animation.loop === "loop" ? "loop" : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -559,7 +559,7 @@ function importProjectAnimation(
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    loop: playbackMode,
+    playbackMode,
     loopDelayTicks: playbackMode === "loop"
       ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,

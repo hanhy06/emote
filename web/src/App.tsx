@@ -64,7 +64,7 @@ export function App() {
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
-  const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
+  const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
   const availability = preview?.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
@@ -136,21 +136,21 @@ export function App() {
     }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
-  const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
-    dispatch({ type: "part_selected", nodeId, additive });
+  const handleNodeSelect = useCallback((nodeId: string, additive: boolean) => {
+    dispatch({ type: "node_selected", nodeId, additive });
   }, []);
 
-  const handlePartsSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
-    dispatch({ type: "parts_selected", nodeIds, additive });
+  const handleNodesSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
+    dispatch({ type: "nodes_selected", nodeIds, additive });
   }, []);
 
   function assignSelected(part: PlayerSkinPart | null) {
-    if (selectedParts.size === 0) return;
+    if (selectedNodeIds.size === 0) return;
     dispatch({ type: "skin_part_assigned", part });
   }
 
   function assignSelectedSpace(space: NodeSpace) {
-    if (selectedParts.size === 0) return;
+    if (selectedNodeIds.size === 0) return;
     dispatch({ type: "node_space_assigned", space });
   }
 
@@ -170,7 +170,7 @@ export function App() {
     dispatch({ type: "frame_command_removed", eventIndex, commandIndex });
   }
 
-  const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
+  const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
     <label className={`file-input${busy ? " disabled" : ""}`}>
       <span>{session ? "Open another file" : "Choose animation file"}</span>
@@ -316,9 +316,9 @@ export function App() {
                     key={project.origin.sourceName}
                     parts={previewParts}
                     assignments={assignments}
-                    selectedParts={selectedParts}
-                    onSelectPart={handlePartSelect}
-                    onSelectParts={handlePartsSelect}
+                    selectedNodeIds={selectedNodeIds}
+                    onSelectNode={handleNodeSelect}
+                    onSelectNodes={handleNodesSelect}
                   />
                 </Suspense>
                 <AssignmentPanel
@@ -326,12 +326,12 @@ export function App() {
                   assignments={assignments}
                   orders={orders}
                   spaces={spaces}
-                  selectedParts={selectedParts}
+                  selectedNodeIds={selectedNodeIds}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
                   onAssignSpace={assignSelectedSpace}
-                  onSelectPart={handlePartSelect}
+                  onSelectNode={handleNodeSelect}
                 />
               </div>
             ) : (

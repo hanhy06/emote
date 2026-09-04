@@ -71,7 +71,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     name: displayName,
     suggestedMetadata: metadata,
     durationTicks,
-    loop: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
+    playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
     loopDelayTicks: 0,
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },

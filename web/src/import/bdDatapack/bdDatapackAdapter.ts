@@ -235,7 +235,7 @@ function importAnimations(
       id: sanitizeResourcePath(animationName, "default"),
       name: prettify(animationName),
       durationTicks,
-      loop: "loop" as const,
+      playbackMode: "loop" as const,
       loopDelayTicks: 0,
       tracks,
       events: { start: [], timeline: [], loop: [], stop: [] },

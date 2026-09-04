@@ -106,7 +106,7 @@ function project(): ImportedProject {
       },
     },
     animations: [{
-      id: "test", name: "Test", durationTicks: 1, loop: "once", loopDelayTicks: 0,
+      id: "test", name: "Test", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
       tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
     }],
     diagnostics: [],

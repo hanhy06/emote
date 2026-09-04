@@ -8,7 +8,7 @@ interface FixtureCompileOptions {
   namespace?: string;
   metadata?: EmoteMetadata;
   player?: EmotePlayerBehavior;
-  loop?: EmoteAnimation["settings"]["playback"]["mode"];
+  playbackMode?: EmoteAnimation["settings"]["playback"]["mode"];
   standalone?: boolean;
   cooldown?: string;
   loopDelay?: string;
@@ -38,7 +38,7 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
           ? Object.fromEntries(Object.entries(options.metadata).filter(([key]) => key !== "name" && key !== "description"))
           : animation.output.additionalMetadata,
         player: options.player ?? animation.output.player,
-        playbackMode: options.loop ?? "source",
+        playbackMode: options.playbackMode ?? "source",
         standalone: options.standalone ?? true,
         cooldown: options.cooldown ?? "0t",
         loopDelay: options.loopDelay ?? animation.output.loopDelay,

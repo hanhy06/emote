@@ -43,7 +43,7 @@ public record PreparedSequence(
     private static Playback resolvePlayback(EmoteSequence source, Map<String, PreparedAnimation> animations) {
         if (source.steps().getFirst() instanceof EmoteSequence.AwaitPartnerStep await) {
             return new PartnerPlayback(
-                resolveAnimation(await.offerEmoteId().toString(), animations),
+                resolveAnimation(await.offerAnimationId().toString(), animations),
                 await.timeoutTicks(),
                 resolveBranch(await.matched(), animations),
                 resolveBranch(await.timeout(), animations)
@@ -62,12 +62,12 @@ public record PreparedSequence(
             EmoteSequence.EmoteStep step = (EmoteSequence.EmoteStep) sourceStep;
             List<Choice> candidates = new ArrayList<>(step.choices().size());
             for (EmoteSequence.Choice choice : step.choices()) {
-                EmoteSequence.Control control = EmoteSequence.Control.fromId(choice.emoteId());
+                EmoteSequence.Control control = EmoteSequence.Control.fromId(choice.targetId());
                 if (control != null) {
                     candidates.add(new ControlChoice(control, choice.chance()));
                     continue;
                 }
-                PreparedAnimation animation = resolveAnimation(choice.emoteId().toString(), animations);
+                PreparedAnimation animation = resolveAnimation(choice.targetId().toString(), animations);
                 candidates.add(new AnimationChoice(animation, choice.chance()));
             }
             resolvedSteps.add(new EmoteStep(candidates, step.repeat(), step.transitionTicks()));

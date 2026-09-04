@@ -46,7 +46,7 @@ export function compileConversionAnimation(
   if (!availability.exportable) {
     throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
   }
-  const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
+  const mode = output.playbackMode === "source" ? animation.playbackMode : output.playbackMode;
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   return {
     type: "animation",

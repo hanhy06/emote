@@ -37,7 +37,7 @@ export interface SkinGroup {
 
 export interface AnimationOutputSettings {
   namespace: string;
-  playbackMode: "source" | ImportedAnimation["loop"];
+  playbackMode: "source" | ImportedAnimation["playbackMode"];
   displayName: string;
   description: string;
   player: EmotePlayerBehavior;

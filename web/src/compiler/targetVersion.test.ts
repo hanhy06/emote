@@ -37,7 +37,7 @@ describe("Minecraft target output", () => {
         block: { id: "block", type: "block_display", visible: true, defaultMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1], blockState: readBlockState('{Name:"minecraft:oak_log",Properties:{axis:"y"}}') },
       },
       animations: [{
-        id: "block", name: "Block", durationTicks: 2, loop: "once", loopDelayTicks: 0,
+        id: "block", name: "Block", durationTicks: 2, playbackMode: "once", loopDelayTicks: 0,
         events: { start: [], timeline: [], loop: [], stop: [] },
         tracks: { block: { transforms: [], visibility: [], nbt: [{ tick: 0, value: readDisplayNbt('{block_state:{Properties:{axis:"x"}}}') }] } },
       }],

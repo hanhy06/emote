@@ -588,7 +588,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     const animation = project.animations[0];
     const finalMatrix = animation.tracks.item.transforms.at(-1)!.matrix;
 
-    expect(animation.loop).toBe("hold");
+    expect(animation.playbackMode).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
     expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);

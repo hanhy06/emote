@@ -39,7 +39,7 @@ function preview(previewFrameIndex: number) {
       id: "preview",
       name: "Preview",
       durationTicks: 10,
-      loop: "once",
+      playbackMode: "once",
       loopDelayTicks: 0,
       tracks: {
         head: {

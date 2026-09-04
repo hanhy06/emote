@@ -174,7 +174,7 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
     durationTicks,
-    loop: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
+    playbackMode: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -381,7 +381,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
     durationTicks,
-    loop: playbackMode,
+    playbackMode,
     loopDelayTicks: playbackMode === "loop"
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,

@@ -16,7 +16,7 @@ function projectWithCommands(...commands: string[][]): ImportedProject {
       id: `animation-${index}`,
       name: `Animation ${index}`,
       durationTicks: 1,
-      loop: "once" as const,
+      playbackMode: "once" as const,
       loopDelayTicks: 0,
       tracks: {},
       events,

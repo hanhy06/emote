@@ -48,7 +48,7 @@ describe("converter session skin assignment", () => {
 
   it("moves assigned scene parts to initiator space", () => {
     const initial = opened(project());
-    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const selected = workspaceReducer(initial, { type: "node_selected", nodeId: "head_variant", additive: false });
     const moved = workspaceReducer(selected, { type: "node_space_assigned", space: "scene" });
     const result = workspaceReducer(moved, { type: "skin_part_assigned", part: "body" }).session!;
 
@@ -58,7 +58,7 @@ describe("converter session skin assignment", () => {
 
   it("clears a logical skin group in scene space and updates its order together", () => {
     const initial = opened(project());
-    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const selected = workspaceReducer(initial, { type: "node_selected", nodeId: "head_variant", additive: false });
     const ordered = workspaceReducer(selected, { type: "skin_order_assigned", order: 5 });
     const cleared = workspaceReducer(ordered, { type: "node_space_assigned", space: "scene" });
 
@@ -106,7 +106,7 @@ function project(): ImportedProject {
       id: "test",
       name: "Test",
       durationTicks: 1,
-      loop: "once",
+      playbackMode: "once",
       loopDelayTicks: 0,
       tracks: {},
       events: { start: [], timeline: [], loop: [], stop: [] },

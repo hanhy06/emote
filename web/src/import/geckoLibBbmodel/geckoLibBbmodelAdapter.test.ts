@@ -88,7 +88,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const animation = imported.animations[0];
     expect(animation.durationTicks).toBe(2);
-    expect(animation.loop).toBe("loop");
+    expect(animation.playbackMode).toBe("loop");
     expect(animation.loopDelayTicks).toBe(1);
     expect(animation.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
     expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
@@ -565,7 +565,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].loop).toBe("hold");
+    expect(imported.animations[0].playbackMode).toBe("hold");
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(compiled.settings.playback).toEqual({ mode: "hold", loop_delay: "0t" });
   });

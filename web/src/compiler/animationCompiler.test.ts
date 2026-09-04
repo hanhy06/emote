@@ -13,7 +13,7 @@ describe("compileImportedProject time handling", () => {
       namespace: "test",
       standalone: false,
       cooldown: "10s",
-      loop: "loop",
+      playbackMode: "loop",
       loopDelay: "0.5s",
     });
 
@@ -137,7 +137,7 @@ function importedProject(): ImportedProject {
         id: "test",
         name: "Test",
         durationTicks: 10,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {
           anchor: {

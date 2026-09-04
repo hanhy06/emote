@@ -235,8 +235,8 @@ public final class SequenceJsonParser {
             if (document.isNotString(candidate)) {
                 throw document.error(candidatePath, "must be a string");
             }
-            Identifier emoteId = parseId(candidate.getAsString(), candidatePath, document);
-            if (choices.stream().anyMatch(choice -> choice.emoteId().equals(emoteId))) {
+            Identifier targetId = parseId(candidate.getAsString(), candidatePath, document);
+            if (choices.stream().anyMatch(choice -> choice.targetId().equals(targetId))) {
                 throw document.error(candidatePath, "must not duplicate an earlier candidate");
             }
             int chance = 0;
@@ -249,7 +249,7 @@ public final class SequenceJsonParser {
                 }
                 totalChance += chance;
             }
-            choices.add(new EmoteSequence.Choice(emoteId, chance));
+            choices.add(new EmoteSequence.Choice(targetId, chance));
         }
         if (weighted && totalChance != 100) {
             throw document.error(path + ".emote", "chances must total 100");

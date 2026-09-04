@@ -64,7 +64,7 @@ function animation(): ImportedAnimation {
     id: "test",
     name: "Test",
     durationTicks: 20,
-    loop: "once",
+    playbackMode: "once",
     loopDelayTicks: 0,
     tracks: {},
     events: {

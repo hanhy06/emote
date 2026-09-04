@@ -8,35 +8,35 @@ import { createPlayerHeadGeometry } from "./playerHeadGeometry";
 interface PartPreviewProps {
   parts: PreviewPart[];
   assignments: PartAssignments;
-  selectedParts: ReadonlySet<string>;
-  onSelectPart: (nodeId: string, additive: boolean) => void;
-  onSelectParts: (nodeIds: readonly string[], additive: boolean) => void;
+  selectedNodeIds: ReadonlySet<string>;
+  onSelectNode: (nodeId: string, additive: boolean) => void;
+  onSelectNodes: (nodeIds: readonly string[], additive: boolean) => void;
 }
 
 const ASSIGNMENT_COLORS = new Map(SKIN_PARTS.map((part) => [part.id, part.color]));
 
-export default function PartPreview({ parts, assignments, selectedParts, onSelectPart, onSelectParts }: PartPreviewProps) {
+export default function PartPreview({ parts, assignments, selectedNodeIds, onSelectNode, onSelectNodes }: PartPreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const materialsRef = useRef(new Map<string, THREE.MeshStandardMaterial>());
-  const onSelectPartRef = useRef(onSelectPart);
-  const onSelectPartsRef = useRef(onSelectParts);
-  const selectedPartsRef = useRef(selectedParts);
+  const onSelectNodeRef = useRef(onSelectNode);
+  const onSelectNodesRef = useRef(onSelectNodes);
+  const selectedNodeIdsRef = useRef(selectedNodeIds);
   const cameraStateRef = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
   const resetViewRef = useRef<() => void>(() => {});
   const [renderError, setRenderError] = useState("");
 
-  onSelectPartRef.current = onSelectPart;
-  onSelectPartsRef.current = onSelectParts;
-  selectedPartsRef.current = selectedParts;
+  onSelectNodeRef.current = onSelectNode;
+  onSelectNodesRef.current = onSelectNodes;
+  selectedNodeIdsRef.current = selectedNodeIds;
 
   useEffect(() => {
     for (const [nodeId, material] of materialsRef.current) {
       const assignment = assignments[nodeId];
       material.color.set(assignment ? ASSIGNMENT_COLORS.get(assignment)! : "#777777");
-      material.emissive.set(selectedParts.has(nodeId) ? "#3d73b9" : "#000000");
-      material.emissiveIntensity = selectedParts.has(nodeId) ? 0.7 : 0;
+      material.emissive.set(selectedNodeIds.has(nodeId) ? "#3d73b9" : "#000000");
+      material.emissiveIntensity = selectedNodeIds.has(nodeId) ? 0.7 : 0;
     }
-  }, [assignments, selectedParts]);
+  }, [assignments, selectedNodeIds]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -77,8 +77,8 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       const assignment = assignments[part.nodeId];
       const material = new THREE.MeshStandardMaterial({
         color: assignment ? ASSIGNMENT_COLORS.get(assignment) : "#777777",
-        emissive: selectedParts.has(part.nodeId) ? "#3d73b9" : "#000000",
-        emissiveIntensity: selectedParts.has(part.nodeId) ? 0.7 : 0,
+        emissive: selectedNodeIds.has(part.nodeId) ? "#3d73b9" : "#000000",
+        emissiveIntensity: selectedNodeIds.has(part.nodeId) ? 0.7 : 0,
         roughness: 0.8,
       });
       materialsRef.current.set(part.nodeId, material);
@@ -179,7 +179,7 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
           && projectedMin.y <= bottom;
         return intersects ? [mesh.userData.nodeId as string] : [];
       });
-      onSelectPartsRef.current(nodeIds, true);
+      onSelectNodesRef.current(nodeIds, true);
       return true;
     };
 
@@ -233,9 +233,9 @@ export default function PartPreview({ parts, assignments, selectedParts, onSelec
       const nodeIds = [...new Set(raycaster.intersectObjects(clickableMeshes, false)
         .map((intersection) => intersection.object.userData.nodeId as string))];
       if (nodeIds.length === 0) return;
-      const selectedIndex = nodeIds.findIndex((nodeId) => selectedPartsRef.current.has(nodeId));
+      const selectedIndex = nodeIds.findIndex((nodeId) => selectedNodeIdsRef.current.has(nodeId));
       const nextIndex = selectedIndex < 0 ? 0 : (selectedIndex + 1) % nodeIds.length;
-      onSelectPartRef.current(nodeIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
+      onSelectNodeRef.current(nodeIds[nextIndex], event.ctrlKey || event.metaKey || event.shiftKey);
     };
     const handlePointerCancel = () => {
       pointerStart = null;
