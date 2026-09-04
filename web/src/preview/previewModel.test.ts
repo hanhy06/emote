@@ -4,22 +4,21 @@ import { createConversionDocument } from "../domain/conversionDocument";
 import type { ImportedProject } from "../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { IDENTITY_MATRIX } from "../format/matrix";
-import type { ConversionSession } from "../workspace";
 import { createPreviewModel } from "./previewModel";
 
 describe("createPreviewModel", () => {
   it("uses the node default before its first visibility keyframe", () => {
-    expect(createPreviewModel(session(0)).parts.map((part) => part.nodeId)).toEqual(["head"]);
-    expect(createPreviewModel(session(3)).parts.map((part) => part.nodeId)).toEqual(["head"]);
+    expect(preview(0).parts.map((part) => part.nodeId)).toEqual(["head"]);
+    expect(preview(3).parts.map((part) => part.nodeId)).toEqual(["head"]);
   });
 
   it("uses the latest visibility state at the preview tick", () => {
-    expect(createPreviewModel(session(5)).parts).toEqual([]);
-    expect(createPreviewModel(session(9)).parts.map((part) => part.nodeId)).toEqual(["head"]);
+    expect(preview(5).parts).toEqual([]);
+    expect(preview(9).parts.map((part) => part.nodeId)).toEqual(["head"]);
   });
 });
 
-function session(previewFrameIndex: number): ConversionSession {
+function preview(previewFrameIndex: number) {
   const project: ImportedProject = {
     source: "emote_json",
     sourceName: "preview.json",
@@ -57,10 +56,5 @@ function session(previewFrameIndex: number): ConversionSession {
     diagnostics: [],
     resources: new Map(),
   };
-  return {
-    document: createConversionDocument(project, "Test adapter"),
-    animationIndex: 0,
-    previewFrameIndex,
-    selectedParts: new Set(),
-  };
+  return createPreviewModel(createConversionDocument(project, "Test adapter"), 0, previewFrameIndex);
 }

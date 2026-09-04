@@ -58,7 +58,9 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const preview = useMemo(() => session ? createPreviewModel(session) : null, [session]);
+  const preview = useMemo(() => session
+    ? createPreviewModel(session.document, session.animationIndex, session.previewFrameIndex)
+    : null, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
