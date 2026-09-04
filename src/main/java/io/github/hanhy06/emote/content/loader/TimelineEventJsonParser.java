@@ -17,7 +17,7 @@ final class TimelineEventJsonParser {
         JsonObject object,
         int durationTicks,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     )
         throws EmoteAnimationLoadException {
         if (object == null) {
@@ -25,28 +25,28 @@ final class TimelineEventJsonParser {
         }
         return new Events(
             parseEventArray(
-                reader.optionalArray(object, "start", "$.timeline.events"),
+                document.optionalArray(object, "start", "$.timeline.events"),
                 "$.timeline.events.start",
                 nodes,
-                reader
+                document
             ),
             parseTimelineEventArray(
-                reader.optionalArray(object, "timeline", "$.timeline.events"),
+                document.optionalArray(object, "timeline", "$.timeline.events"),
                 durationTicks,
                 nodes,
-                reader
+                document
             ),
             parseEventArray(
-                reader.optionalArray(object, "loop", "$.timeline.events"),
+                document.optionalArray(object, "loop", "$.timeline.events"),
                 "$.timeline.events.loop",
                 nodes,
-                reader
+                document
             ),
             parseEventArray(
-                reader.optionalArray(object, "stop", "$.timeline.events"),
+                document.optionalArray(object, "stop", "$.timeline.events"),
                 "$.timeline.events.stop",
                 nodes,
-                reader
+                document
             )
         );
     }
@@ -55,7 +55,7 @@ final class TimelineEventJsonParser {
         JsonArray array,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     )
         throws EmoteAnimationLoadException {
         if (array == null) {
@@ -64,7 +64,7 @@ final class TimelineEventJsonParser {
         List<Event> events = new ArrayList<>();
         for (int index = 0; index < array.size(); index++) {
             String eventPath = path + "[" + index + "]";
-            events.add(parseEvent(reader.requireObject(array.get(index), eventPath), eventPath, nodes, reader));
+            events.add(parseEvent(document.requireObject(array.get(index), eventPath), eventPath, nodes, document));
         }
         return List.copyOf(events);
     }
@@ -73,7 +73,7 @@ final class TimelineEventJsonParser {
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -82,16 +82,16 @@ final class TimelineEventJsonParser {
         int previousTick = -1;
         for (int index = 0; index < array.size(); index++) {
             String path = "$.timeline.events.timeline[" + index + "]";
-            JsonObject object = reader.requireObject(array.get(index), path);
-            int tick = reader.requireTime(object, "time", path, 0);
+            JsonObject object = document.requireObject(array.get(index), path);
+            int tick = document.requireTime(object, "time", path, 0);
             if (tick < 0 || tick >= durationTicks) {
-                throw reader.error(path + ".time", "must be before timeline duration");
+                throw document.error(path + ".time", "must be before timeline duration");
             }
             if (tick < previousTick) {
-                throw reader.error(path + ".time", "timeline events must be ordered by time");
+                throw document.error(path + ".time", "timeline events must be ordered by time");
             }
             previousTick = tick;
-            Event event = parseEvent(object, path, nodes, reader);
+            Event event = parseEvent(object, path, nodes, document);
             events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands(), event.callbacks()));
         }
         return List.copyOf(events);
@@ -101,48 +101,48 @@ final class TimelineEventJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     )
         throws EmoteAnimationLoadException {
         CommandSource source = parseCommandSource(
-            reader.requireObject(object, "source", path),
+            document.requireObject(object, "source", path),
             path + ".source",
             nodes,
-            reader
+            document
         );
         CommandOrigin origin = parseCommandOrigin(
-            reader.requireObject(object, "origin", path),
+            document.requireObject(object, "origin", path),
             path + ".origin",
             nodes,
-            reader
+            document
         );
-        JsonArray commandArray = reader.requireArray(object, "commands", path);
+        JsonArray commandArray = document.requireArray(object, "commands", path);
         List<String> commands = new ArrayList<>();
         for (int index = 0; index < commandArray.size(); index++) {
             String commandPath = path + ".commands[" + index + "]";
             JsonElement element = commandArray.get(index);
-            if (reader.isNotString(element)) {
-                throw reader.error(commandPath, "must be a string");
+            if (document.isNotString(element)) {
+                throw document.error(commandPath, "must be a string");
             }
             String command = element.getAsString();
             if (command.isBlank()) {
-                throw reader.error(commandPath, "must not be blank");
+                throw document.error(commandPath, "must not be blank");
             }
             if (command.startsWith("/")) {
-                throw reader.error(commandPath, "must not start with /");
+                throw document.error(commandPath, "must not start with /");
             }
             commands.add(command);
         }
-        JsonArray callbackArray = reader.optionalArray(object, "callbacks", path);
+        JsonArray callbackArray = document.optionalArray(object, "callbacks", path);
         List<Callback> callbacks = new ArrayList<>();
         if (callbackArray != null) {
             for (int index = 0; index < callbackArray.size(); index++) {
                 String callbackPath = path + ".callbacks[" + index + "]";
-                JsonObject callback = reader.requireObject(callbackArray.get(index), callbackPath);
-                String nameValue = reader.requireString(callback, "name", callbackPath);
+                JsonObject callback = document.requireObject(callbackArray.get(index), callbackPath);
+                String nameValue = document.requireString(callback, "name", callbackPath);
                 Identifier name = Identifier.tryParse(nameValue);
-                if (name == null) throw reader.error(callbackPath + ".name", "must be a valid namespaced identifier");
-                String payload = callback.has("payload") ? reader.requireString(callback, "payload", callbackPath) : "";
+                if (name == null) throw document.error(callbackPath + ".name", "must be a valid namespaced identifier");
+                String payload = callback.has("payload") ? document.requireString(callback, "payload", callbackPath) : "";
                 callbacks.add(new Callback(name, payload));
             }
         }
@@ -153,22 +153,22 @@ final class TimelineEventJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     )
         throws EmoteAnimationLoadException {
-        String type = reader.requireString(object, "type", path);
+        String type = document.requireString(object, "type", path);
         return switch (type) {
             case "player" -> new CommandSource(SourceType.PLAYER, null);
             case "server" -> new CommandSource(SourceType.SERVER, null);
             case "node" -> {
-                String nodeId = reader.requireString(object, "node", path);
-                Node node = requireNode(nodes, nodeId, path + ".node", reader);
+                String nodeId = document.requireString(object, "node", path);
+                Node node = TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
                 if (node instanceof AnchorNode) {
-                    throw reader.error(path + ".node", "anchor nodes cannot be command sources");
+                    throw document.error(path + ".node", "anchor nodes cannot be command sources");
                 }
                 yield new CommandSource(SourceType.NODE, nodeId);
             }
-            default -> throw reader.error(path + ".type", "unsupported source type: " + type);
+            default -> throw document.error(path + ".type", "unsupported source type: " + type);
         };
     }
 
@@ -176,47 +176,35 @@ final class TimelineEventJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonDocument reader
+        EmoteJsonDocument document
     )
         throws EmoteAnimationLoadException {
-        String type = reader.requireString(object, "type", path);
-        Vec3 offset = parseOffset(reader.optionalArray(object, "offset", path), path + ".offset", reader);
+        String type = document.requireString(object, "type", path);
+        Vec3 offset = parseOffset(document.optionalArray(object, "offset", path), path + ".offset", document);
         return switch (type) {
             case "root" -> new CommandOrigin(OriginType.ROOT, null, offset);
             case "node" -> {
-                String nodeId = reader.requireString(object, "node", path);
-                requireNode(nodes, nodeId, path + ".node", reader);
+                String nodeId = document.requireString(object, "node", path);
+                TimelineJsonParser.requireNode(nodes, nodeId, path + ".node", document);
                 yield new CommandOrigin(OriginType.NODE, nodeId, offset);
             }
-            default -> throw reader.error(path + ".type", "unsupported origin type: " + type);
+            default -> throw document.error(path + ".type", "unsupported origin type: " + type);
         };
     }
 
-    private Vec3 parseOffset(JsonArray array, String path, EmoteJsonDocument reader)
+    private Vec3 parseOffset(JsonArray array, String path, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         if (array == null) {
             return Vec3.ZERO;
         }
         if (array.size() != 3) {
-            throw reader.error(path, "must contain 3 values");
+            throw document.error(path, "must contain 3 values");
         }
         return new Vec3(
-            reader.requireFiniteDouble(array.get(0), path + "[0]"),
-            reader.requireFiniteDouble(array.get(1), path + "[1]"),
-            reader.requireFiniteDouble(array.get(2), path + "[2]")
+            document.requireFiniteDouble(array.get(0), path + "[0]"),
+            document.requireFiniteDouble(array.get(1), path + "[1]"),
+            document.requireFiniteDouble(array.get(2), path + "[2]")
         );
     }
 
-    private Node requireNode(
-        Map<String, Node> nodes,
-        String nodeId,
-        String path,
-        EmoteJsonDocument reader
-    ) throws EmoteAnimationLoadException {
-        Node node = nodes.get(nodeId);
-        if (node == null) {
-            throw reader.error(path, "references unknown node: " + nodeId);
-        }
-        return node;
-    }
 }
