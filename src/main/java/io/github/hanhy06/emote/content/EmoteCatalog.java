@@ -1,5 +1,7 @@
 package io.github.hanhy06.emote.content;
 
+import io.github.hanhy06.emote.EmoteMod;
+
 import java.util.*;
 import java.util.function.Consumer;
 
@@ -8,11 +10,13 @@ public class EmoteCatalog {
 
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
     private final List<Consumer<List<PlayableEmote>>> listeners = new ArrayList<>();
+    private final ArrayDeque<ListenerNotification> pendingNotifications = new ArrayDeque<>();
 
     private volatile RegistryState state = RegistryState.empty();
     private Map<String, PlayableEmote> fileEmotes = Map.of();
+    private boolean dispatchingNotifications;
 
-    public synchronized int replace(Collection<? extends PlayableEmote> emotes) {
+    public int replace(Collection<? extends PlayableEmote> emotes) {
         List<PlayableEmote> sorted = new ArrayList<>(emotes);
         sorted.sort(Comparator.comparing(PlayableEmote::id));
 
@@ -23,35 +27,61 @@ public class EmoteCatalog {
             }
         }
 
-        this.fileEmotes = Map.copyOf(byId);
-        rebuildState();
-        return this.fileEmotes.size() - this.state.fileEmotes().size();
+        int ignoredCount;
+        boolean dispatchNotifications;
+        synchronized (this) {
+            this.fileEmotes = Map.copyOf(byId);
+            rebuildState();
+            ignoredCount = this.fileEmotes.size() - this.state.fileEmotes().size();
+            dispatchNotifications = queueNotification(this.listeners);
+        }
+        if (dispatchNotifications) {
+            dispatchNotifications();
+        }
+        return ignoredCount;
     }
 
-    public synchronized UUID register(PreparedAnimation emote) {
+    public UUID register(PreparedAnimation emote) {
         Objects.requireNonNull(emote, "emote");
-        if (this.fileEmotes.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
-            throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
-        }
-        if (this.apiEmotes.size() >= MAX_EMOTE_COUNT) {
-            throw new IllegalStateException("The emote registry is full.");
-        }
 
-        UUID registrationId = UUID.randomUUID();
-        this.apiEmotes.put(emote.id(), new ApiEntry(registrationId, emote));
-        rebuildState();
+        UUID registrationId;
+        boolean dispatchNotifications;
+        synchronized (this) {
+            if (this.fileEmotes.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
+                throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
+            }
+            if (this.apiEmotes.size() >= MAX_EMOTE_COUNT) {
+                throw new IllegalStateException("The emote registry is full.");
+            }
+
+            registrationId = UUID.randomUUID();
+            this.apiEmotes.put(emote.id(), new ApiEntry(registrationId, emote));
+            rebuildState();
+            dispatchNotifications = queueNotification(this.listeners);
+        }
+        if (dispatchNotifications) {
+            dispatchNotifications();
+        }
         return registrationId;
     }
 
-    public synchronized boolean unregister(String id, UUID registrationId) {
+    public boolean unregister(String id, UUID registrationId) {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(registrationId, "registrationId");
-        ApiEntry entry = this.apiEmotes.get(id);
-        if (entry == null || !entry.registrationId().equals(registrationId)) {
-            return false;
+
+        boolean dispatchNotifications;
+        synchronized (this) {
+            ApiEntry entry = this.apiEmotes.get(id);
+            if (entry == null || !entry.registrationId().equals(registrationId)) {
+                return false;
+            }
+            this.apiEmotes.remove(id);
+            rebuildState();
+            dispatchNotifications = queueNotification(this.listeners);
         }
-        this.apiEmotes.remove(id);
-        rebuildState();
+        if (dispatchNotifications) {
+            dispatchNotifications();
+        }
         return true;
     }
 
@@ -60,14 +90,21 @@ public class EmoteCatalog {
         return entry != null && entry.registrationId().equals(registrationId);
     }
 
-    public synchronized int clearApiRegistrations() {
-        int removedCount = this.apiEmotes.size();
+    public int clearApiRegistrations() {
+        int removedCount;
+        boolean dispatchNotifications = false;
+        synchronized (this) {
+            removedCount = this.apiEmotes.size();
 
-        if (removedCount > 0) {
-            this.apiEmotes.clear();
-            rebuildState();
+            if (removedCount > 0) {
+                this.apiEmotes.clear();
+                rebuildState();
+                dispatchNotifications = queueNotification(this.listeners);
+            }
         }
-
+        if (dispatchNotifications) {
+            dispatchNotifications();
+        }
         return removedCount;
     }
 
@@ -95,10 +132,17 @@ public class EmoteCatalog {
         return this.state.emotes().size();
     }
 
-    public synchronized void addListener(Consumer<List<PlayableEmote>> listener) {
+    public void addListener(Consumer<List<PlayableEmote>> listener) {
         Consumer<List<PlayableEmote>> validatedListener = Objects.requireNonNull(listener, "listener");
-        this.listeners.add(validatedListener);
-        validatedListener.accept(this.state.emotes());
+
+        boolean dispatchNotifications;
+        synchronized (this) {
+            this.listeners.add(validatedListener);
+            dispatchNotifications = queueNotification(List.of(validatedListener));
+        }
+        if (dispatchNotifications) {
+            dispatchNotifications();
+        }
     }
 
     private void rebuildState() {
@@ -131,9 +175,45 @@ public class EmoteCatalog {
             combined.stream().filter(PreparedAnimation.class::isInstance).map(PreparedAnimation.class::cast).toList(),
             List.copyOf(fileList)
         );
-        for (Consumer<List<PlayableEmote>> listener : this.listeners) {
-            listener.accept(this.state.emotes());
+    }
+
+    private boolean queueNotification(Collection<Consumer<List<PlayableEmote>>> listeners) {
+        if (listeners.isEmpty()) {
+            return false;
         }
+        this.pendingNotifications.add(new ListenerNotification(List.copyOf(listeners), this.state.emotes()));
+        if (this.dispatchingNotifications) {
+            return false;
+        }
+        this.dispatchingNotifications = true;
+        return true;
+    }
+
+    private void dispatchNotifications() {
+        while (true) {
+            ListenerNotification notification;
+            synchronized (this) {
+                notification = this.pendingNotifications.poll();
+                if (notification == null) {
+                    this.dispatchingNotifications = false;
+                    return;
+                }
+            }
+
+            for (Consumer<List<PlayableEmote>> listener : notification.listeners()) {
+                try {
+                    listener.accept(notification.emotes());
+                } catch (RuntimeException exception) {
+                    EmoteMod.LOGGER.error("Emote catalog listener failed", exception);
+                }
+            }
+        }
+    }
+
+    private record ListenerNotification(
+        List<Consumer<List<PlayableEmote>>> listeners,
+        List<PlayableEmote> emotes
+    ) {
     }
 
     private record ApiEntry(UUID registrationId, PreparedAnimation emote) {
