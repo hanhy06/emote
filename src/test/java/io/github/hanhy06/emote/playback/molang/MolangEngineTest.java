@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.molang;
 
+import io.github.hanhy06.emote.molang.MolangEngine;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
-import io.github.hanhy06.emote.playback.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;

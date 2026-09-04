@@ -9,7 +9,7 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.playback.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;

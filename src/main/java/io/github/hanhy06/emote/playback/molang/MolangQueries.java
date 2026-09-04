@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.molang;
 
+import io.github.hanhy06.emote.molang.MolangEngine;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
