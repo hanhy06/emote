@@ -8,7 +8,6 @@ import { generatedResourceFiles } from "./generatedResources";
 import {
   createDocumentAnimationBundleDownload,
   createDocumentAnimationDownload,
-  documentAnimationUsesGeneratedResources,
   exportDocumentAnimation,
   exportDocumentAnimationFiles,
 } from "./projectExporter";
@@ -423,8 +422,6 @@ describe("exportAnimation", () => {
     skinned.targetMinecraftVersion = "26.1";
     unskinned.targetMinecraftVersion = "26.1";
 
-    expect(documentAnimationUsesGeneratedResources(skinned, 0)).toBe(false);
-    expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
     expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
     expect(() => exportDocumentAnimation(unskinned, 0)).not.toThrow();
     expect((await createDocumentAnimationDownload(skinned, 0)).map((file) => file.fileName)).toEqual(["emote.player.json"]);

@@ -1,10 +1,10 @@
 import { compileConversionAnimation } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
+import type { EmoteAnimation } from "../format/emoteAnimation";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import { animationUsesGeneratedResources } from "./generatedResources";
-import type { EmoteAnimation } from "../format/emoteAnimation";
 import type { ExportResult } from "./types";
 
 export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
@@ -27,11 +27,9 @@ export async function createDocumentAnimationDownload(document: ConversionDocume
 
 export async function createDocumentAnimationBundleDownload(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
   const compiled = compileAnimationFiles(document, includeSequence);
-  if (compiled.animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) {
-    const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-    compiled.files.push(exportDocumentResourceBundle(document));
-  }
-  return compiled.files;
+  if (!compiled.animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) return compiled.files;
+  const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
+  return [...compiled.files, exportDocumentResourceBundle(document)];
 }
 
 interface CompiledAnimationFile {
@@ -84,10 +82,6 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     });
   }
   return { animations, files };
-}
-
-export function documentAnimationUsesGeneratedResources(document: ConversionDocument, animationIndex: number): boolean {
-  return animationUsesGeneratedResources(compileConversionAnimation(document, animationIndex), document.resources);
 }
 
 export function sanitizeAnimationFileName(value: string): string {

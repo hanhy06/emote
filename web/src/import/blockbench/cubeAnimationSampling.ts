@@ -9,7 +9,7 @@ interface AnimationAnchor {
   step: boolean;
 }
 
-export interface AnimationSamplePlan {
+interface AnimationSamplePlan {
   sourceTimes: Map<number, number>;
   stepTicks: Set<number>;
 }

@@ -37,25 +37,9 @@ import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR 
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../molangVector";
 import { GECKOLIB_BBMODEL_TRANSFORMS, type CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
 import { planAnimationSamples } from "./cubeAnimationSampling";
+import type { BoneEntry } from "./cubeProjectModel";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
-
-interface BoneNodeEntry {
-  id: string;
-  localMatrix: Matrix4;
-  ignoreInheritedScale?: boolean;
-  locatorName?: string;
-}
-
-export interface BoneEntry {
-  id: string;
-  uuid: string;
-  group: BbGroup;
-  parent?: BoneEntry;
-  cubes: BbCube[];
-  locators: BbLocator[];
-  nodes: BoneNodeEntry[];
-}
 
 export interface CubeProjectImportOptions {
   transforms?: CubeProjectTransformConvention;

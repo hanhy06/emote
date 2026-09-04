@@ -3,7 +3,7 @@ import type { Matrix16 } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube } from "./cubeProjectSchema";
-import type { BoneEntry } from "./cubeProjectImporter";
+import type { BoneEntry } from "./cubeProjectModel";
 import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
 import {
   humanoidJointFillMatrix,

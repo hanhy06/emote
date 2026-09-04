@@ -2,7 +2,7 @@ import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { GeneratedResource } from "../../domain/generatedResource";
 import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
-import type { BoneEntry } from "./cubeProjectImporter";
+import type { BoneEntry } from "./cubeProjectModel";
 import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
 
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
@@ -16,14 +16,13 @@ export function writeSourceCubeResources(
   resources: Map<string, GeneratedResource>,
   transforms: CubeProjectTransformConvention,
 ): void {
-  if (bones.some((bone) => bone.cubes.length > 0)) {
-    writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
-    const resourceNodeIds = new Set(bones.map((bone) => bone.id));
-    for (const bone of bones) {
-      for (const [cubeIndex, cube] of bone.cubes.entries()) {
-        const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
-        writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources, transforms);
-      }
+  if (!bones.some((bone) => bone.cubes.length > 0)) return;
+  writeEmbeddedTextures(project.textures, namespace, projectPath, resources);
+  const resourceNodeIds = new Set(bones.map((bone) => bone.id));
+  for (const bone of bones) {
+    for (const [cubeIndex, cube] of bone.cubes.entries()) {
+      const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, resourceNodeIds);
+      writeCubeResources(project, bone, cube, namespace, `${projectPath}/${nodeId}`, resources, transforms);
     }
   }
 }
