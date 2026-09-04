@@ -110,7 +110,7 @@ final class AdminCommandTest {
 
     @Test
     void stressTestRequiresTimeBeforeTheOptionalInstanceCountAndPacketFanout() {
-        var command = createCommand(true).createStressTestCommand().build();
+        var command = createStressTestCommand(true).createCommand().build();
         assertNull(command.getCommand());
 
         var time = (ArgumentCommandNode<?, ?>) command.getChild("time");
@@ -154,7 +154,7 @@ final class AdminCommandTest {
             packetLoad
         );
 
-        var summaryComponent = AdminCommand.createPacketLoadSummary(report);
+        var summaryComponent = StressTestCommand.createPacketLoadSummary(report);
         String summary = summaryComponent.getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("Throughput: 46 packets/s / 0.05 MiB/s"));
@@ -173,7 +173,7 @@ final class AdminCommandTest {
 
         assertEquals(
             "\n• Duration: 46.7 s\n  Setup 3.0 s + Emote 2.5 s + Network 37.3 s\n  + Server/idle 3.8 s + Cleanup 0.1 s",
-            AdminCommand.createStressDurationSummary(report).getString()
+            StressTestCommand.createStressDurationSummary(report).getString()
         );
         assertEquals(43.52641D, report.runtimeSeconds(), 0.00001D);
         assertEquals(13.78473D, report.observedTps(), 0.00001D);
@@ -181,7 +181,7 @@ final class AdminCommandTest {
 
     @Test
     void stressTestStatisticColorsItsLabelAndKeepsItsValueWhite() {
-        var statistic = AdminCommand.createStressStatistic("\n  ", "avg", "%.2f ms", ChatFormatting.GREEN, 12.5D);
+        var statistic = StressTestCommand.createStressStatistic("\n  ", "avg", "%.2f ms", ChatFormatting.GREEN, 12.5D);
 
         assertEquals("\n  avg: 12.50 ms", statistic.getString());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.GREEN), statistic.getStyle());
@@ -189,12 +189,20 @@ final class AdminCommandTest {
     }
 
     private AdminCommand createCommand(boolean canManage) {
+        return new AdminCommand(null, null, permissionService(canManage), null, null);
+    }
+
+    private StressTestCommand createStressTestCommand(boolean canManage) {
+        return new StressTestCommand(null, null, permissionService(canManage));
+    }
+
+    private PermissionService permissionService(boolean canManage) {
         PermissionService permissionService = new PermissionService() {
             @Override
             public boolean canManage(CommandSourceStack source) {
                 return canManage;
             }
         };
-        return new AdminCommand(null, null, permissionService, null, null);
+        return permissionService;
     }
 }
