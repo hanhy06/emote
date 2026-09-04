@@ -24,8 +24,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Assemble mod
-        run: ./gradlew assemble
+      - name: Build and test mod
+        run: ./gradlew build
 
       - name: Upload mod artifacts
         uses: actions/upload-artifact@v4
