@@ -10,7 +10,7 @@ public class EmoteCatalog {
 
     private final Map<String, ApiEntry> apiEmotes = new HashMap<>();
     private final List<Consumer<List<PlayableEmote>>> listeners = new ArrayList<>();
-    private final ArrayDeque<ListenerNotification> pendingNotifications = new ArrayDeque<>();
+    private final Deque<ListenerNotification> pendingNotifications = new ArrayDeque<>();
 
     private volatile RegistryState state = RegistryState.empty();
     private Map<String, PlayableEmote> fileEmotes = Map.of();
@@ -28,16 +28,14 @@ public class EmoteCatalog {
         }
 
         int ignoredCount;
-        boolean dispatchNotifications;
+        boolean shouldDispatch;
         synchronized (this) {
             this.fileEmotes = Map.copyOf(byId);
             rebuildState();
             ignoredCount = this.fileEmotes.size() - this.state.fileEmotes().size();
-            dispatchNotifications = queueNotification(this.listeners);
+            shouldDispatch = enqueueNotification(this.listeners);
         }
-        if (dispatchNotifications) {
-            dispatchNotifications();
-        }
+        dispatchNotifications(shouldDispatch);
         return ignoredCount;
     }
 
@@ -45,7 +43,7 @@ public class EmoteCatalog {
         Objects.requireNonNull(emote, "emote");
 
         UUID registrationId;
-        boolean dispatchNotifications;
+        boolean shouldDispatch;
         synchronized (this) {
             if (this.fileEmotes.containsKey(emote.id()) || this.apiEmotes.containsKey(emote.id())) {
                 throw new IllegalArgumentException("Duplicate emote id: " + emote.id());
@@ -57,11 +55,9 @@ public class EmoteCatalog {
             registrationId = UUID.randomUUID();
             this.apiEmotes.put(emote.id(), new ApiEntry(registrationId, emote));
             rebuildState();
-            dispatchNotifications = queueNotification(this.listeners);
+            shouldDispatch = enqueueNotification(this.listeners);
         }
-        if (dispatchNotifications) {
-            dispatchNotifications();
-        }
+        dispatchNotifications(shouldDispatch);
         return registrationId;
     }
 
@@ -69,7 +65,7 @@ public class EmoteCatalog {
         Objects.requireNonNull(id, "id");
         Objects.requireNonNull(registrationId, "registrationId");
 
-        boolean dispatchNotifications;
+        boolean shouldDispatch;
         synchronized (this) {
             ApiEntry entry = this.apiEmotes.get(id);
             if (entry == null || !entry.registrationId().equals(registrationId)) {
@@ -77,11 +73,9 @@ public class EmoteCatalog {
             }
             this.apiEmotes.remove(id);
             rebuildState();
-            dispatchNotifications = queueNotification(this.listeners);
+            shouldDispatch = enqueueNotification(this.listeners);
         }
-        if (dispatchNotifications) {
-            dispatchNotifications();
-        }
+        dispatchNotifications(shouldDispatch);
         return true;
     }
 
@@ -92,19 +86,17 @@ public class EmoteCatalog {
 
     public int clearApiRegistrations() {
         int removedCount;
-        boolean dispatchNotifications = false;
+        boolean shouldDispatch = false;
         synchronized (this) {
             removedCount = this.apiEmotes.size();
 
             if (removedCount > 0) {
                 this.apiEmotes.clear();
                 rebuildState();
-                dispatchNotifications = queueNotification(this.listeners);
+                shouldDispatch = enqueueNotification(this.listeners);
             }
         }
-        if (dispatchNotifications) {
-            dispatchNotifications();
-        }
+        dispatchNotifications(shouldDispatch);
         return removedCount;
     }
 
@@ -135,14 +127,12 @@ public class EmoteCatalog {
     public void addListener(Consumer<List<PlayableEmote>> listener) {
         Consumer<List<PlayableEmote>> validatedListener = Objects.requireNonNull(listener, "listener");
 
-        boolean dispatchNotifications;
+        boolean shouldDispatch;
         synchronized (this) {
             this.listeners.add(validatedListener);
-            dispatchNotifications = queueNotification(List.of(validatedListener));
+            shouldDispatch = enqueueNotification(List.of(validatedListener));
         }
-        if (dispatchNotifications) {
-            dispatchNotifications();
-        }
+        dispatchNotifications(shouldDispatch);
     }
 
     private void rebuildState() {
@@ -177,7 +167,7 @@ public class EmoteCatalog {
         );
     }
 
-    private boolean queueNotification(Collection<Consumer<List<PlayableEmote>>> listeners) {
+    private boolean enqueueNotification(Collection<Consumer<List<PlayableEmote>>> listeners) {
         if (listeners.isEmpty()) {
             return false;
         }
@@ -189,7 +179,11 @@ public class EmoteCatalog {
         return true;
     }
 
-    private void dispatchNotifications() {
+    private void dispatchNotifications(boolean shouldDispatch) {
+        if (!shouldDispatch) {
+            return;
+        }
+
         while (true) {
             ListenerNotification notification;
             synchronized (this) {
