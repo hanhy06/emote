@@ -18,7 +18,7 @@ final class TimelineJsonParser {
         "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
     );
 
-    Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteJsonReader reader)
+    Timeline parse(JsonObject object, Map<String, Node> nodes, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         int durationTicks = reader.requireTime(object, "duration", "$.timeline", 1);
         Map<String, NodeTracks> tracks = parseTracks(
@@ -37,7 +37,7 @@ final class TimelineJsonParser {
         JsonObject object,
         int durationTicks,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         LinkedHashMap<String, NodeTracks> tracks = new LinkedHashMap<>();
         for (Map.Entry<String, JsonElement> entry : object.entrySet()) {
@@ -82,7 +82,7 @@ final class TimelineJsonParser {
         JsonArray array,
         String path,
         int durationTicks,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (array == null) return List.of();
         if (array.isEmpty()) throw reader.error(path, "must not be empty");
@@ -125,7 +125,7 @@ final class TimelineJsonParser {
         return List.copyOf(keyframes);
     }
 
-    private NbtValue parseNbtValue(JsonElement element, String path, EmoteJsonReader reader)
+    private NbtValue parseNbtValue(JsonElement element, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (!reader.isNotString(element)) {
             return new FixedNbtValue(parseNbt(element.getAsString(), path, reader));
@@ -154,7 +154,7 @@ final class TimelineJsonParser {
         return new SelectedNbtValue(new MolangValue(selector, path + ".select"), options);
     }
 
-    private CompoundTag parseNbt(String source, String path, EmoteJsonReader reader) throws EmoteAnimationLoadException {
+    private CompoundTag parseNbt(String source, String path, EmoteJsonDocument reader) throws EmoteAnimationLoadException {
         CompoundTag parsed;
         try {
             parsed = TagParser.parseCompoundFully(source);
@@ -177,7 +177,7 @@ final class TimelineJsonParser {
         JsonArray array,
         String path,
         int durationTicks,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -221,7 +221,7 @@ final class TimelineJsonParser {
         JsonArray array,
         String path,
         int durationTicks,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -261,7 +261,7 @@ final class TimelineJsonParser {
         int durationTicks,
         int previousTick,
         int index,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         int tick = reader.requireTime(object, "time", path, 0);
         if (tick < 0 || tick > durationTicks) {
@@ -276,7 +276,7 @@ final class TimelineJsonParser {
         return tick;
     }
 
-    private VectorValue parseVectorValue(JsonArray array, String path, EmoteJsonReader reader)
+    private VectorValue parseVectorValue(JsonArray array, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (array.size() != 3) {
             throw reader.error(path, "must contain 3 values");
@@ -288,7 +288,7 @@ final class TimelineJsonParser {
         );
     }
 
-    private ScalarValue parseScalar(JsonElement element, String path, EmoteJsonReader reader)
+    private ScalarValue parseScalar(JsonElement element, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
             return new ConstantValue(reader.requireFiniteDouble(element, path));
@@ -301,7 +301,7 @@ final class TimelineJsonParser {
         throw reader.error(path, "must be a finite number or Molang string");
     }
 
-    private Interpolation parseInterpolation(JsonObject object, String path, EmoteJsonReader reader)
+    private Interpolation parseInterpolation(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (!object.has("interpolation")) {
             return Interpolation.LINEAR;
@@ -313,7 +313,7 @@ final class TimelineJsonParser {
         };
     }
 
-    private Easing parseEasing(JsonObject object, String path, Interpolation interpolation, EmoteJsonReader reader)
+    private Easing parseEasing(JsonObject object, String path, Interpolation interpolation, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (!object.has("easing")) {
             return Easing.LINEAR;
@@ -333,7 +333,7 @@ final class TimelineJsonParser {
         JsonObject object,
         int durationTicks,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         if (object == null) {
@@ -371,7 +371,7 @@ final class TimelineJsonParser {
         JsonArray array,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         if (array == null) {
@@ -389,7 +389,7 @@ final class TimelineJsonParser {
         JsonArray array,
         int durationTicks,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (array == null) {
             return List.of();
@@ -417,7 +417,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         CommandSource source = parseCommandSource(
@@ -469,7 +469,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
@@ -492,7 +492,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         Map<String, Node> nodes,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
@@ -508,7 +508,7 @@ final class TimelineJsonParser {
         };
     }
 
-    private Vec3 parseOffset(JsonArray array, String path, EmoteJsonReader reader)
+    private Vec3 parseOffset(JsonArray array, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (array == null) {
             return Vec3.ZERO;
@@ -527,7 +527,7 @@ final class TimelineJsonParser {
         Map<String, Node> nodes,
         String nodeId,
         String path,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         Node node = nodes.get(nodeId);
@@ -541,7 +541,7 @@ final class TimelineJsonParser {
         JsonObject object,
         String path,
         int defaultValue,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         String key = "interpolation_duration";
         if (!object.has(key) || object.get(key).isJsonNull()) {

@@ -44,7 +44,7 @@ public final class EmoteDirectoryLoader {
                 switch (document.type()) {
                     case "animation" -> candidates.add(resolver.resolve(this.animationParser.parse(document)));
                     case "sequence" -> sequenceCandidates.add(this.sequenceParser.parse(document));
-                    default -> throw document.reader().error(
+                    default -> throw document.error(
                         "$.type",
                         "unsupported emote file type: " + document.type()
                     );

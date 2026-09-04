@@ -53,7 +53,7 @@ public final class AnimationJsonParser {
     }
 
     LoadedAnimation parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
-        EmoteJsonReader reader = document.reader();
+        EmoteJsonDocument reader = document;
         JsonObject root = document.root();
         if (!document.type().equals("animation")) {
             throw reader.error("$.type", "must equal animation");
@@ -75,7 +75,7 @@ public final class AnimationJsonParser {
         );
     }
 
-    private MolangPrograms parseMolang(JsonObject object, Settings settings, EmoteJsonReader reader)
+    private MolangPrograms parseMolang(JsonObject object, Settings settings, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (object == null) {
             return MolangPrograms.empty();
@@ -88,7 +88,7 @@ public final class AnimationJsonParser {
         return new MolangPrograms(initialize, tick);
     }
 
-    private String optionalProgram(JsonObject object, String key, String path, EmoteJsonReader reader)
+    private String optionalProgram(JsonObject object, String key, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get(key);
         if (element == null || element.isJsonNull()) {
@@ -105,7 +105,7 @@ public final class AnimationJsonParser {
         return source;
     }
 
-    static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonReader reader)
+    static EmoteMetadata parseMetadata(JsonObject object, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         String name = reader.requireString(object, "name", "$.metadata");
         if (name.isBlank()) {
@@ -119,7 +119,7 @@ public final class AnimationJsonParser {
         return new EmoteMetadata(name, description, additional);
     }
 
-    private Settings parseSettings(JsonObject object, EmoteJsonReader reader)
+    private Settings parseSettings(JsonObject object, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         boolean standalone = reader.requireBoolean(object, "standalone", "$.settings");
         int cooldownTicks = reader.requireTime(object, "cooldown", "$.settings", 0);
@@ -152,7 +152,7 @@ public final class AnimationJsonParser {
         }
     }
 
-    static EmotePlayerBehavior parsePlayer(JsonObject object, String path, EmoteJsonReader reader)
+    static EmotePlayerBehavior parsePlayer(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         boolean hidden = reader.requireBoolean(object, "hidden", path);
         JsonObject stopObject = reader.requireObject(object, "stop_conditions", path);
@@ -175,7 +175,7 @@ public final class AnimationJsonParser {
         ));
     }
 
-    private Map<String, Node> parseNodes(JsonObject object, EmoteJsonReader reader)
+    private Map<String, Node> parseNodes(JsonObject object, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (object.isEmpty()) {
             throw reader.error("$.nodes", "must not be empty");
@@ -205,7 +205,7 @@ public final class AnimationJsonParser {
         Map<String, JsonObject> definitions,
         Map<String, Node> nodes,
         Set<String> visiting,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         Node existing = nodes.get(nodeId);
         if (existing != null) {
@@ -235,7 +235,7 @@ public final class AnimationJsonParser {
         return node;
     }
 
-    private String optionalParent(JsonObject object, String path, EmoteJsonReader reader)
+    private String optionalParent(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("parent");
         if (element == null || element.isJsonNull()) {
@@ -248,7 +248,7 @@ public final class AnimationJsonParser {
         return parent;
     }
 
-    private Node parseNode(JsonObject object, String path, String parentId, NodeSpace space, EmoteJsonReader reader)
+    private Node parseNode(JsonObject object, String path, String parentId, NodeSpace space, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         String type = reader.requireString(object, "type", path);
         LocalTransform transform = parseTransform(reader.requireObject(object, "transform", path), path + ".transform", reader);
@@ -295,7 +295,7 @@ public final class AnimationJsonParser {
         };
     }
 
-    private LocalTransform parseTransform(JsonObject object, String path, EmoteJsonReader reader)
+    private LocalTransform parseTransform(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         return new LocalTransform(
             requireVec3(object, "position", path, reader),
@@ -304,7 +304,7 @@ public final class AnimationJsonParser {
         );
     }
 
-    private Vec3 requireVec3(JsonObject object, String key, String path, EmoteJsonReader reader)
+    private Vec3 requireVec3(JsonObject object, String key, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         var array = reader.requireArray(object, key, path);
         String fieldPath = path + "." + key;
@@ -318,7 +318,7 @@ public final class AnimationJsonParser {
         );
     }
 
-    private NodeSpace requireNodeSpace(JsonObject object, String path, EmoteJsonReader reader)
+    private NodeSpace requireNodeSpace(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         String value = reader.requireString(object, "space", path);
         return switch (value) {
@@ -329,7 +329,7 @@ public final class AnimationJsonParser {
         };
     }
 
-    private String parseItemDisplay(JsonObject object, String path, EmoteJsonReader reader)
+    private String parseItemDisplay(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         String value = reader.requireString(object, "item_display", path);
         if (!ITEM_DISPLAY_VALUES.contains(value)) {
@@ -338,7 +338,7 @@ public final class AnimationJsonParser {
         return value;
     }
 
-    private ItemSource parseItemSource(JsonObject object, NodeSpace space, String path, EmoteJsonReader reader)
+    private ItemSource parseItemSource(JsonObject object, NodeSpace space, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         boolean hasStack = object.has("item_stack_snbt");
         boolean hasSource = object.has("item_source");
@@ -366,7 +366,7 @@ public final class AnimationJsonParser {
         });
     }
 
-    private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonReader reader)
+    private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         JsonElement element = object.get("skin");
         if (element == null || element.isJsonNull()) {
@@ -405,7 +405,7 @@ public final class AnimationJsonParser {
         return new Skin(participant, part, order);
     }
 
-    private Identifier parseId(String value, EmoteJsonReader reader) throws EmoteAnimationLoadException {
+    private Identifier parseId(String value, EmoteJsonDocument reader) throws EmoteAnimationLoadException {
         int separator = value.indexOf(':');
         if (separator <= 0 || separator == value.length() - 1) {
             throw reader.error("$.id", "must use namespace:path format");
@@ -417,7 +417,7 @@ public final class AnimationJsonParser {
         return id;
     }
 
-    private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonReader reader)
+    private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         String key = "entity_nbt";
         if (!object.has(key) || object.get(key).isJsonNull()) {
@@ -432,7 +432,7 @@ public final class AnimationJsonParser {
         return tag;
     }
 
-    static void compileMolang(String source, String path, EmoteJsonReader reader) throws EmoteAnimationLoadException {
+    static void compileMolang(String source, String path, EmoteJsonDocument reader) throws EmoteAnimationLoadException {
         try {
             MolangEngine.INSTANCE.compile(source);
         } catch (MolangEngine.MolangCompileException exception) {
@@ -444,7 +444,7 @@ public final class AnimationJsonParser {
         JsonObject object,
         String key,
         String path,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     )
         throws EmoteAnimationLoadException {
         String fieldPath = path + "." + key;
@@ -456,7 +456,7 @@ public final class AnimationJsonParser {
         }
     }
 
-    private boolean optionalVisible(JsonObject object, String path, EmoteJsonReader reader)
+    private boolean optionalVisible(JsonObject object, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (!object.has("visible") || object.get("visible").isJsonNull()) {
             return true;

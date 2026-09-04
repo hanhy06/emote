@@ -26,7 +26,7 @@ public final class SequenceJsonParser {
     }
 
     EmoteSequence parse(EmoteJsonDocument document) throws EmoteAnimationLoadException {
-        EmoteJsonReader reader = document.reader();
+        EmoteJsonDocument reader = document;
         JsonObject root = document.root();
         if (!document.type().equals("sequence")) {
             throw reader.error("$.type", "must equal sequence");
@@ -52,7 +52,7 @@ public final class SequenceJsonParser {
         }
     }
 
-    private EmoteSequence.Participants parseParticipants(JsonObject root, EmoteJsonReader reader)
+    private EmoteSequence.Participants parseParticipants(JsonObject root, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         JsonElement element = root.get("participants");
         if (element == null || element.isJsonNull()) {
@@ -68,7 +68,7 @@ public final class SequenceJsonParser {
     private EmoteSequence.ParticipantPlacement parseParticipant(
         JsonObject participants,
         String role,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         String path = "$.participants." + role;
         JsonObject placement = reader.requireObject(participants, role, "$.participants");
@@ -94,7 +94,7 @@ public final class SequenceJsonParser {
         String value,
         String path,
         boolean position,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         StringReader stringReader = new StringReader(value);
         try {
@@ -114,7 +114,7 @@ public final class SequenceJsonParser {
         JsonArray stepsArray,
         String stepsPath,
         boolean allowAwaitPartner,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (stepsArray.isEmpty()) {
             throw reader.error(stepsPath, "must not be empty");
@@ -166,7 +166,7 @@ public final class SequenceJsonParser {
         return List.copyOf(steps);
     }
 
-    private void rejectTransition(JsonObject stepObject, String path, EmoteJsonReader reader)
+    private void rejectTransition(JsonObject stepObject, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         if (stepObject.has("transition")) {
             throw reader.error(path + ".transition", "is supported only on an emote step");
@@ -176,7 +176,7 @@ public final class SequenceJsonParser {
     private EmoteSequence.AwaitPartnerStep parseAwaitPartner(
         JsonObject stepObject,
         String path,
-        EmoteJsonReader reader
+        EmoteJsonDocument reader
     ) throws EmoteAnimationLoadException {
         if (stepObject.has("repeat")) {
             throw reader.error(path + ".repeat", "is not supported on an await_partner step");
@@ -206,7 +206,7 @@ public final class SequenceJsonParser {
         return new EmoteSequence.AwaitPartnerStep(offer, timeoutTicks, matched, timeout);
     }
 
-    private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonReader reader)
+    private List<EmoteSequence.Choice> readEmoteChoices(JsonObject stepObject, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         JsonElement element = reader.requireElement(stepObject, "emote", path);
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
@@ -258,7 +258,7 @@ public final class SequenceJsonParser {
         return choices;
     }
 
-    private Identifier parseId(String value, String path, EmoteJsonReader reader)
+    private Identifier parseId(String value, String path, EmoteJsonDocument reader)
         throws EmoteAnimationLoadException {
         Identifier id = Identifier.tryParse(value);
         if (id == null || !id.toString().equals(value) || value.indexOf(':') <= 0) {
