@@ -61,4 +61,3 @@ API and bypass playback must still meet the minimum playback requirements.
 | `emotes`         | Valid emote IDs match literally. Other entries are full Java regular expressions. `"*"` grants every enabled standalone emote. |
 | `idle`           | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes).    |
 
-Regular-expression backslashes must also be escaped for JSON. Valid IDs such as `"example:wave.v2"` do not need escaping and match literally.

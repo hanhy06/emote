@@ -24,22 +24,22 @@ On the server, LuckPerms permissions can assign emotes and idle emotes per playe
 
 ### Player
 
-| Command | Description |
-|---|---|
-| `/emote` | Opens the emote menu. |
-| `/emote play <id>` | Plays an emote by ID. |
-| `V` | Opens the client emote wheel. |
+| Command            | Description                   |
+|--------------------|-------------------------------|
+| `/emote`           | Opens the emote menu.         |
+| `/emote play <id>` | Plays an emote by ID.         |
+| `V`                | Opens the client emote wheel. |
 
 Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order is stored on the client separately for each server.
 
 ### Administration
 
-| Command                                   | Description                                                                                                             |
-|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `/emote list`                             | Lists loaded emotes with their IDs, durations, and availability.                                                        |
-| `/emote reload`                           | Reloads configuration and animations.                                                                                   |
-| `/emote enable/disable <id>`              | Enables or disables an emote.                                                                                           |
-| `/emote stop <player>`, `/emote stop-all` | Stops one player's emote or all emotes.                                                                                 |
+| Command                                       | Description                                                                                                                                                                                   |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/emote list`                                 | Lists loaded emotes with their IDs, durations, and availability.                                                                                                                              |
+| `/emote reload`                               | Reloads configuration and animations.                                                                                                                                                         |
+| `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
+| `/emote stop <player>`, `/emote stop-all`     | Stops one player's emote or all emotes.                                                                                                                                                       |
 | `/emote stress-test <time> [count] [packets]` | Plays multiple emotes for the required duration and encodes each packet through a configurable fanout (default 20) to measure server performance. Supports time units such as `10s` and `2m`. |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
