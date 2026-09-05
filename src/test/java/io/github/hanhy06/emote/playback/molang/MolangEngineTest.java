@@ -40,6 +40,15 @@ class MolangEngineTest {
     }
 
     @Test
+    void treatsCallOnlyQueryFunctionsAsZeroWhenReadWithoutCalling() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        session.setQueryFunction("call_only", arguments -> MolangEngine.QueryValue.number(1.0D));
+
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.call_only")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.call_only()")));
+    }
+
+    @Test
     void evaluatesEachQueryArgumentOnceFromLeftToRight() throws Exception {
         MolangEngine.Session session = this.engine.createSession();
         session.setQueryFunction("sum", arguments -> MolangEngine.QueryValue.number(arguments.number(0) + arguments.number(1)));
@@ -102,6 +111,9 @@ class MolangEngineTest {
         assertEquals(0.6D, session.evaluate(this.engine.compile("q.movement_direction(0)")), 1.0E-9D);
         assertEquals(0.8D, session.evaluate(this.engine.compile("q.movement_direction(2)")), 1.0E-9D);
         assertEquals(0.0D, session.evaluate(this.engine.compile("q.position(9)")));
+
+        PlayerMolangQueries.setSpatialQueries(session, Vec3.ZERO, new Vec3(1.0E-6D, 0.0D, 0.0D));
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.movement_direction(0)")));
 
         MolangQueryCatalog.validate(
             this.engine.compile("q.position(0); q.position_delta(1); q.movement_direction(2); q.blocking; q.is_eating; q.is_jumping;"),

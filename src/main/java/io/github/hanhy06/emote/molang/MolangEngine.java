@@ -3,11 +3,11 @@ package io.github.hanhy06.emote.molang;
 import team.unnamed.mocha.MochaEngine;
 import team.unnamed.mocha.parser.ParseException;
 import team.unnamed.mocha.parser.ast.Expression;
+import team.unnamed.mocha.runtime.value.Function;
 import team.unnamed.mocha.runtime.value.MutableObjectBinding;
 import team.unnamed.mocha.runtime.value.NumberValue;
 import team.unnamed.mocha.runtime.value.StringValue;
 import team.unnamed.mocha.runtime.value.Value;
-import team.unnamed.mocha.runtime.value.Function;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -134,7 +134,7 @@ public final class MolangEngine {
 
                 @Override
                 public boolean getAsBoolean() {
-                    return value == null || value != 0.0D;
+                    return value != null && value != 0.0D;
                 }
             });
         }

@@ -6,10 +6,10 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
-import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Objects;
@@ -29,6 +29,7 @@ public final class PlayerMolangQueries {
         );
         setScoreboardQuery(session, objective -> 0.0D);
     };
+    private static final double MOVEMENT_EPSILON_SQUARED = 1.0E-10D;
 
     private PlayerMolangQueries() {
     }
@@ -98,16 +99,18 @@ public final class PlayerMolangQueries {
                 ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.LEGS)),
                 ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.FEET))
             );
-            setScoreboardQuery(session, objectiveName -> {
-                var scoreboard = player.level().getScoreboard();
-                var objective = scoreboard.getObjective(objectiveName);
-                if (objective == null) {
-                    return 0.0D;
-                }
-                var score = scoreboard.getPlayerScoreInfo(player, objective);
-                return score == null ? 0.0D : score.value();
-            });
+            setScoreboardQuery(session, objectiveName -> scoreboardValue(player, objectiveName));
         };
+    }
+
+    private static double scoreboardValue(ServerPlayer player, String objectiveName) {
+        var scoreboard = player.level().getScoreboard();
+        var objective = scoreboard.getObjective(objectiveName);
+        if (objective == null) {
+            return 0.0D;
+        }
+        var score = scoreboard.getPlayerScoreInfo(player, objective);
+        return score == null ? 0.0D : score.value();
     }
 
     static void setScoreboardQuery(MolangEngine.Session session, ToDoubleFunction<String> scoreLookup) {
@@ -189,7 +192,7 @@ public final class PlayerMolangQueries {
         session.setQuery("vertical_speed", movement.y * 20.0D);
         session.setQuery("modified_distance_moved", values.modifiedDistanceMoved());
         session.setQuery("walk_distance", values.walkDistance());
-        session.setQuery("is_moving", movement.lengthSqr() > 1.0E-10D ? 1.0D : 0.0D);
+        session.setQuery("is_moving", movement.lengthSqr() > MOVEMENT_EPSILON_SQUARED ? 1.0D : 0.0D);
         session.setQuery("is_on_ground", values.onGround() ? 1.0D : 0.0D);
         session.setQuery("is_sneaking", values.sneaking() ? 1.0D : 0.0D);
         session.setQuery("is_sprinting", values.sprinting() ? 1.0D : 0.0D);
@@ -228,7 +231,7 @@ public final class PlayerMolangQueries {
     }
 
     static void setSpatialQueries(MolangEngine.Session session, Vec3 position, Vec3 movement) {
-        Vec3 direction = movement.lengthSqr() == 0.0D ? Vec3.ZERO : movement.normalize();
+        Vec3 direction = movement.lengthSqr() > MOVEMENT_EPSILON_SQUARED ? movement.normalize() : Vec3.ZERO;
         session.setQueryFunction("position", arguments -> MolangEngine.QueryValue.number(axis(position, arguments.number(0))));
         session.setQueryFunction("position_delta", arguments -> MolangEngine.QueryValue.number(axis(movement, arguments.number(0))));
         session.setQueryFunction("movement_direction", arguments -> MolangEngine.QueryValue.number(axis(direction, arguments.number(0))));
