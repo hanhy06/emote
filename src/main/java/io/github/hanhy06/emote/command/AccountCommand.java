@@ -55,7 +55,7 @@ public final class AccountCommand {
                     .withColor(ChatFormatting.AQUA).withUnderlined(true)
                     .withClickEvent(new ClickEvent.OpenUrl(login.verificationUri())));
                 Component code = Component.literal(login.userCode()).withStyle(style -> style
-                    .withColor(ChatFormatting.YELLOW)
+                    .withColor(ChatFormatting.YELLOW).withUnderlined(true)
                     .withClickEvent(new ClickEvent.CopyToClipboard(login.userCode())));
                 source.sendSuccess(() -> Component.literal("Account login: ").append(link).append("  Code: ").append(code), false);
             }), message -> source.getServer().execute(() -> {
