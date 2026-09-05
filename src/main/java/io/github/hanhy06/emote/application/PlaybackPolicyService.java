@@ -25,7 +25,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     private final Cooldowns cooldowns = new Cooldowns();
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
-    private List<AccessConfig.PermissionEntry> allEmotePermissionEntries = List.of();
+    private List<AccessConfig.PermissionEntry> wildcardPermissionEntries = List.of();
     private Map<String, List<AccessConfig.PermissionEntry>> permissionEntriesByEmoteId = Map.of();
     private List<String> emoteIds = List.of();
     private Set<String> disabled = Set.of();
@@ -68,10 +68,21 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         if (rules.checkDisabled() && this.disabled.contains(emote.id())) {
             return Decision.denied("This emote is currently unavailable.");
         }
-        if (rules.checkPermission() && !hasEmotePermission(player, emote.id())) {
+        PermissionResolution permission = rules.checkPermission() ? resolvePermission(player, emote.id()) : null;
+        if (permission != null && !permission.allowed()) {
             return Decision.denied("You do not have permission to use this emote.");
         }
         if (!rules.checkCooldown() || emote.cooldownTicks() <= 0) {
+            return Decision.allowed();
+        }
+
+        if (permission == null) {
+            permission = resolvePermission(player, emote.id());
+        }
+        int cooldownTicks = permission.cooldown()
+            .map(modifier -> modifier.apply(emote.cooldownTicks()))
+            .orElse(emote.cooldownTicks());
+        if (cooldownTicks <= 0) {
             return Decision.allowed();
         }
 
@@ -84,7 +95,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
                 "You can use this emote again in " + remainingSeconds + (remainingSeconds == 1 ? " second." : " seconds.")
             );
         }
-        return Decision.allowed(playerId, emote.id(), currentTick, emote.cooldownTicks());
+        return Decision.allowed(playerId, emote.id(), currentTick, cooldownTicks);
     }
 
     void onPlaybackStarted(Decision decision) {
@@ -102,7 +113,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         Rules rules = rulesFor(player, PlaySource.COMMAND);
         return (!rules.checkStandalone() || emote.standalone())
             && (!rules.checkDisabled() || !this.disabled.contains(emote.id()))
-            && (!rules.checkPermission() || hasEmotePermission(player, emote.id()));
+            && (!rules.checkPermission() || resolvePermission(player, emote.id()).allowed());
     }
 
     public Optional<AccessConfig.IdleSettings> findIdleSettings(ServerPlayer player) {
@@ -132,38 +143,38 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         return source == PlaySource.IDLE ? IDLE_RULES : COMMAND_RULES;
     }
 
-    private boolean hasEmotePermission(ServerPlayer player, String id) {
-        if (hasAnyPermission(player, this.allEmotePermissionEntries)) {
-            return true;
-        }
-        return hasAnyPermission(player, this.permissionEntriesByEmoteId.getOrDefault(id, List.of()));
-    }
-
-    private boolean hasAnyPermission(ServerPlayer player, List<AccessConfig.PermissionEntry> entries) {
-        for (AccessConfig.PermissionEntry entry : entries) {
+    private PermissionResolution resolvePermission(ServerPlayer player, String id) {
+        boolean allowed = false;
+        for (AccessConfig.PermissionEntry entry : this.permissionEntriesByEmoteId.getOrDefault(id, this.wildcardPermissionEntries)) {
             boolean grantedByDefault = entry.permission().equals(DEFAULT_PERMISSION);
             if (this.permissionChecker.test(player, entry.permission(), grantedByDefault)) {
-                return true;
+                allowed = true;
+                if (entry.cooldown().isPresent()) {
+                    return new PermissionResolution(true, entry.cooldown());
+                }
             }
         }
-        return false;
+        return new PermissionResolution(allowed, Optional.empty());
     }
 
     private void rebuildPermissionIndex() {
-        this.allEmotePermissionEntries = this.permissionEntries.stream()
+        this.wildcardPermissionEntries = this.permissionEntries.stream()
             .filter(AccessConfig.PermissionEntry::appliesToAllEmotes)
             .toList();
 
         Map<String, List<AccessConfig.PermissionEntry>> entriesById = new HashMap<>();
         for (String id : this.emoteIds) {
             List<AccessConfig.PermissionEntry> matches = this.permissionEntries.stream()
-                .filter(entry -> !entry.appliesToAllEmotes() && entry.matchesEmote(id))
+                .filter(entry -> entry.appliesToAllEmotes() || entry.matchesEmote(id))
                 .toList();
             if (!matches.isEmpty()) {
                 entriesById.put(id, matches);
             }
         }
         this.permissionEntriesByEmoteId = Map.copyOf(entriesById);
+    }
+
+    private record PermissionResolution(boolean allowed, Optional<AccessConfig.CooldownModifier> cooldown) {
     }
 
     private static final class Cooldowns {

@@ -148,7 +148,12 @@ class EmotePlayServiceTest {
         );
         policy.onAccessConfigReload(new AccessConfig(
             List.of(),
-            List.of(new AccessConfig.PermissionEntry("emote.default", List.of("demo:wave"), Optional.empty()))
+            List.of(new AccessConfig.PermissionEntry(
+                "emote.default",
+                List.of("demo:wave"),
+                Optional.empty(),
+                Optional.empty()
+            ))
         ));
         return policy;
     }

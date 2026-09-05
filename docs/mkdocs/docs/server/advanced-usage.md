@@ -2,7 +2,7 @@
 
 ## Cooldowns
 
-Cooldowns are configured with `settings.cooldown` in each Emote file, not in `emotes.json`.
+Base cooldowns are configured with `settings.cooldown` in each Emote file.
 
 ```json
 {
@@ -21,6 +21,29 @@ Cooldowns are configured with `settings.cooldown` in each Emote file, not in `em
     `d`: Minecraft days
 
 When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
+
+Permission groups can adjust that base cooldown with `cooldown` in `emotes.json`:
+
+```json
+{
+  "permissions": [
+    {
+      "permission": "emote.vip",
+      "emotes": ["*"],
+      "cooldown": "x0.5"
+    },
+    {
+      "permission": "emote.default",
+      "emotes": ["*"],
+      "cooldown": "5s"
+    }
+  ]
+}
+```
+
+A Minecraft time value such as `5s` is subtracted from the Emote's base cooldown. A value beginning with `x` multiplies it instead: `x0.5` halves the cooldown, while `x2` doubles it. The final cooldown cannot be less than zero.
+
+Permission entries are checked from top to bottom. The first entry that matches the Emote, belongs to the player, and defines `cooldown` is used. Entries without `cooldown` are skipped, and the base cooldown is unchanged when no matching entry defines one.
 
 ---
 

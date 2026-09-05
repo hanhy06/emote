@@ -35,6 +35,7 @@ final class ConfigJsonCodec {
             JsonArray idsJson = new JsonArray();
             entry.emotes().forEach(idsJson::add);
             entryJson.add("emotes", idsJson);
+            entry.cooldown().ifPresent(cooldown -> entryJson.addProperty("cooldown", cooldown.configValue()));
             entry.idle().ifPresent(idle -> {
                 JsonObject idleJson = new JsonObject();
                 idleJson.addProperty("delay", idle.delayTicks() + "t");
@@ -122,6 +123,16 @@ final class ConfigJsonCodec {
                     return null;
                 }
 
+                Optional<AccessConfig.CooldownModifier> cooldown = Optional.empty();
+                JsonElement cooldownElement = entryJson.get("cooldown");
+                if (cooldownElement != null && !cooldownElement.isJsonNull()) {
+                    AccessConfig.CooldownModifier parsedCooldown = readCooldownModifier(cooldownElement);
+                    if (parsedCooldown == null) {
+                        return null;
+                    }
+                    cooldown = Optional.of(parsedCooldown);
+                }
+
                 Optional<AccessConfig.IdleSettings> idle = Optional.empty();
                 JsonElement idleElement = entryJson.get("idle");
                 if (idleElement != null && !idleElement.isJsonNull()) {
@@ -131,7 +142,7 @@ final class ConfigJsonCodec {
                     }
                     idle = Optional.of(parsedIdle);
                 }
-                permissions.add(new AccessConfig.PermissionEntry(permission, ids, idle));
+                permissions.add(new AccessConfig.PermissionEntry(permission, ids, cooldown, idle));
             }
         }
         return new AccessConfig(disabled, permissions);
@@ -140,6 +151,21 @@ final class ConfigJsonCodec {
     private int readInt(JsonObject object, String key, int defaultValue) {
         JsonElement element = object.get(key);
         return element == null || element.isJsonNull() ? defaultValue : element.getAsInt();
+    }
+
+    private AccessConfig.CooldownModifier readCooldownModifier(JsonElement element) {
+        String value = readRequiredString(element);
+        if (value == null) {
+            return null;
+        }
+        try {
+            if (value.startsWith("x")) {
+                return AccessConfig.CooldownModifier.multiply(Double.parseDouble(value.substring(1)));
+            }
+            return AccessConfig.CooldownModifier.subtract(MinecraftTime.parse(value, 0));
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private AccessConfig.IdleSettings readIdleSettings(JsonElement element) {

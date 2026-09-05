@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -118,6 +119,58 @@ class PlaybackPolicyServiceTest {
     }
 
     @Test
+    void appliesCooldownFromFirstAllowedMatchingPermissionInConfigOrder() {
+        AtomicLong tick = new AtomicLong();
+        PlaybackPolicyService service = service(
+            (ignoredPlayer, permission, ignoredDefault) -> Set.of("emote.unmodified", "emote.vip", "emote.default").contains(permission),
+            tick
+        );
+        loadRules(service, new AccessConfig(
+            List.of(),
+            List.of(
+                entry("emote.unavailable", List.of("*"), AccessConfig.CooldownModifier.subtract(95)),
+                entry("emote.unmodified", List.of("demo:wave")),
+                entry("emote.vip", List.of("demo:.*"), AccessConfig.CooldownModifier.multiply(0.5D)),
+                entry("emote.default", List.of("*"), AccessConfig.CooldownModifier.multiply(2.0D))
+            )
+        ), "demo:wave");
+        PreparedAnimation emote = create("demo:wave", "Wave", 101);
+
+        PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
+        assertAllowed(first);
+        assertEquals(51, first.cooldownTicks());
+        service.onPlaybackStarted(first);
+
+        tick.set(50L);
+        assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
+        tick.set(51L);
+        assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
+    }
+
+    @Test
+    void permissionCooldownCanIncreaseOrRemoveCooldown() {
+        PlaybackPolicyService increased = service(
+            (ignoredPlayer, permission, ignoredDefault) -> permission.equals("emote.default"),
+            new AtomicLong()
+        );
+        loadRules(increased, new AccessConfig(
+            List.of(),
+            List.of(entry("emote.default", List.of("*"), AccessConfig.CooldownModifier.multiply(2.0D)))
+        ), "demo:wave");
+        assertEquals(200, increased.evaluate(null, create("demo:wave", "Wave", 100), PlaySource.COMMAND).cooldownTicks());
+
+        PlaybackPolicyService removed = service(
+            (ignoredPlayer, permission, ignoredDefault) -> permission.equals("emote.default"),
+            new AtomicLong()
+        );
+        loadRules(removed, new AccessConfig(
+            List.of(),
+            List.of(entry("emote.default", List.of("*"), AccessConfig.CooldownModifier.subtract(100)))
+        ), "demo:wave");
+        assertEquals(0, removed.evaluate(null, create("demo:wave", "Wave", 80), PlaySource.COMMAND).cooldownTicks());
+    }
+
+    @Test
     void commandVisibilityUsesStaticCommandPoliciesButNotCooldown() {
         PlaybackPolicyService service = service(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
@@ -144,10 +197,11 @@ class PlaybackPolicyServiceTest {
         service.onAccessConfigReload(new AccessConfig(
             List.of(),
             List.of(
-                new AccessConfig.PermissionEntry("emote.vip", List.of(), Optional.of(vipIdle)),
+                new AccessConfig.PermissionEntry("emote.vip", List.of(), Optional.empty(), Optional.of(vipIdle)),
                 new AccessConfig.PermissionEntry(
                     "emote.default",
                     List.of(),
+                    Optional.empty(),
                     Optional.of(new AccessConfig.IdleSettings(400, List.of("demo:idle")))
                 )
             )
@@ -231,7 +285,15 @@ class PlaybackPolicyServiceTest {
     }
 
     private static AccessConfig.PermissionEntry entry(String permission, List<String> emotes) {
-        return new AccessConfig.PermissionEntry(permission, emotes, Optional.empty());
+        return new AccessConfig.PermissionEntry(permission, emotes, Optional.empty(), Optional.empty());
+    }
+
+    private static AccessConfig.PermissionEntry entry(
+        String permission,
+        List<String> emotes,
+        AccessConfig.CooldownModifier cooldown
+    ) {
+        return new AccessConfig.PermissionEntry(permission, emotes, Optional.of(cooldown), Optional.empty());
     }
 
     private static void loadRules(PlaybackPolicyService service, AccessConfig config, String... emoteIds) {

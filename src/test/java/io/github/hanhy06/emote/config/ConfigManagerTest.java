@@ -124,10 +124,11 @@ class ConfigManagerTest {
               "schema_version": 2,
               "disabled": ["demo:wave"],
               "permissions": [
-                {"permission":"emote.default","emotes":["demo:wave"]},
+                {"permission":"emote.default","emotes":["demo:wave"],"cooldown":"5s"},
                 {
                   "permission":"emote.vip",
                   "emotes":["*"],
+                  "cooldown":"x0.5",
                   "idle":{"delay":"600s","emote":["demo:wave","demo:sit"]}
                 }
               ]
@@ -139,10 +140,23 @@ class ConfigManagerTest {
         assertTrue(manager.getAccessConfig().isEnabled("demo:bow"));
         assertEquals("emote.default", manager.getAccessConfig().permissions().getFirst().permission());
         assertEquals(List.of("demo:wave"), manager.getAccessConfig().permissions().getFirst().emotes());
+        assertEquals(
+            AccessConfig.CooldownModifier.subtract(100),
+            manager.getAccessConfig().permissions().getFirst().cooldown().orElseThrow()
+        );
         assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        assertEquals(
+            AccessConfig.CooldownModifier.multiply(0.5D),
+            manager.getAccessConfig().permissions().get(1).cooldown().orElseThrow()
+        );
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().get(1).idle().orElseThrow();
         assertEquals(12_000, idle.delayTicks());
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
+
+        assertTrue(manager.setEmoteEnabled("demo:bow", false));
+        String rewrittenJson = Files.readString(tempDir.resolve("emote/emotes.json"));
+        assertTrue(rewrittenJson.contains("\"cooldown\": \"100t\""));
+        assertTrue(rewrittenJson.contains("\"cooldown\": \"x0.5\""));
     }
 
     @Test
@@ -275,6 +289,22 @@ class ConfigManagerTest {
     }
 
     @Test
+    void rejectsInvalidPermissionCooldownAndKeepsCurrentRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        AccessConfig currentConfig = manager.getAccessConfig();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[{"permission":"emote.vip","emotes":["*"],"cooldown":"xNaN"}]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertSame(currentConfig, manager.getAccessConfig());
+    }
+
+    @Test
     void keepsCurrentConfigWhenFieldTypeIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
@@ -381,6 +411,7 @@ class ConfigManagerTest {
         permissions.add(new AccessConfig.PermissionEntry(
             "emote.default",
             List.of("demo:wave"),
+            Optional.empty(),
             Optional.empty()
         ));
         AccessConfig config = new AccessConfig(disabled, permissions);
@@ -393,7 +424,7 @@ class ConfigManagerTest {
         assertEquals("emote.default", config.permissions().getFirst().permission());
         assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("demo:bow"));
         assertThrows(UnsupportedOperationException.class, () -> config.permissions().add(
-            new AccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty())
+            new AccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty(), Optional.empty())
         ));
     }
 

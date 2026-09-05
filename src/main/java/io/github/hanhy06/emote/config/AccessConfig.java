@@ -30,6 +30,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             List.of(new PermissionEntry(
                 "emote.default",
                 List.of("*"),
+                Optional.empty(),
                 Optional.of(new IdleSettings(3 * 60 * 20, List.of("emote:sit")))
             ))
         );
@@ -44,11 +45,17 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
 
         private final String permission;
         private final List<String> emotes;
+        private final Optional<CooldownModifier> cooldown;
         private final Optional<IdleSettings> idle;
         private final boolean allEmotes;
         private final List<Pattern> emotePatterns;
 
-        public PermissionEntry(String permission, List<String> emotes, Optional<IdleSettings> idle) {
+        public PermissionEntry(
+            String permission,
+            List<String> emotes,
+            Optional<CooldownModifier> cooldown,
+            Optional<IdleSettings> idle
+        ) {
             if (permission == null || permission.isBlank()) {
                 throw new IllegalArgumentException("permission must not be blank");
             }
@@ -60,6 +67,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
                 "permission emote pattern must not be blank",
                 false
             );
+            this.cooldown = Objects.requireNonNull(cooldown, "cooldown");
             this.idle = Objects.requireNonNull(idle, "idle");
             this.allEmotes = this.emotes.contains(ALL_EMOTES);
             this.emotePatterns = this.emotes.stream()
@@ -78,6 +86,10 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
 
         public Optional<IdleSettings> idle() {
             return this.idle;
+        }
+
+        public Optional<CooldownModifier> cooldown() {
+            return this.cooldown;
         }
 
         public boolean appliesToAllEmotes() {
@@ -112,17 +124,55 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             }
             return this.permission.equals(other.permission)
                 && this.emotes.equals(other.emotes)
+                && this.cooldown.equals(other.cooldown)
                 && this.idle.equals(other.idle);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.permission, this.emotes, this.idle);
+            return Objects.hash(this.permission, this.emotes, this.cooldown, this.idle);
         }
 
         @Override
         public String toString() {
-            return "PermissionEntry[permission=" + this.permission + ", emotes=" + this.emotes + ", idle=" + this.idle + "]";
+            return "PermissionEntry[permission=" + this.permission + ", emotes=" + this.emotes
+                + ", cooldown=" + this.cooldown + ", idle=" + this.idle + "]";
+        }
+    }
+
+    public record CooldownModifier(Type type, double value) {
+        public CooldownModifier {
+            Objects.requireNonNull(type, "type");
+            if (!Double.isFinite(value) || value < 0.0D) {
+                throw new IllegalArgumentException("cooldown modifier must be a finite nonnegative number");
+            }
+            if (type == Type.SUBTRACT && value != Math.rint(value)) {
+                throw new IllegalArgumentException("cooldown tick reduction must be a whole number");
+            }
+        }
+
+        public static CooldownModifier multiply(double multiplier) {
+            return new CooldownModifier(Type.MULTIPLY, multiplier);
+        }
+
+        public static CooldownModifier subtract(int ticks) {
+            return new CooldownModifier(Type.SUBTRACT, ticks);
+        }
+
+        public int apply(int cooldownTicks) {
+            double adjusted = this.type == Type.MULTIPLY
+                ? cooldownTicks * this.value
+                : cooldownTicks - this.value;
+            return (int)Math.clamp(Math.round(adjusted), 0L, Integer.MAX_VALUE);
+        }
+
+        public String configValue() {
+            return this.type == Type.MULTIPLY ? "x" + this.value : (int)this.value + "t";
+        }
+
+        public enum Type {
+            MULTIPLY,
+            SUBTRACT
         }
     }
 
