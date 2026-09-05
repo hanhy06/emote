@@ -51,13 +51,13 @@ public final class AccountCommand {
         try {
             this.accounts.login(login -> source.getServer().execute(() -> {
                 if (!canReceive(source)) return;
-                Component link = Component.literal("[Microsoft 로그인]").withStyle(style -> style
+                Component link = Component.literal("[Microsoft login]").withStyle(style -> style
                     .withColor(ChatFormatting.AQUA).withUnderlined(true)
                     .withClickEvent(new ClickEvent.OpenUrl(login.verificationUri())));
                 Component code = Component.literal(login.userCode()).withStyle(style -> style
                     .withColor(ChatFormatting.YELLOW)
                     .withClickEvent(new ClickEvent.CopyToClipboard(login.userCode())));
-                source.sendSuccess(() -> Component.literal("계정 연결: ").append(link).append("  코드: ").append(code), false);
+                source.sendSuccess(() -> Component.literal("Account login: ").append(link).append("  Code: ").append(code), false);
             }), message -> source.getServer().execute(() -> {
                 if (canReceive(source)) source.sendSuccess(() -> Component.literal(message), false);
             }), () -> source.getServer().submit(() -> canReceive(source)).join());
