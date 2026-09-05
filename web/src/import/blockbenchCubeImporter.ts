@@ -36,7 +36,7 @@ import {
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "./runtimeOutput";
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "./molangVector";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
-import { planAnimationSamples } from "./geckoLib/cubeAnimationSampling";
+import { planAnimationSamples } from "./blockbenchAnimationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
 
 export const PLAYER_RENDER_SCALE = 0.9375;

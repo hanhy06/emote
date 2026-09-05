@@ -1,7 +1,7 @@
 import type { Matrix4 } from "three";
-import type { BbAnimation, BbKeyframe } from "../blockbenchCubeSchema";
-import { evaluateGeckoChannel } from "../blockbenchKeyframeEvaluator";
-import { planAnimationAnchorSamples, type AnimationAnchor, type AnimationSamplePlan } from "../animationSampling";
+import type { BbAnimation, BbKeyframe } from "./blockbenchCubeSchema";
+import { evaluateGeckoChannel } from "./blockbenchKeyframeEvaluator";
+import { planAnimationAnchorSamples, type AnimationAnchor, type AnimationSamplePlan } from "./animationSampling";
 
 export function planAnimationSamples(
   animation: BbAnimation,
