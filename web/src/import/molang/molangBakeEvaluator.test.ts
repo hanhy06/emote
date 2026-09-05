@@ -81,6 +81,14 @@ describe("MolangBakeEvaluator", () => {
     )).toBe(4);
   });
 
+  it("evaluates loops supported by the runtime", () => {
+    expect(evaluator().evaluate(
+      "v.count = 0; loop(3, { v.count = v.count + 2; }); return v.count;",
+      { animationTime: 0, keyframeLerpTime: 0 },
+      "loop",
+    )).toBe(6);
+  });
+
   it("can reject nondeterministic functions before evaluation", () => {
     expect(() => evaluator(true).evaluate("math.random(0, 1)", {
       animationTime: 0,

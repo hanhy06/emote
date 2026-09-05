@@ -222,6 +222,15 @@ class MolangEngineTest {
     }
 
     @Test
+    void evaluatesBoundedLoopsAndBreakStatements() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "v.count = 0; loop(10, { v.count = v.count + 1; v.count >= 3 ? break; }); return v.count;"
+        );
+
+        assertEquals(3.0D, this.engine.createSession().evaluate(expression));
+    }
+
+    @Test
     void evaluatesEveryOfficialMolangMathFunction() throws Exception {
         Map<String, Double> examples = Map.ofEntries(
             Map.entry("math.abs(-2)", 2.0D),

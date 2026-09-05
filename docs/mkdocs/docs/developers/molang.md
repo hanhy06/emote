@@ -41,6 +41,18 @@ return v.speed;
 
 Conditional expressions associate from the right, so `a ? b : c ? d : e` is equivalent to `a ? b : (c ? d : e)`. Molang does not define separate `if` or `else` keywords; use `?` and `:` instead.
 
+## Loops
+
+`loop(count, { ... })` repeats an execution scope and supports `break` and `continue`. The runtime limits one loop to 1,024 iterations:
+
+```molang
+v.count = 0;
+loop(3, {
+  v.count = v.count + 1;
+});
+return v.count;
+```
+
 ## Track values
 
 Each position, rotation, or scale component may be a number or a Molang string:
