@@ -53,7 +53,6 @@ public final class AdminCommand {
         root.then(createListCommand())
             .then(createReloadCommand())
             .then(createStopPlayerCommand())
-            .then(createStopAllCommand())
             .then(this.stressTestCommand.createCommand())
             .then(createEnableCommand())
             .then(createDisableCommand());
@@ -71,15 +70,9 @@ public final class AdminCommand {
             .executes(context -> list(context.getSource()));
     }
 
-    LiteralArgumentBuilder<CommandSourceStack> createStopAllCommand() {
-        return Commands.literal("stop-all")
-            .requires(this.permissionService.requireManage())
-            .executes(context -> stopAll(context.getSource()));
-    }
-
     LiteralArgumentBuilder<CommandSourceStack> createStopPlayerCommand() {
         return Commands.literal("stop")
-            .then(Commands.argument("player", EntityArgument.player())
+            .then(Commands.argument("player", EntityArgument.players())
                 .requires(this.permissionService.requireManage())
                 .executes(this::stopPlayer));
     }
@@ -218,28 +211,33 @@ public final class AdminCommand {
             .append(Component.literal(formattedValue).withStyle(ChatFormatting.GRAY));
     }
 
-    private int stopAll(CommandSourceStack source) {
-        this.playbackEngine.stopAll();
-        source.sendSuccess(() -> Component.literal("Stopped all active emotes."), true);
-        return 1;
-    }
-
     private int stopPlayer(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
-        ServerPlayer player = EntityArgument.getPlayer(context, "player");
-        var session = this.playbackEngine.stop(player);
-        if (session == null) {
-            source.sendFailure(Component.literal(player.getName().getString() + " is not playing an emote."));
-            return 0;
+        var players = EntityArgument.getPlayers(context, "player");
+        int stoppedCount = 0;
+
+        for (ServerPlayer player : players) {
+            var session = this.playbackEngine.stop(player);
+            if (session == null) {
+                if (players.size() == 1) {
+                    source.sendFailure(Component.literal(player.getName().getString() + " is not playing an emote."));
+                }
+                continue;
+            }
+
+            PlayableEmote emote = this.emoteCatalog.find(session.id());
+            String displayName = emote == null ? session.id() : emote.name();
+            source.sendSuccess(
+                () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
+                true
+            );
+            stoppedCount++;
         }
 
-        PlayableEmote emote = this.emoteCatalog.find(session.id());
-        String displayName = emote == null ? session.id() : emote.name();
-        source.sendSuccess(
-            () -> Component.literal("Stopped " + displayName + " for " + player.getName().getString() + "."),
-            true
-        );
-        return 1;
+        if (stoppedCount == 0 && players.size() > 1) {
+            source.sendFailure(Component.literal("No selected players are playing an emote."));
+        }
+        return stoppedCount;
     }
 
     private int setEnabled(CommandSourceStack source, String id, boolean enabled) {

@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.permission.PermissionService;
@@ -16,6 +17,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.TimeArgument;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.Bootstrap;
 import org.junit.jupiter.api.BeforeAll;
@@ -53,6 +55,18 @@ final class AdminCommandTest {
         var stop = root.build().getChild("stop");
         assertNotNull(stop.getCommand());
         assertNotNull(stop.getChild("player"));
+        assertNull(root.build().getChild("stop-all"));
+    }
+
+    @Test
+    void stopPlayerArgumentAcceptsAllPlayersAndNames() throws Exception {
+        var command = createCommand(true).createStopPlayerCommand().build();
+        var argument = (ArgumentCommandNode<?, ?>) command.getChild("player");
+        var type = (EntityArgument) argument.getType();
+
+        assertEquals(Integer.MAX_VALUE, type.parse(new StringReader("@a")).getMaxResults());
+        assertEquals(1, type.parse(new StringReader("Player")).getMaxResults());
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> type.parse(new StringReader("@e")));
     }
 
     @Test
