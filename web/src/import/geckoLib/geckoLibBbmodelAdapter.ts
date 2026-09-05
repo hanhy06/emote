@@ -1,6 +1,6 @@
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { importBlockbenchCubeProject } from "./cubeProjectImporter";
-import { requireBlockbenchCubeProject } from "./cubeProjectSchema";
+import { importGeckoLibProject } from "./geckoLibImporter";
+import { requireBlockbenchCubeProject } from "../blockbenchCubeSchema";
 import { parseInputJson, probeParsedInput } from "../inputCache";
 import type { ImportedProject } from "../../domain/conversionSeed";
 
@@ -16,6 +16,6 @@ export const geckoLibBbmodelAdapter: ImportAdapter<ImportedProject> = {
   },
 
   async import(input: ImportInput): Promise<ImportedProject> {
-    return importBlockbenchCubeProject(requireBlockbenchCubeProject(parseInputJson(input)), input.name);
+    return importGeckoLibProject(requireBlockbenchCubeProject(parseInputJson(input)), input.name);
   },
 };

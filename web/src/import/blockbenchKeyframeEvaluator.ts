@@ -1,8 +1,8 @@
 import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
-import { ConversionError } from "../../foundation/diagnostics";
-import { MolangBakeEvaluator } from "../molangBakeEvaluator";
-import type { BbDataPoint, BbKeyframe } from "./cubeProjectSchema";
-import { cubeEasingProgress } from "../animationEasing";
+import { ConversionError } from "../foundation/diagnostics";
+import { MolangBakeEvaluator } from "./molangBakeEvaluator";
+import type { BbDataPoint, BbKeyframe } from "./blockbenchCubeSchema";
+import { cubeEasingProgress } from "./animationEasing";
 
 type Vector3Tuple = [number, number, number];
 

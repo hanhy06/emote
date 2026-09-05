@@ -1,14 +1,14 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
-import type { GeneratedResource } from "../../domain/generatedResource";
+import type { RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
+import type { GeneratedResource } from "../domain/generatedResource";
 import { Matrix4, Quaternion, Vector3 } from "three";
-import { createDefaultPlayerBehavior, type EmoteEvent, type EmoteVectorKeyframe, type Matrix16, type MolangScalar } from "../../format/emoteAnimation";
-import { matrixToLocalTransform } from "../../format/localTransform";
-import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
-import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
-import { serializeSnbtString } from "../../format/snbt";
-import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
-import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { EmoteEvent, EmoteVectorKeyframe, Matrix16, MolangScalar } from "../format/emoteAnimation";
+import { matrixToLocalTransform } from "../format/localTransform";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../format/matrix";
+import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { serializeSnbtString } from "../format/snbt";
+import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../format/time";
+import { ConversionError } from "../foundation/diagnostics";
+import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../domain/conversionSeed";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -19,30 +19,30 @@ import {
   type BbOutlinerEntry,
   type BbOutlinerGroup,
   type BbmodelProject,
-} from "./cubeProjectSchema";
-import { evaluateGeckoChannel } from "./cubeAnimationBaker";
+} from "./blockbenchCubeSchema";
+import { evaluateGeckoChannel } from "./blockbenchKeyframeEvaluator";
 import {
   uniqueCubeNodeId,
   writeCubeResources,
   writeSourceCubeResources,
-} from "./cubeModelResources";
+} from "./blockbenchCubeResources";
 import {
   cubePlayerHeadMatrix,
   isHiddenAccessoryBone,
   isHiddenAccessoryName,
   normalizeBlockbenchName,
   prepareCubeModels,
-} from "./cubeSkinPreparation";
-import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
-import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../molangVector";
-import { GECKOLIB_BBMODEL_TRANSFORMS, type CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
-import { planAnimationSamples } from "./cubeAnimationSampling";
-import type { BoneEntry } from "./cubeProjectModel";
+} from "./blockbenchCubeSkin";
+import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "./runtimeOutput";
+import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "./molangVector";
+import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
+import { planAnimationSamples } from "./geckoLib/cubeAnimationSampling";
+import type { BoneEntry } from "./blockbenchCubeModel";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
 
 export interface CubeProjectImportOptions {
-  transforms?: CubeProjectTransformConvention;
+  transforms: CubeProjectTransformConvention;
   formatLabel?: string;
   molangDiagnosticCode?: string;
 }
@@ -56,36 +56,16 @@ export interface ImportedCubeProjectContent {
   resources: Map<string, GeneratedResource>;
 }
 
-export function importBlockbenchCubeProject(project: BbmodelProject, sourceName: string, options: CubeProjectImportOptions = {}): ImportedProject {
-  if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
-  if (project.elements.some((element) => element.type && element.type !== "cube" && element.type !== "locator")) {
-    throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
-  }
-
-  const imported = importBlockbenchCubeContent(project, sourceName, options);
-  return {
-    source: "geckolib_bbmodel",
-    sourceName,
-    suggestedMetadata: { name: imported.sourceStem, description: `${imported.sourceStem} emote.` },
-    suggestedPlayer: createDefaultPlayerBehavior(),
-    suggestedNamespace: imported.namespace,
-    nodes: imported.nodes,
-    animations: imported.animations,
-    diagnostics: imported.diagnostics,
-    resources: imported.resources,
-  };
-}
-
 export function importBlockbenchCubeContent(
   project: BbmodelProject,
   sourceName: string,
-  options: CubeProjectImportOptions = {},
+  options: CubeProjectImportOptions,
 ): ImportedCubeProjectContent {
   const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
   const resources = new Map<string, GeneratedResource>();
-  const transforms = options.transforms ?? GECKOLIB_BBMODEL_TRANSFORMS;
+  const transforms = options.transforms;
   const formatLabel = options.formatLabel ?? "GeckoLib";
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
@@ -502,7 +482,7 @@ function animatedWorldMatrix(
   cache: Map<string, Matrix4>,
   animationIndex: number,
   blendWeight = 1,
-  convention: CubeProjectTransformConvention = GECKOLIB_BBMODEL_TRANSFORMS,
+  convention: CubeProjectTransformConvention,
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;

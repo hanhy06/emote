@@ -1,9 +1,9 @@
-import { sanitizeResourcePath } from "../../format/resourceLocation";
-import { ConversionError } from "../../foundation/diagnostics";
-import type { GeneratedResource } from "../../domain/generatedResource";
-import type { BbCube, BbTexture, BbmodelProject } from "./cubeProjectSchema";
-import type { BoneEntry } from "./cubeProjectModel";
-import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
+import { sanitizeResourcePath } from "../format/resourceLocation";
+import { ConversionError } from "../foundation/diagnostics";
+import type { GeneratedResource } from "../domain/generatedResource";
+import type { BbCube, BbTexture, BbmodelProject } from "./blockbenchCubeSchema";
+import type { BoneEntry } from "./blockbenchCubeModel";
+import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 
 const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]);
 const TEXTURELESS_MODEL_TEXTURE = "minecraft:block/white_concrete";

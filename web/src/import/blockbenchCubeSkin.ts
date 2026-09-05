@@ -1,10 +1,10 @@
 import { Matrix4, Vector3 } from "three";
-import type { Matrix16 } from "../../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../../format/matrix";
-import type { ImportedSkinPart } from "../../domain/conversionSeed";
-import type { BbCube } from "./cubeProjectSchema";
-import type { BoneEntry } from "./cubeProjectModel";
-import type { CubeProjectTransformConvention } from "./cubeProjectTransformConvention";
+import type { Matrix16 } from "../format/emoteAnimation";
+import { matrix4ToRowMajor } from "../format/matrix";
+import type { ImportedSkinPart } from "../domain/conversionSeed";
+import type { BbCube } from "./blockbenchCubeSchema";
+import type { BoneEntry } from "./blockbenchCubeModel";
+import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import {
   humanoidJointFillMatrix,
   humanoidRenderPieces,
@@ -13,7 +13,7 @@ import {
   isStandardHumanoidPartSize,
   sliceVerticalUv,
   type HumanoidPart,
-} from "../humanoidPlayerRig";
+} from "./humanoidPlayerRig";
 
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 const SPLIT_SKIN_CUBE_PATTERN = /_skin_(upper|lower|(\d+)|joint_(upper|lower)_(\d+))$/;

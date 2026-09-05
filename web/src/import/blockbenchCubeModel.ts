@@ -1,5 +1,5 @@
 import type { Matrix4 } from "three";
-import type { BbCube, BbGroup, BbLocator } from "./cubeProjectSchema";
+import type { BbCube, BbGroup, BbLocator } from "./blockbenchCubeSchema";
 
 export interface BoneNodeEntry {
   id: string;
