@@ -22,6 +22,8 @@ import {
   type WorkspacePage,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
+import { createConversionDocument } from "./domain/conversionDocument";
+import { combineConversionDocuments } from "./domain/conversionBatch";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -77,26 +79,28 @@ export function App() {
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
-    const file = inputElement.files?.[0];
-    if (!file) return;
+    const files = [...(inputElement.files ?? [])];
+    if (files.length === 0) return;
     if (busy) {
       inputElement.value = "";
       return;
     }
-    dispatch({ type: "open_started", message: "Opening animation project" });
+    dispatch({ type: "open_started", message: files.length === 1 ? "Opening animation project" : `Opening ${files.length} animation projects` });
     try {
       await showLoadingScreen();
-      const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-      const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-      const imported = await importDetected(detected, input);
-      if (isImportedSequence(imported)) {
-        downloadExport({
-          blob: new Blob([JSON.stringify(imported.sequence)], { type: "application/json" }),
-          fileName: imported.fileName,
-        });
-        return;
+      const imported = await Promise.all(files.map(async (file) => {
+        const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+        const detected = await detectAdapter(IMPORT_ADAPTERS, input);
+        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
+      }));
+      for (const item of imported) {
+        if (!isImportedSequence(item.source)) continue;
+        downloadExport({ blob: new Blob([JSON.stringify(item.source.sequence)], { type: "application/json" }), fileName: item.source.fileName });
       }
-      dispatch({ type: "open_succeeded", project: imported, adapterLabel: detected.adapter.label });
+      const documents = imported.flatMap((item) => isImportedSequence(item.source)
+        ? []
+        : [createConversionDocument(item.source, item.adapterLabel)]);
+      if (documents.length > 0) dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
@@ -173,8 +177,8 @@ export function App() {
   const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
     <label className={`file-input${busy ? " disabled" : ""}`}>
-      <span>{session ? "Open another file" : "Choose animation file"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={busy} />
+      <span>{session ? "Open other files" : "Choose animation files"}</span>
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy} />
     </label>
   );
 
@@ -207,7 +211,7 @@ export function App() {
           <div className="start-copy">
             <span className="step-label">Start a conversion</span>
             <h2 id="start-title">Open an animation project</h2>
-            <p>Open any supported model project or an existing Emote JSON file. Models, animations, and skin parts are processed locally in your browser.</p>
+            <p>Open one or more supported model projects or existing Emote JSON files. Models, animations, and skin parts are processed locally in your browser.</p>
             {filePicker}
           </div>
           <div className="start-details">
@@ -222,7 +226,7 @@ export function App() {
             </ul>
             <h3>Workflow</h3>
             <ol className="workflow-list">
-              <li><span>1</span><p><strong>Open a file</strong><small>The format is detected automatically.</small></p></li>
+              <li><span>1</span><p><strong>Open files</strong><small>Choose one or more files. Each format is detected automatically.</small></p></li>
               <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin parts when the project contains them.</small></p></li>
               <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
             </ol>
@@ -234,7 +238,7 @@ export function App() {
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
-              <span>Imported file</span>
+              <span>Imported {project.origin.sourceName.includes(", ") ? "files" : "file"}</span>
               <strong>{project.origin.sourceName}</strong>
             </div>
             <label className="project-animation">

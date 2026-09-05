@@ -65,7 +65,7 @@ export function compileConversionAnimation(
       },
     },
     ...(animation.runtime?.molang ? { molang: animation.runtime.molang } : {}),
-    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes, profile) : compileNodes(document, animation, profile),
+    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes, profile) : compileNodes(document, animation, entry.nodeIds, profile),
     timeline: animation.runtime
       ? compileRuntimeTimeline(document, animation.runtime.timeline, animation.durationTicks, animation.id, profile)
       : compileTimeline(document, animation, profile),
@@ -112,8 +112,8 @@ function validateAnimationIds(document: ConversionDocument): void {
   }
 }
 
-function compileNodes(document: ConversionDocument, animation: ImportedAnimation, profile: MinecraftVersionProfile): Record<string, EmoteNode> {
-  return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
+function compileNodes(document: ConversionDocument, animation: ImportedAnimation, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+  return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
     if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];

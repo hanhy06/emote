@@ -104,10 +104,10 @@ describe("exportAnimation", () => {
     const sequence = JSON.parse(sequenceJson);
     expect(sequenceJson).toContain('\n  "steps": [\n');
     expect(sequence.schema_version).toBe(4);
-    expect(sequence.id).toBe("demo:demo");
+    expect(sequence.id).toBe("emote:demo");
     expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");
-    expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
+    expect(sequence.steps).toEqual([{ emote: "emote:enter" }, { emote: "emote:idle" }]);
     const animationFiles = files.filter((file) => !file.fileName.endsWith(".sequence.json"));
     const animationNames = animationFiles.map((file) => file.fileName);
     expect(animationNames).toEqual(["emote.1.entry_display.json", "emote.2.idle_display.json"]);

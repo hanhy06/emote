@@ -35,6 +35,7 @@ export interface WorkspaceState {
 export type WorkspaceAction =
   | { type: "open_started"; message: string }
   | { type: "open_succeeded"; project: ImportedProject; adapterLabel: string }
+  | { type: "documents_open_succeeded"; document: ConversionDocument }
   | { type: "open_failed"; message: string }
   | { type: "export_started"; message: string }
   | { type: "export_failed"; message: string }
@@ -69,9 +70,11 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, session: null, page: 0, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "open_succeeded": {
       const session = createConversionSession(action.project, action.adapterLabel);
-      const animation = session.document.animations[session.animationIndex]?.source;
-      const page = animation && animationAvailability(animation).preview === "unavailable" ? 1 : 0;
-      return { ...state, session, page, operation: { type: "idle" } };
+      return openedSession(state, session);
+    }
+    case "documents_open_succeeded": {
+      const session = createConversionSessionFromDocument(action.document);
+      return openedSession(state, session);
     }
     case "open_failed":
       return { ...state, openError: action.message, operation: { type: "idle" } };
@@ -144,12 +147,22 @@ export function assignmentSummary(document: ConversionDocument): string {
 }
 
 function createConversionSession(project: ImportedProject, adapterLabel: string): ConversionSession {
+  return createConversionSessionFromDocument(createConversionDocument(project, adapterLabel));
+}
+
+function createConversionSessionFromDocument(document: ConversionDocument): ConversionSession {
   return {
-    document: createConversionDocument(project, adapterLabel),
+    document,
     animationIndex: 0,
     previewFrameIndex: 0,
     selectedNodeIds: new Set(),
   };
+}
+
+function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
+  const animation = session.document.animations[session.animationIndex]?.source;
+  const page = animation && animationAvailability(animation).preview === "unavailable" ? 1 : 0;
+  return { ...state, session, page, operation: { type: "idle" } };
 }
 
 function selectSessionAnimation(session: ConversionSession, animationIndex: number): ConversionSession {

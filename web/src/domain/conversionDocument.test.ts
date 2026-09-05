@@ -25,7 +25,7 @@ describe("ConversionDocument", () => {
     });
     expect(document.animations[0].output).toMatchObject({
       displayName: "Test",
-      namespace: "test",
+      namespace: "emote",
     });
     expect(document.nodes.head).not.toHaveProperty("suggestedSkin");
   });
@@ -38,8 +38,8 @@ describe("ConversionDocument", () => {
     const document = createConversionDocument(source, "Test adapter");
 
     expect(document.animations.map(({ output }) => output)).toMatchObject([
-      { namespace: "test", displayName: "Test", description: "Test emote." },
-      { namespace: "test", displayName: "Second animation", description: "Second animation emote." },
+      { namespace: "emote", displayName: "Test", description: "Test emote." },
+      { namespace: "emote", displayName: "Second animation", description: "Second animation emote." },
     ]);
   });
 

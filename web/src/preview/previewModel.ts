@@ -41,18 +41,24 @@ export function createPreviewModel(document: ConversionDocument, animationIndex:
   const tick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
     : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
-  const candidates = findSkinCandidates(document.nodes);
+  const nodeIds = new Set(document.animations[animationIndex]?.nodeIds ?? []);
+  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => nodeIds.has(nodeId)));
+  const candidates = findSkinCandidates(scopedNodes);
 
   return {
     tick,
     durationTicks,
     availability,
     parts: createPreviewParts(candidates, animation, tick),
-    assignments: documentPartAssignments(document),
-    orders: documentPartOrders(document),
-    spaces: documentNodeSpaces(document),
+    assignments: pickNodeValues(documentPartAssignments(document), nodeIds),
+    orders: pickNodeValues(documentPartOrders(document), nodeIds),
+    spaces: pickNodeValues(documentNodeSpaces(document), nodeIds),
     hasReviewNodes: candidates.length > 0,
   };
+}
+
+function pickNodeValues<T>(values: Record<string, T>, nodeIds: ReadonlySet<string>): Record<string, T> {
+  return Object.fromEntries(Object.entries(values).filter(([nodeId]) => nodeIds.has(nodeId)));
 }
 
 function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): SkinCandidate[] {

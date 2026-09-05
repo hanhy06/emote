@@ -51,6 +51,7 @@ export interface AnimationOutputSettings {
 export interface ConversionAnimation {
   source: ImportedAnimation;
   output: AnimationOutputSettings;
+  nodeIds: string[];
 }
 
 export interface SequenceOutputSettings {
@@ -109,7 +110,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
     .filter(([key]) => key !== "name" && key !== "description"));
-  const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
+  const namespace = "emote";
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
@@ -123,6 +124,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         : additionalMetadata;
       return {
         source: animation,
+        nodeIds: Object.keys(nodes),
         output: {
           namespace,
           playbackMode: "source",
