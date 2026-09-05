@@ -13,6 +13,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Objects;
+import java.util.function.ToDoubleFunction;
 
 public final class PlayerMolangQueries {
     public static final Source EMPTY = session -> {
@@ -26,6 +27,7 @@ public final class PlayerMolangQueries {
             ItemQueryValue.EMPTY,
             ItemQueryValue.EMPTY
         );
+        setScoreboardQuery(session, objective -> 0.0D);
     };
 
     private PlayerMolangQueries() {
@@ -96,7 +98,20 @@ public final class PlayerMolangQueries {
                 ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.LEGS)),
                 ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.FEET))
             );
+            setScoreboardQuery(session, objectiveName -> {
+                var scoreboard = player.level().getScoreboard();
+                var objective = scoreboard.getObjective(objectiveName);
+                if (objective == null) {
+                    return 0.0D;
+                }
+                var score = scoreboard.getPlayerScoreInfo(player, objective);
+                return score == null ? 0.0D : score.value();
+            });
         };
+    }
+
+    static void setScoreboardQuery(MolangEngine.Session session, ToDoubleFunction<String> scoreLookup) {
+        session.setQueryFunction("scoreboard", arguments -> MolangEngine.QueryValue.number(scoreLookup.applyAsDouble(arguments.string(0))));
     }
 
     static void setItemQueries(

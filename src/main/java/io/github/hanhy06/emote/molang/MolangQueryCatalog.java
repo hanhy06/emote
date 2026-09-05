@@ -63,17 +63,18 @@ public final class MolangQueryCatalog {
         "yaw_speed",
         "on_fire_time"
     );
-    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of(
-        "all", QuerySignature.atLeast(2),
-        "any", QuerySignature.atLeast(2),
-        "approx_eq", QuerySignature.atLeast(2),
-        "in_range", QuerySignature.exact(3),
-        "is_item_equipped", QuerySignature.range(0, 1),
-        "is_item_name_any", QuerySignature.atLeast(2),
-        "item_is_charged", QuerySignature.range(0, 1),
-        "position", QuerySignature.exact(1),
-        "position_delta", QuerySignature.exact(1),
-        "movement_direction", QuerySignature.exact(1)
+    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.ofEntries(
+        Map.entry("all", QuerySignature.atLeast(2)),
+        Map.entry("any", QuerySignature.atLeast(2)),
+        Map.entry("approx_eq", QuerySignature.atLeast(2)),
+        Map.entry("in_range", QuerySignature.exact(3)),
+        Map.entry("is_item_equipped", QuerySignature.range(0, 1)),
+        Map.entry("is_item_name_any", QuerySignature.atLeast(2)),
+        Map.entry("item_is_charged", QuerySignature.range(0, 1)),
+        Map.entry("position", QuerySignature.exact(1)),
+        Map.entry("position_delta", QuerySignature.exact(1)),
+        Map.entry("movement_direction", QuerySignature.exact(1)),
+        Map.entry("scoreboard", QuerySignature.exact(1))
     );
     public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
         .collect(java.util.stream.Collectors.toUnmodifiableSet());

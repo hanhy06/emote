@@ -110,6 +110,20 @@ class MolangEngineTest {
     }
 
     @Test
+    void evaluatesScoreboardQueryByObjectiveName() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        PlayerMolangQueries.setScoreboardQuery(session, objective -> objective.equals("combo") ? 12.0D : 0.0D);
+
+        assertEquals(12.0D, session.evaluate(this.engine.compile("q.scoreboard('combo')")));
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.scoreboard('missing')")));
+        MolangQueryCatalog.validate(this.engine.compile("q.scoreboard('combo')"), "$.test");
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> MolangQueryCatalog.validate(this.engine.compile("q.scoreboard()"), "$.test")
+        );
+    }
+
+    @Test
     void recordsQueryCallsSeparatelyFromQueryValuesAndAssignments() throws Exception {
         MolangEngine.CompiledExpression expression = this.engine.compile(
             "q.anim_time; query.sample(1, 'value'); q.blocked = 1;"
@@ -280,6 +294,7 @@ class MolangEngineTest {
                 + " + q.yaw_speed + q.on_fire_time + q.position(0) + q.position_delta(1) + q.movement_direction(2)"
                 + " + q.is_item_equipped + q.is_item_equipped('off_hand') + q.item_is_charged('off_hand')"
                 + " + q.is_item_name_any('main_hand', 'minecraft:bow')"
+                + " + q.scoreboard('missing')"
         );
         MolangEngine.Session session = this.engine.createSession();
         for (String name : MolangQueryCatalog.SUPPORTED_NAMES) {
