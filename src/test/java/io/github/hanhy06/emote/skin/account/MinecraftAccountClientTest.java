@@ -64,6 +64,32 @@ class MinecraftAccountClientTest {
         assertFalse(error.getMessage().contains("old-refresh"));
     }
 
+    @Test void xbox401PreservesStageAndNumericErrorWithoutSecrets() {
+        var http = new StubClient(new Reply(200, "{\"Token\":\"xbox-user\"}"),
+            new Reply(401, "{\"XErr\":2148916233,\"Message\":\"secret-provider-detail\",\"Token\":\"secret-token\"}"));
+        var error = assertThrows(AuthenticationException.class, () -> new MinecraftAccountClient(http).authenticate(new MicrosoftTokens("msa", "refresh")));
+        assertEquals("Xbox XSTS failed (HTTP 401, http_error, XErr=2148916233)", error.getMessage());
+        assertFalse(error.getMessage().contains("secret"));
+    }
+
+    @Test void microsoftErrorsPreservePublicCodesButNotDescriptions() {
+        var http = new StubClient(new Reply(401, "{\"error\":\"invalid_client\",\"error_codes\":[7000218],\"error_description\":\"secret\"}"));
+        var error = assertThrows(AuthenticationException.class, () -> new MinecraftAccountClient(http).startLogin());
+        assertEquals("Microsoft device code failed (HTTP 401, invalid_client, AADSTS=7000218)", error.getMessage());
+    }
+
+    @Test void nonJson401StillIdentifiesTheFailingStage() {
+        var http = new StubClient(new Reply(401, "<html>secret response</html>"));
+        var error = assertThrows(AuthenticationException.class, () -> new MinecraftAccountClient(http).authenticate(new MicrosoftTokens("msa", "refresh")));
+        assertEquals("Xbox Live failed (HTTP 401, http_error)", error.getMessage());
+    }
+
+    @Test void untrustedErrorFieldsCannotBePrintedAsDiagnosticCodes() {
+        var http = new StubClient(new Reply(401, "{\"error\":\"secret\",\"XErr\":\"secret\",\"error_codes\":[\"secret\"]}"));
+        var error = assertThrows(AuthenticationException.class, () -> new MinecraftAccountClient(http).startLogin());
+        assertEquals("Microsoft device code failed (HTTP 401, http_error)", error.getMessage());
+    }
+
     private static String body(HttpRequest request) {
         ByteArrayOutputStream bytes = new ByteArrayOutputStream();
         request.bodyPublisher().orElseThrow().subscribe(new Flow.Subscriber<>() {

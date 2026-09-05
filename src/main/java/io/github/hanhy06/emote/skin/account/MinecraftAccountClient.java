@@ -101,20 +101,41 @@ public class MinecraftAccountClient {
     }
 
     private JsonObject send(HttpRequest.Builder request) throws IOException, InterruptedException {
-        HttpResponse<String> response = this.http.send(request.timeout(Duration.ofSeconds(30)).header("Accept", "application/json").build(), HttpResponse.BodyHandlers.ofString());
-        JsonObject json;
+        HttpRequest builtRequest = request.timeout(Duration.ofSeconds(30)).header("Accept", "application/json").build();
+        String stage = switch (builtRequest.uri().getHost()) {
+            case "login.microsoftonline.com" -> builtRequest.uri().getPath().endsWith("/devicecode") ? "Microsoft device code" : "Microsoft token";
+            case "user.auth.xboxlive.com" -> "Xbox Live";
+            case "xsts.auth.xboxlive.com" -> "Xbox XSTS";
+            case "api.minecraftservices.com" -> builtRequest.uri().getPath().endsWith("/profile") ? "Minecraft profile" : "Minecraft login";
+            default -> "Authentication";
+        };
+        HttpResponse<String> response = this.http.send(builtRequest, HttpResponse.BodyHandlers.ofString());
+        JsonObject json = new JsonObject();
         try {
             json = JsonParser.parseString(response.body()).getAsJsonObject();
         } catch (RuntimeException exception) {
-            throw new IOException("Authentication returned an invalid response (HTTP " + response.statusCode() + ")");
+            if (response.statusCode() / 100 == 2) {
+                throw new IOException(stage + " returned an invalid response (HTTP " + response.statusCode() + ")");
+            }
         }
         if (response.statusCode() / 100 != 2) {
             String error = json.has("error") && json.get("error").isJsonPrimitive() ? json.get("error").getAsString() : "http_error";
+            String details = "";
+            if (json.has("XErr") && json.get("XErr").isJsonPrimitive() && json.get("XErr").getAsString().matches("[0-9]{1,10}")) {
+                details += ", XErr=" + json.get("XErr").getAsString();
+            }
+            if (json.has("error_codes") && json.get("error_codes").isJsonArray()) {
+                JsonArray codes = json.getAsJsonArray("error_codes");
+                if (!codes.isEmpty() && codes.get(0).isJsonPrimitive() && codes.get(0).getAsString().matches("[0-9]{1,10}")) {
+                    details += ", AADSTS=" + codes.get(0).getAsString();
+                }
+            }
             // Never propagate response bodies, tokens or provider error descriptions to logs/chat.
             throw new AuthenticationException(response.statusCode(), switch (error) {
-                case "authorization_pending", "slow_down", "authorization_declined", "expired_token", "invalid_grant" -> error;
+                case "authorization_pending", "slow_down", "authorization_declined", "expired_token", "invalid_grant",
+                    "invalid_client", "unauthorized_client", "invalid_scope", "access_denied", "invalid_request" -> error;
                 default -> "http_error";
-            });
+            }, stage, details);
         }
         return json;
     }
@@ -135,8 +156,8 @@ public class MinecraftAccountClient {
         public final int status;
         public final String code;
 
-        AuthenticationException(int status, String code) {
-            super("Authentication failed (HTTP " + status + ", " + code + ")");
+        AuthenticationException(int status, String code, String stage, String details) {
+            super(stage + " failed (HTTP " + status + ", " + code + details + ")");
             this.status = status;
             this.code = code;
         }
