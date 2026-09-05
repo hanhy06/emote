@@ -1,5 +1,5 @@
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
-import type { ImportedSkinPart } from "../../domain/conversionSeed";
+import type { ImportedSkinPart } from "../domain/conversionSeed";
 
 export type HumanoidPart = ImportedSkinPart["part"];
 export type HumanoidSliceMotion = "upper" | "lower";

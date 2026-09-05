@@ -8,7 +8,7 @@ import type {
 } from "./bedrockAnimationSchema";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
+import { MolangBakeEvaluator } from "../molangBakeEvaluator";
 
 interface ResolvedKeyframe {
   time: number;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cubeEasingProgress, SUPPORTED_GECKOLIB_EASINGS } from "./cubeEasing";
+import { cubeEasingProgress, SUPPORTED_GECKOLIB_EASINGS } from "./animationEasing";
 
 describe("cubeEasingProgress", () => {
   it("supports every built-in non-spline GeckoLib easing", () => {

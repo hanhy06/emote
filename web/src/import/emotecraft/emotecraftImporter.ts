@@ -4,9 +4,9 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { cubeEasingProgress } from "../blockbench/cubeEasing";
-import { planAnimationAnchorSamples, type AnimationAnchor } from "../blockbench/cubeAnimationSampling";
-import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
+import { cubeEasingProgress } from "../animationEasing";
+import { planAnimationAnchorSamples, type AnimationAnchor } from "../animationSampling";
+import { MolangBakeEvaluator } from "../molangBakeEvaluator";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";
 import {

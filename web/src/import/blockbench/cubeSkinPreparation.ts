@@ -13,7 +13,7 @@ import {
   isStandardHumanoidPartSize,
   sliceVerticalUv,
   type HumanoidPart,
-} from "../humanoid/humanoidPlayerRig";
+} from "../humanoidPlayerRig";
 
 const HIDDEN_ACCESSORY_BONES = new Set(["leftitem", "rightitem", "cape"]);
 const SPLIT_SKIN_CUBE_PATTERN = /_skin_(upper|lower|(\d+)|joint_(upper|lower)_(\d+))$/;
