@@ -25,7 +25,6 @@ public class ServerLifecycle {
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
-    private int skinCheckTicks;
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
@@ -52,12 +51,6 @@ public class ServerLifecycle {
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
             this.playbackEngine.tick();
             this.idlePlaybackService.tick();
-            if (++this.skinCheckTicks >= 20) {
-                this.skinCheckTicks = 0;
-                for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
-                    this.playerSkinManager.checkPlayerSkin(player);
-                }
-            }
         });
         PlaybackHooks.INTERRUPTION.register(this.playbackEngine::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
