@@ -2,9 +2,11 @@ package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
-import io.github.hanhy06.emote.skin.model.*;
+import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
+import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
+import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
 
-import java.util.*;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 
 public final class AutomaticSkinProvider implements PlayerSkinProvider {

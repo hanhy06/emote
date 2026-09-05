@@ -18,15 +18,12 @@ class AccountCommandTest {
         Bootstrap.bootStrap();
     }
 
-    @Test void onlyOwnersCanReachAnyAccountCommand() {
+    @Test void onlyOwnersCanReachAccountCommands() {
         var account = new AccountCommand(null).createCommand().build();
         for (PermissionLevel level : PermissionLevel.values()) {
             var source = Commands.createCompilationContext(LevelBasedPermissionSet.forLevel(level));
             boolean owner = level == PermissionLevel.OWNERS;
             assertEquals(owner, account.canUse(source));
-            assertEquals(owner, account.getChild("login").canUse(source));
-            assertEquals(owner, account.getChild("remove").canUse(source));
-            assertEquals(owner, account.getChild("remove").getChild("account").canUse(source));
         }
     }
 

@@ -23,12 +23,9 @@ public final class AccountCommand {
             .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
             .executes(context -> list(context.getSource()))
             .then(Commands.literal("login")
-                .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                 .executes(context -> login(context.getSource())))
             .then(Commands.literal("remove")
-                .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                 .then(Commands.argument("account", StringArgumentType.word())
-                    .requires(Commands.hasPermission(Commands.LEVEL_OWNERS))
                     .executes(context -> remove(context.getSource(), StringArgumentType.getString(context, "account")))));
     }
 

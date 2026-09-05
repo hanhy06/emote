@@ -1,11 +1,22 @@
 package io.github.hanhy06.emote.skin.account;
 
-import com.google.gson.*;
-import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.AuthenticationException;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.DeviceLogin;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MicrosoftTokens;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 
 import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
