@@ -39,26 +39,13 @@ Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order 
 | `/emote list`                                 | Lists loaded emotes with their IDs, durations, and availability.                                                                                                                              |
 | `/emote reload`                               | Reloads configuration and animations.                                                                                                                                                         |
 | `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
-| `/emote stop <player>`, `/emote stop @a`     | Stops selected players' emotes; use @a for all players.                                                                                                                                                       |
+| `/emote stop <player>`, `/emote stop @a`      | Stops selected players' emotes; use `@a` for all players.                                                                                                                                     |
 | `/emote stress-test <time> [count] [packets]` | Plays multiple emotes for the required duration and encodes each packet through a configurable fanout (default 20) to measure server performance. Supports time units such as `10s` and `2m`. |
+| `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                               |
+| `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
+| `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                        |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
-
-### Owner account management
-
-These commands require Minecraft's **OWNERS (level 4)** permission, independently of `emote.manage`. Responses are sent only to the command source.
-
-| Command | Description |
-|---------|-------------|
-| `/emote account` | Lists registered bake accounts and shows the selected skin provider. |
-| `/emote account login` | Shows a Microsoft login link and device code. Adds the authenticated account, or refreshes an existing registration with the same UUID. |
-| `/emote account remove <account>` | Removes an account by manually entered name or UUID. Account arguments have no autocomplete. |
-
-Use dedicated Minecraft Java accounts: baking replaces their actual skins. Accounts receive uncached part uploads in round-robin order, with one upload at a time per account. Registered accounts select the account provider automatically; with no registered accounts, Emote uses MineSkin. Accounts that require another login are skipped, and authentication failures do not silently switch to MineSkin. Removing the last account moves its unstarted uploads to MineSkin; already sent requests may finish. Removing an account also cancels a pending login and deletes its locally stored credentials; it does not revoke all Microsoft sessions.
-
-Refresh tokens are stored encrypted in `config/emote/accounts.bin`. Windows uses DPAPI under the server's OS user by default. On other platforms, set `EMOTE_ACCOUNT_KEY` to a Base64-encoded random 32-byte key through your deployment's secret configuration. Setting this key explicitly selects AES-256-GCM on Windows as well. Keep the key outside the configuration directory and repository, and keep the same key across restarts. Plaintext credential storage is never used. An unreadable store remains locked until its original key or Windows identity is restored; it is not overwritten or treated as an empty account list.
-
-Access tokens are kept in memory. Account deletion keeps generated texture caches, which are shared with MineSkin. Existing `mineskin_cache_retention_days` and `mineskin_cache_max_mib` settings apply to the shared texture cache.
 
 ## Server management
 
