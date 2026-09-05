@@ -5,6 +5,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 
@@ -50,12 +51,13 @@ public final class AccountCommand {
         try {
             this.accounts.login(login -> source.getServer().execute(() -> {
                 if (!canReceive(source)) return;
-                Component link = Component.literal("[Microsoft login]").withStyle(style -> style
-                    .withUnderlined(true).withClickEvent(new ClickEvent.OpenUrl(login.verificationUri())));
+                Component link = Component.literal("[Microsoft 로그인]").withStyle(style -> style
+                    .withColor(ChatFormatting.AQUA).withUnderlined(true)
+                    .withClickEvent(new ClickEvent.OpenUrl(login.verificationUri())));
                 Component code = Component.literal(login.userCode()).withStyle(style -> style
+                    .withColor(ChatFormatting.YELLOW)
                     .withClickEvent(new ClickEvent.CopyToClipboard(login.userCode())));
-                source.sendSuccess(() -> Component.literal("Connect a dedicated bake account; its skin will be changed. ")
-                    .append(link).append(" Code: ").append(code).append(" URL: " + login.verificationUri()), false);
+                source.sendSuccess(() -> Component.literal("계정 연결: ").append(link).append("  코드: ").append(code), false);
             }), message -> source.getServer().execute(() -> {
                 if (canReceive(source)) source.sendSuccess(() -> Component.literal(message), false);
             }), () -> source.getServer().submit(() -> canReceive(source)).join());
