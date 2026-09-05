@@ -2,6 +2,9 @@ package io.github.hanhy06.emote.skin.mineskin;
 
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 
 import javax.net.ssl.SSLSession;
 import java.net.URI;
@@ -12,6 +15,7 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -24,18 +28,21 @@ class MineSkinClientTest {
         }
     }
 
-    @Test
-    void apiKeyPresenceAcceptsRawAndBearerFormats() {
-        assertTrue(MineSkinClient.hasApiKey("api-key"));
-        assertTrue(MineSkinClient.hasApiKey("  Bearer api-key  "));
-        assertTrue(MineSkinClient.hasApiKey("  bearer api-key  "));
+    @ParameterizedTest
+    @MethodSource("apiKeyCases")
+    void apiKeyPresenceMatchesSupportedFormats(String value, boolean expected) {
+        assertEquals(expected, MineSkinClient.hasApiKey(value));
     }
 
-    @Test
-    void apiKeyPresenceRejectsMissingValues() {
-        assertFalse(MineSkinClient.hasApiKey(null));
-        assertFalse(MineSkinClient.hasApiKey("  "));
-        assertFalse(MineSkinClient.hasApiKey("Bearer   "));
+    private static Stream<Arguments> apiKeyCases() {
+        return Stream.of(
+            Arguments.of("api-key", true),
+            Arguments.of("  Bearer api-key  ", true),
+            Arguments.of("  bearer api-key  ", true),
+            Arguments.of(null, false),
+            Arguments.of("  ", false),
+            Arguments.of("Bearer   ", false)
+        );
     }
 
     @Test

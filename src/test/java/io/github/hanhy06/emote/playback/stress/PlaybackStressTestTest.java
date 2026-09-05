@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackStressTestTest {
     @Test
-    void laysOutOneHundredInstancesInAOneBlockSpacedGrid() {
+    void laysOutInstancesInAOneBlockSpacedGrid() {
         Vec3 origin = new Vec3(100.25D, 64.0D, 200.75D);
 
         int instanceCount = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
@@ -19,10 +19,7 @@ class PlaybackStressTestTest {
         assertEquals(origin.add(4.5D, 0.0D, -4.5D), PlaybackStressTest.gridPosition(origin, 9, instanceCount));
         assertEquals(origin.add(-4.5D, 0.0D, -3.5D), PlaybackStressTest.gridPosition(origin, 10, instanceCount));
         assertEquals(origin.add(4.5D, 0.0D, 4.5D), PlaybackStressTest.gridPosition(origin, 99, instanceCount));
-    }
 
-    @Test
-    void expandsTheGridForARequestedCustomInstanceCount() {
         assertEquals(11, PlaybackStressTest.gridSize(101));
         assertEquals(16, PlaybackStressTest.gridSize(250));
     }
