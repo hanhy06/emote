@@ -7,6 +7,7 @@ import team.unnamed.mocha.runtime.value.MutableObjectBinding;
 import team.unnamed.mocha.runtime.value.NumberValue;
 import team.unnamed.mocha.runtime.value.StringValue;
 import team.unnamed.mocha.runtime.value.Value;
+import team.unnamed.mocha.runtime.value.Function;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -105,15 +106,36 @@ public final class MolangEngine {
         }
 
         public void setQueryFunction(String name, QueryFunction function) {
+            setQueryFunction(name, null, function);
+        }
+
+        public void setQueryFunction(String name, double value, QueryFunction function) {
+            setQueryFunction(name, Double.valueOf(value), function);
+        }
+
+        private void setQueryFunction(String name, Double value, QueryFunction function) {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(function, "function");
-            this.query.set(name.toLowerCase(Locale.ROOT), (team.unnamed.mocha.runtime.value.Function<Object>) (context, arguments) -> {
-                List<Value> values = new ArrayList<>(arguments.length());
-                for (int i = 0; i < arguments.length(); i++) {
-                    Value value = arguments.next().eval();
-                    values.add(value == null ? NumberValue.zero() : value);
+            this.query.set(name.toLowerCase(Locale.ROOT), new Function<Object>() {
+                @Override
+                public Value evaluate(team.unnamed.mocha.runtime.ExecutionContext<Object> context, Arguments arguments) {
+                    List<Value> values = new ArrayList<>(arguments.length());
+                    for (int i = 0; i < arguments.length(); i++) {
+                        Value argument = arguments.next().eval();
+                        values.add(argument == null ? NumberValue.zero() : argument);
+                    }
+                    return runtimeValue(Objects.requireNonNull(function.evaluate(new QueryArguments(values)), "query result"));
                 }
-                return runtimeValue(Objects.requireNonNull(function.evaluate(new QueryArguments(values)), "query result"));
+
+                @Override
+                public double getAsNumber() {
+                    return value == null ? 0.0D : value;
+                }
+
+                @Override
+                public boolean getAsBoolean() {
+                    return value == null || value != 0.0D;
+                }
             });
         }
 

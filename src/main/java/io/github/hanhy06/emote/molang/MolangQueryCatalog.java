@@ -52,13 +52,17 @@ public final class MolangQueryCatalog {
         "player_level",
         "item_in_use_duration",
         "item_remaining_use_duration",
-        "item_max_use_duration"
+        "item_max_use_duration",
+        "is_item_equipped"
     );
     private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of(
         "all", QuerySignature.atLeast(2),
         "any", QuerySignature.atLeast(2),
         "approx_eq", QuerySignature.atLeast(2),
-        "in_range", QuerySignature.exact(3)
+        "in_range", QuerySignature.exact(3),
+        "is_item_equipped", QuerySignature.range(0, 1),
+        "is_item_name_any", QuerySignature.atLeast(2),
+        "item_is_charged", QuerySignature.range(0, 1)
     );
     public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
@@ -108,6 +112,10 @@ public final class MolangQueryCatalog {
 
         private static QuerySignature atLeast(int minimumArguments) {
             return new QuerySignature(minimumArguments, Integer.MAX_VALUE);
+        }
+
+        private static QuerySignature range(int minimumArguments, int maximumArguments) {
+            return new QuerySignature(minimumArguments, maximumArguments);
         }
 
         boolean accepts(int argumentCount) {

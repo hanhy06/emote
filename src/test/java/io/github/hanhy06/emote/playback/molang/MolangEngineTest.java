@@ -67,6 +67,31 @@ class MolangEngineTest {
     }
 
     @Test
+    void evaluatesParameterizedEquipmentQueries() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        PlayerMolangQueries.setItemQueries(
+            session,
+            new PlayerMolangQueries.ItemQueryValue("minecraft:bow", false),
+            new PlayerMolangQueries.ItemQueryValue("minecraft:crossbow", false),
+            new PlayerMolangQueries.ItemQueryValue("minecraft:diamond_helmet", false),
+            new PlayerMolangQueries.ItemQueryValue("", false),
+            new PlayerMolangQueries.ItemQueryValue("", false),
+            new PlayerMolangQueries.ItemQueryValue("", false)
+        );
+
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.is_item_equipped")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.is_item_equipped('off_hand')")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.is_item_name_any('main_hand', 'minecraft:bow')")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.is_item_name_any('slot.armor.head', 'minecraft:diamond_helmet')")));
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.item_is_charged('off_hand')")));
+
+        MolangQueryCatalog.validate(
+            this.engine.compile("q.is_item_equipped; q.is_item_equipped('off_hand'); q.is_item_name_any('main_hand', 'minecraft:bow');"),
+            "$.test"
+        );
+    }
+
+    @Test
     void recordsQueryCallsSeparatelyFromQueryValuesAndAssignments() throws Exception {
         MolangEngine.CompiledExpression expression = this.engine.compile(
             "q.anim_time; query.sample(1, 'value'); q.blocked = 1;"

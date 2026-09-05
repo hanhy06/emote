@@ -1,10 +1,13 @@
 package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.molang.MolangEngine;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Objects;
@@ -62,7 +65,76 @@ public final class PlayerMolangQueries {
                 remainingUseTicks
             );
             setPlayerQueries(session, values);
+            setItemQueries(
+                session,
+                ItemQueryValue.of(player.getMainHandItem()),
+                ItemQueryValue.of(player.getOffhandItem()),
+                ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.HEAD)),
+                ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.CHEST)),
+                ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.LEGS)),
+                ItemQueryValue.of(player.getItemBySlot(EquipmentSlot.FEET))
+            );
         };
+    }
+
+    static void setItemQueries(
+        MolangEngine.Session session,
+        ItemQueryValue mainHand,
+        ItemQueryValue offHand,
+        ItemQueryValue head,
+        ItemQueryValue chest,
+        ItemQueryValue legs,
+        ItemQueryValue feet
+    ) {
+        ItemQueryValue[] equipment = {mainHand, offHand, head, chest, legs, feet};
+        session.setQueryFunction("is_item_equipped", mainHand.empty() ? 0.0D : 1.0D, arguments ->
+            MolangEngine.QueryValue.bool(!itemInSlot(arguments, 0, equipment).empty())
+        );
+        session.setQueryFunction("item_is_charged", mainHand.charged() ? 1.0D : 0.0D, arguments ->
+            MolangEngine.QueryValue.bool(itemInSlot(arguments, 0, equipment).charged())
+        );
+        session.setQueryFunction("is_item_name_any", arguments -> {
+            ItemQueryValue item = itemInSlot(arguments, 0, equipment);
+            int firstName = arguments.size() > 1 && arguments.isNumber(1) ? 2 : 1;
+            for (int i = firstName; i < arguments.size(); i++) {
+                if (arguments.isString(i) && item.name().equals(arguments.string(i))) {
+                    return MolangEngine.QueryValue.bool(true);
+                }
+            }
+            return MolangEngine.QueryValue.bool(false);
+        });
+    }
+
+    private static ItemQueryValue itemInSlot(MolangEngine.QueryArguments arguments, int index, ItemQueryValue[] equipment) {
+        if (arguments.size() <= index) {
+            return equipment[0];
+        }
+        if (arguments.isNumber(index)) {
+            return arguments.number(index) == 1.0D ? equipment[1] : equipment[0];
+        }
+        return switch (arguments.string(index)) {
+            case "off_hand", "slot.weapon.offhand" -> equipment[1];
+            case "slot.armor.head" -> equipment[2];
+            case "slot.armor.chest" -> equipment[3];
+            case "slot.armor.legs" -> equipment[4];
+            case "slot.armor.feet" -> equipment[5];
+            case "main_hand", "slot.weapon.mainhand", "slot.weapon" -> equipment[0];
+            default -> ItemQueryValue.EMPTY;
+        };
+    }
+
+    record ItemQueryValue(String name, boolean charged) {
+        private static final ItemQueryValue EMPTY = new ItemQueryValue("", false);
+
+        private static ItemQueryValue of(ItemStack item) {
+            return item.isEmpty()
+                ? EMPTY
+                : new ItemQueryValue(BuiltInRegistries.ITEM.getKey(item.getItem()).toString(), CrossbowItem.isCharged(item));
+        }
+
+        private boolean empty() {
+            return this.name.isEmpty();
+        }
     }
 
     private static void setPlayerQueries(MolangEngine.Session session, PlayerQueryValues values) {
