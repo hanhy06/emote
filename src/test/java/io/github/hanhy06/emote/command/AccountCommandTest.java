@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.command;
 
 import com.mojang.brigadier.CommandDispatcher;
 import net.minecraft.SharedConstants;
-import net.minecraft.commands.Commands;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.server.permissions.PermissionLevel;

@@ -4,13 +4,7 @@ import io.github.hanhy06.emote.skin.account.MinecraftAccountManager.Account;
 import io.github.hanhy06.emote.skin.account.MinecraftSkinClient.SkinRequestException;
 
 import java.io.IOException;
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;

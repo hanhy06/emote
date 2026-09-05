@@ -1,17 +1,29 @@
 package io.github.hanhy06.emote.skin.account;
 
-import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.*;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.AuthenticationException;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.DeviceLogin;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MicrosoftTokens;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 import org.junit.jupiter.api.Test;
 
-import javax.net.ssl.*;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLParameters;
+import javax.net.ssl.SSLSession;
 import java.io.ByteArrayOutputStream;
-import java.net.*;
-import java.net.http.*;
+import java.net.Authenticator;
+import java.net.CookieHandler;
+import java.net.ProxySelector;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpHeaders;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Flow;
 
 import static org.junit.jupiter.api.Assertions.*;

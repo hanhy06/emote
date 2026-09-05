@@ -1,11 +1,7 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.application.*;
-import io.github.hanhy06.emote.command.AdminCommand;
-import io.github.hanhy06.emote.command.AccountCommand;
-import io.github.hanhy06.emote.command.CommandRegistrar;
-import io.github.hanhy06.emote.command.EmoteMenu;
-import io.github.hanhy06.emote.command.UserCommand;
+import io.github.hanhy06.emote.command.*;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -22,22 +18,17 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
+import io.github.hanhy06.emote.skin.AutomaticSkinProvider;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
-import io.github.hanhy06.emote.skin.AutomaticSkinProvider;
-import io.github.hanhy06.emote.skin.account.AccountBakeQueue;
-import io.github.hanhy06.emote.skin.account.AccountSkinProvider;
-import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
-import io.github.hanhy06.emote.skin.account.AccountCredentialStore;
-import io.github.hanhy06.emote.skin.account.MinecraftAccountClient;
-import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
+import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.util.IdleButterflyCallbackExample;
-import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.loader.api.FabricLoader;
 
 final class EmoteBootstrap {
     private EmoteBootstrap() {
