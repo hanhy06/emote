@@ -22,6 +22,10 @@ import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.AutomaticSkinProvider;
+import io.github.hanhy06.emote.skin.account.AccountBakeQueue;
+import io.github.hanhy06.emote.skin.account.AccountSkinProvider;
+import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
 import io.github.hanhy06.emote.skin.account.AccountCredentialStore;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountClient;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
@@ -46,12 +50,13 @@ final class EmoteBootstrap {
             new MinecraftAccountClient(System.getenv("EMOTE_MICROSOFT_CLIENT_ID"))
         );
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
-        PlayerSkinManager skins = new PlayerSkinManager(new MineSkinProvider(
-            new PlayerSkinBaker(),
-            new MineSkinCache(),
-            new MineSkinClient(),
-            new MineSkinTaskQueue()
-        ));
+        PlayerSkinBaker skinBaker = new PlayerSkinBaker();
+        MineSkinCache skinCache = new MineSkinCache();
+        MineSkinProvider mineSkin = new MineSkinProvider(skinBaker, skinCache, new MineSkinClient(), new MineSkinTaskQueue());
+        MinecraftSkinClient minecraftSkins = new MinecraftSkinClient();
+        AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins, mineSkin::generateTexture);
+        AccountSkinProvider accountSkins = new AccountSkinProvider(accounts, skinBaker, minecraftSkins, skinCache, accountQueue);
+        PlayerSkinManager skins = new PlayerSkinManager(new AutomaticSkinProvider(accounts::hasAccounts, accountSkins, mineSkin));
         NamedCallbackDispatcher callbacks = new NamedCallbackDispatcher();
         PlaybackEngine playback = new PlaybackEngine(skins, callbacks);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();

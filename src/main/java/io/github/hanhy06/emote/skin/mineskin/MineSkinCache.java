@@ -48,7 +48,7 @@ public final class MineSkinCache {
         this.skinDirPath = Objects.requireNonNull(skinDirPath, "skinDirPath");
     }
 
-    static String createContentKey(byte[] pngBytes, boolean slimModel) {
+    public static String createContentKey(byte[] pngBytes, boolean slimModel) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             digest.update((byte) (slimModel ? 1 : 0));
@@ -59,7 +59,7 @@ public final class MineSkinCache {
         }
     }
 
-    Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {
+    public synchronized Map<PlayerSkinRegion, String> load(String textureHash, boolean slimModel) {
         SkinCacheKey cacheKey = new SkinCacheKey(textureHash, slimModel);
         Path filePath = resolveFilePath(textureHash, slimModel);
         Map<PlayerSkinRegion, String> cached = this.skinTextures.get(cacheKey);
@@ -105,13 +105,15 @@ public final class MineSkinCache {
         }
     }
 
-    public void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
+    public synchronized void save(String textureHash, boolean slimModel, Map<PlayerSkinRegion, String> textureUrlMap) {
         if (textureUrlMap.isEmpty()) {
             return;
         }
 
         Path filePath = resolveFilePath(textureHash, slimModel);
-        Map<PlayerSkinRegion, String> savedTextureUrls = Map.copyOf(textureUrlMap);
+        Map<PlayerSkinRegion, String> merged = new HashMap<>(load(textureHash, slimModel));
+        merged.putAll(textureUrlMap);
+        Map<PlayerSkinRegion, String> savedTextureUrls = Map.copyOf(merged);
         JsonObject skinJson = createSkinJson(textureHash, slimModel, savedTextureUrls);
         try {
             JsonFileStore.writeObjectAtomically(filePath, skinJson, this.gson);
@@ -122,7 +124,7 @@ public final class MineSkinCache {
         }
     }
 
-    String loadContent(String contentHash) {
+    public synchronized String loadContent(String contentHash) {
         Path filePath = resolveCacheFilePath(contentHash, "content");
         String cachedTextureUrl = this.contentTextureUrls.get(contentHash);
         if (cachedTextureUrl != null) {
@@ -155,7 +157,7 @@ public final class MineSkinCache {
         }
     }
 
-    void saveContent(String contentHash, String textureUrl) {
+    public synchronized void saveContent(String contentHash, String textureUrl) {
         Path filePath = resolveCacheFilePath(contentHash, "content");
         if (filePath == null) {
             return;
@@ -174,7 +176,7 @@ public final class MineSkinCache {
         }
     }
 
-    MineSkinPendingJob loadPendingJob(String contentHash) {
+    synchronized MineSkinPendingJob loadPendingJob(String contentHash) {
         Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -200,7 +202,7 @@ public final class MineSkinCache {
         }
     }
 
-    void savePendingJob(String contentHash, String jobId) {
+    synchronized void savePendingJob(String contentHash, String jobId) {
         Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || jobId == null || jobId.isBlank()) {
             return;
@@ -217,11 +219,11 @@ public final class MineSkinCache {
         }
     }
 
-    void clearPendingJob(String contentHash) {
+    synchronized void clearPendingJob(String contentHash) {
         deleteCacheFile(contentHash, "pending", "pending job");
     }
 
-    MineSkinFailure loadFailure(String contentHash, long nowEpochMillis) {
+    synchronized MineSkinFailure loadFailure(String contentHash, long nowEpochMillis) {
         Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -241,7 +243,7 @@ public final class MineSkinCache {
         }
     }
 
-    void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
+    synchronized void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
         Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null) {
             return;
@@ -258,7 +260,7 @@ public final class MineSkinCache {
         }
     }
 
-    void clearFailure(String contentHash) {
+    synchronized void clearFailure(String contentHash) {
         deleteCacheFile(contentHash, "failures", "failure state");
     }
 
@@ -274,13 +276,13 @@ public final class MineSkinCache {
         }
     }
 
-    void clearMemory() {
+    synchronized void clearMemory() {
         this.skinTextures.clear();
         this.contentTextureUrls.clear();
         this.refreshedAccessTimes.clear();
     }
 
-    CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
+    synchronized CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
         if (retentionMillis < 1L) {
             throw new IllegalArgumentException("retentionMillis must be positive");
         }

@@ -44,6 +44,24 @@ Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order 
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
+### Owner account management
+
+These commands require Minecraft's **OWNERS (level 4)** permission, independently of `emote.manage`. Responses are sent only to the command source.
+
+| Command | Description |
+|---------|-------------|
+| `/emote account` | Lists registered bake accounts and shows the selected skin provider. |
+| `/emote account login` | Shows a Microsoft login link and device code. Adds the authenticated account, or refreshes an existing registration with the same UUID. |
+| `/emote account remove <account>` | Removes an account by manually entered name or UUID. Account arguments have no autocomplete. |
+
+Use dedicated Minecraft Java accounts: baking replaces their actual skins. Accounts receive uncached part uploads in round-robin order, with one upload at a time per account. Registered accounts select the account provider automatically; with no registered accounts, Emote uses MineSkin. Accounts that require another login are skipped, and authentication failures do not silently switch to MineSkin. Removing the last account moves its unstarted uploads to MineSkin; already sent requests may finish. Removing an account also cancels a pending login and deletes its locally stored credentials; it does not revoke all Microsoft sessions.
+
+Before using account login, set `EMOTE_MICROSOFT_CLIENT_ID` in the server process environment to your own Microsoft public-client application ID. Configure personal Microsoft accounts and device authorization; the application must also have access to Xbox/Minecraft services. Emote does not ship another launcher's application ID. A Microsoft login alone does not establish that the app can access Minecraft services.
+
+Refresh tokens are stored encrypted in `config/emote/accounts.bin`. Windows uses DPAPI under the server's OS user by default. On other platforms, set `EMOTE_ACCOUNT_KEY` to a Base64-encoded random 32-byte key through your deployment's secret configuration. Setting this key explicitly selects AES-256-GCM on Windows as well. Keep the key outside the configuration directory and repository, and keep the same key across restarts. Plaintext credential storage is never used. An unreadable store remains locked until its original key or Windows identity is restored; it is not overwritten or treated as an empty account list.
+
+Access tokens are kept in memory. Account deletion keeps generated texture caches, which are shared with MineSkin. Existing `mineskin_cache_retention_days` and `mineskin_cache_max_mib` settings apply to the shared texture cache.
+
 ## Server management
 
 ```text
@@ -71,7 +89,7 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
 }
 ```
 
-Set `mineskin_api_key` to apply player skins.
+Set `mineskin_api_key` to generate player skin textures when no bake accounts are registered. Completed cached textures remain usable without either credential.
 
 ### `emotes.json`
 
@@ -185,7 +203,7 @@ Combine animations for two players in a sequence to create a collaborative emote
 | Problem                              | Check                                                                                                                                                                                              |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | An emote does not appear             | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only.                                                                               |
-| A player skin is not applied         | Check the converter's skin part assignments and `mineskin_api_key`. Run the emote again after a new skin finishes processing. If MineSkin is unavailable, the animation's default texture is used. |
+| A player skin is not applied         | Check the converter's skin part assignments and `/emote account` as OWNER. Without registered accounts, check `mineskin_api_key`. Run the emote again after skin processing finishes. Unavailable skin textures use the animation's default texture. |
 | A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces.                                              |
 
 If the problem is not covered here, report it on [Discord](https://discord.gg/CRWqKbSebW) or [GitHub Issues](https://github.com/hanhy06/emote/issues).
