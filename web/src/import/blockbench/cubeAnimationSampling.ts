@@ -3,13 +3,13 @@ import { TICKS_PER_SECOND } from "../../format/time";
 import type { BbAnimation, BbKeyframe } from "./cubeProjectSchema";
 import { evaluateGeckoChannel } from "./cubeAnimationBaker";
 
-interface AnimationAnchor {
+export interface AnimationAnchor {
   time: number;
   priority: number;
   step: boolean;
 }
 
-interface AnimationSamplePlan {
+export interface AnimationSamplePlan {
   sourceTimes: Map<number, number>;
   stepTicks: Set<number>;
 }
@@ -36,6 +36,15 @@ export function planAnimationSamples(
   snapshotAt: (time: number) => Matrix4[],
 ): AnimationSamplePlan {
   const anchors = collectAnimationAnchors(animation, animationIndex);
+  return planAnimationAnchorSamples(anchors, durationTicks, boneCount, snapshotAt);
+}
+
+export function planAnimationAnchorSamples(
+  anchors: readonly AnimationAnchor[],
+  durationTicks: number,
+  boneCount: number,
+  snapshotAt: (time: number) => Matrix4[],
+): AnimationSamplePlan {
   if (anchors.length === 0) return { sourceTimes: new Map(), stepTicks: new Set() };
 
   let states = new Map<number, SamplePlanState>([[-1, {

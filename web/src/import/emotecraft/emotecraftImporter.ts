@@ -5,6 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { requireAnimationDurationTicks } from "../../format/time";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { cubeEasingProgress } from "../blockbench/cubeEasing";
+import { planAnimationAnchorSamples, type AnimationAnchor } from "../blockbench/cubeAnimationSampling";
 import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import {
@@ -47,16 +48,23 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
   const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["tracks"];
+  const snapshotAt = (time: number) => {
+    const poses = evaluatePoses(animation, time * 20);
+    const matrices = buildSliceMatrices(animation, slices, poses);
+    return slices.map((slice) => matrices.get(slice.id)!);
+  };
+  const samplePlan = planAnimationAnchorSamples(collectAnimationAnchors(animation), durationTicks, slices.length, snapshotAt);
 
   let bindMatrices: Map<string, Matrix4> | undefined;
   for (let tick = 0; tick <= durationTicks; tick++) {
-    const poses = evaluatePoses(animation, tick);
+    const sourceTick = (samplePlan.sourceTimes.get(tick) ?? tick / 20) * 20;
+    const poses = evaluatePoses(animation, sourceTick);
     const matrices = buildSliceMatrices(animation, slices, poses);
     bindMatrices ??= matrices;
     for (const slice of slices) tracks[slice.id].transforms.push({
       tick,
       matrix: matrix4ToRowMajor(matrices.get(slice.id)!, `${displayName}/${slice.id}/${tick}`),
-      interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
+      interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
     });
   }
 
@@ -88,6 +96,27 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     diagnostics,
     resources: new Map(),
   };
+}
+
+function collectAnimationAnchors(animation: PalAnimation): AnimationAnchor[] {
+  const anchors = new Map<string, AnimationAnchor>();
+  for (const bone of Object.values(animation.bones)) {
+    for (const frames of [...bone.position, ...bone.rotation, ...bone.scale, bone.bend]) {
+      for (const frame of frames) {
+        if (!Number.isFinite(frame.endTick) || frame.endTick < 0 || frame.endTick > animation.lengthTicks) continue;
+        const time = frame.endTick / 20;
+        const key = time.toFixed(6);
+        const step = frame.easing === "constant";
+        const current = anchors.get(key);
+        if (!current) anchors.set(key, { time, priority: step ? 200 : 100, step });
+        else {
+          current.priority = Math.max(current.priority, step ? 200 : 100);
+          current.step ||= step;
+        }
+      }
+    }
+  }
+  return [...anchors.values()].sort((first, second) => first.time - second.time);
 }
 
 function emptyTrack(): ImportedNodeTrack {

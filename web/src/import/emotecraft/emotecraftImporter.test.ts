@@ -81,6 +81,21 @@ describe("importEmotecraftFile", () => {
     expect(numeric.animations[0].tracks.head.transforms[2].matrix).toEqual(expression.animations[0].tracks.head.transforms[2].matrix);
     expect(numeric.animations[0].tracks.head.transforms[2].matrix[6]).toBeCloseTo(0.9375);
   });
+
+  it("assigns fractional keyframe anchors to integer ticks using the shared approximation planner", () => {
+    const source = file({ body: bone(undefined, axis({
+      startTick: 0,
+      endTick: 0.6,
+      start: 0,
+      end: 16,
+      easing: "constant",
+      easingArgs: [],
+    })) });
+    const imported = importEmotecraftFile(source, "fractional.emotecraft");
+
+    expect(imported.animations[0].tracks.body_0.transforms[1].interpolation).toEqual({ type: "step" });
+    expect(imported.animations[0].tracks.body_0.transforms[1].matrix[3]).not.toBe(imported.animations[0].tracks.body_0.transforms[0].matrix[3]);
+  });
 });
 
 function file(bones: Record<string, PalBoneAnimation>): EmotecraftFile {
