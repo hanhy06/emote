@@ -27,7 +27,8 @@ public final class MolangEngine {
         }
         try {
             List<Expression> expressions = MolangAstNormalizer.normalize(MochaEngine.create().parse(source));
-            return new CompiledExpression(source, expressions, MolangQueryInspector.inspect(expressions));
+            MolangExpressionInspector.Inspection inspection = MolangExpressionInspector.inspect(expressions);
+            return new CompiledExpression(source, expressions, inspection.queryUses(), inspection.assignsPersistentVariables());
         } catch (ParseException exception) {
             throw new MolangCompileException(exception.getMessage(), exception);
         }
@@ -37,11 +38,34 @@ public final class MolangEngine {
         return new Session();
     }
 
-    public record CompiledExpression(String source, List<Expression> expressions, List<QueryUse> queryUses) {
-        public CompiledExpression {
-            Objects.requireNonNull(source, "source");
-            expressions = List.copyOf(expressions);
-            queryUses = List.copyOf(queryUses);
+    public static final class CompiledExpression {
+        private final String source;
+        private final List<Expression> expressions;
+        private final List<QueryUse> queryUses;
+        private final boolean assignsPersistentVariables;
+
+        private CompiledExpression(
+            String source,
+            List<Expression> expressions,
+            List<QueryUse> queryUses,
+            boolean assignsPersistentVariables
+        ) {
+            this.source = Objects.requireNonNull(source, "source");
+            this.expressions = List.copyOf(expressions);
+            this.queryUses = List.copyOf(queryUses);
+            this.assignsPersistentVariables = assignsPersistentVariables;
+        }
+
+        public String source() {
+            return this.source;
+        }
+
+        public List<QueryUse> queryUses() {
+            return this.queryUses;
+        }
+
+        public boolean assignsPersistentVariables() {
+            return this.assignsPersistentVariables;
         }
     }
 
@@ -89,7 +113,7 @@ public final class MolangEngine {
 
         public double evaluate(CompiledExpression expression) {
             Objects.requireNonNull(expression, "expression");
-            return MolangRuntime.evaluate(this.evaluator.scope(), expression.expressions());
+            return MolangRuntime.evaluate(this.evaluator.scope(), expression.expressions);
         }
 
         private static Value runtimeValue(QueryValue value) {

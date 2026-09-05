@@ -66,6 +66,14 @@ class MolangEngineTest {
     }
 
     @Test
+    void recordsPersistentVariableAssignmentsFromTheAst() throws Exception {
+        assertEquals(true, this.engine.compile("v.count = 1").assignsPersistentVariables());
+        assertEquals(true, this.engine.compile("VARIABLE.count = 1").assignsPersistentVariables());
+        assertEquals(false, this.engine.compile("t.count = 1").assignsPersistentVariables());
+        assertEquals(false, this.engine.compile("q.count = 1").assignsPersistentVariables());
+    }
+
+    @Test
     void rejectsCallingScalarQueriesDuringTimelineValidation() throws Exception {
         MolangEngine.CompiledExpression expression = this.engine.compile("q.anim_time()");
 

@@ -6,15 +6,10 @@ import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.*;
-import java.util.regex.Pattern;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
 public final class PreparedAnimationTimeline {
-    private static final Pattern VARIABLE_ASSIGNMENT = Pattern.compile(
-        "(?i)\\b(?:v|variable)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
-    );
-
     private final List<String> nodeOrder;
     private final Map<String, CompiledNodeTracks> tracks;
     private final MolangEngine.CompiledExpression initialize;
@@ -128,8 +123,11 @@ public final class PreparedAnimationTimeline {
     }
 
     private static MolangEngine.CompiledExpression compileValueProgram(String source, String path) {
-        validateValueProgram(source, path);
-        return compileProgram(source, path);
+        MolangEngine.CompiledExpression expression = compileProgram(source, path);
+        if (expression.assignsPersistentVariables()) {
+            throw new IllegalArgumentException(path + " must not assign persistent variables");
+        }
+        return expression;
     }
 
     private static MolangEngine.CompiledExpression compileProgram(String source, String path) {
@@ -142,12 +140,6 @@ public final class PreparedAnimationTimeline {
             return expression;
         } catch (MolangEngine.MolangCompileException exception) {
             throw new IllegalArgumentException(path + " contains invalid Molang", exception);
-        }
-    }
-
-    private static void validateValueProgram(String source, String path) {
-        if (VARIABLE_ASSIGNMENT.matcher(source).find()) {
-            throw new IllegalArgumentException(path + " must not assign persistent variables");
         }
     }
 
