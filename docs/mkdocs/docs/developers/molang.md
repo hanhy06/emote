@@ -123,10 +123,38 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.item_in_use_duration` | Elapsed active item-use time in seconds, capped at the item's maximum use duration. |
 | `q.item_remaining_use_duration` | Remaining active item-use time in seconds. |
 | `q.item_max_use_duration` | Maximum active item-use duration in seconds. |
+| `q.blocking` | `1` while the initiator is actively blocking, otherwise `0`. |
+| `q.is_eating` | `1` while the initiator is using an item with the eat animation, otherwise `0`. |
+| `q.is_jumping` | `1` while the initiator's latest client input has jump held, otherwise `0`. |
+| `q.is_crawling` | `1` while the initiator has the crawling pose without swimming, otherwise `0`. |
+| `q.is_invisible` | `1` while the initiator is invisible, otherwise `0`. |
+| `q.is_levitating` | `1` while the initiator has the levitation effect, otherwise `0`. |
+| `q.yaw_speed` | Initiator yaw change during the current tick, in degrees. |
+| `q.on_fire_time` | Remaining initiator fire time in seconds. |
 
 Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
 
-The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used. They are scalar queries without arguments; hand-slot selection and normalization arguments are not supported.
+The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used.
+
+### Query functions
+
+Registered query functions are available in animation programs, vector and visibility tracks, and NBT option selectors.
+
+| Query | Value |
+|---|---|
+| `q.any(value, candidate, ...)` | `1` if any candidate equals the first value. Strings and numbers retain their types. |
+| `q.all(value, candidate, ...)` | `1` if every candidate equals the first value. Strings and numbers retain their types. |
+| `q.approx_eq(value, candidate, ...)` | `1` if every numeric candidate approximately equals the first value. |
+| `q.in_range(value, minimum, maximum)` | `1` if the value is within the inclusive range. |
+| `q.position(axis)` | Initiator position on axis `0` (X), `1` (Y), or `2` (Z). |
+| `q.position_delta(axis)` | Initiator movement during the current tick on the selected axis. |
+| `q.movement_direction(axis)` | Selected component of the normalized current movement vector, or `0` while stationary. |
+| `q.is_item_equipped()` | `1` if the main hand is not empty. An optional hand or equipment-slot selector may be supplied. |
+| `q.item_is_charged()` | `1` if the main-hand crossbow is charged. An optional hand or equipment-slot selector may be supplied. |
+| `q.is_item_name_any(slot, name, ...)` | `1` if the selected equipment item has one of the full identifiers, such as `'minecraft:bow'`. |
+| `q.scoreboard(objective)` | Initiator score for the named objective, or `0` when the objective or score is absent. |
+
+Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainhand`, `slot.weapon.offhand`, and `slot.armor.head`, `slot.armor.chest`, `slot.armor.legs`, or `slot.armor.feet`. Numeric hand selector `0` means main hand and `1` means off hand. Scalar `q.is_item_equipped` and `q.item_is_charged` remain available as main-hand shortcuts.
 
 ## Validation and preview
 
@@ -136,4 +164,4 @@ The web converter preserves the original schema 4 Molang source when exporting. 
 
 ## Current limitations
 
-This is not a complete Bedrock Molang environment. Only the queries listed above are available, and the current list contains scalar queries only. Parameterized query calls are reserved for registered query functions; no parameterized player query is registered yet. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.
+This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.
