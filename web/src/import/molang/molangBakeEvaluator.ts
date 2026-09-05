@@ -1,7 +1,7 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../runtimeMolangQueries";
 
 export interface MolangBakeContext {
   animationTime: number;
@@ -28,7 +28,11 @@ export class MolangBakeEvaluator {
   private readonly parser = new MolangParser();
 
   constructor(private readonly options: MolangBakeOptions) {
-    this.parser.variableHandler = (key) => {
+    this.parser.variableHandler = (key, _variables, args) => {
+      if (args) {
+        const value = previewRuntimeQueryFunction(key);
+        if (value !== undefined) return value;
+      }
       throw new Error(`references runtime Molang variable ${key}`);
     };
   }
@@ -44,7 +48,7 @@ export class MolangBakeEvaluator {
 
     try {
       const variables: Record<string, number> = {
-        ...PREVIEW_PLAYER_STATE_QUERIES,
+        ...PREVIEW_RUNTIME_QUERY_VALUES,
         "query.anim_time": context.animationTime,
         "q.anim_time": context.animationTime,
         "query.delta_time": context.deltaTime ?? 1 / TICKS_PER_SECOND,

@@ -120,7 +120,7 @@ describe("emoteJsonAdapter", () => {
             position: [{
               time: "0t",
               value: [
-                "v.offset + v.elapsed + q.anim_time_ticks + q.anim_length + q.is_on_ground + q.is_emoting",
+                "v.offset + v.elapsed + q.anim_time_ticks + q.anim_length + q.is_on_ground + q.is_emoting + q.position(0) + q.scoreboard('combo')",
                 "t.value = t.value + 1; return t.value;",
                 0,
               ],

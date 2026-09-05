@@ -1,4 +1,4 @@
-const MOD_SUPPORTED_QUERY_NAMES = [
+export const MOD_SUPPORTED_QUERY_VALUE_NAMES = [
   "anim_time",
   "anim_time_ticks",
   "anim_length",
@@ -46,11 +46,44 @@ const MOD_SUPPORTED_QUERY_NAMES = [
   "item_in_use_duration",
   "item_remaining_use_duration",
   "item_max_use_duration",
+  "is_item_equipped",
+  "blocking",
+  "is_eating",
+  "is_jumping",
+  "is_crawling",
+  "is_invisible",
+  "is_levitating",
+  "yaw_speed",
+  "on_fire_time",
 ] as const;
 
-export const PREVIEW_PLAYER_STATE_QUERIES: Readonly<Record<string, number>> = Object.fromEntries(
-  MOD_SUPPORTED_QUERY_NAMES.flatMap((name) => {
+export const MOD_SUPPORTED_QUERY_FUNCTION_NAMES = [
+  "all",
+  "any",
+  "approx_eq",
+  "in_range",
+  "is_item_equipped",
+  "is_item_name_any",
+  "item_is_charged",
+  "position",
+  "position_delta",
+  "movement_direction",
+  "scoreboard",
+] as const;
+
+const BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(["all", "any", "approx_eq", "in_range"]);
+const ZERO_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(
+  MOD_SUPPORTED_QUERY_FUNCTION_NAMES.filter((name) => !BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES.has(name)),
+);
+
+export const PREVIEW_RUNTIME_QUERY_VALUES: Readonly<Record<string, number>> = Object.fromEntries(
+  MOD_SUPPORTED_QUERY_VALUE_NAMES.flatMap((name) => {
     const value = name === "is_on_ground" || name === "is_emoting" ? 1 : 0;
     return [[`q.${name}`, value], [`query.${name}`, value]];
   }),
 );
+
+export function previewRuntimeQueryFunction(key: string): number | undefined {
+  const name = key.replace(/^(?:q|query)\./, "");
+  return ZERO_PREVIEW_QUERY_FUNCTION_NAMES.has(name) ? 0 : undefined;
+}

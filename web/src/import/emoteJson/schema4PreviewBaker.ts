@@ -15,7 +15,7 @@ import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedNodeTrack } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../runtimeMolangQueries";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 const QUERY_ASSIGNMENT = /\b(?:q|query)\s*\.[a-z_][a-z0-9_]*\s*=(?!=)/i;
@@ -98,10 +98,14 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
 
 class PreviewMolangSession {
   private readonly parser = new MolangParser();
-  private readonly queries: Record<string, number> = { ...PREVIEW_PLAYER_STATE_QUERIES };
+  private readonly queries: Record<string, number> = { ...PREVIEW_RUNTIME_QUERY_VALUES };
 
   constructor(private readonly durationTicks: number) {
-    this.parser.variableHandler = (key) => {
+    this.parser.variableHandler = (key, _variables, args) => {
+      if (args) {
+        const value = previewRuntimeQueryFunction(key);
+        if (value !== undefined) return value;
+      }
       if (key.startsWith("variable.") || key.startsWith("temp.")) return 0;
       throw new Error(`references unsupported Molang value ${key}`);
     };

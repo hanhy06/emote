@@ -49,11 +49,36 @@ describe("MolangBakeEvaluator", () => {
     "head_is_in_water", "is_in_lava", "is_in_water_or_rain",
     "hurt_time", "death_ticks", "invulnerable_ticks", "player_level",
     "item_in_use_duration", "item_remaining_use_duration", "item_max_use_duration",
+    "is_item_equipped", "blocking", "is_eating", "is_jumping", "is_crawling",
+    "is_invisible", "is_levitating", "yaw_speed", "on_fire_time",
   ])("bakes %s with both query prefixes and synthetic state", (name) => {
     expect(evaluator().evaluate(`q.${name} + query.${name} + 1`, {
       animationTime: 0,
       keyframeLerpTime: 0,
     }, "queries")).toBe(1);
+  });
+
+  it.each([
+    "q.is_item_equipped('off_hand')",
+    "q.is_item_name_any('main_hand', 'minecraft:bow')",
+    "q.item_is_charged('off_hand')",
+    "q.position(0)",
+    "q.position_delta(1)",
+    "q.movement_direction(2)",
+    "q.scoreboard('combo')",
+  ])("previews supported runtime query function %s with synthetic zero", (expression) => {
+    expect(evaluator().evaluate(expression, {
+      animationTime: 0,
+      keyframeLerpTime: 0,
+    }, "queries")).toBe(0);
+  });
+
+  it("evaluates general query functions supported by both runtimes", () => {
+    expect(evaluator().evaluate(
+      "q.any(2, 1, 2) + q.all(2, 2, 2) + q.in_range(2, 1, 3) + q.approx_eq(1, 1)",
+      { animationTime: 0, keyframeLerpTime: 0 },
+      "queries",
+    )).toBe(4);
   });
 
   it("can reject nondeterministic functions before evaluation", () => {

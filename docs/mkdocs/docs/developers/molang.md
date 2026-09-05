@@ -123,6 +123,7 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.item_in_use_duration` | Elapsed active item-use time in seconds, capped at the item's maximum use duration. |
 | `q.item_remaining_use_duration` | Remaining active item-use time in seconds. |
 | `q.item_max_use_duration` | Maximum active item-use duration in seconds. |
+| `q.is_item_equipped` | Main-hand shortcut: `1` when the main hand is not empty, otherwise `0`. |
 | `q.blocking` | `1` while the initiator is actively blocking, otherwise `0`. |
 | `q.is_eating` | `1` while the initiator is using an item with the eat animation, otherwise `0`. |
 | `q.is_jumping` | `1` while the initiator's latest client input has jump held, otherwise `0`. |
@@ -160,7 +161,7 @@ Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainh
 
 Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure; an NBT selector also fails if its result is fractional or outside its option array.
 
-The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries are `0`. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries and player-dependent query functions are `0`. General query functions such as `q.any` and `q.in_range` are evaluated normally. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
 
 ## Current limitations
 
