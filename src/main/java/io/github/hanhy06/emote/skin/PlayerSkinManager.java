@@ -110,10 +110,6 @@ public class PlayerSkinManager implements ConfigListener {
     private void notifySkinReady(UUID playerUuid) {
         MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
-            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-            if (player != null) {
-                player.sendSystemMessage(Component.literal("Your skin is ready. Play the emote again."));
-            }
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
             }
