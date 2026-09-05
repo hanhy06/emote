@@ -4,29 +4,10 @@
  */
 package io.github.hanhy06.emote.molang;
 
-import team.unnamed.mocha.parser.ast.AccessExpression;
-import team.unnamed.mocha.parser.ast.ArrayAccessExpression;
-import team.unnamed.mocha.parser.ast.BinaryExpression;
-import team.unnamed.mocha.parser.ast.CallExpression;
-import team.unnamed.mocha.parser.ast.DoubleExpression;
-import team.unnamed.mocha.parser.ast.ExecutionScopeExpression;
-import team.unnamed.mocha.parser.ast.Expression;
-import team.unnamed.mocha.parser.ast.ExpressionVisitor;
-import team.unnamed.mocha.parser.ast.IdentifierExpression;
-import team.unnamed.mocha.parser.ast.StatementExpression;
-import team.unnamed.mocha.parser.ast.StringExpression;
-import team.unnamed.mocha.parser.ast.TernaryConditionalExpression;
-import team.unnamed.mocha.parser.ast.UnaryExpression;
+import team.unnamed.mocha.parser.ast.*;
 import team.unnamed.mocha.runtime.ExecutionContext;
 import team.unnamed.mocha.runtime.Scope;
-import team.unnamed.mocha.runtime.value.ArrayValue;
-import team.unnamed.mocha.runtime.value.Function;
-import team.unnamed.mocha.runtime.value.JavaValue;
-import team.unnamed.mocha.runtime.value.MutableObjectBinding;
-import team.unnamed.mocha.runtime.value.NumberValue;
-import team.unnamed.mocha.runtime.value.ObjectValue;
-import team.unnamed.mocha.runtime.value.StringValue;
-import team.unnamed.mocha.runtime.value.Value;
+import team.unnamed.mocha.runtime.value.*;
 
 import java.util.List;
 

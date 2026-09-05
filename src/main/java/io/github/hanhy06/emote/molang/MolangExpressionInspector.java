@@ -1,14 +1,6 @@
 package io.github.hanhy06.emote.molang;
 
-import team.unnamed.mocha.parser.ast.AccessExpression;
-import team.unnamed.mocha.parser.ast.ArrayAccessExpression;
-import team.unnamed.mocha.parser.ast.BinaryExpression;
-import team.unnamed.mocha.parser.ast.CallExpression;
-import team.unnamed.mocha.parser.ast.ExecutionScopeExpression;
-import team.unnamed.mocha.parser.ast.Expression;
-import team.unnamed.mocha.parser.ast.IdentifierExpression;
-import team.unnamed.mocha.parser.ast.TernaryConditionalExpression;
-import team.unnamed.mocha.parser.ast.UnaryExpression;
+import team.unnamed.mocha.parser.ast.*;
 
 import java.util.ArrayList;
 import java.util.List;
