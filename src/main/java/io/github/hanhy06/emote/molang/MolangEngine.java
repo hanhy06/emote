@@ -22,7 +22,7 @@ public final class MolangEngine {
             throw new MolangCompileException("expression exceeds " + MAX_SOURCE_LENGTH + " characters");
         }
         try {
-            return new CompiledExpression(source, MochaEngine.create().parse(source));
+            return new CompiledExpression(source, MolangAstNormalizer.normalize(MochaEngine.create().parse(source)));
         } catch (ParseException exception) {
             throw new MolangCompileException(exception.getMessage(), exception);
         }
@@ -57,7 +57,7 @@ public final class MolangEngine {
 
         public double evaluate(CompiledExpression expression) {
             Objects.requireNonNull(expression, "expression");
-            return this.evaluator.eval(expression.expressions());
+            return MolangRuntime.evaluate(this.evaluator.scope(), expression.expressions());
         }
     }
 

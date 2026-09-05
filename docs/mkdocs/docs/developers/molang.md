@@ -26,6 +26,21 @@ A new Molang session is created for every repeated cycle and every Animation seg
 
 All functions in the Bedrock Molang `math.*` reference are supported, including the easing, random, dice, interpolation, angle, and sign functions. Trigonometric inputs and outputs use degrees.
 
+## Conditionals
+
+Bedrock's binary and ternary conditional operators are supported. Only the selected branch is evaluated, and either branch may contain a brace-delimited execution scope:
+
+```molang
+q.is_moving ? {
+  v.speed = q.ground_speed;
+} : {
+  v.speed = 0;
+};
+return v.speed;
+```
+
+Conditional expressions associate from the right, so `a ? b : c ? d : e` is equivalent to `a ? b : (c ? d : e)`. Molang does not define separate `if` or `else` keywords; use `?` and `:` instead.
+
 ## Track values
 
 Each position, rotation, or scale component may be a number or a Molang string:

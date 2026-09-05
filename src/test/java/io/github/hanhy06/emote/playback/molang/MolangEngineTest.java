@@ -25,7 +25,52 @@ class MolangEngineTest {
     @Test
     void compilesBedrockStartDelayExpressions() throws Exception {
         this.engine.compile("math.max(0, q.anim_time - 0.1)");
-        this.engine.compile("v.time = q.anim_time < 0.1 ? 0 : (v.time + q.delta_time);");
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "v.time = q.anim_time < 0.1 ? 0 : (v.time + q.delta_time); return v.time;"
+        );
+        MolangEngine.Session session = this.engine.createSession();
+        session.setQuery("delta_time", 0.05D);
+
+        session.setQuery("anim_time", 0.05D);
+        assertEquals(0.0D, session.evaluate(expression));
+        session.setQuery("anim_time", 0.2D);
+        assertEquals(0.05D, session.evaluate(expression));
+    }
+
+    @Test
+    void evaluatesConditionalValuesAndOnlyTheSelectedBranch() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "v.result = q.enabled ? 10 : 20;"
+                + "q.enabled ? { v.selected = v.selected + 1; } : { v.rejected = v.rejected + 1; };"
+                + "return v.result + v.selected * 100 + v.rejected * 1000;"
+        );
+        MolangEngine.Session session = this.engine.createSession();
+
+        session.setQuery("enabled", 1.0D);
+        assertEquals(110.0D, session.evaluate(expression));
+        session.setQuery("enabled", 0.0D);
+        assertEquals(1120.0D, session.evaluate(expression));
+    }
+
+    @Test
+    void associatesNestedConditionalExpressionsFromTheRight() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+
+        assertEquals(2.0D, session.evaluate(this.engine.compile("0 ? 1 : 1 ? 2 : 3")));
+        assertEquals(3.0D, session.evaluate(this.engine.compile("0 ? 1 : 0 ? 2 : 3")));
+        assertEquals(2.0D, session.evaluate(this.engine.compile("v.nested = 0 ? 1 : 1 ? 2 : 3; return v.nested;")));
+    }
+
+    @Test
+    void returnStopsTheSelectedConditionalBlock() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "1 ? { v.before = 1; return 7; v.after = 1; }; return 9;"
+        );
+        MolangEngine.Session session = this.engine.createSession();
+
+        assertEquals(7.0D, session.evaluate(expression));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("return v.before;")));
+        assertEquals(0.0D, session.evaluate(this.engine.compile("return v.after;")));
     }
 
     @Test
