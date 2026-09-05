@@ -43,9 +43,9 @@ const IMPORT_FORMATS = [
     description: "Use the original .ajblueprint project from Animated Java. Model, animation, and skin data are imported.",
   },
   {
-    label: "Bedrock Edition",
-    extensions: ".json",
-    description: "Imports Bedrock Edition player animation files. Molang support is not yet complete, so converted animations may look incorrect.",
+    label: "Bedrock & Emotecraft",
+    extensions: ".json .emotecraft",
+    description: "이 포맷들은 실험 기능입니다. 완벽하게 지원하지 않을 수 있습니다.",
   },
 ] as const;
 
