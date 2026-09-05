@@ -136,4 +136,4 @@ The web converter preserves the original schema 4 Molang source when exporting. 
 
 ## Current limitations
 
-This is not a complete Bedrock Molang environment. Only the queries listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.
+This is not a complete Bedrock Molang environment. Only the queries listed above are available, and the current list contains scalar queries only. Parameterized query calls are reserved for registered query functions; no parameterized player query is registered yet. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.

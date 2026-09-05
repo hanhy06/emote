@@ -23,6 +23,60 @@ class MolangEngineTest {
     }
 
     @Test
+    void evaluatesParameterizedQueriesWithTypedArguments() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        session.setQueryFunction("weighted", arguments -> MolangEngine.QueryValue.number(
+            arguments.number(0)
+                + (arguments.string(1).equals("main_hand") ? 10.0D : 0.0D)
+                + (arguments.bool(2) ? 100.0D : 0.0D)
+        ));
+        session.setQueryFunction("text", arguments -> MolangEngine.QueryValue.string(arguments.string(0)));
+
+        assertEquals(112.5D, session.evaluate(this.engine.compile("q.weighted(2.5, 'main_hand', true)")));
+        assertEquals(12.5D, session.evaluate(this.engine.compile("query.weighted(2.5, 'main_hand', false)")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.text('selected') ? 1 : 0")));
+    }
+
+    @Test
+    void evaluatesEachQueryArgumentOnceFromLeftToRight() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        session.setQueryFunction("sum", arguments -> MolangEngine.QueryValue.number(arguments.number(0) + arguments.number(1)));
+
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "v.count = 0; q.sum(v.count = v.count + 1, v.count = v.count + 1); return v.count;"
+        );
+
+        assertEquals(2.0D, session.evaluate(expression));
+    }
+
+    @Test
+    void recordsQueryCallsSeparatelyFromQueryValuesAndAssignments() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile(
+            "q.anim_time; query.sample(1, 'value'); q.blocked = 1;"
+        );
+
+        assertEquals(
+            java.util.List.of(
+                new MolangEngine.QueryUse("anim_time", MolangEngine.QueryUseKind.VALUE, 0),
+                new MolangEngine.QueryUse("sample", MolangEngine.QueryUseKind.CALL, 2),
+                new MolangEngine.QueryUse("blocked", MolangEngine.QueryUseKind.ASSIGNMENT, 0)
+            ),
+            expression.queryUses()
+        );
+    }
+
+    @Test
+    void rejectsCallingScalarQueriesDuringTimelineValidation() throws Exception {
+        MolangEngine.CompiledExpression expression = this.engine.compile("q.anim_time()");
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> MolangQueries.validate(expression, "$.test")
+        );
+        assertEquals("$.test must not call query value anim_time", exception.getMessage());
+    }
+
+    @Test
     void compilesBedrockStartDelayExpressions() throws Exception {
         this.engine.compile("math.max(0, q.anim_time - 0.1)");
         MolangEngine.CompiledExpression expression = this.engine.compile(

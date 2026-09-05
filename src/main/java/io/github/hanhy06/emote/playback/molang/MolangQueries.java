@@ -7,11 +7,13 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 
 public final class MolangQueries {
-    public static final Set<String> SUPPORTED_NAMES = Set.of(
+    private static final Set<String> SUPPORTED_VALUES = Set.of(
         "anim_time",
         "anim_time_ticks",
         "anim_length",
@@ -60,9 +62,63 @@ public final class MolangQueries {
         "item_remaining_use_duration",
         "item_max_use_duration"
     );
+    public static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of();
+    public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
+        .collect(java.util.stream.Collectors.toUnmodifiableSet());
     public static final Source EMPTY = session -> setPlayerQueries(session, PlayerQueryValues.EMPTY);
 
     private MolangQueries() {
+    }
+
+    public static void validate(MolangEngine.CompiledExpression expression, String path) {
+        for (MolangEngine.QueryUse use : expression.queryUses()) {
+            if (use.kind() == MolangEngine.QueryUseKind.ASSIGNMENT) {
+                throw new IllegalArgumentException(path + " must not assign queries");
+            }
+            QuerySignature function = SUPPORTED_FUNCTIONS.get(use.name());
+            if (use.kind() == MolangEngine.QueryUseKind.VALUE) {
+                if (SUPPORTED_VALUES.contains(use.name())) {
+                    continue;
+                }
+                if (function != null) {
+                    throw new IllegalArgumentException(path + " must call query function " + use.name());
+                }
+                throw new IllegalArgumentException(path + " references unsupported query " + use.name());
+            }
+            if (function == null) {
+                if (SUPPORTED_VALUES.contains(use.name())) {
+                    throw new IllegalArgumentException(path + " must not call query value " + use.name());
+                }
+                throw new IllegalArgumentException(path + " references unsupported query " + use.name());
+            }
+            if (!function.accepts(use.argumentCount())) {
+                throw new IllegalArgumentException(
+                    path + " calls query " + use.name() + " with " + use.argumentCount() + " arguments; expected " + function.describe()
+                );
+            }
+        }
+    }
+
+    public record QuerySignature(int minimumArguments, int maximumArguments) {
+        public QuerySignature {
+            if (minimumArguments < 0 || maximumArguments < minimumArguments) {
+                throw new IllegalArgumentException("invalid query argument range");
+            }
+        }
+
+        public static QuerySignature exact(int argumentCount) {
+            return new QuerySignature(argumentCount, argumentCount);
+        }
+
+        boolean accepts(int argumentCount) {
+            return argumentCount >= this.minimumArguments && argumentCount <= this.maximumArguments;
+        }
+
+        String describe() {
+            return this.minimumArguments == this.maximumArguments
+                ? Integer.toString(this.minimumArguments)
+                : this.minimumArguments + ".." + this.maximumArguments;
+        }
     }
 
     public static Source forPlayer(ServerPlayer player) {

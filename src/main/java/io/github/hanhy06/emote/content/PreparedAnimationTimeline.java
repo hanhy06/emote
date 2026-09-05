@@ -2,22 +2,17 @@ package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.MolangQueries;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.*;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
-import static io.github.hanhy06.emote.playback.molang.MolangQueries.SUPPORTED_NAMES;
 
 public final class PreparedAnimationTimeline {
-    private static final Pattern QUERY_REFERENCE = Pattern.compile("(?i)\\b(?:q|query)\\.([a-z_][a-z0-9_]*)");
     private static final Pattern VARIABLE_ASSIGNMENT = Pattern.compile(
         "(?i)\\b(?:v|variable)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
-    );
-    private static final Pattern QUERY_ASSIGNMENT = Pattern.compile(
-        "(?i)\\b(?:q|query)\\s*\\.[a-z_][a-z0-9_]*\\s*=(?!=)"
     );
 
     private final List<String> nodeOrder;
@@ -141,12 +136,10 @@ public final class PreparedAnimationTimeline {
         if (source == null) {
             return null;
         }
-        if (QUERY_ASSIGNMENT.matcher(source).find()) {
-            throw new IllegalArgumentException(path + " must not assign queries");
-        }
-        validateQueries(source, path);
         try {
-            return MolangEngine.INSTANCE.compile(source);
+            MolangEngine.CompiledExpression expression = MolangEngine.INSTANCE.compile(source);
+            MolangQueries.validate(expression, path);
+            return expression;
         } catch (MolangEngine.MolangCompileException exception) {
             throw new IllegalArgumentException(path + " contains invalid Molang", exception);
         }
@@ -155,16 +148,6 @@ public final class PreparedAnimationTimeline {
     private static void validateValueProgram(String source, String path) {
         if (VARIABLE_ASSIGNMENT.matcher(source).find()) {
             throw new IllegalArgumentException(path + " must not assign persistent variables");
-        }
-    }
-
-    private static void validateQueries(String source, String path) {
-        Matcher matcher = QUERY_REFERENCE.matcher(source);
-        while (matcher.find()) {
-            String query = matcher.group(1).toLowerCase(Locale.ROOT);
-            if (!SUPPORTED_NAMES.contains(query)) {
-                throw new IllegalArgumentException(path + " references unsupported query " + query);
-            }
         }
     }
 
