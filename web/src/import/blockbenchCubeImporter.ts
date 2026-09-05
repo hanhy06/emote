@@ -20,7 +20,7 @@ import {
   type BbOutlinerGroup,
   type BbmodelProject,
 } from "./blockbenchCubeSchema";
-import { evaluateGeckoChannel } from "./blockbenchKeyframeEvaluator";
+import { evaluateBlockbenchChannel } from "./blockbenchKeyframeEvaluator";
 import {
   uniqueCubeNodeId,
   writeCubeResources,
@@ -43,8 +43,8 @@ export const PLAYER_RENDER_SCALE = 0.9375;
 
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
-  formatLabel?: string;
-  molangDiagnosticCode?: string;
+  formatLabel: string;
+  molangDiagnosticCode: string;
 }
 
 export interface ImportedCubeProjectContent {
@@ -66,7 +66,7 @@ export function importBlockbenchCubeContent(
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
   const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms;
-  const formatLabel = options.formatLabel ?? "GeckoLib";
+  const formatLabel = options.formatLabel;
   const bones = buildBoneEntries(project);
   if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
   writeSourceCubeResources(project, bones, namespace, projectPath, resources, transforms);
@@ -127,7 +127,7 @@ export function importBlockbenchCubeContent(
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
-        code: options.molangDiagnosticCode ?? "geckolib_animation_molang_unavailable",
+        code: options.molangDiagnosticCode,
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
@@ -160,11 +160,11 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
     events: { start: [], timeline: [], loop: [], stop: [] },
     availability: { preview: "create_pose", exportable: true, reason },
     preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createGeckoRuntime(animation, index, durationTicks, bones, nodes, transforms),
+    runtime: createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, transforms),
   };
 }
 
-function createGeckoRuntime(
+function createBlockbenchRuntime(
   animation: BbAnimation,
   animationIndex: number,
   durationTicks: number,
@@ -195,10 +195,10 @@ function createGeckoRuntime(
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = geckoChannelFrames(animator, "position", ZERO_VECTOR, (values) => transforms.position(values, negateMolang)
+    const position = blockbenchChannelFrames(animator, "position", ZERO_VECTOR, (values) => transforms.position(values, negateMolang)
       .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = geckoChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => transforms.rotation(values, negateMolang));
-    const scale = geckoChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
+    const rotation = blockbenchChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => transforms.rotation(values, negateMolang));
+    const scale = blockbenchChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
@@ -210,7 +210,7 @@ function createGeckoRuntime(
   return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
 }
 
-function geckoChannelFrames(
+function blockbenchChannelFrames(
   animator: BbAnimator,
   channel: "position" | "rotation" | "scale",
   fallback: readonly [number, number, number],
@@ -489,11 +489,11 @@ function animatedWorldMatrix(
   const animator = boneAnimators.get(bone.uuid);
   const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
   const position = convention.position(
-    evaluateGeckoChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
+    evaluateBlockbenchChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
     (value) => -value,
   ).map((value) => value * blendWeight / 16);
-  const rotationDelta = evaluateGeckoChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
-  const scale = evaluateGeckoChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
+  const rotationDelta = evaluateBlockbenchChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
+  const scale = evaluateBlockbenchChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = convention.position(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16);
   const baseRotation = convention.rotation(

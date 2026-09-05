@@ -1,6 +1,6 @@
 import type { Matrix4 } from "three";
 import type { BbAnimation, BbKeyframe } from "./blockbenchCubeSchema";
-import { evaluateGeckoChannel } from "./blockbenchKeyframeEvaluator";
+import { evaluateBlockbenchChannel } from "./blockbenchKeyframeEvaluator";
 import { planAnimationAnchorSamples, type AnimationAnchor, type AnimationSamplePlan } from "./animationSampling";
 
 export function planAnimationSamples(
@@ -69,7 +69,7 @@ function addEasingFeatureAnchors(
   const subdivisions = Math.max(8, Math.min(64, Math.ceil(gap * 240)));
   const samples = Array.from({ length: subdivisions + 1 }, (_, sampleIndex) => {
     const time = before.time + gap * sampleIndex / subdivisions;
-    return { time, value: evaluateGeckoChannel(channelFrames, channel, time, fallback, path) };
+    return { time, value: evaluateBlockbenchChannel(channelFrames, channel, time, fallback, path) };
   });
   for (let sampleIndex = 1; sampleIndex < samples.length - 1; sampleIndex++) {
     const previous = samples[sampleIndex - 1].value;

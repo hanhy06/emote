@@ -2,7 +2,7 @@ import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
 import { ConversionError } from "../foundation/diagnostics";
 import { MolangBakeEvaluator } from "./molangBakeEvaluator";
 import type { BbDataPoint, BbKeyframe } from "./blockbenchCubeSchema";
-import { cubeEasingProgress } from "./animationEasing";
+import { animationEasingProgress } from "./animationEasing";
 
 type Vector3Tuple = [number, number, number];
 
@@ -16,7 +16,7 @@ interface MolangContext {
   keyframeLerpTime: number;
 }
 
-export function evaluateGeckoChannel(
+export function evaluateBlockbenchChannel(
   keyframes: BbKeyframe[],
   channel: string,
   time: number,
@@ -53,7 +53,7 @@ export function evaluateGeckoChannel(
     throw new ConversionError("unsupported_geckolib_interpolation", `GeckoLib ${channel} keyframe uses unsupported ${interpolation} interpolation.`, path);
   }
   const easing = after.keyframe.easing ?? "linear";
-  const eased = cubeEasingProgress(easing, alpha, after.keyframe.easingArgs);
+  const eased = animationEasingProgress(easing, alpha, after.keyframe.easingArgs);
   if (eased === undefined) throw new ConversionError("unsupported_geckolib_easing", `GeckoLib ${channel} keyframe uses unsupported easing ${easing}.`, path);
   return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * eased);
 }

@@ -11,7 +11,11 @@ export function importGeckoLibProject(project: BbmodelProject, sourceName: strin
     throw new ConversionError("unsupported_geckolib_element", "GeckoLib meshes and non-cube elements are not supported.", "elements");
   }
 
-  const imported = importBlockbenchCubeContent(project, sourceName, { transforms: GECKOLIB_BBMODEL_TRANSFORMS });
+  const imported = importBlockbenchCubeContent(project, sourceName, {
+    transforms: GECKOLIB_BBMODEL_TRANSFORMS,
+    formatLabel: "GeckoLib",
+    molangDiagnosticCode: "geckolib_animation_molang_unavailable",
+  });
   return {
     source: "geckolib_bbmodel",
     sourceName,

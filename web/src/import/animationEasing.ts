@@ -58,7 +58,7 @@ const EASINGS: Readonly<Record<string, EasingFunction>> = {
   easeinoutbounce: easeInOut(bounce),
 };
 
-export function cubeEasingProgress(name: string, progress: number, args?: number[]): number | undefined {
+export function animationEasingProgress(name: string, progress: number, args?: number[]): number | undefined {
   if (name.toLowerCase() === "step") {
     const steps = Math.max(2, Math.floor(args?.[0] ?? 5));
     return Math.floor(progress * steps) / steps;
@@ -66,4 +66,4 @@ export function cubeEasingProgress(name: string, progress: number, args?: number
   return EASINGS[name.toLowerCase()]?.(progress);
 }
 
-export const SUPPORTED_GECKOLIB_EASINGS = Object.freeze([...Object.keys(EASINGS), "step"]);
+export const SUPPORTED_BLOCKBENCH_EASINGS = Object.freeze([...Object.keys(EASINGS), "step"]);

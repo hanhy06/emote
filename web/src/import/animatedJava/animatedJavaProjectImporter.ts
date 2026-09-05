@@ -10,7 +10,7 @@ import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../blockbenchCubeImporter";
-import { evaluateGeckoChannel } from "../blockbenchKeyframeEvaluator";
+import { evaluateBlockbenchChannel } from "../blockbenchKeyframeEvaluator";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
@@ -653,7 +653,7 @@ function projectGroupMatrix(
 function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
   if (sourceTime < 0) return [...fallback];
   try {
-    return evaluateGeckoChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+    return evaluateBlockbenchChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
   } catch (reason) {
     if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
     throw new ConversionError("unsupported_animated_java_molang", reason.message.replace("GeckoLib", "Animated Java"), reason.sourcePath, { cause: reason });
