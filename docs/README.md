@@ -41,9 +41,9 @@ Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order 
 | `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
 | `/emote stop <player>`, `/emote stop @a`      | Stops selected players' emotes; use `@a` for all players.                                                                                                                                     |
 | `/emote stress-test <time> [count] [packets]` | Plays multiple emotes for the required duration and encodes each packet through a configurable fanout (default 20) to measure server performance. Supports time units such as `10s` and `2m`. |
-| `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                               |
+| `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                                |
 | `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
-| `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                        |
+| `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
