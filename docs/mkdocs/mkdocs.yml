@@ -23,6 +23,7 @@ nav:
       - Access Control: server/access-control.md
       - Custom Emote: server/custom-emote.md
       - Advanced Usage: server/advanced-usage.md
+      - Custom Provider: server/custom-provider.md
       - Performance: server/performance.md
   - Developers:
       - Animation: developers/animation.md

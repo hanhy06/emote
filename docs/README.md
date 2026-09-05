@@ -85,7 +85,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
   "permissions": [
     {
       "permission": "emote.vip",
-      "emotes": ["example:(dance|cry)"],
+      "emotes": ["example:vip.*"],
       "idle": {
         "delay": "300s",
         "emote": ["example:dance", 70, "example:cry", 30]
