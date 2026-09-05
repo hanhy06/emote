@@ -1,14 +1,14 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
-import type { GeneratedResource } from "../domain/generatedResource";
+import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4, Quaternion, Vector3 } from "three";
-import type { EmoteEvent, EmoteVectorKeyframe, Matrix16, MolangScalar } from "../format/emoteAnimation";
-import { matrixToLocalTransform } from "../format/localTransform";
-import { composeDegreesTransform, matrix4ToRowMajor } from "../format/matrix";
-import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { serializeSnbtString } from "../format/snbt";
-import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../format/time";
-import { ConversionError } from "../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../domain/conversionSeed";
+import type { EmoteEvent, EmoteVectorKeyframe, Matrix16, MolangScalar } from "../../format/emoteAnimation";
+import { matrixToLocalTransform } from "../../format/localTransform";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
+import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
+import { serializeSnbtString } from "../../format/snbt";
+import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
+import { ConversionError } from "../../foundation/diagnostics";
+import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import {
   type BbAnimation,
   type BbAnimator,

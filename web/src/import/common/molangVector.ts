@@ -1,4 +1,4 @@
-import type { EmoteVectorKeyframe, MolangScalar } from "../format/emoteAnimation";
+import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 
 export type MolangVector = [MolangScalar, MolangScalar, MolangScalar];
 

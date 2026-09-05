@@ -1,8 +1,8 @@
 import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
-import { bedrockBoundsToCanonical } from "../coordinateSpace";
-import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoidPlayerRig";
+import { bedrockBoundsToCanonical } from "./coordinateSpace";
+import { humanoidSkinPartHeight, humanoidSkinSlices } from "../common/humanoidPlayerRig";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 

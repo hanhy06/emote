@@ -1,8 +1,8 @@
 import type { ImportedProject } from "../../domain/conversionSeed";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeContent } from "../blockbenchCubeImporter";
-import type { BbmodelProject } from "../blockbenchCubeSchema";
+import { importBlockbenchCubeContent } from "../common/blockbenchCubeImporter";
+import type { BbmodelProject } from "../common/blockbenchCubeSchema";
 import { GECKOLIB_BBMODEL_TRANSFORMS } from "./geckoLibCubeTransform";
 
 export function importGeckoLibProject(project: BbmodelProject, sourceName: string): ImportedProject {

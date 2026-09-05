@@ -1,5 +1,5 @@
 import type { ImportAdapter, ImportedSequenceSource, ImportInput, ProbeResult } from "../adapter";
-import { parseInputJson, probeParsedInput } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import { isRecord } from "../../format/runtimeValue";
 import { convertSequenceInput } from "./sequenceJsonConverter";
 

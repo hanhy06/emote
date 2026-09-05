@@ -12,7 +12,7 @@ import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
-import { countImportedCommands } from "./import/securityWarning";
+import { countImportedCommands } from "./import/common/securityWarning";
 import { animationAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,

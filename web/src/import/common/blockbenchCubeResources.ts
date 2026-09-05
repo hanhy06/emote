@@ -1,6 +1,6 @@
-import { sanitizeResourcePath } from "../format/resourceLocation";
-import { ConversionError } from "../foundation/diagnostics";
-import type { GeneratedResource } from "../domain/generatedResource";
+import { sanitizeResourcePath } from "../../format/resourceLocation";
+import { ConversionError } from "../../foundation/diagnostics";
+import type { GeneratedResource } from "../../domain/generatedResource";
 import type { BbCube, BbTexture, BbmodelProject } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";

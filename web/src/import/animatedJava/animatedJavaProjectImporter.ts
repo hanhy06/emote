@@ -9,9 +9,9 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../blockbenchCubeImporter";
-import { evaluateBlockbenchChannel } from "../blockbenchKeyframeEvaluator";
-import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbenchCubeSchema";
+import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
+import { evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
+import { requireBlockbenchCubeProject, type BbKeyframe } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,

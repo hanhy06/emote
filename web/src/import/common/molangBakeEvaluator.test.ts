@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConversionError } from "../foundation/diagnostics";
+import { ConversionError } from "../../foundation/diagnostics";
 import { MolangBakeEvaluator } from "./molangBakeEvaluator";
 
 function evaluator(rejectNondeterministic = false): MolangBakeEvaluator {

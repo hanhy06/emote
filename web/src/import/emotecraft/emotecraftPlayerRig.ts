@@ -1,7 +1,7 @@
 import { Matrix4, Vector3 } from "three";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, type HumanoidJointSide } from "../humanoidPlayerRig";
+import { humanoidJointFillMatrix, humanoidRenderPieces, humanoidSkinPartHeight, type HumanoidJointSide } from "../common/humanoidPlayerRig";
 
 export const EMOTECRAFT_RENDER_SCALE = 0.9375;
 

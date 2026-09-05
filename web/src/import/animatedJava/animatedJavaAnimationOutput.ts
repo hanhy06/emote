@@ -2,8 +2,8 @@ import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData"
 import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
-import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../molangVector";
-import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../runtimeOutput";
+import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
+import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
 
 export function createAjProjectRuntime(

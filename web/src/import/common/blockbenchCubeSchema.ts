@@ -8,7 +8,7 @@ import {
   requireNumberArray,
   requireRecord,
   requireString,
-} from "../format/runtimeValue";
+} from "../../format/runtimeValue";
 
 export interface BbmodelProject {
   meta: { format_version: string; model_format: string };

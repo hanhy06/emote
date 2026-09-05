@@ -14,7 +14,7 @@ import {
   splitSnbtTopLevel,
 } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { cachedInputValue } from "../inputCache";
+import { cachedInputValue } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedProject } from "../../domain/conversionSeed";
 
 const decoder = new TextDecoder();

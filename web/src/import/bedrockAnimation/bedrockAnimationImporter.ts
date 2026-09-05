@@ -5,7 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
+import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,

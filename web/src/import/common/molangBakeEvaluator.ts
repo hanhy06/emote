@@ -1,6 +1,6 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
-import { TICKS_PER_SECOND } from "../format/time";
-import { ConversionError } from "../foundation/diagnostics";
+import { TICKS_PER_SECOND } from "../../format/time";
+import { ConversionError } from "../../foundation/diagnostics";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "./runtimeMolangQueries";
 
 export interface MolangBakeContext {

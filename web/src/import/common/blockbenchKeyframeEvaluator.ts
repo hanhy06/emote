@@ -1,5 +1,5 @@
 import { CubicBezierCurve, SplineCurve, Vector2 } from "three";
-import { ConversionError } from "../foundation/diagnostics";
+import { ConversionError } from "../../foundation/diagnostics";
 import { MolangBakeEvaluator } from "./molangBakeEvaluator";
 import type { BbDataPoint, BbKeyframe } from "./blockbenchCubeSchema";
 import { animationEasingProgress } from "./animationEasing";

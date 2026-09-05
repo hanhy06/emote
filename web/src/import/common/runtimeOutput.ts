@@ -1,7 +1,7 @@
-import type { EmoteNode, EmoteTimeline, LocalTransform } from "../format/emoteAnimation";
-import type { ImportedNode } from "../domain/conversionSeed";
-import type { RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
-import { readBlockState, readDisplayNbtValue, readItemStack } from "../format/minecraftData";
+import type { EmoteNode, EmoteTimeline, LocalTransform } from "../../format/emoteAnimation";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import type { RuntimeNode, RuntimeTimeline } from "../../domain/minecraftData";
+import { readBlockState, readDisplayNbtValue, readItemStack } from "../../format/minecraftData";
 
 export const ZERO_VECTOR = [0, 0, 0] as const;
 export const ONE_VECTOR = [1, 1, 1] as const;

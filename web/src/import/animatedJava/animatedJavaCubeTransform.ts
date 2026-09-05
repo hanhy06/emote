@@ -1,4 +1,4 @@
-import type { CubeProjectTransformConvention } from "../blockbenchCubeTransform";
+import type { CubeProjectTransformConvention } from "../common/blockbenchCubeTransform";
 
 function projectPosition<T>(values: readonly T[]): [T, T, T] {
   return [values[0], values[1], values[2]];

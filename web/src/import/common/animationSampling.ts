@@ -1,5 +1,5 @@
 import { Matrix4, Quaternion, Vector3 } from "three";
-import { TICKS_PER_SECOND } from "../format/time";
+import { TICKS_PER_SECOND } from "../../format/time";
 
 export interface AnimationAnchor {
   time: number;

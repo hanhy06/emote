@@ -1,7 +1,7 @@
 import { Matrix4, Vector3 } from "three";
-import type { Matrix16 } from "../format/emoteAnimation";
-import { matrix4ToRowMajor } from "../format/matrix";
-import type { ImportedSkinPart } from "../domain/conversionSeed";
+import type { Matrix16 } from "../../format/emoteAnimation";
+import { matrix4ToRowMajor } from "../../format/matrix";
+import type { ImportedSkinPart } from "../../domain/conversionSeed";
 import type { BbCube } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";

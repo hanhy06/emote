@@ -1,5 +1,5 @@
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
-import { readRuntimeNodes, readRuntimeTimeline } from "../runtimeOutput";
+import { readRuntimeNodes, readRuntimeTimeline } from "../common/runtimeOutput";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -9,7 +9,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { parseInputJson, probeParsedInput } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";

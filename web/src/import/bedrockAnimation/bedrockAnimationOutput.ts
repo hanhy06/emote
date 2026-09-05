@@ -2,8 +2,8 @@ import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData"
 import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
 import { formatMinecraftTime } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
-import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../molangVector";
+import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
+import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
