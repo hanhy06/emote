@@ -3,6 +3,9 @@ package io.github.hanhy06.emote.playback.molang;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -23,6 +26,63 @@ class MolangEngineTest {
     void compilesBedrockStartDelayExpressions() throws Exception {
         this.engine.compile("math.max(0, q.anim_time - 0.1)");
         this.engine.compile("v.time = q.anim_time < 0.1 ? 0 : (v.time + q.delta_time);");
+    }
+
+    @Test
+    void evaluatesEveryOfficialMolangMathFunction() throws Exception {
+        Map<String, Double> examples = Map.ofEntries(
+            Map.entry("math.abs(-2)", 2.0D),
+            Map.entry("math.acos(0)", 90.0D),
+            Map.entry("math.asin(1)", 90.0D),
+            Map.entry("math.atan(1)", 45.0D),
+            Map.entry("math.atan2(1, 1)", 45.0D),
+            Map.entry("math.ceil(1.2)", 2.0D),
+            Map.entry("math.clamp(4, 1, 3)", 3.0D),
+            Map.entry("math.copy_sign(2, -1)", -2.0D),
+            Map.entry("math.cos(60)", 0.5D),
+            Map.entry("math.die_roll(2, 3, 3)", 6.0D),
+            Map.entry("math.die_roll_integer(2, 3, 3)", 6.0D),
+            Map.entry("math.exp(0)", 1.0D),
+            Map.entry("math.floor(1.8)", 1.0D),
+            Map.entry("math.hermite_blend(0.5)", 0.5D),
+            Map.entry("math.inverse_lerp(2, 6, 3)", 0.25D),
+            Map.entry("math.lerp(2, 6, 0.25)", 3.0D),
+            Map.entry("math.lerprotate(170, -170, 0.5)", 180.0D),
+            Map.entry("math.ln(1)", 0.0D),
+            Map.entry("math.max(2, 3)", 3.0D),
+            Map.entry("math.min(2, 3)", 2.0D),
+            Map.entry("math.min_angle(180)", -180.0D),
+            Map.entry("math.mod(5, 2)", 1.0D),
+            Map.entry("math.pi", Math.PI),
+            Map.entry("math.pow(2, 3)", 8.0D),
+            Map.entry("math.random(3, 3)", 3.0D),
+            Map.entry("math.random_integer(3, 3)", 3.0D),
+            Map.entry("math.round(1.6)", 2.0D),
+            Map.entry("math.sign(2)", 1.0D),
+            Map.entry("math.sign(0)", -1.0D),
+            Map.entry("math.sin(30)", 0.5D),
+            Map.entry("math.sqrt(9)", 3.0D),
+            Map.entry("math.trunc(-1.8)", -1.0D)
+        );
+        MolangEngine.Session session = this.engine.createSession();
+
+        for (Map.Entry<String, Double> example : examples.entrySet()) {
+            assertEquals(example.getValue(), session.evaluate(this.engine.compile(example.getKey())), 1.0E-9D, example.getKey());
+        }
+    }
+
+    @Test
+    void evaluatesEveryOfficialMolangEasingFamily() throws Exception {
+        Set<String> families = Set.of("back", "bounce", "circ", "cubic", "elastic", "expo", "quad", "quart", "quint", "sine");
+        MolangEngine.Session session = this.engine.createSession();
+
+        for (String family : families) {
+            for (String direction : Set.of("in", "out", "in_out")) {
+                String function = "math.ease_" + direction + "_" + family;
+                assertEquals(2.0D, session.evaluate(this.engine.compile(function + "(2, 6, 0)")), 1.0E-9D, function);
+                assertEquals(6.0D, session.evaluate(this.engine.compile(function + "(2, 6, 1)")), 1.0E-9D, function);
+            }
+        }
     }
 
     @Test

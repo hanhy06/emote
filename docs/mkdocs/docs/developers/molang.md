@@ -22,6 +22,10 @@ Animation-level programs are optional:
 
 A new Molang session is created for every repeated cycle and every Animation segment in a Sequence.
 
+## Math functions
+
+All functions in the Bedrock Molang `math.*` reference are supported, including the easing, random, dice, interpolation, angle, and sign functions. Trigonometric inputs and outputs use degrees.
+
 ## Track values
 
 Each position, rotation, or scale component may be a number or a Molang string:
@@ -114,3 +118,7 @@ The three item-use duration queries refer to the item currently being used, in e
 Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure; an NBT selector also fails if its result is fractional or outside its option array.
 
 The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries are `0`. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+
+## Current limitations
+
+This is not a complete Bedrock Molang environment. Only the queries listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.

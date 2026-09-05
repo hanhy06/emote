@@ -45,6 +45,7 @@ public final class MolangEngine {
 
         private Session() {
             this.evaluator = MochaEngine.createStandard(null);
+            this.evaluator.scope().set("math", MolangMath.INSTANCE);
             this.evaluator.scope().set("query", this.query);
             this.evaluator.scope().set("q", this.query);
         }
