@@ -8,6 +8,7 @@ import { cubeEasingProgress } from "../blockbench/cubeEasing";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../blockbench/cubeAnimationSampling";
 import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
+import { convertEmotecraftSong } from "./emotecraftNbs";
 import {
   EMOTECRAFT_PIVOTS,
   EMOTECRAFT_PLAYER_PARTS,
@@ -43,8 +44,9 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const animation = file.animation;
   const sourceStem = sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
   const displayName = file.metadata.name?.trim() || sourceStem;
-  const diagnostics = collectDiagnostics(file);
   const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.ceil(animation.lengthTicks)), `${displayName} duration`);
+  const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
+  const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
   const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["tracks"];
@@ -82,7 +84,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
     loopDelayTicks: 0,
     tracks,
-    events: { start: [], timeline: [], loop: [], stop: [] },
+    events: { start: [], timeline: song.events, loop: [], stop: [] },
   };
   return {
     source: "emotecraft_binary",
@@ -287,7 +289,6 @@ function collectDiagnostics(file: EmotecraftFile): ImportDiagnostic[] {
     message: `Emotecraft loop start ${file.animation.loopStartTick}t cannot be represented; the full animation loops from 0t.`,
   });
   if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "The embedded Emotecraft icon is not part of the emote animation format and was ignored." });
-  if (file.song) diagnostics.push({ severity: "warning", code: "emotecraft_song_ignored", message: "The embedded Emotecraft NBS song is not part of the emote animation format and was ignored." });
   for (const [kind, count] of [["sound", file.animation.effects.sounds.length], ["particle", file.animation.effects.particles.length], ["instruction", file.animation.effects.instructions.length]] as const) {
     if (count) diagnostics.push({ severity: "warning", code: `emotecraft_${kind}_effects_ignored`, message: `${count} Emotecraft ${kind} effect(s) cannot be converted automatically and were ignored.` });
   }
