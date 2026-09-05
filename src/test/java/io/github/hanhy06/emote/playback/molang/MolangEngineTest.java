@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.molang.MolangQueryCatalog;
+import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -87,6 +88,23 @@ class MolangEngineTest {
 
         MolangQueryCatalog.validate(
             this.engine.compile("q.is_item_equipped; q.is_item_equipped('off_hand'); q.is_item_name_any('main_hand', 'minecraft:bow');"),
+            "$.test"
+        );
+    }
+
+    @Test
+    void evaluatesSpatialPlayerQueries() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+        PlayerMolangQueries.setSpatialQueries(session, new Vec3(10.0D, 20.0D, 30.0D), new Vec3(3.0D, 0.0D, 4.0D));
+
+        assertEquals(20.0D, session.evaluate(this.engine.compile("q.position(1)")));
+        assertEquals(3.0D, session.evaluate(this.engine.compile("q.position_delta(0)")));
+        assertEquals(0.6D, session.evaluate(this.engine.compile("q.movement_direction(0)")), 1.0E-9D);
+        assertEquals(0.8D, session.evaluate(this.engine.compile("q.movement_direction(2)")), 1.0E-9D);
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.position(9)")));
+
+        MolangQueryCatalog.validate(
+            this.engine.compile("q.position(0); q.position_delta(1); q.movement_direction(2); q.blocking; q.is_eating; q.is_jumping;"),
             "$.test"
         );
     }
@@ -258,6 +276,10 @@ class MolangEngineTest {
                 + " + q.head_is_in_water + q.is_in_lava + q.is_in_water_or_rain"
                 + " + q.hurt_time + q.death_ticks + q.invulnerable_ticks + q.player_level"
                 + " + q.item_in_use_duration + q.item_remaining_use_duration + q.item_max_use_duration"
+                + " + q.blocking + q.is_eating + q.is_jumping + q.is_crawling + q.is_invisible + q.is_levitating"
+                + " + q.yaw_speed + q.on_fire_time + q.position(0) + q.position_delta(1) + q.movement_direction(2)"
+                + " + q.is_item_equipped + q.is_item_equipped('off_hand') + q.item_is_charged('off_hand')"
+                + " + q.is_item_name_any('main_hand', 'minecraft:bow')"
         );
         MolangEngine.Session session = this.engine.createSession();
         for (String name : MolangQueryCatalog.SUPPORTED_NAMES) {

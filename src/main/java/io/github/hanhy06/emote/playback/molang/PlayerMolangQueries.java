@@ -5,15 +5,28 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ItemUseAnimation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Objects;
 
 public final class PlayerMolangQueries {
-    public static final Source EMPTY = session -> setPlayerQueries(session, PlayerQueryValues.EMPTY);
+    public static final Source EMPTY = session -> {
+        setPlayerQueries(session, PlayerQueryValues.EMPTY);
+        setItemQueries(
+            session,
+            ItemQueryValue.EMPTY,
+            ItemQueryValue.EMPTY,
+            ItemQueryValue.EMPTY,
+            ItemQueryValue.EMPTY,
+            ItemQueryValue.EMPTY,
+            ItemQueryValue.EMPTY
+        );
+    };
 
     private PlayerMolangQueries() {
     }
@@ -30,6 +43,7 @@ public final class PlayerMolangQueries {
             int maxUseTicks = usingItem ? player.getUseItem().getUseDuration(player) : 0;
             int remainingUseTicks = usingItem ? Mth.clamp(player.getUseItemRemainingTicks(), 0, maxUseTicks) : 0;
             PlayerQueryValues values = new PlayerQueryValues(
+                player.position(),
                 player.getKnownMovement(),
                 xRotation,
                 bodyYRotation,
@@ -62,7 +76,15 @@ public final class PlayerMolangQueries {
                 player.invulnerableTime,
                 player.experienceLevel,
                 maxUseTicks,
-                remainingUseTicks
+                remainingUseTicks,
+                player.isBlocking(),
+                usingItem && player.getUseItem().getUseAnimation() == ItemUseAnimation.EAT,
+                player.getLastClientInput().jump(),
+                player.isVisuallySwimming() && !player.isSwimming(),
+                player.isInvisible(),
+                player.hasEffect(MobEffects.LEVITATION),
+                Mth.wrapDegrees(player.getYRot() - player.yRotO),
+                Math.max(0, player.getRemainingFireTicks()) / 20.0D
             );
             setPlayerQueries(session, values);
             setItemQueries(
@@ -139,6 +161,7 @@ public final class PlayerMolangQueries {
 
     private static void setPlayerQueries(MolangEngine.Session session, PlayerQueryValues values) {
         Vec3 movement = values.movement();
+        setSpatialQueries(session, values.position(), movement);
         session.setQuery("target_x_rotation", values.xRotation());
         session.setQuery("target_y_rotation", values.targetYRotation());
         session.setQuery("body_x_rotation", values.xRotation());
@@ -179,9 +202,34 @@ public final class PlayerMolangQueries {
         session.setQuery("item_in_use_duration", (values.maxUseTicks() - values.remainingUseTicks()) / 20.0D);
         session.setQuery("item_remaining_use_duration", values.remainingUseTicks() / 20.0D);
         session.setQuery("item_max_use_duration", values.maxUseTicks() / 20.0D);
+        session.setQuery("blocking", values.blocking() ? 1.0D : 0.0D);
+        session.setQuery("is_eating", values.eating() ? 1.0D : 0.0D);
+        session.setQuery("is_jumping", values.jumping() ? 1.0D : 0.0D);
+        session.setQuery("is_crawling", values.crawling() ? 1.0D : 0.0D);
+        session.setQuery("is_invisible", values.invisible() ? 1.0D : 0.0D);
+        session.setQuery("is_levitating", values.levitating() ? 1.0D : 0.0D);
+        session.setQuery("yaw_speed", values.yawSpeed());
+        session.setQuery("on_fire_time", values.onFireTime());
+    }
+
+    static void setSpatialQueries(MolangEngine.Session session, Vec3 position, Vec3 movement) {
+        Vec3 direction = movement.lengthSqr() == 0.0D ? Vec3.ZERO : movement.normalize();
+        session.setQueryFunction("position", arguments -> MolangEngine.QueryValue.number(axis(position, arguments.number(0))));
+        session.setQueryFunction("position_delta", arguments -> MolangEngine.QueryValue.number(axis(movement, arguments.number(0))));
+        session.setQueryFunction("movement_direction", arguments -> MolangEngine.QueryValue.number(axis(direction, arguments.number(0))));
+    }
+
+    private static double axis(Vec3 vector, double axis) {
+        return switch ((int) axis) {
+            case 0 -> vector.x;
+            case 1 -> vector.y;
+            case 2 -> vector.z;
+            default -> 0.0D;
+        };
     }
 
     private record PlayerQueryValues(
+        Vec3 position,
         Vec3 movement,
         double xRotation,
         double bodyYRotation,
@@ -214,16 +262,27 @@ public final class PlayerMolangQueries {
         int invulnerableTicks,
         int playerLevel,
         int maxUseTicks,
-        int remainingUseTicks
+        int remainingUseTicks,
+        boolean blocking,
+        boolean eating,
+        boolean jumping,
+        boolean crawling,
+        boolean invisible,
+        boolean levitating,
+        double yawSpeed,
+        double onFireTime
     ) {
         private static final PlayerQueryValues EMPTY = new PlayerQueryValues(
+            Vec3.ZERO,
             Vec3.ZERO,
             0.0D, 0.0D, 0.0D, 0.0D,
             0.0D, 0.0D, 0.0D,
             false, false, false, false, false, false, false, false, false, false, false, false,
             0.0D, 0.0D,
             false, false, false, false, false,
-            0, 0, 0, 0, 0, 0
+            0, 0, 0, 0, 0, 0,
+            false, false, false, false, false, false,
+            0.0D, 0.0D
         );
     }
 

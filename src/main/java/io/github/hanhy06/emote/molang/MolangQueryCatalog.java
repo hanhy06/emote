@@ -53,7 +53,15 @@ public final class MolangQueryCatalog {
         "item_in_use_duration",
         "item_remaining_use_duration",
         "item_max_use_duration",
-        "is_item_equipped"
+        "is_item_equipped",
+        "blocking",
+        "is_eating",
+        "is_jumping",
+        "is_crawling",
+        "is_invisible",
+        "is_levitating",
+        "yaw_speed",
+        "on_fire_time"
     );
     private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of(
         "all", QuerySignature.atLeast(2),
@@ -62,7 +70,10 @@ public final class MolangQueryCatalog {
         "in_range", QuerySignature.exact(3),
         "is_item_equipped", QuerySignature.range(0, 1),
         "is_item_name_any", QuerySignature.atLeast(2),
-        "item_is_charged", QuerySignature.range(0, 1)
+        "item_is_charged", QuerySignature.range(0, 1),
+        "position", QuerySignature.exact(1),
+        "position_delta", QuerySignature.exact(1),
+        "movement_direction", QuerySignature.exact(1)
     );
     public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
