@@ -11,7 +11,7 @@ import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.*;
 import io.github.hanhy06.emote.playback.session.*;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
@@ -210,7 +210,7 @@ public class PlaybackEngine implements ConfigListener {
             AnimationPlayer timeline = new AnimationPlayer(
                 emote,
                 new EntityTimelineTarget(emote, nodes, this.entityController),
-                MolangQueries.forPlayer(player)
+                PlayerMolangQueries.forPlayer(player)
             );
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline, this.callbacks));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
@@ -449,7 +449,7 @@ public class PlaybackEngine implements ConfigListener {
         AnimationPlayer animation = new AnimationPlayer(
             emote,
             new EntityTimelineTarget(emote, session.nodes(), this.entityController),
-            MolangQueries.forPlayer(initiator)
+            PlayerMolangQueries.forPlayer(initiator)
         );
         animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation, this.callbacks));
         animation.start();

@@ -7,118 +7,12 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.CrossbowItem;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Stream;
 
-public final class MolangQueries {
-    private static final Set<String> SUPPORTED_VALUES = Set.of(
-        "anim_time",
-        "anim_time_ticks",
-        "anim_length",
-        "delta_time",
-        "loop_count",
-        "key_frame_lerp_time",
-        "life_time",
-        "target_x_rotation",
-        "target_y_rotation",
-        "body_x_rotation",
-        "body_y_rotation",
-        "head_x_rotation",
-        "head_y_rotation",
-        "eye_target_x_rotation",
-        "eye_target_y_rotation",
-        "ground_speed",
-        "vertical_speed",
-        "modified_distance_moved",
-        "walk_distance",
-        "is_moving",
-        "is_on_ground",
-        "is_sneaking",
-        "is_sprinting",
-        "is_swimming",
-        "is_gliding",
-        "is_riding",
-        "is_using_item",
-        "is_sleeping",
-        "is_emoting",
-        "item_is_charged",
-        "sleep_rotation",
-        "is_on_fire",
-        "is_in_water",
-        "health",
-        "max_health",
-        "is_alive",
-        "is_spectator",
-        "head_is_in_water",
-        "is_in_lava",
-        "is_in_water_or_rain",
-        "hurt_time",
-        "death_ticks",
-        "invulnerable_ticks",
-        "player_level",
-        "item_in_use_duration",
-        "item_remaining_use_duration",
-        "item_max_use_duration"
-    );
-    public static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of();
-    public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
-        .collect(java.util.stream.Collectors.toUnmodifiableSet());
+public final class PlayerMolangQueries {
     public static final Source EMPTY = session -> setPlayerQueries(session, PlayerQueryValues.EMPTY);
 
-    private MolangQueries() {
-    }
-
-    public static void validate(MolangEngine.CompiledExpression expression, String path) {
-        for (MolangEngine.QueryUse use : expression.queryUses()) {
-            if (use.kind() == MolangEngine.QueryUseKind.ASSIGNMENT) {
-                throw new IllegalArgumentException(path + " must not assign queries");
-            }
-            QuerySignature function = SUPPORTED_FUNCTIONS.get(use.name());
-            if (use.kind() == MolangEngine.QueryUseKind.VALUE) {
-                if (SUPPORTED_VALUES.contains(use.name())) {
-                    continue;
-                }
-                if (function != null) {
-                    throw new IllegalArgumentException(path + " must call query function " + use.name());
-                }
-                throw new IllegalArgumentException(path + " references unsupported query " + use.name());
-            }
-            if (function == null) {
-                if (SUPPORTED_VALUES.contains(use.name())) {
-                    throw new IllegalArgumentException(path + " must not call query value " + use.name());
-                }
-                throw new IllegalArgumentException(path + " references unsupported query " + use.name());
-            }
-            if (!function.accepts(use.argumentCount())) {
-                throw new IllegalArgumentException(
-                    path + " calls query " + use.name() + " with " + use.argumentCount() + " arguments; expected " + function.describe()
-                );
-            }
-        }
-    }
-
-    public record QuerySignature(int minimumArguments, int maximumArguments) {
-        public QuerySignature {
-            if (minimumArguments < 0 || maximumArguments < minimumArguments) {
-                throw new IllegalArgumentException("invalid query argument range");
-            }
-        }
-
-        public static QuerySignature exact(int argumentCount) {
-            return new QuerySignature(argumentCount, argumentCount);
-        }
-
-        boolean accepts(int argumentCount) {
-            return argumentCount >= this.minimumArguments && argumentCount <= this.maximumArguments;
-        }
-
-        String describe() {
-            return this.minimumArguments == this.maximumArguments
-                ? Integer.toString(this.minimumArguments)
-                : this.minimumArguments + ".." + this.maximumArguments;
-        }
+    private PlayerMolangQueries() {
     }
 
     public static Source forPlayer(ServerPlayer player) {

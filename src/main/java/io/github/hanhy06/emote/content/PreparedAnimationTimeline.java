@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.molang.MolangQueryCatalog;
 import net.minecraft.nbt.CompoundTag;
 
 import java.util.*;
@@ -136,7 +136,7 @@ public final class PreparedAnimationTimeline {
         }
         try {
             MolangEngine.CompiledExpression expression = MolangEngine.INSTANCE.compile(source);
-            MolangQueries.validate(expression, path);
+            MolangQueryCatalog.validate(expression, path);
             return expression;
         } catch (MolangEngine.MolangCompileException exception) {
             throw new IllegalArgumentException(path + " contains invalid Molang", exception);

@@ -4,7 +4,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
 import io.github.hanhy06.emote.molang.MolangEngine;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -20,7 +20,7 @@ import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 final class AnimationEvaluator {
     private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
-    private final MolangQueries.Source querySource;
+    private final PlayerMolangQueries.Source querySource;
     private final NodeState[] nodes;
     private final Map<String, Integer> nodeIndexes;
     private final Matrix4f localMatrix = new Matrix4f();
@@ -33,7 +33,7 @@ final class AnimationEvaluator {
 
     private MolangEngine.Session session;
 
-    AnimationEvaluator(PreparedAnimation animation, MolangQueries.Source querySource) {
+    AnimationEvaluator(PreparedAnimation animation, PlayerMolangQueries.Source querySource) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
         this.querySource = querySource;

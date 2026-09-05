@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback.molang;
 
 import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.molang.MolangQueryCatalog;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -79,7 +80,7 @@ class MolangEngineTest {
 
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
-            () -> MolangQueries.validate(expression, "$.test")
+            () -> MolangQueryCatalog.validate(expression, "$.test")
         );
         assertEquals("$.test must not call query value anim_time", exception.getMessage());
     }
@@ -218,11 +219,11 @@ class MolangEngineTest {
                 + " + q.item_in_use_duration + q.item_remaining_use_duration + q.item_max_use_duration"
         );
         MolangEngine.Session session = this.engine.createSession();
-        for (String name : MolangQueries.SUPPORTED_NAMES) {
+        for (String name : MolangQueryCatalog.SUPPORTED_NAMES) {
             session.setQuery(name, 99.0D);
         }
 
-        MolangQueries.EMPTY.apply(session);
+        PlayerMolangQueries.EMPTY.apply(session);
 
         assertEquals(0.0D, session.evaluate(expression));
     }
@@ -238,7 +239,7 @@ class MolangEngineTest {
                 "modified_distance_moved", "walk_distance", "is_sneaking", "is_sleeping",
                 "is_emoting", "item_is_charged", "sleep_rotation"
             ),
-            MolangQueries.SUPPORTED_NAMES.stream()
+            MolangQueryCatalog.SUPPORTED_NAMES.stream()
                 .filter(name -> name.contains("_rotation")
                     || name.equals("modified_distance_moved")
                     || name.equals("walk_distance")

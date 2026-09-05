@@ -4,7 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteCallbackPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
@@ -19,7 +19,7 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedAnimation emote;
     private final TimelineTarget target;
-    private final MolangQueries.Source querySource;
+    private final PlayerMolangQueries.Source querySource;
     private AnimationEvaluator evaluator;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
@@ -39,10 +39,10 @@ public final class AnimationPlayer {
     private boolean eventsStopped;
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
-        this(emote, target, MolangQueries.EMPTY);
+        this(emote, target, PlayerMolangQueries.EMPTY);
     }
 
-    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, MolangQueries.Source querySource) {
+    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, PlayerMolangQueries.Source querySource) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
