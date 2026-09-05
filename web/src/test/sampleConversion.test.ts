@@ -7,7 +7,7 @@ import type { ImportedProject } from "../domain/conversionSeed";
 import { animatedJavaBlueprintAdapter } from "../import/animatedJava/animatedJavaBlueprintAdapter";
 import type { ImportAdapter } from "../import/adapter";
 import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
-import { geckoLibBbmodelAdapter } from "../import/geckoLibBbmodel/geckoLibBbmodelAdapter";
+import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapter";
 import { compileImportedProject } from "./compileImportedFixture";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));

@@ -1,6 +1,6 @@
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { importBlockbenchCubeProject } from "../blockbench/cubeProjectImporter";
-import { requireBlockbenchCubeProject } from "../blockbench/cubeProjectSchema";
+import { importBlockbenchCubeProject } from "./cubeProjectImporter";
+import { requireBlockbenchCubeProject } from "./cubeProjectSchema";
 import { parseInputJson, probeParsedInput } from "../inputCache";
 import type { ImportedProject } from "../../domain/conversionSeed";
 

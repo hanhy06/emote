@@ -9,10 +9,10 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../blockbench/cubeProjectImporter";
-import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "../blockbench/cubeProjectTransformConvention";
-import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
-import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
+import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../geckoLib/cubeProjectImporter";
+import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "../geckoLib/cubeProjectTransformConvention";
+import { evaluateGeckoChannel } from "../geckoLib/cubeAnimationBaker";
+import { requireBlockbenchCubeProject, type BbKeyframe } from "../geckoLib/cubeProjectSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
