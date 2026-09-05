@@ -12,14 +12,6 @@ Base cooldowns are configured with `settings.cooldown` in each Emote file.
 }
 ```
 
-!!! tip inline end "Time units"
-    Emote uses Minecraft time format.<br>
-    `1s` equals `20t`.
-
-    `s`: seconds<br>
-    `t` or omitted: ticks<br>
-    `d`: Minecraft days
-
 When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
 
 Permission groups can adjust that base cooldown with `cooldown` in `emotes.json`:
@@ -44,6 +36,13 @@ Permission groups can adjust that base cooldown with `cooldown` in `emotes.json`
 A Minecraft time value such as `5s` is subtracted from the Emote's base cooldown. A value beginning with `x` multiplies it instead: `x0.5` halves the cooldown, while `x2` doubles it. The final cooldown cannot be less than zero.
 
 Permission entries are checked from top to bottom. The first entry that matches the Emote, belongs to the player, and defines `cooldown` is used. Entries without `cooldown` are skipped, and the base cooldown is unchanged when no matching entry defines one.
+
+!!! tip "Time units"
+    Emote uses Minecraft time format.`1s` equals `20t`.
+    
+    `s`: seconds<br>
+    `t` or omitted: ticks<br>
+    `d`: Minecraft days
 
 ---
 
