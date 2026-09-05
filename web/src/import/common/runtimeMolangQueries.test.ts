@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { MOD_SUPPORTED_QUERY_FUNCTION_NAMES, MOD_SUPPORTED_QUERY_VALUE_NAMES } from "./runtimeMolangQueries";
 
-const JAVA_QUERY_CATALOG = new URL("../../../src/main/java/io/github/hanhy06/emote/molang/MolangQueryCatalog.java", import.meta.url);
-const MOLANG_DOCUMENTATION = new URL("../../../docs/mkdocs/docs/developers/molang.md", import.meta.url);
+const JAVA_QUERY_CATALOG = new URL("../../../../src/main/java/io/github/hanhy06/emote/molang/MolangQueryCatalog.java", import.meta.url);
+const MOLANG_DOCUMENTATION = new URL("../../../../docs/mkdocs/docs/developers/molang.md", import.meta.url);
 
 describe("runtime Molang query catalog", () => {
   it("keeps the mod runtime, web preview, and documentation query names synchronized", () => {
