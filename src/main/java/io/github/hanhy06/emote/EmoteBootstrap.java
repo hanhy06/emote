@@ -2,6 +2,7 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.application.*;
 import io.github.hanhy06.emote.command.AdminCommand;
+import io.github.hanhy06.emote.command.AccountCommand;
 import io.github.hanhy06.emote.command.CommandRegistrar;
 import io.github.hanhy06.emote.command.EmoteMenu;
 import io.github.hanhy06.emote.command.UserCommand;
@@ -21,12 +22,16 @@ import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.account.AccountCredentialStore;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.util.IdleButterflyCallbackExample;
 import net.fabricmc.loader.api.FabricLoader;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 
 final class EmoteBootstrap {
     private EmoteBootstrap() {
@@ -36,6 +41,10 @@ final class EmoteBootstrap {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
+        MinecraftAccountManager accounts = new MinecraftAccountManager(
+            new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
+            new MinecraftAccountClient(System.getenv("EMOTE_MICROSOFT_CLIENT_ID"))
+        );
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
         PlayerSkinManager skins = new PlayerSkinManager(new MineSkinProvider(
             new PlayerSkinBaker(),
@@ -73,7 +82,8 @@ final class EmoteBootstrap {
         IdleButterflyCallbackExample.register(api);
         CommandRegistrar commands = new CommandRegistrar(
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
-            new AdminCommand(catalog, playback, permissions, reload, configManager)
+            new AdminCommand(catalog, playback, permissions, reload, configManager),
+            new AccountCommand(accounts)
         );
         ServerLifecycle lifecycle = new ServerLifecycle(skins, playbackPolicy, catalog, playback, reload, wheelSync, idlePlayback);
 
@@ -85,7 +95,9 @@ final class EmoteBootstrap {
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();
         PayloadRegistry.register();
+        ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
         lifecycle.register();
+        ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
         commands.register();
 
         EmoteMod.LOGGER.info("Emote initialized");
