@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 
 /** Microsoft device authorization followed by Xbox Live, XSTS and Minecraft authentication. */
 public class MinecraftAccountClient {
+    public static final String DEFAULT_CLIENT_ID = "38fe1d33-748d-4f65-926c-82022799df8e";
     private static final String OAUTH = "https://login.microsoftonline.com/consumers/oauth2/v2.0/";
     private static final String SCOPE = "XboxLive.signin offline_access";
     private final HttpClient http;
@@ -25,11 +26,10 @@ public class MinecraftAccountClient {
 
     MinecraftAccountClient(HttpClient http, String clientId) {
         this.http = http;
-        this.clientId = clientId == null ? "" : clientId.trim();
+        this.clientId = clientId == null || clientId.isBlank() ? DEFAULT_CLIENT_ID : clientId.trim();
     }
 
     public DeviceLogin startLogin() throws IOException, InterruptedException {
-        if (this.clientId.isBlank()) throw new IOException("Set EMOTE_MICROSOFT_CLIENT_ID to your registered application ID");
         JsonObject response = form("devicecode", Map.of("client_id", this.clientId, "scope", SCOPE));
         URI uri = URI.create(response.get("verification_uri").getAsString());
         if (!"https".equalsIgnoreCase(uri.getScheme())) throw new IOException("Invalid Microsoft verification URL");
@@ -45,7 +45,6 @@ public class MinecraftAccountClient {
     }
 
     public MicrosoftTokens refresh(String refreshToken) throws IOException, InterruptedException {
-        if (this.clientId.isBlank()) throw new IOException("Set EMOTE_MICROSOFT_CLIENT_ID to your registered application ID");
         JsonObject response = form("token", Map.of("client_id", this.clientId, "grant_type", "refresh_token",
             "refresh_token", refreshToken, "scope", SCOPE));
         return new MicrosoftTokens(response.get("access_token").getAsString(),

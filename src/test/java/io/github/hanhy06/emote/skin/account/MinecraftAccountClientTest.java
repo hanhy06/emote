@@ -62,10 +62,19 @@ class MinecraftAccountClientTest {
         assertFalse(error.getMessage().contains("old-refresh"));
     }
 
-    @Test void missingClientIdDoesNotSendAnyRequest() {
-        var http = new StubClient();
-        assertThrows(java.io.IOException.class, () -> new MinecraftAccountClient(http, "").startLogin());
-        assertTrue(http.requests.isEmpty());
+    @Test void missingOrBlankClientIdUsesEmoteApplicationForLoginAndRefresh() throws Exception {
+        for (String configuredId : Arrays.asList(null, "", "  ")) {
+            var http = new StubClient(
+                new Reply(200, "{\"device_code\":\"device-secret\",\"user_code\":\"ABCD\",\"verification_uri\":\"https://microsoft.com/devicelogin\",\"expires_in\":900,\"interval\":5}"),
+                new Reply(200, "{\"access_token\":\"new-access\"}")
+            );
+            var client = new MinecraftAccountClient(http, configuredId);
+            client.startLogin();
+            client.refresh("test-refresh");
+            for (HttpRequest request : http.requests) {
+                assertTrue(body(request).contains("client_id=38fe1d33-748d-4f65-926c-82022799df8e"));
+            }
+        }
     }
 
     private static String body(HttpRequest request) {
