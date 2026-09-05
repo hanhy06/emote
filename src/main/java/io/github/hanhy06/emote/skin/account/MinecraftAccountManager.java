@@ -13,6 +13,7 @@ public final class MinecraftAccountManager {
     private final AccountCredentialStore store;
     private final MinecraftAccountClient client;
     private final Map<UUID, Account> accounts = new LinkedHashMap<>();
+    private final List<Runnable> changeListeners = new CopyOnWriteArrayList<>();
     private ExecutorService executor;
     private Future<?> pendingLogin;
     private long generation;
@@ -58,6 +59,10 @@ public final class MinecraftAccountManager {
 
     public synchronized boolean contains(Account account) {
         return this.accounts.get(account.uuid) == account;
+    }
+
+    public void addChangeListener(Runnable listener) {
+        this.changeListeners.add(listener);
     }
 
     public synchronized void login(Consumer<DeviceLogin> onCode, Consumer<String> onResult, BooleanSupplier authorized) throws IOException {
@@ -116,6 +121,7 @@ public final class MinecraftAccountManager {
             else this.accounts.put(session.uuid(), old);
             throw exception;
         }
+        this.changeListeners.forEach(this.executor::execute);
     }
 
     public synchronized boolean remove(String nameOrUuid) throws IOException {
@@ -136,6 +142,7 @@ public final class MinecraftAccountManager {
         if (this.pendingLogin != null) this.pendingLogin.cancel(true);
         removed.refreshToken = "";
         removed.session = null;
+        this.changeListeners.forEach(this.executor::execute);
         return true;
     }
 
