@@ -122,7 +122,7 @@ class AccountBakeQueueTest {
     }
 
     private MinecraftAccountManager manager() {
-        var manager = new MinecraftAccountManager(new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient(""));
+        var manager = new MinecraftAccountManager(new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient());
         manager.initialize();
         return manager;
     }

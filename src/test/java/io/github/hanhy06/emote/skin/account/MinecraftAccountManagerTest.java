@@ -15,7 +15,7 @@ class MinecraftAccountManagerTest {
 
     @Test void multipleAccountsReconnectInPlaceAndRemovalSurvivesRestart() throws Exception {
         var store = new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY);
-        var manager = new MinecraftAccountManager(store, new MinecraftAccountClient(""));
+        var manager = new MinecraftAccountManager(store, new MinecraftAccountClient());
         manager.initialize();
         UUID a = UUID.randomUUID();
         UUID b = UUID.randomUUID();
@@ -40,7 +40,7 @@ class MinecraftAccountManagerTest {
         Path path = directory.resolve("accounts.bin");
         byte[] damaged = {2, 0, 0};
         Files.write(path, damaged);
-        var manager = new MinecraftAccountManager(new AccountCredentialStore(path, false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient(""));
+        var manager = new MinecraftAccountManager(new AccountCredentialStore(path, false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient());
         manager.initialize();
         try {
             assertTrue(manager.hasAccounts());
@@ -54,7 +54,7 @@ class MinecraftAccountManagerTest {
 
     @Test void refreshRotationIsSavedEvenWhenDownstreamAuthenticationFails() throws Exception {
         var store = new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY);
-        var client = new MinecraftAccountClient("test") {
+        var client = new MinecraftAccountClient() {
             @Override public MicrosoftTokens refresh(String token) { return new MicrosoftTokens("new-access", "new-refresh"); }
             @Override public MinecraftSession authenticate(MicrosoftTokens tokens) throws IOException { throw new IOException("Xbox unavailable"); }
         };

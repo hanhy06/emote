@@ -14,23 +14,21 @@ import java.util.stream.Collectors;
 
 /** Microsoft device authorization followed by Xbox Live, XSTS and Minecraft authentication. */
 public class MinecraftAccountClient {
-    public static final String DEFAULT_CLIENT_ID = "38fe1d33-748d-4f65-926c-82022799df8e";
+    private static final String CLIENT_ID = "38fe1d33-748d-4f65-926c-82022799df8e";
     private static final String OAUTH = "https://login.microsoftonline.com/consumers/oauth2/v2.0/";
     private static final String SCOPE = "XboxLive.signin offline_access";
     private final HttpClient http;
-    private final String clientId;
 
-    public MinecraftAccountClient(String clientId) {
-        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build(), clientId);
+    public MinecraftAccountClient() {
+        this(HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build());
     }
 
-    MinecraftAccountClient(HttpClient http, String clientId) {
+    MinecraftAccountClient(HttpClient http) {
         this.http = http;
-        this.clientId = clientId == null || clientId.isBlank() ? DEFAULT_CLIENT_ID : clientId.trim();
     }
 
     public DeviceLogin startLogin() throws IOException, InterruptedException {
-        JsonObject response = form("devicecode", Map.of("client_id", this.clientId, "scope", SCOPE));
+        JsonObject response = form("devicecode", Map.of("client_id", CLIENT_ID, "scope", SCOPE));
         URI uri = URI.create(response.get("verification_uri").getAsString());
         if (!"https".equalsIgnoreCase(uri.getScheme())) throw new IOException("Invalid Microsoft verification URL");
         return new DeviceLogin(response.get("device_code").getAsString(), response.get("user_code").getAsString(), uri,
@@ -39,13 +37,13 @@ public class MinecraftAccountClient {
     }
 
     public MicrosoftTokens poll(DeviceLogin login) throws IOException, InterruptedException {
-        JsonObject response = form("token", Map.of("client_id", this.clientId,
+        JsonObject response = form("token", Map.of("client_id", CLIENT_ID,
             "grant_type", "urn:ietf:params:oauth:grant-type:device_code", "device_code", login.deviceCode()));
         return tokens(response);
     }
 
     public MicrosoftTokens refresh(String refreshToken) throws IOException, InterruptedException {
-        JsonObject response = form("token", Map.of("client_id", this.clientId, "grant_type", "refresh_token",
+        JsonObject response = form("token", Map.of("client_id", CLIENT_ID, "grant_type", "refresh_token",
             "refresh_token", refreshToken, "scope", SCOPE));
         return new MicrosoftTokens(response.get("access_token").getAsString(),
             response.has("refresh_token") ? response.get("refresh_token").getAsString() : refreshToken);

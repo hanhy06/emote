@@ -28,7 +28,7 @@ class MinecraftAccountClientTest {
             new Reply(200, "{\"access_token\":\"minecraft-access\",\"expires_in\":3600}"),
             new Reply(200, "{\"id\":\"" + uuid.toString().replace("-", "") + "\",\"name\":\"Baker\"}")
         );
-        var client = new MinecraftAccountClient(http, "own-app-id");
+        var client = new MinecraftAccountClient(http);
         DeviceLogin login = client.startLogin();
         assertEquals("ABCD", login.userCode());
         assertEquals(5, login.intervalSeconds());
@@ -39,7 +39,8 @@ class MinecraftAccountClientTest {
         assertEquals(uuid, session.uuid());
         assertEquals("Baker", session.name());
         assertEquals("minecraft-access", session.accessToken());
-        assertTrue(body(http.requests.get(0)).contains("client_id=own-app-id"));
+        assertTrue(body(http.requests.get(0)).contains("client_id=38fe1d33-748d-4f65-926c-82022799df8e"));
+        assertTrue(body(http.requests.get(2)).contains("client_id=38fe1d33-748d-4f65-926c-82022799df8e"));
         assertTrue(body(http.requests.get(0)).contains("XboxLive.signin+offline_access"));
         assertTrue(body(http.requests.get(3)).contains("d=msa-access"));
         assertTrue(body(http.requests.get(4)).contains("rp://api.minecraftservices.com/"));
@@ -54,27 +55,13 @@ class MinecraftAccountClientTest {
     @Test void refreshKeepsTokenWhenNotRotatedAndErrorsDoNotExposeProviderDetails() throws Exception {
         var http = new StubClient(new Reply(200, "{\"access_token\":\"new-access\"}"),
             new Reply(400, "{\"error\":\"invalid_grant\",\"error_description\":\"sensitive provider detail\"}"));
-        var client = new MinecraftAccountClient(http, "own-app-id");
+        var client = new MinecraftAccountClient(http);
         assertEquals("old-refresh", client.refresh("old-refresh").refreshToken());
+        assertTrue(body(http.requests.getFirst()).contains("client_id=38fe1d33-748d-4f65-926c-82022799df8e"));
         var error = assertThrows(AuthenticationException.class, () -> client.refresh("old-refresh"));
         assertEquals("invalid_grant", error.code);
         assertFalse(error.getMessage().contains("sensitive"));
         assertFalse(error.getMessage().contains("old-refresh"));
-    }
-
-    @Test void missingOrBlankClientIdUsesEmoteApplicationForLoginAndRefresh() throws Exception {
-        for (String configuredId : Arrays.asList(null, "", "  ")) {
-            var http = new StubClient(
-                new Reply(200, "{\"device_code\":\"device-secret\",\"user_code\":\"ABCD\",\"verification_uri\":\"https://microsoft.com/devicelogin\",\"expires_in\":900,\"interval\":5}"),
-                new Reply(200, "{\"access_token\":\"new-access\"}")
-            );
-            var client = new MinecraftAccountClient(http, configuredId);
-            client.startLogin();
-            client.refresh("test-refresh");
-            for (HttpRequest request : http.requests) {
-                assertTrue(body(request).contains("client_id=38fe1d33-748d-4f65-926c-82022799df8e"));
-            }
-        }
     }
 
     private static String body(HttpRequest request) {

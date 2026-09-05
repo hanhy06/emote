@@ -19,7 +19,7 @@ class AccountSkinProviderTest {
     @TempDir Path directory;
 
     @Test void identicalContentIsUploadedOnceAndMineSkinReusesTheCompletedCache() throws Exception {
-        var accounts = new MinecraftAccountManager(new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient(""));
+        var accounts = new MinecraftAccountManager(new AccountCredentialStore(directory.resolve("accounts.bin"), false, AccountCredentialStoreTest.KEY), new MinecraftAccountClient());
         accounts.initialize();
         accounts.register(new MinecraftSession(UUID.randomUUID(), "Baker", "access", Long.MAX_VALUE), "refresh");
         CountDownLatch bothDownloads = new CountDownLatch(2);

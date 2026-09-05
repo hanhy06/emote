@@ -47,7 +47,7 @@ final class EmoteBootstrap {
         PermissionService permissions = new PermissionService();
         MinecraftAccountManager accounts = new MinecraftAccountManager(
             new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
-            new MinecraftAccountClient(System.getenv("EMOTE_MICROSOFT_CLIENT_ID"))
+            new MinecraftAccountClient()
         );
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
