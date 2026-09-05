@@ -51,6 +51,22 @@ class MolangEngineTest {
     }
 
     @Test
+    void evaluatesGeneralPurposeQueryFunctions() throws Exception {
+        MolangEngine.Session session = this.engine.createSession();
+
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.any('bow', 'sword', 'bow')")));
+        assertEquals(0.0D, session.evaluate(this.engine.compile("q.all(2, 2, 3)")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.in_range(2, 1, 2)")));
+        assertEquals(1.0D, session.evaluate(this.engine.compile("q.approx_eq(1, 1, 1)")));
+
+        MolangQueryCatalog.validate(this.engine.compile("q.any(1, 2); q.in_range(1, 0, 2);"), "$.test");
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> MolangQueryCatalog.validate(this.engine.compile("q.in_range(1, 2)"), "$.test")
+        );
+    }
+
+    @Test
     void recordsQueryCallsSeparatelyFromQueryValuesAndAssignments() throws Exception {
         MolangEngine.CompiledExpression expression = this.engine.compile(
             "q.anim_time; query.sample(1, 'value'); q.blocked = 1;"

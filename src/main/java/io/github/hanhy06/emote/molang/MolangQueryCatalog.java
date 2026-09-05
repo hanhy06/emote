@@ -54,7 +54,12 @@ public final class MolangQueryCatalog {
         "item_remaining_use_duration",
         "item_max_use_duration"
     );
-    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of();
+    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.of(
+        "all", QuerySignature.atLeast(2),
+        "any", QuerySignature.atLeast(2),
+        "approx_eq", QuerySignature.atLeast(2),
+        "in_range", QuerySignature.exact(3)
+    );
     public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
@@ -97,11 +102,22 @@ public final class MolangQueryCatalog {
             }
         }
 
+        private static QuerySignature exact(int arguments) {
+            return new QuerySignature(arguments, arguments);
+        }
+
+        private static QuerySignature atLeast(int minimumArguments) {
+            return new QuerySignature(minimumArguments, Integer.MAX_VALUE);
+        }
+
         boolean accepts(int argumentCount) {
             return argumentCount >= this.minimumArguments && argumentCount <= this.maximumArguments;
         }
 
         String describe() {
+            if (this.maximumArguments == Integer.MAX_VALUE) {
+                return "at least " + this.minimumArguments;
+            }
             return this.minimumArguments == this.maximumArguments
                 ? Integer.toString(this.minimumArguments)
                 : this.minimumArguments + ".." + this.maximumArguments;

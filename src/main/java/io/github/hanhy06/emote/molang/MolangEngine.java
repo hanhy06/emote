@@ -91,6 +91,12 @@ public final class MolangEngine {
             this.evaluator.scope().set("math", MolangMath.INSTANCE);
             this.evaluator.scope().set("query", this.query);
             this.evaluator.scope().set("q", this.query);
+            setQueryFunction("any", arguments -> QueryValue.bool(arguments.anyMatchesFirst()));
+            setQueryFunction("all", arguments -> QueryValue.bool(arguments.allMatchFirst()));
+            setQueryFunction("in_range", arguments -> QueryValue.bool(
+                arguments.number(0) >= arguments.number(1) && arguments.number(0) <= arguments.number(2)
+            ));
+            setQueryFunction("approx_eq", arguments -> QueryValue.bool(arguments.allApproximatelyEqual()));
         }
 
         public void setQuery(String name, double value) {
@@ -159,6 +165,43 @@ public final class MolangEngine {
 
         public boolean bool(int index) {
             return value(index).getAsBoolean();
+        }
+
+        public boolean anyMatchesFirst() {
+            for (int i = 1; i < this.values.size(); i++) {
+                if (sameValue(this.values.getFirst(), this.values.get(i))) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        public boolean allMatchFirst() {
+            for (int i = 1; i < this.values.size(); i++) {
+                if (!sameValue(this.values.getFirst(), this.values.get(i))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public boolean allApproximatelyEqual() {
+            double first = number(0);
+            double tolerance = Math.ulp(first);
+            for (int i = 1; i < this.values.size(); i++) {
+                double value = number(i);
+                if (Math.abs(first - value) > Math.max(tolerance, Math.ulp(value))) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private static boolean sameValue(Value first, Value second) {
+            if (first instanceof StringValue || second instanceof StringValue) {
+                return first instanceof StringValue && second instanceof StringValue && first.getAsString().equals(second.getAsString());
+            }
+            return first.getAsNumber() == second.getAsNumber();
         }
 
         private Value value(int index) {
