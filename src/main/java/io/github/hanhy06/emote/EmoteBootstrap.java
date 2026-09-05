@@ -8,6 +8,8 @@ import io.github.hanhy06.emote.command.EmoteMenu;
 import io.github.hanhy06.emote.command.UserCommand;
 import io.github.hanhy06.emote.config.ConfigManager;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.PayloadRegistry;
@@ -57,6 +59,10 @@ final class EmoteBootstrap {
         AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins, mineSkin::generateTexture);
         AccountSkinProvider accountSkins = new AccountSkinProvider(accounts, skinBaker, minecraftSkins, skinCache, accountQueue);
         PlayerSkinManager skins = new PlayerSkinManager(new AutomaticSkinProvider(accounts::hasAccounts, accountSkins, mineSkin));
+        catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
+            case PreparedAnimation animation -> animation.skinBindings().stream();
+            case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
+        }).toList()));
         NamedCallbackDispatcher callbacks = new NamedCallbackDispatcher();
         PlaybackEngine playback = new PlaybackEngine(skins, callbacks);
         PlaybackStateSyncService playbackStateSync = new PlaybackStateSyncService();

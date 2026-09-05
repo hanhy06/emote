@@ -25,6 +25,7 @@ public class ServerLifecycle {
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
+    private int skinCheckTicks;
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
@@ -51,6 +52,12 @@ public class ServerLifecycle {
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
             this.playbackEngine.tick();
             this.idlePlaybackService.tick();
+            if (++this.skinCheckTicks >= 20) {
+                this.skinCheckTicks = 0;
+                for (ServerPlayer player : EmoteMod.SERVER.getPlayerList().getPlayers()) {
+                    this.playerSkinManager.checkPlayerSkin(player);
+                }
+            }
         });
         PlaybackHooks.INTERRUPTION.register(this.playbackEngine::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
@@ -65,17 +72,22 @@ public class ServerLifecycle {
             return InteractionResult.PASS;
         });
         ServerPlayConnectionEvents.JOIN.register(
-            (handler, ignoredSender, ignoredServer) -> this.wheelSyncService.syncPlayer(handler.player)
+            (handler, ignoredSender, ignoredServer) -> {
+                this.wheelSyncService.syncPlayer(handler.player);
+                this.playerSkinManager.checkPlayerSkin(handler.player);
+            }
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
                 if (EmoteMod.SERVER.isSameThread()) {
                     this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idlePlaybackService.removePlayer(handler.player);
+                    this.playerSkinManager.removePlayer(handler.player.getUUID());
                 } else {
                     EmoteMod.SERVER.execute(() -> {
                         this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idlePlaybackService.removePlayer(handler.player);
+                        this.playerSkinManager.removePlayer(handler.player.getUUID());
                     });
                 }
             }
