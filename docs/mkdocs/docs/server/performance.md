@@ -9,7 +9,7 @@
 * Minecraft version: 26.2
 * Mod version: 2.0.1 (DEV)
 * World: standard survival world
-* 추가 모드: ferritecore 9.0, krypthon 0.3.1, lithium 0.25.3
+* Mods used: ferritecore, krypthon, lithium
 
 ## Test results
 
