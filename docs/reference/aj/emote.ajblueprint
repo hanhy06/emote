@@ -2926,7 +2926,7 @@
 							"time": 0.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutQuad",
+							"easing": "easeOutCubic",
 							"easingArgs": []
 						},
 						{
@@ -2990,7 +2990,7 @@
 							"time": 1.8,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutQuad",
+							"easing": "easeOutCubic",
 							"easingArgs": []
 						},
 						{
@@ -3294,7 +3294,7 @@
 							"time": 0.65,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "linear",
+							"easing": "easeOutCubic",
 							"easingArgs": []
 						},
 						{
