@@ -104,7 +104,11 @@ final class AnimationEvaluator {
 
     CompoundTag nbt(int index) {
         NodeState state = this.nodes[index];
-        return state.nbtCursor < 0 ? null : state.nbtState.copy();
+        if (!state.nbtChanged) {
+            return null;
+        }
+        state.nbtChanged = false;
+        return state.nbtState.copy();
     }
 
     private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
@@ -255,6 +259,7 @@ final class AnimationEvaluator {
             CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
             this.session.setQuery("key_frame_lerp_time", 0.0D);
             state.nbtState.merge(frame.select(this.session));
+            state.nbtChanged = true;
         }
     }
 
@@ -375,6 +380,7 @@ final class AnimationEvaluator {
         private int visibilityCursor;
         private int nbtCursor = -1;
         private CompoundTag nbtState = new CompoundTag();
+        private boolean nbtChanged;
         private boolean visible;
 
         private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
@@ -395,6 +401,7 @@ final class AnimationEvaluator {
                 ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
             this.nbtCursor = -1;
             this.nbtState = new CompoundTag();
+            this.nbtChanged = false;
         }
     }
 
