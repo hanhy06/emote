@@ -57,6 +57,9 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
         int interpolationDurationTicks
     ) {
         PlaybackNodes.NodeInstance node = requiredNode(nodeId);
+        if (node.isAnchor()) {
+            return;
+        }
         this.entityController.applyTransformation(
             node,
             this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix),
