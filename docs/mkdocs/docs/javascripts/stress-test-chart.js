@@ -1,11 +1,11 @@
 (() => {
   const chartLibraryUrl = new URL("vendor/chart.umd.min.js", document.currentScript.src).href;
   const measurements = [
-    { players: 10, displays: 220 },
-    { players: 25, displays: 440 },
-    { players: 50, displays: 890 },
-    { players: 75, displays: 1340 },
-    { players: 100, displays: 1760 }
+    { players: 10, displays: 162 },
+    { players: 25, displays: 420 },
+    { players: 50, displays: 866 },
+    { players: 75, displays: 1294 },
+    { players: 100, displays: 1749 }
   ];
   const labels = measurements.map(({ players, displays }) => [`${players}-player equivalent`, `~${displays.toLocaleString("en-US")} displays`]);
   const metrics = {
@@ -13,9 +13,9 @@
       title: "Server MSPT",
       unit: "ms",
       datasets: [
-        { label: "Average", data: [9.66, 13.33, 26.93, 50.66, 81.21], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
-        { label: "p95", data: [16.78, 21.59, 33.60, 56.37, 88.11], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "Maximum", data: [23.46, 30.38, 40.12, 66.20, 98.04], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
+        { label: "Average", data: [4.37, 8.84, 22.72, 42.13, 68.12], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
+        { label: "p95", data: [5.12, 10.47, 39.64, 47.50, 75.35], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
+        { label: "Maximum", data: [12.86, 17.61, 36.57, 59.68, 80.00], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
         { label: "20 TPS threshold", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
       ]
     },
@@ -26,11 +26,11 @@
       axisTitle: "Time (s)",
       stacked: true,
       datasets: [
-        { label: "Setup", data: [0.2, 0.2, 0.7, 1.5, 2.5], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
-        { label: "Emote", data: [0.4, 0.6, 1.1, 1.8, 2.5], backgroundColor: "#43a047", borderColor: "#66bb6a" },
-        { label: "Network", data: [1.0, 3.4, 11.1, 24.3, 41.3], backgroundColor: "#00acc1", borderColor: "#26c6da" },
-        { label: "Server/idle", data: [28.4, 25.8, 17.1, 4.3, 5.0], backgroundColor: "#78909c", borderColor: "#90a4ae" },
-        { label: "Cleanup", data: [0.0, 0.0, 0.0, 0.1, 0.1], backgroundColor: "#fb8c00", borderColor: "#ffa726" }
+        { label: "Setup", data: [0.0, 0.2, 0.0, 1.3, 2.2], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
+        { label: "Emote", data: [0.2, 0.6, 1.1, 1.8, 2.5], backgroundColor: "#43a047", borderColor: "#66bb6a" },
+        { label: "Network", data: [0.4, 2.6, 10.3, 21.0, 35.7], backgroundColor: "#00acc1", borderColor: "#26c6da" },
+        { label: "Server/idle", data: [29.4, 26.6, 18.0, 6.0, 2.7], backgroundColor: "#78909c", borderColor: "#90a4ae" },
+        { label: "Cleanup", data: [0.0, 0.0, 0.0, 0.0, 0.1], backgroundColor: "#fb8c00", borderColor: "#ffa726" }
       ]
     }
   };

@@ -5,9 +5,11 @@
 * CPU: Intel Core Ultra 5 250K Plus
 * RAM: 24 GB (single-channel)
 * Operating system: Windows 11
+
 * Minecraft version: 26.2
 * Mod version: 2.0.1 (DEV)
 * World: standard survival world
+* 추가 모드: ferritecore 9.0, krypthon 0.3.1, lithium 0.25.3
 
 ## Test results
 
@@ -36,8 +38,8 @@ Therefore, `75-player equivalent` is a **synthetic load approximating 75 simulta
 
 ## Interpretation
 
-- Average MSPT remained below the 50 ms threshold at 9.66 ms for 10-player equivalent, 13.33 ms for 25-player equivalent, and 26.93 ms for 50-player equivalent. It narrowly exceeded the threshold at 50.66 ms for 75-player equivalent and rose to 81.21 ms for 100-player equivalent. On this server and test configuration, the 75×75 load marks the point where sustaining 20 TPS becomes difficult.
-- At 20 TPS, 600 ticks take 30 seconds. Total elapsed time remained at 30 seconds from 10- through 50-player equivalent, but increased to 32.0 seconds at 75-player equivalent and 51.4 seconds at 100-player equivalent, showing that the server could no longer maintain the target tick rate.
-- As load increased, `Server/idle` decreased while `Network` rose from 1.0 to 41.3 seconds. At 100-player equivalent, `Network` accounted for about 80% of the 51.4-second total, indicating that change detection and packet serialization and compression were the primary bottleneck rather than emote timeline evaluation.
+- Average MSPT remained below the 50 ms threshold at 4.37 ms for 10-player equivalent, 8.84 ms for 25-player equivalent, 22.72 ms for 50-player equivalent, and 42.13 ms for 75-player equivalent. It rose to 68.12 ms at 100-player equivalent. On this server and test configuration, the 100×100 load marks the point where sustaining 20 TPS becomes difficult.
+- At 20 TPS, 600 ticks take 30 seconds. Total elapsed time remained at about 30 seconds from 10- through 75-player equivalent, but increased to 43.2 seconds at 100-player equivalent, showing that the server could no longer maintain the target tick rate.
+- As load increased, `Server/idle` decreased while `Network` rose from 0.4 to 35.7 seconds. At 100-player equivalent, `Network` accounted for about 83% of the 43.2-second total, indicating that change detection and packet serialization and compression were the primary bottleneck rather than emote timeline evaluation.
 - These results cannot be used directly as the server's maximum player count. The actual limit depends on the proportion of players using emotes concurrently, player tracking ranges, displays per emote, server CPU, compression settings, other mods, and world load.
 - The test system used 24 GB of memory in a single-channel configuration, so memory bandwidth may have affected the high-load results. Without a comparison against a dual-channel configuration, the size of that effect cannot be determined and memory bandwidth cannot be identified as the primary bottleneck.
