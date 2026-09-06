@@ -9,12 +9,13 @@ import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
 import java.util.*;
 
 public final class PlaybackNodes {
-    private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
+    private final EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
@@ -31,7 +32,7 @@ public final class PlaybackNodes {
         for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
             Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
         }
-        this.spaces = Map.copyOf(requiredSpaces);
+        this.spaces = requiredSpaces;
         this.nodes = Map.copyOf(nodes);
         this.displayEntityCount = (int) nodes.values().stream()
             .filter(node -> !(node.node() instanceof EmoteAnimation.AnchorNode))
@@ -46,6 +47,18 @@ public final class PlaybackNodes {
 
     public RootTransform root(EmoteAnimation.NodeSpace space) {
         return this.spaces.get(Objects.requireNonNull(space, "space"));
+    }
+
+    public boolean moveSceneTo(Vec3 position) {
+        Vec3 movement = Objects.requireNonNull(position, "position").subtract(root().position());
+        if (movement.equals(Vec3.ZERO)) {
+            return false;
+        }
+        for (Map.Entry<EmoteAnimation.NodeSpace, RootTransform> entry : this.spaces.entrySet()) {
+            RootTransform root = entry.getValue();
+            entry.setValue(RootTransform.create(root.position().add(movement), root.yaw()));
+        }
+        return true;
     }
 
     public Map<String, NodeInstance> nodes() {

@@ -180,6 +180,29 @@ class PlaybackNodesTest {
     }
 
     @Test
+    void movesEveryNodeSpaceWithTheSceneWhilePreservingRelativePlacement() {
+        RootTransform scene = RootTransform.create(new Vec3(10.0D, 64.0D, 20.0D), 30.0F);
+        RootTransform partner = RootTransform.create(new Vec3(12.0D, 64.0D, 19.0D), -45.0F);
+        PlaybackNodes nodes = new PlaybackNodes(
+            Map.of(
+                EmoteAnimation.NodeSpace.SCENE, scene,
+                EmoteAnimation.NodeSpace.INITIATOR, scene,
+                EmoteAnimation.NodeSpace.PARTNER, partner
+            ),
+            Map.of()
+        );
+
+        assertTrue(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
+
+        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root().position());
+        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root(EmoteAnimation.NodeSpace.INITIATOR).position());
+        assertEquals(new Vec3(15.0D, 65.0D, 23.0D), nodes.root(EmoteAnimation.NodeSpace.PARTNER).position());
+        assertEquals(30.0F, nodes.root().yaw());
+        assertEquals(-45.0F, nodes.root(EmoteAnimation.NodeSpace.PARTNER).yaw());
+        assertFalse(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
+    }
+
+    @Test
     void createsEquivalentPreparedTransformationsPerNodeSpace() {
         RootTransform scene = RootTransform.create(Vec3.ZERO, 0.0F);
         RootTransform partner = RootTransform.create(new Vec3(1.2D, 0.0D, 0.0D), 180.0F);

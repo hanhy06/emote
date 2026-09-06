@@ -126,6 +126,18 @@ public final class PlaybackEntityController {
         return rotationChanged;
     }
 
+    public boolean moveSceneTo(PlaybackNodes nodes, Vec3 position) {
+        if (!nodes.moveSceneTo(position)) {
+            return false;
+        }
+        for (NodeInstance node : nodes.nodes().values()) {
+            if (!node.isAnchor()) {
+                node.entity().setPos(nodes.root(node.node().space()).position());
+            }
+        }
+        return true;
+    }
+
     public void setVisible(NodeInstance node, boolean visible) {
         if (node.isAnchor()) {
             return;

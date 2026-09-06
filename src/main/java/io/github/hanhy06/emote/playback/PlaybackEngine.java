@@ -347,6 +347,9 @@ public class PlaybackEngine implements ConfigListener {
             }
             if (stopReason == null) {
                 try {
+                    if (session.playerBehavior().stopConditions().movementDistance() == 0.0D) {
+                        this.entityController.moveSceneTo(session.nodes(), player.position());
+                    }
                     session.animation().restoreDeferredVisibility();
                     if (followsInitiatorView(session.state())) {
                         this.entityController.updateViewRotation(
