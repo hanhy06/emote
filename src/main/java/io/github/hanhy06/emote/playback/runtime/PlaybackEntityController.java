@@ -64,6 +64,7 @@ public final class PlaybackEntityController {
     }
 
     public static final String RUNTIME_TAG = "emote.runtime";
+    private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
     public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
@@ -114,7 +115,7 @@ public final class PlaybackEntityController {
         float viewYaw = nodes.updateViewYaw(currentYaw, rotationDeadzone);
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
         boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
-        int interpolationTicks = rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS;
+        int interpolationTicks = positionRotationInterpolationTicks(rotationDeadzone);
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
                 ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
@@ -241,7 +242,7 @@ public final class PlaybackEntityController {
 
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
-        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS);
+        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(positionRotationInterpolationTicks(rotationDeadzone));
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
@@ -264,6 +265,10 @@ public final class PlaybackEntityController {
             throw new IllegalStateException("Failed to create display entity");
         }
         return display;
+    }
+
+    static int positionRotationInterpolationTicks(float rotationDeadzone) {
+        return rotationDeadzone == 0.0F ? RESPONSIVE_INTERPOLATION_TICKS : VIEW_ROTATION_INTERPOLATION_TICKS;
     }
 
     private DisplayContent applyRuntimeData(

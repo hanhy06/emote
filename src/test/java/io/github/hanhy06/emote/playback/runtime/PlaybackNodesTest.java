@@ -61,6 +61,12 @@ class PlaybackNodesTest {
     }
 
     @Test
+    void usesOneTickInterpolationWithoutRotationDeadzone() {
+        assertEquals(1, PlaybackEntityController.positionRotationInterpolationTicks(0.0F));
+        assertEquals(3, PlaybackEntityController.positionRotationInterpolationTicks(50.0F));
+    }
+
+    @Test
     void itemNodeKeepsReplacementStackForVisibilityRestores() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
