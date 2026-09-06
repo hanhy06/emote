@@ -14,8 +14,8 @@
       unit: "ms",
       datasets: [
         { label: "Average", data: [4.37, 8.84, 22.72, 42.13, 68.12], borderColor: "#29b6f6", backgroundColor: "#29b6f6" },
-        { label: "p95", data: [5.12, 10.47, 39.64, 47.50, 75.35], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
-        { label: "Maximum", data: [12.86, 17.61, 36.57, 59.68, 80.00], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
+        { label: "p95", data: [6.12, 10.47, 29.64, 47.50, 75.35], borderColor: "#ab80ff", backgroundColor: "#ab80ff" },
+        { label: "Maximum", data: [12.86, 17.61, 36.57, 59.68, 82.00], borderColor: "#ffb74d", backgroundColor: "#ffb74d" },
         { label: "20 TPS threshold", data: [50, 50, 50, 50, 50], borderColor: "#ef5350", backgroundColor: "#ef5350", borderDash: [7, 6], pointRadius: 0, pointHoverRadius: 0 }
       ]
     },
@@ -26,7 +26,7 @@
       axisTitle: "Time (s)",
       stacked: true,
       datasets: [
-        { label: "Setup", data: [0.0, 0.2, 0.0, 1.3, 2.2], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
+        { label: "Setup", data: [0.0, 0.2, 0.6, 1.3, 2.2], backgroundColor: "#fbc02d", borderColor: "#fdd835" },
         { label: "Emote", data: [0.2, 0.6, 1.1, 1.8, 2.5], backgroundColor: "#43a047", borderColor: "#66bb6a" },
         { label: "Network", data: [0.4, 2.6, 10.3, 21.0, 35.7], backgroundColor: "#00acc1", borderColor: "#26c6da" },
         { label: "Server/idle", data: [29.4, 26.6, 18.0, 6.0, 2.7], backgroundColor: "#78909c", borderColor: "#90a4ae" },
