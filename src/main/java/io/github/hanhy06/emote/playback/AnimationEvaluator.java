@@ -120,31 +120,35 @@ final class AnimationEvaluator {
         for (NodeState state : this.nodes) {
             CompiledNodeTracks tracks = state.tracks;
             LocalTransform defaults = state.node.transform();
-            state.positionCursor = vector(
-                tracks == null ? List.of() : tracks.position(),
-                state.positionCursor,
-                tick,
-                defaults.position(),
-                this.position
-            );
-            state.scaleCursor = vector(
-                tracks == null ? List.of() : tracks.scale(),
-                state.scaleCursor,
-                tick,
-                defaults.scale(),
-                this.scale
-            );
-            state.rotationCursor = rotation(
-                tracks == null ? List.of() : tracks.rotation(),
-                state.rotationCursor,
-                tick,
-                defaults.rotation(),
-                this.rotation
-            );
-            this.localMatrix.identity()
-                .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
-                .rotate(this.rotation)
-                .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
+            if (state.staticLocalMatrix == null) {
+                state.positionCursor = vector(
+                    tracks == null ? List.of() : tracks.position(),
+                    state.positionCursor,
+                    tick,
+                    defaults.position(),
+                    this.position
+                );
+                state.scaleCursor = vector(
+                    tracks == null ? List.of() : tracks.scale(),
+                    state.scaleCursor,
+                    tick,
+                    defaults.scale(),
+                    this.scale
+                );
+                state.rotationCursor = rotation(
+                    tracks == null ? List.of() : tracks.rotation(),
+                    state.rotationCursor,
+                    tick,
+                    defaults.rotation(),
+                    this.rotation
+                );
+                this.localMatrix.identity()
+                    .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
+                    .rotate(this.rotation)
+                    .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
+            } else {
+                this.localMatrix.set(state.staticLocalMatrix);
+            }
             if (state.parentIndex < 0) {
                 state.worldMatrix.set(this.localMatrix);
             } else {
@@ -372,6 +376,7 @@ final class AnimationEvaluator {
         private final Node node;
         private final CompiledNodeTracks tracks;
         private final int parentIndex;
+        private final Matrix4f staticLocalMatrix;
         private final Matrix4f worldMatrix = new Matrix4f();
 
         private int positionCursor;
@@ -388,6 +393,21 @@ final class AnimationEvaluator {
             this.node = node;
             this.tracks = tracks;
             this.parentIndex = parentIndex;
+            boolean staticTransform = tracks == null
+                || tracks.position().isEmpty() && tracks.rotation().isEmpty() && tracks.scale().isEmpty();
+            if (staticTransform) {
+                LocalTransform transform = node.transform();
+                this.staticLocalMatrix = new Matrix4f()
+                    .translate((float) transform.position().x(), (float) transform.position().y(), (float) transform.position().z())
+                    .rotate(new Quaternionf().rotationXYZ(
+                        (float) Math.toRadians(transform.rotation().x()),
+                        (float) Math.toRadians(transform.rotation().y()),
+                        (float) Math.toRadians(transform.rotation().z())
+                    ))
+                    .scale((float) transform.scale().x(), (float) transform.scale().y(), (float) transform.scale().z());
+            } else {
+                this.staticLocalMatrix = null;
+            }
         }
 
         private void resetCursors(int tick) {
