@@ -2110,7 +2110,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -2126,7 +2126,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -2342,7 +2342,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -2358,7 +2358,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -2574,7 +2574,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -2590,7 +2590,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -2806,7 +2806,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -2822,7 +2822,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -3038,7 +3038,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -3054,7 +3054,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -3093,7 +3093,7 @@
 							"channel": "position",
 							"data_points": [
 								{
-									"x": "-5.1385",
+									"x": "-6.1385",
 									"y": "13.1619",
 									"z": "1.6285"
 								}
@@ -3246,7 +3246,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -3262,7 +3262,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -3295,6 +3295,38 @@
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeOutCubic",
+							"easingArgs": []
+						},
+						{
+							"channel": "position",
+							"data_points": [
+								{
+									"x": "-6.02",
+									"y": "13.02",
+									"z": "0.24"
+								}
+							],
+							"uuid": "2c2fb100-8c03-d555-5150-6defc90a117c",
+							"time": 0.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "position",
+							"data_points": [
+								{
+									"x": "-3.32",
+									"y": "19.8",
+									"z": "-8.33"
+								}
+							],
+							"uuid": "e3698287-19c8-bec2-9ace-3c34d0cee745",
+							"time": 0.3,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
 							"easingArgs": []
 						},
 						{
@@ -3390,23 +3422,6 @@
 					"rotation_global": false,
 					"quaternion_interpolation": false,
 					"keyframes": [
-						{
-							"channel": "scale",
-							"data_points": [
-								{
-									"x": "0",
-									"y": "0",
-									"z": "0"
-								}
-							],
-							"uuid": "16ff9feb-08a0-47ee-9b6b-abb3d4e52d6f",
-							"time": 0,
-							"color": -1,
-							"uniform": true,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
 						{
 							"channel": "scale",
 							"data_points": [
@@ -3695,7 +3710,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -3711,7 +3726,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -3927,7 +3942,7 @@
 							"time": 2.95,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeInOutCubic",
+							"easing": "easeInSine",
 							"easingArgs": []
 						},
 						{
@@ -3943,7 +3958,7 @@
 							"time": 3.4,
 							"color": -1,
 							"interpolation": "linear",
-							"easing": "easeOutCubic",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
