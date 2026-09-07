@@ -9,16 +9,45 @@ export function matrixToLocalTransform(matrix: Matrix16, label: string): LocalTr
   const position = new Vector3();
   const rotation = new Quaternion();
   const scale = new Vector3();
-  new Matrix4().set(...stable).decompose(position, rotation, scale);
-  if (Math.hypot(stable[0], stable[4], stable[8]) <= ZERO_SCALE_EPSILON) scale.x = 0;
-  if (Math.hypot(stable[1], stable[5], stable[9]) <= ZERO_SCALE_EPSILON) scale.y = 0;
-  if (Math.hypot(stable[2], stable[6], stable[10]) <= ZERO_SCALE_EPSILON) scale.z = 0;
+  const source = new Matrix4().set(...stable);
+  const axes = [
+    new Vector3(stable[0], stable[4], stable[8]),
+    new Vector3(stable[1], stable[5], stable[9]),
+    new Vector3(stable[2], stable[6], stable[10]),
+  ];
+  const lengths = axes.map((axis) => axis.length());
+  if (lengths.every((length) => length > ZERO_SCALE_EPSILON)) {
+    source.decompose(position, rotation, scale);
+  } else {
+    position.set(stable[3], stable[7], stable[11]);
+    scale.set(lengths[0], lengths[1], lengths[2]);
+    recoverSingularRotation(axes, lengths, rotation);
+  }
   const euler = new Euler().setFromQuaternion(rotation, "XYZ");
   return {
     position: cleanVec3([position.x, position.y, position.z]),
     rotation: cleanVec3([euler.x * 180 / Math.PI, euler.y * 180 / Math.PI, euler.z * 180 / Math.PI]),
     scale: cleanVec3([scale.x, scale.y, scale.z]),
   };
+}
+
+function recoverSingularRotation(axes: Vector3[], lengths: number[], rotation: Quaternion): void {
+  const present = lengths.map((length) => length > ZERO_SCALE_EPSILON);
+  const count = present.filter(Boolean).length;
+  if (count === 0) return;
+  axes.forEach((axis, index) => {
+    if (present[index]) axis.normalize();
+  });
+  if (count === 1) {
+    const index = present.findIndex(Boolean);
+    const basis = [new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, 1)];
+    rotation.setFromUnitVectors(basis[index], axes[index]);
+    return;
+  }
+  if (!present[0]) axes[0].crossVectors(axes[1], axes[2]).normalize();
+  if (!present[1]) axes[1].crossVectors(axes[2], axes[0]).normalize();
+  if (!present[2]) axes[2].crossVectors(axes[0], axes[1]).normalize();
+  rotation.setFromRotationMatrix(new Matrix4().makeBasis(axes[0], axes[1], axes[2]));
 }
 
 export function localTransformToMatrix(transform: LocalTransform, label: string): Matrix16 {
