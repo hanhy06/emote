@@ -15,7 +15,7 @@ describe("requireEmoteAnimation", () => {
         cooldown: "0t",
         rotation_deadzone: 50,
         player: createDefaultPlayerBehavior(),
-        playback: { mode: "once", loop_delay: "0t" },
+        playback: { mode: "once" },
       },
       nodes: {
         head: {
@@ -31,6 +31,7 @@ describe("requireEmoteAnimation", () => {
     });
 
     expect(animation.nodes.head.type === "item_display" && animation.nodes.head.skin?.participant).toBe("initiator");
+    expect(animation.settings.playback).toEqual({ mode: "once" });
   });
 
   it("preserves an explicit partner participant", () => {

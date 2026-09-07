@@ -60,7 +60,8 @@ function requireSettings(value: unknown): void {
   requireBoolean(stopConditions.game_mode_change, "settings.player.stop_conditions.game_mode_change");
   const playback = requireRecord(settings.playback, "settings.playback");
   requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
-  requireString(playback.loop_delay, "settings.playback.loop_delay");
+  optionalString(playback.loop_start, "settings.playback.loop_start");
+  optionalString(playback.loop_delay, "settings.playback.loop_delay");
 }
 
 function requireSchema4Nodes(value: unknown): void {

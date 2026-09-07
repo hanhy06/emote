@@ -45,6 +45,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const sourceStem = sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
   const displayName = file.metadata.name?.trim() || sourceStem;
   const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.ceil(animation.lengthTicks)), `${displayName} duration`);
+  const loopStartTicks = requireLoopStartTick(animation, durationTicks, displayName);
   const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
   const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
@@ -82,6 +83,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     suggestedMetadata: metadata,
     durationTicks,
     playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
+    loopStartTicks,
     loopDelayTicks: 0,
     tracks,
     events: { start: [], timeline: song.events, loop: [], stop: [] },
@@ -98,6 +100,15 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     diagnostics,
     resources: new Map(),
   };
+}
+
+function requireLoopStartTick(animation: PalAnimation, durationTicks: number, displayName: string): number {
+  if (animation.loop !== "loop_from_tick") return 0;
+  const tick = Math.round(animation.loopStartTick);
+  if (!Number.isFinite(animation.loopStartTick) || tick < 0 || tick >= durationTicks) {
+    throw new Error(`${displayName} loop start must resolve within 0..${durationTicks - 1} ticks.`);
+  }
+  return tick;
 }
 
 function collectAnimationAnchors(animation: PalAnimation): AnimationAnchor[] {
@@ -284,10 +295,6 @@ function lowerBendMatrix(bend: number): Matrix4 {
 
 function collectDiagnostics(file: EmotecraftFile): ImportDiagnostic[] {
   const diagnostics: ImportDiagnostic[] = [];
-  if (file.animation.loop === "loop_from_tick" && file.animation.loopStartTick !== 0) diagnostics.push({
-    severity: "warning", code: "emotecraft_loop_start_flattened",
-    message: `Emotecraft loop start ${file.animation.loopStartTick}t cannot be represented; the full animation loops from 0t.`,
-  });
   if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "The embedded Emotecraft icon is not part of the emote animation format and was ignored." });
   for (const [kind, count] of [["sound", file.animation.effects.sounds.length], ["particle", file.animation.effects.particles.length], ["instruction", file.animation.effects.instructions.length]] as const) {
     if (count) diagnostics.push({ severity: "warning", code: `emotecraft_${kind}_effects_ignored`, message: `${count} Emotecraft ${kind} effect(s) cannot be converted automatically and were ignored.` });

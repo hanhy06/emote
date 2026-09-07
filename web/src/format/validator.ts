@@ -36,7 +36,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   const issues: ValidationIssue[] = [];
   if (animation.type !== "animation") add(issues, "type", "must be animation");
   if (animation.schema_version !== 4) add(issues, "schema_version", "must be 4");
-  validateCommon(animation, issues);
+  const loopStartTicks = validateCommon(animation, issues);
 
   const nodeIds = new Set(Object.keys(animation.nodes));
   if (nodeIds.size === 0) add(issues, "nodes", "must not be empty");
@@ -63,6 +63,9 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (durationTicks !== null && durationTicks > MAX_ANIMATION_DURATION_TICKS) {
     add(issues, "timeline.duration", `must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks`);
   }
+  if (loopStartTicks !== null && durationTicks !== null && loopStartTicks >= durationTicks) {
+    add(issues, "settings.playback.loop_start", "must be within 0..duration - 1 tick");
+  }
   for (const [nodeId, tracks] of Object.entries(animation.timeline.tracks)) {
     const path = `timeline.tracks.${nodeId}`;
     const node = animation.nodes[nodeId];
@@ -87,7 +90,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   return issues;
 }
 
-function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): void {
+function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): number | null {
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
   if (!Number.isFinite(animation.settings.player.stop_conditions.movement_distance)
@@ -99,10 +102,15 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): v
     add(issues, "settings.rotation_deadzone", "must be a finite number between 0 and 180");
   }
   validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
-  const loopDelayTicks = validateTime(animation.settings.playback.loop_delay, 0, "settings.playback.loop_delay", issues);
+  const loopStartTicks = validateTime(animation.settings.playback.loop_start ?? "0t", 0, "settings.playback.loop_start", issues);
+  const loopDelayTicks = validateTime(animation.settings.playback.loop_delay ?? "0t", 0, "settings.playback.loop_delay", issues);
+  if (animation.settings.playback.mode !== "loop" && loopStartTicks !== null && loopStartTicks !== 0) {
+    add(issues, "settings.playback.loop_start", "must resolve to 0 ticks unless mode is loop");
+  }
   if (["once", "hold"].includes(animation.settings.playback.mode) && loopDelayTicks !== null && loopDelayTicks !== 0) {
     add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once or hold");
   }
+  return loopStartTicks;
 }
 
 function validateItemNode(

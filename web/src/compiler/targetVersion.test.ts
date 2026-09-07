@@ -59,7 +59,7 @@ describe("Minecraft target output", () => {
   it("converts imported runtime nodes and every conditional NBT option", async () => {
     const source: EmoteAnimation = {
       type: "animation", schema_version: 4, id: "test:block", metadata: { name: "Block", description: "" },
-      settings: { standalone: true, cooldown: "0t", rotation_deadzone: 50, player: createDefaultPlayerBehavior(), playback: { mode: "once", loop_delay: "0t" } },
+      settings: { standalone: true, cooldown: "0t", rotation_deadzone: 50, player: createDefaultPlayerBehavior(), playback: { mode: "once" } },
       nodes: {
         root: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
         block: { type: "block_display", parent: "root", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] }, block_state_snbt: '{Name:"minecraft:stone"}' },

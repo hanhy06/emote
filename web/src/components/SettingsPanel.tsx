@@ -48,10 +48,16 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
           <div className="playback-settings-group">
             <label>Playback mode<select value={metadata.playbackMode} disabled={disabled} onChange={(event) => {
               const playbackMode = event.currentTarget.value as AnimationOutputSettings["playbackMode"];
-              onMetadataChange({ ...metadata, playbackMode, loopDelay: playbackMode === "once" || playbackMode === "hold" ? "0t" : metadata.loopDelay });
+              onMetadataChange({
+                ...metadata,
+                playbackMode,
+                loopStart: playbackMode === "loop" || playbackMode === "source" ? metadata.loopStart : "0t",
+                loopDelay: playbackMode === "once" || playbackMode === "hold" ? "0t" : metadata.loopDelay,
+              });
             }}>
               <option value="source">Source setting</option><option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
             </select></label>
+            <label>Loop start<input value={metadata.loopStart ?? "0t"} disabled={disabled || metadata.playbackMode === "once" || metadata.playbackMode === "hold" || metadata.playbackMode === "server_sync"} onChange={(event) => onMetadataChange({ ...metadata, loopStart: event.currentTarget.value })} /></label>
             <label>Loop delay<input value={metadata.loopDelay ?? "0t"} disabled={disabled || metadata.playbackMode === "once" || metadata.playbackMode === "hold"} onChange={(event) => onMetadataChange({ ...metadata, loopDelay: event.currentTarget.value })} /></label>
           </div>
           <label>Cooldown<input value={metadata.cooldown ?? "0t"} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, cooldown: event.currentTarget.value })} /></label>

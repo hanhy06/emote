@@ -567,7 +567,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(imported.animations[0].playbackMode).toBe("hold");
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
-    expect(compiled.settings.playback).toEqual({ mode: "hold", loop_delay: "0t" });
+    expect(compiled.settings.playback).toEqual({ mode: "hold" });
   });
 });
 

@@ -58,6 +58,7 @@ export interface ImportedAnimation {
   suggestedMetadata?: EmoteMetadata;
   durationTicks: number;
   playbackMode: "once" | "hold" | "loop" | "server_sync";
+  loopStartTicks?: number;
   loopDelayTicks: number;
   tracks: Record<string, ImportedNodeTrack>;
   events: {

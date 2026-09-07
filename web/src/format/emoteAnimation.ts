@@ -34,7 +34,8 @@ export interface EmoteAnimationSettings {
   player: EmotePlayerBehavior;
   playback: {
     mode: "once" | "hold" | "loop" | "server_sync";
-    loop_delay: MinecraftTime;
+    loop_start?: MinecraftTime;
+    loop_delay?: MinecraftTime;
   };
 }
 

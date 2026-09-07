@@ -96,6 +96,19 @@ describe("importEmotecraftFile", () => {
     expect(imported.animations[0].tracks.body_0.transforms[1].interpolation).toEqual({ type: "step" });
     expect(imported.animations[0].tracks.body_0.transforms[1].matrix[3]).not.toBe(imported.animations[0].tracks.body_0.transforms[0].matrix[3]);
   });
+
+  it("preserves Emotecraft return-to-tick loops", () => {
+    const source = file({ body: bone() });
+    source.animation.loop = "loop_from_tick";
+    source.animation.loopStartTick = 1;
+
+    const imported = importEmotecraftFile(source, "loop.emotecraft");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dance" });
+
+    expect(imported.animations[0].loopStartTicks).toBe(1);
+    expect(imported.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("emotecraft_loop_start_flattened");
+    expect(compiled.settings.playback).toEqual({ mode: "loop", loop_start: "1t" });
+  });
 });
 
 function file(bones: Record<string, PalBoneAnimation>): EmotecraftFile {

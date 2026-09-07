@@ -11,6 +11,7 @@ interface FixtureCompileOptions {
   playbackMode?: EmoteAnimation["settings"]["playback"]["mode"];
   standalone?: boolean;
   cooldown?: string;
+  loopStart?: string;
   loopDelay?: string;
   rotationDeadzoneByAnimation?: Readonly<Record<string, number>>;
 }
@@ -42,6 +43,7 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
         playbackMode: options.playbackMode ?? "source",
         standalone: options.standalone ?? true,
         cooldown: options.cooldown ?? "0t",
+        loopStart: options.loopStart ?? animation.output.loopStart,
         loopDelay: options.loopDelay ?? animation.output.loopDelay,
         rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.source.name] ?? animation.output.rotationDeadzone,
       },

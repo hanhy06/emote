@@ -14,13 +14,22 @@ describe("compileImportedProject time handling", () => {
       standalone: false,
       cooldown: "10s",
       playbackMode: "loop",
+      loopStart: "0.25s",
       loopDelay: "0.5s",
     });
 
     expect(animation.settings.standalone).toBe(false);
     expect(animation.settings.cooldown).toBe("200t");
     expect(animation.settings.rotation_deadzone).toBe(50);
-    expect(animation.settings.playback).toEqual({ mode: "loop", loop_delay: "10t" });
+    expect(animation.settings.playback).toEqual({ mode: "loop", loop_start: "5t", loop_delay: "10t" });
+  });
+
+  it("omits zero-valued loop settings", () => {
+    const [animation] = compileImportedProject(importedProject(), {
+      minecraftVersion: "26.2", namespace: "test", playbackMode: "loop", loopStart: "0t", loopDelay: "0t",
+    });
+
+    expect(animation.settings.playback).toEqual({ mode: "loop" });
   });
 
   it("translates target durations into schema 4 outgoing interpolation", () => {

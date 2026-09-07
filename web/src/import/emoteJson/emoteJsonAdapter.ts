@@ -185,7 +185,8 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     suggestedMetadata: { ...animation.metadata },
     durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
     playbackMode: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks,
     events: importEvents(animation),
   };
@@ -204,7 +205,8 @@ function importRuntimeTimeline(
     suggestedMetadata: { ...animation.metadata },
     durationTicks,
     playbackMode: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks: {},
     events: importEvents(animation),
     ...(previewTracks
