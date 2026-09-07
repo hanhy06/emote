@@ -1,6 +1,6 @@
 # Molang
 
-Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and NBT option selectors. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
 ## Programs
 
@@ -70,22 +70,19 @@ Visibility values may be booleans or Molang strings. A finite result of `0` is h
 
 Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
 
-### NBT option selectors
+### Dynamic NBT values
 
-An NBT keyframe can use Molang to choose one of two or more compound SNBT options:
+An NBT keyframe can use Molang to produce a compound SNBT string:
 
 ```json
 "value": {
-  "select": "math.random_integer(0, 3)",
-  "options": [
-    "{item:{id:'minecraft:poppy',count:1}}",
-    "{item:{id:'minecraft:dandelion',count:1}}",
-    "{item:{id:'minecraft:blue_orchid',count:1}}"
-  ]
+  "molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
 }
 ```
 
-The selector follows the same read-only track-expression rules as vector and visibility values. Its result must be a finite integer within the option array. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during selector evaluation.
+The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
+
+Runtime-owned fields remain forbidden. The `0t` result establishes the top-level fields that later keyframes may modify, and a dynamic `0t` value must return the same field set on every playback cycle.
 
 ## Queries
 
@@ -151,7 +148,7 @@ The three item-use duration queries refer to the item currently being used, in e
 
 ### Query functions
 
-Registered query functions are available in animation programs, vector and visibility tracks, and NBT option selectors.
+Registered query functions are available in animation programs, vector and visibility tracks, and dynamic NBT values.
 
 | Query | Value |
 |---|---|
@@ -171,9 +168,9 @@ Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainh
 
 ## Validation and preview
 
-Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure; an NBT selector also fails if its result is fractional or outside its option array.
+Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A numeric value that evaluates to a non-finite number stops playback as a runtime failure. A dynamic NBT value also fails at runtime if it does not return a string containing valid compound SNBT or violates the NBT track's field restrictions.
 
-The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries and player-dependent query functions are `0`. General query functions such as `q.any` and `q.in_range` are evaluated normally. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries and player-dependent query functions are `0`. General query functions such as `q.any` and `q.in_range` are evaluated normally. Dynamic NBT values are preserved for export but are not evaluated by the preview, which falls back to the Create pose. If another expression cannot be evaluated safely, export remains available and the preview also falls back to the Create pose.
 
 ## Current limitations
 

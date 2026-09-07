@@ -169,7 +169,7 @@ When two Animations reuse the same node ID, that node must have the same inherit
 
 Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
 
-Timeline command events are preserved. Animations referenced by a Sequence cannot use `start`, `loop`, or `stop` command events.
+Timeline command events and the `start`, `loop`, and `stop` event groups are preserved as described above.
 
 ## Playback behavior
 

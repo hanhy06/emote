@@ -246,6 +246,18 @@
             "time": "40t",
             "value": "v.caption_visible"
           }
+        ],
+        "nbt": [
+          {
+            "time": "0t",
+            "value": {
+              "molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
+            }
+          },
+          {
+            "time": "40t",
+            "value": "{Glowing:0b}"
+          }
         ]
       },
       "effect_anchor": {
