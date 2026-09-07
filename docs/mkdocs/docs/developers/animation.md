@@ -28,8 +28,7 @@ Animation files use schema version `4`. An Animation defines a hierarchy of disp
       }
     },
     "playback": {
-      "mode": "once",
-      "loop_delay": "0t"
+      "mode": "once"
     }
   },
   "nodes": {
@@ -127,10 +126,12 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 | Mode | Description |
 |---|---|
-| `once` | Plays the timeline once. `loop_delay` must be `0t`. |
-| `hold` | Plays once, then holds the last frame until stopped. `loop_delay` must be `0t`; unavailable in Sequences. |
-| `loop` | Repeats the timeline after `loop_delay`. |
+| `once` | Plays the timeline once. |
+| `hold` | Plays once, then holds the last frame until stopped; unavailable in Sequences. |
+| `loop` | Plays from tick `0` once, then repeats from `loop_start` after `loop_delay`. |
 | `server_sync` | Selects the current timeline position from server time so independently started playbacks remain synchronized; unavailable in Sequences. |
+
+`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. `loop_start` may be nonzero only in `loop` mode and must be earlier than the timeline duration. `loop_delay` may be nonzero in `loop` and `server_sync` modes. Omitting either field preserves the behavior of existing compiled Animation files.
 
 ## Nodes
 

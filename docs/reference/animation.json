@@ -24,6 +24,7 @@
     },
     "playback": {
       "mode": "loop",
+      "loop_start": "0t",
       "loop_delay": "0t"
     }
   },
