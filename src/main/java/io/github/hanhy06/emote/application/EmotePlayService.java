@@ -59,7 +59,7 @@ public class EmotePlayService {
         }
         PlayResult result = this.emoteStarter.start(player, emote);
         if (result.isSuccess()) {
-            this.playbackPolicy.onPlaybackStarted(decision);
+            this.playbackPolicy.onPlaybackStarted(player, decision);
         }
         return result;
     }

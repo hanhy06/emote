@@ -2,18 +2,22 @@ package io.github.hanhy06.emote.application;
 
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaySource;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.permission.PermissionService;
+import io.github.hanhy06.emote.playback.PlaybackStateListener;
+import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
+import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.server.level.ServerPlayer;
 
 import java.util.*;
 import java.util.function.Function;
 import java.util.function.ToLongFunction;
 
-public final class PlaybackPolicyService implements AccessConfigListener {
+public final class PlaybackPolicyService implements AccessConfigListener, PlaybackStateListener {
     private static final String DEFAULT_PERMISSION = "emote.default";
     private static final Rules COMMAND_RULES = new Rules(true, true, true, true);
     private static final Rules IDLE_RULES = new Rules(true, true, true, false);
@@ -23,6 +27,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
     private final Function<ServerPlayer, UUID> playerIdResolver;
     private final ToLongFunction<ServerPlayer> tickSource;
     private final Cooldowns cooldowns = new Cooldowns();
+    private final Map<UUID, PendingCooldown> pendingCooldowns = new HashMap<>();
 
     private List<AccessConfig.PermissionEntry> permissionEntries = List.of();
     private List<AccessConfig.PermissionEntry> wildcardPermissionEntries = List.of();
@@ -95,17 +100,32 @@ public final class PlaybackPolicyService implements AccessConfigListener {
                 "You can use this emote again in " + remainingSeconds + (remainingSeconds == 1 ? " second." : " seconds.")
             );
         }
-        return Decision.allowed(playerId, emote.id(), currentTick, cooldownTicks);
+        return Decision.allowed(playerId, emote.id(), cooldownTicks);
     }
 
-    void onPlaybackStarted(Decision decision) {
+    void onPlaybackStarted(ServerPlayer player, Decision decision) {
+        UUID playerId = this.playerIdResolver.apply(player);
+        this.pendingCooldowns.remove(playerId);
         if (decision.cooldownTicks() > 0) {
-            this.cooldowns.start(
-                decision.playerId(),
-                decision.emoteId(),
-                decision.currentTick(),
-                decision.cooldownTicks()
-            );
+            this.cooldowns.cancel(decision.playerId(), decision.emoteId());
+            this.pendingCooldowns.put(playerId, new PendingCooldown(decision.emoteId(), decision.cooldownTicks()));
+        }
+    }
+
+    @Override
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    }
+
+    @Override
+    public void onStopped(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant, PlaybackStopReason reason) {
+        onPlaybackEnded(player, session.id());
+    }
+
+    void onPlaybackEnded(ServerPlayer player, String emoteId) {
+        UUID playerId = this.playerIdResolver.apply(player);
+        PendingCooldown pending = this.pendingCooldowns.remove(playerId);
+        if (pending != null && pending.emoteId().equals(emoteId)) {
+            this.cooldowns.start(playerId, emoteId, this.tickSource.applyAsLong(player), pending.cooldownTicks());
         }
     }
 
@@ -131,6 +151,7 @@ public final class PlaybackPolicyService implements AccessConfigListener {
 
     public void clearCooldowns() {
         this.cooldowns.clear();
+        this.pendingCooldowns.clear();
     }
 
     private Rules rulesFor(ServerPlayer player, PlaySource source) {
@@ -203,6 +224,17 @@ public final class PlaybackPolicyService implements AccessConfigListener {
             }
         }
 
+        private void cancel(UUID playerId, String emoteId) {
+            Map<String, Long> playerCooldowns = this.readyTicks.get(playerId);
+            if (playerCooldowns == null) {
+                return;
+            }
+            playerCooldowns.remove(emoteId);
+            if (playerCooldowns.isEmpty()) {
+                this.readyTicks.remove(playerId);
+            }
+        }
+
         private void clear() {
             this.readyTicks.clear();
         }
@@ -212,24 +244,26 @@ public final class PlaybackPolicyService implements AccessConfigListener {
         PlayResult rejection,
         UUID playerId,
         String emoteId,
-        long currentTick,
         int cooldownTicks
     ) {
         private static Decision allowed() {
-            return new Decision(null, null, null, 0L, 0);
+            return new Decision(null, null, null, 0);
         }
 
-        private static Decision allowed(UUID playerId, String emoteId, long currentTick, int cooldownTicks) {
-            return new Decision(null, playerId, emoteId, currentTick, cooldownTicks);
+        private static Decision allowed(UUID playerId, String emoteId, int cooldownTicks) {
+            return new Decision(null, playerId, emoteId, cooldownTicks);
         }
 
         private static Decision denied(String message) {
-            return new Decision(PlayResult.failure(message), null, null, 0L, 0);
+            return new Decision(PlayResult.failure(message), null, null, 0);
         }
 
         boolean isAllowed() {
             return this.rejection == null;
         }
+    }
+
+    private record PendingCooldown(String emoteId, int cooldownTicks) {
     }
 
     private record Rules(

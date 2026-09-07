@@ -93,6 +93,7 @@ final class EmoteBootstrap {
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(playback);
+        playback.addStateListener(playbackPolicy);
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();

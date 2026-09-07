@@ -51,7 +51,8 @@ class PlaybackPolicyServiceTest {
         PreparedAnimation idle = create("demo:idle", "Idle", 20);
         PlaybackPolicyService.Decision first = service.evaluate(null, idle, PlaySource.IDLE);
         assertAllowed(first);
-        service.onPlaybackStarted(first);
+        service.onPlaybackStarted(null, first);
+        service.onPlaybackEnded(null, idle.id());
 
         assertDenied(service.evaluate(null, idle, PlaySource.IDLE));
         assertDenied(service.evaluate(null, create("demo:disabled", "Disabled"), PlaySource.IDLE));
@@ -69,7 +70,7 @@ class PlaybackPolicyServiceTest {
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.API);
         assertAllowed(first);
-        service.onPlaybackStarted(first);
+        service.onPlaybackStarted(null, first);
 
         assertAllowed(service.evaluate(null, emote, PlaySource.API));
     }
@@ -85,14 +86,14 @@ class PlaybackPolicyServiceTest {
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(first);
-        service.onPlaybackStarted(first);
+        service.onPlaybackStarted(null, first);
 
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
         assertTrue(service.isVisibleForCommand(null, emote));
     }
 
     @Test
-    void commandCooldownStartsOnlyAfterSuccessfulPlaybackIsReported() {
+    void commandCooldownStartsWhenSuccessfulPlaybackEnds() {
         AtomicLong tick = new AtomicLong();
         PlaybackPolicyService service = service(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
@@ -108,13 +109,15 @@ class PlaybackPolicyServiceTest {
         assertAllowed(notStarted);
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
 
-        service.onPlaybackStarted(notStarted);
-        assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
-        service.clearCooldowns();
+        service.onPlaybackStarted(null, notStarted);
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
 
-        service.onPlaybackStarted(notStarted);
-        tick.set(20L);
+        tick.set(10L);
+        service.onPlaybackEnded(null, emote.id());
+        assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
+        tick.set(29L);
+        assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
+        tick.set(30L);
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
     }
 
@@ -139,7 +142,8 @@ class PlaybackPolicyServiceTest {
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(first);
         assertEquals(51, first.cooldownTicks());
-        service.onPlaybackStarted(first);
+        service.onPlaybackStarted(null, first);
+        service.onPlaybackEnded(null, emote.id());
 
         tick.set(50L);
         assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
