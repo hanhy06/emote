@@ -67,6 +67,9 @@ public final class AnimationJsonParser {
         MolangPrograms molang = parseMolang(document.optionalObject(root, "molang", "$"), settings, document);
         Map<String, Node> nodes = parseNodes(document.requireObject(root, "nodes", "$"), document);
         Timeline timeline = this.timelineParser.parse(document.requireObject(root, "timeline", "$"), nodes, document);
+        if (settings.playback().loopStartTicks() >= timeline.durationTicks() && settings.playback().loopStartTicks() != 0) {
+            throw document.error("$.settings.playback.loop_start", "must be less than the timeline duration");
+        }
         return new LoadedAnimation(
             document.sourcePath(),
             sha256(document.bytes()),
@@ -143,12 +146,23 @@ public final class AnimationJsonParser {
             case "server_sync" -> LoopMode.SERVER_SYNC;
             default -> throw document.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
         };
-        int loopDelayTicks = document.requireTime(playbackObject, "loop_delay", "$.settings.playback", 0);
+        int loopStartTicks = optionalTime(playbackObject, "loop_start", "$.settings.playback", document);
+        int loopDelayTicks = optionalTime(playbackObject, "loop_delay", "$.settings.playback", document);
         try {
-            return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopDelayTicks));
+            return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopStartTicks, loopDelayTicks));
         } catch (IllegalArgumentException exception) {
-            throw document.error("$.settings.playback.loop_delay", exception.getMessage(), exception);
+            String field = loopStartTicks != 0 && mode != LoopMode.LOOP ? "loop_start" : "loop_delay";
+            throw document.error("$.settings.playback." + field, exception.getMessage(), exception);
         }
+    }
+
+    private int optionalTime(JsonObject object, String key, String path, EmoteJsonDocument document)
+        throws EmoteAnimationLoadException {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return 0;
+        }
+        return document.requireTime(object, key, path, 0);
     }
 
     static EmotePlayerBehavior parsePlayer(JsonObject object, String path, EmoteJsonDocument document)

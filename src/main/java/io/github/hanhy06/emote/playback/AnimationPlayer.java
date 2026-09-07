@@ -57,7 +57,7 @@ public final class AnimationPlayer {
             throw new IllegalStateException("Timeline already started");
         }
         this.started = true;
-        resetToTickZero();
+        resetToTick(0);
     }
 
     public void startSynchronized(long serverTick) {
@@ -179,7 +179,7 @@ public final class AnimationPlayer {
             this.remainingLoopDelay--;
             if (this.remainingLoopDelay == 0) {
                 this.loopCount++;
-                resetToTickZero();
+                resetToLoopStart();
                 return AdvanceResult.RESTARTED;
             }
             return AdvanceResult.CONTINUE;
@@ -214,7 +214,7 @@ public final class AnimationPlayer {
         int loopDelay = this.animation.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
             this.loopCount++;
-            resetToTickZero();
+            resetToLoopStart();
             return AdvanceResult.RESTARTED;
         }
         this.remainingLoopDelay = loopDelay;
@@ -268,13 +268,18 @@ public final class AnimationPlayer {
         return this.target.createTransformation(nodeId, matrix, this.evaluator.preservesMatrix(nodeId));
     }
 
-    private void resetToTickZero() {
+    private void resetToLoopStart() {
+        resetToTick(this.animation.settings().playback().loopStartTicks());
+    }
+
+    private void resetToTick(int tick) {
         this.target.resetAll();
         clearState();
+        this.currentTick = tick;
         if (this.evaluator == null) {
-            applyTick(0);
+            applyTick(tick);
         } else {
-            this.evaluator.beginCycle(0, this.loopCount);
+            this.evaluator.beginCycle(tick, this.loopCount);
             applyEvaluator(0, Map.of());
         }
     }

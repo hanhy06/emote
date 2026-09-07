@@ -115,6 +115,25 @@ class AnimationPlayerTest {
     }
 
     @Test
+    void firstCycleStartsAtZeroAndLaterCyclesRestartFromConfiguredTick() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "4t");
+        root.getAsJsonObject("timeline").addProperty("duration", "10t");
+
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+
+        assertEquals(0, player.currentTick());
+        for (int tick = 0; tick < 10; tick++) player.advance();
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(4, player.currentTick());
+        assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
     void appliesNbtOnlyWhenTheStepFrameChangesAndRestoresItOnLoop() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");

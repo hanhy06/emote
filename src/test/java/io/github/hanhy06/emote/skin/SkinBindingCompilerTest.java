@@ -104,7 +104,7 @@ class SkinBindingCompilerTest {
         return new EmoteAnimation(
             Identifier.parse("test:skin"),
             new EmoteMetadata("Skin", "Skin"),
-            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)),
+            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
             new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())

@@ -54,11 +54,17 @@ public record EmoteAnimation(
         }
     }
 
-    public record PlaybackSettings(LoopMode mode, int loopDelayTicks) {
+    public record PlaybackSettings(LoopMode mode, int loopStartTicks, int loopDelayTicks) {
         public PlaybackSettings {
             Objects.requireNonNull(mode, "mode");
+            if (loopStartTicks < 0) {
+                throw new IllegalArgumentException("loop start must not be negative");
+            }
             if (loopDelayTicks < 0) {
                 throw new IllegalArgumentException("loop delay must not be negative");
+            }
+            if (mode != LoopMode.LOOP && loopStartTicks != 0) {
+                throw new IllegalArgumentException("loop start must be zero unless playback mode is loop");
             }
             if ((mode == LoopMode.ONCE || mode == LoopMode.HOLD) && loopDelayTicks != 0) {
                 throw new IllegalArgumentException("loop delay must be zero when playback mode is once or hold");
