@@ -12,6 +12,7 @@ interface FixtureCompileOptions {
   standalone?: boolean;
   cooldown?: string;
   loopDelay?: string;
+  rotationDeadzoneByAnimation?: Readonly<Record<string, number>>;
 }
 
 export function compileImportedProject(project: ImportedProject, options: FixtureCompileOptions): EmoteAnimation[] {
@@ -42,6 +43,7 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
         standalone: options.standalone ?? true,
         cooldown: options.cooldown ?? "0t",
         loopDelay: options.loopDelay ?? animation.output.loopDelay,
+        rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.source.name] ?? animation.output.rotationDeadzone,
       },
     })),
   };

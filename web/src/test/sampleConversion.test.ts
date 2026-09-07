@@ -31,7 +31,7 @@ describe("documentation sample conversion", () => {
     ]);
     const direct = [
       ...compileImportedProject(animatedJavaProject, {}),
-      ...compileImportedProject(geckoLibProject, {}),
+      ...compileImportedProject(geckoLibProject, { rotationDeadzoneByAnimation: { cry: 0 } }),
     ];
 
     directAnimations = new Map(direct.map((animation) => [animation.metadata.name, animation]));
