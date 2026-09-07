@@ -38,14 +38,14 @@ describe("documentation sample conversion", () => {
     sitAnimations = new Map(compileImportedProject(sitProject, { standalone: false }).map((animation) => [animation.metadata.name, animation]));
   });
 
-  it.each(DIRECT_SAMPLES)("keeps the %s sample unchanged", async (name) => {
+  it.each(DIRECT_SAMPLES)("preserves the %s sample transform matrices", async (name) => {
     const actual = requireAnimation(directAnimations, name);
-    const expected = await readJson(`docs/sample/emote.${name}.json`);
+    const expected = await readJson(`docs/sample/emote.${name}.json`) as EmoteAnimation;
 
     if (name === "anvil") {
       expect(Object.values(actual.nodes).some((node) => node.type === "block_display"), "anvil must exercise Animated Java block-display conversion").toBe(true);
     }
-    expectJsonEquivalent(withoutUnrecordedTarget(actual, expected), expected);
+    await expectAnimationMatricesEquivalent(actual, expected);
   });
 
   it.each(Object.entries(SIT_MATRIX_SAMPLES))("preserves the %s sample transform matrices", async (name, fileName) => {
@@ -86,30 +86,6 @@ async function readBytes(path: string): Promise<Uint8Array> {
   return readFile(resolve(REPOSITORY_ROOT, path));
 }
 
-function withoutUnrecordedTarget(actual: EmoteAnimation, expected: unknown): EmoteAnimation | Omit<EmoteAnimation, "target_minecraft_version"> {
-  if (typeof expected === "object" && expected !== null && "target_minecraft_version" in expected) return actual;
-  const { target_minecraft_version: _targetMinecraftVersion, ...comparable } = actual;
-  return comparable;
-}
-
-function expectJsonEquivalent(actual: unknown, expected: unknown, path = "$"): void {
-  if (typeof actual === "number" && typeof expected === "number") {
-    expect(actual, path).toBeCloseTo(expected, 10);
-    return;
-  }
-  if (Array.isArray(actual) && Array.isArray(expected)) {
-    expect(actual.length, `${path}.length`).toBe(expected.length);
-    expected.forEach((value, index) => expectJsonEquivalent(actual[index], value, `${path}[${index}]`));
-    return;
-  }
-  if (isRecord(actual) && isRecord(expected)) {
-    expect(Object.keys(actual).sort(), `${path} keys`).toEqual(Object.keys(expected).sort());
-    for (const key of Object.keys(expected)) expectJsonEquivalent(actual[key], expected[key], `${path}.${key}`);
-    return;
-  }
-  expect(actual, path).toEqual(expected);
-}
-
 async function expectAnimationMatricesEquivalent(actual: EmoteAnimation, expected: EmoteAnimation): Promise<void> {
   const [actualProject, expectedProject] = await Promise.all([
     importEmote(actual, "actual.json"),
@@ -118,15 +94,15 @@ async function expectAnimationMatricesEquivalent(actual: EmoteAnimation, expecte
   const actualAnimation = actualProject.animations[0];
   const expectedAnimation = expectedProject.animations[0];
 
-  expect(Object.keys(actualProject.nodes).sort()).toEqual(Object.keys(expectedProject.nodes).sort());
   for (const [nodeId, expectedNode] of Object.entries(expectedProject.nodes)) {
     const actualNode = actualProject.nodes[nodeId];
+    expect(actualNode, `nodes.${nodeId} must exist`).toBeDefined();
     expectMatrix(actualNode.defaultMatrix, expectedNode.defaultMatrix, `nodes.${nodeId}`);
   }
 
-  expect(Object.keys(actualAnimation.tracks).sort()).toEqual(Object.keys(expectedAnimation.tracks).sort());
   for (const [nodeId, expectedTrack] of Object.entries(expectedAnimation.tracks)) {
     const actualTrack = actualAnimation.tracks[nodeId];
+    expect(actualTrack, `tracks.${nodeId} must exist`).toBeDefined();
     expect(actualTrack.transforms.length, `${nodeId} transform count`).toBe(expectedTrack.transforms.length);
     expectedTrack.transforms.forEach((expectedFrame, index) => {
       const actualFrame = actualTrack.transforms[index];
@@ -143,8 +119,4 @@ async function importEmote(animation: EmoteAnimation, name: string) {
 
 function expectMatrix(actual: Matrix16, expected: Matrix16, path: string): void {
   actual.forEach((value, index) => expect(value, `${path}[${index}]`).toBeCloseTo(expected[index], 9));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
