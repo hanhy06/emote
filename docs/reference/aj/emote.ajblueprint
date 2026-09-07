@@ -27387,7 +27387,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "particle minecraft:white_smoke ~ ~0.9 ~-0.6 0.75 0.3 0.3 0.025 45 normal @a[distance=..24]",
+									"function": "particle minecraft:white_smoke ~ ~0.9 ~-0.6 1.5 0.6 0.6 0.025 90 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
