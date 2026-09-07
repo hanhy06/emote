@@ -208,19 +208,19 @@ public final class PreparedAnimationTimeline {
 
     public static final class CompiledNbtKeyframe {
         private final int tick;
-        private final CompoundTag constant;
+        private final CompoundTag fixed;
         private final MolangEngine.CompiledExpression expression;
         private final String path;
         private final Map<String, CompoundTag> cache = new ConcurrentHashMap<>();
 
         private CompiledNbtKeyframe(
             int tick,
-            CompoundTag constant,
+            CompoundTag fixed,
             MolangEngine.CompiledExpression expression,
             String path
         ) {
             this.tick = tick;
-            this.constant = constant == null ? null : constant.copy();
+            this.fixed = fixed == null ? null : fixed.copy();
             this.expression = expression;
             this.path = path;
         }
@@ -230,7 +230,7 @@ public final class PreparedAnimationTimeline {
         }
 
         public CompoundTag evaluate(MolangEngine.Session session) {
-            if (this.constant != null) return this.constant.copy();
+            if (this.fixed != null) return this.fixed.copy();
 
             String source;
             try {

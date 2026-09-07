@@ -248,29 +248,37 @@ function compileMolangNbtLiterals(
   profile: MinecraftVersionProfile,
 ): string {
   return source.replace(/(["'])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g, (literal, quote: string, encoded: string) => {
-    const decoded = encoded.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
-      if (character === "n") return "\n";
-      if (character === "r") return "\r";
-      if (character === "t") return "\t";
-      if (character === "b") return "\b";
-      if (character === "f") return "\f";
-      return character;
-    });
+    const decoded = decodeMolangString(encoded);
     if (!decoded.trimStart().startsWith("{")) return literal;
 
     try {
       const compiled = compileNodeNbt(document, nodeId, readDisplayNbt(decoded), profile) ?? "{}";
-      const escaped = compiled
-        .replaceAll("\\", "\\\\")
-        .replaceAll(quote, `\\${quote}`)
-        .replaceAll("\n", "\\n")
-        .replaceAll("\r", "\\r")
-        .replaceAll("\t", "\\t");
-      return `${quote}${escaped}${quote}`;
+      return quoteMolangString(compiled, quote);
     } catch {
       return literal;
     }
   });
+}
+
+function decodeMolangString(value: string): string {
+  return value.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
+    if (character === "n") return "\n";
+    if (character === "r") return "\r";
+    if (character === "t") return "\t";
+    if (character === "b") return "\b";
+    if (character === "f") return "\f";
+    return character;
+  });
+}
+
+function quoteMolangString(value: string, quote: string): string {
+  const escaped = value
+    .replaceAll("\\", "\\\\")
+    .replaceAll(quote, `\\${quote}`)
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t");
+  return `${quote}${escaped}${quote}`;
 }
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {
