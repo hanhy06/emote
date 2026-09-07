@@ -986,7 +986,13 @@
 			"blend_weight": "",
 			"start_delay": "",
 			"loop_delay": "0",
-			"excluded_nodes": [],
+			"excluded_nodes": [
+				{
+					"icon": "icecream",
+					"name": "goat_horn_display",
+					"value": "8c1acdd3-3127-4539-8d4d-fc12670a9a8c"
+				}
+			],
 			"animators": {
 				"3fb67721-9eef-8ce2-b455-f3b58a77403e": {
 					"name": "waist",
@@ -1261,8 +1267,14 @@
 			"anim_time_update": "",
 			"blend_weight": "",
 			"start_delay": "",
-			"loop_delay": "",
-			"excluded_nodes": [],
+			"loop_delay": "0",
+			"excluded_nodes": [
+				{
+					"icon": "deployed_code",
+					"name": "anvil_display",
+					"value": "42eeabad-b9fa-0dc5-bd3a-8d4a55bd769c"
+				}
+			],
 			"animators": {
 				"d2a3967c-f93f-b33a-1dcf-f1c88815d458": {
 					"name": "right_arm",
