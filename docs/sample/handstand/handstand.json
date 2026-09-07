@@ -3,8 +3,8 @@
   "schema_version": 4,
   "id": "emote:handstand",
   "metadata": {
-    "name": "handstand",
-    "description": "Handstand idle emote."
+    "name": "Handstand",
+    "description": "Attempt a handstand."
   },
   "settings": {
     "cooldown": "0t",

@@ -3,8 +3,8 @@
   "schema_version": 4,
   "id": "emote:sit",
   "metadata": {
-    "name": "sitting",
-    "description": "Sitting idle emote.",
+    "name": "Sit",
+    "description": "Sit down and relax.",
     "author": "@soji2318"
   },
   "settings": {

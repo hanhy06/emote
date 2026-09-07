@@ -3,8 +3,8 @@
     "schema_version": 4,
     "id": "emote:handshake",
     "metadata": {
-        "name": "handshake",
-        "description": "handshake emote."
+        "name": "Handshake",
+        "description": "Offer another player a handshake."
     },
     "participants": {
         "initiator": {
