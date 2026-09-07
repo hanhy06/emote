@@ -270,8 +270,7 @@ describe("exportAnimation", () => {
     expect(animation.nodes.cube.item_stack_snbt).toContain("minecraft:player_head");
     expect(animation.nodes.cube.transform).toEqual({ position: [0.125, 0.25, 0.125], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5] });
     expect(animation.nodes.cube.skin).toEqual({ participant: "initiator", part: "head", order: 0 });
-    expect(animation.timeline.tracks.cube.position[0].value).toEqual([0.125, 0.25, 0.125]);
-    expect(animation.timeline.tracks.cube.scale[0].value).toEqual([0.5, 0.5, 0.5]);
+    expect(animation.timeline.tracks.cube).toBeUndefined();
 
     const unassignedResult = exportAnimation(project, {
       minecraftVersion: "26.2",

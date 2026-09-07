@@ -1,6 +1,7 @@
 import type { EmoteAnimation } from "./emoteAnimation";
 import { ConversionError } from "../foundation/diagnostics";
 import { validateEmoteAnimation } from "./validator";
+import { removeRedundantKeyframes } from "./keyframeCleanup";
 
 export function serializeEmoteAnimation(animation: EmoteAnimation): string {
   const issues = validateEmoteAnimation(animation);
@@ -8,5 +9,5 @@ export function serializeEmoteAnimation(animation: EmoteAnimation): string {
     const first = issues[0];
     throw new ConversionError("invalid_emote_animation", `Invalid emote animation at ${first.path}: ${first.message}`, first.path);
   }
-  return JSON.stringify(animation);
+  return JSON.stringify(removeRedundantKeyframes(animation));
 }
