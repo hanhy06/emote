@@ -253,7 +253,7 @@ public class PlaybackEngine implements ConfigListener {
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
-            if (session != null && removeSession(session)) {
+            if (session != null && this.sessionRegistry.remove(session)) {
                 cleanupSession(session, startedNotified, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
@@ -308,7 +308,7 @@ public class PlaybackEngine implements ConfigListener {
         if (session == null) {
             return releasePlayerReservation(playerUuid);
         }
-        if (!removeSession(session)) {
+        if (!this.sessionRegistry.remove(session)) {
             return null;
         }
         cleanupSession(session, true, reason, knownPlayer);
@@ -329,12 +329,18 @@ public class PlaybackEngine implements ConfigListener {
         for (PlaybackSession session : this.sessionRegistry.sessions()) {
             PlaybackParticipant initiator = session.initiator();
             ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
+            ServerPlayer partnerPlayer = null;
             PlaybackStopReason stopReason = null;
             for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                ServerPlayer participantPlayer = participant == initiator
+                    ? player
+                    : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                 if (!canKeepPlaying(participantPlayer, session)) {
                     stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
                     break;
+                }
+                if (participant != initiator) {
+                    partnerPlayer = participantPlayer;
                 }
                 if (session.playerBehavior().stopConditions().submerge() && participantPlayer.isUnderWater()) {
                     stopReason = PlaybackStopReason.SUBMERGED;
@@ -377,10 +383,7 @@ public class PlaybackEngine implements ConfigListener {
 
                     if (stopReason == null && !playbackChanged(session)) {
                         for (PlaybackParticipant participant : session.participants()) {
-                            ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                            if (participantPlayer != null) {
-                                this.playerVisibilityService.tick(participantPlayer, session, participant);
-                            }
+                            this.playerVisibilityService.tick(participant == initiator ? player : partnerPlayer, session, participant);
                         }
                     }
                 } catch (RuntimeException exception) {
@@ -563,14 +566,10 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
-        if (!removeSession(session)) {
+        if (!this.sessionRegistry.remove(session)) {
             return;
         }
         cleanupSession(session, true, reason, null);
-    }
-
-    private boolean removeSession(PlaybackSession session) {
-        return this.sessionRegistry.remove(session);
     }
 
     private void cleanupSession(
