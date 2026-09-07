@@ -1,0 +1,30 @@
+{
+  "type": "sequence",
+  "schema_version": 4,
+  "id": "emote:handstand",
+  "metadata": {
+    "name": "handstand",
+    "description": "Handstand idle emote."
+  },
+  "settings": {
+    "cooldown": "0t",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "steps": [
+    {
+      "emote": ["emote:handstand_fail",75,"emote:handstand_success",25],
+      "repeat": 1
+    }
+  ]
+}
