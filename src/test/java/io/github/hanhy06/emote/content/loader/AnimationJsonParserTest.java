@@ -82,12 +82,25 @@ class AnimationJsonParserTest {
     @Test
     void defaultsOmittedLoopStartAndDelayToZero() throws Exception {
         JsonObject playback = readReference().getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.remove("loop_start");
         playback.remove("loop_delay");
 
         EmoteAnimation.PlaybackSettings settings = parse(readReferenceWithPlayback(playback)).animation().settings().playback();
 
         assertEquals(0, settings.loopStartTicks());
         assertEquals(0, settings.loopDelayTicks());
+    }
+
+    @Test
+    void rejectsLoopStartOutsideLoopModeAtItsField() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "once");
+        playback.addProperty("loop_start", "1t");
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.settings.playback.loop_start", exception.fieldPath());
     }
 
     @Test
