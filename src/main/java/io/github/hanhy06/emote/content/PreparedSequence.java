@@ -80,12 +80,6 @@ public record PreparedSequence(
         if (animation == null) {
             throw new IllegalArgumentException("Unknown or disabled animation: " + id);
         }
-        if (animation.loopMode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-            throw new IllegalArgumentException("Server-synchronized animation is not supported in a sequence: " + animation.id());
-        }
-        if (animation.loopMode() == EmoteAnimation.LoopMode.HOLD) {
-            throw new IllegalArgumentException("Hold animation is not supported in a sequence: " + animation.id());
-        }
         return animation;
     }
 

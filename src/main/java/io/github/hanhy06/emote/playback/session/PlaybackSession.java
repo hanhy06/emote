@@ -175,8 +175,11 @@ public final class PlaybackSession {
     }
 
     private void replaceAnimation(AnimationPlayer animation, State state) {
-        this.animation = Objects.requireNonNull(animation, "animation");
-        this.state = Objects.requireNonNull(state, "state");
+        animation = Objects.requireNonNull(animation, "animation");
+        state = Objects.requireNonNull(state, "state");
+        this.animation.stop();
+        this.animation = animation;
+        this.state = state;
     }
 
     public Collection<PlaybackParticipant> participants() {
