@@ -20,26 +20,26 @@ export function createAjProjectRuntime(
     if (!sourceNode) continue;
     const ids = ajAnchorIds(element.uuid);
     const basePosition = [element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
-    const baseRotation = [element.rotation[0], -element.rotation[1], -element.rotation[2]] as [number, number, number];
-    nodes[ids.z] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [0, 0, baseRotation[2]], scale: ONE_VECTOR } };
-    nodes[ids.y] = { type: "anchor", parent: ids.z, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
+    const baseRotation = element.rotation;
+    nodes[ids.x] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
+    nodes[ids.y] = { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
     const baseScale = element.scale.map((value) => value * sceneScale) as [number, number, number];
-    nodes[ids.x] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: baseScale } };
+    nodes[ids.z] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [0, 0, baseRotation[2]], scale: baseScale } };
     const nodeTransform = element.type === "animated_java:vanilla_text_display" || element.type === "animated_java:text_display"
       ? { ...IDENTITY_TRANSFORM, rotation: [0, 180, 0] as const }
       : IDENTITY_TRANSFORM;
-    nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.x);
+    nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 1 ? value : affineMolang(value, -1, 0));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 2 ? value : affineMolang(value, -1, 0));
     const scale = ajProjectFrames(keyframes, "scale", baseScale, (value, axis) => multiply(value, element.type === "animated_java:vanilla_item_display" ? sceneScale : baseScale[axis]));
-    if (position) tracks[ids.z] = { position };
+    if (position) tracks[ids.x] = { position };
     if (rotation) {
       tracks[ids.z] = { ...tracks[ids.z], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
       tracks[ids.y] = { rotation: isolateMolangAxis(rotation, 1, (value) => affineMolang(value, 1, baseRotation[1])) };
       tracks[ids.x] = { ...tracks[ids.x], rotation: isolateMolangAxis(rotation, 0, (value) => affineMolang(value, 1, baseRotation[0])) };
     }
-    if (scale) tracks[ids.x] = { ...tracks[ids.x], scale };
+    if (scale) tracks[ids.z] = { ...tracks[ids.z], scale };
   }
   return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
 }

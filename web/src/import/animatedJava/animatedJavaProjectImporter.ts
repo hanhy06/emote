@@ -611,6 +611,8 @@ function projectElementMatrix(
     basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     scale,
+    // AJ display updateTransform copies the mesh's default XYZ order into fix_rotation.
+    isDirectDisplay(element.type) ? "XYZ" : "ZYX",
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
   const result = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local);
