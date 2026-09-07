@@ -140,6 +140,13 @@ public final class MolangEngine {
             return MolangRuntime.evaluate(this.evaluator.scope(), expression.expressions);
         }
 
+        public String evaluateString(CompiledExpression expression) {
+            Objects.requireNonNull(expression, "expression");
+            Value result = MolangRuntime.evaluateValue(this.evaluator.scope(), expression.expressions);
+            if (result instanceof StringValue string) return string.value();
+            throw new IllegalStateException("Molang expression must evaluate to a string");
+        }
+
         private static Value runtimeValue(QueryValue value) {
             return switch (value) {
                 case NumberQueryValue number -> NumberValue.of(number.value());

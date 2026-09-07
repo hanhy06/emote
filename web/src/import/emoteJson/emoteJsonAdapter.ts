@@ -166,7 +166,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
     if (source.nbt?.some((frame) => typeof frame.value !== "string")) {
-      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang-selected NBT cannot be represented by the web editor");
+      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang NBT cannot be represented by the web editor");
     }
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),

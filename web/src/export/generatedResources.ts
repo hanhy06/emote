@@ -25,8 +25,7 @@ export function animationUsesGeneratedResources(
     return true;
   }
   return Object.values(animation.timeline.tracks).some((track) => track.nbt?.some((frame) => {
-    const options = typeof frame.value === "string" ? [frame.value] : frame.value.options;
-    return options.some(referencesGeneratedModel);
+    return referencesGeneratedModel(typeof frame.value === "string" ? frame.value : frame.value.molang);
   }));
 }
 

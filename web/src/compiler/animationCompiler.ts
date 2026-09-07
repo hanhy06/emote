@@ -22,7 +22,7 @@ import { localTransformToMatrix, matrixToLocalTransform } from "../format/localT
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
-import { writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
+import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
@@ -237,10 +237,40 @@ function compileRuntimeNbtValue(
   value: DisplayNbtValue,
   profile: MinecraftVersionProfile,
 ): EmoteNbtValue | undefined {
-  if (!("select" in value)) return compileNodeNbt(document, nodeId, value, profile);
-  const compiled = value.options.map((option) => compileNodeNbt(document, nodeId, option, profile));
-  if (compiled.every((option) => option === undefined)) return undefined;
-  return { ...value, options: compiled.map((option) => option ?? "{}") };
+  if ("molang" in value) return { molang: compileMolangNbtLiterals(document, nodeId, value.molang, profile) };
+  return compileNodeNbt(document, nodeId, value, profile);
+}
+
+function compileMolangNbtLiterals(
+  document: ConversionDocument,
+  nodeId: string,
+  source: string,
+  profile: MinecraftVersionProfile,
+): string {
+  return source.replace(/(["'])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g, (literal, quote: string, encoded: string) => {
+    const decoded = encoded.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
+      if (character === "n") return "\n";
+      if (character === "r") return "\r";
+      if (character === "t") return "\t";
+      if (character === "b") return "\b";
+      if (character === "f") return "\f";
+      return character;
+    });
+    if (!decoded.trimStart().startsWith("{")) return literal;
+
+    try {
+      const compiled = compileNodeNbt(document, nodeId, readDisplayNbt(decoded), profile) ?? "{}";
+      const escaped = compiled
+        .replaceAll("\\", "\\\\")
+        .replaceAll(quote, `\\${quote}`)
+        .replaceAll("\n", "\\n")
+        .replaceAll("\r", "\\r")
+        .replaceAll("\t", "\\t");
+      return `${quote}${escaped}${quote}`;
+    } catch {
+      return literal;
+    }
+  });
 }
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {

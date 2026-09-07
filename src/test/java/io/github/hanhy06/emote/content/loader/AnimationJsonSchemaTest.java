@@ -57,32 +57,26 @@ class AnimationJsonSchemaTest {
     }
 
     @Test
-    void loadsMolangSelectedNbtOptions() throws Exception {
+    void loadsMolangNbtExpression() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
                 [{
                   "time":"0t",
                   "value":{
-                    "select":"math.random_integer(0, 3)",
-                    "options":[
-                      "{item:{id:'minecraft:poppy',count:1}}",
-                      "{item:{id:'minecraft:dandelion',count:1}}",
-                      "{item:{id:'minecraft:blue_orchid',count:1}}"
-                    ]
+                    "molang":"q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
                   }
                 }]
                 """));
 
         EmoteAnimation.NbtValue value = parse(root).animation().timeline().tracks().get("display").nbt().getFirst().value();
-        EmoteAnimation.SelectedNbtValue selected = assertInstanceOf(EmoteAnimation.SelectedNbtValue.class, value);
+        EmoteAnimation.MolangNbtValue molang = assertInstanceOf(EmoteAnimation.MolangNbtValue.class, value);
 
-        assertEquals("math.random_integer(0, 3)", selected.selector().source());
-        assertEquals(3, selected.options().size());
+        assertEquals("q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'", molang.expression().source());
     }
 
     @Test
-    void rejectsMismatchedFieldsInInitialNbtOptions() {
+    void rejectsLegacySelectedNbtOptions() {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
@@ -95,7 +89,7 @@ class AnimationJsonSchemaTest {
                 }]
                 """));
 
-        assertEquals("$.timeline.tracks.display.nbt[0].value.options[1]", assertInvalid(root).fieldPath());
+        assertEquals("$.timeline.tracks.display.nbt[0].value.molang", assertInvalid(root).fieldPath());
     }
 
     @Test

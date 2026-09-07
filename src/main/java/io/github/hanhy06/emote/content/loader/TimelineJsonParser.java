@@ -67,7 +67,8 @@ final class TimelineJsonParser {
                 throw document.error(path + ".nbt", "anchor nodes do not support nbt tracks");
             }
             if (node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource
-                && nbt.stream().flatMap(frame -> frame.value().options().stream()).anyMatch(option -> option.contains("item"))) {
+                && nbt.stream().map(NbtKeyframe::value).filter(FixedNbtValue.class::isInstance)
+                    .map(FixedNbtValue.class::cast).anyMatch(value -> value.value().contains("item"))) {
                 throw document.error(path + ".nbt", "participant hand item nodes do not support item changes in nbt tracks");
             }
             if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty() && nbt.isEmpty()) {
@@ -95,26 +96,13 @@ final class TimelineJsonParser {
             JsonObject object = document.requireObject(array.get(index), keyframePath);
             int tick = parseTrackTime(object, keyframePath, durationTicks, previousTick, index, document);
             NbtValue parsed = parseNbtValue(document.requireElement(object, "value", keyframePath), keyframePath + ".value", document);
-            List<CompoundTag> options = parsed.options();
-            if (index == 0) {
-                initialFields = Set.copyOf(options.getFirst().keySet());
-                for (int optionIndex = 1; optionIndex < options.size(); optionIndex++) {
-                    if (!initialFields.equals(options.get(optionIndex).keySet())) {
-                        throw document.error(
-                            keyframePath + ".value.options[" + optionIndex + "]",
-                            "0t NBT options must declare the same fields"
-                        );
-                    }
+            if (parsed instanceof FixedNbtValue fixed) {
+                if (index == 0) initialFields = Set.copyOf(fixed.value().keySet());
+                else if (initialFields != null && !initialFields.containsAll(fixed.value().keySet())) {
+                    throw document.error(keyframePath + ".value", "must only modify fields declared by the 0t keyframe");
                 }
-            } else {
-                for (int optionIndex = 0; optionIndex < options.size(); optionIndex++) {
-                    if (!initialFields.containsAll(options.get(optionIndex).keySet())) {
-                        throw document.error(
-                            nbtOptionPath(keyframePath + ".value", parsed, optionIndex),
-                            "must only modify fields declared by the 0t keyframe"
-                        );
-                    }
-                }
+            } else if (index == 0) {
+                initialFields = null;
             }
             if (object.size() != 2) {
                 throw document.error(keyframePath, "nbt keyframes only support time and value");
@@ -131,27 +119,15 @@ final class TimelineJsonParser {
             return new FixedNbtValue(parseNbt(element.getAsString(), path, document));
         }
         JsonObject object = document.requireObject(element, path);
-        String selector = document.requireString(object, "select", path);
-        if (selector.isBlank()) {
-            throw document.error(path + ".select", "must not be blank");
+        String expression = document.requireString(object, "molang", path);
+        if (expression.isBlank()) {
+            throw document.error(path + ".molang", "must not be blank");
         }
-        AnimationJsonParser.compileMolang(selector, path + ".select", document);
-        JsonArray optionArray = document.requireArray(object, "options", path);
-        if (optionArray.size() < 2) {
-            throw document.error(path + ".options", "must contain at least two options");
+        AnimationJsonParser.compileMolang(expression, path + ".molang", document);
+        if (object.size() != 1) {
+            throw document.error(path, "Molang NBT only supports molang");
         }
-        if (object.size() != 2) {
-            throw document.error(path, "selected NBT only supports select and options");
-        }
-        List<CompoundTag> options = new ArrayList<>(optionArray.size());
-        for (int index = 0; index < optionArray.size(); index++) {
-            String optionPath = path + ".options[" + index + "]";
-            if (document.isNotString(optionArray.get(index))) {
-                throw document.error(optionPath, "must be a compound SNBT string");
-            }
-            options.add(parseNbt(optionArray.get(index).getAsString(), optionPath, document));
-        }
-        return new SelectedNbtValue(new MolangValue(selector, path + ".select"), options);
+        return new MolangNbtValue(new MolangValue(expression, path + ".molang"));
     }
 
     private CompoundTag parseNbt(String source, String path, EmoteJsonDocument document) throws EmoteAnimationLoadException {
@@ -167,10 +143,6 @@ final class TimelineJsonParser {
             }
         }
         return parsed;
-    }
-
-    private String nbtOptionPath(String path, NbtValue value, int optionIndex) {
-        return value instanceof FixedNbtValue ? path : path + ".options[" + optionIndex + "]";
     }
 
     private List<VectorKeyframe> parseVectorTrack(

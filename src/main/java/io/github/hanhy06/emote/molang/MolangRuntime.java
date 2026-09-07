@@ -23,6 +23,10 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
     }
 
     static double evaluate(Scope rootScope, List<Expression> expressions) {
+        return evaluateValue(rootScope, expressions).getAsNumber();
+    }
+
+    static Value evaluateValue(Scope rootScope, List<Expression> expressions) {
         Scope localScope = rootScope.copy();
         MutableObjectBinding temp = new MutableObjectBinding();
         localScope.set("temp", temp);
@@ -34,10 +38,10 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
         for (Expression expression : expressions) {
             lastResult = expression.visit(runtime);
             if (runtime.returnValue != null) {
-                return runtime.returnValue.getAsNumber();
+                return runtime.returnValue;
             }
         }
-        return lastResult == null ? 0.0D : lastResult.getAsNumber();
+        return lastResult == null ? NumberValue.zero() : lastResult;
     }
 
     @Override

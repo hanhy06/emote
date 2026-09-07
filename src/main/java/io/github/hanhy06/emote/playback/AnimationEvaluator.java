@@ -13,11 +13,16 @@ import org.joml.Quaternionf;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
 final class AnimationEvaluator {
+    private static final Set<String> RUNTIME_OWNED_NBT_FIELDS = Set.of(
+        "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
+        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
+    );
     private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
     private final PlayerMolangQueries.Source querySource;
@@ -262,8 +267,29 @@ final class AnimationEvaluator {
         while (state.nbtCursor + 1 < frames.size() && frames.get(state.nbtCursor + 1).tick() <= tick) {
             CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
             this.session.setQuery("key_frame_lerp_time", 0.0D);
-            state.nbtState.merge(frame.select(this.session));
+            CompoundTag patch = frame.evaluate(this.session);
+            validateNbtPatch(state, frame, patch);
+            state.nbtState.merge(patch);
             state.nbtChanged = true;
+        }
+    }
+
+    private void validateNbtPatch(NodeState state, CompiledNbtKeyframe frame, CompoundTag patch) {
+        String path = frame.path() == null ? "NBT keyframe at " + frame.tick() + "t" : frame.path();
+        for (String field : RUNTIME_OWNED_NBT_FIELDS) {
+            if (patch.contains(field)) throw new IllegalStateException(path + " must not modify runtime-owned field " + field);
+        }
+        if (state.node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource && patch.contains("item")) {
+            throw new IllegalStateException(path + " participant hand item nodes do not support item changes in nbt tracks");
+        }
+        Set<String> fields = Set.copyOf(patch.keySet());
+        if (state.nbtCursor == 0) {
+            if (state.nbtInitialFields == null) state.nbtInitialFields = fields;
+            else if (!state.nbtInitialFields.equals(fields)) {
+                throw new IllegalStateException(path + " must declare the same fields on every cycle");
+            }
+        } else if (!state.nbtInitialFields.containsAll(fields)) {
+            throw new IllegalStateException(path + " must only modify fields declared by the 0t keyframe");
         }
     }
 
@@ -385,6 +411,7 @@ final class AnimationEvaluator {
         private int visibilityCursor;
         private int nbtCursor = -1;
         private CompoundTag nbtState = new CompoundTag();
+        private Set<String> nbtInitialFields;
         private boolean nbtChanged;
         private boolean visible;
 

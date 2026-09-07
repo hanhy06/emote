@@ -166,7 +166,7 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void selectsNbtOncePerKeyframeAndAgainForANewLoop() throws Exception {
+    void evaluatesMolangNbtOncePerKeyframeAndAgainForANewLoop() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
         root.getAsJsonObject("timeline").addProperty("duration", "1t");
@@ -177,11 +177,7 @@ class AnimationPlayerTest {
                 [{
                   "time":"0t",
                   "value":{
-                    "select":"q.is_sneaking ? 1 : 0",
-                    "options":[
-                      "{item:{id:'minecraft:poppy',count:1}}",
-                      "{item:{id:'minecraft:blue_orchid',count:1}}"
-                    ]
+                    "molang":"q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
                   }
                 }]
                 """));
@@ -191,28 +187,27 @@ class AnimationPlayerTest {
         AnimationPlayer player = new AnimationPlayer(PreparedAnimation.from(load(root)), target, queries);
 
         player.start();
-        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+        assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
 
         sneaking.set(true);
         assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
         assertEquals(1, target.nbtApplyCount);
-        assertTrue(target.nbt.get("display").toString().contains("minecraft:poppy"));
+        assertFalse(target.nbt.get("display").getBooleanOr("Glowing", false));
 
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, target.nbtApplyCount);
-        assertTrue(target.nbt.get("display").toString().contains("minecraft:blue_orchid"));
+        assertTrue(target.nbt.get("display").getBooleanOr("Glowing", false));
     }
 
     @Test
-    void rejectsNbtSelectorResultOutsideItsOptions() throws Exception {
+    void rejectsNonStringMolangNbtResult() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
                 [{
                   "time":"0t",
                   "value":{
-                    "select":"2",
-                    "options":["{Glowing:false}", "{Glowing:true}"]
+                    "molang":"2"
                   }
                 }]
                 """));
@@ -220,11 +215,39 @@ class AnimationPlayerTest {
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
 
-        assertTrue(exception.getMessage().contains("only 2 options exist"));
+        assertTrue(exception.getMessage().contains("must evaluate to compound SNBT"));
     }
 
     @Test
-    void rebuildsSelectedNbtStateWhenStartingInsideTheTimeline() throws Exception {
+    void rejectsInvalidMolangNbtResult() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{"time":"0t","value":{"molang":"'not compound SNBT'"}}]
+                """));
+        AnimationPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("evaluated to invalid compound SNBT"));
+    }
+
+    @Test
+    void rejectsRuntimeOwnedFieldFromMolangNbt() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
+            .add("nbt", JsonParser.parseString("""
+                [{"time":"0t","value":{"molang":"'{transformation:{}}'"}}]
+                """));
+        AnimationPlayer player = player(root, new FakeTarget());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class, player::start);
+
+        assertTrue(exception.getMessage().contains("must not modify runtime-owned field transformation"));
+    }
+
+    @Test
+    void rebuildsMolangNbtStateWhenStartingInsideTheTimeline() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
@@ -233,8 +256,7 @@ class AnimationPlayerTest {
                   {
                     "time":"5t",
                     "value":{
-                      "select":"1",
-                      "options":["{Glowing:false}", "{Glowing:true}"]
+                      "molang":"'{Glowing:true}'"
                     }
                   }
                 ]

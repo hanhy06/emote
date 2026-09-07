@@ -149,8 +149,7 @@ export interface EmoteNbtKeyframe {
 }
 
 export type EmoteNbtValue = string | {
-  select: string;
-  options: string[];
+  molang: string;
 };
 
 export interface EmoteEvents {

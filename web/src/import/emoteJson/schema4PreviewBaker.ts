@@ -4,6 +4,7 @@ import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
   EmoteAnimation,
   EmoteEasing,
+  EmoteNbtValue,
   EmoteNode,
   EmoteVectorKeyframe,
   LocalTransform,
@@ -54,9 +55,9 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
   const result = Object.fromEntries(states.map((state) => [state.id, {
     transforms: [],
     visibility: [],
-    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({
+    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame, index) => ({
       tick: parseMinecraftTime(frame.time),
-      value: readDisplayNbt(typeof frame.value === "string" ? frame.value : frame.value.options[0]),
+      value: readDisplayNbt(requireFixedNbt(frame.value, `timeline.tracks.${state.id}.nbt[${index}].value`)),
     })),
   }])) as Record<string, ImportedNodeTrack>;
 
@@ -94,6 +95,11 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
     }
   }
   return result;
+}
+
+function requireFixedNbt(value: EmoteNbtValue, path: string): string {
+  if (typeof value === "string") return value;
+  throw previewError(path, "uses Molang NBT");
 }
 
 class PreviewMolangSession {

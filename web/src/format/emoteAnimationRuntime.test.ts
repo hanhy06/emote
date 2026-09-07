@@ -63,7 +63,7 @@ describe("requireEmoteAnimation", () => {
     expect(animation.nodes.head.type === "item_display" && animation.nodes.head.skin?.participant).toBe("partner");
   });
 
-  it("accepts a Molang-selected NBT keyframe with any number of options", () => {
+  it("accepts a Molang NBT string expression", () => {
     const animation = requireEmoteAnimation({
       type: "animation",
       schema_version: 4,
@@ -92,12 +92,7 @@ describe("requireEmoteAnimation", () => {
             nbt: [{
               time: "0t",
               value: {
-                select: "math.random_integer(0, 3)",
-                options: [
-                  "{item:{id:'minecraft:poppy',count:1}}",
-                  "{item:{id:'minecraft:dandelion',count:1}}",
-                  "{item:{id:'minecraft:blue_orchid',count:1}}",
-                ],
+                molang: "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'",
               },
             }],
           },
@@ -106,8 +101,7 @@ describe("requireEmoteAnimation", () => {
     });
 
     expect(animation.timeline.tracks.flower.nbt?.[0].value).toMatchObject({
-      select: "math.random_integer(0, 3)",
-      options: { length: 3 },
+      molang: "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'",
     });
   });
 });

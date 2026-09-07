@@ -74,7 +74,7 @@ export function writeDisplayNbt(value: DisplayNbtPatch, profile: MinecraftVersio
 }
 
 export function readDisplayNbtValue(value: EmoteNbtValue): DisplayNbtValue {
-  return typeof value === "string" ? readDisplayNbt(value) : { select: value.select, options: value.options.map(readDisplayNbt) };
+  return typeof value === "string" ? readDisplayNbt(value) : value;
 }
 
 function snbtString(value: string): string {

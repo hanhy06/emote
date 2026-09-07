@@ -4,8 +4,10 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.molang.MolangQueryCatalog;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.TagParser;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 
@@ -71,17 +73,15 @@ public final class PreparedAnimationTimeline {
         return frames.stream().map(frame -> switch (frame.value()) {
             case FixedNbtValue fixed -> new CompiledNbtKeyframe(
                 frame.tick(),
+                fixed.value(),
                 null,
-                fixed.options()
+                null
             );
-            case SelectedNbtValue selected -> new CompiledNbtKeyframe(
+            case MolangNbtValue molang -> new CompiledNbtKeyframe(
                 frame.tick(),
-                new CompiledScalar(
-                    0.0D,
-                    compileValueProgram(selected.selector().source(), selected.selector().path()),
-                    selected.selector().path()
-                ),
-                selected.options()
+                null,
+                compileValueProgram(molang.expression().source(), molang.expression().path()),
+                molang.expression().path()
             );
         }).toList();
     }
@@ -206,35 +206,53 @@ public final class PreparedAnimationTimeline {
     public record CompiledVisibilityKeyframe(int tick, CompiledScalar value) {
     }
 
-    public record CompiledNbtKeyframe(
-        int tick,
-        CompiledScalar selector,
-        List<CompoundTag> options
-    ) {
-        public CompiledNbtKeyframe {
-            options = options.stream().map(CompoundTag::copy).toList();
+    public static final class CompiledNbtKeyframe {
+        private final int tick;
+        private final CompoundTag constant;
+        private final MolangEngine.CompiledExpression expression;
+        private final String path;
+        private final Map<String, CompoundTag> cache = new ConcurrentHashMap<>();
+
+        private CompiledNbtKeyframe(
+            int tick,
+            CompoundTag constant,
+            MolangEngine.CompiledExpression expression,
+            String path
+        ) {
+            this.tick = tick;
+            this.constant = constant == null ? null : constant.copy();
+            this.expression = expression;
+            this.path = path;
         }
 
-        public CompoundTag select(MolangEngine.Session session) {
-            if (this.selector == null) {
-                return this.options.getFirst().copy();
-            }
-            double result = this.selector.evaluate(session);
-            if (result != Math.rint(result)) {
-                throw new IllegalStateException(this.selector.path() + " must evaluate to an integer option index");
-            }
-            if (result < 0.0D || result >= this.options.size()) {
-                throw new IllegalStateException(
-                    this.selector.path() + " evaluated to option index " + (long) result
-                        + ", but only " + this.options.size() + " options exist"
-                );
-            }
-            return this.options.get((int) result).copy();
+        public int tick() {
+            return this.tick;
         }
 
-        @Override
-        public List<CompoundTag> options() {
-            return this.options.stream().map(CompoundTag::copy).toList();
+        public CompoundTag evaluate(MolangEngine.Session session) {
+            if (this.constant != null) return this.constant.copy();
+
+            String source;
+            try {
+                source = session.evaluateString(this.expression);
+            } catch (IllegalStateException exception) {
+                throw new IllegalStateException(this.path + " must evaluate to compound SNBT", exception);
+            }
+            CompoundTag cached = this.cache.get(source);
+            if (cached != null) return cached.copy();
+
+            CompoundTag parsed;
+            try {
+                parsed = TagParser.parseCompoundFully(source);
+            } catch (Exception exception) {
+                throw new IllegalStateException(this.path + " evaluated to invalid compound SNBT", exception);
+            }
+            CompoundTag previous = this.cache.putIfAbsent(source, parsed.copy());
+            return (previous == null ? parsed : previous).copy();
+        }
+
+        public String path() {
+            return this.path;
         }
     }
 

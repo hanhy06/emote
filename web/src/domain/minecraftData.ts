@@ -24,7 +24,7 @@ export interface DisplayNbtPatch {
   rawFields: RawNbtField[];
 }
 
-export type DisplayNbtValue = DisplayNbtPatch | { select: string; options: DisplayNbtPatch[] };
+export type DisplayNbtValue = DisplayNbtPatch | { molang: string };
 
 export type RuntimeNode =
   | Exclude<EmoteNode, { type: "block_display" | "item_display" }>
