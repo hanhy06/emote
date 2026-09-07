@@ -13,26 +13,10 @@
 	"elements": [
 		{
 			"name": "electric_piano_case",
-			"position": [
-				-44,
-				14,
-				-13
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.002,
-				0.00009,
-				0.00063
-			],
+			"position": [-44, 14, -13],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.002, 0.00009, 0.00063],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -62,26 +46,10 @@
 		},
 		{
 			"name": "electric_piano_control_panel",
-			"position": [
-				-43.5,
-				15.5,
-				-7.9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00194,
-				0.00004,
-				0.00029
-			],
+			"position": [-43.5, 15.5, -7.9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00194, 0.00004, 0.00029],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -111,26 +79,10 @@
 		},
 		{
 			"name": "electric_piano_side__15_5",
-			"position": [
-				-43.5,
-				15.5,
-				-13
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00004,
-				0.00032
-			],
+			"position": [-43.5, 15.5, -13],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00004, 0.00032],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -160,26 +112,10 @@
 		},
 		{
 			"name": "electric_piano_side_14_7",
-			"position": [
-				-13.3,
-				15.5,
-				-13
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00004,
-				0.00032
-			],
+			"position": [-13.3, 15.5, -13],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00004, 0.00032],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -209,26 +145,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_1",
-			"position": [
-				-42.2,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-42.2, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -258,26 +178,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_2",
-			"position": [
-				-40.17,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-40.17, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -307,26 +211,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_3",
-			"position": [
-				-38.14,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-38.14, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -356,26 +244,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_4",
-			"position": [
-				-36.11,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-36.11, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -405,26 +277,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_5",
-			"position": [
-				-34.08,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-34.08, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -454,26 +310,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_6",
-			"position": [
-				-32.05,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-32.05, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -503,26 +343,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_7",
-			"position": [
-				-30.02,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-30.02, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -552,26 +376,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_8",
-			"position": [
-				-27.99,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-27.99, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -601,26 +409,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_9",
-			"position": [
-				-25.96,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-25.96, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -650,26 +442,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_10",
-			"position": [
-				-23.93,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-23.93, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -699,26 +475,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_11",
-			"position": [
-				-21.9,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-21.9, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -748,26 +508,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_12",
-			"position": [
-				-19.87,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-19.87, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -797,26 +541,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_13",
-			"position": [
-				-17.84,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-17.84, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -846,26 +574,10 @@
 		},
 		{
 			"name": "electric_piano_white_key_14",
-			"position": [
-				-15.81,
-				15.5,
-				-12.8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00012,
-				0.00003,
-				0.0003
-			],
+			"position": [-15.81, 15.5, -12.8],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00012, 0.00003, 0.0003],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -895,26 +607,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_1",
-			"position": [
-				-40.67,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-40.67, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -944,26 +640,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_2",
-			"position": [
-				-38.64,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-38.64, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -993,26 +673,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_4",
-			"position": [
-				-34.58,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-34.58, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1042,26 +706,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_5",
-			"position": [
-				-32.55,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-32.55, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1091,26 +739,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_6",
-			"position": [
-				-30.52,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-30.52, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1140,26 +772,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_8",
-			"position": [
-				-26.46,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-26.46, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1189,26 +805,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_9",
-			"position": [
-				-24.43,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-24.43, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1238,26 +838,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_11",
-			"position": [
-				-20.37,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-20.37, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1287,26 +871,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_12",
-			"position": [
-				-18.34,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-18.34, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1336,26 +904,10 @@
 		},
 		{
 			"name": "electric_piano_black_key_13",
-			"position": [
-				-16.31,
-				15.95,
-				-10.7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00005,
-				0.00003,
-				0.00017
-			],
+			"position": [-16.31, 15.95, -10.7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00005, 0.00003, 0.00017],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1385,26 +937,10 @@
 		},
 		{
 			"name": "electric_piano_speaker__13",
-			"position": [
-				-41,
-				16.2,
-				-7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00025,
-				0.00001,
-				0.00019
-			],
+			"position": [-41, 16.2, -7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00025, 0.00001, 0.00019],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1434,26 +970,10 @@
 		},
 		{
 			"name": "electric_piano_speaker_9",
-			"position": [
-				-19,
-				16.2,
-				-7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00025,
-				0.00001,
-				0.00019
-			],
+			"position": [-19, 16.2, -7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00025, 0.00001, 0.00019],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1483,26 +1003,10 @@
 		},
 		{
 			"name": "electric_piano_screen",
-			"position": [
-				-30,
-				16.2,
-				-7
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00025,
-				0.00001,
-				0.00014
-			],
+			"position": [-30, 16.2, -7],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00025, 0.00001, 0.00014],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1532,26 +1036,10 @@
 		},
 		{
 			"name": "electric_piano_button_0",
-			"position": [
-				-25,
-				16.2,
-				-6.5
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00004,
-				0.00001,
-				0.00004
-			],
+			"position": [-25, 16.2, -6.5],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00004, 0.00001, 0.00004],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1581,26 +1069,10 @@
 		},
 		{
 			"name": "electric_piano_button_1",
-			"position": [
-				-23.9,
-				16.2,
-				-6.5
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00004,
-				0.00001,
-				0.00004
-			],
+			"position": [-23.9, 16.2, -6.5],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00004, 0.00001, 0.00004],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1630,26 +1102,10 @@
 		},
 		{
 			"name": "electric_piano_button_2",
-			"position": [
-				-22.8,
-				16.2,
-				-6.5
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00004,
-				0.00001,
-				0.00004
-			],
+			"position": [-22.8, 16.2, -6.5],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00004, 0.00001, 0.00004],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1679,26 +1135,10 @@
 		},
 		{
 			"name": "electric_piano_stand__12",
-			"position": [
-				-40,
-				1,
-				-8.6
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00007,
-				0.00081,
-				0.00007
-			],
+			"position": [-40, 1, -8.6],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00007, 0.00081, 0.00007],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1728,26 +1168,10 @@
 		},
 		{
 			"name": "electric_piano_foot__12",
-			"position": [
-				-40.8,
-				0,
-				-12
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00018,
-				0.00006,
-				0.0005
-			],
+			"position": [-40.8, 0, -12],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00018, 0.00006, 0.0005],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1777,26 +1201,10 @@
 		},
 		{
 			"name": "electric_piano_stand_10_8",
-			"position": [
-				-17.2,
-				1,
-				-8.6
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00007,
-				0.00081,
-				0.00007
-			],
+			"position": [-17.2, 1, -8.6],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00007, 0.00081, 0.00007],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1826,26 +1234,10 @@
 		},
 		{
 			"name": "electric_piano_foot_10_8",
-			"position": [
-				-18,
-				0,
-				-12
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00018,
-				0.00006,
-				0.0005
-			],
+			"position": [-18, 0, -12],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00018, 0.00006, 0.0005],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1875,26 +1267,10 @@
 		},
 		{
 			"name": "electric_piano_crossbar",
-			"position": [
-				-40,
-				5,
-				-8.5
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.0015,
-				0.00006,
-				0.00006
-			],
+			"position": [-40, 5, -8.5],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.0015, 0.00006, 0.00006],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
@@ -1924,26 +1300,10 @@
 		},
 		{
 			"name": "guitar_lower_body",
-			"position": [
-				18,
-				1,
-				-9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.0005,
-				0.00031,
-				0.00014
-			],
+			"position": [18, 1, -9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.0005, 0.00031, 0.00014],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -1973,26 +1333,10 @@
 		},
 		{
 			"name": "guitar_lower_edge",
-			"position": [
-				19,
-				0,
-				-9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00038,
-				0.00006,
-				0.00014
-			],
+			"position": [19, 0, -9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00038, 0.00006, 0.00014],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2022,26 +1366,10 @@
 		},
 		{
 			"name": "guitar_waist",
-			"position": [
-				19.2,
-				6,
-				-9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00035,
-				0.00016,
-				0.00014
-			],
+			"position": [19.2, 6, -9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00035, 0.00016, 0.00014],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2071,26 +1399,10 @@
 		},
 		{
 			"name": "guitar_upper_body",
-			"position": [
-				18.6,
-				8.5,
-				-9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00043,
-				0.00019,
-				0.00014
-			],
+			"position": [18.6, 8.5, -9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00043, 0.00019, 0.00014],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2120,26 +1432,10 @@
 		},
 		{
 			"name": "guitar_shoulder",
-			"position": [
-				19.7,
-				11.5,
-				-9
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00029,
-				0.00006,
-				0.00014
-			],
+			"position": [19.7, 11.5, -9],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00029, 0.00006, 0.00014],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2169,26 +1465,10 @@
 		},
 		{
 			"name": "guitar_neck",
-			"position": [
-				21.2,
-				11.5,
-				-8.65
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.0001,
-				0.00075,
-				0.00008
-			],
+			"position": [21.2, 11.5, -8.65],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.0001, 0.00075, 0.00008],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2218,26 +1498,10 @@
 		},
 		{
 			"name": "guitar_fretboard",
-			"position": [
-				21.25,
-				11.5,
-				-8.88
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0.00073,
-				0.00001
-			],
+			"position": [21.25, 11.5, -8.88],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0.00073, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2267,26 +1531,10 @@
 		},
 		{
 			"name": "guitar_headstock",
-			"position": [
-				20.85,
-				23.2,
-				-8.65
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00014,
-				0.00018,
-				0.00008
-			],
+			"position": [20.85, 23.2, -8.65],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00014, 0.00018, 0.00008],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2316,26 +1564,10 @@
 		},
 		{
 			"name": "guitar_soundhole_rim",
-			"position": [
-				20.4,
-				7.7,
-				-9.12
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.0002,
-				0.0002,
-				0.00001
-			],
+			"position": [20.4, 7.7, -9.12],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.0002, 0.0002, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2365,26 +1597,10 @@
 		},
 		{
 			"name": "guitar_soundhole",
-			"position": [
-				20.85,
-				8.15,
-				-9.17
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00014,
-				0.00014,
-				0
-			],
+			"position": [20.85, 8.15, -9.17],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00014, 0.00014, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2414,26 +1630,10 @@
 		},
 		{
 			"name": "guitar_bridge",
-			"position": [
-				20.2,
-				3,
-				-9.3
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00023,
-				0.00005,
-				0.00002
-			],
+			"position": [20.2, 3, -9.3],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00023, 0.00005, 0.00002],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2463,26 +1663,10 @@
 		},
 		{
 			"name": "guitar_saddle",
-			"position": [
-				20.7,
-				3.5,
-				-9.38
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00016,
-				0.00001,
-				0.00001
-			],
+			"position": [20.7, 3.5, -9.38],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00016, 0.00001, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2512,26 +1696,10 @@
 		},
 		{
 			"name": "guitar_string_1",
-			"position": [
-				21.43,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [21.43, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2561,26 +1729,10 @@
 		},
 		{
 			"name": "guitar_string_2",
-			"position": [
-				21.658,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [21.658, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2610,26 +1762,10 @@
 		},
 		{
 			"name": "guitar_string_3",
-			"position": [
-				21.886,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [21.886, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2659,26 +1795,10 @@
 		},
 		{
 			"name": "guitar_string_4",
-			"position": [
-				22.114,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [22.114, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2708,26 +1828,10 @@
 		},
 		{
 			"name": "guitar_string_5",
-			"position": [
-				22.342,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [22.342, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2757,26 +1861,10 @@
 		},
 		{
 			"name": "guitar_string_6",
-			"position": [
-				22.57,
-				3.6,
-				-9.42
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0.00132,
-				0
-			],
+			"position": [22.57, 3.6, -9.42],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0.00132, 0],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2806,26 +1894,10 @@
 		},
 		{
 			"name": "guitar_fret_1",
-			"position": [
-				21.25,
-				12.5,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 12.5, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2855,26 +1927,10 @@
 		},
 		{
 			"name": "guitar_fret_2",
-			"position": [
-				21.25,
-				13.9,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 13.9, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2904,26 +1960,10 @@
 		},
 		{
 			"name": "guitar_fret_3",
-			"position": [
-				21.25,
-				15.3,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 15.3, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -2953,26 +1993,10 @@
 		},
 		{
 			"name": "guitar_fret_4",
-			"position": [
-				21.25,
-				16.7,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 16.7, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3002,26 +2026,10 @@
 		},
 		{
 			"name": "guitar_fret_5",
-			"position": [
-				21.25,
-				18.1,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 18.1, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3051,26 +2059,10 @@
 		},
 		{
 			"name": "guitar_fret_6",
-			"position": [
-				21.25,
-				19.5,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 19.5, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3100,26 +2092,10 @@
 		},
 		{
 			"name": "guitar_fret_7",
-			"position": [
-				21.25,
-				20.9,
-				-8.96
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00009,
-				0,
-				0.00001
-			],
+			"position": [21.25, 20.9, -8.96],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00009, 0, 0.00001],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3149,26 +2125,10 @@
 		},
 		{
 			"name": "guitar_tuner__1_0",
-			"position": [
-				20.35,
-				23.6,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [20.35, 23.6, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3198,26 +2158,10 @@
 		},
 		{
 			"name": "guitar_tuner__1_1",
-			"position": [
-				20.35,
-				24.4,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [20.35, 24.4, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3247,26 +2191,10 @@
 		},
 		{
 			"name": "guitar_tuner__1_2",
-			"position": [
-				20.35,
-				25.2,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [20.35, 25.2, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3296,26 +2224,10 @@
 		},
 		{
 			"name": "guitar_tuner_1_0",
-			"position": [
-				23.15,
-				23.6,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [23.15, 23.6, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3345,26 +2257,10 @@
 		},
 		{
 			"name": "guitar_tuner_1_1",
-			"position": [
-				23.15,
-				24.4,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [23.15, 24.4, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3394,26 +2290,10 @@
 		},
 		{
 			"name": "guitar_tuner_1_2",
-			"position": [
-				23.15,
-				25.2,
-				-8.25
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.00003,
-				0.00002,
-				0.00003
-			],
+			"position": [23.15, 25.2, -8.25],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.00003, 0.00002, 0.00003],
 			"color": 5,
 			"visibility": true,
 			"locked": false,
@@ -3452,76 +2332,34 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-4,
-				24,
-				-4
-			],
-			"to": [
-				4,
-				32,
-				4
-			],
+			"from": [-4, 24, -4],
+			"to": [4, 32, 4],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
+			"origin": [0, 0, 0],
 			"faces": {
 				"north": {
-					"uv": [
-						8,
-						8,
-						16,
-						16
-					],
+					"uv": [8, 8, 16, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						0,
-						8,
-						8,
-						16
-					],
+					"uv": [0, 8, 8, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						24,
-						8,
-						32,
-						16
-					],
+					"uv": [24, 8, 32, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						16,
-						8,
-						24,
-						16
-					],
+					"uv": [16, 8, 24, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						16,
-						8,
-						8,
-						0
-					],
+					"uv": [16, 8, 8, 0],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						24,
-						0,
-						16,
-						8
-					],
+					"uv": [24, 0, 16, 8],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -3539,82 +2377,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-4,
-				24,
-				-4
-			],
-			"to": [
-				4,
-				32,
-				4
-			],
+			"from": [-4, 24, -4],
+			"to": [4, 32, 4],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.5,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				32,
-				0
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [32, 0],
 			"faces": {
 				"north": {
-					"uv": [
-						40,
-						8,
-						48,
-						16
-					],
+					"uv": [40, 8, 48, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						32,
-						8,
-						40,
-						16
-					],
+					"uv": [32, 8, 40, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						56,
-						8,
-						64,
-						16
-					],
+					"uv": [56, 8, 64, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						48,
-						8,
-						56,
-						16
-					],
+					"uv": [48, 8, 56, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						48,
-						8,
-						40,
-						0
-					],
+					"uv": [48, 8, 40, 0],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						56,
-						0,
-						48,
-						8
-					],
+					"uv": [56, 0, 48, 8],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -3632,80 +2425,35 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-4,
-				12,
-				-2
-			],
-			"to": [
-				4,
-				24,
-				2
-			],
+			"from": [-4, 12, -2],
+			"to": [4, 24, 2],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				16,
-				16
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [16, 16],
 			"faces": {
 				"north": {
-					"uv": [
-						20,
-						20,
-						28,
-						32
-					],
+					"uv": [20, 20, 28, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						16,
-						20,
-						20,
-						32
-					],
+					"uv": [16, 20, 20, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						32,
-						20,
-						40,
-						32
-					],
+					"uv": [32, 20, 40, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						28,
-						20,
-						32,
-						32
-					],
+					"uv": [28, 20, 32, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						28,
-						20,
-						20,
-						16
-					],
+					"uv": [28, 20, 20, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						36,
-						16,
-						28,
-						20
-					],
+					"uv": [36, 16, 28, 20],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -3723,82 +2471,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-4,
-				12,
-				-2
-			],
-			"to": [
-				4,
-				24,
-				2
-			],
+			"from": [-4, 12, -2],
+			"to": [4, 24, 2],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.25,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				16,
-				32
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [16, 32],
 			"faces": {
 				"north": {
-					"uv": [
-						20,
-						36,
-						28,
-						48
-					],
+					"uv": [20, 36, 28, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						16,
-						36,
-						20,
-						48
-					],
+					"uv": [16, 36, 20, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						32,
-						36,
-						40,
-						48
-					],
+					"uv": [32, 36, 40, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						28,
-						36,
-						32,
-						48
-					],
+					"uv": [28, 36, 32, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						28,
-						36,
-						20,
-						32
-					],
+					"uv": [28, 36, 20, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						36,
-						32,
-						28,
-						36
-					],
+					"uv": [36, 32, 28, 36],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -3816,80 +2519,35 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				4,
-				12,
-				-2
-			],
-			"to": [
-				8,
-				24,
-				2
-			],
+			"from": [4, 12, -2],
+			"to": [8, 24, 2],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				40,
-				16
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [40, 16],
 			"faces": {
 				"north": {
-					"uv": [
-						44,
-						20,
-						48,
-						32
-					],
+					"uv": [44, 20, 48, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						40,
-						20,
-						44,
-						32
-					],
+					"uv": [40, 20, 44, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						52,
-						20,
-						56,
-						32
-					],
+					"uv": [52, 20, 56, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						48,
-						20,
-						52,
-						32
-					],
+					"uv": [48, 20, 52, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						48,
-						20,
-						44,
-						16
-					],
+					"uv": [48, 20, 44, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						52,
-						16,
-						48,
-						20
-					],
+					"uv": [52, 16, 48, 20],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -3907,82 +2565,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				4,
-				12,
-				-2
-			],
-			"to": [
-				8,
-				24,
-				2
-			],
+			"from": [4, 12, -2],
+			"to": [8, 24, 2],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.25,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				40,
-				32
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [40, 32],
 			"faces": {
 				"north": {
-					"uv": [
-						44,
-						36,
-						48,
-						48
-					],
+					"uv": [44, 36, 48, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						40,
-						36,
-						44,
-						48
-					],
+					"uv": [40, 36, 44, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						52,
-						36,
-						56,
-						48
-					],
+					"uv": [52, 36, 56, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						48,
-						36,
-						52,
-						48
-					],
+					"uv": [48, 36, 52, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						48,
-						36,
-						44,
-						32
-					],
+					"uv": [48, 36, 44, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						52,
-						32,
-						48,
-						36
-					],
+					"uv": [52, 32, 48, 36],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4000,80 +2613,35 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-8,
-				12,
-				-2
-			],
-			"to": [
-				-4,
-				24,
-				2
-			],
+			"from": [-8, 12, -2],
+			"to": [-4, 24, 2],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				32,
-				48
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [32, 48],
 			"faces": {
 				"north": {
-					"uv": [
-						36,
-						52,
-						40,
-						64
-					],
+					"uv": [36, 52, 40, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						32,
-						52,
-						36,
-						64
-					],
+					"uv": [32, 52, 36, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						44,
-						52,
-						48,
-						64
-					],
+					"uv": [44, 52, 48, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						40,
-						52,
-						44,
-						64
-					],
+					"uv": [40, 52, 44, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						40,
-						52,
-						36,
-						48
-					],
+					"uv": [40, 52, 36, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						44,
-						48,
-						40,
-						52
-					],
+					"uv": [44, 48, 40, 52],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4091,82 +2659,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-8,
-				12,
-				-2
-			],
-			"to": [
-				-4,
-				24,
-				2
-			],
+			"from": [-8, 12, -2],
+			"to": [-4, 24, 2],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.25,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				48,
-				48
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [48, 48],
 			"faces": {
 				"north": {
-					"uv": [
-						52,
-						52,
-						56,
-						64
-					],
+					"uv": [52, 52, 56, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						48,
-						52,
-						52,
-						64
-					],
+					"uv": [48, 52, 52, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						60,
-						52,
-						64,
-						64
-					],
+					"uv": [60, 52, 64, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						56,
-						52,
-						60,
-						64
-					],
+					"uv": [56, 52, 60, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						56,
-						52,
-						52,
-						48
-					],
+					"uv": [56, 52, 52, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						60,
-						48,
-						56,
-						52
-					],
+					"uv": [60, 48, 56, 52],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4184,80 +2707,35 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-0.1,
-				0,
-				-2
-			],
-			"to": [
-				3.9,
-				12,
-				2
-			],
+			"from": [-0.1, 0, -2],
+			"to": [3.9, 12, 2],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				0,
-				16
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [0, 16],
 			"faces": {
 				"north": {
-					"uv": [
-						4,
-						20,
-						8,
-						32
-					],
+					"uv": [4, 20, 8, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						0,
-						20,
-						4,
-						32
-					],
+					"uv": [0, 20, 4, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						12,
-						20,
-						16,
-						32
-					],
+					"uv": [12, 20, 16, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						8,
-						20,
-						12,
-						32
-					],
+					"uv": [8, 20, 12, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						8,
-						20,
-						4,
-						16
-					],
+					"uv": [8, 20, 4, 16],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						12,
-						16,
-						8,
-						20
-					],
+					"uv": [12, 16, 8, 20],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4275,82 +2753,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-0.1,
-				0,
-				-2
-			],
-			"to": [
-				3.9,
-				12,
-				2
-			],
+			"from": [-0.1, 0, -2],
+			"to": [3.9, 12, 2],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.25,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				0,
-				32
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [0, 32],
 			"faces": {
 				"north": {
-					"uv": [
-						4,
-						36,
-						8,
-						48
-					],
+					"uv": [4, 36, 8, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						0,
-						36,
-						4,
-						48
-					],
+					"uv": [0, 36, 4, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						12,
-						36,
-						16,
-						48
-					],
+					"uv": [12, 36, 16, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						8,
-						36,
-						12,
-						48
-					],
+					"uv": [8, 36, 12, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						8,
-						36,
-						4,
-						32
-					],
+					"uv": [8, 36, 4, 32],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						12,
-						32,
-						8,
-						36
-					],
+					"uv": [12, 32, 8, 36],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4368,80 +2801,35 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-3.9,
-				0,
-				-2
-			],
-			"to": [
-				0.1,
-				12,
-				2
-			],
+			"from": [-3.9, 0, -2],
+			"to": [0.1, 12, 2],
 			"autouv": 0,
 			"color": 0,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				16,
-				48
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [16, 48],
 			"faces": {
 				"north": {
-					"uv": [
-						20,
-						52,
-						24,
-						64
-					],
+					"uv": [20, 52, 24, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						16,
-						52,
-						20,
-						64
-					],
+					"uv": [16, 52, 20, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						28,
-						52,
-						32,
-						64
-					],
+					"uv": [28, 52, 32, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						24,
-						52,
-						28,
-						64
-					],
+					"uv": [24, 52, 28, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						24,
-						52,
-						20,
-						48
-					],
+					"uv": [24, 52, 20, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						28,
-						48,
-						24,
-						52
-					],
+					"uv": [28, 48, 24, 52],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4459,82 +2847,37 @@
 			"export": true,
 			"scope": 0,
 			"allow_mirror_modeling": true,
-			"from": [
-				-3.9,
-				0,
-				-2
-			],
-			"to": [
-				0.1,
-				12,
-				2
-			],
+			"from": [-3.9, 0, -2],
+			"to": [0.1, 12, 2],
 			"autouv": 0,
 			"color": 0,
 			"visibility": false,
 			"inflate": 0.25,
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"uv_offset": [
-				0,
-				48
-			],
+			"origin": [0, 0, 0],
+			"uv_offset": [0, 48],
 			"faces": {
 				"north": {
-					"uv": [
-						4,
-						52,
-						8,
-						64
-					],
+					"uv": [4, 52, 8, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"east": {
-					"uv": [
-						0,
-						52,
-						4,
-						64
-					],
+					"uv": [0, 52, 4, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"south": {
-					"uv": [
-						12,
-						52,
-						16,
-						64
-					],
+					"uv": [12, 52, 16, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"west": {
-					"uv": [
-						8,
-						52,
-						12,
-						64
-					],
+					"uv": [8, 52, 12, 64],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"up": {
-					"uv": [
-						8,
-						52,
-						4,
-						48
-					],
+					"uv": [8, 52, 4, 48],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				},
 				"down": {
-					"uv": [
-						12,
-						48,
-						8,
-						52
-					],
+					"uv": [12, 48, 8, 52],
 					"texture": "aa6a1f5d-3ba4-39d4-b056-7c6507256681"
 				}
 			},
@@ -4543,26 +2886,10 @@
 		},
 		{
 			"name": "anvil_display",
-			"position": [
-				0,
-				0,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0.1,
-				0.1,
-				0.1
-			],
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0.01, 0.01, 0.01],
 			"color": 1,
 			"visibility": true,
 			"locked": false,
@@ -4592,26 +2919,10 @@
 		},
 		{
 			"name": "goat_horn_display",
-			"position": [
-				0,
-				0,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
-			"pivotOffset": [
-				0,
-				0,
-				0
-			],
-			"scale": [
-				0,
-				0,
-				0
-			],
+			"position": [0, 0, 0],
+			"rotation": [0, 0, 0],
+			"pivotOffset": [0, 0, 0],
+			"scale": [0, 0, 0],
 			"color": 6,
 			"visibility": true,
 			"locked": false,
@@ -4640,16 +2951,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				-28,
-				0,
-				-8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [-28, 0, -8],
+			"rotation": [0, 0, 0],
 			"color": 3,
 			"onSummonFunction": "",
 			"configs": {
@@ -4666,7 +2969,7 @@
 			"visibility": true,
 			"autouv": 0,
 			"isOpen": false,
-			"primary_selected": true
+			"primary_selected": false
 		},
 		{
 			"name": "guitar",
@@ -4679,16 +2982,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				22,
-				0,
-				-8
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [22, 0, -8],
+			"rotation": [0, 0, 0],
 			"color": 5,
 			"onSummonFunction": "",
 			"configs": {
@@ -4718,16 +3013,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				0,
-				12,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [0, 12, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4757,16 +3044,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				0,
-				24,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [0, 24, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4796,16 +3075,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				0,
-				24,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [0, 24, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4835,16 +3106,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				5,
-				22,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [5, 22, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4874,16 +3137,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				-5,
-				22,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [-5, 22, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4913,16 +3168,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				1.9,
-				12,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [1.9, 12, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4952,16 +3199,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				-1.9,
-				12,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [-1.9, 12, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -4991,16 +3230,8 @@
 				"properties": {},
 				"temp_data": {}
 			},
-			"origin": [
-				0,
-				0,
-				0
-			],
-			"rotation": [
-				0,
-				0,
-				0
-			],
+			"origin": [0, 0, 0],
+			"rotation": [0, 0, 0],
 			"color": 0,
 			"onSummonFunction": "",
 			"configs": {
@@ -5116,52 +3347,34 @@
 						{
 							"uuid": "d3a72666-0b6d-d7a0-6b45-8c7cc7e1b3bc",
 							"isOpen": true,
-							"children": [
-								"4e6ea809-5ed1-69ea-d931-f7c19fcf66f1",
-								"731b0195-2848-19c0-3fb7-43a3e0a59797"
-							]
+							"children": ["4e6ea809-5ed1-69ea-d931-f7c19fcf66f1", "731b0195-2848-19c0-3fb7-43a3e0a59797"]
 						},
 						{
 							"uuid": "b5872305-6f0c-f982-4544-ae9b1ba6254e",
 							"isOpen": true,
-							"children": [
-								"c3c10ff5-26b9-ef54-08ae-edcef99b31e3",
-								"759bd9e5-c978-eb18-b6bb-5680c5211394"
-							]
+							"children": ["c3c10ff5-26b9-ef54-08ae-edcef99b31e3", "759bd9e5-c978-eb18-b6bb-5680c5211394"]
 						},
 						{
 							"uuid": "d2a3967c-f93f-b33a-1dcf-f1c88815d458",
 							"isOpen": true,
-							"children": [
-								"f3d75431-027c-0834-578c-b7fda651a474",
-								"37f1634d-271c-a02e-68ee-43ed458d4c46"
-							]
+							"children": ["f3d75431-027c-0834-578c-b7fda651a474", "37f1634d-271c-a02e-68ee-43ed458d4c46"]
 						},
 						{
 							"uuid": "969bcd71-7c25-781d-7073-e17294729eef",
 							"isOpen": true,
-							"children": [
-								"0c9218ae-b8cf-95df-880b-7917d7db4a79",
-								"75253f35-190e-3f3b-84cd-8cf5a4020b13"
-							]
+							"children": ["0c9218ae-b8cf-95df-880b-7917d7db4a79", "75253f35-190e-3f3b-84cd-8cf5a4020b13"]
 						}
 					]
 				},
 				{
 					"uuid": "6c200e51-0cff-ac81-ebe8-3d9f59146ab5",
 					"isOpen": false,
-					"children": [
-						"7088ca1b-c44b-87ca-6cbb-981066da52c9",
-						"d2140498-574f-d023-7b39-4303ffa97fb4"
-					]
+					"children": ["7088ca1b-c44b-87ca-6cbb-981066da52c9", "d2140498-574f-d023-7b39-4303ffa97fb4"]
 				},
 				{
 					"uuid": "13e4d41d-4bcb-1637-bc48-7350d947f2bc",
 					"isOpen": false,
-					"children": [
-						"b4c574bd-2bb4-10f8-305c-91f4d4930281",
-						"b40d2eea-f326-5735-6f36-39f97dd2c81c"
-					]
+					"children": ["b4c574bd-2bb4-10f8-305c-91f4d4930281", "b40d2eea-f326-5735-6f36-39f97dd2c81c"]
 				}
 			]
 		}
@@ -5219,7 +3432,7 @@
 			"override": false,
 			"length": 16.5,
 			"snapping": 20,
-			"selected": true,
+			"selected": false,
 			"saved": true,
 			"path": "",
 			"scope": 0,
@@ -5258,6 +3471,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000001",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5299,6 +3513,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000004",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5340,6 +3555,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000007",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5381,6 +3597,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000000a",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5422,6 +3639,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000000d",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5463,6 +3681,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000010",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5504,6 +3723,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000013",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5545,6 +3765,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000016",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5586,6 +3807,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000019",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5627,6 +3849,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000001c",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5668,6 +3891,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000001f",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5709,6 +3933,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000022",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5750,6 +3975,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000025",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5791,6 +4017,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000028",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5832,6 +4059,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000002b",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5873,6 +4101,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000002e",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5914,6 +4143,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000031",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5955,6 +4185,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000034",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -5996,6 +4227,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000037",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6037,6 +4269,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000003a",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6078,6 +4311,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000003d",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6119,6 +4353,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000040",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6160,6 +4395,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000043",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6201,6 +4437,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000046",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6242,6 +4479,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000049",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6283,6 +4521,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000004c",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6324,6 +4563,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000004f",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6365,6 +4605,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000052",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6406,6 +4647,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000055",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6447,6 +4689,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000058",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6488,6 +4731,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000005b",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6529,6 +4773,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000005e",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6570,6 +4815,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000061",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6611,6 +4857,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000064",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6652,6 +4899,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000067",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6693,6 +4941,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000006a",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6734,6 +4983,7 @@
 							"uuid": "e9072026-0907-4000-e000-00000000006d",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6775,6 +5025,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000070",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -6816,6 +5067,7 @@
 							"uuid": "e9072026-0907-4000-e000-000000000073",
 							"time": 0,
 							"color": -1,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
@@ -16208,7 +14460,7 @@
 			"override": false,
 			"length": 3,
 			"snapping": 20,
-			"selected": false,
+			"selected": true,
 			"saved": true,
 			"path": "",
 			"scope": 0,
@@ -16218,9 +14470,369 @@
 			"loop_delay": "0",
 			"excluded_nodes": [
 				{
+					"icon": "account_tree",
+					"name": "electric_piano",
+					"value": "b9072026-0907-4000-b000-000000000001"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_1",
+					"value": "b9072026-0907-4000-b000-000000000014"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_11",
+					"value": "b9072026-0907-4000-b000-00000000001b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_12",
+					"value": "b9072026-0907-4000-b000-00000000001c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_13",
+					"value": "b9072026-0907-4000-b000-00000000001d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_2",
+					"value": "b9072026-0907-4000-b000-000000000015"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_4",
+					"value": "b9072026-0907-4000-b000-000000000016"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_5",
+					"value": "b9072026-0907-4000-b000-000000000017"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_6",
+					"value": "b9072026-0907-4000-b000-000000000018"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_8",
+					"value": "b9072026-0907-4000-b000-000000000019"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_9",
+					"value": "b9072026-0907-4000-b000-00000000001a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_0",
+					"value": "b9072026-0907-4000-b000-000000000021"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_1",
+					"value": "b9072026-0907-4000-b000-000000000022"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_2",
+					"value": "b9072026-0907-4000-b000-000000000023"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_case",
+					"value": "b9072026-0907-4000-b000-000000000002"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_control_panel",
+					"value": "b9072026-0907-4000-b000-000000000003"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_crossbar",
+					"value": "b9072026-0907-4000-b000-000000000028"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_foot__12",
+					"value": "b9072026-0907-4000-b000-000000000025"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_foot_10_8",
+					"value": "b9072026-0907-4000-b000-000000000027"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_screen",
+					"value": "b9072026-0907-4000-b000-000000000020"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_side__15_5",
+					"value": "b9072026-0907-4000-b000-000000000004"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_side_14_7",
+					"value": "b9072026-0907-4000-b000-000000000005"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_speaker__13",
+					"value": "b9072026-0907-4000-b000-00000000001e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_speaker_9",
+					"value": "b9072026-0907-4000-b000-00000000001f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_stand__12",
+					"value": "b9072026-0907-4000-b000-000000000024"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_stand_10_8",
+					"value": "b9072026-0907-4000-b000-000000000026"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_1",
+					"value": "b9072026-0907-4000-b000-000000000006"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_10",
+					"value": "b9072026-0907-4000-b000-00000000000f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_11",
+					"value": "b9072026-0907-4000-b000-000000000010"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_12",
+					"value": "b9072026-0907-4000-b000-000000000011"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_13",
+					"value": "b9072026-0907-4000-b000-000000000012"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_14",
+					"value": "b9072026-0907-4000-b000-000000000013"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_2",
+					"value": "b9072026-0907-4000-b000-000000000007"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_3",
+					"value": "b9072026-0907-4000-b000-000000000008"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_4",
+					"value": "b9072026-0907-4000-b000-000000000009"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_5",
+					"value": "b9072026-0907-4000-b000-00000000000a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_6",
+					"value": "b9072026-0907-4000-b000-00000000000b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_7",
+					"value": "b9072026-0907-4000-b000-00000000000c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_8",
+					"value": "b9072026-0907-4000-b000-00000000000d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_9",
+					"value": "b9072026-0907-4000-b000-00000000000e"
+				},
+				{
 					"icon": "icecream",
 					"name": "goat_horn_display",
 					"value": "8c1acdd3-3127-4539-8d4d-fc12670a9a8c"
+				},
+				{
+					"icon": "account_tree",
+					"name": "guitar",
+					"value": "b9072026-0907-4000-b000-000000000029"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_bridge",
+					"value": "b9072026-0907-4000-b000-000000000034"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_1",
+					"value": "b9072026-0907-4000-b000-00000000003c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_2",
+					"value": "b9072026-0907-4000-b000-00000000003d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_3",
+					"value": "b9072026-0907-4000-b000-00000000003e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_4",
+					"value": "b9072026-0907-4000-b000-00000000003f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_5",
+					"value": "b9072026-0907-4000-b000-000000000040"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_6",
+					"value": "b9072026-0907-4000-b000-000000000041"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_7",
+					"value": "b9072026-0907-4000-b000-000000000042"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fretboard",
+					"value": "b9072026-0907-4000-b000-000000000030"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_headstock",
+					"value": "b9072026-0907-4000-b000-000000000031"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_lower_body",
+					"value": "b9072026-0907-4000-b000-00000000002a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_lower_edge",
+					"value": "b9072026-0907-4000-b000-00000000002b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_neck",
+					"value": "b9072026-0907-4000-b000-00000000002f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_saddle",
+					"value": "b9072026-0907-4000-b000-000000000035"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_shoulder",
+					"value": "b9072026-0907-4000-b000-00000000002e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_soundhole",
+					"value": "b9072026-0907-4000-b000-000000000033"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_soundhole_rim",
+					"value": "b9072026-0907-4000-b000-000000000032"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_1",
+					"value": "b9072026-0907-4000-b000-000000000036"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_2",
+					"value": "b9072026-0907-4000-b000-000000000037"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_3",
+					"value": "b9072026-0907-4000-b000-000000000038"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_4",
+					"value": "b9072026-0907-4000-b000-000000000039"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_5",
+					"value": "b9072026-0907-4000-b000-00000000003a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_6",
+					"value": "b9072026-0907-4000-b000-00000000003b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_0",
+					"value": "b9072026-0907-4000-b000-000000000043"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_1",
+					"value": "b9072026-0907-4000-b000-000000000044"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_2",
+					"value": "b9072026-0907-4000-b000-000000000045"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_0",
+					"value": "b9072026-0907-4000-b000-000000000046"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_1",
+					"value": "b9072026-0907-4000-b000-000000000047"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_2",
+					"value": "b9072026-0907-4000-b000-000000000048"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_upper_body",
+					"value": "b9072026-0907-4000-b000-00000000002d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_waist",
+					"value": "b9072026-0907-4000-b000-00000000002c"
 				}
 			],
 			"animators": {
@@ -16403,9 +15015,9 @@
 							"channel": "scale",
 							"data_points": [
 								{
-									"x": "10\n",
-									"y": "10",
-									"z": "10"
+									"x": "100\n",
+									"y": "100",
+									"z": "100"
 								}
 							],
 							"uuid": "780109a6-390f-48eb-3523-f8aad9839259",
@@ -16935,6 +15547,366 @@
 					"icon": "deployed_code",
 					"name": "anvil_display",
 					"value": "42eeabad-b9fa-0dc5-bd3a-8d4a55bd769c"
+				},
+				{
+					"icon": "account_tree",
+					"name": "electric_piano",
+					"value": "b9072026-0907-4000-b000-000000000001"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_1",
+					"value": "b9072026-0907-4000-b000-000000000014"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_11",
+					"value": "b9072026-0907-4000-b000-00000000001b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_12",
+					"value": "b9072026-0907-4000-b000-00000000001c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_13",
+					"value": "b9072026-0907-4000-b000-00000000001d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_2",
+					"value": "b9072026-0907-4000-b000-000000000015"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_4",
+					"value": "b9072026-0907-4000-b000-000000000016"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_5",
+					"value": "b9072026-0907-4000-b000-000000000017"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_6",
+					"value": "b9072026-0907-4000-b000-000000000018"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_8",
+					"value": "b9072026-0907-4000-b000-000000000019"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_black_key_9",
+					"value": "b9072026-0907-4000-b000-00000000001a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_0",
+					"value": "b9072026-0907-4000-b000-000000000021"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_1",
+					"value": "b9072026-0907-4000-b000-000000000022"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_button_2",
+					"value": "b9072026-0907-4000-b000-000000000023"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_case",
+					"value": "b9072026-0907-4000-b000-000000000002"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_control_panel",
+					"value": "b9072026-0907-4000-b000-000000000003"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_crossbar",
+					"value": "b9072026-0907-4000-b000-000000000028"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_foot__12",
+					"value": "b9072026-0907-4000-b000-000000000025"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_foot_10_8",
+					"value": "b9072026-0907-4000-b000-000000000027"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_screen",
+					"value": "b9072026-0907-4000-b000-000000000020"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_side__15_5",
+					"value": "b9072026-0907-4000-b000-000000000004"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_side_14_7",
+					"value": "b9072026-0907-4000-b000-000000000005"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_speaker__13",
+					"value": "b9072026-0907-4000-b000-00000000001e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_speaker_9",
+					"value": "b9072026-0907-4000-b000-00000000001f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_stand__12",
+					"value": "b9072026-0907-4000-b000-000000000024"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_stand_10_8",
+					"value": "b9072026-0907-4000-b000-000000000026"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_1",
+					"value": "b9072026-0907-4000-b000-000000000006"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_10",
+					"value": "b9072026-0907-4000-b000-00000000000f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_11",
+					"value": "b9072026-0907-4000-b000-000000000010"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_12",
+					"value": "b9072026-0907-4000-b000-000000000011"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_13",
+					"value": "b9072026-0907-4000-b000-000000000012"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_14",
+					"value": "b9072026-0907-4000-b000-000000000013"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_2",
+					"value": "b9072026-0907-4000-b000-000000000007"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_3",
+					"value": "b9072026-0907-4000-b000-000000000008"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_4",
+					"value": "b9072026-0907-4000-b000-000000000009"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_5",
+					"value": "b9072026-0907-4000-b000-00000000000a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_6",
+					"value": "b9072026-0907-4000-b000-00000000000b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_7",
+					"value": "b9072026-0907-4000-b000-00000000000c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_8",
+					"value": "b9072026-0907-4000-b000-00000000000d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "electric_piano_white_key_9",
+					"value": "b9072026-0907-4000-b000-00000000000e"
+				},
+				{
+					"icon": "account_tree",
+					"name": "guitar",
+					"value": "b9072026-0907-4000-b000-000000000029"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_bridge",
+					"value": "b9072026-0907-4000-b000-000000000034"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_1",
+					"value": "b9072026-0907-4000-b000-00000000003c"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_2",
+					"value": "b9072026-0907-4000-b000-00000000003d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_3",
+					"value": "b9072026-0907-4000-b000-00000000003e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_4",
+					"value": "b9072026-0907-4000-b000-00000000003f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_5",
+					"value": "b9072026-0907-4000-b000-000000000040"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_6",
+					"value": "b9072026-0907-4000-b000-000000000041"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fret_7",
+					"value": "b9072026-0907-4000-b000-000000000042"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_fretboard",
+					"value": "b9072026-0907-4000-b000-000000000030"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_headstock",
+					"value": "b9072026-0907-4000-b000-000000000031"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_lower_body",
+					"value": "b9072026-0907-4000-b000-00000000002a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_lower_edge",
+					"value": "b9072026-0907-4000-b000-00000000002b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_neck",
+					"value": "b9072026-0907-4000-b000-00000000002f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_saddle",
+					"value": "b9072026-0907-4000-b000-000000000035"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_shoulder",
+					"value": "b9072026-0907-4000-b000-00000000002e"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_soundhole",
+					"value": "b9072026-0907-4000-b000-000000000033"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_soundhole_rim",
+					"value": "b9072026-0907-4000-b000-000000000032"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_1",
+					"value": "b9072026-0907-4000-b000-000000000036"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_2",
+					"value": "b9072026-0907-4000-b000-000000000037"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_3",
+					"value": "b9072026-0907-4000-b000-000000000038"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_4",
+					"value": "b9072026-0907-4000-b000-000000000039"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_5",
+					"value": "b9072026-0907-4000-b000-00000000003a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_string_6",
+					"value": "b9072026-0907-4000-b000-00000000003b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_0",
+					"value": "b9072026-0907-4000-b000-000000000043"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_1",
+					"value": "b9072026-0907-4000-b000-000000000044"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner__1_2",
+					"value": "b9072026-0907-4000-b000-000000000045"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_0",
+					"value": "b9072026-0907-4000-b000-000000000046"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_1",
+					"value": "b9072026-0907-4000-b000-000000000047"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_tuner_1_2",
+					"value": "b9072026-0907-4000-b000-000000000048"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_upper_body",
+					"value": "b9072026-0907-4000-b000-00000000002d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "guitar_waist",
+					"value": "b9072026-0907-4000-b000-00000000002c"
 				}
 			],
 			"animators": {
@@ -19011,6 +17983,438 @@
 				"27735ace-8fd4-80f2-ce41-30ea848a4359": {
 					"name": "player",
 					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000001": {
+					"name": "electric_piano",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000029": {
+					"name": "guitar",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000002": {
+					"name": "electric_piano_case",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000003": {
+					"name": "electric_piano_control_panel",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000004": {
+					"name": "electric_piano_side__15_5",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000005": {
+					"name": "electric_piano_side_14_7",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000006": {
+					"name": "electric_piano_white_key_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000007": {
+					"name": "electric_piano_white_key_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000008": {
+					"name": "electric_piano_white_key_3",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000009": {
+					"name": "electric_piano_white_key_4",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000a": {
+					"name": "electric_piano_white_key_5",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000b": {
+					"name": "electric_piano_white_key_6",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000c": {
+					"name": "electric_piano_white_key_7",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000d": {
+					"name": "electric_piano_white_key_8",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000e": {
+					"name": "electric_piano_white_key_9",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000000f": {
+					"name": "electric_piano_white_key_10",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000010": {
+					"name": "electric_piano_white_key_11",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000011": {
+					"name": "electric_piano_white_key_12",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000012": {
+					"name": "electric_piano_white_key_13",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000013": {
+					"name": "electric_piano_white_key_14",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000014": {
+					"name": "electric_piano_black_key_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000015": {
+					"name": "electric_piano_black_key_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000016": {
+					"name": "electric_piano_black_key_4",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000017": {
+					"name": "electric_piano_black_key_5",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000018": {
+					"name": "electric_piano_black_key_6",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000019": {
+					"name": "electric_piano_black_key_8",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001a": {
+					"name": "electric_piano_black_key_9",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001b": {
+					"name": "electric_piano_black_key_11",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001c": {
+					"name": "electric_piano_black_key_12",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001d": {
+					"name": "electric_piano_black_key_13",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001e": {
+					"name": "electric_piano_speaker__13",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000001f": {
+					"name": "electric_piano_speaker_9",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000020": {
+					"name": "electric_piano_screen",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000021": {
+					"name": "electric_piano_button_0",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000022": {
+					"name": "electric_piano_button_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000023": {
+					"name": "electric_piano_button_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000024": {
+					"name": "electric_piano_stand__12",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000025": {
+					"name": "electric_piano_foot__12",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000026": {
+					"name": "electric_piano_stand_10_8",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000027": {
+					"name": "electric_piano_foot_10_8",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000028": {
+					"name": "electric_piano_crossbar",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002a": {
+					"name": "guitar_lower_body",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002b": {
+					"name": "guitar_lower_edge",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002c": {
+					"name": "guitar_waist",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002d": {
+					"name": "guitar_upper_body",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002e": {
+					"name": "guitar_shoulder",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000002f": {
+					"name": "guitar_neck",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000030": {
+					"name": "guitar_fretboard",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000031": {
+					"name": "guitar_headstock",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000032": {
+					"name": "guitar_soundhole_rim",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000033": {
+					"name": "guitar_soundhole",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000034": {
+					"name": "guitar_bridge",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000035": {
+					"name": "guitar_saddle",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000036": {
+					"name": "guitar_string_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000037": {
+					"name": "guitar_string_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000038": {
+					"name": "guitar_string_3",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000039": {
+					"name": "guitar_string_4",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003a": {
+					"name": "guitar_string_5",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003b": {
+					"name": "guitar_string_6",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003c": {
+					"name": "guitar_fret_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003d": {
+					"name": "guitar_fret_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003e": {
+					"name": "guitar_fret_3",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-00000000003f": {
+					"name": "guitar_fret_4",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000040": {
+					"name": "guitar_fret_5",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000041": {
+					"name": "guitar_fret_6",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000042": {
+					"name": "guitar_fret_7",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000043": {
+					"name": "guitar_tuner__1_0",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000044": {
+					"name": "guitar_tuner__1_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000045": {
+					"name": "guitar_tuner__1_2",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000046": {
+					"name": "guitar_tuner_1_0",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000047": {
+					"name": "guitar_tuner_1_1",
+					"type": "animated_java:vanilla_block_display",
+					"rotation_global": false,
+					"quaternion_interpolation": false
+				},
+				"b9072026-0907-4000-b000-000000000048": {
+					"name": "guitar_tuner_1_2",
+					"type": "animated_java:vanilla_block_display",
 					"rotation_global": false,
 					"quaternion_interpolation": false
 				}
