@@ -93,7 +93,7 @@ class PlaybackPolicyServiceTest {
     }
 
     @Test
-    void commandCooldownStartsWhenSuccessfulPlaybackEnds() {
+    void commandBlocksRestartWhilePlaybackIsPendingAndStartsCooldownWhenItEnds() {
         AtomicLong tick = new AtomicLong();
         PlaybackPolicyService service = service(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
@@ -110,7 +110,7 @@ class PlaybackPolicyServiceTest {
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
 
         service.onPlaybackStarted(null, notStarted);
-        assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
+        assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
 
         tick.set(10L);
         service.onPlaybackEnded(null, emote.id());

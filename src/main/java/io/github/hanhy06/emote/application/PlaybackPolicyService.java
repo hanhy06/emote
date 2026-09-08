@@ -92,6 +92,10 @@ public final class PlaybackPolicyService implements AccessConfigListener, Playba
         }
 
         UUID playerId = this.playerIdResolver.apply(player);
+        PendingCooldown pending = this.pendingCooldowns.get(playerId);
+        if (pending != null && pending.emoteId().equals(emote.id())) {
+            return Decision.denied("This emote is already playing.");
+        }
         long currentTick = this.tickSource.applyAsLong(player);
         long remainingTicks = this.cooldowns.remainingTicks(playerId, emote.id(), currentTick);
         if (remainingTicks > 0L) {

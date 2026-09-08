@@ -96,7 +96,7 @@ class EmotePlayServiceTest {
     }
 
     @Test
-    void successfulPlaybackDoesNotStartCooldownBeforeItEnds() {
+    void successfulPlaybackCannotRestartBeforeItsCooldownBegins() {
         AtomicLong tick = new AtomicLong();
         EmoteCatalog catalog = catalogWithWave(20);
         PlaybackPolicyService policy = allowedPolicy(tick, catalog);
@@ -112,8 +112,11 @@ class EmotePlayServiceTest {
         );
 
         assertTrue(service.play(null, "demo:wave").isSuccess());
-        assertTrue(service.play(null, "demo:wave").isSuccess());
-        assertEquals(2, starts.get());
+        assertHasErrorMessage(service.play(null, "demo:wave"));
+        assertEquals(1, starts.get());
+
+        policy.onPlaybackEnded(null, "demo:wave");
+        assertHasErrorMessage(service.play(null, "demo:wave"));
     }
 
     @Test
