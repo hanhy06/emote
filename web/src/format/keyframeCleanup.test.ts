@@ -29,6 +29,30 @@ function exportAndCompare(source: EmoteAnimation): EmoteAnimation {
 }
 
 describe("final keyframe cleanup", () => {
+  it("removes display nodes smaller than 0.001 after their motion tracks become empty", () => {
+    const source = animation({ position: frames([0, 0, 0]) });
+    source.nodes.root.transform.scale = [0.0009, -0.0009, 0];
+    source.nodes.scene = { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } };
+
+    const output = JSON.parse(serializeEmoteAnimation(source)) as EmoteAnimation;
+    expect(output.nodes).toEqual({ scene: source.nodes.scene });
+    expect(output.timeline.tracks).toEqual({});
+    expect(validateEmoteAnimation(output)).toEqual([]);
+  });
+
+  it.each([
+    { name: "a node on the 0.001 boundary", scale: [0.001, 0, 0] as const, tracks: { position: frames([0, 0]) } },
+    { name: "a moving tiny node", scale: [0, 0, 0] as const, tracks: { position: frames([0, 1, 2]) } },
+  ])("keeps $name", ({ scale, tracks }) => {
+    const source = animation(tracks);
+    source.nodes.root.transform.scale = scale;
+    source.nodes.scene = { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } };
+
+    const output = JSON.parse(serializeEmoteAnimation(source)) as EmoteAnimation;
+    expect(output.nodes.root).toBeDefined();
+    expect(validateEmoteAnimation(output)).toEqual([]);
+  });
+
   it("removes default channels and empty node tracks", () => {
     const output = exportAndCompare(animation({ position: frames([0, 0, 0]), rotation: frames([0, 0]), visible: [{ time: "0t", value: true }, { time: "2t", value: true }] }));
     expect(output.timeline.tracks).toEqual({});
