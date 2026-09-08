@@ -5,6 +5,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -36,8 +37,7 @@ public final class ExampleCallbacks {
 
     private static final double ALLAY_SCALE = 0.35D;
 
-    private final Map<UUID, Allay> allaysByPlayer = new HashMap<>();
-    private final Map<UUID, Bat> batsByPlayer = new HashMap<>();
+    private final Map<UUID, Entity> entitiesByPlayer = new HashMap<>();
     private final List<ListenerRegistration> registrations;
 
     private boolean registered = true;
@@ -49,8 +49,7 @@ public final class ExampleCallbacks {
             api.addPlaybackListener(new EmotePlaybackListener() {
                 @Override
                 public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
-                    removeAllay(playback.playerUuid());
-                    removeBat(playback.playerUuid(), false);
+                    removeEntity(playback.playerUuid(), true);
                 }
             })
         );
@@ -68,10 +67,8 @@ public final class ExampleCallbacks {
         for (ListenerRegistration registration : this.registrations) {
             removed |= registration.unregister();
         }
-        this.allaysByPlayer.values().forEach(Allay::discard);
-        this.allaysByPlayer.clear();
-        this.batsByPlayer.values().forEach(Bat::discard);
-        this.batsByPlayer.clear();
+        this.entitiesByPlayer.values().forEach(Entity::discard);
+        this.entitiesByPlayer.clear();
         return removed;
     }
 
@@ -79,14 +76,14 @@ public final class ExampleCallbacks {
         switch (event.phase()) {
             case START -> spawnAllay(event);
             case TIMELINE -> moveAllay(event);
-            case STOP -> removeAllay(event.player().getUUID());
+            case STOP -> removeEntity(event.player().getUUID(), true);
             case LOOP -> {}
         }
     }
 
     private void spawnAllay(EmoteCallbackEvent event) {
         UUID playerUuid = event.player().getUUID();
-        removeAllay(playerUuid);
+        removeEntity(playerUuid, false);
 
         ServerLevel level = event.player().level();
         Allay allay = EntityTypes.ALLAY.create(level, EntitySpawnReason.COMMAND);
@@ -106,12 +103,12 @@ public final class ExampleCallbacks {
             throw new IllegalStateException("Failed to add the idle butterfly Allay to the level");
         }
         level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
-        this.allaysByPlayer.put(playerUuid, allay);
+        this.entitiesByPlayer.put(playerUuid, allay);
     }
 
     private void moveAllay(EmoteCallbackEvent event) {
-        Allay allay = this.allaysByPlayer.get(event.player().getUUID());
-        if (allay == null || allay.isRemoved()) return;
+        Entity entity = this.entitiesByPlayer.get(event.player().getUUID());
+        if (!(entity instanceof Allay allay) || allay.isRemoved()) return;
 
         Vec3 destination = event.origin();
         Vec3 movement = destination.subtract(allay.position());
@@ -125,19 +122,9 @@ public final class ExampleCallbacks {
         allay.teleportTo(destination.x, destination.y, destination.z);
     }
 
-    private void removeAllay(UUID playerUuid) {
-        Allay allay = this.allaysByPlayer.remove(playerUuid);
-        if (allay != null) {
-            if (!allay.isRemoved() && allay.level() instanceof ServerLevel level) {
-                level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
-            }
-            allay.discard();
-        }
-    }
-
     private void handleIdleBat(EmoteCallbackEvent event) {
         if (event.phase() == EmoteCallbackPhase.STOP) {
-            removeBat(event.player().getUUID(), false);
+            removeEntity(event.player().getUUID(), false);
             return;
         }
         if (event.phase() != EmoteCallbackPhase.TIMELINE) return;
@@ -147,7 +134,7 @@ public final class ExampleCallbacks {
             case "move" -> moveBat(event);
             case "remove" -> {
                 moveBat(event);
-                removeBat(event.player().getUUID(), true);
+                removeEntity(event.player().getUUID(), true);
             }
             default -> throw new IllegalArgumentException("Unknown idle bat callback payload: " + event.payload());
         }
@@ -155,7 +142,7 @@ public final class ExampleCallbacks {
 
     private void spawnBat(EmoteCallbackEvent event) {
         UUID playerUuid = event.player().getUUID();
-        removeBat(playerUuid, false);
+        removeEntity(playerUuid, false);
 
         ServerLevel level = event.player().level();
         Bat bat = EntityTypes.BAT.create(level, EntitySpawnReason.COMMAND);
@@ -173,12 +160,12 @@ public final class ExampleCallbacks {
             throw new IllegalStateException("Failed to add the idle Bat to the level");
         }
         level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
-        this.batsByPlayer.put(playerUuid, bat);
+        this.entitiesByPlayer.put(playerUuid, bat);
     }
 
     private void moveBat(EmoteCallbackEvent event) {
-        Bat bat = this.batsByPlayer.get(event.player().getUUID());
-        if (bat == null || bat.isRemoved()) return;
+        Entity entity = this.entitiesByPlayer.get(event.player().getUUID());
+        if (!(entity instanceof Bat bat) || bat.isRemoved()) return;
 
         Vec3 destination = event.origin();
         Vec3 movement = destination.subtract(bat.position());
@@ -194,12 +181,16 @@ public final class ExampleCallbacks {
         bat.teleportTo(destination.x, destination.y, destination.z);
     }
 
-    private void removeBat(UUID playerUuid, boolean particles) {
-        Bat bat = this.batsByPlayer.remove(playerUuid);
-        if (bat == null) return;
-        if (particles && !bat.isRemoved() && bat.level() instanceof ServerLevel level) {
-            level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
+    private void removeEntity(UUID playerUuid, boolean particles) {
+        Entity entity = this.entitiesByPlayer.remove(playerUuid);
+        if (entity == null) return;
+        if (particles && !entity.isRemoved() && entity.level() instanceof ServerLevel level) {
+            if (entity instanceof Allay) {
+                level.sendParticles(ParticleTypes.WHITE_SMOKE, entity.getX(), entity.getY(0.5D), entity.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
+            } else if (entity instanceof Bat) {
+                level.sendParticles(ParticleTypes.SMOKE, entity.getX(), entity.getY(0.5D), entity.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
+            }
         }
-        bat.discard();
+        entity.discard();
     }
 }
