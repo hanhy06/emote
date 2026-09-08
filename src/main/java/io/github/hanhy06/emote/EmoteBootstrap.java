@@ -83,7 +83,7 @@ final class EmoteBootstrap {
         ExampleCallbacks.registerAll(api);
         CommandRegistrar commands = new CommandRegistrar(
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
-            new AdminCommand(catalog, playback, permissions, reload, configManager),
+            new AdminCommand(catalog, playback, permissions, reload, configManager, skins),
             new AccountCommand(accounts)
         );
         ServerLifecycle lifecycle = new ServerLifecycle(skins, playbackPolicy, catalog, playback, reload, wheelSync, idlePlayback);

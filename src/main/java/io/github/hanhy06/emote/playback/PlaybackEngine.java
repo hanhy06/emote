@@ -644,8 +644,16 @@ public class PlaybackEngine implements ConfigListener {
         };
     }
 
-    int activeDisplayEntityCount() {
+    public int activeDisplayEntityCount() {
         return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount();
+    }
+
+    public int activeSessionCount() {
+        return this.sessionRegistry.activeSessionCount();
+    }
+
+    public int activeParticipantCount() {
+        return this.sessionRegistry.activeParticipantCount();
     }
 
     static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {

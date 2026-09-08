@@ -12,6 +12,7 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.stress.StressTestPacketLoad;
 import io.github.hanhy06.emote.server.ReloadResult;
+import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import net.minecraft.ChatFormatting;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
@@ -43,6 +44,12 @@ final class AdminCommandTest {
         assertNotNull(deniedCommand.getChild("player"));
         assertFalse(deniedCommand.getChild("player").getRequirement().test(null));
         assertTrue(allowedCommand.getChild("player").getRequirement().test(null));
+    }
+
+    @Test
+    void infoRequiresManagePermission() {
+        assertFalse(createCommand(false).createInfoCommand().build().getRequirement().test(null));
+        assertTrue(createCommand(true).createInfoCommand().build().getRequirement().test(null));
     }
 
     @Test
@@ -120,6 +127,37 @@ final class AdminCommandTest {
         var summary = AdminCommand.createReloadSummary(new ReloadResult(2, 4, 5, 3));
 
         assertEquals("Emotes reloaded\n 3 of 5 files loaded · 2 disabled · 4 permission rules", summary.getString());
+    }
+
+    @Test
+    void infoSummaryShowsRuntimeCapacityAndSkinQueue() {
+        var summary = AdminCommand.createInfoSummary(new AdminCommand.AdminInfoSnapshot(
+            12,
+            14,
+            386,
+            512,
+            new SkinProcessingStats("Account", 2, 7, 1),
+            43,
+            3
+        ));
+
+        assertEquals(
+            "\n\n\n\n\nEmote server info"
+                + "\n\nPlayback"
+                + "\n• Sessions: 12"
+                + "\n• Players: 14"
+                + "\n• Displays: 386 / 512 (75.4%)"
+                + "\n\nSkin processing"
+                + "\n• Provider: Account"
+                + "\n• Jobs: 2 active · 7 queued"
+                + "\n• Retries: 1"
+                + "\n\nContent"
+                + "\n• Emotes: 43 loaded · 3 disable rules",
+            summary.getString()
+        );
+        assertEquals(ChatFormatting.YELLOW, AdminCommand.displayUsageColor(386, 512));
+        assertEquals(ChatFormatting.GREEN, AdminCommand.displayUsageColor(1_000, 0));
+        assertEquals(ChatFormatting.RED, AdminCommand.displayUsageColor(461, 512));
     }
 
     @Test
@@ -203,7 +241,7 @@ final class AdminCommandTest {
     }
 
     private AdminCommand createCommand(boolean canManage) {
-        return new AdminCommand(null, null, permissionService(canManage), null, null);
+        return new AdminCommand(null, null, permissionService(canManage), null, null, null);
     }
 
     private StressTestCommand createStressTestCommand(boolean canManage) {

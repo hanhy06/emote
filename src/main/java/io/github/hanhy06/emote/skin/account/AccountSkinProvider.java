@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinProvider;
+import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -159,6 +160,13 @@ public final class AccountSkinProvider implements PlayerSkinProvider {
         }
         this.queue.cancelAll();
         pending.forEach(future -> future.cancel(false));
+    }
+
+    @Override public synchronized SkinProcessingStats processingStats() {
+        long now = System.currentTimeMillis();
+        this.failures.values().removeIf(until -> until <= now);
+        AccountBakeQueue.Stats queueStats = this.queue.stats();
+        return new SkinProcessingStats("Account", queueStats.active(), queueStats.queued(), 0);
     }
 
     private static final class Bake {

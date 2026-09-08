@@ -146,6 +146,19 @@ public final class AccountBakeQueue {
         canceled.forEach(task -> task.result.cancel(false));
     }
 
+    synchronized Stats stats() {
+        int active = 0;
+        int queued = 0;
+        for (Worker worker : this.workers.values()) {
+            if (worker.active != null) active++;
+            queued += worker.pending.size();
+        }
+        return new Stats(active, queued);
+    }
+
+    record Stats(int active, int queued) {
+    }
+
     @FunctionalInterface public interface Upload {
         String upload(byte[] png, boolean slim) throws IOException, InterruptedException;
     }

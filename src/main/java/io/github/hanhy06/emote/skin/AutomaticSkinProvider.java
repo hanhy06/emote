@@ -42,4 +42,8 @@ public final class AutomaticSkinProvider implements PlayerSkinProvider {
         this.accountProvider.cancelPendingBakes();
         this.mineSkinProvider.cancelPendingBakes();
     }
+
+    @Override public SkinProcessingStats processingStats() {
+        return (this.hasAccounts.getAsBoolean() ? this.accountProvider : this.mineSkinProvider).processingStats();
+    }
 }

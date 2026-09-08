@@ -12,6 +12,8 @@ import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.server.ReloadResult;
 import io.github.hanhy06.emote.server.ReloadService;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -32,6 +34,7 @@ public final class AdminCommand {
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
+    private final PlayerSkinManager playerSkinManager;
     private final StressTestCommand stressTestCommand;
 
     public AdminCommand(
@@ -39,23 +42,98 @@ public final class AdminCommand {
         PlaybackEngine playbackEngine,
         PermissionService permissionService,
         ReloadService reloadService,
-        ConfigManager configManager
+        ConfigManager configManager,
+        PlayerSkinManager playerSkinManager
     ) {
         this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
+        this.playerSkinManager = playerSkinManager;
         this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, permissionService);
     }
 
     void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
-        root.then(createListCommand())
+        root.then(createInfoCommand())
+            .then(createListCommand())
             .then(createReloadCommand())
             .then(createStopPlayerCommand())
             .then(this.stressTestCommand.createCommand())
             .then(createEnableCommand())
             .then(createDisableCommand());
+    }
+
+    LiteralArgumentBuilder<CommandSourceStack> createInfoCommand() {
+        return Commands.literal("info")
+            .requires(this.permissionService.requireManage())
+            .executes(context -> info(context.getSource()));
+    }
+
+    private int info(CommandSourceStack source) {
+        SkinProcessingStats skinStats = this.playerSkinManager.processingStats();
+        AdminInfoSnapshot snapshot = new AdminInfoSnapshot(
+            this.playbackEngine.activeSessionCount(),
+            this.playbackEngine.activeParticipantCount(),
+            this.playbackEngine.activeDisplayEntityCount(),
+            this.configManager.getConfig().maxActiveDisplayEntities(),
+            skinStats,
+            this.emoteCatalog.size(),
+            this.configManager.getAccessConfig().disabled().size()
+        );
+        source.sendSuccess(() -> createInfoSummary(snapshot), false);
+        return snapshot.activeSessions();
+    }
+
+    static Component createInfoSummary(AdminInfoSnapshot snapshot) {
+        int displayLimit = snapshot.displayLimit();
+        String displayUsage = displayLimit == 0
+            ? snapshot.activeDisplays() + " / unlimited"
+            : String.format(
+                Locale.ROOT,
+                "%d / %d (%.1f%%)",
+                snapshot.activeDisplays(),
+                displayLimit,
+                snapshot.activeDisplays() * 100.0D / displayLimit
+            );
+        ChatFormatting displayColor = displayUsageColor(snapshot.activeDisplays(), displayLimit);
+        SkinProcessingStats skin = snapshot.skin();
+
+        return Component.literal("\n\n\n\n\nEmote server info").withStyle(ChatFormatting.GRAY)
+            .append(Component.literal("\n\nPlayback").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n• Sessions: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(Integer.toString(snapshot.activeSessions())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Players: ").withStyle(ChatFormatting.GREEN))
+            .append(Component.literal(Integer.toString(snapshot.activeParticipants())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Displays: ").withStyle(displayColor))
+            .append(Component.literal(displayUsage).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n\nSkin processing").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n• Provider: ").withStyle(ChatFormatting.AQUA))
+            .append(Component.literal(skin.provider()).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Jobs: ").withStyle(ChatFormatting.YELLOW))
+            .append(Component.literal(skin.activeJobs() + " active · " + skin.queuedJobs() + " queued").withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n• Retries: ").withStyle(ChatFormatting.GOLD))
+            .append(Component.literal(Integer.toString(skin.retryingJobs())).withStyle(ChatFormatting.WHITE))
+            .append(Component.literal("\n\nContent").withStyle(ChatFormatting.GRAY))
+            .append(Component.literal("\n• Emotes: ").withStyle(ChatFormatting.LIGHT_PURPLE))
+            .append(Component.literal(snapshot.loadedEmotes() + " loaded · " + snapshot.disableRules() + " disable rules").withStyle(ChatFormatting.WHITE));
+    }
+
+    static ChatFormatting displayUsageColor(int activeDisplays, int displayLimit) {
+        if (displayLimit == 0 || activeDisplays * 10L < displayLimit * 7L) return ChatFormatting.GREEN;
+        if (activeDisplays * 10L < displayLimit * 9L) return ChatFormatting.YELLOW;
+        return ChatFormatting.RED;
+    }
+
+    record AdminInfoSnapshot(
+        int activeSessions,
+        int activeParticipants,
+        int activeDisplays,
+        int displayLimit,
+        SkinProcessingStats skin,
+        int loadedEmotes,
+        int disableRules
+    ) {
     }
 
     LiteralArgumentBuilder<CommandSourceStack> createReloadCommand() {

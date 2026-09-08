@@ -107,6 +107,10 @@ public class PlayerSkinManager implements ConfigListener {
         this.provider.cancelPendingBakes();
     }
 
+    public SkinProcessingStats processingStats() {
+        return this.provider.processingStats();
+    }
+
     private void notifySkinReady(UUID playerUuid) {
         MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
