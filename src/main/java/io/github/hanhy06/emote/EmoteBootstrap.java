@@ -60,7 +60,7 @@ final class EmoteBootstrap {
         ApiEventDispatcher apiEvents = new ApiEventDispatcher();
         EmoteQueryService queries = new EmoteQueryService(catalog, playbackPolicy);
         EmotePlayService play = new EmotePlayService(catalog, playbackPolicy, playback, apiEvents);
-        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback);
+        IdlePlaybackService idlePlayback = new IdlePlaybackService(playbackPolicy, play, playback, catalog);
         WheelSyncService wheelSync = new WheelSyncService(queries);
         PolymerResourcePackDistributor resourcePackDistributor = new PolymerResourcePackDistributor(configManager);
         ReloadService reload = new ReloadService(

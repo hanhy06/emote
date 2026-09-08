@@ -101,11 +101,8 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         }
 
         private Pattern compilePattern(String source) {
-            if (Identifier.tryParse(source) != null) {
-                return Pattern.compile(source, Pattern.LITERAL);
-            }
             try {
-                return Pattern.compile(source);
+                return compileIdPattern(source);
             } catch (PatternSyntaxException exception) {
                 throw new IllegalArgumentException(
                     "invalid emote pattern '" + source + "' for permission '" + this.permission + "': " + exception.getDescription(),
@@ -198,6 +195,22 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             if (weighted && choices.stream().mapToInt(Choice::chance).sum() != 100) {
                 throw new IllegalArgumentException("idle emote chances must total 100");
             }
+            if (weighted && choices.stream().anyMatch(Choice::isPattern)) {
+                throw new IllegalArgumentException("idle emote patterns cannot use explicit chances");
+            }
+            for (Choice choice : choices) {
+                if (!choice.isPattern()) {
+                    continue;
+                }
+                try {
+                    compileIdPattern(choice.id());
+                } catch (PatternSyntaxException exception) {
+                    throw new IllegalArgumentException(
+                        "invalid idle emote pattern '" + choice.id() + "': " + exception.getDescription(),
+                        exception
+                    );
+                }
+            }
         }
 
         public IdleSettings(int delayTicks, Collection<String> emotes) {
@@ -213,6 +226,25 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             return this.choices.stream().map(Choice::id).toList();
         }
 
+        public List<Choice> resolveChoices(Collection<String> availableIds) {
+            Objects.requireNonNull(availableIds, "available emote ids");
+            LinkedHashMap<String, Choice> resolved = new LinkedHashMap<>();
+            List<String> sortedIds = availableIds.stream().sorted().toList();
+            for (Choice choice : this.choices) {
+                if (!choice.isPattern()) {
+                    resolved.putIfAbsent(choice.id(), choice);
+                    continue;
+                }
+                Pattern pattern = compileIdPattern(choice.id());
+                for (String id : sortedIds) {
+                    if (pattern.matcher(id).matches()) {
+                        resolved.putIfAbsent(id, new Choice(id, 0));
+                    }
+                }
+            }
+            return List.copyOf(resolved.values());
+        }
+
         public record Choice(String id, int chance) {
             public Choice {
                 if (id == null || id.isBlank()) {
@@ -223,7 +255,17 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
                     throw new IllegalArgumentException("idle emote chance must be between 1 and 100");
                 }
             }
+
+            public boolean isPattern() {
+                return Identifier.tryParse(this.id) == null;
+            }
         }
+    }
+
+    private static Pattern compileIdPattern(String source) {
+        return Identifier.tryParse(source) != null
+            ? Pattern.compile(source, Pattern.LITERAL)
+            : Pattern.compile(source);
     }
 
     private static List<String> normalizeIds(

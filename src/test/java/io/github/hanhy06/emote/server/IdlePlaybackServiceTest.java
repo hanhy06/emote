@@ -166,6 +166,31 @@ class IdlePlaybackServiceTest {
     }
 
     @Test
+    void resolvesIdleEmotePatternsAgainstAvailableIds() {
+        AccessConfig.IdleSettings patternIdle = new AccessConfig.IdleSettings(
+            200,
+            List.of("demo:idle_.*")
+        );
+        AtomicLong clock = new AtomicLong(15_000L);
+        List<String> playedIds = new ArrayList<>();
+        IdlePlaybackService service = new IdlePlaybackService(
+            ignoredPlayer -> Optional.of(patternIdle),
+            (ignoredPlayer, id) -> {
+                playedIds.add(id);
+                return PlayResult.SUCCESS;
+            },
+            ignoredPlayer -> false,
+            () -> List.of("demo:wave", "demo:idle_sky"),
+            clock::get,
+            RandomGenerator.getDefault()
+        );
+
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+
+        assertEquals(List.of("demo:idle_sky"), playedIds);
+    }
+
+    @Test
     void missingIdleConfigurationClearsPendingState() {
         AtomicLong clock = new AtomicLong(15_000L);
         AtomicInteger playCount = new AtomicInteger();

@@ -232,6 +232,50 @@ class ConfigManagerTest {
     }
 
     @Test
+    void readsIdleEmotePatternsWithoutWeights(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay":"300s","emote":["demo:idle_.*"]}
+                }
+              ]
+            }
+            """);
+
+        assertTrue(manager.readAccessConfig());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(List.of("demo:idle_.*"), idle.emote());
+        assertTrue(idle.choices().getFirst().isPattern());
+    }
+
+    @Test
+    void rejectsWeightedIdleEmotePatterns(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay":"300s","emote":["demo:idle_.*",50,"demo:sit",50]}
+                }
+              ]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertEquals(List.of("emote:sit"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
+    }
+
+    @Test
     void updatesDisabledIdsAndPreservesPermissions(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
