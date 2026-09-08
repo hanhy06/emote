@@ -2,6 +2,9 @@ import type { EmoteAnimation, EmoteNodeTracks, EmoteVectorKeyframe, Vec3 } from 
 import { parseMinecraftTime } from "./time";
 
 const TINY_STATIC_NODE_SCALE = 0.001;
+// Matrix decomposition leaves floating-point noise on otherwise constant channels.
+// Ten decimal places retain motion while eliminating matrix decomposition noise.
+const TRANSFORM_PRECISION = 1e10;
 
 export function removeRedundantKeyframes(animation: EmoteAnimation): EmoteAnimation {
   // Molang can observe key_frame_lerp_time left by another channel, or have side effects.
@@ -71,6 +74,8 @@ function removeTinyStaticNodes(animation: EmoteAnimation): EmoteAnimation {
 function cleanVectorFrames(frames: EmoteVectorKeyframe[], defaults: Vec3, allowLinearReduction: boolean): EmoteVectorKeyframe[] {
   // Preserve pre/post discontinuities and their incoming/outgoing interpolation boundaries.
   if (frames.some((frame) => !frame.value || frame.pre || frame.post)) return frames;
+  frames = frames.map((frame) => ({ ...frame, value: (frame.value as Vec3).map((axis) =>
+    Number(axis.toFixed(10))) as unknown as Vec3 }));
   const result: EmoteVectorKeyframe[] = [];
   for (const frame of frames) {
     result.push(frame);
@@ -97,6 +102,9 @@ function cleanVectorFrames(frames: EmoteVectorKeyframe[], defaults: Vec3, allowL
     const { interpolation: _interpolation, easing: _easing, ...terminal } = last;
     result[result.length - 1] = terminal;
   }
-  if (result.length === 1 && result[0].value!.every((value, axis) => value === defaults[axis])) return [];
-  return result;
+  if (result.length === 1 && result[0].value!.every((value, axis) => typeof value === "number" && Math.abs(value - defaults[axis]) <= 1 / TRANSFORM_PRECISION)) return [];
+  return result.map((frame) => {
+    const { interpolation, easing, ...value } = frame;
+    return { ...value, ...(interpolation && interpolation !== "linear" ? { interpolation } : {}), ...(easing && easing !== "linear" ? { easing } : {}) };
+  });
 }

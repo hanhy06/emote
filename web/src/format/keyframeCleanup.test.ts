@@ -14,7 +14,7 @@ function animation(tracks: EmoteNodeTracks): EmoteAnimation {
 }
 
 function frames(values: number[], interpolation: "step" | "linear" = "linear"): EmoteVectorKeyframe[] {
-  return values.map((value, index) => ({ time: `${index * 2}t`, value: [value, 0, 0], ...(index < values.length - 1 ? { interpolation } : {}) }));
+  return values.map((value, index) => ({ time: `${index * 2}t`, value: [value, 0, 0], ...(index < values.length - 1 && interpolation !== "linear" ? { interpolation } : {}) }));
 }
 
 function exportAndCompare(source: EmoteAnimation): EmoteAnimation {
@@ -29,6 +29,23 @@ function exportAndCompare(source: EmoteAnimation): EmoteAnimation {
 }
 
 describe("final keyframe cleanup", () => {
+  it("compacts explicit default interpolation without changing playback", () => {
+    const position = frames([0, 2, 1, 5]).map((frame, i) => ({ ...frame, ...(i < 3 ? { interpolation: "linear" as const, easing: "linear" as const } : {}) }));
+    const output = exportAndCompare(animation({ position }));
+    expect(output.timeline.tracks.root.position?.every((frame) => frame.interpolation === undefined && frame.easing === undefined)).toBe(true);
+  });
+
+  it("removes matrix decomposition noise from constant scale without mutating the input", () => {
+    const source = animation({ scale: [1, 1 + 2e-15, 1 - 1e-15, 1].map((value, i) => ({ time: `${i * 2}t`, value: [value, 1, 1] })) });
+    const snapshot = structuredClone(source);
+    const output = JSON.parse(serializeEmoteAnimation(source)) as EmoteAnimation;
+    expect(source).toEqual(snapshot);
+    expect(output.timeline.tracks).toEqual({});
+    const oldPreview = bakeSchema4Preview(source).root.transforms;
+    const newPreview = bakeSchema4Preview(output).root.transforms;
+    oldPreview.forEach((frame, i) => frame.matrix.forEach((value, axis) => expect(newPreview[i].matrix[axis]).toBeCloseTo(value, 9)));
+  });
+
   it("removes display nodes smaller than 0.001 after their motion tracks become empty", () => {
     const source = animation({ position: frames([0, 0, 0]) });
     source.nodes.root.transform.scale = [0.0009, -0.0009, 0];
