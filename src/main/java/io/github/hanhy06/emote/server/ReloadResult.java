@@ -4,6 +4,10 @@ public record ReloadResult(
     int disabledEmoteCount,
     int permissionRuleCount,
     int detectedFileCount,
-    int loadedEmoteCount
+    int loadedEmoteCount,
+    boolean successful
 ) {
+    public ReloadResult(int disabledEmoteCount, int permissionRuleCount, int detectedFileCount, int loadedEmoteCount) {
+        this(disabledEmoteCount, permissionRuleCount, detectedFileCount, loadedEmoteCount, true);
+    }
 }

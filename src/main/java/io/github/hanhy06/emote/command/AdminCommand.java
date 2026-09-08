@@ -187,6 +187,10 @@ public final class AdminCommand {
 
     private int reload(CommandSourceStack source) {
         ReloadResult result = this.reloadService.reloadFromCommand();
+        if (!result.successful()) {
+            source.sendFailure(Component.literal("Emote reload failed. The previous state was kept."));
+            return 0;
+        }
         source.sendSuccess(() -> createReloadSummary(result), true);
         return result.loadedEmoteCount();
     }

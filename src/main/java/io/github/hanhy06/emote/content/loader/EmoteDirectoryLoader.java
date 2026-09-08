@@ -6,6 +6,7 @@ import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -61,7 +62,7 @@ public final class EmoteDirectoryLoader {
             Files.createDirectories(directory);
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to create emote animation directory {}", directory, exception);
-            return List.of();
+            throw new UncheckedIOException(exception);
         }
 
         try (Stream<Path> paths = Files.walk(directory)) {
@@ -72,7 +73,7 @@ public final class EmoteDirectoryLoader {
                 .toList();
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to scan emote animation directory {}", directory, exception);
-            return List.of();
+            throw new UncheckedIOException(exception);
         }
     }
 

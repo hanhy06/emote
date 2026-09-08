@@ -12,12 +12,15 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
@@ -116,5 +119,28 @@ class ReloadServiceTest {
         service.reloadFromCommand();
 
         assertEquals(List.of("prepare", "replace", "stop", "resources", "sync"), operations);
+    }
+
+    @Test
+    void keepsCurrentRuntimeStateWhenDirectoryLoadingFails(@TempDir Path tempDir) {
+        ConfigManager configManager = new ConfigManager(tempDir);
+        configManager.configure();
+        EmoteCatalog registry = new EmoteCatalog();
+        registry.replace(List.of(create("example:current", "Current")));
+        List<String> operations = new ArrayList<>();
+        ReloadService service = new ReloadService(
+            configManager,
+            registry,
+            ignored -> { throw new UncheckedIOException(new IOException("scan failed")); },
+            ignored -> operations.add("stop"),
+            () -> operations.add("sync"),
+            () -> operations.add("resources")
+        );
+
+        ReloadResult result = service.reloadFromCommand();
+
+        assertFalse(result.successful());
+        assertNotNull(registry.find("example:current"));
+        assertEquals(List.of(), operations);
     }
 }

@@ -8,6 +8,8 @@ import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 
+import java.io.UncheckedIOException;
+
 public final class ReloadService {
     private final ConfigManager configManager;
     private final EmoteCatalog emoteCatalog;
@@ -52,7 +54,13 @@ public final class ReloadService {
 
     public void loadOnServerStart() {
         this.configManager.initialize();
-        ReloadStats stats = replaceRegistry(prepareRegistry());
+        ReloadStats stats;
+        try {
+            stats = replaceRegistry(prepareRegistry());
+        } catch (UncheckedIOException exception) {
+            EmoteMod.LOGGER.warn("Initial emote load failed; keeping the current registry");
+            return;
+        }
         EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
     }
 
@@ -65,12 +73,19 @@ public final class ReloadService {
             accessConfig.disabled().size(),
             accessConfig.permissions().size(),
             stats.detectedFileCount(),
-            stats.loadedEmoteCount()
+            stats.loadedEmoteCount(),
+            stats.successful()
         );
     }
 
     private ReloadStats reloadLoadedConfig() {
-        PreparedRegistry prepared = prepareRegistry();
+        PreparedRegistry prepared;
+        try {
+            prepared = prepareRegistry();
+        } catch (UncheckedIOException exception) {
+            EmoteMod.LOGGER.warn("Emote reload failed; keeping the current registry and active playbacks");
+            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size());
+        }
         ReloadStats stats = replaceRegistry(prepared);
         this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
         this.resourcePackReloader.run();
@@ -107,7 +122,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size());
+        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), true);
     }
 
     private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
@@ -141,7 +156,10 @@ public final class ReloadService {
         void stopAll(PlaybackStopReason reason);
     }
 
-    private record ReloadStats(int detectedFileCount, int loadedEmoteCount) {
+    private record ReloadStats(int detectedFileCount, int loadedEmoteCount, boolean successful) {
+        private static ReloadStats failed(int retainedEmoteCount) {
+            return new ReloadStats(0, retainedEmoteCount, false);
+        }
     }
 
     private record PreparedRegistry(int detectedFileCount, java.util.List<PlayableEmote> definitions) {
