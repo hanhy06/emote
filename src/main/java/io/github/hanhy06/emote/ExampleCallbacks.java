@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.util;
+package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
 import net.minecraft.core.particles.ParticleTypes;
@@ -12,12 +12,13 @@ import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 
 /**
- * Example listener for an animation event callback declared as follows:
+ * Registers the example callbacks shipped with the mod. The idle butterfly callback is declared as follows:
  *
  * <pre>{@code
  * {
@@ -28,43 +29,46 @@ import java.util.UUID;
  * }
  * }</pre>
  */
-public final class IdleButterflyCallbackExample {
-    public static final Identifier CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
+public final class ExampleCallbacks {
+    public static final Identifier IDLE_BUTTERFLY_CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
 
     private static final double ALLAY_SCALE = 0.35D;
 
     private final Map<UUID, Allay> allaysByPlayer = new HashMap<>();
-    private final ListenerRegistration callbackRegistration;
-    private final ListenerRegistration playbackRegistration;
+    private final List<ListenerRegistration> registrations;
 
     private boolean registered = true;
 
-    private IdleButterflyCallbackExample(EmoteApi api) {
-        this.callbackRegistration = api.addCallbackListener(CALLBACK_ID, this::handleCallback);
-        this.playbackRegistration = api.addPlaybackListener(new EmotePlaybackListener() {
-            @Override
-            public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
-                removeAllay(playback.playerUuid());
-            }
-        });
+    private ExampleCallbacks(EmoteApi api) {
+        this.registrations = List.of(
+            api.addCallbackListener(IDLE_BUTTERFLY_CALLBACK_ID, this::handleIdleButterfly),
+            api.addPlaybackListener(new EmotePlaybackListener() {
+                @Override
+                public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
+                    removeAllay(playback.playerUuid());
+                }
+            })
+        );
     }
 
-    public static IdleButterflyCallbackExample register(EmoteApi api) {
-        return new IdleButterflyCallbackExample(Objects.requireNonNull(api, "api"));
+    public static ExampleCallbacks registerAll(EmoteApi api) {
+        return new ExampleCallbacks(Objects.requireNonNull(api, "api"));
     }
 
     public boolean unregister() {
         if (!this.registered) return false;
         this.registered = false;
 
-        boolean callbackRemoved = this.callbackRegistration.unregister();
-        boolean playbackRemoved = this.playbackRegistration.unregister();
+        boolean removed = false;
+        for (ListenerRegistration registration : this.registrations) {
+            removed |= registration.unregister();
+        }
         this.allaysByPlayer.values().forEach(Allay::discard);
         this.allaysByPlayer.clear();
-        return callbackRemoved || playbackRemoved;
+        return removed;
     }
 
-    private void handleCallback(EmoteCallbackEvent event) {
+    private void handleIdleButterfly(EmoteCallbackEvent event) {
         switch (event.phase()) {
             case START -> spawnAllay(event);
             case TIMELINE -> moveAllay(event);

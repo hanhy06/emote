@@ -26,7 +26,6 @@ import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
-import io.github.hanhy06.emote.util.IdleButterflyCallbackExample;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -81,7 +80,7 @@ final class EmoteBootstrap {
             wheelSync::syncAll,
             new AnimationContentResolver()
         );
-        IdleButterflyCallbackExample.register(api);
+        ExampleCallbacks.registerAll(api);
         CommandRegistrar commands = new CommandRegistrar(
             new UserCommand(playback, new EmoteMenu(configManager, catalog, queries, playback), queries, play),
             new AdminCommand(catalog, playback, permissions, reload, configManager),
