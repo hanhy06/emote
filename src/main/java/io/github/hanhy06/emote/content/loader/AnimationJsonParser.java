@@ -71,7 +71,7 @@ public final class AnimationJsonParser {
         }
         return new LoadedAnimation(
             document.sourcePath(),
-            sha256(document.bytes()),
+            Sha256.hashHex(document.bytes()),
             new EmoteAnimation(id, metadata, settings, molang, nodes, timeline)
         );
     }
@@ -465,7 +465,4 @@ public final class AnimationJsonParser {
         return document.requireBoolean(object, "visible", path);
     }
 
-    private String sha256(byte[] bytes) {
-        return Sha256.hashHex(bytes);
-    }
 }
