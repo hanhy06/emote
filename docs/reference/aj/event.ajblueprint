@@ -1186,7 +1186,7 @@
 			"visibility": true,
 			"locked": false,
 			"export": true,
-			"block": "minecraft:red_concrete",
+			"block": "minecraft:red_wool",
 			"onSummonFunction": "",
 			"configs": {
 				"default": {
@@ -1263,7 +1263,7 @@
 			"position": [
 				4.65,
 				7.925,
-				-1.35
+				-1
 			],
 			"rotation": [
 				0,
@@ -1278,7 +1278,7 @@
 			"scale": [
 				0.16875,
 				0.040625,
-				0.16875
+				0.125
 			],
 			"color": 3,
 			"visibility": true,
@@ -1312,7 +1312,7 @@
 			"position": [
 				4.3,
 				7.25,
-				-1.7
+				-1.25
 			],
 			"rotation": [
 				0,
@@ -1327,7 +1327,7 @@
 			"scale": [
 				0.2125,
 				0.04375,
-				0.2125
+				0.15625
 			],
 			"color": 3,
 			"visibility": true,
@@ -1361,7 +1361,7 @@
 			"position": [
 				4,
 				6.825,
-				-2
+				-1.45
 			],
 			"rotation": [
 				0,
@@ -1376,7 +1376,7 @@
 			"scale": [
 				0.25,
 				0.028125,
-				0.25
+				0.18125
 			],
 			"color": 3,
 			"visibility": true,
@@ -1408,9 +1408,9 @@
 		{
 			"name": "right_handbell_recess",
 			"position": [
-				4.375,
+				4.575,
 				6.76,
-				-1.625
+				-1.425
 			],
 			"rotation": [
 				0,
@@ -1423,15 +1423,15 @@
 				0
 			],
 			"scale": [
-				0.203125,
+				0.178125,
 				0.005,
-				0.203125
+				0.178125
 			],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
 			"export": true,
-			"block": "minecraft:black_concrete",
+			"block": "minecraft:brown_terracotta",
 			"onSummonFunction": "",
 			"configs": {
 				"default": {
@@ -1578,7 +1578,7 @@
 			"visibility": true,
 			"locked": false,
 			"export": true,
-			"block": "minecraft:green_concrete",
+			"block": "minecraft:green_wool",
 			"onSummonFunction": "",
 			"configs": {
 				"default": {
@@ -1655,7 +1655,7 @@
 			"position": [
 				-7.35,
 				7.925,
-				-1.35
+				-1
 			],
 			"rotation": [
 				0,
@@ -1670,7 +1670,7 @@
 			"scale": [
 				0.16875,
 				0.040625,
-				0.16875
+				0.125
 			],
 			"color": 3,
 			"visibility": true,
@@ -1704,7 +1704,7 @@
 			"position": [
 				-7.7,
 				7.25,
-				-1.7
+				-1.25
 			],
 			"rotation": [
 				0,
@@ -1719,7 +1719,7 @@
 			"scale": [
 				0.2125,
 				0.04375,
-				0.2125
+				0.15625
 			],
 			"color": 3,
 			"visibility": true,
@@ -1753,7 +1753,7 @@
 			"position": [
 				-8,
 				6.825,
-				-2
+				-1.45
 			],
 			"rotation": [
 				0,
@@ -1768,7 +1768,7 @@
 			"scale": [
 				0.25,
 				0.028125,
-				0.25
+				0.18125
 			],
 			"color": 3,
 			"visibility": true,
@@ -1800,9 +1800,9 @@
 		{
 			"name": "left_handbell_recess",
 			"position": [
-				-7.625,
+				-7.425,
 				6.76,
-				-1.625
+				-1.425
 			],
 			"rotation": [
 				0,
@@ -1815,15 +1815,15 @@
 				0
 			],
 			"scale": [
-				0.203125,
+				0.178125,
 				0.005,
-				0.203125
+				0.178125
 			],
 			"color": 3,
 			"visibility": true,
 			"locked": false,
 			"export": true,
-			"block": "minecraft:black_concrete",
+			"block": "minecraft:brown_terracotta",
 			"onSummonFunction": "",
 			"configs": {
 				"default": {
@@ -2096,7 +2096,7 @@
 			"position": [
 				-4.2,
 				32.45,
-				-4.2
+				-3.5
 			],
 			"rotation": [
 				0,
@@ -2111,7 +2111,7 @@
 			"scale": [
 				0.525,
 				0.1125,
-				0.525
+				0.4375
 			],
 			"color": 1,
 			"visibility": true,
@@ -2145,7 +2145,7 @@
 			"position": [
 				-2.9,
 				34.1,
-				-3.4
+				-2.75
 			],
 			"rotation": [
 				0,
@@ -2160,7 +2160,7 @@
 			"scale": [
 				0.425,
 				0.10625,
-				0.425
+				0.34375
 			],
 			"color": 1,
 			"visibility": true,
@@ -2194,7 +2194,7 @@
 			"position": [
 				-1.5,
 				35.65,
-				-2.6
+				-2
 			],
 			"rotation": [
 				0,
@@ -2209,7 +2209,7 @@
 			"scale": [
 				0.325,
 				0.096875,
-				0.325
+				0.25
 			],
 			"color": 1,
 			"visibility": true,
@@ -2243,7 +2243,7 @@
 			"position": [
 				0.2,
 				37.05,
-				-1.8
+				-1.35
 			],
 			"rotation": [
 				0,
@@ -2258,7 +2258,7 @@
 			"scale": [
 				0.225,
 				0.090625,
-				0.225
+				0.16875
 			],
 			"color": 1,
 			"visibility": true,
@@ -2388,9 +2388,9 @@
 		{
 			"name": "santa_hat_pom_pom",
 			"position": [
-				3.7,
-				33.4,
-				-1.2
+				3.6,
+				33.825,
+				-0.9
 			],
 			"rotation": [
 				0,
@@ -2403,9 +2403,9 @@
 				0
 			],
 			"scale": [
-				0.15,
-				0.15,
-				0.15
+				0.1625,
+				0.096875,
+				0.1125
 			],
 			"color": 0,
 			"visibility": true,
@@ -2432,6 +2432,1917 @@
 			},
 			"scope": 0,
 			"uuid": "a428c0fc-5e18-48c9-9709-e78912d846d8",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_shoulder_front",
+			"position": [
+				5,
+				7.925,
+				-1.35
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.125,
+				0.040625,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "45a74815-7d75-4fc7-90c7-7e23826e1933",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_shoulder_back",
+			"position": [
+				5,
+				7.925,
+				1
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.125,
+				0.040625,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "5798d5e1-9542-4eb6-a4ef-943065034866",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_skirt_front",
+			"position": [
+				4.75,
+				7.25,
+				-1.7
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.15625,
+				0.04375,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "eef051d1-ac32-44d1-8630-5db4b74d9824",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_skirt_back",
+			"position": [
+				4.75,
+				7.25,
+				1.25
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.15625,
+				0.04375,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "b5d308ed-7139-4ab2-997d-9ea30f221f86",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_rim_front",
+			"position": [
+				4.55,
+				6.825,
+				-2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.18125,
+				0.028125,
+				0.034375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "516af3e5-caeb-4f0f-8085-cc3be84e1f03",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_rim_back",
+			"position": [
+				4.55,
+				6.825,
+				1.45
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.18125,
+				0.028125,
+				0.034375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "bba20401-0cac-4439-ac7b-85dd5139fc6a",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_bow_left",
+			"position": [
+				4.74148,
+				10.24533,
+				-1.06
+			],
+			"rotation": [
+				0,
+				0,
+				-22
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.065625,
+				0.040625,
+				0.02
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "ca072c90-6cc0-413e-b5fe-a17ffe18a77b",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_bow_right",
+			"position": [
+				6.28498,
+				9.852,
+				-1.06
+			],
+			"rotation": [
+				0,
+				0,
+				22
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.065625,
+				0.040625,
+				0.02
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "91ebc811-18cb-40a6-8012-808f788960bc",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_bow_knot",
+			"position": [
+				5.725,
+				10.075,
+				-1.225
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.034375,
+				0.034375,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "9c784582-e466-4afa-8cb2-0a3860b37ba7",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_ribbon_tail_left",
+			"position": [
+				5.22926,
+				9.1024,
+				-1.02
+			],
+			"rotation": [
+				0,
+				0,
+				-16
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.025,
+				0.071875,
+				0.0125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "450df774-6e62-4f44-b4d3-ef303801f131",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "right_handbell_ribbon_tail_right",
+			"position": [
+				6.36112,
+				9.284,
+				-1.02
+			],
+			"rotation": [
+				0,
+				0,
+				18
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.025,
+				0.053125,
+				0.0125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "b60684e1-7e75-418e-ac88-34e997ce4de2",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_shoulder_front",
+			"position": [
+				-7,
+				7.925,
+				-1.35
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.125,
+				0.040625,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "d40ec151-3bdd-4985-8afc-2844dc8da906",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_shoulder_back",
+			"position": [
+				-7,
+				7.925,
+				1
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.125,
+				0.040625,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "a9b2f08c-48a4-43f1-9d2f-235ca30021b0",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_skirt_front",
+			"position": [
+				-7.25,
+				7.25,
+				-1.7
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.15625,
+				0.04375,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "8ebc3bea-7152-4c7c-8ab0-8012b002cd17",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_skirt_back",
+			"position": [
+				-7.25,
+				7.25,
+				1.25
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.15625,
+				0.04375,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "c70bd727-3a9e-4229-94b9-29af2c8e26a7",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_rim_front",
+			"position": [
+				-7.45,
+				6.825,
+				-2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.18125,
+				0.028125,
+				0.034375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "aba368be-aaa0-4497-9f5a-128d8e53115d",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_rim_back",
+			"position": [
+				-7.45,
+				6.825,
+				1.45
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.18125,
+				0.028125,
+				0.034375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "ba8fa542-7755-4949-91c1-457510a97685",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_bow_left",
+			"position": [
+				-7.25852,
+				10.24533,
+				-1.06
+			],
+			"rotation": [
+				0,
+				0,
+				-22
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.065625,
+				0.040625,
+				0.02
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:green_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "1554ccef-0f13-467d-a0bb-7700841ce633",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_bow_right",
+			"position": [
+				-5.71502,
+				9.852,
+				-1.06
+			],
+			"rotation": [
+				0,
+				0,
+				22
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.065625,
+				0.040625,
+				0.02
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:green_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "23143d7d-8851-4574-a845-60e46bc52574",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_bow_knot",
+			"position": [
+				-6.275,
+				10.075,
+				-1.225
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.034375,
+				0.034375,
+				0.021875
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:gold_block",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "816a2189-2959-421b-9c94-b782697a0c72",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_ribbon_tail_left",
+			"position": [
+				-6.77074,
+				9.1024,
+				-1.02
+			],
+			"rotation": [
+				0,
+				0,
+				-16
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.025,
+				0.071875,
+				0.0125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:green_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "ea187f0a-7d6c-4b94-b3ac-4be5db3e181d",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "left_handbell_ribbon_tail_right",
+			"position": [
+				-5.63888,
+				9.284,
+				-1.02
+			],
+			"rotation": [
+				0,
+				0,
+				18
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.025,
+				0.053125,
+				0.0125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:green_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "2f813b30-03e5-4981-926d-15dee9cb57ef",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_base_front",
+			"position": [
+				-3.5,
+				32.45,
+				-4.2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.4375,
+				0.1125,
+				0.04375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "7939a4d4-8bc4-46c5-a76c-a3c0eacb9d71",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_base_back",
+			"position": [
+				-3.5,
+				32.45,
+				3.5
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.4375,
+				0.1125,
+				0.04375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "4ab9f3ff-3b73-47ad-bcb7-30c3e7ac9701",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_middle_front",
+			"position": [
+				-2.25,
+				34.1,
+				-3.4
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.34375,
+				0.10625,
+				0.040625
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "1fcce87a-c4eb-4dd1-a40c-3e2f289af75a",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_middle_back",
+			"position": [
+				-2.25,
+				34.1,
+				2.75
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.34375,
+				0.10625,
+				0.040625
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "468118c8-9614-4673-8a82-0739e71411c3",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_upper_front",
+			"position": [
+				-0.9,
+				35.65,
+				-2.6
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.25,
+				0.096875,
+				0.0375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "c8d81826-c3a3-48aa-b2f2-ad654f7b94a8",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_upper_back",
+			"position": [
+				-0.9,
+				35.65,
+				2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.25,
+				0.096875,
+				0.0375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "ea3f6a2c-1617-46a4-b4d1-5f9caa68a983",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_fold_front",
+			"position": [
+				0.65,
+				37.05,
+				-1.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.16875,
+				0.090625,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "73341cac-f31c-4733-98d5-c0c054693467",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_fold_back",
+			"position": [
+				0.65,
+				37.05,
+				1.35
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.16875,
+				0.090625,
+				0.028125
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "1d446105-37d3-4c06-bb02-596a847d0b20",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_pom_pom_front",
+			"position": [
+				4,
+				33.825,
+				-1.3
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.1125,
+				0.096875,
+				0.025
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "0f90fc05-740f-413a-8207-ca0f2ece8336",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_pom_pom_back",
+			"position": [
+				4,
+				33.825,
+				0.9
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.1125,
+				0.096875,
+				0.025
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "4e8a86fa-e20a-4da4-8bd7-a34d5fd4a514",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_pom_top",
+			"position": [
+				4.025,
+				35.375,
+				-0.875
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.109375,
+				0.01875,
+				0.109375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "a71f11ef-d0b6-4c1d-bdcb-2376cc39cbdd",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_pom_bottom",
+			"position": [
+				4.025,
+				33.525,
+				-0.875
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.109375,
+				0.01875,
+				0.109375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "a1908773-4912-424f-8461-e60a9a81dd42",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_tuft_0",
+			"position": [
+				-3.6,
+				30.975,
+				-4.78
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.075,
+				0.053125,
+				0.01375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "eb9b5722-5f55-4d45-8508-37e6f49bd2c5",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_tuft_1",
+			"position": [
+				-2.1,
+				31.095,
+				-4.78
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.075,
+				0.053125,
+				0.01375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "4c88f5bc-b100-4b92-8c44-93122f03754f",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_tuft_2",
+			"position": [
+				-0.6,
+				30.975,
+				-4.78
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.075,
+				0.053125,
+				0.01375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "6dc43edf-94a7-4170-ae19-73610d6606d5",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_tuft_3",
+			"position": [
+				0.9,
+				31.095,
+				-4.78
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.075,
+				0.053125,
+				0.01375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "53ecba4e-e452-4d71-94c2-01a6f16ee15f",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_tuft_4",
+			"position": [
+				2.4,
+				30.975,
+				-4.78
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.075,
+				0.053125,
+				0.01375
+			],
+			"color": 3,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "b918c30b-6f38-4fdb-836c-fb890e461928",
 			"type": "animated_java:vanilla_block_display"
 		}
 	],
@@ -2934,7 +4845,24 @@
 										"ba66a35e-b29b-416e-ab39-8bd2dbef83e7",
 										"8f084438-52ef-4c54-a5c6-fc8ac152c244",
 										"7ef328cd-6ff1-4dc2-b8d3-cbc2d9df7b42",
-										"a428c0fc-5e18-48c9-9709-e78912d846d8"
+										"a428c0fc-5e18-48c9-9709-e78912d846d8",
+										"7939a4d4-8bc4-46c5-a76c-a3c0eacb9d71",
+										"4ab9f3ff-3b73-47ad-bcb7-30c3e7ac9701",
+										"1fcce87a-c4eb-4dd1-a40c-3e2f289af75a",
+										"468118c8-9614-4673-8a82-0739e71411c3",
+										"c8d81826-c3a3-48aa-b2f2-ad654f7b94a8",
+										"ea3f6a2c-1617-46a4-b4d1-5f9caa68a983",
+										"73341cac-f31c-4733-98d5-c0c054693467",
+										"1d446105-37d3-4c06-bb02-596a847d0b20",
+										"0f90fc05-740f-413a-8207-ca0f2ece8336",
+										"4e8a86fa-e20a-4da4-8bd7-a34d5fd4a514",
+										"a71f11ef-d0b6-4c1d-bdcb-2376cc39cbdd",
+										"a1908773-4912-424f-8461-e60a9a81dd42",
+										"eb9b5722-5f55-4d45-8508-37e6f49bd2c5",
+										"4c88f5bc-b100-4b92-8c44-93122f03754f",
+										"6dc43edf-94a7-4170-ae19-73610d6606d5",
+										"53ecba4e-e452-4d71-94c2-01a6f16ee15f",
+										"b918c30b-6f38-4fdb-836c-fb890e461928"
 									]
 								}
 							]
@@ -2964,7 +4892,18 @@
 										"d65178a5-1af1-416c-9872-ba03fe2cc71a",
 										"57248066-afa4-498c-805a-fe02935c9549",
 										"df87c42b-cc47-45b3-957a-f1ea0ac7527d",
-										"228b0994-75c4-471e-8afe-9bca6f57f6cd"
+										"228b0994-75c4-471e-8afe-9bca6f57f6cd",
+										"45a74815-7d75-4fc7-90c7-7e23826e1933",
+										"5798d5e1-9542-4eb6-a4ef-943065034866",
+										"eef051d1-ac32-44d1-8630-5db4b74d9824",
+										"b5d308ed-7139-4ab2-997d-9ea30f221f86",
+										"516af3e5-caeb-4f0f-8085-cc3be84e1f03",
+										"bba20401-0cac-4439-ac7b-85dd5139fc6a",
+										"ca072c90-6cc0-413e-b5fe-a17ffe18a77b",
+										"91ebc811-18cb-40a6-8012-808f788960bc",
+										"9c784582-e466-4afa-8cb2-0a3860b37ba7",
+										"450df774-6e62-4f44-b4d3-ef303801f131",
+										"b60684e1-7e75-418e-ac88-34e997ce4de2"
 									]
 								}
 							]
@@ -2986,7 +4925,18 @@
 										"9c0463b3-ee0a-4e7e-a4f4-8eefa71cf157",
 										"75496fae-4a29-4d8c-a4af-049cf949fe0b",
 										"f6a50297-d810-42bc-8ed0-837bb96b65b4",
-										"0bdee510-5123-4fa2-ad84-10b9d4e0521a"
+										"0bdee510-5123-4fa2-ad84-10b9d4e0521a",
+										"d40ec151-3bdd-4985-8afc-2844dc8da906",
+										"a9b2f08c-48a4-43f1-9d2f-235ca30021b0",
+										"8ebc3bea-7152-4c7c-8ab0-8012b002cd17",
+										"c70bd727-3a9e-4229-94b9-29af2c8e26a7",
+										"aba368be-aaa0-4497-9f5a-128d8e53115d",
+										"ba8fa542-7755-4949-91c1-457510a97685",
+										"1554ccef-0f13-467d-a0bb-7700841ce633",
+										"23143d7d-8851-4574-a845-60e46bc52574",
+										"816a2189-2959-421b-9c94-b782697a0c72",
+										"ea187f0a-7d6c-4b94-b3ac-4be5db3e181d",
+										"2f813b30-03e5-4981-926d-15dee9cb57ef"
 									]
 								}
 							]
@@ -12445,7 +14395,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12453,6 +14403,40 @@
 							],
 							"uuid": "cfad0a5f-3ea4-4b1b-abf2-d8e08ffa98b0",
 							"time": 1.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d44a9484-317d-4054-9eae-1df0db54e7b8",
+							"time": 1.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "f0617215-e35b-4fde-b152-88a8fc14f1a9",
+							"time": 1.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12479,7 +14463,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0a327634-343b-43e5-bb34-55ba25e00a27",
+							"time": 1.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12496,7 +14497,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "29c44e38-633d-4723-b7dd-a52c20600a4d",
+							"time": 2.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12504,6 +14522,40 @@
 							],
 							"uuid": "b7fa37c0-60d3-4a5c-8282-b27bcd706b6b",
 							"time": 3.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "49b57a85-5a91-4943-b05a-541c6d7fa759",
+							"time": 3.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "490af1e0-4083-4833-9687-b2a4b47009e5",
+							"time": 3.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12530,7 +14582,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a3bc787a-73d8-4b92-8247-2cd7f2e31155",
+							"time": 3.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12547,7 +14616,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "fe97e2af-225e-4e84-9b5b-80062babf7c1",
+							"time": 4.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12555,6 +14641,40 @@
 							],
 							"uuid": "23757d8c-5981-4c3f-99ab-562809350f56",
 							"time": 5.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8c66fdf9-d164-4bd1-9083-30ca473bf6ae",
+							"time": 5.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "83339425-fc7c-4e78-bf33-3ce9ede8bd13",
+							"time": 5.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12581,7 +14701,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "201ad430-b4f0-481e-abda-f5cb9828be02",
+							"time": 5.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12589,6 +14726,23 @@
 							],
 							"uuid": "0f28d3b5-69c8-4390-aef6-4531febf8baa",
 							"time": 6.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ecd1eaf1-bc5c-403a-9d8f-0f553eb72a3d",
+							"time": 6.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12615,7 +14769,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ea9515bf-23ad-40ea-bf7c-1be177825163",
+							"time": 6.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "510656a1-1c58-4b07-9afb-54f28d75a9f4",
+							"time": 6.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12632,7 +14820,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "aedb10e1-5ad2-443f-a1c1-b50dd60facfa",
+							"time": 7.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12649,7 +14854,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.890899 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.059463 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12657,6 +14862,23 @@
 							],
 							"uuid": "4f46529d-084d-4894-918a-1dbd1a5b5228",
 							"time": 9.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "2ce3a9c0-a334-45e1-8b56-5e2506d621b5",
+							"time": 9.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12683,7 +14905,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bcba359b-be58-4a18-a68b-c18d697ee841",
+							"time": 9.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9c105740-ea25-4435-aa60-19062175456e",
+							"time": 9.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.890899 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.059463 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12691,6 +14947,23 @@
 							],
 							"uuid": "fd0810ab-ec30-4aed-968b-e3a5ae82ca9b",
 							"time": 10.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6f83712e-96ba-43f3-a8c4-a668e5de375e",
+							"time": 10.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12717,7 +14990,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9b18759a-077c-4b02-b2b0-73e0ac998316",
+							"time": 10.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12725,6 +15015,40 @@
 							],
 							"uuid": "abee2331-32fe-4569-8c7e-a003f1270aac",
 							"time": 11.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6428297a-704d-4103-baab-270da7f36ecd",
+							"time": 11.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4b8d601a-3a4d-4f65-b59a-bd166a8fc7e7",
+							"time": 11.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12751,7 +15075,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a15ea030-5b66-4944-92e9-d37cb959c94a",
+							"time": 11.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12759,6 +15100,23 @@
 							],
 							"uuid": "6cdf100b-1dae-4c8b-b0e2-d59c6e09817c",
 							"time": 12.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "e65ad3b3-9391-4af2-99b8-605d678b2c58",
+							"time": 12.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12785,7 +15143,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.594604 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d6005c19-33ae-4f97-8e89-b507837ef5cd",
+							"time": 12.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0cecf55d-2439-4cbb-bd3c-ed56f78bbcec",
+							"time": 12.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.594604 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12793,6 +15185,23 @@
 							],
 							"uuid": "3bbcd0ef-7a4d-4c6e-8cfa-2b4c6e51e2e1",
 							"time": 13.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "60584c0c-e61a-4911-b0e3-72bcd2755f1c",
+							"time": 13.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12819,7 +15228,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.189207 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.594604 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "749bd725-1ead-435e-8ce8-6f0fe764437d",
+							"time": 13.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.189207 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.594604 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12827,6 +15253,40 @@
 							],
 							"uuid": "bb518c0b-fd0c-4718-8d51-46f304a64c9f",
 							"time": 14.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7fca88f9-e7ca-4bff-8c4d-4f83ce67fed4",
+							"time": 14.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6110c35a-304f-4149-9eb6-c26c1c680446",
+							"time": 14.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12853,7 +15313,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.189207 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "dd4b8d02-53e4-4106-8ffd-df625ce405e3",
+							"time": 14.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.189207 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12870,7 +15347,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.587401 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7e3d736f-03a0-43ec-8b69-176043415399",
+							"time": 15.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.58 1.587401 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12887,7 +15381,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "32fe99a1-e932-48dc-b020-337c28d626ec",
+							"time": 16.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "933b5f6e-826a-49fc-9bfc-a09a6d66a87c",
+							"time": 16.45,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12895,6 +15423,23 @@
 							],
 							"uuid": "72284d11-d42c-4f31-80cd-6c227a393d14",
 							"time": 17.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7af0129a-a80e-4b36-9be7-8c4c60bea54e",
+							"time": 17.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12921,7 +15466,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ac04e33e-280a-4552-9085-8084ca7ba939",
+							"time": 17.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12938,7 +15500,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "6597b530-fb92-427c-82c3-30159870c193",
+							"time": 18.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d77e216a-5cef-454e-a5e4-16ff4b3768a4",
+							"time": 18.45,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12946,6 +15542,23 @@
 							],
 							"uuid": "366a97b6-d02a-43ed-908d-e8070ad9540a",
 							"time": 19.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "527e7427-64ce-4939-8d12-a69bb754edc9",
+							"time": 19.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -12972,7 +15585,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8e9ef4d8-8679-4463-8daa-537688dfa66c",
+							"time": 19.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12989,7 +15619,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1ff1eceb-88da-4ab7-9645-ed62b2463e1b",
+							"time": 20.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bb7ea7a4-9080-4952-8d2c-46b635e22528",
+							"time": 20.45,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -12997,6 +15661,23 @@
 							],
 							"uuid": "e271a3dd-c996-4d2d-a1db-d646cc34296a",
 							"time": 21.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "02c9bdb0-a715-4405-80f4-84fc820e89bc",
+							"time": 21.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13023,7 +15704,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d1736f81-94d2-4123-980e-dad82726b9b8",
+							"time": 21.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13031,6 +15729,40 @@
 							],
 							"uuid": "d1eddb58-2242-47a3-ad98-0af28dbc1d70",
 							"time": 22.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "167ece83-c251-4cd4-87ea-6a89d07b6987",
+							"time": 22.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "94106424-b6ed-484a-9b68-9ba3cd8b8175",
+							"time": 22.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13057,7 +15789,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d09a03e5-a4d1-4fbc-bbc4-8f6670af8501",
+							"time": 22.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13074,7 +15823,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "659e055e-7088-4f12-ac1b-00b7dfdc060e",
+							"time": 23.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13091,7 +15857,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.890899 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.059463 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13099,6 +15865,40 @@
 							],
 							"uuid": "9a86ed77-2bc0-4762-923a-2b6726c81ab0",
 							"time": 25.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7661dc4a-3795-475e-ada5-42542c8778f3",
+							"time": 25.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4a9dbe70-abdc-4b1b-b216-d80435752958",
+							"time": 25.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13125,7 +15925,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0fddb7f1-9677-4af7-b94c-156d05e2aff6",
+							"time": 25.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.707107 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.890899 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.059463 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13133,6 +15950,23 @@
 							],
 							"uuid": "c2c268ab-5a76-4e12-a373-4bb30c9df7da",
 							"time": 26.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "60efa4ba-93ae-418d-ba6d-7c9faf1b0be2",
+							"time": 26.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13159,7 +15993,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d6a839d8-1188-46c8-9910-532be941d68d",
+							"time": 26.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bdd987d5-61c7-4deb-938e-af4d86d5d615",
+							"time": 26.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13167,6 +16035,23 @@
 							],
 							"uuid": "51fb8893-380e-472b-a8bf-300beec8fe3a",
 							"time": 27.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "750f5347-e1b7-4bb0-8ebb-57b56b5895a4",
+							"time": 27.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13193,7 +16078,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c5d9516b-76d6-4e05-a558-6fa8706c8ef8",
+							"time": 27.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.334840 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13201,6 +16103,40 @@
 							],
 							"uuid": "1b85b52a-5e5a-4c57-a6f1-7151b7bb4a05",
 							"time": 28.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "348e76e7-9d86-4390-97f8-b431ae645f9f",
+							"time": 28.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "eb77fa83-960a-40f8-b198-5d036a9d5804",
+							"time": 28.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13227,7 +16163,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.587401 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.334840 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "13c64bab-e907-48e8-a17b-e2012870e6b2",
+							"time": 28.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.587401 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13235,6 +16188,23 @@
 							],
 							"uuid": "cfb57de7-fd16-48ec-899d-c3afe5fe0151",
 							"time": 29.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "babf764b-359d-409d-a20e-85bf779b72b9",
+							"time": 29.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13261,7 +16231,41 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9cea016e-285b-4127-a016-84e142e53f7f",
+							"time": 29.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.587401 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "743c406b-01c7-429f-a951-4fa6448aa3d4",
+							"time": 29.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.414214 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.793701 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.10 1.000000 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13269,6 +16273,23 @@
 							],
 							"uuid": "91ba5f67-28a8-4281-83ba-0954366d8c01",
 							"time": 30.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.414214 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "32ed2871-7667-4cd8-bc9d-24f8f47d7c6e",
+							"time": 30.35,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13295,7 +16316,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]",
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.189207 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9ca98b47-acb7-42db-9ca2-79163d982ecb",
+							"time": 30.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.64 1.059463 0\nplaysound minecraft:block.note_block.bell record @a[distance=..24] ~ ~1.2 ~ 0.25 0.529732 0\nexecute at @s run particle minecraft:glow ~ ~1.3 ~ 0.3 0.2 0.3 0.01 3 normal @a[distance=..24]\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.12 0.529732 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.12 0.667420 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.12 0.793701 0\nplaysound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.12 1.059463 0",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -13303,6 +16341,40 @@
 							],
 							"uuid": "aeadca9b-4a33-4f65-81d1-22b34b375e28",
 							"time": 31.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.08 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "95326737-c7be-4492-b8bf-cbd031b71348",
+							"time": 31.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "playsound minecraft:block.note_block.chime record @a[distance=..24] ~ ~1.2 ~ 0.04 1.059463 0",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "d6e6e0a0-6273-46d8-bb2e-8e967f8fe538",
+							"time": 31.45,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
@@ -13572,6 +16644,201 @@
 					"icon": "deployed_code",
 					"name": "santa_hat_pom_pom",
 					"value": "a428c0fc-5e18-48c9-9709-e78912d846d8"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_shoulder_front",
+					"value": "45a74815-7d75-4fc7-90c7-7e23826e1933"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_shoulder_back",
+					"value": "5798d5e1-9542-4eb6-a4ef-943065034866"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_skirt_front",
+					"value": "eef051d1-ac32-44d1-8630-5db4b74d9824"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_skirt_back",
+					"value": "b5d308ed-7139-4ab2-997d-9ea30f221f86"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_rim_front",
+					"value": "516af3e5-caeb-4f0f-8085-cc3be84e1f03"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_rim_back",
+					"value": "bba20401-0cac-4439-ac7b-85dd5139fc6a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_bow_left",
+					"value": "ca072c90-6cc0-413e-b5fe-a17ffe18a77b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_bow_right",
+					"value": "91ebc811-18cb-40a6-8012-808f788960bc"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_bow_knot",
+					"value": "9c784582-e466-4afa-8cb2-0a3860b37ba7"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_ribbon_tail_left",
+					"value": "450df774-6e62-4f44-b4d3-ef303801f131"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "right_handbell_ribbon_tail_right",
+					"value": "b60684e1-7e75-418e-ac88-34e997ce4de2"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_shoulder_front",
+					"value": "d40ec151-3bdd-4985-8afc-2844dc8da906"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_shoulder_back",
+					"value": "a9b2f08c-48a4-43f1-9d2f-235ca30021b0"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_skirt_front",
+					"value": "8ebc3bea-7152-4c7c-8ab0-8012b002cd17"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_skirt_back",
+					"value": "c70bd727-3a9e-4229-94b9-29af2c8e26a7"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_rim_front",
+					"value": "aba368be-aaa0-4497-9f5a-128d8e53115d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_rim_back",
+					"value": "ba8fa542-7755-4949-91c1-457510a97685"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_bow_left",
+					"value": "1554ccef-0f13-467d-a0bb-7700841ce633"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_bow_right",
+					"value": "23143d7d-8851-4574-a845-60e46bc52574"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_bow_knot",
+					"value": "816a2189-2959-421b-9c94-b782697a0c72"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_ribbon_tail_left",
+					"value": "ea187f0a-7d6c-4b94-b3ac-4be5db3e181d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "left_handbell_ribbon_tail_right",
+					"value": "2f813b30-03e5-4981-926d-15dee9cb57ef"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_base_front",
+					"value": "7939a4d4-8bc4-46c5-a76c-a3c0eacb9d71"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_base_back",
+					"value": "4ab9f3ff-3b73-47ad-bcb7-30c3e7ac9701"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_middle_front",
+					"value": "1fcce87a-c4eb-4dd1-a40c-3e2f289af75a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_middle_back",
+					"value": "468118c8-9614-4673-8a82-0739e71411c3"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_upper_front",
+					"value": "c8d81826-c3a3-48aa-b2f2-ad654f7b94a8"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_upper_back",
+					"value": "ea3f6a2c-1617-46a4-b4d1-5f9caa68a983"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_fold_front",
+					"value": "73341cac-f31c-4733-98d5-c0c054693467"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_fold_back",
+					"value": "1d446105-37d3-4c06-bb02-596a847d0b20"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_pom_pom_front",
+					"value": "0f90fc05-740f-413a-8207-ca0f2ece8336"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_pom_pom_back",
+					"value": "4e8a86fa-e20a-4da4-8bd7-a34d5fd4a514"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_pom_top",
+					"value": "a71f11ef-d0b6-4c1d-bdcb-2376cc39cbdd"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_pom_bottom",
+					"value": "a1908773-4912-424f-8461-e60a9a81dd42"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_tuft_0",
+					"value": "eb9b5722-5f55-4d45-8508-37e6f49bd2c5"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_tuft_1",
+					"value": "4c88f5bc-b100-4b92-8c44-93122f03754f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_tuft_2",
+					"value": "6dc43edf-94a7-4170-ae19-73610d6606d5"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_tuft_3",
+					"value": "53ecba4e-e452-4d71-94c2-01a6f16ee15f"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_tuft_4",
+					"value": "b918c30b-6f38-4fdb-836c-fb890e461928"
 				}
 			],
 			"animators": {
