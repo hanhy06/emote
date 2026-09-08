@@ -193,7 +193,7 @@ public final class PlaybackStressTest {
                         networkProcessingNanos += System.nanoTime() - networkStartedNanos;
                     }
                 } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed to run stress-test emote {}", instance.emote.id(), exception);
+                    EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
                     this.packetLoad.unregister(instance.nodes);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
