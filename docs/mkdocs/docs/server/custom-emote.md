@@ -4,16 +4,18 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 ## Supported formats
 
-| Source format   | Files          |
-|-----------------|----------------|
-| BD Engine       | `.zip`         |
-| GeckoLib        | `.bbmodel`     |
-| Animated Java   | `.ajblueprint` |
-| Bedrock Edition | `.json`        |
+| Source format | Files |
+|---|---|
+| BD Engine | `.zip` |
+| GeckoLib | `.bbmodel` |
+| Animated Java | `.ajblueprint` |
+| Bedrock Edition | `.json` |
+| Emotecraft | `.emotecraft` |
+| Existing Emote Animation or Sequence | `.json` |
 
-## 1. Open a file
+## 1. Open files
 
-Select **Choose animation file** in the converter and open the source project. Its format and animations are detected automatically. If the project contains multiple animations, use the **Animation** menu at the top to select the animation you want to configure.
+Select **Choose animation files** in the converter and open one or more source projects. Their formats and animations are detected automatically. If the imported files contain multiple animations, use the **Animation** menu at the top to select the animation you want to configure.
 
 <img src="../../assets/custom-emote/open.gif" alt="Opening an animation file in the converter">
 

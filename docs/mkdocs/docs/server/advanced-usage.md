@@ -67,6 +67,14 @@ To choose evenly among several emotes, list only their IDs:
 "emote": ["example:drink", "example:look-around"]
 ```
 
+An entry that is a valid emote ID matches literally. Any other entry is a full Java regular expression, so an idle rule can select every currently available emote with a matching ID:
+
+```json
+"emote": ["example:idle_.*"]
+```
+
+Regular-expression entries can be used only with equal selection. They cannot be combined with explicit weights.
+
 For weighted selection, alternate IDs and integer weights whose total must equal `100`:
 
 ```json
