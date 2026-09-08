@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.application.PlaybackPolicyService;
 import io.github.hanhy06.emote.config.AccessConfig;
 import io.github.hanhy06.emote.config.AccessConfigListener;
 import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.util.WeightedChoiceSelector;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,7 +47,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
             playbackPolicy::findIdleSettings,
             (player, id) -> playService.play(player, id, PlaySource.IDLE),
             player -> playbackEngine.findActive(player.getUUID()) != null,
-            () -> emoteCatalog.emotes().stream().map(emote -> emote.id()).toList(),
+            () -> emoteCatalog.emotes().stream().map(PlayableEmote::id).toList(),
             Util::getMillis,
             RandomGenerator.getDefault()
         );

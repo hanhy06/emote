@@ -33,7 +33,7 @@ public class WheelShortcutScreen extends Screen {
 
     @Override
     protected void init() {
-        int listWidth = Math.min(LIST_MAX_WIDTH, Math.max(100, (this.width - LIST_GAP) / 2));
+        int listWidth = Math.clamp((this.width - LIST_GAP) / 2, 100, LIST_MAX_WIDTH);
         int listHeight = EmoteShortcutList.fitHeight(Math.max(40, this.height - LIST_TOP - FOOTER_HEIGHT));
         int centerX = this.width / 2;
 

@@ -103,7 +103,7 @@ final class MolangRuntime implements ExpressionVisitor<Value>, ExecutionContext<
     }
 
     private Value evaluateLoop(FunctionArguments arguments) {
-        int count = Math.min(1024, Math.max(0, Math.round((float) arguments.next().eval().getAsNumber())));
+        int count = Math.clamp(Math.round((float) arguments.next().eval().getAsNumber()), 0, 1024);
         Value body = arguments.next().eval();
         if (!(body instanceof Function<?> callable)) {
             return NumberValue.zero();

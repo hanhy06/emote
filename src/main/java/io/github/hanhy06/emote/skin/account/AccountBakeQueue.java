@@ -39,7 +39,7 @@ public final class AccountBakeQueue {
         Account selected = null;
         if (!registered.isEmpty()) {
             for (int offset = 0; offset < registered.size(); offset++) {
-                int index = (int) Math.floorMod(this.nextAccount++, registered.size());
+                int index = Math.floorMod(this.nextAccount++, registered.size());
                 Account candidate = registered.get(index);
                 if (!candidate.needsLogin()) {
                     selected = candidate;

@@ -58,7 +58,7 @@ public final class AccountSkinProvider implements PlayerSkinProvider {
         if (this.failures.containsKey(key)) return new PlayerSkinPreparation(skin, PlayerSkinPreparation.State.FAILED, progress);
         Bake bake = this.bakes.get(key);
         if (bake == null) {
-            if (this.accounts.storageError() != null || this.accounts.accounts().stream().noneMatch(account -> !account.needsLogin())) {
+            if (this.accounts.storageError() != null || this.accounts.accounts().stream().allMatch(MinecraftAccountManager.Account::needsLogin)) {
                 return new PlayerSkinPreparation(skin, PlayerSkinPreparation.State.UNAVAILABLE, progress);
             }
             bake = new Bake(source, this.generation);

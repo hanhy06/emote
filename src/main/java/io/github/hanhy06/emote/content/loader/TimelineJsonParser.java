@@ -101,8 +101,6 @@ final class TimelineJsonParser {
                 else if (initialFields != null && !initialFields.containsAll(fixed.value().keySet())) {
                     throw document.error(keyframePath + ".value", "must only modify fields declared by the 0t keyframe");
                 }
-            } else if (index == 0) {
-                initialFields = null;
             }
             if (object.size() != 2) {
                 throw document.error(keyframePath, "nbt keyframes only support time and value");

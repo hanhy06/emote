@@ -112,7 +112,7 @@ public final class MolangEngine {
         private void setQueryFunction(String name, Double value, QueryFunction function) {
             Objects.requireNonNull(name, "name");
             Objects.requireNonNull(function, "function");
-            this.query.set(name.toLowerCase(Locale.ROOT), new Function<Object>() {
+            this.query.set(name.toLowerCase(Locale.ROOT), new Function<>() {
                 @Override
                 public Value evaluate(team.unnamed.mocha.runtime.ExecutionContext<Object> context, Arguments arguments) {
                     List<Value> values = new ArrayList<>(arguments.length());
