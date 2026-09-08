@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-public class AnimationPlayer {
+public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedAnimation emote;
     private final TimelineTarget target;

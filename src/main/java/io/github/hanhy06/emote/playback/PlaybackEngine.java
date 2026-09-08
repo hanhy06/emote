@@ -84,8 +84,7 @@ public class PlaybackEngine implements ConfigListener {
             emote.id(),
             emote.playerBehavior(),
             SceneRootResolver.single(RootTransform.fromPlayer(player)),
-            null,
-            false
+            null
         );
     }
 
@@ -99,8 +98,7 @@ public class PlaybackEngine implements ConfigListener {
             sequence.id(),
             sequence.playerBehavior(),
             SceneRootResolver.single(RootTransform.fromPlayer(player)),
-            null,
-            true
+            null
         );
     }
 
@@ -122,8 +120,7 @@ public class PlaybackEngine implements ConfigListener {
             sequence.id(),
             sequence.playerBehavior(),
             roots,
-            sequence,
-            true
+            sequence
         );
     }
 
@@ -164,8 +161,7 @@ public class PlaybackEngine implements ConfigListener {
         String playbackId,
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
-        @Nullable PreparedSequence partnerSequence,
-        boolean sequencePlayback
+        @Nullable PreparedSequence partnerSequence
     ) {
         PlaybackSession currentSession = findActive(player.getUUID());
         int projectedDisplayEntities = projectedDisplayEntityCount(
@@ -192,8 +188,7 @@ public class PlaybackEngine implements ConfigListener {
             playerBehavior,
             roots,
             skinPreparation.preparedPlayerSkin(),
-            partnerSequence,
-            sequencePlayback
+            partnerSequence
         );
     }
 
@@ -204,8 +199,7 @@ public class PlaybackEngine implements ConfigListener {
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
-        @Nullable PreparedSequence partnerSequence,
-        boolean sequencePlayback
+        @Nullable PreparedSequence partnerSequence
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
@@ -213,11 +207,11 @@ public class PlaybackEngine implements ConfigListener {
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
             this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
-            EntityTimelineTarget target = new EntityTimelineTarget(emote, nodes, this.entityController);
-            PlayerMolangQueries.Source queries = PlayerMolangQueries.forPlayer(player);
-            AnimationPlayer timeline = sequencePlayback
-                ? new SequencePlayer(emote, target, queries, () -> EmoteMod.SERVER.overworld().getGameTime())
-                : new AnimationPlayer(emote, target, queries);
+            AnimationPlayer timeline = new AnimationPlayer(
+                emote,
+                new EntityTimelineTarget(emote, nodes, this.entityController),
+                PlayerMolangQueries.forPlayer(player)
+            );
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline, this.callbacks));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                 timeline.startSynchronized(EmoteMod.SERVER.overworld().getGameTime());
@@ -458,11 +452,10 @@ public class PlaybackEngine implements ConfigListener {
 
     private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedAnimation emote) {
         ServerPlayer initiator = sessionInitiatorPlayer(session);
-        AnimationPlayer animation = new SequencePlayer(
+        AnimationPlayer animation = new AnimationPlayer(
             emote,
             new EntityTimelineTarget(emote, session.nodes(), this.entityController),
-            PlayerMolangQueries.forPlayer(initiator),
-            () -> EmoteMod.SERVER.overworld().getGameTime()
+            PlayerMolangQueries.forPlayer(initiator)
         );
         animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation, this.callbacks));
         animation.start();
