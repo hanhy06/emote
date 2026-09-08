@@ -10,14 +10,13 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.HumanoidArm;
 
 import java.nio.file.Path;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
@@ -479,10 +478,6 @@ public final class AnimationJsonParser {
     }
 
     private String sha256(byte[] bytes) {
-        try {
-            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes));
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return Sha256.hashHex(bytes);
     }
 }
