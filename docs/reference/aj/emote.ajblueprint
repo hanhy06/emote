@@ -2889,7 +2889,7 @@
 			"position": [0, 0, 0],
 			"rotation": [0, 0, 0],
 			"pivotOffset": [0, 0, 0],
-			"scale": [0.01, 0.01, 0.01],
+			"scale": [0.0001, 0.0001, 0.0001],
 			"color": 1,
 			"visibility": true,
 			"locked": false,
@@ -2968,7 +2968,7 @@
 			"mirror_uv": false,
 			"visibility": true,
 			"autouv": 0,
-			"isOpen": false,
+			"isOpen": true,
 			"primary_selected": false
 		},
 		{
@@ -3254,7 +3254,7 @@
 	"outliner": [
 		{
 			"uuid": "b9072026-0907-4000-b000-000000000001",
-			"isOpen": false,
+			"isOpen": true,
 			"children": [
 				"b9072026-0907-4000-b000-000000000002",
 				"b9072026-0907-4000-b000-000000000003",
@@ -3427,7 +3427,7 @@
 	"animations": [
 		{
 			"uuid": "c9072026-0907-4000-c000-000000000001",
-			"name": "piano",
+			"name": "piano_normal",
 			"loop": "once",
 			"override": false,
 			"length": 16.5,
@@ -37441,15 +37441,15 @@
 							"channel": "scale",
 							"data_points": [
 								{
-									"x": "100\n",
-									"y": "100",
-									"z": "100"
+									"x": "10000\n",
+									"y": "10000\n",
+									"z": "10000\n"
 								}
 							],
 							"uuid": "780109a6-390f-48eb-3523-f8aad9839259",
 							"time": 0,
 							"color": -1,
-							"uniform": false,
+							"uniform": true,
 							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
