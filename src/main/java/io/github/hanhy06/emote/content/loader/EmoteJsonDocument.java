@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.content.loader;
 import com.google.gson.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.util.MinecraftTime;
+import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -157,6 +158,18 @@ final class EmoteJsonDocument {
         } catch (IllegalArgumentException exception) {
             throw error(fieldPath, "must be a valid Minecraft time", exception);
         }
+    }
+
+    Identifier requireIdentifier(String value, String path) throws EmoteAnimationLoadException {
+        int separator = value.indexOf(':');
+        if (separator <= 0 || separator == value.length() - 1) {
+            throw error(path, "must use namespace:path format");
+        }
+        Identifier id = Identifier.tryParse(value);
+        if (id == null || !id.toString().equals(value)) {
+            throw error(path, "must be a valid lowercase Minecraft identifier");
+        }
+        return id;
     }
 
     void requireExactInt(JsonObject object, String key, String path, int expected)

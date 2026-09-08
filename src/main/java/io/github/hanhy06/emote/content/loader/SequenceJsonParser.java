@@ -31,7 +31,7 @@ public final class SequenceJsonParser {
             throw document.error("$.type", "must equal sequence");
         }
         document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
-        Identifier id = parseId(document.requireString(root, "id", "$"), "$.id", document);
+        Identifier id = document.requireIdentifier(document.requireString(root, "id", "$"), "$.id");
         EmoteMetadata metadata = AnimationJsonParser.parseMetadata(document.requireObject(root, "metadata", "$"), document);
         EmoteSequence.Participants participants = parseParticipants(root, document);
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
@@ -181,10 +181,9 @@ public final class SequenceJsonParser {
             throw document.error(path + ".repeat", "is not supported on an await_partner step");
         }
         JsonObject await = document.requireObject(stepObject, "await_partner", path);
-        Identifier offer = parseId(
+        Identifier offer = document.requireIdentifier(
             document.requireString(await, "emote", path + ".await_partner"),
-            path + ".await_partner.emote",
-            document
+            path + ".await_partner.emote"
         );
         if (EmoteSequence.Control.fromId(offer) != null) {
             throw document.error(path + ".await_partner.emote", "must reference an animation");
@@ -209,7 +208,7 @@ public final class SequenceJsonParser {
         throws EmoteAnimationLoadException {
         JsonElement element = document.requireElement(stepObject, "emote", path);
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-            return List.of(new EmoteSequence.Choice(parseId(element.getAsString(), path + ".emote", document), 0));
+            return List.of(new EmoteSequence.Choice(document.requireIdentifier(element.getAsString(), path + ".emote"), 0));
         }
         if (!element.isJsonArray()) {
             throw document.error(path + ".emote", "must be a string or a non-empty array of strings");
@@ -235,7 +234,7 @@ public final class SequenceJsonParser {
             if (document.isNotString(candidate)) {
                 throw document.error(candidatePath, "must be a string");
             }
-            Identifier targetId = parseId(candidate.getAsString(), candidatePath, document);
+            Identifier targetId = document.requireIdentifier(candidate.getAsString(), candidatePath);
             if (choices.stream().anyMatch(choice -> choice.targetId().equals(targetId))) {
                 throw document.error(candidatePath, "must not duplicate an earlier candidate");
             }
@@ -257,12 +256,4 @@ public final class SequenceJsonParser {
         return choices;
     }
 
-    private Identifier parseId(String value, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        Identifier id = Identifier.tryParse(value);
-        if (id == null || !id.toString().equals(value) || value.indexOf(':') <= 0) {
-            throw document.error(path, "must be a valid lowercase namespace:path identifier");
-        }
-        return id;
-    }
 }

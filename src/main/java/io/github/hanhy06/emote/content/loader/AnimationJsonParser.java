@@ -59,7 +59,7 @@ public final class AnimationJsonParser {
         document.requireExactInt(root, "schema_version", "$", SCHEMA_VERSION);
 
         String idText = document.requireString(root, "id", "$");
-        Identifier id = parseId(idText, document);
+        Identifier id = document.requireIdentifier(idText, "$.id");
         EmoteMetadata metadata = parseMetadata(document.requireObject(root, "metadata", "$"), document);
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
         Settings settings = parseSettings(settingsObject, document);
@@ -416,18 +416,6 @@ public final class AnimationJsonParser {
             throw document.error(path + ".skin.order", "must not be negative");
         }
         return new Skin(participant, part, order);
-    }
-
-    private Identifier parseId(String value, EmoteJsonDocument document) throws EmoteAnimationLoadException {
-        int separator = value.indexOf(':');
-        if (separator <= 0 || separator == value.length() - 1) {
-            throw document.error("$.id", "must use namespace:path format");
-        }
-        Identifier id = Identifier.tryParse(value);
-        if (id == null || !id.toString().equals(value)) {
-            throw document.error("$.id", "must be a valid lowercase Minecraft identifier");
-        }
-        return id;
     }
 
     private CompoundTag optionalEntityNbt(JsonObject object, String path, EmoteJsonDocument document)
