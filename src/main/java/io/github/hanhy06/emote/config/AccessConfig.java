@@ -31,7 +31,7 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
                 "emote.default",
                 List.of("*"),
                 Optional.empty(),
-                Optional.of(new IdleSettings(3 * 60 * 20, List.of("emote:idle.*")))
+                Optional.of(new IdleSettings(3 * 60 * 20, List.of("emote:idle\\..*")))
             ))
         );
     }
