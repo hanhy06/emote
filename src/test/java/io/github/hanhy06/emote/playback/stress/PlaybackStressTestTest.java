@@ -40,6 +40,32 @@ class PlaybackStressTestTest {
     }
 
     @Test
+    void fillsARequestedDisplayBudgetWithoutExceedingIt() {
+        List<Integer> selection = PlaybackStressTest.createDisplayLimitedSelection(
+            List.of(3, 5, 8),
+            new Random(1234L),
+            20,
+            Integer::intValue
+        );
+
+        assertFalse(selection.isEmpty());
+        assertTrue(selection.stream().mapToInt(Integer::intValue).sum() <= 20);
+        assertTrue(selection.size() <= PlaybackStressTest.MAX_INSTANCE_COUNT);
+    }
+
+    @Test
+    void displayBudgetIgnoresAnimationsWithoutDisplays() {
+        List<Integer> selection = PlaybackStressTest.createDisplayLimitedSelection(
+            List.of(0, 4),
+            new Random(1234L),
+            3,
+            Integer::intValue
+        );
+
+        assertTrue(selection.isEmpty());
+    }
+
+    @Test
     void distributesInitialTicksAcrossTheLatePlaybackWindow() {
         Random random = new Random(5678L);
 

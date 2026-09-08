@@ -1,18 +1,23 @@
 package io.github.hanhy06.emote.command;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.SharedSuggestionProvider;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
@@ -24,6 +29,9 @@ import java.util.Locale;
 import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
 
 final class StressTestCommand {
+    private static final DynamicCommandExceptionType INVALID_LOAD = new DynamicCommandExceptionType(value -> Component.literal(
+        "Invalid stress-test load '" + value + "'. Use a positive number followed by i or d."
+    ));
     private final EmoteCatalog emoteCatalog;
     private final PlaybackEngine playbackEngine;
     private final PermissionService permissionService;
@@ -45,17 +53,18 @@ final class StressTestCommand {
                 .executes(context -> startStressTest(
                     context.getSource(),
                     IntegerArgumentType.getInteger(context, "time"),
-                    DEFAULT_STRESS_TEST_INSTANCE_COUNT,
+                    new StressLoad(DEFAULT_STRESS_TEST_INSTANCE_COUNT, LoadUnit.INSTANCES),
                     DEFAULT_STRESS_TEST_PACKET_FANOUT
                 ))
-                .then(Commands.argument(
-                        "count",
-                        IntegerArgumentType.integer(1, MAX_STRESS_TEST_INSTANCE_COUNT)
-                    )
+                .then(Commands.argument("load", StringArgumentType.word())
+                    .suggests((ignoredContext, builder) -> SharedSuggestionProvider.suggest(
+                        List.of("100", "100i", "1000d"),
+                        builder
+                    ))
                     .executes(context -> startStressTest(
                         context.getSource(),
                         IntegerArgumentType.getInteger(context, "time"),
-                        IntegerArgumentType.getInteger(context, "count"),
+                        parseLoad(StringArgumentType.getString(context, "load")),
                         DEFAULT_STRESS_TEST_PACKET_FANOUT
                     ))
                     .then(Commands.argument(
@@ -65,14 +74,14 @@ final class StressTestCommand {
                         .executes(context -> startStressTest(
                             context.getSource(),
                             IntegerArgumentType.getInteger(context, "time"),
-                            IntegerArgumentType.getInteger(context, "count"),
+                            parseLoad(StringArgumentType.getString(context, "load")),
                             IntegerArgumentType.getInteger(context, "packets")
                         )))))
             .then(Commands.literal("stop")
                 .executes(context -> stopStressTest(context.getSource())));
     }
 
-    private int startStressTest(CommandSourceStack source, int durationTicks, int requestedInstanceCount, int packetFanout) {
+    private int startStressTest(CommandSourceStack source, int durationTicks, StressLoad load, int packetFanout) {
         List<PreparedAnimation> emotes = this.emoteCatalog.animations();
         if (emotes.isEmpty()) {
             source.sendFailure(Component.literal("No emotes are registered."));
@@ -91,34 +100,77 @@ final class StressTestCommand {
             preparedSkin = skinPreparation.preparedPlayerSkin();
         }
 
-        int instanceCount;
+        PlaybackStressTest.StartResult startResult;
         try {
-            instanceCount = this.playbackEngine.startStressTest(
-                source.getLevel(),
-                source.getPosition(),
-                source.getRotation().y,
-                emotes,
-                durationTicks,
-                requestedInstanceCount,
-                packetFanout,
-                preparedSkin,
-                report -> sendStressTestReport(source, report)
-            );
+            startResult = load.unit() == LoadUnit.INSTANCES
+                ? this.playbackEngine.startStressTest(
+                    source.getLevel(),
+                    source.getPosition(),
+                    source.getRotation().y,
+                    emotes,
+                    durationTicks,
+                    load.amount(),
+                    packetFanout,
+                    preparedSkin,
+                    report -> sendStressTestReport(source, report)
+                )
+                : this.playbackEngine.startStressTestByDisplayCount(
+                    source.getLevel(),
+                    source.getPosition(),
+                    source.getRotation().y,
+                    emotes,
+                    durationTicks,
+                    load.amount(),
+                    packetFanout,
+                    preparedSkin,
+                    report -> sendStressTestReport(source, report)
+                );
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote stress test", exception);
             source.sendFailure(Component.literal("Failed to start emote stress test."));
             return 0;
         }
-        int gridSize = (int) Math.ceil(Math.sqrt(instanceCount));
+        int gridSize = (int) Math.ceil(Math.sqrt(startResult.instanceCount()));
+        String requestedLoad = load.unit() == LoadUnit.INSTANCES
+            ? load.amount() + " instances"
+            : load.amount() + " displays";
         source.sendSuccess(
             () -> Component.literal(
-                "\n\n\nStarted a stress test with " + instanceCount + " instances in a " + gridSize + "×" + gridSize
+                "\n\n\nStarted a stress test for " + requestedLoad + ". Created " + startResult.instanceCount()
+                    + " instances with " + startResult.displayEntityCount() + " displays in a " + gridSize + "×" + gridSize
                     + " grid for " + String.format(Locale.ROOT, "%.1f", durationTicks / 20.0D) + " seconds using "
                     + emotes.size() + " emotes and " + packetFanout + "× packet fanout."
             ),
             true
         );
-        return instanceCount;
+        return startResult.instanceCount();
+    }
+
+    static StressLoad parseLoad(String input) throws CommandSyntaxException {
+        if (input == null || input.isEmpty()) throw INVALID_LOAD.create(input);
+        char suffix = input.charAt(input.length() - 1);
+        LoadUnit unit = suffix == 'd' ? LoadUnit.DISPLAYS : LoadUnit.INSTANCES;
+        String number = suffix == 'd' || suffix == 'i' ? input.substring(0, input.length() - 1) : input;
+        if (number.isEmpty() || !number.chars().allMatch(Character::isDigit)) throw INVALID_LOAD.create(input);
+
+        int amount;
+        try {
+            amount = Integer.parseInt(number);
+        } catch (NumberFormatException exception) {
+            throw INVALID_LOAD.create(input);
+        }
+        if (amount < 1 || (unit == LoadUnit.INSTANCES && amount > MAX_STRESS_TEST_INSTANCE_COUNT)) {
+            throw INVALID_LOAD.create(input);
+        }
+        return new StressLoad(amount, unit);
+    }
+
+    enum LoadUnit {
+        INSTANCES,
+        DISPLAYS
+    }
+
+    record StressLoad(int amount, LoadUnit unit) {
     }
 
     private int stopStressTest(CommandSourceStack source) {

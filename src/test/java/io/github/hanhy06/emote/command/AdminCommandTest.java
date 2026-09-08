@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.permission.PermissionService;
@@ -161,7 +162,7 @@ final class AdminCommandTest {
     }
 
     @Test
-    void stressTestRequiresTimeBeforeTheOptionalInstanceCountAndPacketFanout() {
+    void stressTestAcceptsSuffixedLoadBeforeTheOptionalPacketFanout() {
         var command = createStressTestCommand(true).createCommand().build();
         assertNull(command.getCommand());
 
@@ -170,20 +171,27 @@ final class AdminCommandTest {
         assertInstanceOf(TimeArgument.class, time.getType());
         assertNotNull(time.getCommand());
 
-        var count = (ArgumentCommandNode<?, ?>) time.getChild("count");
-        assertNotNull(count);
-        var countType = (IntegerArgumentType) count.getType();
-        assertEquals(1, countType.getMinimum());
-        assertEquals(500, countType.getMaximum());
-        assertEquals(MAX_STRESS_TEST_INSTANCE_COUNT, countType.getMaximum());
+        var load = (ArgumentCommandNode<?, ?>) time.getChild("load");
+        assertNotNull(load);
+        assertInstanceOf(StringArgumentType.class, load.getType());
 
-        var packets = (ArgumentCommandNode<?, ?>) count.getChild("packets");
+        var packets = (ArgumentCommandNode<?, ?>) load.getChild("packets");
         assertNotNull(packets);
         var packetsType = (IntegerArgumentType) packets.getType();
         assertEquals(0, packetsType.getMinimum());
         assertEquals(500, packetsType.getMaximum());
         assertEquals(MAX_STRESS_TEST_PACKET_FANOUT, packetsType.getMaximum());
         assertEquals(20, DEFAULT_STRESS_TEST_PACKET_FANOUT);
+    }
+
+    @Test
+    void stressLoadDefaultsToInstancesAndAcceptsExplicitSuffixes() throws Exception {
+        assertEquals(new StressTestCommand.StressLoad(100, StressTestCommand.LoadUnit.INSTANCES), StressTestCommand.parseLoad("100"));
+        assertEquals(new StressTestCommand.StressLoad(100, StressTestCommand.LoadUnit.INSTANCES), StressTestCommand.parseLoad("100i"));
+        assertEquals(new StressTestCommand.StressLoad(1_000, StressTestCommand.LoadUnit.DISPLAYS), StressTestCommand.parseLoad("1000d"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("0d"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("501i"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("100D"));
     }
 
     @Test

@@ -514,7 +514,7 @@ public class PlaybackEngine implements ConfigListener {
         }
     }
 
-    public int startStressTest(
+    public PlaybackStressTest.StartResult startStressTest(
         ServerLevel level,
         Vec3 origin,
         float yaw,
@@ -532,6 +532,30 @@ public class PlaybackEngine implements ConfigListener {
             emotes,
             durationTicks,
             instanceCount,
+            packetFanout,
+            preparedSkin,
+            completion
+        );
+    }
+
+    public PlaybackStressTest.StartResult startStressTestByDisplayCount(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<PreparedAnimation> emotes,
+        int durationTicks,
+        int targetDisplayEntityCount,
+        int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
+        Consumer<PlaybackStressTestReport> completion
+    ) {
+        return this.stressTest.startByDisplayCount(
+            level,
+            origin,
+            yaw,
+            emotes,
+            durationTicks,
+            targetDisplayEntityCount,
             packetFanout,
             preparedSkin,
             completion
