@@ -1894,6 +1894,545 @@
 			"scope": 0,
 			"uuid": "0bdee510-5123-4fa2-ad84-10b9d4e0521a",
 			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_front",
+			"position": [
+				-4.65,
+				31.2,
+				-4.65
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.58125,
+				0.09375,
+				0.053125
+			],
+			"color": 0,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "e0a60a6e-d0b2-4d3a-a137-0e58e2f9cc2d",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_back",
+			"position": [
+				-4.65,
+				31.2,
+				3.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.58125,
+				0.09375,
+				0.053125
+			],
+			"color": 0,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "5371c021-0179-478d-9731-10edffd1ed7b",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_left",
+			"position": [
+				-4.65,
+				31.2,
+				-3.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.053125,
+				0.09375,
+				0.475
+			],
+			"color": 0,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "007a4c76-bae8-415c-b05f-3900933f15a4",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_brim_right",
+			"position": [
+				3.8,
+				31.2,
+				-3.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.053125,
+				0.09375,
+				0.475
+			],
+			"color": 0,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "c1b38a9b-3349-4db2-b5ed-6d83fa4ed382",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_base",
+			"position": [
+				-4.2,
+				32.45,
+				-4.2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.525,
+				0.1125,
+				0.525
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "c05bd9db-309c-4237-af37-8d20188dcb26",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_middle",
+			"position": [
+				-2.9,
+				34.1,
+				-3.4
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.425,
+				0.10625,
+				0.425
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "7c318a6c-e063-4e38-a42e-f1e52f6422a9",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_upper",
+			"position": [
+				-1.5,
+				35.65,
+				-2.6
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.325,
+				0.096875,
+				0.325
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "05feb5c4-dcad-42ef-9f04-720b8f323f7b",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_fold",
+			"position": [
+				0.2,
+				37.05,
+				-1.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.225,
+				0.090625,
+				0.225
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "ba66a35e-b29b-416e-ab39-8bd2dbef83e7",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_drooping_tip",
+			"position": [
+				2.95,
+				36.3,
+				-1.15
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.14375,
+				0.1,
+				0.14375
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "8f084438-52ef-4c54-a5c6-fc8ac152c244",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_tail",
+			"position": [
+				4.1,
+				34.8,
+				-0.8
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.1,
+				0.103125,
+				0.1
+			],
+			"color": 1,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:red_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "7ef328cd-6ff1-4dc2-b8d3-cbc2d9df7b42",
+			"type": "animated_java:vanilla_block_display"
+		},
+		{
+			"name": "santa_hat_pom_pom",
+			"position": [
+				3.7,
+				33.4,
+				-1.2
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"pivotOffset": [
+				0,
+				0,
+				0
+			],
+			"scale": [
+				0.15,
+				0.15,
+				0.15
+			],
+			"color": 0,
+			"visibility": true,
+			"locked": false,
+			"export": true,
+			"block": "minecraft:white_wool",
+			"onSummonFunction": "",
+			"configs": {
+				"default": {
+					"on_apply_function": "",
+					"billboard": "fixed",
+					"override_brightness": false,
+					"sky_brightness": 0,
+					"block_brightness": 0,
+					"enchanted": false,
+					"glowing": false,
+					"override_glow_color": false,
+					"glow_color": "#ffffff",
+					"invisible": false,
+					"shadow_radius": 0,
+					"shadow_strength": 1
+				},
+				"variants": {}
+			},
+			"scope": 0,
+			"uuid": "a428c0fc-5e18-48c9-9709-e78912d846d8",
+			"type": "animated_java:vanilla_block_display"
 		}
 	],
 	"groups": [
@@ -2325,6 +2864,45 @@
 			"autouv": 0,
 			"isOpen": false,
 			"primary_selected": false
+		},
+		{
+			"name": "santa_hat",
+			"uuid": "b1a4b2bc-1cd5-4feb-94d4-edc0a17f793e",
+			"export": true,
+			"locked": false,
+			"scope": 0,
+			"selected": false,
+			"_static": {
+				"properties": {},
+				"temp_data": {}
+			},
+			"origin": [
+				0,
+				32,
+				0
+			],
+			"rotation": [
+				0,
+				0,
+				0
+			],
+			"color": 0,
+			"onSummonFunction": "",
+			"configs": {
+				"default": {},
+				"variants": {}
+			},
+			"itemModelProperties": {
+				"tints": []
+			},
+			"children": [],
+			"reset": false,
+			"shade": true,
+			"mirror_uv": false,
+			"visibility": true,
+			"autouv": 0,
+			"isOpen": false,
+			"primary_selected": false
 		}
 	],
 	"outliner": [
@@ -2341,7 +2919,24 @@
 							"isOpen": true,
 							"children": [
 								"99b0ba75-1cce-4efd-83ce-fe24c1938bb2",
-								"317c8a0e-3df5-4926-abdf-d5732fbcf7aa"
+								"317c8a0e-3df5-4926-abdf-d5732fbcf7aa",
+								{
+									"uuid": "b1a4b2bc-1cd5-4feb-94d4-edc0a17f793e",
+									"isOpen": false,
+									"children": [
+										"e0a60a6e-d0b2-4d3a-a137-0e58e2f9cc2d",
+										"5371c021-0179-478d-9731-10edffd1ed7b",
+										"007a4c76-bae8-415c-b05f-3900933f15a4",
+										"c1b38a9b-3349-4db2-b5ed-6d83fa4ed382",
+										"c05bd9db-309c-4237-af37-8d20188dcb26",
+										"7c318a6c-e063-4e38-a42e-f1e52f6422a9",
+										"05feb5c4-dcad-42ef-9f04-720b8f323f7b",
+										"ba66a35e-b29b-416e-ab39-8bd2dbef83e7",
+										"8f084438-52ef-4c54-a5c6-fc8ac152c244",
+										"7ef328cd-6ff1-4dc2-b8d3-cbc2d9df7b42",
+										"a428c0fc-5e18-48c9-9709-e78912d846d8"
+									]
+								}
 							]
 						},
 						{
@@ -12714,6 +13309,116 @@
 							"easingArgs": []
 						}
 					]
+				},
+				"b1a4b2bc-1cd5-4feb-94d4-edc0a17f793e": {
+					"name": "santa_hat",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "de4dd82d-deb7-40ed-8125-1944735f326f",
+							"time": 0,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "438a1556-cec6-4d2e-9cfc-40662a46e88f",
+							"time": 0.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "1",
+									"y": "1",
+									"z": "1"
+								}
+							],
+							"uuid": "5d73b437-d59f-4133-b1a9-0a1465b66944",
+							"time": 0.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "1",
+									"y": "1",
+									"z": "1"
+								}
+							],
+							"uuid": "2cbffc71-0561-4357-95e7-473f35ec4d39",
+							"time": 34.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "4793a501-14fb-48a6-857e-82aac66c02af",
+							"time": 34.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "7a15e4b1-b777-490e-ac11-1944aa9ed171",
+							"time": 35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": [],
+							"uniform": true
+						}
+					]
 				}
 			}
 		},
@@ -12812,6 +13517,61 @@
 					"icon": "deployed_code",
 					"name": "left_handbell_clapper",
 					"value": "0bdee510-5123-4fa2-ad84-10b9d4e0521a"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_front",
+					"value": "e0a60a6e-d0b2-4d3a-a137-0e58e2f9cc2d"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_back",
+					"value": "5371c021-0179-478d-9731-10edffd1ed7b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_left",
+					"value": "007a4c76-bae8-415c-b05f-3900933f15a4"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_brim_right",
+					"value": "c1b38a9b-3349-4db2-b5ed-6d83fa4ed382"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_base",
+					"value": "c05bd9db-309c-4237-af37-8d20188dcb26"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_middle",
+					"value": "7c318a6c-e063-4e38-a42e-f1e52f6422a9"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_upper",
+					"value": "05feb5c4-dcad-42ef-9f04-720b8f323f7b"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_fold",
+					"value": "ba66a35e-b29b-416e-ab39-8bd2dbef83e7"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_drooping_tip",
+					"value": "8f084438-52ef-4c54-a5c6-fc8ac152c244"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_tail",
+					"value": "7ef328cd-6ff1-4dc2-b8d3-cbc2d9df7b42"
+				},
+				{
+					"icon": "deployed_code",
+					"name": "santa_hat_pom_pom",
+					"value": "a428c0fc-5e18-48c9-9709-e78912d846d8"
 				}
 			],
 			"animators": {
@@ -14450,6 +15210,31 @@
 							"time": 10.5,
 							"color": -1,
 							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						}
+					]
+				},
+				"b1a4b2bc-1cd5-4feb-94d4-edc0a17f793e": {
+					"name": "santa_hat",
+					"type": "bone",
+					"rotation_global": false,
+					"quaternion_interpolation": false,
+					"keyframes": [
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "7013c7f0-d7bb-442d-b187-a1fe5a0fd2b5",
+							"time": 0,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
 							"easing": "linear",
 							"easingArgs": []
 						}
