@@ -286,7 +286,7 @@ describe("exportAnimation", () => {
     expect(unassignedAnimation.nodes.cube.item_stack_snbt).toContain("minecraft:paper");
     expect(unassignedAnimation.nodes.cube.skin).toBeUndefined();
     expect(unassignedAnimation.nodes.cube.transform).toEqual({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] });
-    expect(unassignedAnimation.timeline.tracks.cube.position[0].value).toEqual([0, 0, 0]);
+    expect(unassignedAnimation.timeline.tracks.cube).toBeUndefined();
   });
 
   it("preserves unrecognized metadata in the exported animation", async () => {

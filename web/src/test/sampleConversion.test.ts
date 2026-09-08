@@ -13,11 +13,11 @@ import { compileImportedProject } from "./compileImportedFixture";
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const DIRECT_SAMPLES = ["anvil", "clap", "cry", "indicate", "no", "yes"];
 const SIT_MATRIX_SAMPLES = {
-  sit_down: "emote.1.sit_down.json",
-  idle_sky: "emote.2.idle_sky.json",
-  idle_flower: "emote.4.idle_flower.json",
-  stand_up1: "emote.5.stand_up1.json",
-  stand_up2: "emote.6.stand_up2.json",
+  sit_down: "emote.sit_down.json",
+  idle_sky: "emote.idle_sky.json",
+  idle_flower: "emote.idle_flower.json",
+  stand_up1: "emote.stand_up1.json",
+  stand_up2: "emote.stand_up2.json",
 } as const;
 let directAnimations: Map<string, EmoteAnimation>;
 let sitAnimations: Map<string, EmoteAnimation>;
