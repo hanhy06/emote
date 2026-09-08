@@ -1,7 +1,7 @@
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:piano",
+  "id": "emote:idle.piano",
   "metadata": {
     "name": "Piano",
     "description": "Play a piano."

@@ -1,7 +1,7 @@
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:sit",
+  "id": "emote:idle.sit",
   "metadata": {
     "name": "Sit",
     "description": "Sit down and relax.",

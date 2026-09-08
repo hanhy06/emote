@@ -1,7 +1,7 @@
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:handstand",
+  "id": "emote:idle.handstand",
   "metadata": {
     "name": "Handstand",
     "description": "Attempt a handstand."

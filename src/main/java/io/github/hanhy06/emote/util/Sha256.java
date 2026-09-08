@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.util;
 
-import java.security.MessageDigest;
+import  java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 
