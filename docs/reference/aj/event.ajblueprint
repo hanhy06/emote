@@ -14694,12 +14694,12 @@
 							"channel": "scale",
 							"data_points": [
 								{
-									"x": "0",
-									"y": "0",
-									"z": "0"
-								}
-							],
-							"uuid": "de4dd82d-deb7-40ed-8125-1944735f326f",
+								"x": "1",
+								"y": "1",
+								"z": "1"
+							}
+						],
+						"uuid": "de4dd82d-deb7-40ed-8125-1944735f326f",
 							"time": 0,
 							"color": -1,
 							"uniform": true,
@@ -14711,12 +14711,12 @@
 							"channel": "scale",
 							"data_points": [
 								{
-									"x": "0",
-									"y": "0",
-									"z": "0"
-								}
-							],
-							"uuid": "438a1556-cec6-4d2e-9cfc-40662a46e88f",
+								"x": "1",
+								"y": "1",
+								"z": "1"
+							}
+						],
+						"uuid": "438a1556-cec6-4d2e-9cfc-40662a46e88f",
 							"time": 0.35,
 							"color": -1,
 							"uniform": true,
