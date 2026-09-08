@@ -8,6 +8,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ambient.Bat;
 import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
 
@@ -31,10 +32,12 @@ import java.util.UUID;
  */
 public final class ExampleCallbacks {
     public static final Identifier IDLE_BUTTERFLY_CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
+    public static final Identifier IDLE_BAT_CALLBACK_ID = Identifier.parse("emote:idle_bat_callback");
 
     private static final double ALLAY_SCALE = 0.35D;
 
     private final Map<UUID, Allay> allaysByPlayer = new HashMap<>();
+    private final Map<UUID, Bat> batsByPlayer = new HashMap<>();
     private final List<ListenerRegistration> registrations;
 
     private boolean registered = true;
@@ -42,10 +45,12 @@ public final class ExampleCallbacks {
     private ExampleCallbacks(EmoteApi api) {
         this.registrations = List.of(
             api.addCallbackListener(IDLE_BUTTERFLY_CALLBACK_ID, this::handleIdleButterfly),
+            api.addCallbackListener(IDLE_BAT_CALLBACK_ID, this::handleIdleBat),
             api.addPlaybackListener(new EmotePlaybackListener() {
                 @Override
                 public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
                     removeAllay(playback.playerUuid());
+                    removeBat(playback.playerUuid(), false);
                 }
             })
         );
@@ -65,6 +70,8 @@ public final class ExampleCallbacks {
         }
         this.allaysByPlayer.values().forEach(Allay::discard);
         this.allaysByPlayer.clear();
+        this.batsByPlayer.values().forEach(Bat::discard);
+        this.batsByPlayer.clear();
         return removed;
     }
 
@@ -126,5 +133,73 @@ public final class ExampleCallbacks {
             }
             allay.discard();
         }
+    }
+
+    private void handleIdleBat(EmoteCallbackEvent event) {
+        if (event.phase() == EmoteCallbackPhase.STOP) {
+            removeBat(event.player().getUUID(), false);
+            return;
+        }
+        if (event.phase() != EmoteCallbackPhase.TIMELINE) return;
+
+        switch (event.payload()) {
+            case "spawn" -> spawnBat(event);
+            case "move" -> moveBat(event);
+            case "remove" -> {
+                moveBat(event);
+                removeBat(event.player().getUUID(), true);
+            }
+            default -> throw new IllegalArgumentException("Unknown idle bat callback payload: " + event.payload());
+        }
+    }
+
+    private void spawnBat(EmoteCallbackEvent event) {
+        UUID playerUuid = event.player().getUUID();
+        removeBat(playerUuid, false);
+
+        ServerLevel level = event.player().level();
+        Bat bat = EntityTypes.BAT.create(level, EntitySpawnReason.COMMAND);
+        if (bat == null) throw new IllegalStateException("Failed to create the idle Bat");
+
+        bat.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
+        bat.setNoAi(true);
+        bat.setNoGravity(true);
+        bat.setInvulnerable(true);
+        bat.setSilent(true);
+        bat.setResting(false);
+
+        if (!level.addFreshEntity(bat)) {
+            bat.discard();
+            throw new IllegalStateException("Failed to add the idle Bat to the level");
+        }
+        level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
+        this.batsByPlayer.put(playerUuid, bat);
+    }
+
+    private void moveBat(EmoteCallbackEvent event) {
+        Bat bat = this.batsByPlayer.get(event.player().getUUID());
+        if (bat == null || bat.isRemoved()) return;
+
+        Vec3 destination = event.origin();
+        Vec3 movement = destination.subtract(bat.position());
+        double horizontalDistance = movement.horizontalDistance();
+        if (horizontalDistance > 1.0E-6D) {
+            float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
+            float yaw = Mth.rotLerp(0.6F, bat.getYRot(), targetYaw);
+            bat.setYRot(yaw);
+            bat.setYBodyRot(yaw);
+            bat.setYHeadRot(yaw);
+            bat.setXRot((float) Mth.clamp(-(Mth.atan2(movement.y, horizontalDistance) * Mth.RAD_TO_DEG), -35.0D, 35.0D));
+        }
+        bat.teleportTo(destination.x, destination.y, destination.z);
+    }
+
+    private void removeBat(UUID playerUuid, boolean particles) {
+        Bat bat = this.batsByPlayer.remove(playerUuid);
+        if (bat == null) return;
+        if (particles && !bat.isRemoved() && bat.level() instanceof ServerLevel level) {
+            level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
+        }
+        bat.discard();
     }
 }
