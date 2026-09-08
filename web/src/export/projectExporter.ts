@@ -63,7 +63,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   ));
   const files: ExportResult[] = animations.map((animation, index) => ({
     blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-    fileName: `emote.${index + 1}.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
+    fileName: `emote.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
   }));
   if (includeSequence) {
     const sequenceOutput = document.sequence;

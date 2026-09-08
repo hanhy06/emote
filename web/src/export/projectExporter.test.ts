@@ -111,7 +111,7 @@ describe("exportAnimation", () => {
     expect(sequence.steps).toEqual([{ emote: "emote:enter" }, { emote: "emote:idle" }]);
     const animationFiles = files.filter((file) => !file.fileName.endsWith(".sequence.json"));
     const animationNames = animationFiles.map((file) => file.fileName);
-    expect(animationNames).toEqual(["emote.1.entry_display.json", "emote.2.idle_display.json"]);
+    expect(animationNames).toEqual(["emote.entry_display.json", "emote.idle_display.json"]);
     for (const animationFile of animationFiles) {
       const animationJson = await animationFile.blob.text();
       expect(animationJson).not.toContain("\n");
@@ -124,8 +124,8 @@ describe("exportAnimation", () => {
 
     const standaloneFiles = exportDocumentAnimationFiles(document, false);
     expect(standaloneFiles.map((file) => file.fileName)).toEqual([
-      "emote.1.entry_display.json",
-      "emote.2.idle_display.json",
+      "emote.entry_display.json",
+      "emote.idle_display.json",
     ]);
     expect(JSON.parse(await standaloneFiles[0].blob.text()).settings.standalone).toBe(true);
 
