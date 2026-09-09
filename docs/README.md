@@ -82,20 +82,20 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 ```json
 {
   "schema_version": 3,
-  "disabled": ["example:disabled"],
+  "disabled": ["emote:anvil"],
   "permissions": [
     {
       "permission": "emote.vip",
-      "emotes": ["example:vip.*"],
+      "emotes": ["emote:(dance|cheer|clap)"],
       "idle": {
         "delay": "300s",
-        "emote": ["example:dance", 70, "example:cry", 30]
+        "emote": ["emote:dance", 70, "emote:cry", 30]
       },
       "cooldown": "x0.8"
     },
     {
       "permission": "emote.default",
-      "emotes": ["example:hello", "example:wave"]
+      "emotes": ["emote:hello", "emote:backflip"]
     },
     {
       "permission": "emote.admin",
@@ -137,19 +137,19 @@ Connect short animation clips in order and combine waits, weighted random choice
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "example:sit",
+  "id": "emote:idle.sit",
   "steps": [
-    {"emote": "example:sit_down"},
+    {"emote": "emote:sit_down"},
     {"wait": "10t"},
     {
       "emote": [
-        "example:sit_idle_1", 45,
-        "example:sit_idle_2", 45,
+        "emote:idle_sky", 45,
+        "emote:idle_butterfly", 45,
         "emote:break", 10
       ],
       "repeat": 3
     },
-    {"emote": "example:stand_up"}
+    {"emote": "emote:stand_up1"}
   ]
 }
 ```
@@ -170,13 +170,13 @@ Combine animations for two players in a sequence to create a collaborative emote
     "partner": {"position": "^ ^ ^1.2", "rotation": "~180 0"}
   },
   "steps": [{
-    "await_partner": {"emote": "emote:handshake_offer", "timeout": "10s"},
+    "await_partner": {"emote": "handshake:offer", "timeout": "10s"},
     "matched": [
-      {"emote": "emote:handshake", "repeat": 2},
+      {"emote": "handshake:shake", "repeat": 2},
       {"wait": "1s"},
-      {"emote": "emote:handshake_close"}
+      {"emote": "handshake:close"}
     ],
-    "timeout": [{"emote": "emote:handshake_close"}]
+    "timeout": [{"emote": "handshake:close"}]
   }]
 }
 ```

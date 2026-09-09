@@ -34,15 +34,15 @@ API and bypass playback must still meet the minimum playback requirements.
 ```json
 {
   "schema_version": 3,
-  "disabled": ["example:broken"],
+  "disabled": ["emote:anvil"],
   "permissions": [
     {
       "permission": "emote.default",
-      "emotes": ["example:wave", "example:hello"]
+      "emotes": ["emote:hello", "emote:backflip"]
     },
     {
       "permission": "emote.vip",
-      "emotes": ["example:(dance|sit)"]
+      "emotes": ["emote:(dance|cheer|clap)"]
     },
     {
       "permission": "emote.admin",
@@ -60,4 +60,3 @@ API and bypass playback must still meet the minimum playback requirements.
 | `permission`     | Permission checked through the installed permission provider.                     |
 | `emotes`         | Valid emote IDs match literally. Other entries are full Java regular expressions. `"*"` grants every enabled standalone emote. |
 | `idle`           | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes).    |
-
