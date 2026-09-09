@@ -6248,7 +6248,7 @@
 			"primary_selected": false
 		},
 		{
-			"name": "player_piano",
+			"name": "player",
 			"uuid": "86bbce1f-2f51-4572-b116-609710fdd4ab",
 			"export": true,
 			"locked": false,
@@ -17255,7 +17255,7 @@
 					"quaternion_interpolation": false
 				},
 				"86bbce1f-2f51-4572-b116-609710fdd4ab": {
-					"name": "player_piano",
+					"name": "player",
 					"type": "bone",
 					"rotation_global": false,
 					"quaternion_interpolation": false
@@ -38317,7 +38317,7 @@
 					]
 				},
 				"86bbce1f-2f51-4572-b116-609710fdd4ab": {
-					"name": "player_piano",
+					"name": "player",
 					"type": "bone",
 					"rotation_global": false,
 					"quaternion_interpolation": false,
@@ -54382,7 +54382,7 @@
 					]
 				},
 				"86bbce1f-2f51-4572-b116-609710fdd4ab": {
-					"name": "player_piano",
+					"name": "player",
 					"type": "bone",
 					"rotation_global": false,
 					"quaternion_interpolation": false,
