@@ -66,11 +66,6 @@ final class TimelineJsonParser {
             if (node instanceof AnchorNode && !nbt.isEmpty()) {
                 throw document.error(path + ".nbt", "anchor nodes do not support nbt tracks");
             }
-            if (node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource
-                && nbt.stream().map(NbtKeyframe::value)
-                    .anyMatch(value -> value instanceof FixedNbtValue fixed && fixed.value().contains("item"))) {
-                throw document.error(path + ".nbt", "participant hand item nodes do not support item changes in nbt tracks");
-            }
             if (position.isEmpty() && rotation.isEmpty() && scale.isEmpty() && visible.isEmpty() && nbt.isEmpty()) {
                 throw document.error(path, "must contain at least one track");
             }

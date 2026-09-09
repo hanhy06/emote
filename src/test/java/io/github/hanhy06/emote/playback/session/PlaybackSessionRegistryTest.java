@@ -132,7 +132,7 @@ class PlaybackSessionRegistryTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new EmoteAnimation.FixedItemSource(new CompoundTag()),
+            new CompoundTag(),
             "none",
             null
         );

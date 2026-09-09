@@ -279,9 +279,6 @@ final class AnimationEvaluator {
         for (String field : RUNTIME_OWNED_NBT_FIELDS) {
             if (patch.contains(field)) throw new IllegalStateException(path + " must not modify runtime-owned field " + field);
         }
-        if (state.node instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource && patch.contains("item")) {
-            throw new IllegalStateException(path + " participant hand item nodes do not support item changes in nbt tracks");
-        }
         Set<String> fields = Set.copyOf(patch.keySet());
         if (state.nbtCursor == 0) {
             if (state.nbtInitialFields == null) state.nbtInitialFields = fields;

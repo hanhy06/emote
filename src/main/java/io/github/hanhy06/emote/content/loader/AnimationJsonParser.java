@@ -14,7 +14,6 @@ import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.HumanoidArm;
 
 import java.nio.file.Path;
 import java.util.HashSet;
@@ -287,7 +286,7 @@ public final class AnimationJsonParser {
                 parentId,
                 transform,
                 entityNbt,
-                parseItemSource(object, space, path, document),
+                requireCompoundSnbt(object, "item_stack_snbt", path, document),
                 parseItemDisplay(object, path, document),
                 parseSkin(object, space, path, document)
             );
@@ -352,34 +351,6 @@ public final class AnimationJsonParser {
             throw document.error(path + ".item_display", "unsupported item display context: " + value);
         }
         return value;
-    }
-
-    private ItemSource parseItemSource(JsonObject object, NodeSpace space, String path, EmoteJsonDocument document)
-        throws EmoteAnimationLoadException {
-        boolean hasStack = object.has("item_stack_snbt");
-        boolean hasSource = object.has("item_source");
-        if (hasStack == hasSource) {
-            throw document.error(path, "must define exactly one of item_stack_snbt or item_source");
-        }
-        if (hasStack) {
-            return new FixedItemSource(requireCompoundSnbt(object, "item_stack_snbt", path, document));
-        }
-
-        String sourcePath = path + ".item_source";
-        JsonObject source = document.requireObject(object, "item_source", path);
-        String type = document.requireString(source, "type", sourcePath);
-        if (!type.equals("participant_hand")) {
-            throw document.error(sourcePath + ".type", "unsupported item source: " + type);
-        }
-        if (space == NodeSpace.SCENE) {
-            throw document.error(sourcePath, "participant hand items require initiator or partner node space");
-        }
-        String arm = document.requireString(source, "arm", sourcePath);
-        return new ParticipantHandItemSource(switch (arm) {
-            case "right" -> HumanoidArm.RIGHT;
-            case "left" -> HumanoidArm.LEFT;
-            default -> throw document.error(sourcePath + ".arm", "unsupported physical arm: " + arm);
-        });
     }
 
     private Skin parseSkin(JsonObject object, NodeSpace nodeSpace, String path, EmoteJsonDocument document)

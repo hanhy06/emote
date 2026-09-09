@@ -206,7 +206,6 @@ public class PlaybackEngine implements ConfigListener {
         boolean startedNotified = false;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
-            this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
             AnimationPlayer timeline = new AnimationPlayer(
                 emote,
                 new EntityTimelineTarget(emote, nodes, this.entityController),
@@ -432,7 +431,6 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackParticipant partner = session.activateReservedPartner(animation);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
-        this.entityController.updateHeldItems(session.nodes(), EmoteAnimation.NodeSpace.PARTNER, player);
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
@@ -490,19 +488,6 @@ public class PlaybackEngine implements ConfigListener {
             throw new IllegalStateException("Initiator is unavailable");
         }
         return initiator;
-    }
-
-    public void refreshHeldItems(ServerPlayer player) {
-        PlaybackSession session = findActive(player.getUUID());
-        PlaybackParticipant participant = session == null ? null : session.participant(player.getUUID());
-        if (participant == null) {
-            return;
-        }
-        this.entityController.updateHeldItems(
-            session.nodes(),
-            EmoteAnimation.NodeSpace.forParticipant(participant.role()),
-            player
-        );
     }
 
     public void stopAll() {

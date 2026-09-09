@@ -29,7 +29,7 @@ export type DisplayNbtValue = DisplayNbtPatch | { molang: string };
 export type RuntimeNode =
   | Exclude<EmoteNode, { type: "block_display" | "item_display" }>
   | (Omit<Extract<EmoteNode, { type: "block_display" }>, "block_state_snbt"> & { blockState: BlockStateData })
-  | (Omit<Extract<EmoteNode, { type: "item_display" }>, "item_stack_snbt"> & { itemStack?: ItemStackData });
+  | (Omit<Extract<EmoteNode, { type: "item_display" }>, "item_stack_snbt"> & { itemStack: ItemStackData });
 
 export type RuntimeNodeTracks = Omit<EmoteNodeTracks, "nbt"> & { nbt?: { time: string; value: DisplayNbtValue }[] };
 export type RuntimeTimeline = Omit<EmoteTimeline, "tracks"> & { tracks: Record<string, RuntimeNodeTracks> };

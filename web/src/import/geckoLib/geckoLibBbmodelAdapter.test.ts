@@ -433,23 +433,6 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
   });
 
-  it("keeps hand item bone names as ordinary anchors", async () => {
-    for (const name of ["RightHandItem", "leftItem"]) {
-      const value = project();
-      value.elements = [];
-      value.textures = [];
-      value.outliner[0].children = [];
-      value.groups[0].name = name;
-      value.outliner[0].name = name;
-
-      const imported = await geckoLibBbmodelAdapter.import(input(value));
-      const node = imported.nodes[name.toLowerCase()];
-
-      expect(node).toMatchObject({ type: "anchor" });
-      expect(node).not.toHaveProperty("suggestedHeldItemArm");
-    }
-  });
-
   it("hides item and cape bones without creating skin candidates", async () => {
     for (const accessoryName of ["left_item", "rightItem", "cape"]) {
       const value = project();

@@ -177,7 +177,7 @@ A child node declares `parent` instead of `space`. It inherits its root node's s
 
 | Type | Required fields | Purpose |
 |---|---|---|
-| `item_display` | Exactly one of `item_stack_snbt` or `item_source`, plus `item_display` | Displays a fixed or participant-held item stack. |
+| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack. |
 | `block_display` | `block_state_snbt` | Displays a block state. |
 | `text_display` | `text` | Displays a Minecraft text component. |
 | `anchor` | None beyond the common hierarchy and transform fields | Groups child nodes or provides a command origin without creating an entity. |
@@ -190,17 +190,7 @@ Display nodes also support:
 
 `item_display` accepts Minecraft item display contexts such as `none`, `fixed`, `head`, `ground`, `gui`, and the first- or third-person hand contexts.
 
-`item_stack_snbt` contains a fixed item stack. Alternatively, `item_source` can display the item currently held in a participant's physical hand:
-
-```json
-"item_source": {
-  "type": "participant_hand",
-  "arm": "right"
-}
-```
-
-`arm` is the physical `left` or `right` hand, independent of the participant's main-hand setting. Participant-hand items cannot use `skin`.
-The node must inherit `initiator` or `partner` space; participant-hand items are not allowed in `scene` space.
+`item_stack_snbt` contains the displayed item stack.
 
 Anchor nodes do not support `visible` or `entity_nbt`. They can have transform tracks, but not visibility tracks, and cannot be used as a command source because they have no entity.
 
@@ -294,7 +284,7 @@ NBT tracks apply stepped display-entity data changes. A `value` may be a compoun
 - Fields added after the `0t` keyframe are rejected. Declare every field the track may modify in the first keyframe.
 - A dynamic `0t` value must return the same set of top-level fields on every playback cycle so later keyframes have one stable state shape.
 - Runtime-owned fields such as identity, position, transformation, interpolation, and passengers cannot be modified.
-- Anchor nodes do not support NBT tracks. A node displaying a participant's held item may use an NBT track, but the track cannot replace its `item` field.
+- Anchor nodes do not support NBT tracks.
 
 ## Events
 

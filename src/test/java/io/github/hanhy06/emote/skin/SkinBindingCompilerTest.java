@@ -94,7 +94,7 @@ class SkinBindingCompilerTest {
                 new EmoteAnimation.Vec3(1.0D, yScale, 1.0D)
             ),
             new CompoundTag(),
-            new EmoteAnimation.FixedItemSource(new CompoundTag()),
+            new CompoundTag(),
             "none",
             new EmoteAnimation.Skin(ParticipantRole.INITIATOR, part, order)
         );

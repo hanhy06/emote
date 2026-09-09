@@ -79,10 +79,6 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     validateNbtTrack(tracks.nbt, `${path}.nbt`, durationTicks, issues);
     if (node?.type === "anchor" && tracks.visible) add(issues, `${path}.visible`, "anchor does not support visible state");
     if (node?.type === "anchor" && tracks.nbt) add(issues, `${path}.nbt`, "anchor does not support nbt state");
-    if (node?.type === "item_display" && node.item_source && tracks.nbt?.some((frame) => {
-      if (typeof frame.value !== "string") return false;
-      try { return parseSnbtCompound(frame.value).some((field) => field.name === "item"); } catch { return false; }
-    })) add(issues, `${path}.nbt`, "participant hand item nodes do not support item changes");
   }
 
   validateEvents(animation, durationTicks, issues);
@@ -119,10 +115,6 @@ function validateItemNode(
   path: string,
   issues: ValidationIssue[],
 ): void {
-  if ((node.item_stack_snbt === undefined) === (node.item_source === undefined)) {
-    add(issues, path, "must define exactly one of item_stack_snbt or item_source");
-  }
-  if (node.item_source && node.skin) add(issues, `${path}.skin`, "is not supported by participant hand items");
   if (!ITEM_DISPLAY_VALUES.has(node.item_display)) add(issues, `${path}.item_display`, "uses an unsupported item display context");
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
   if (node.skin) {

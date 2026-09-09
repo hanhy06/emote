@@ -28,7 +28,7 @@ export function readRuntimeNodes(nodes: Record<string, EmoteNode>): Record<strin
     }
     if (node.type === "item_display") {
       const { item_stack_snbt, ...common } = node;
-      return [id, { ...common, ...(item_stack_snbt === undefined ? {} : { itemStack: readItemStack(item_stack_snbt) }) }];
+      return [id, { ...common, itemStack: readItemStack(item_stack_snbt) }];
     }
     return [id, node];
   }));

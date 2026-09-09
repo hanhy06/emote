@@ -100,7 +100,7 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
     return [id, {
       ...itemOutput,
       transform,
-      ...(outputItem ? { item_stack_snbt: writeItemStack(outputItem, profile) } : {}),
+      item_stack_snbt: writeItemStack(outputItem, profile),
       skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
   }));

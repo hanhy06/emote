@@ -140,7 +140,7 @@ function importNode(
   node: EmoteAnimation["nodes"][string],
   placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "spaceAssignmentGroup">,
 ): ImportedNode {
-  if (node.type === "anchor" || (node.type === "item_display" && node.item_source)) return { id, type: "anchor", ...placement };
+  if (node.type === "anchor") return { id, type: "anchor", ...placement };
   const common = {
     id,
     ...placement,
@@ -150,7 +150,7 @@ function importNode(
   if (node.type === "item_display") return {
     ...common,
     type: "item_display",
-    itemStack: readItemStack(node.item_stack_snbt!),
+    itemStack: readItemStack(node.item_stack_snbt),
     itemDisplay: node.item_display,
     ...(node.skin ? { skin: { ...node.skin } } : {}),
   };

@@ -80,15 +80,7 @@ function requireSchema4Nodes(value: unknown): void {
     optionalBoolean(node.visible, `${path}.visible`);
     optionalString(node.entity_nbt, `${path}.entity_nbt`);
     if (type === "item_display") {
-      const hasStack = node.item_stack_snbt !== undefined;
-      const hasSource = node.item_source !== undefined;
-      if (hasStack === hasSource) throw new Error(`${path} must define exactly one of item_stack_snbt or item_source.`);
-      if (hasStack) requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
-      if (hasSource) {
-        const source = requireRecord(node.item_source, `${path}.item_source`);
-        requireStringValue(source.type, ["participant_hand"] as const, `${path}.item_source.type`);
-        requireStringValue(source.arm, ["left", "right"] as const, `${path}.item_source.arm`);
-      }
+      requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
       requireString(node.item_display, `${path}.item_display`);
       const skin = optionalRecord(node.skin, `${path}.skin`);
       if (skin) {
