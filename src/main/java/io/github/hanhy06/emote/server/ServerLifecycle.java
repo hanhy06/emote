@@ -7,6 +7,7 @@ import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -15,7 +16,11 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.InteractionResult;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
@@ -89,7 +94,23 @@ public class ServerLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
+        removeOrphanedRuntimeEntities(server);
         this.reloadService.loadOnServerStart();
+    }
+
+    private static void removeOrphanedRuntimeEntities(MinecraftServer server) {
+        List<Entity> orphaned = new ArrayList<>();
+        for (var level : server.getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity.entityTags().contains(PlaybackEntityController.RUNTIME_TAG)) {
+                    orphaned.add(entity);
+                }
+            }
+        }
+        orphaned.forEach(Entity::discard);
+        if (!orphaned.isEmpty()) {
+            EmoteMod.LOGGER.info("Removed {} orphaned emote runtime entities", orphaned.size());
+        }
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {

@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
+import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
@@ -96,6 +97,7 @@ public final class ExampleCallbacks {
         allay.setInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
+        allay.addTag(PlaybackEntityController.RUNTIME_TAG);
         Objects.requireNonNull(allay.getAttribute(Attributes.SCALE), "Allay scale attribute").setBaseValue(ALLAY_SCALE);
 
         if (!level.addFreshEntity(allay)) {
@@ -154,6 +156,7 @@ public final class ExampleCallbacks {
         bat.setInvulnerable(true);
         bat.setSilent(true);
         bat.setResting(false);
+        bat.addTag(PlaybackEntityController.RUNTIME_TAG);
 
         if (!level.addFreshEntity(bat)) {
             bat.discard();
