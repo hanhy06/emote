@@ -6,6 +6,8 @@ MineSkin is used by default, but registering a Minecraft account automatically e
 !!! warning "Use a dedicated account"
     The registered account's active Minecraft skin changes every time a texture is generated.
     Emote does not restore the original skin afterward, so use a dedicated Minecraft: Java Edition account rather than an account used for normal play.
+    At least four dedicated accounts are recommended so the initial player textures can be generated without a long pause.
+    With fewer accounts, Minecraft may rate-limit consecutive skin changes and delay the remaining uploads by about two minutes.
 
 ## Provider selection
 
