@@ -40,6 +40,7 @@ Therefore, `75-player equivalent` is a **synthetic load approximating 75 simulta
 ## Interpretation
 
 - To approximate a server setup commonly used in practice, the tests included FerriteCore, Krypton, and Lithium.
+- Numerous default emote have been introduced version 2.1.0, potentially impacting performance.
 - Average MSPT remained stable at about 22 ms or lower through the 50-player equivalent load. At 75-player equivalent, it reached about 42 ms. This remained below the 50 ms tick budget, but the 47.50 ms p95 and 59.68 ms maximum indicate little remaining headroom and occasional overruns. At 100-player equivalent, the 68.12 ms average and 75.35 ms p95 consistently exceeded the tick budget.
 - At 20 TPS, 600 ticks take 30 seconds. Total elapsed time remained around 30 seconds from the 10- through 75-player equivalent loads, but increased to 43.2 seconds at 100-player equivalent, where observed TPS fell to 14.66.
 - As load increased, `Server/idle` decreased while `Network` rose from 0.4 to 35.7 seconds. At 100-player equivalent, network processing accounted for 82.6% of the total elapsed time, so network-related work represented most of the cost under high load rather than emote timeline evaluation.

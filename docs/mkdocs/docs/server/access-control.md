@@ -42,7 +42,9 @@ API and bypass playback must still meet the minimum playback requirements.
     },
     {
       "permission": "emote.vip",
-      "emotes": ["emote:(dance|cheer|clap)"]
+      "emotes": ["emote:vip\\..*"],
+      "idle": {"delay": "300s", "emote": ["emote:idle.sit", 70, "emote:idle.piano", 30]},
+      "cooldown": "x0.8"
     },
     {
       "permission": "emote.admin",
