@@ -37,11 +37,12 @@ final class EmoteBootstrap {
         ConfigManager configManager = new ConfigManager(FabricLoader.getInstance().getConfigDir());
         EmoteCatalog catalog = new EmoteCatalog();
         PermissionService permissions = new PermissionService();
+        PlaybackCooldownService cooldowns = new PlaybackCooldownService();
         MinecraftAccountManager accounts = new MinecraftAccountManager(
             new AccountCredentialStore(FabricLoader.getInstance().getConfigDir().resolve("emote/accounts.bin")),
             new MinecraftAccountClient()
         );
-        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog);
+        PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
         MineSkinCache skinCache = new MineSkinCache();
         MineSkinProvider mineSkin = new MineSkinProvider(skinBaker, skinCache, new MineSkinClient(), new MineSkinTaskQueue());
@@ -86,13 +87,13 @@ final class EmoteBootstrap {
             new AdminCommand(catalog, playback, permissions, reload, configManager, skins),
             new AccountCommand(accounts)
         );
-        ServerLifecycle lifecycle = new ServerLifecycle(skins, playbackPolicy, catalog, playback, reload, wheelSync, idlePlayback);
+        ServerLifecycle lifecycle = new ServerLifecycle(skins, cooldowns, catalog, playback, reload, wheelSync, idlePlayback);
 
         configManager.addAccessConfigListener(playbackPolicy);
         configManager.addAccessConfigListener(idlePlayback);
         configManager.addListener(skins);
         configManager.addListener(playback);
-        playback.addStateListener(playbackPolicy);
+        playback.addStateListener(cooldowns);
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();

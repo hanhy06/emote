@@ -39,20 +39,21 @@ class PlaybackPolicyServiceTest {
     @Test
     void idleSkipsOnlyTheEmotePermissionPolicy() {
         AtomicLong tick = new AtomicLong();
-        PlaybackPolicyService service = service(
+        PolicyFixture fixture = fixture(
             (ignoredPlayer, permission, ignoredDefault) -> {
                 assertEquals(PermissionService.BYPASS_PERMISSION, permission);
                 return false;
             },
             tick
         );
+        PlaybackPolicyService service = fixture.policy();
         service.onAccessConfigReload(new AccessConfig(List.of("demo:disabled"), List.of()));
 
         PreparedAnimation idle = create("demo:idle", "Idle", 20);
         PlaybackPolicyService.Decision first = service.evaluate(null, idle, PlaySource.IDLE);
         assertAllowed(first);
-        service.onPlaybackStarted(null, first);
-        service.onPlaybackEnded(null, idle.id());
+        service.claimCooldown(first);
+        fixture.cooldowns().onPlaybackEnded(null, idle.id());
 
         assertDenied(service.evaluate(null, idle, PlaySource.IDLE));
         assertDenied(service.evaluate(null, create("demo:disabled", "Disabled"), PlaySource.IDLE));
@@ -70,7 +71,6 @@ class PlaybackPolicyServiceTest {
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.API);
         assertAllowed(first);
-        service.onPlaybackStarted(null, first);
 
         assertAllowed(service.evaluate(null, emote, PlaySource.API));
     }
@@ -86,7 +86,6 @@ class PlaybackPolicyServiceTest {
 
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(first);
-        service.onPlaybackStarted(null, first);
 
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
         assertTrue(service.isVisibleForCommand(null, emote));
@@ -95,10 +94,11 @@ class PlaybackPolicyServiceTest {
     @Test
     void commandBlocksRestartWhilePlaybackIsPendingAndStartsCooldownWhenItEnds() {
         AtomicLong tick = new AtomicLong();
-        PlaybackPolicyService service = service(
+        PolicyFixture fixture = fixture(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
             tick
         );
+        PlaybackPolicyService service = fixture.policy();
         loadRules(service, new AccessConfig(
             List.of(),
             List.of(entry("emote.default", List.of("demo:wave")))
@@ -109,11 +109,11 @@ class PlaybackPolicyServiceTest {
         assertAllowed(notStarted);
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
 
-        service.onPlaybackStarted(null, notStarted);
+        service.claimCooldown(notStarted);
         assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
 
         tick.set(10L);
-        service.onPlaybackEnded(null, emote.id());
+        fixture.cooldowns().onPlaybackEnded(null, emote.id());
         assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
         tick.set(29L);
         assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
@@ -124,18 +124,19 @@ class PlaybackPolicyServiceTest {
     @Test
     void releasedPartnerReservationCancelsPendingCooldown() {
         AtomicLong tick = new AtomicLong();
-        PlaybackPolicyService service = service(
+        PolicyFixture fixture = fixture(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
             tick
         );
+        PlaybackPolicyService service = fixture.policy();
         loadRules(service, new AccessConfig(
             List.of(),
             List.of(entry("emote.default", List.of("demo:wave")))
         ), "demo:wave");
         PreparedAnimation emote = create("demo:wave", "Wave", 20);
         PlaybackPolicyService.Decision decision = service.evaluate(null, emote, PlaySource.COMMAND);
-        service.onPlaybackStarted(null, decision);
-        service.onReservationReleased(PLAYER_ID, emote.id());
+        service.claimCooldown(decision);
+        fixture.cooldowns().onReservationReleased(PLAYER_ID, emote.id());
 
         assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
     }
@@ -143,10 +144,11 @@ class PlaybackPolicyServiceTest {
     @Test
     void appliesCooldownFromFirstAllowedMatchingPermissionInConfigOrder() {
         AtomicLong tick = new AtomicLong();
-        PlaybackPolicyService service = service(
+        PolicyFixture fixture = fixture(
             (ignoredPlayer, permission, ignoredDefault) -> Set.of("emote.unmodified", "emote.vip", "emote.default").contains(permission),
             tick
         );
+        PlaybackPolicyService service = fixture.policy();
         loadRules(service, new AccessConfig(
             List.of(),
             List.of(
@@ -161,8 +163,8 @@ class PlaybackPolicyServiceTest {
         PlaybackPolicyService.Decision first = service.evaluate(null, emote, PlaySource.COMMAND);
         assertAllowed(first);
         assertEquals(51, first.cooldownTicks());
-        service.onPlaybackStarted(null, first);
-        service.onPlaybackEnded(null, emote.id());
+        service.claimCooldown(first);
+        fixture.cooldowns().onPlaybackEnded(null, emote.id());
 
         tick.set(50L);
         assertDenied(service.evaluate(null, emote, PlaySource.COMMAND));
@@ -304,7 +306,18 @@ class PlaybackPolicyServiceTest {
         PlaybackPolicyService.PermissionChecker permissionChecker,
         AtomicLong tick
     ) {
-        return new PlaybackPolicyService(permissionChecker, ignoredPlayer -> PLAYER_ID, ignoredPlayer -> tick.get());
+        return fixture(permissionChecker, tick).policy();
+    }
+
+    private static PolicyFixture fixture(
+        PlaybackPolicyService.PermissionChecker permissionChecker,
+        AtomicLong tick
+    ) {
+        PlaybackCooldownService cooldowns = new PlaybackCooldownService(
+            ignoredPlayer -> PLAYER_ID,
+            ignoredPlayer -> tick.get()
+        );
+        return new PolicyFixture(new PlaybackPolicyService(permissionChecker, cooldowns), cooldowns);
     }
 
     private static AccessConfig.PermissionEntry entry(String permission, List<String> emotes) {
@@ -331,5 +344,8 @@ class PlaybackPolicyServiceTest {
     private static void assertDenied(PlaybackPolicyService.Decision decision) {
         assertFalse(decision.isAllowed());
         assertNotNull(decision.rejection());
+    }
+
+    private record PolicyFixture(PlaybackPolicyService policy, PlaybackCooldownService cooldowns) {
     }
 }

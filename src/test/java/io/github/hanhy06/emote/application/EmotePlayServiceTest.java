@@ -96,10 +96,56 @@ class EmotePlayServiceTest {
     }
 
     @Test
-    void successfulPlaybackCannotRestartBeforeItsCooldownBegins() {
+    void playbackExceptionReleasesClaimedCooldown() {
         AtomicLong tick = new AtomicLong();
         EmoteCatalog catalog = catalogWithWave(20);
         PlaybackPolicyService policy = allowedPolicy(tick, catalog);
+        AtomicInteger starts = new AtomicInteger();
+        EmotePlayService service = new EmotePlayService(
+            catalog,
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                if (starts.getAndIncrement() == 0) {
+                    throw new IllegalStateException("Failed to start");
+                }
+                return PlayResult.SUCCESS;
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertThrows(IllegalStateException.class, () -> service.play(null, "demo:wave"));
+        assertTrue(service.play(null, "demo:wave").isSuccess());
+    }
+
+    @Test
+    void reservationReleasedDuringPlaybackStartDoesNotLeaveStaleCooldown() {
+        AtomicLong tick = new AtomicLong();
+        EmoteCatalog catalog = catalogWithWave(20);
+        PlaybackCooldownService cooldowns = cooldowns(tick);
+        PlaybackPolicyService policy = allowedPolicy(catalog, cooldowns);
+        AtomicInteger starts = new AtomicInteger();
+        EmotePlayService service = new EmotePlayService(
+            catalog,
+            policy,
+            (ignoredPlayer, ignoredDefinition) -> {
+                starts.incrementAndGet();
+                cooldowns.onReservationReleased(new UUID(1L, 1L), "demo:wave");
+                return PlayResult.SUCCESS;
+            },
+            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
+        );
+
+        assertTrue(service.play(null, "demo:wave").isSuccess());
+        assertTrue(service.play(null, "demo:wave").isSuccess());
+        assertEquals(2, starts.get());
+    }
+
+    @Test
+    void successfulPlaybackCannotRestartBeforeItsCooldownBegins() {
+        AtomicLong tick = new AtomicLong();
+        EmoteCatalog catalog = catalogWithWave(20);
+        PlaybackCooldownService cooldowns = cooldowns(tick);
+        PlaybackPolicyService policy = allowedPolicy(catalog, cooldowns);
         AtomicInteger starts = new AtomicInteger();
         EmotePlayService service = new EmotePlayService(
             catalog,
@@ -115,7 +161,7 @@ class EmotePlayServiceTest {
         assertHasErrorMessage(service.play(null, "demo:wave"));
         assertEquals(1, starts.get());
 
-        policy.onPlaybackEnded(null, "demo:wave");
+        cooldowns.onPlaybackEnded(null, "demo:wave");
         assertHasErrorMessage(service.play(null, "demo:wave"));
     }
 
@@ -144,10 +190,14 @@ class EmotePlayServiceTest {
     }
 
     private static PlaybackPolicyService allowedPolicy(AtomicLong tick, EmoteCatalog catalog) {
+        return allowedPolicy(catalog, cooldowns(tick));
+    }
+
+    private static PlaybackPolicyService allowedPolicy(EmoteCatalog catalog, PlaybackCooldownService cooldowns) {
         PlaybackPolicyService policy = policy(
             (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
-            tick,
-            catalog
+            catalog,
+            cooldowns
         );
         policy.onAccessConfigReload(new AccessConfig(
             List.of(),
@@ -173,13 +223,21 @@ class EmotePlayServiceTest {
         AtomicLong tick,
         EmoteCatalog catalog
     ) {
-        PlaybackPolicyService policy = new PlaybackPolicyService(
-            permissionChecker,
-            ignoredPlayer -> new UUID(1L, 1L),
-            ignoredPlayer -> tick.get()
-        );
+        return policy(permissionChecker, catalog, cooldowns(tick));
+    }
+
+    private static PlaybackPolicyService policy(
+        PlaybackPolicyService.PermissionChecker permissionChecker,
+        EmoteCatalog catalog,
+        PlaybackCooldownService cooldowns
+    ) {
+        PlaybackPolicyService policy = new PlaybackPolicyService(permissionChecker, cooldowns);
         catalog.addListener(policy::onEmoteCatalogChanged);
         return policy;
+    }
+
+    private static PlaybackCooldownService cooldowns(AtomicLong tick) {
+        return new PlaybackCooldownService(ignoredPlayer -> new UUID(1L, 1L), ignoredPlayer -> tick.get());
     }
 
     private static EmoteCatalog catalogWithWave(int cooldownTicks) {

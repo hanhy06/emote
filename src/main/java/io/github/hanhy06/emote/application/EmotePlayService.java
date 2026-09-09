@@ -57,9 +57,16 @@ public class EmotePlayService {
         if (cancellationMessage != null) {
             return PlayResult.failure(cancellationMessage);
         }
-        PlayResult result = this.emoteStarter.start(player, emote);
-        if (result.isSuccess()) {
-            this.playbackPolicy.onPlaybackStarted(player, decision);
+        this.playbackPolicy.claimCooldown(decision);
+        PlayResult result;
+        try {
+            result = this.emoteStarter.start(player, emote);
+        } catch (RuntimeException | Error exception) {
+            this.playbackPolicy.releaseCooldown(decision);
+            throw exception;
+        }
+        if (!result.isSuccess()) {
+            this.playbackPolicy.releaseCooldown(decision);
         }
         return result;
     }
