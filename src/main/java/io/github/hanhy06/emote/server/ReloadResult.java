@@ -5,9 +5,19 @@ public record ReloadResult(
     int permissionRuleCount,
     int detectedFileCount,
     int loadedEmoteCount,
-    boolean successful
+    Failure failure
 ) {
     public ReloadResult(int disabledEmoteCount, int permissionRuleCount, int detectedFileCount, int loadedEmoteCount) {
-        this(disabledEmoteCount, permissionRuleCount, detectedFileCount, loadedEmoteCount, true);
+        this(disabledEmoteCount, permissionRuleCount, detectedFileCount, loadedEmoteCount, Failure.NONE);
+    }
+
+    public boolean successful() {
+        return this.failure == Failure.NONE;
+    }
+
+    public enum Failure {
+        NONE,
+        EMOTE_LOAD,
+        RESOURCE_PACK_BUILD
     }
 }

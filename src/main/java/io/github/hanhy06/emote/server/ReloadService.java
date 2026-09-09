@@ -7,8 +7,10 @@ import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
+import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 
 import java.io.UncheckedIOException;
+import java.util.function.Supplier;
 
 public final class ReloadService {
     private final ConfigManager configManager;
@@ -16,7 +18,8 @@ public final class ReloadService {
     private final LoadResultLoader directoryLoader;
     private final PlaybackStopper playbackStopper;
     private final Runnable wheelSynchronizer;
-    private final Runnable resourcePackReloader;
+    private final Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder;
+    private final Runnable resourcePackPusher;
 
     public ReloadService(
         ConfigManager configManager,
@@ -24,7 +27,8 @@ public final class ReloadService {
         EmoteDirectoryLoader directoryLoader,
         PlaybackEngine playbackEngine,
         WheelSyncService wheelSyncService,
-        Runnable resourcePackReloader
+        Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder,
+        Runnable resourcePackPusher
     ) {
         this(
             configManager,
@@ -32,7 +36,8 @@ public final class ReloadService {
             directoryLoader::load,
             playbackEngine::stopAll,
             wheelSyncService::syncAll,
-            resourcePackReloader
+            resourcePackBuilder,
+            resourcePackPusher
         );
     }
 
@@ -42,14 +47,16 @@ public final class ReloadService {
         LoadResultLoader directoryLoader,
         PlaybackStopper playbackStopper,
         Runnable wheelSynchronizer,
-        Runnable resourcePackReloader
+        Supplier<PolymerResourcePackDistributor.BuildResult> resourcePackBuilder,
+        Runnable resourcePackPusher
     ) {
         this.configManager = configManager;
         this.emoteCatalog = emoteCatalog;
         this.directoryLoader = directoryLoader;
         this.playbackStopper = playbackStopper;
         this.wheelSynchronizer = wheelSynchronizer;
-        this.resourcePackReloader = resourcePackReloader;
+        this.resourcePackBuilder = resourcePackBuilder;
+        this.resourcePackPusher = resourcePackPusher;
     }
 
     public void loadOnServerStart() {
@@ -65,8 +72,6 @@ public final class ReloadService {
     }
 
     public ReloadResult reloadFromCommand() {
-        this.configManager.readConfig();
-        this.configManager.readAccessConfig();
         ReloadStats stats = reloadLoadedConfig();
         var accessConfig = this.configManager.getAccessConfig();
         return new ReloadResult(
@@ -74,7 +79,7 @@ public final class ReloadService {
             accessConfig.permissions().size(),
             stats.detectedFileCount(),
             stats.loadedEmoteCount(),
-            stats.successful()
+            stats.failure()
         );
     }
 
@@ -84,11 +89,21 @@ public final class ReloadService {
             prepared = prepareRegistry();
         } catch (UncheckedIOException exception) {
             EmoteMod.LOGGER.warn("Emote reload failed; keeping the current registry and active playbacks");
-            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size());
+            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.EMOTE_LOAD);
         }
+        PolymerResourcePackDistributor.BuildResult resourcePackResult = this.resourcePackBuilder.get();
+        if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.FAILED) {
+            EmoteMod.LOGGER.warn("Emote reload failed because the resource pack could not be built; keeping the current state");
+            return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
+        }
+
+        this.configManager.readConfig();
+        this.configManager.readAccessConfig();
         ReloadStats stats = replaceRegistry(prepared);
         this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
-        this.resourcePackReloader.run();
+        if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.BUILT) {
+            this.resourcePackPusher.run();
+        }
         this.wheelSynchronizer.run();
         EmoteMod.LOGGER.info("Reloaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
@@ -122,7 +137,7 @@ public final class ReloadService {
                 EmoteCatalog.MAX_EMOTE_COUNT
             );
         }
-        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), true);
+        return new ReloadStats(prepared.detectedFileCount(), this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.NONE);
     }
 
     private PreparedAnimation prepareAnimation(LoadedAnimation animation) {
@@ -156,9 +171,9 @@ public final class ReloadService {
         void stopAll(PlaybackStopReason reason);
     }
 
-    private record ReloadStats(int detectedFileCount, int loadedEmoteCount, boolean successful) {
-        private static ReloadStats failed(int retainedEmoteCount) {
-            return new ReloadStats(0, retainedEmoteCount, false);
+    private record ReloadStats(int detectedFileCount, int loadedEmoteCount, ReloadResult.Failure failure) {
+        private static ReloadStats failed(int retainedEmoteCount, ReloadResult.Failure failure) {
+            return new ReloadStats(0, retainedEmoteCount, failure);
         }
     }
 

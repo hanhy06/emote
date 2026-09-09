@@ -69,7 +69,8 @@ final class EmoteBootstrap {
             new EmoteDirectoryLoader(),
             playback,
             wheelSync,
-            resourcePackDistributor::rebuildAndPush
+            resourcePackDistributor::rebuild,
+            resourcePackDistributor::pushToOnlinePlayers
         );
 
         EmoteApiImpl api = new EmoteApiImpl(

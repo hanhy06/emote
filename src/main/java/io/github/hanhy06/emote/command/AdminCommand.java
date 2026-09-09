@@ -188,7 +188,10 @@ public final class AdminCommand {
     private int reload(CommandSourceStack source) {
         ReloadResult result = this.reloadService.reloadFromCommand();
         if (!result.successful()) {
-            source.sendFailure(Component.literal("Emote reload failed. The previous state was kept."));
+            String message = result.failure() == ReloadResult.Failure.RESOURCE_PACK_BUILD
+                ? "Resource pack build failed. Previous emotes were kept. Check the server log."
+                : "Emote reload failed. The previous state was kept.";
+            source.sendFailure(Component.literal(message));
             return 0;
         }
         source.sendSuccess(() -> createReloadSummary(result), true);
