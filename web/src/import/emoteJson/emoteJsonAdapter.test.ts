@@ -120,7 +120,7 @@ describe("emoteJsonAdapter", () => {
             position: [{
               time: "0t",
               value: [
-                "v.offset + v.elapsed + q.anim_time_ticks + q.anim_length + q.is_on_ground + q.is_emoting",
+                "v.offset + v.elapsed + q.anim_time_ticks + q.anim_length + q.is_on_ground + q.is_emoting + q.position(0) + q.scoreboard('combo')",
                 "t.value = t.value + 1; return t.value;",
                 0,
               ],
@@ -138,14 +138,7 @@ describe("emoteJsonAdapter", () => {
             visible: [{ time: "0t", value: "q.is_moving" }],
             nbt: [{
               time: "0t",
-              value: {
-                select: "math.random_integer(0, 3)",
-                options: [
-                  "{item:{id:'minecraft:poppy',count:1}}",
-                  "{item:{id:'minecraft:dandelion',count:1}}",
-                  "{item:{id:'minecraft:blue_orchid',count:1}}",
-                ],
-              },
+              value: "{item:{id:'minecraft:poppy',count:1}}",
             }],
           },
         },
@@ -185,10 +178,7 @@ describe("emoteJsonAdapter", () => {
     const { nbt, ...childChannels } = serialized.timeline.tracks.child;
     const { nbt: _sourceNbt, ...sourceChildChannels } = source.timeline.tracks.child;
     expect(childChannels).toEqual(sourceChildChannels);
-    expect(nbt).toEqual([{ time: "0t", value: {
-      select: (source.timeline.tracks.child.nbt![0].value as { select: string }).select,
-      options: ['{item:{id:"minecraft:poppy",count:1}}', '{item:{id:"minecraft:dandelion",count:1}}', '{item:{id:"minecraft:blue_orchid",count:1}}'],
-    } }]);
+    expect(nbt).toEqual([{ time: "0t", value: '{item:{id:"minecraft:poppy",count:1}}' }]);
   });
 
   it("falls back to the Create pose for nondeterministic schema 4 Molang", async () => {

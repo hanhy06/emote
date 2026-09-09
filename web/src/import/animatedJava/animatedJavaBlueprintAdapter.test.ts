@@ -3,11 +3,37 @@ import { describe, expect, it } from "vitest";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { compileImportedProject } from "../../test/compileImportedFixture";
 import { animatedJavaBlueprintAdapter } from "./animatedJavaBlueprintAdapter";
+import { Matrix4 } from "three";
+import { bakeSchema4Preview } from "../emoteJson/schema4PreviewBaker";
 
 const encoder = new TextEncoder();
 const displayTypes = ["animated_java:vanilla_block_display", "animated_java:text_display", "animated_java:vanilla_text_display", "animated_java:vanilla_item_display"];
 
 describe("animatedJavaBlueprintAdapter", () => {
+  it.each(displayTypes)("uses the display mesh XYZ order for baked and Molang rotations in %s", async (type) => {
+    for (const runtime of [false, true]) {
+      const input = nativeProject({
+        elements: [{ uuid: "display", name: "Display", type, position: [0, 0, 0], rotation: [10, 20, 30], scale: [1, 1, 1], visibility: true, block: "minecraft:stone", item: "minecraft:goat_horn", text: { text: "Test" } }],
+        outliner: ["display"],
+        animations: [{
+          name: "horn", loop: "once", length: 0.05,
+          animators: { display: { name: "Display", type, keyframes: [projectFrame("rotation", 0, [runtime ? "v.pitch" : "22", "-90", "0"])] } },
+        }],
+      });
+      const project = await animatedJavaBlueprintAdapter.import(input);
+      const [animation] = compileImportedProject(project, { namespace: "rotation" });
+      if (runtime) animation.molang = { initialize: "v.pitch = 22;" };
+      const actual = bakeSchema4Preview(animation).display.transforms[0].matrix;
+      const expected = new Matrix4().makeRotationX(-12 * Math.PI / 180)
+        .multiply(new Matrix4().makeRotationY(110 * Math.PI / 180))
+        .multiply(new Matrix4().makeRotationZ(30 * Math.PI / 180));
+      if (type.includes("text_display")) expected.multiply(new Matrix4().makeRotationY(Math.PI));
+      for (let row = 0; row < 4; row++) for (let column = 0; column < 4; column++) {
+        expect(actual[row * 4 + column]).toBeCloseTo(expected.elements[column * 4 + row], 6);
+      }
+    }
+  });
+
   it("accepts Animated Java project files", async () => {
     expect(animatedJavaBlueprintAdapter.extensions).toEqual(["ajblueprint"]);
     expect(animatedJavaBlueprintAdapter.label).toBe("Animated Java project");
@@ -117,11 +143,11 @@ describe("animatedJavaBlueprintAdapter", () => {
     });
     const project = await animatedJavaBlueprintAdapter.import(input);
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
-    const frames = animation.timeline.tracks.aj_display_x.scale!;
+    const frames = animation.timeline.tracks.aj_display_z.scale!;
     const parser = new MolangParser();
     const values = frames[1].value!.map((value) => typeof value === "number" ? value : parser.parse(value, { "variable.scale": 2 }));
 
-    expect(animation.nodes.aj_display_x.transform.scale).toEqual([0.5, 2, 3]);
+    expect(animation.nodes.aj_display_z.transform.scale).toEqual([0.5, 2, 3]);
     expect(frames[0].value).toEqual([0.5, 2, 3]);
     expect(values).toEqual(type === "animated_java:vanilla_item_display" ? [2, 3, 4] : [1, 6, 12]);
   });
@@ -274,10 +300,10 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.root).toBeDefined();
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
-    expect(animation.nodes.aj_item_x.transform.scale).toEqual([0, 0, 0]);
-    expect(animation.timeline.tracks.aj_item_z.position?.[0].value).toEqual([0.9375, 0, 0]);
-    expect(animation.timeline.tracks.aj_item_z.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.05859375) + 0.9375)");
-    expect(animation.timeline.tracks.aj_item_x.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(animation.nodes.aj_item_z.transform.scale).toEqual([0, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_x.position?.[0].value).toEqual([0.9375, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_x.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.05859375) + 0.9375)");
+    expect(animation.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
   });
 
   it("preserves and restores a zero-scale direct display before applying scene scale", async () => {
@@ -588,7 +614,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     const animation = project.animations[0];
     const finalMatrix = animation.tracks.item.transforms.at(-1)!.matrix;
 
-    expect(animation.loop).toBe("hold");
+    expect(animation.playbackMode).toBe("hold");
     expect(animation.durationTicks).toBe(3);
     expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
     expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);

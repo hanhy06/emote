@@ -11,7 +11,7 @@ import {
 } from "../../format/runtimeValue";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { parseInputJson } from "../inputCache";
+import { parseInputJson } from "../common/inputCache";
 
 export interface EmoteSequence {
   type: "sequence";

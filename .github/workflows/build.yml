@@ -65,5 +65,8 @@ jobs:
       - name: Install documentation dependencies
         run: python -m pip install -r ../docs/mkdocs/requirements.txt
 
+      - name: Test web converter
+        run: npm test
+
       - name: Build website
         run: python -m mkdocs build --strict --config-file ../docs/mkdocs/mkdocs.yml

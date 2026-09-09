@@ -6,15 +6,15 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
-import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 
 import java.util.*;
 
 public final class PlaybackNodes {
-    private final Map<EmoteAnimation.NodeSpace, RootTransform> spaces;
+    private final EnumMap<EmoteAnimation.NodeSpace, RootTransform> spaces;
     private final Map<String, NodeInstance> nodes;
     private final int displayEntityCount;
     private final EnumSet<EmoteAnimation.NodeSpace> activeSpaces = EnumSet.of(
@@ -31,7 +31,7 @@ public final class PlaybackNodes {
         for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
             Objects.requireNonNull(requiredSpaces.get(space), "Missing root for node space " + space);
         }
-        this.spaces = Map.copyOf(requiredSpaces);
+        this.spaces = requiredSpaces;
         this.nodes = Map.copyOf(nodes);
         this.displayEntityCount = (int) nodes.values().stream()
             .filter(node -> !(node.node() instanceof EmoteAnimation.AnchorNode))
@@ -46,6 +46,18 @@ public final class PlaybackNodes {
 
     public RootTransform root(EmoteAnimation.NodeSpace space) {
         return this.spaces.get(Objects.requireNonNull(space, "space"));
+    }
+
+    public boolean moveSceneTo(Vec3 position) {
+        Vec3 movement = Objects.requireNonNull(position, "position").subtract(root().position());
+        if (movement.equals(Vec3.ZERO)) {
+            return false;
+        }
+        for (Map.Entry<EmoteAnimation.NodeSpace, RootTransform> entry : this.spaces.entrySet()) {
+            RootTransform root = entry.getValue();
+            entry.setValue(RootTransform.create(root.position().add(movement), root.yaw()));
+        }
+        return true;
     }
 
     public Map<String, NodeInstance> nodes() {
@@ -146,11 +158,10 @@ public final class PlaybackNodes {
         }
 
         public void setItemStack(ItemStack itemStack) {
-            this.displayContent = switch (this.displayContent) {
-                case ItemContent ignored -> new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
-                case HeldItemContent held -> new HeldItemContent(Objects.requireNonNull(itemStack, "itemStack"), held.arm());
-                default -> throw new IllegalStateException("Node is not an item display: " + this.id);
-            };
+            if (!(this.displayContent instanceof ItemContent)) {
+                throw new IllegalStateException("Node is not an item display: " + this.id);
+            }
+            this.displayContent = new ItemContent(Objects.requireNonNull(itemStack, "itemStack"));
         }
 
         void setDisplayContent(DisplayContent displayContent) {
@@ -162,24 +173,12 @@ public final class PlaybackNodes {
         }
     }
 
-    public sealed interface DisplayContent permits ItemContent, HeldItemContent, BlockContent, TextContent {
+    public sealed interface DisplayContent permits ItemContent, BlockContent, TextContent {
     }
 
     public record ItemContent(ItemStack itemStack) implements DisplayContent {
         public ItemContent {
             itemStack = itemStack.copy();
-        }
-
-        @Override
-        public ItemStack itemStack() {
-            return this.itemStack.copy();
-        }
-    }
-
-    public record HeldItemContent(ItemStack itemStack, HumanoidArm arm) implements DisplayContent {
-        public HeldItemContent {
-            itemStack = Objects.requireNonNull(itemStack, "itemStack").copy();
-            Objects.requireNonNull(arm, "arm");
         }
 
         @Override

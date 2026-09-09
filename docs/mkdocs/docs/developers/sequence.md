@@ -71,7 +71,7 @@ Sequence JSON files are limited to 8 MiB.
 - `metadata.name`: Name shown in commands and the emote UI.
 - `metadata.description`: Description shown to players.
 - Additional metadata is preserved and exposed to the API and web converter.
-- `settings.cooldown`: Cooldown applied after the Sequence starts successfully.
+- `settings.cooldown`: Cooldown applied after a successful Sequence ends.
 - `settings.player`: Player visibility and stop conditions for the entire Sequence. These replace the referenced Animations' player settings.
 
 Each stop-condition field matches the player-behavior setting in the [Animation format](animation.md).
@@ -175,7 +175,7 @@ When two Animations reuse the same node ID, that node must have the same inherit
 
 Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
 
-Timeline command events are preserved. Animations referenced by a Sequence cannot use `start`, `loop`, or `stop` command events.
+Timeline command events and the `start`, `loop`, and `stop` event groups are preserved as described above.
 
 ## Playback behavior
 

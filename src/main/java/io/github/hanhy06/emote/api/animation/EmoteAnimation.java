@@ -6,7 +6,6 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
-import net.minecraft.world.entity.HumanoidArm;
 
 import java.util.List;
 import java.util.Map;
@@ -54,11 +53,17 @@ public record EmoteAnimation(
         }
     }
 
-    public record PlaybackSettings(LoopMode mode, int loopDelayTicks) {
+    public record PlaybackSettings(LoopMode mode, int loopStartTicks, int loopDelayTicks) {
         public PlaybackSettings {
             Objects.requireNonNull(mode, "mode");
+            if (loopStartTicks < 0) {
+                throw new IllegalArgumentException("loop start must not be negative");
+            }
             if (loopDelayTicks < 0) {
                 throw new IllegalArgumentException("loop delay must not be negative");
+            }
+            if (mode != LoopMode.LOOP && loopStartTicks != 0) {
+                throw new IllegalArgumentException("loop start must be zero unless playback mode is loop");
             }
             if ((mode == LoopMode.ONCE || mode == LoopMode.HOLD) && loopDelayTicks != 0) {
                 throw new IllegalArgumentException("loop delay must be zero when playback mode is once or hold");
@@ -88,7 +93,7 @@ public record EmoteAnimation(
         String parentId,
         LocalTransform transform,
         CompoundTag entityNbt,
-        ItemSource itemSource,
+        CompoundTag itemStackNbt,
         String itemDisplay,
         Skin skin
     ) implements Node {
@@ -96,28 +101,8 @@ public record EmoteAnimation(
             Objects.requireNonNull(space, "space");
             Objects.requireNonNull(transform, "transform");
             entityNbt = copy(entityNbt);
-            Objects.requireNonNull(itemSource, "itemSource");
-            Objects.requireNonNull(itemDisplay, "itemDisplay");
-        }
-    }
-
-    public sealed interface ItemSource permits FixedItemSource, ParticipantHandItemSource {
-    }
-
-    public record FixedItemSource(CompoundTag itemStackNbt) implements ItemSource {
-        public FixedItemSource {
             itemStackNbt = copy(itemStackNbt);
-        }
-
-        @Override
-        public CompoundTag itemStackNbt() {
-            return this.itemStackNbt.copy();
-        }
-    }
-
-    public record ParticipantHandItemSource(HumanoidArm arm) implements ItemSource {
-        public ParticipantHandItemSource {
-            Objects.requireNonNull(arm, "arm");
+            Objects.requireNonNull(itemDisplay, "itemDisplay");
         }
     }
 
@@ -296,8 +281,7 @@ public record EmoteAnimation(
         }
     }
 
-    public sealed interface NbtValue permits FixedNbtValue, SelectedNbtValue {
-        List<CompoundTag> options();
+    public sealed interface NbtValue permits FixedNbtValue, MolangNbtValue {
     }
 
     public record FixedNbtValue(CompoundTag value) implements NbtValue {
@@ -310,24 +294,11 @@ public record EmoteAnimation(
             return this.value.copy();
         }
 
-        @Override
-        public List<CompoundTag> options() {
-            return List.of(value());
-        }
     }
 
-    public record SelectedNbtValue(MolangValue selector, List<CompoundTag> options) implements NbtValue {
-        public SelectedNbtValue {
-            Objects.requireNonNull(selector, "selector");
-            options = options.stream().map(EmoteAnimation::copy).toList();
-            if (options.size() < 2) {
-                throw new IllegalArgumentException("selected NBT must contain at least two options");
-            }
-        }
-
-        @Override
-        public List<CompoundTag> options() {
-            return this.options.stream().map(EmoteAnimation::copy).toList();
+    public record MolangNbtValue(MolangValue expression) implements NbtValue {
+        public MolangNbtValue {
+            Objects.requireNonNull(expression, "expression");
         }
     }
 

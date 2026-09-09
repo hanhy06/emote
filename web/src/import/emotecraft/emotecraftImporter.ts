@@ -4,9 +4,11 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { cubeEasingProgress } from "../blockbench/cubeEasing";
-import { MolangBakeEvaluator } from "../molang/molangBakeEvaluator";
+import { animationEasingProgress } from "../common/animationEasing";
+import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
+import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
+import { convertEmotecraftSong } from "./emotecraftNbs";
 import {
   EMOTECRAFT_PIVOTS,
   EMOTECRAFT_PLAYER_PARTS,
@@ -42,21 +44,30 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const animation = file.animation;
   const sourceStem = sourceName.replace(/\.emotecraft$/i, "").trim() || "Emotecraft Emote";
   const displayName = file.metadata.name?.trim() || sourceStem;
-  const diagnostics = collectDiagnostics(file);
   const durationTicks = requireAnimationDurationTicks(Math.max(1, Math.ceil(animation.lengthTicks)), `${displayName} duration`);
+  const loopStartTicks = requireLoopStartTick(animation, durationTicks, displayName);
+  const song = file.song ? convertEmotecraftSong(file.song, durationTicks) : { events: [], diagnostics: [] };
+  const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
   const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["tracks"];
+  const snapshotAt = (time: number) => {
+    const poses = evaluatePoses(animation, time * 20);
+    const matrices = buildSliceMatrices(animation, slices, poses);
+    return slices.map((slice) => matrices.get(slice.id)!);
+  };
+  const samplePlan = planAnimationAnchorSamples(collectAnimationAnchors(animation), durationTicks, slices.length, snapshotAt);
 
   let bindMatrices: Map<string, Matrix4> | undefined;
   for (let tick = 0; tick <= durationTicks; tick++) {
-    const poses = evaluatePoses(animation, tick);
+    const sourceTick = (samplePlan.sourceTimes.get(tick) ?? tick / 20) * 20;
+    const poses = evaluatePoses(animation, sourceTick);
     const matrices = buildSliceMatrices(animation, slices, poses);
     bindMatrices ??= matrices;
     for (const slice of slices) tracks[slice.id].transforms.push({
       tick,
       matrix: matrix4ToRowMajor(matrices.get(slice.id)!, `${displayName}/${slice.id}/${tick}`),
-      interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
+      interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
     });
   }
 
@@ -71,10 +82,11 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     name: displayName,
     suggestedMetadata: metadata,
     durationTicks,
-    loop: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
+    playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
+    loopStartTicks,
     loopDelayTicks: 0,
     tracks,
-    events: { start: [], timeline: [], loop: [], stop: [] },
+    events: { start: [], timeline: song.events, loop: [], stop: [] },
   };
   return {
     source: "emotecraft_binary",
@@ -88,6 +100,36 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     diagnostics,
     resources: new Map(),
   };
+}
+
+function requireLoopStartTick(animation: PalAnimation, durationTicks: number, displayName: string): number {
+  if (animation.loop !== "loop_from_tick") return 0;
+  const tick = Math.round(animation.loopStartTick);
+  if (!Number.isFinite(animation.loopStartTick) || tick < 0 || tick >= durationTicks) {
+    throw new Error(`${displayName} loop start must resolve within 0..${durationTicks - 1} ticks.`);
+  }
+  return tick;
+}
+
+function collectAnimationAnchors(animation: PalAnimation): AnimationAnchor[] {
+  const anchors = new Map<string, AnimationAnchor>();
+  for (const bone of Object.values(animation.bones)) {
+    for (const frames of [...bone.position, ...bone.rotation, ...bone.scale, bone.bend]) {
+      for (const frame of frames) {
+        if (!Number.isFinite(frame.endTick) || frame.endTick < 0 || frame.endTick > animation.lengthTicks) continue;
+        const time = frame.endTick / 20;
+        const key = time.toFixed(6);
+        const step = frame.easing === "constant";
+        const current = anchors.get(key);
+        if (!current) anchors.set(key, { time, priority: step ? 200 : 100, step });
+        else {
+          current.priority = Math.max(current.priority, step ? 200 : 100);
+          current.step ||= step;
+        }
+      }
+    }
+  }
+  return [...anchors.values()].sort((first, second) => first.time - second.time);
 }
 
 function emptyTrack(): ImportedNodeTrack {
@@ -144,7 +186,7 @@ function interpolateFrame(frame: PalKeyframe, start: number, end: number, progre
     return 0.5 * (2 * start + (end - p0) * progress + (2 * p0 - 5 * start + 4 * end - p3) * progress ** 2 + (3 * start - p0 - 3 * end + p3) * progress ** 3);
   }
   if (frame.easing === "bezier" && args.length >= 2) return bezierValue(start, end, progress, args, frame.endTick - frame.startTick);
-  const eased = cubeEasingProgress(frame.easing, progress, args.map((entry) => entry[0] ?? 0)) ?? progress;
+  const eased = animationEasingProgress(frame.easing, progress, args.map((entry) => entry[0] ?? 0)) ?? progress;
   return start + (end - start) * eased;
 }
 
@@ -253,12 +295,7 @@ function lowerBendMatrix(bend: number): Matrix4 {
 
 function collectDiagnostics(file: EmotecraftFile): ImportDiagnostic[] {
   const diagnostics: ImportDiagnostic[] = [];
-  if (file.animation.loop === "loop_from_tick" && file.animation.loopStartTick !== 0) diagnostics.push({
-    severity: "warning", code: "emotecraft_loop_start_flattened",
-    message: `Emotecraft loop start ${file.animation.loopStartTick}t cannot be represented; the full animation loops from 0t.`,
-  });
   if (file.icon) diagnostics.push({ severity: "warning", code: "emotecraft_icon_ignored", message: "The embedded Emotecraft icon is not part of the emote animation format and was ignored." });
-  if (file.song) diagnostics.push({ severity: "warning", code: "emotecraft_song_ignored", message: "The embedded Emotecraft NBS song is not part of the emote animation format and was ignored." });
   for (const [kind, count] of [["sound", file.animation.effects.sounds.length], ["particle", file.animation.effects.particles.length], ["instruction", file.animation.effects.instructions.length]] as const) {
     if (count) diagnostics.push({ severity: "warning", code: `emotecraft_${kind}_effects_ignored`, message: `${count} Emotecraft ${kind} effect(s) cannot be converted automatically and were ignored.` });
   }

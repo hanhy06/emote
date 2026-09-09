@@ -1,5 +1,5 @@
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
-import { readRuntimeNodes, readRuntimeTimeline } from "../runtimeOutput";
+import { readRuntimeNodes, readRuntimeTimeline } from "../common/runtimeOutput";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -9,7 +9,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { parseInputJson, probeParsedInput } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
@@ -140,7 +140,7 @@ function importNode(
   node: EmoteAnimation["nodes"][string],
   placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "spaceAssignmentGroup">,
 ): ImportedNode {
-  if (node.type === "anchor" || (node.type === "item_display" && node.item_source)) return { id, type: "anchor", ...placement };
+  if (node.type === "anchor") return { id, type: "anchor", ...placement };
   const common = {
     id,
     ...placement,
@@ -150,7 +150,7 @@ function importNode(
   if (node.type === "item_display") return {
     ...common,
     type: "item_display",
-    itemStack: readItemStack(node.item_stack_snbt!),
+    itemStack: readItemStack(node.item_stack_snbt),
     itemDisplay: node.item_display,
     ...(node.skin ? { skin: { ...node.skin } } : {}),
   };
@@ -166,7 +166,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
     if (source.nbt?.some((frame) => typeof frame.value !== "string")) {
-      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang-selected NBT cannot be represented by the web editor");
+      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang NBT cannot be represented by the web editor");
     }
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
@@ -184,8 +184,9 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
     durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
-    loop: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    playbackMode: animation.settings.playback.mode,
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks,
     events: importEvents(animation),
   };
@@ -203,8 +204,9 @@ function importRuntimeTimeline(
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
     durationTicks,
-    loop: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    playbackMode: animation.settings.playback.mode,
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks: {},
     events: importEvents(animation),
     ...(previewTracks

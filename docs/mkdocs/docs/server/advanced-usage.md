@@ -2,7 +2,7 @@
 
 ## Cooldowns
 
-Cooldowns are configured with `settings.cooldown` in each Emote file, not in `emotes.json`.
+Base cooldowns are configured with `settings.cooldown` in each Emote file.
 
 ```json
 {
@@ -12,15 +12,37 @@ Cooldowns are configured with `settings.cooldown` in each Emote file, not in `em
 }
 ```
 
-!!! tip inline end "Time units"
-    Emote uses Minecraft time format.<br>
-    `1s` equals `20t`.
+When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
+
+Permission groups can adjust that base cooldown with `cooldown` in `emotes.json`:
+
+```json
+{
+  "permissions": [
+    {
+      "permission": "emote.vip",
+      "emotes": ["*"],
+      "cooldown": "x0.5"
+    },
+    {
+      "permission": "emote.default",
+      "emotes": ["*"],
+      "cooldown": "5s"
+    }
+  ]
+}
+```
+
+A Minecraft time value such as `5s` is subtracted from the Emote's base cooldown. A value beginning with `x` multiplies it instead: `x0.5` halves the cooldown, while `x2` doubles it. The final cooldown cannot be less than zero.
+
+Permission entries are checked from top to bottom. The first entry that matches the Emote, belongs to the player, and defines `cooldown` is used. Entries without `cooldown` are skipped, and the base cooldown is unchanged when no matching entry defines one.
+
+!!! tip "Time units"
+    Emote uses Minecraft time format.`1s` equals `20t`.
 
     `s`: seconds<br>
     `t` or omitted: ticks<br>
     `d`: Minecraft days
-
-When playing a Sequence, only the Sequence's own `settings.cooldown` applies. Cooldowns of referenced Animations are not added.
 
 ---
 
@@ -31,10 +53,10 @@ Idle emotes play automatically after a specified time since the player's last ac
 ```json
 {
   "permission": "emote.default",
-  "emotes": ["example:wave", "example:hello"],
+  "emotes": ["emote:hello", "emote:backflip"],
   "idle": {
     "delay": "300s",
-    "emote": ["example:drink"]
+    "emote": ["emote:idle.sit"]
   }
 }
 ```
@@ -42,13 +64,21 @@ Idle emotes play automatically after a specified time since the player's last ac
 To choose evenly among several emotes, list only their IDs:
 
 ```json
-"emote": ["example:drink", "example:look-around"]
+"emote": ["emote:idle.sit", "emote:idle.handstand"]
 ```
+
+An entry that is a valid emote ID matches literally. Any other entry is a full Java regular expression, so an idle rule can select every currently available emote with a matching ID:
+
+```json
+"emote": ["emote:idle\\..*"]
+```
+
+Regular-expression entries can be used only with equal selection. They cannot be combined with explicit weights.
 
 For weighted selection, alternate IDs and integer weights whose total must equal `100`:
 
 ```json
-"emote": ["example:drink", 70, "example:look-around", 30]
+"emote": ["emote:idle.sit", 70, "emote:idle.handstand", 30]
 ```
 
 If a player has multiple permissions, entries are checked from top to bottom in `emotes.json`, and the first allowed entry with `idle` is used. Place higher-priority groups first.
@@ -57,18 +87,18 @@ If a player has multiple permissions, entries are checked from top to bottom in 
 "permissions": [
   {
     "permission": "emote.vip",
-    "emotes": ["example:vip"],
+    "emotes": ["emote:(dance|cheer|clap)"],
     "idle": {
       "delay": "120s",
-      "emote": ["example:vip-idle"]
+      "emote": ["emote:idle.handstand"]
     }
   },
   {
     "permission": "emote.default",
-    "emotes": ["example:wave"],
+    "emotes": ["emote:hello", "emote:backflip"],
     "idle": {
       "delay": "300s",
-      "emote": ["example:drink"]
+      "emote": ["emote:idle.sit"]
     }
   }
 ]
@@ -86,12 +116,12 @@ A Sequence connects multiple Animations in order and presents them to the player
 
 ```text
 config/emote/emote/sit/
-├── emote.1.sit_down.json
-├── emote.2.idle_sky.json
-├── emote.3.idle_butterfly.json
-├── emote.4.idle_flower.json
-├── emote.5.stand_up1.json
-├── emote.6.stand_up2.json
+├── emote.idle_butterfly.json
+├── emote.idle_flower.json
+├── emote.idle_sky.json
+├── emote.sit_down.json
+├── emote.stand_up1.json
+├── emote.stand_up2.json
 └── emote.sit.json
 ```
 
@@ -101,10 +131,10 @@ config/emote/emote/sit/
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:sit",
+  "id": "emote:idle.sit",
   "metadata": {
-    "name": "Emote sit",
-    "description": "Idle emote sit down emote."
+    "name": "Sit",
+    "description": "Sit down and relax."
   },
   "settings": {
     "cooldown": "0t",
@@ -124,11 +154,8 @@ config/emote/emote/sit/
   "steps": [
     {"emote": "emote:sit_down"},
     {
-      "emote": [
-        "emote:idle_sky", 40,
-        "emote:idle_butterfly", 35,
-        "emote:idle_flower", 25
-      ],
+      "emote": ["emote:idle_sky", 40, "emote:idle_butterfly", 35, "emote:idle_flower", 25],
+      "transition": "2t",
       "repeat": 2
     },
     {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
@@ -150,11 +177,11 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 1. Place all JSON files under `emote/` on the same server.
 2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
-3. Run `/emote play emote:sit` with normal player permissions.
+3. Run `/emote play emote:idle.sit` with normal player permissions.
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
 !!! note "Complete example pack"
-    The repository includes the ready-to-install [sit sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/sit) shown above and a [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake).
+    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
 
 To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).

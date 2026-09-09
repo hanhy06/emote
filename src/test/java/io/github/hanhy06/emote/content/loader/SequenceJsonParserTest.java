@@ -60,9 +60,9 @@ class SequenceJsonParserTest {
             sequence.steps().getFirst()
         );
         assertEquals(60, await.timeoutTicks());
-        assertEquals("example:handshake_offer", await.offerEmoteId().toString());
+        assertEquals("example:handshake_offer", await.offerAnimationId().toString());
         assertEquals(3, assertInstanceOf(EmoteSequence.EmoteStep.class, await.matched().getFirst()).repeat());
-        assertEquals("example:handshake_withdraw", assertInstanceOf(EmoteSequence.EmoteStep.class, await.timeout().getFirst()).emoteIds().getFirst().toString());
+        assertEquals("example:handshake_withdraw", assertInstanceOf(EmoteSequence.EmoteStep.class, await.timeout().getFirst()).targetIds().getFirst().toString());
         assertEquals(1.2D, ((net.minecraft.commands.arguments.coordinates.LocalCoordinates) sequence.participants().partner().position()).forwards());
     }
 
@@ -91,7 +91,7 @@ class SequenceJsonParserTest {
 
         EmoteSequence.EmoteStep equalStep = assertInstanceOf(EmoteSequence.EmoteStep.class, equal.steps().getFirst());
         EmoteSequence.EmoteStep weightedStep = assertInstanceOf(EmoteSequence.EmoteStep.class, weighted.steps().getFirst());
-        assertEquals(List.of("example:idle_1", "example:idle_2", "example:idle_3"), equalStep.emoteIds().stream().map(Object::toString).toList());
+        assertEquals(List.of("example:idle_1", "example:idle_2", "example:idle_3"), equalStep.targetIds().stream().map(Object::toString).toList());
         assertEquals(List.of(30, 70), weightedStep.choices().stream().map(EmoteSequence.Choice::chance).toList());
     }
 
@@ -103,9 +103,9 @@ class SequenceJsonParserTest {
 
         EmoteSequence.EmoteStep step = assertInstanceOf(EmoteSequence.EmoteStep.class, sequence.steps().getFirst());
 
-        assertEquals(List.of("example:idle", "emote:continue", "emote:break"), step.emoteIds().stream().map(Object::toString).toList());
-        assertEquals(EmoteSequence.Control.CONTINUE, EmoteSequence.Control.fromId(step.emoteIds().get(1)));
-        assertEquals(EmoteSequence.Control.BREAK, EmoteSequence.Control.fromId(step.emoteIds().get(2)));
+        assertEquals(List.of("example:idle", "emote:continue", "emote:break"), step.targetIds().stream().map(Object::toString).toList());
+        assertEquals(EmoteSequence.Control.CONTINUE, EmoteSequence.Control.fromId(step.targetIds().get(1)));
+        assertEquals(EmoteSequence.Control.BREAK, EmoteSequence.Control.fromId(step.targetIds().get(2)));
     }
 
     @Test

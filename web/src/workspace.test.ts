@@ -41,7 +41,7 @@ function project(preview: "full" | "unavailable"): ImportedProject {
       id: "unknown",
       name: "Unknown",
       durationTicks: 20,
-      loop: "once",
+      playbackMode: "once",
       loopDelayTicks: 0,
       tracks: {},
       events: { start: [], timeline: [], loop: [], stop: [] },

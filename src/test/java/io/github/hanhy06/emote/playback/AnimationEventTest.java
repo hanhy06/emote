@@ -8,6 +8,8 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -37,26 +39,16 @@ class AnimationEventTest {
         assertEquals(List.of("start"), fixture.executed());
     }
 
-    @Test
-    void runsTickZeroEventOnceAfterDelayedLoopRestart() {
-        AnimationFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 2);
+    @ParameterizedTest
+    @CsvSource({"2, 3", "0, 1"})
+    void runsTickZeroEventOnceAfterLoopRestart(int loopDelayTicks, int advances) {
+        AnimationFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, loopDelayTicks);
         fixture.player().start();
         fixture.player().startEvents();
 
-        fixture.player().advance();
-        fixture.player().advance();
-        fixture.player().advance();
-
-        assertEquals(List.of("start", "tick-0", "loop", "tick-0"), fixture.executed());
-    }
-
-    @Test
-    void runsTickZeroEventOnceAfterImmediateLoopRestart() {
-        AnimationFixture fixture = fixture(1, EmoteAnimation.LoopMode.LOOP, 0);
-        fixture.player().start();
-        fixture.player().startEvents();
-
-        fixture.player().advance();
+        for (int index = 0; index < advances; index++) {
+            fixture.player().advance();
+        }
 
         assertEquals(List.of("start", "tick-0", "loop", "tick-0"), fixture.executed());
     }
@@ -135,7 +127,7 @@ class AnimationEventTest {
         return new EmoteAnimation(
             Identifier.parse("test:event-dispatch"),
             new EmoteMetadata("Event Dispatch", "Event Dispatch"),
-            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loopMode, loopDelayTicks)),
+            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(loopMode, 0, loopDelayTicks)),
             EmoteAnimation.MolangPrograms.empty(),
             Map.of(),
             new EmoteAnimation.Timeline(durationTicks, Map.of(), events)

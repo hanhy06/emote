@@ -64,6 +64,7 @@ public final class PlaybackEntityController {
     }
 
     public static final String RUNTIME_TAG = "emote.runtime";
+    private static final int RESPONSIVE_INTERPOLATION_TICKS = 1;
     private static final int VIEW_ROTATION_INTERPOLATION_TICKS = 3;
 
     public PlaybackNodes create(ServerPlayer player, PreparedAnimation emote) {
@@ -114,7 +115,7 @@ public final class PlaybackEntityController {
         float viewYaw = nodes.updateViewYaw(currentYaw, rotationDeadzone);
         float relativeYaw = nodes.root().relativeYaw(viewYaw);
         boolean rotationChanged = Mth.packDegrees(previousRelativeYaw) != Mth.packDegrees(relativeYaw);
-        int interpolationTicks = rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS;
+        int interpolationTicks = positionRotationInterpolationTicks(rotationDeadzone);
         for (NodeInstance node : nodes.nodes().values()) {
             if (!node.isAnchor()) {
                 ((DisplayAccessor) node.entity()).emote$setPosRotInterpolationDuration(interpolationTicks);
@@ -126,14 +127,24 @@ public final class PlaybackEntityController {
         return rotationChanged;
     }
 
+    public boolean moveSceneTo(PlaybackNodes nodes, Vec3 position) {
+        if (!nodes.moveSceneTo(position)) {
+            return false;
+        }
+        for (NodeInstance node : nodes.nodes().values()) {
+            if (!node.isAnchor()) {
+                node.entity().setPos(nodes.root(node.node().space()).position());
+            }
+        }
+        return true;
+    }
+
     public void setVisible(NodeInstance node, boolean visible) {
         if (node.isAnchor()) {
             return;
         }
         switch (node.displayContent()) {
             case ItemContent(ItemStack itemStack) ->
-                ((ItemDisplayAccessor) node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
-            case HeldItemContent(ItemStack itemStack, var arm) ->
                 ((ItemDisplayAccessor) node.entity()).emote$setItemStack(visible ? itemStack : ItemStack.EMPTY);
             case BlockContent(var blockState) -> ((BlockDisplayAccessor) node.entity()).emote$setBlockState(
                 visible ? blockState : Blocks.AIR.defaultBlockState()
@@ -161,22 +172,6 @@ public final class PlaybackEntityController {
             node.setDisplayContent(new TextContent(text));
         }
         setVisible(node, nodes.effectiveVisibility(node.id()));
-    }
-
-    public void updateHeldItems(PlaybackNodes nodes, EmoteAnimation.NodeSpace space, ServerPlayer player) {
-        for (NodeInstance node : nodes.nodes().values()) {
-            if (node.node().space() != space || !(node.displayContent() instanceof HeldItemContent(ItemStack previous, var arm))) {
-                continue;
-            }
-            ItemStack current = player.getItemHeldByArm(arm).copy();
-            if (ItemStack.matches(previous, current)) {
-                continue;
-            }
-            node.setItemStack(current);
-            ((ItemDisplayAccessor) node.entity()).emote$setItemStack(
-                nodes.effectiveVisibility(node.id()) ? current : ItemStack.EMPTY
-            );
-        }
     }
 
     public void activateSpace(PlaybackNodes nodes, EmoteAnimation.NodeSpace space) {
@@ -229,7 +224,7 @@ public final class PlaybackEntityController {
 
         Display entity = createDisplay(level, node);
         TypedEntityData.of(entity.getType(), node.entityNbt()).loadInto(entity);
-        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(rotationDeadzone == 0.0F ? 0 : VIEW_ROTATION_INTERPOLATION_TICKS);
+        ((DisplayAccessor) entity).emote$setPosRotInterpolationDuration(positionRotationInterpolationTicks(rotationDeadzone));
         entity.setPos(root.position());
         entity.setDeltaMovement(0.0D, 0.0D, 0.0D);
         entity.setYRot(0.0F);
@@ -254,24 +249,20 @@ public final class PlaybackEntityController {
         return display;
     }
 
+    static int positionRotationInterpolationTicks(float rotationDeadzone) {
+        return rotationDeadzone == 0.0F ? RESPONSIVE_INTERPOLATION_TICKS : VIEW_ROTATION_INTERPOLATION_TICKS;
+    }
+
     private DisplayContent applyRuntimeData(
         Display entity,
         PreparedDisplayData preparedData
     ) {
         return switch (preparedData) {
-            case PreparedDisplayData.Item(var source, var itemDisplay) -> {
+            case PreparedDisplayData.Item(ItemStack itemStack, var itemDisplay) -> {
                 ItemDisplayAccessor accessor = (ItemDisplayAccessor) entity;
+                accessor.emote$setItemStack(itemStack);
                 accessor.emote$setItemTransform(itemDisplay);
-                yield switch (source) {
-                    case PreparedDisplayData.FixedItem(ItemStack itemStack) -> {
-                        accessor.emote$setItemStack(itemStack);
-                        yield new ItemContent(itemStack);
-                    }
-                    case PreparedDisplayData.ParticipantHandItem(var arm) -> {
-                        accessor.emote$setItemStack(ItemStack.EMPTY);
-                        yield new HeldItemContent(ItemStack.EMPTY, arm);
-                    }
-                };
+                yield new ItemContent(itemStack);
             }
             case PreparedDisplayData.Block(var blockState) -> {
                 ((BlockDisplayAccessor) entity).emote$setBlockState(blockState);

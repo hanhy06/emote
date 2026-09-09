@@ -105,7 +105,7 @@ public record EmoteSequence(
             if (choices.stream().anyMatch(Objects::isNull)) {
                 throw new NullPointerException("choices");
             }
-            if (choices.stream().map(Choice::emoteId).distinct().count() != choices.size()) {
+            if (choices.stream().map(Choice::targetId).distinct().count() != choices.size()) {
                 throw new IllegalArgumentException("sequence emote candidates must not contain duplicates");
             }
             boolean weighted = choices.getFirst().chance() > 0;
@@ -127,20 +127,20 @@ public record EmoteSequence(
             this(choices, repeat, 0);
         }
 
-        public EmoteStep(Identifier emoteId, int repeat) {
-            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat, 0);
+        public EmoteStep(Identifier targetId, int repeat) {
+            this(List.of(new Choice(Objects.requireNonNull(targetId, "targetId"), 0)), repeat, 0);
         }
 
-        public EmoteStep(Identifier emoteId, int repeat, int transitionTicks) {
-            this(List.of(new Choice(Objects.requireNonNull(emoteId, "emoteId"), 0)), repeat, transitionTicks);
+        public EmoteStep(Identifier targetId, int repeat, int transitionTicks) {
+            this(List.of(new Choice(Objects.requireNonNull(targetId, "targetId"), 0)), repeat, transitionTicks);
         }
 
-        public EmoteStep(Collection<Identifier> emoteIds, int repeat) {
-            this(emoteIds.stream().map(emoteId -> new Choice(emoteId, 0)).toList(), repeat, 0);
+        public EmoteStep(Collection<Identifier> targetIds, int repeat) {
+            this(targetIds.stream().map(targetId -> new Choice(targetId, 0)).toList(), repeat, 0);
         }
 
-        public List<Identifier> emoteIds() {
-            return this.choices.stream().map(Choice::emoteId).toList();
+        public List<Identifier> targetIds() {
+            return this.choices.stream().map(Choice::targetId).toList();
         }
     }
 
@@ -153,14 +153,14 @@ public record EmoteSequence(
     }
 
     public record AwaitPartnerStep(
-        Identifier offerEmoteId,
+        Identifier offerAnimationId,
         int timeoutTicks,
         List<Step> matched,
         List<Step> timeout
     ) implements Step {
         public AwaitPartnerStep {
-            Objects.requireNonNull(offerEmoteId, "offerEmoteId");
-            if (Control.fromId(offerEmoteId) != null) {
+            Objects.requireNonNull(offerAnimationId, "offerAnimationId");
+            if (Control.fromId(offerAnimationId) != null) {
                 throw new IllegalArgumentException("await_partner offer must reference an animation");
             }
             if (timeoutTicks < 1) {
@@ -173,9 +173,9 @@ public record EmoteSequence(
         }
     }
 
-    public record Choice(Identifier emoteId, int chance) {
+    public record Choice(Identifier targetId, int chance) {
         public Choice {
-            Objects.requireNonNull(emoteId, "emoteId");
+            Objects.requireNonNull(targetId, "targetId");
             if (chance < 0 || chance > 100) {
                 throw new IllegalArgumentException("sequence emote candidate chance must be between 1 and 100");
             }

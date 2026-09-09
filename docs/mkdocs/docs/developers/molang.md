@@ -1,6 +1,6 @@
 # Molang
 
-Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and NBT option selectors. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
+Animation schema 4 accepts Molang in animation programs, vector track components, visibility track values, and dynamic NBT values. Both the short and long prefixes are supported: `q` or `query`, `v` or `variable`, and `t` or `temp`.
 
 ## Programs
 
@@ -22,6 +22,37 @@ Animation-level programs are optional:
 
 A new Molang session is created for every repeated cycle and every Animation segment in a Sequence.
 
+## Math functions
+
+All functions in the Bedrock Molang `math.*` reference are supported, including the easing, random, dice, interpolation, angle, and sign functions. Trigonometric inputs and outputs use degrees.
+
+## Conditionals
+
+Bedrock's binary and ternary conditional operators are supported. Only the selected branch is evaluated, and either branch may contain a brace-delimited execution scope:
+
+```molang
+q.is_moving ? {
+  v.speed = q.ground_speed;
+} : {
+  v.speed = 0;
+};
+return v.speed;
+```
+
+Conditional expressions associate from the right, so `a ? b : c ? d : e` is equivalent to `a ? b : (c ? d : e)`. Molang does not define separate `if` or `else` keywords; use `?` and `:` instead.
+
+## Loops
+
+`loop(count, { ... })` repeats an execution scope and supports `break` and `continue`. The runtime limits one loop to 1,024 iterations:
+
+```molang
+v.count = 0;
+loop(3, {
+  v.count = v.count + 1;
+});
+return v.count;
+```
+
 ## Track values
 
 Each position, rotation, or scale component may be a number or a Molang string:
@@ -39,22 +70,19 @@ Visibility values may be booleans or Molang strings. A finite result of `0` is h
 
 Track values may read persistent variables but cannot assign them. Temporary variables are cleared for each expression evaluation.
 
-### NBT option selectors
+### Dynamic NBT values
 
-An NBT keyframe can use Molang to choose one of two or more compound SNBT options:
+An NBT keyframe can use Molang to produce a compound SNBT string:
 
 ```json
 "value": {
-  "select": "math.random_integer(0, 3)",
-  "options": [
-    "{item:{id:'minecraft:poppy',count:1}}",
-    "{item:{id:'minecraft:dandelion',count:1}}",
-    "{item:{id:'minecraft:blue_orchid',count:1}}"
-  ]
+  "molang": "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
 }
 ```
 
-The selector follows the same read-only track-expression rules as vector and visibility values. Its result must be a finite integer within the option array. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during selector evaluation.
+The expression follows the same read-only track-expression rules as vector and visibility values. Its result must be a string containing valid compound SNBT. It is evaluated once when the keyframe is applied, rather than on every animation tick; a new playback loop or Sequence segment evaluates it again. `q.key_frame_lerp_time` is `0` during evaluation.
+
+Runtime-owned fields remain forbidden. The `0t` result establishes the top-level fields that later keyframes may modify, and a dynamic `0t` value must return the same field set on every playback cycle.
 
 ## Queries
 
@@ -104,13 +132,46 @@ The table uses the `q.*` form. The equivalent `query.*` names are also accepted.
 | `q.item_in_use_duration` | Elapsed active item-use time in seconds, capped at the item's maximum use duration. |
 | `q.item_remaining_use_duration` | Remaining active item-use time in seconds. |
 | `q.item_max_use_duration` | Maximum active item-use duration in seconds. |
+| `q.is_item_equipped` | Main-hand shortcut: `1` when the main hand is not empty, otherwise `0`. |
+| `q.blocking` | `1` while the initiator is actively blocking, otherwise `0`. |
+| `q.is_eating` | `1` while the initiator is using an item with the eat animation, otherwise `0`. |
+| `q.is_jumping` | `1` while the initiator's latest client input has jump held, otherwise `0`. |
+| `q.is_crawling` | `1` while the initiator has the crawling pose without swimming, otherwise `0`. |
+| `q.is_invisible` | `1` while the initiator is invisible, otherwise `0`. |
+| `q.is_levitating` | `1` while the initiator has the levitation effect, otherwise `0`. |
+| `q.yaw_speed` | Initiator yaw change during the current tick, in degrees. |
+| `q.on_fire_time` | Remaining initiator fire time in seconds. |
 
 Player-state queries always refer to the initiator, including partner Animations. Synthetic stress-test playback has no initiator and evaluates these queries as `0`.
 
-The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used. They are scalar queries without arguments; hand-slot selection and normalization arguments are not supported.
+The three item-use duration queries refer to the item currently being used, in either hand, and return `0` when no item is being used.
+
+### Query functions
+
+Registered query functions are available in animation programs, vector and visibility tracks, and dynamic NBT values.
+
+| Query | Value |
+|---|---|
+| `q.any(value, candidate, ...)` | `1` if any candidate equals the first value. Strings and numbers retain their types. |
+| `q.all(value, candidate, ...)` | `1` if every candidate equals the first value. Strings and numbers retain their types. |
+| `q.approx_eq(value, candidate, ...)` | `1` if every numeric candidate approximately equals the first value. |
+| `q.in_range(value, minimum, maximum)` | `1` if the value is within the inclusive range. |
+| `q.position(axis)` | Initiator position on axis `0` (X), `1` (Y), or `2` (Z). |
+| `q.position_delta(axis)` | Initiator movement during the current tick on the selected axis. |
+| `q.movement_direction(axis)` | Selected component of the normalized current movement vector, or `0` while stationary. |
+| `q.is_item_equipped()` | `1` if the main hand is not empty. An optional hand or equipment-slot selector may be supplied. |
+| `q.item_is_charged()` | `1` if the main-hand crossbow is charged. An optional hand or equipment-slot selector may be supplied. |
+| `q.is_item_name_any(slot, name, ...)` | `1` if the selected equipment item has one of the full identifiers, such as `'minecraft:bow'`. |
+| `q.scoreboard(objective)` | Initiator score for the named objective, or `0` when the objective or score is absent. |
+
+Item selectors accept `main_hand`, `off_hand`, `slot.weapon`, `slot.weapon.mainhand`, `slot.weapon.offhand`, and `slot.armor.head`, `slot.armor.chest`, `slot.armor.legs`, or `slot.armor.feet`. Numeric hand selector `0` means main hand and `1` means off hand. Scalar `q.is_item_equipped` and `q.item_is_charged` remain available as main-hand shortcuts.
 
 ## Validation and preview
 
-Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A value that evaluates to a non-finite number stops playback as a runtime failure; an NBT selector also fails if its result is fractional or outside its option array.
+Each Molang source string is limited to 16,384 characters. Invalid syntax, unsupported query names, query assignments, and persistent-variable assignments in track values reject the Animation during loading. A numeric value that evaluates to a non-finite number stops playback as a runtime failure. A dynamic NBT value also fails at runtime if it does not return a string containing valid compound SNBT or violates the NBT track's field restrictions.
 
-The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries are `0`. For a nondeterministic NBT selector, preview displays the first option while export preserves the selector and every option. If another expression cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+The web converter preserves the original schema 4 Molang source when exporting. Its preview evaluates deterministic expressions with synthetic player state: `q.is_on_ground` and `q.is_emoting` are `1`, while the other player-state queries and player-dependent query functions are `0`. General query functions such as `q.any` and `q.in_range` are evaluated normally. Dynamic NBT values are preserved for export but are not evaluated by the preview, which falls back to the Create pose. If another expression cannot be evaluated safely, export remains available and the preview also falls back to the Create pose.
+
+## Current limitations
+
+This is not a complete Bedrock Molang environment. Only the queries and query functions listed above are available. Context values, `this`, structs, arrays, resource values, entity references, the arrow operator's entity switching, and `for_each` are not supported. Null coalescing and string equality currently follow the embedded evaluator's behavior rather than full Bedrock semantics.

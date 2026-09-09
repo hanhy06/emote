@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinProvider;
+import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -122,6 +123,25 @@ public final class MineSkinProvider implements PlayerSkinProvider {
     @Override
     public void setListener(Listener listener) {
         this.listener = Objects.requireNonNull(listener, "listener");
+    }
+
+    @Override
+    public SkinProcessingStats processingStats() {
+        int active = 0;
+        int queued = 0;
+        int retrying = 0;
+        synchronized (this.bakeTasks) {
+            for (MineSkinBakeTask bakeTask : this.bakeTasks.values()) {
+                switch (bakeTask.stage()) {
+                    case QUEUED -> queued++;
+                    case DOWNLOADING_SKIN, BAKING_PART, WAITING_FOR_MINESKIN -> active++;
+                    case RETRY_WAIT -> retrying++;
+                    case COMPLETE, FAILED, CANCELLED -> {
+                    }
+                }
+            }
+        }
+        return new SkinProcessingStats("MineSkin", active, queued, retrying);
     }
 
     private void fail(MineSkinBakeTask bakeTask) {
@@ -347,7 +367,18 @@ public final class MineSkinProvider implements PlayerSkinProvider {
         }
     }
 
-    private TextureResolution resolveTextureUrl(
+    public String generateTexture(byte[] png, boolean slimModel) throws IOException, InterruptedException {
+        String contentHash = MineSkinCache.createContentKey(png, slimModel);
+        for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
+            TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, png, slimModel);
+            if (resolution.textureUrl() != null) return resolution.textureUrl();
+            if (resolution.retryAtEpochMillis() <= 0 || attempt == RATE_LIMIT_RETRY_LIMIT) break;
+            Thread.sleep(Math.max(1, resolution.retryAtEpochMillis() - System.currentTimeMillis()));
+        }
+        throw new IOException("MineSkin could not generate the displaced account texture");
+    }
+
+    private synchronized TextureResolution resolveTextureUrl(
         String currentApiKey,
         String contentHash,
         byte[] bakedImage,

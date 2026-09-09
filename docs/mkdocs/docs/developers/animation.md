@@ -28,8 +28,7 @@ Animation files use schema version `4`. An Animation defines a hierarchy of disp
       }
     },
     "playback": {
-      "mode": "once",
-      "loop_delay": "0t"
+      "mode": "once"
     }
   },
   "nodes": {
@@ -114,7 +113,7 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 ### Cooldown and rotation
 
-- `cooldown`: Nonnegative playback cooldown. It starts only after playback begins successfully.
+- `cooldown`: Nonnegative playback cooldown. It starts after a successful playback ends.
 - `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback and partner offer/wait states, the display root follows the initiator's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
 
 ### Player behavior
@@ -127,10 +126,12 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 
 | Mode | Description |
 |---|---|
-| `once` | Plays the timeline once. `loop_delay` must be `0t`. |
-| `hold` | Plays once, then holds the last frame until stopped. `loop_delay` must be `0t`; unavailable in Sequences. |
-| `loop` | Repeats the timeline after `loop_delay`. |
+| `once` | Plays the timeline once. |
+| `hold` | Plays once, then holds the last frame until stopped; unavailable in Sequences. |
+| `loop` | Plays from tick `0` once, then repeats from `loop_start` after `loop_delay`. |
 | `server_sync` | Selects the current timeline position from server time so independently started playbacks remain synchronized; unavailable in Sequences. |
+
+`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. `loop_start` may be nonzero only in `loop` mode and must be earlier than the timeline duration. `loop_delay` may be nonzero in `loop` and `server_sync` modes. Omitting either field preserves the behavior of existing compiled Animation files.
 
 ## Nodes
 
@@ -176,7 +177,7 @@ A child node declares `parent` instead of `space`. It inherits its root node's s
 
 | Type | Required fields | Purpose |
 |---|---|---|
-| `item_display` | Exactly one of `item_stack_snbt` or `item_source`, plus `item_display` | Displays a fixed or participant-held item stack. |
+| `item_display` | `item_stack_snbt`, `item_display` | Displays an item stack. |
 | `block_display` | `block_state_snbt` | Displays a block state. |
 | `text_display` | `text` | Displays a Minecraft text component. |
 | `anchor` | None beyond the common hierarchy and transform fields | Groups child nodes or provides a command origin without creating an entity. |
@@ -189,17 +190,7 @@ Display nodes also support:
 
 `item_display` accepts Minecraft item display contexts such as `none`, `fixed`, `head`, `ground`, `gui`, and the first- or third-person hand contexts.
 
-`item_stack_snbt` contains a fixed item stack. Alternatively, `item_source` can display the item currently held in a participant's physical hand:
-
-```json
-"item_source": {
-  "type": "participant_hand",
-  "arm": "right"
-}
-```
-
-`arm` is the physical `left` or `right` hand, independent of the participant's main-hand setting. Participant-hand items cannot use `skin`.
-The node must inherit `initiator` or `partner` space; participant-hand items are not allowed in `scene` space.
+`item_stack_snbt` contains the displayed item stack.
 
 Anchor nodes do not support `visible` or `entity_nbt`. They can have transform tracks, but not visibility tracks, and cannot be used as a command source because they have no entity.
 
@@ -272,19 +263,14 @@ The value may also be a [Molang](molang.md) string; zero is hidden and any other
 
 ### NBT tracks
 
-NBT tracks apply stepped display-entity data changes. A `value` may be compound SNBT or a Molang-selected set of compound SNBT options. The selected compound is merged with the state produced by the preceding keyframes.
+NBT tracks apply stepped display-entity data changes. A `value` may be a compound SNBT string or an object containing a `molang` expression that returns a compound SNBT string. The resulting compound is merged with the state produced by the preceding keyframes.
 
 ```json
 "nbt": [
   {
     "time": "0t",
     "value": {
-      "select": "math.random_integer(0, 3)",
-      "options": [
-        "{item:{id:'minecraft:poppy',count:1},Glowing:false}",
-        "{item:{id:'minecraft:dandelion',count:1},Glowing:false}",
-        "{item:{id:'minecraft:blue_orchid',count:1},Glowing:false}"
-      ]
+      "molang": "q.is_sneaking ? '{item:{id:\"minecraft:poppy\",count:1},Glowing:false}' : '{item:{id:\"minecraft:dandelion\",count:1},Glowing:false}'"
     }
   },
   {"time": "10t", "value": "{Glowing:true}"}
@@ -293,13 +279,12 @@ NBT tracks apply stepped display-entity data changes. A `value` may be compound 
 
 - The first keyframe must be at `0t`; times must be strictly increasing and cannot exceed the timeline duration.
 - Keyframes support only `time` and `value`; NBT changes are stepped and cannot declare interpolation.
-- A selected value contains a nonblank Molang `select` expression and at least two `options`. There is no fixed upper option limit beyond the 8 MiB Animation file limit.
-- `select` must produce a finite integer index from `0` through `options.length - 1`. Any other result stops playback as a runtime failure.
-- A selector is evaluated once when its keyframe is first applied. Starting from a later synchronized tick evaluates each preceding keyframe once in order, and a new loop or Sequence segment selects again.
+- A dynamic value contains only one nonblank `molang` expression. The expression must evaluate to a string containing valid compound SNBT; a numeric result, invalid SNBT, or non-compound SNBT stops playback as a runtime failure.
+- A dynamic value is evaluated once when its keyframe is first applied. Starting from a later synchronized tick evaluates each preceding keyframe once in order, and a new loop or Sequence segment evaluates it again.
 - Fields added after the `0t` keyframe are rejected. Declare every field the track may modify in the first keyframe.
-- Every option at `0t` must declare the same top-level fields so later keyframes have one stable state shape.
+- A dynamic `0t` value must return the same set of top-level fields on every playback cycle so later keyframes have one stable state shape.
 - Runtime-owned fields such as identity, position, transformation, interpolation, and passengers cannot be modified.
-- Anchor nodes do not support NBT tracks. A node displaying a participant's held item may use an NBT track, but the track cannot replace its `item` field.
+- Anchor nodes do not support NBT tracks.
 
 ## Events
 

@@ -8,10 +8,12 @@ interface FixtureCompileOptions {
   namespace?: string;
   metadata?: EmoteMetadata;
   player?: EmotePlayerBehavior;
-  loop?: EmoteAnimation["settings"]["playback"]["mode"];
+  playbackMode?: EmoteAnimation["settings"]["playback"]["mode"];
   standalone?: boolean;
   cooldown?: string;
+  loopStart?: string;
   loopDelay?: string;
+  rotationDeadzoneByAnimation?: Readonly<Record<string, number>>;
 }
 
 export function compileImportedProject(project: ImportedProject, options: FixtureCompileOptions): EmoteAnimation[] {
@@ -38,10 +40,12 @@ function fixtureDocument(project: ImportedProject, options: FixtureCompileOption
           ? Object.fromEntries(Object.entries(options.metadata).filter(([key]) => key !== "name" && key !== "description"))
           : animation.output.additionalMetadata,
         player: options.player ?? animation.output.player,
-        playbackMode: options.loop ?? "source",
+        playbackMode: options.playbackMode ?? "source",
         standalone: options.standalone ?? true,
         cooldown: options.cooldown ?? "0t",
+        loopStart: options.loopStart ?? animation.output.loopStart,
         loopDelay: options.loopDelay ?? animation.output.loopDelay,
+        rotationDeadzone: options.rotationDeadzoneByAnimation?.[animation.source.name] ?? animation.output.rotationDeadzone,
       },
     })),
   };

@@ -37,7 +37,7 @@ export interface SkinGroup {
 
 export interface AnimationOutputSettings {
   namespace: string;
-  playbackMode: "source" | ImportedAnimation["loop"];
+  playbackMode: "source" | ImportedAnimation["playbackMode"];
   displayName: string;
   description: string;
   player: EmotePlayerBehavior;
@@ -45,12 +45,14 @@ export interface AnimationOutputSettings {
   standalone: boolean;
   cooldown: string;
   rotationDeadzone: number;
+  loopStart: string;
   loopDelay: string;
 }
 
 export interface ConversionAnimation {
   source: ImportedAnimation;
   output: AnimationOutputSettings;
+  nodeIds: string[];
 }
 
 export interface SequenceOutputSettings {
@@ -109,7 +111,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
     .filter(([key]) => key !== "name" && key !== "description"));
-  const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
+  const namespace = "emote";
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
@@ -123,6 +125,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         : additionalMetadata;
       return {
         source: animation,
+        nodeIds: Object.keys(nodes),
         output: {
           namespace,
           playbackMode: "source",
@@ -133,6 +136,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           standalone: project.suggestedStandalone ?? true,
           cooldown: project.suggestedCooldown ?? "0t",
           rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
+          loopStart: `${animation.loopStartTicks ?? 0}t`,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };

@@ -11,11 +11,8 @@ import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
+import io.github.hanhy06.emote.playback.runtime.*;
 import io.github.hanhy06.emote.playback.session.*;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTest;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
@@ -209,12 +206,10 @@ public class PlaybackEngine implements ConfigListener {
         boolean startedNotified = false;
         try {
             nodes = this.entityController.create(player.level(), roots, emote);
-            this.entityController.updateHeldItems(nodes, EmoteAnimation.NodeSpace.INITIATOR, player);
             AnimationPlayer timeline = new AnimationPlayer(
                 emote,
-                nodes,
-                this.entityController,
-                MolangQueries.forPlayer(player)
+                new EntityTimelineTarget(emote, nodes, this.entityController),
+                PlayerMolangQueries.forPlayer(player)
             );
             timeline.bindEvents(new EventCommandExecutor(player, nodes, timeline, this.callbacks));
             if (emote.animation().settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
@@ -257,7 +252,7 @@ public class PlaybackEngine implements ConfigListener {
             return PlayResult.SUCCESS;
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
-            if (session != null && removeSession(session)) {
+            if (session != null && this.sessionRegistry.remove(session)) {
                 cleanupSession(session, startedNotified, PlaybackStopReason.ERROR, null);
             } else if (nodes != null) {
                 this.entityController.remove(player.level(), nodes);
@@ -312,7 +307,7 @@ public class PlaybackEngine implements ConfigListener {
         if (session == null) {
             return releasePlayerReservation(playerUuid);
         }
-        if (!removeSession(session)) {
+        if (!this.sessionRegistry.remove(session)) {
             return null;
         }
         cleanupSession(session, true, reason, knownPlayer);
@@ -335,7 +330,9 @@ public class PlaybackEngine implements ConfigListener {
             ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
             for (PlaybackParticipant participant : session.participants()) {
-                ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                ServerPlayer participantPlayer = participant == initiator
+                    ? player
+                    : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                 if (!canKeepPlaying(participantPlayer, session)) {
                     stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
                     break;
@@ -351,6 +348,9 @@ public class PlaybackEngine implements ConfigListener {
             }
             if (stopReason == null) {
                 try {
+                    if (session.playerBehavior().stopConditions().movementDistance() == 0.0D) {
+                        this.entityController.moveSceneTo(session.nodes(), player.position());
+                    }
                     session.animation().restoreDeferredVisibility();
                     if (followsInitiatorView(session.state())) {
                         this.entityController.updateViewRotation(
@@ -378,10 +378,10 @@ public class PlaybackEngine implements ConfigListener {
 
                     if (stopReason == null && !playbackChanged(session)) {
                         for (PlaybackParticipant participant : session.participants()) {
-                            ServerPlayer participantPlayer = EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                            if (participantPlayer != null) {
-                                this.playerVisibilityService.tick(participantPlayer, session, participant);
-                            }
+                            ServerPlayer participantPlayer = participant == initiator
+                                ? player
+                                : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                            this.playerVisibilityService.tick(participantPlayer, session, participant);
                         }
                     }
                 } catch (RuntimeException exception) {
@@ -431,7 +431,6 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackParticipant partner = session.activateReservedPartner(animation);
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
-        this.entityController.updateHeldItems(session.nodes(), EmoteAnimation.NodeSpace.PARTNER, player);
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
         for (PlaybackStateListener stateListener : this.stateListeners) {
             stateListener.onStarted(player, session, partner);
@@ -452,9 +451,8 @@ public class PlaybackEngine implements ConfigListener {
         ServerPlayer initiator = sessionInitiatorPlayer(session);
         AnimationPlayer animation = new AnimationPlayer(
             emote,
-            session.nodes(),
-            this.entityController,
-            MolangQueries.forPlayer(initiator)
+            new EntityTimelineTarget(emote, session.nodes(), this.entityController),
+            PlayerMolangQueries.forPlayer(initiator)
         );
         animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation, this.callbacks));
         animation.start();
@@ -465,6 +463,9 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackParticipant partner = session.releaseReservedPartner();
         if (partner != null) {
             this.sessionRegistry.releasePartner(session, partner.playerUuid());
+            for (PlaybackStateListener stateListener : this.stateListeners) {
+                stateListener.onReservationReleased(partner.playerUuid(), session.id());
+            }
         }
     }
 
@@ -489,19 +490,6 @@ public class PlaybackEngine implements ConfigListener {
         return initiator;
     }
 
-    public void refreshHeldItems(ServerPlayer player) {
-        PlaybackSession session = findActive(player.getUUID());
-        PlaybackParticipant participant = session == null ? null : session.participant(player.getUUID());
-        if (participant == null) {
-            return;
-        }
-        this.entityController.updateHeldItems(
-            session.nodes(),
-            EmoteAnimation.NodeSpace.forParticipant(participant.role()),
-            player
-        );
-    }
-
     public void stopAll() {
         stopAll(PlaybackStopReason.MANUAL);
     }
@@ -513,7 +501,7 @@ public class PlaybackEngine implements ConfigListener {
         }
     }
 
-    public int startStressTest(
+    public PlaybackStressTest.StartResult startStressTest(
         ServerLevel level,
         Vec3 origin,
         float yaw,
@@ -531,6 +519,30 @@ public class PlaybackEngine implements ConfigListener {
             emotes,
             durationTicks,
             instanceCount,
+            packetFanout,
+            preparedSkin,
+            completion
+        );
+    }
+
+    public PlaybackStressTest.StartResult startStressTestByDisplayCount(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<PreparedAnimation> emotes,
+        int durationTicks,
+        int targetDisplayEntityCount,
+        int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
+        Consumer<PlaybackStressTestReport> completion
+    ) {
+        return this.stressTest.startByDisplayCount(
+            level,
+            origin,
+            yaw,
+            emotes,
+            durationTicks,
+            targetDisplayEntityCount,
             packetFanout,
             preparedSkin,
             completion
@@ -565,14 +577,10 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
-        if (!removeSession(session)) {
+        if (!this.sessionRegistry.remove(session)) {
             return;
         }
         cleanupSession(session, true, reason, null);
-    }
-
-    private boolean removeSession(PlaybackSession session) {
-        return this.sessionRegistry.remove(session);
     }
 
     private void cleanupSession(
@@ -581,6 +589,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
+        releaseReservedPartner(session);
         try {
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
@@ -647,8 +656,16 @@ public class PlaybackEngine implements ConfigListener {
         };
     }
 
-    int activeDisplayEntityCount() {
+    public int activeDisplayEntityCount() {
         return this.stressTest.displayEntityCount() + this.sessionRegistry.activeDisplayEntityCount();
+    }
+
+    public int activeSessionCount() {
+        return this.sessionRegistry.activeSessionCount();
+    }
+
+    public int activeParticipantCount() {
+        return this.sessionRegistry.activeParticipantCount();
     }
 
     static boolean exceedsDisplayEntityLimit(int projectedDisplayEntities, int limit) {

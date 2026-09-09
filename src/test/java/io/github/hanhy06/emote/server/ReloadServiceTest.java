@@ -7,17 +7,21 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PlayableEmote;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
+import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
@@ -80,6 +84,7 @@ class ReloadServiceTest {
             ignored -> new EmoteDirectoryLoader.LoadResult(List.of(invalid, loaded), List.of(), 2),
             null,
             null,
+            null,
             () -> {}
         );
 
@@ -110,11 +115,72 @@ class ReloadServiceTest {
             },
             ignored -> operations.add("stop"),
             () -> operations.add("sync"),
-            () -> operations.add("resources")
+            () -> {
+                operations.add("build");
+                return PolymerResourcePackDistributor.BuildResult.BUILT;
+            },
+            () -> operations.add("push")
         );
 
         service.reloadFromCommand();
 
-        assertEquals(List.of("prepare", "replace", "stop", "resources", "sync"), operations);
+        assertEquals(List.of("prepare", "build", "replace", "stop", "push", "sync"), operations);
+    }
+
+    @Test
+    void keepsCurrentRuntimeStateWhenDirectoryLoadingFails(@TempDir Path tempDir) {
+        ConfigManager configManager = new ConfigManager(tempDir);
+        configManager.configure();
+        EmoteCatalog registry = new EmoteCatalog();
+        registry.replace(List.of(create("example:current", "Current")));
+        List<String> operations = new ArrayList<>();
+        ReloadService service = new ReloadService(
+            configManager,
+            registry,
+            ignored -> { throw new UncheckedIOException(new IOException("scan failed")); },
+            ignored -> operations.add("stop"),
+            () -> operations.add("sync"),
+            () -> {
+                operations.add("build");
+                return PolymerResourcePackDistributor.BuildResult.BUILT;
+            },
+            () -> operations.add("push")
+        );
+
+        ReloadResult result = service.reloadFromCommand();
+
+        assertFalse(result.successful());
+        assertNotNull(registry.find("example:current"));
+        assertEquals(List.of(), operations);
+    }
+
+    @Test
+    void keepsCurrentRuntimeStateWhenResourcePackBuildFails(@TempDir Path tempDir) {
+        ConfigManager configManager = new ConfigManager(tempDir);
+        configManager.configure();
+        EmoteCatalog registry = new EmoteCatalog();
+        registry.replace(List.of(create("example:current", "Current")));
+        List<String> operations = new ArrayList<>();
+        ReloadService service = new ReloadService(
+            configManager,
+            registry,
+            ignored -> {
+                operations.add("prepare");
+                return new EmoteDirectoryLoader.LoadResult(List.of(), List.of(), 0);
+            },
+            ignored -> operations.add("stop"),
+            () -> operations.add("sync"),
+            () -> {
+                operations.add("build");
+                return PolymerResourcePackDistributor.BuildResult.FAILED;
+            },
+            () -> operations.add("push")
+        );
+
+        ReloadResult result = service.reloadFromCommand();
+
+        assertEquals(ReloadResult.Failure.RESOURCE_PACK_BUILD, result.failure());
+        assertNotNull(registry.find("example:current"));
+        assertEquals(List.of("prepare", "build"), operations);
     }
 }

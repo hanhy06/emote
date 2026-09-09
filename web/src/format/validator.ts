@@ -36,7 +36,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   const issues: ValidationIssue[] = [];
   if (animation.type !== "animation") add(issues, "type", "must be animation");
   if (animation.schema_version !== 4) add(issues, "schema_version", "must be 4");
-  validateCommon(animation, issues);
+  const loopStartTicks = validateCommon(animation, issues);
 
   const nodeIds = new Set(Object.keys(animation.nodes));
   if (nodeIds.size === 0) add(issues, "nodes", "must not be empty");
@@ -63,6 +63,9 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
   if (durationTicks !== null && durationTicks > MAX_ANIMATION_DURATION_TICKS) {
     add(issues, "timeline.duration", `must not exceed ${MAX_ANIMATION_DURATION_TICKS} ticks`);
   }
+  if (loopStartTicks !== null && durationTicks !== null && loopStartTicks >= durationTicks) {
+    add(issues, "settings.playback.loop_start", "must be within 0..duration - 1 tick");
+  }
   for (const [nodeId, tracks] of Object.entries(animation.timeline.tracks)) {
     const path = `timeline.tracks.${nodeId}`;
     const node = animation.nodes[nodeId];
@@ -76,18 +79,13 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     validateNbtTrack(tracks.nbt, `${path}.nbt`, durationTicks, issues);
     if (node?.type === "anchor" && tracks.visible) add(issues, `${path}.visible`, "anchor does not support visible state");
     if (node?.type === "anchor" && tracks.nbt) add(issues, `${path}.nbt`, "anchor does not support nbt state");
-    if (node?.type === "item_display" && node.item_source && tracks.nbt?.some((frame) => {
-      return nbtOptions(frame.value).some((option) => {
-        try { return parseSnbtCompound(option).some((field) => field.name === "item"); } catch { return false; }
-      });
-    })) add(issues, `${path}.nbt`, "participant hand item nodes do not support item changes");
   }
 
   validateEvents(animation, durationTicks, issues);
   return issues;
 }
 
-function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): void {
+function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): number | null {
   if (!isResourceLocation(animation.id)) add(issues, "id", "must be a Minecraft resource location");
   if (!animation.metadata.name.trim()) add(issues, "metadata.name", "must not be empty");
   if (!Number.isFinite(animation.settings.player.stop_conditions.movement_distance)
@@ -99,10 +97,15 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): v
     add(issues, "settings.rotation_deadzone", "must be a finite number between 0 and 180");
   }
   validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
-  const loopDelayTicks = validateTime(animation.settings.playback.loop_delay, 0, "settings.playback.loop_delay", issues);
+  const loopStartTicks = validateTime(animation.settings.playback.loop_start ?? "0t", 0, "settings.playback.loop_start", issues);
+  const loopDelayTicks = validateTime(animation.settings.playback.loop_delay ?? "0t", 0, "settings.playback.loop_delay", issues);
+  if (animation.settings.playback.mode !== "loop" && loopStartTicks !== null && loopStartTicks !== 0) {
+    add(issues, "settings.playback.loop_start", "must resolve to 0 ticks unless mode is loop");
+  }
   if (["once", "hold"].includes(animation.settings.playback.mode) && loopDelayTicks !== null && loopDelayTicks !== 0) {
     add(issues, "settings.playback.loop_delay", "must resolve to 0 ticks when mode is once or hold");
   }
+  return loopStartTicks;
 }
 
 function validateItemNode(
@@ -112,10 +115,6 @@ function validateItemNode(
   path: string,
   issues: ValidationIssue[],
 ): void {
-  if ((node.item_stack_snbt === undefined) === (node.item_source === undefined)) {
-    add(issues, path, "must define exactly one of item_stack_snbt or item_source");
-  }
-  if (node.item_source && node.skin) add(issues, `${path}.skin`, "is not supported by participant hand items");
   if (!ITEM_DISPLAY_VALUES.has(node.item_display)) add(issues, `${path}.item_display`, "uses an unsupported item display context");
   if (node.skin && !isNonNegativeInt32(node.skin.order)) add(issues, `${path}.skin.order`, "must be a non-negative Java integer");
   if (node.skin) {
@@ -218,7 +217,7 @@ function validateNbtTrack(
     return;
   }
   let previousTick = -1;
-  let initialFields = new Set<string>();
+  let initialFields: Set<string> | null = new Set<string>();
   frames.forEach((frame, index) => {
     const framePath = `${path}[${index}]`;
     const tick = validateTime(frame.time, 0, `${framePath}.time`, issues);
@@ -230,40 +229,23 @@ function validateNbtTrack(
     }
     const valuePath = `${framePath}.value`;
     if (typeof frame.value !== "string") {
-      if (!frame.value.select.trim()) add(issues, `${valuePath}.select`, "Molang must not be blank");
-      if (frame.value.options.length < 2) add(issues, `${valuePath}.options`, "must contain at least two options");
+      if (!frame.value.molang.trim()) add(issues, `${valuePath}.molang`, "Molang must not be blank");
+      if (index === 0) initialFields = null;
+      return;
     }
-    const optionFields: Set<string>[] = [];
-    nbtOptions(frame.value).forEach((option, optionIndex) => {
-      const optionPath = typeof frame.value === "string" ? valuePath : `${valuePath}.options[${optionIndex}]`;
-      try {
-        const fields = new Set(parseSnbtCompound(option).map((field) => field.name));
-        optionFields.push(fields);
-        for (const field of fields) {
-          if (RUNTIME_OWNED_NBT_FIELDS.has(field)) add(issues, optionPath, `must not modify runtime-owned field ${field}`);
-          if (index > 0 && !initialFields.has(field)) add(issues, optionPath, "must only modify fields declared by the 0t keyframe");
+    try {
+      const fields = new Set(parseSnbtCompound(frame.value).map((field) => field.name));
+      for (const field of fields) {
+        if (RUNTIME_OWNED_NBT_FIELDS.has(field)) add(issues, valuePath, `must not modify runtime-owned field ${field}`);
+        if (index > 0 && initialFields !== null && !initialFields.has(field)) {
+          add(issues, valuePath, "must only modify fields declared by the 0t keyframe");
         }
-      } catch (reason) {
-        add(issues, optionPath, reason instanceof Error ? reason.message : "must be compound SNBT");
       }
-    });
-    if (index === 0 && optionFields.length > 0) {
-      initialFields = optionFields[0];
-      optionFields.slice(1).forEach((fields, optionIndex) => {
-        if (!sameStrings(initialFields, fields)) {
-          add(issues, `${valuePath}.options[${optionIndex + 1}]`, "0t NBT options must declare the same fields");
-        }
-      });
+      if (index === 0) initialFields = fields;
+    } catch (reason) {
+      add(issues, valuePath, reason instanceof Error ? reason.message : "must be compound SNBT");
     }
   });
-}
-
-function nbtOptions(value: EmoteNbtKeyframe["value"]): readonly string[] {
-  return typeof value === "string" ? [value] : value.options;
-}
-
-function sameStrings(first: Set<string>, second: Set<string>): boolean {
-  return first.size === second.size && [...first].every((value) => second.has(value));
 }
 
 function validateMolangVec3(values: readonly MolangScalar[], path: string, issues: ValidationIssue[]): void {

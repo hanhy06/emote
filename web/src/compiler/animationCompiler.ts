@@ -18,11 +18,11 @@ import {
   type ConversionNode,
 } from "../domain/conversionDocument";
 import { multiplyMatrix16 } from "../format/matrix";
-import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
+import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
-import { writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
+import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
@@ -46,7 +46,9 @@ export function compileConversionAnimation(
   if (!availability.exportable) {
     throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
   }
-  const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
+  const mode = output.playbackMode === "source" ? animation.playbackMode : output.playbackMode;
+  const loopStartTicks = mode === "loop" ? parseMinecraftTime(output.loopStart) : 0;
+  const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   return {
     type: "animation",
@@ -61,11 +63,12 @@ export function compileConversionAnimation(
       player: output.player,
       playback: {
         mode,
-        loop_delay: formatMinecraftTime(mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay)),
+        ...(loopStartTicks === 0 ? {} : { loop_start: formatMinecraftTime(loopStartTicks) }),
+        ...(loopDelayTicks === 0 ? {} : { loop_delay: formatMinecraftTime(loopDelayTicks) }),
       },
     },
     ...(animation.runtime?.molang ? { molang: animation.runtime.molang } : {}),
-    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes, profile) : compileNodes(document, animation, profile),
+    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes, profile) : compileNodes(document, animation, entry.nodeIds, profile),
     timeline: animation.runtime
       ? compileRuntimeTimeline(document, animation.runtime.timeline, animation.durationTicks, animation.id, profile)
       : compileTimeline(document, animation, profile),
@@ -97,7 +100,7 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
     return [id, {
       ...itemOutput,
       transform,
-      ...(outputItem ? { item_stack_snbt: writeItemStack(outputItem, profile) } : {}),
+      item_stack_snbt: writeItemStack(outputItem, profile),
       skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
   }));
@@ -112,8 +115,8 @@ function validateAnimationIds(document: ConversionDocument): void {
   }
 }
 
-function compileNodes(document: ConversionDocument, animation: ImportedAnimation, profile: MinecraftVersionProfile): Record<string, EmoteNode> {
-  return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
+function compileNodes(document: ConversionDocument, animation: ImportedAnimation, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+  return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
     if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
@@ -234,10 +237,48 @@ function compileRuntimeNbtValue(
   value: DisplayNbtValue,
   profile: MinecraftVersionProfile,
 ): EmoteNbtValue | undefined {
-  if (!("select" in value)) return compileNodeNbt(document, nodeId, value, profile);
-  const compiled = value.options.map((option) => compileNodeNbt(document, nodeId, option, profile));
-  if (compiled.every((option) => option === undefined)) return undefined;
-  return { ...value, options: compiled.map((option) => option ?? "{}") };
+  if ("molang" in value) return { molang: compileMolangNbtLiterals(document, nodeId, value.molang, profile) };
+  return compileNodeNbt(document, nodeId, value, profile);
+}
+
+function compileMolangNbtLiterals(
+  document: ConversionDocument,
+  nodeId: string,
+  source: string,
+  profile: MinecraftVersionProfile,
+): string {
+  return source.replace(/(["'])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g, (literal, quote: string, encoded: string) => {
+    const decoded = decodeMolangString(encoded);
+    if (!decoded.trimStart().startsWith("{")) return literal;
+
+    try {
+      const compiled = compileNodeNbt(document, nodeId, readDisplayNbt(decoded), profile) ?? "{}";
+      return quoteMolangString(compiled, quote);
+    } catch {
+      return literal;
+    }
+  });
+}
+
+function decodeMolangString(value: string): string {
+  return value.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
+    if (character === "n") return "\n";
+    if (character === "r") return "\r";
+    if (character === "t") return "\t";
+    if (character === "b") return "\b";
+    if (character === "f") return "\f";
+    return character;
+  });
+}
+
+function quoteMolangString(value: string, quote: string): string {
+  const escaped = value
+    .replaceAll("\\", "\\\\")
+    .replaceAll(quote, `\\${quote}`)
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t");
+  return `${quote}${escaped}${quote}`;
 }
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {
@@ -269,7 +310,7 @@ function compileTransformFrames(
   for (const source of sourceFrames) {
     const tick = requireTick(source.tick, `${animation.id}/${nodeId} transform`);
     const matrix = node ? compileNodeMatrix(document, nodeId, node, source.matrix) : source.matrix;
-    const transform = matrixToLocalTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
+    const transform = matrixToContinuousLocalTransform(matrix, result.at(-1)!.transform.rotation, `${animation.id}/${nodeId}/${tick}t`);
     if (tick === 0) {
       result[0] = { tick: 0, transform };
       continue;

@@ -2,11 +2,12 @@ package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.application.PlaybackPolicyService;
+import io.github.hanhy06.emote.application.PlaybackCooldownService;
 import io.github.hanhy06.emote.content.EmoteCatalog;
 import io.github.hanhy06.emote.network.WheelSyncService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.PlaybackHooks;
+import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -15,11 +16,15 @@ import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.InteractionResult;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
-    private final PlaybackPolicyService playbackPolicy;
+    private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
     private final PlaybackEngine playbackEngine;
     private final ReloadService reloadService;
@@ -28,7 +33,7 @@ public class ServerLifecycle {
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
-        PlaybackPolicyService playbackPolicy,
+        PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
         PlaybackEngine playbackEngine,
         ReloadService reloadService,
@@ -36,7 +41,7 @@ public class ServerLifecycle {
         IdlePlaybackService idlePlaybackService
     ) {
         this.playerSkinManager = playerSkinManager;
-        this.playbackPolicy = playbackPolicy;
+        this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
         this.playbackEngine = playbackEngine;
         this.reloadService = reloadService;
@@ -65,17 +70,22 @@ public class ServerLifecycle {
             return InteractionResult.PASS;
         });
         ServerPlayConnectionEvents.JOIN.register(
-            (handler, ignoredSender, ignoredServer) -> this.wheelSyncService.syncPlayer(handler.player)
+            (handler, ignoredSender, ignoredServer) -> {
+                this.wheelSyncService.syncPlayer(handler.player);
+                this.playerSkinManager.checkPlayerSkin(handler.player);
+            }
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
                 if (EmoteMod.SERVER.isSameThread()) {
                     this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idlePlaybackService.removePlayer(handler.player);
+                    this.playerSkinManager.removePlayer(handler.player.getUUID());
                 } else {
                     EmoteMod.SERVER.execute(() -> {
                         this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idlePlaybackService.removePlayer(handler.player);
+                        this.playerSkinManager.removePlayer(handler.player.getUUID());
                     });
                 }
             }
@@ -84,12 +94,28 @@ public class ServerLifecycle {
 
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
+        removeOrphanedRuntimeEntities(server);
         this.reloadService.loadOnServerStart();
+    }
+
+    private static void removeOrphanedRuntimeEntities(MinecraftServer server) {
+        List<Entity> orphaned = new ArrayList<>();
+        for (var level : server.getAllLevels()) {
+            for (Entity entity : level.getAllEntities()) {
+                if (entity.entityTags().contains(PlaybackEntityController.RUNTIME_TAG)) {
+                    orphaned.add(entity);
+                }
+            }
+        }
+        orphaned.forEach(Entity::discard);
+        if (!orphaned.isEmpty()) {
+            EmoteMod.LOGGER.info("Removed {} orphaned emote runtime entities", orphaned.size());
+        }
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
         this.playbackEngine.stopAll(PlaybackStopReason.SERVER_STOPPING);
-        this.playbackPolicy.clearCooldowns();
+        this.cooldowns.clear();
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();
         this.playerSkinManager.cancelPendingBakes();

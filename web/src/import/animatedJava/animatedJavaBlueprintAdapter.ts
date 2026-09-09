@@ -1,6 +1,6 @@
 import type { ImportedProject } from "../../domain/conversionSeed";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { parseInputJson, probeParsedInput } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import { importAnimatedJavaProject } from "./animatedJavaProjectImporter";
 import { isAnimatedJavaProject, requireAnimatedJavaProject } from "./animatedJavaProjectSchema";
 

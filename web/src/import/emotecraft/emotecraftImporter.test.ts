@@ -81,6 +81,34 @@ describe("importEmotecraftFile", () => {
     expect(numeric.animations[0].tracks.head.transforms[2].matrix).toEqual(expression.animations[0].tracks.head.transforms[2].matrix);
     expect(numeric.animations[0].tracks.head.transforms[2].matrix[6]).toBeCloseTo(0.9375);
   });
+
+  it("assigns fractional keyframe anchors to integer ticks using the shared approximation planner", () => {
+    const source = file({ body: bone(undefined, axis({
+      startTick: 0,
+      endTick: 0.6,
+      start: 0,
+      end: 16,
+      easing: "constant",
+      easingArgs: [],
+    })) });
+    const imported = importEmotecraftFile(source, "fractional.emotecraft");
+
+    expect(imported.animations[0].tracks.body_0.transforms[1].interpolation).toEqual({ type: "step" });
+    expect(imported.animations[0].tracks.body_0.transforms[1].matrix[3]).not.toBe(imported.animations[0].tracks.body_0.transforms[0].matrix[3]);
+  });
+
+  it("preserves Emotecraft return-to-tick loops", () => {
+    const source = file({ body: bone() });
+    source.animation.loop = "loop_from_tick";
+    source.animation.loopStartTick = 1;
+
+    const imported = importEmotecraftFile(source, "loop.emotecraft");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dance" });
+
+    expect(imported.animations[0].loopStartTicks).toBe(1);
+    expect(imported.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain("emotecraft_loop_start_flattened");
+    expect(compiled.settings.playback).toEqual({ mode: "loop", loop_start: "1t" });
+  });
 });
 
 function file(bones: Record<string, PalBoneAnimation>): EmotecraftFile {

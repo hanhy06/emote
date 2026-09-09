@@ -4,9 +4,7 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteCallbackPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.joml.Matrix4f;
@@ -21,7 +19,7 @@ public final class AnimationPlayer {
     private final EmoteAnimation animation;
     private final PreparedAnimation emote;
     private final TimelineTarget target;
-    private final MolangQueries.Source querySource;
+    private final PlayerMolangQueries.Source querySource;
     private AnimationEvaluator evaluator;
     private final Map<String, Matrix4f> appliedTransforms = new HashMap<>();
     private final Map<String, Boolean> appliedVisibility = new HashMap<>();
@@ -40,28 +38,11 @@ public final class AnimationPlayer {
     private boolean eventsStarted;
     private boolean eventsStopped;
 
-    public AnimationPlayer(
-        PreparedAnimation emote,
-        PlaybackNodes nodes,
-        PlaybackEntityController entityController
-    ) {
-        this(emote, new EntityTimelineTarget(emote, nodes, entityController), MolangQueries.EMPTY);
-    }
-
-    public AnimationPlayer(
-        PreparedAnimation emote,
-        PlaybackNodes nodes,
-        PlaybackEntityController entityController,
-        MolangQueries.Source querySource
-    ) {
-        this(emote, new EntityTimelineTarget(emote, nodes, entityController), querySource);
-    }
-
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
-        this(emote, target, MolangQueries.EMPTY);
+        this(emote, target, PlayerMolangQueries.EMPTY);
     }
 
-    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, MolangQueries.Source querySource) {
+    public AnimationPlayer(PreparedAnimation emote, TimelineTarget target, PlayerMolangQueries.Source querySource) {
         this.emote = Objects.requireNonNull(emote, "emote");
         this.animation = emote.animation();
         this.target = Objects.requireNonNull(target, "target");
@@ -76,7 +57,7 @@ public final class AnimationPlayer {
             throw new IllegalStateException("Timeline already started");
         }
         this.started = true;
-        resetToTickZero();
+        resetToTick(0);
     }
 
     public void startSynchronized(long serverTick) {
@@ -198,7 +179,7 @@ public final class AnimationPlayer {
             this.remainingLoopDelay--;
             if (this.remainingLoopDelay == 0) {
                 this.loopCount++;
-                resetToTickZero();
+                resetToLoopStart();
                 return AdvanceResult.RESTARTED;
             }
             return AdvanceResult.CONTINUE;
@@ -233,7 +214,7 @@ public final class AnimationPlayer {
         int loopDelay = this.animation.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
             this.loopCount++;
-            resetToTickZero();
+            resetToLoopStart();
             return AdvanceResult.RESTARTED;
         }
         this.remainingLoopDelay = loopDelay;
@@ -287,13 +268,18 @@ public final class AnimationPlayer {
         return this.target.createTransformation(nodeId, matrix, this.evaluator.preservesMatrix(nodeId));
     }
 
-    private void resetToTickZero() {
+    private void resetToLoopStart() {
+        resetToTick(this.animation.settings().playback().loopStartTicks());
+    }
+
+    private void resetToTick(int tick) {
         this.target.resetAll();
         clearState();
+        this.currentTick = tick;
         if (this.evaluator == null) {
-            applyTick(0);
+            applyTick(tick);
         } else {
-            this.evaluator.beginCycle(0, this.loopCount);
+            this.evaluator.beginCycle(tick, this.loopCount);
             applyEvaluator(0, Map.of());
         }
     }
@@ -514,81 +500,4 @@ public final class AnimationPlayer {
         void resetAll();
     }
 
-    private record EntityTimelineTarget(
-        PreparedAnimation emote,
-        PlaybackNodes nodes,
-        PlaybackEntityController entityController
-    ) implements TimelineTarget {
-        @Override
-        public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
-            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-            return this.nodes.displayTransformation(node.node().space(), transform);
-        }
-
-        @Override
-        public Transformation createTransformation(String nodeId, Matrix4fc matrix, boolean preserveMatrix) {
-            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-            return this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix);
-        }
-
-        @Override
-        public void applyTransform(
-            String nodeId,
-            PreparedAnimation.PreparedTransform transform,
-            int interpolationDurationTicks
-        ) {
-            this.entityController.applyTransformation(
-                this.nodes,
-                requiredNode(nodeId),
-                transform,
-                interpolationDurationTicks
-            );
-        }
-
-        @Override
-        public void applyTransform(
-            String nodeId,
-            Matrix4fc matrix,
-            boolean preserveMatrix,
-            int interpolationDurationTicks
-        ) {
-            PlaybackNodes.NodeInstance node = requiredNode(nodeId);
-            this.entityController.applyTransformation(
-                node,
-                this.nodes.displayTransformation(node.node().space(), matrix, preserveMatrix),
-                interpolationDurationTicks
-            );
-        }
-
-        @Override
-        public void setVisible(String nodeId, boolean visible) {
-            this.entityController.setVisible(requiredNode(nodeId), this.nodes.requestVisibility(nodeId, visible));
-        }
-
-        @Override
-        public void applyNbt(String nodeId, CompoundTag nbt) {
-            this.entityController.applyNbt(this.nodes, requiredNode(nodeId), nbt);
-        }
-
-        @Override
-        public void resetAll() {
-            this.nodes.nodes().forEach((nodeId, node) -> {
-                this.entityController.applyTransformation(
-                    this.nodes,
-                    node,
-                    this.emote.defaultTransform(nodeId),
-                    0
-                );
-                this.entityController.setVisible(node, this.nodes.requestVisibility(nodeId, node.node().visible()));
-            });
-        }
-
-        private PlaybackNodes.NodeInstance requiredNode(String nodeId) {
-            PlaybackNodes.NodeInstance node = this.nodes.nodes().get(nodeId);
-            if (node == null) {
-                throw new IllegalStateException("Missing playback node: " + nodeId);
-            }
-            return node;
-        }
-    }
 }

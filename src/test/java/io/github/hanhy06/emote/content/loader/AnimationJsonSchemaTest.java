@@ -5,7 +5,6 @@ import com.google.gson.JsonParser;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.content.LoadedAnimation;
-import net.minecraft.world.entity.HumanoidArm;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
@@ -57,32 +56,26 @@ class AnimationJsonSchemaTest {
     }
 
     @Test
-    void loadsMolangSelectedNbtOptions() throws Exception {
+    void loadsMolangNbtExpression() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
                 [{
                   "time":"0t",
                   "value":{
-                    "select":"math.random_integer(0, 3)",
-                    "options":[
-                      "{item:{id:'minecraft:poppy',count:1}}",
-                      "{item:{id:'minecraft:dandelion',count:1}}",
-                      "{item:{id:'minecraft:blue_orchid',count:1}}"
-                    ]
+                    "molang":"q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'"
                   }
                 }]
                 """));
 
         EmoteAnimation.NbtValue value = parse(root).animation().timeline().tracks().get("display").nbt().getFirst().value();
-        EmoteAnimation.SelectedNbtValue selected = assertInstanceOf(EmoteAnimation.SelectedNbtValue.class, value);
+        EmoteAnimation.MolangNbtValue molang = assertInstanceOf(EmoteAnimation.MolangNbtValue.class, value);
 
-        assertEquals("math.random_integer(0, 3)", selected.selector().source());
-        assertEquals(3, selected.options().size());
+        assertEquals("q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'", molang.expression().source());
     }
 
     @Test
-    void rejectsMismatchedFieldsInInitialNbtOptions() {
+    void rejectsLegacySelectedNbtOptions() {
         JsonObject root = base();
         root.getAsJsonObject("timeline").getAsJsonObject("tracks").getAsJsonObject("display")
             .add("nbt", JsonParser.parseString("""
@@ -95,7 +88,7 @@ class AnimationJsonSchemaTest {
                 }]
                 """));
 
-        assertEquals("$.timeline.tracks.display.nbt[0].value.options[1]", assertInvalid(root).fieldPath());
+        assertEquals("$.timeline.tracks.display.nbt[0].value.molang", assertInvalid(root).fieldPath());
     }
 
     @Test
@@ -116,40 +109,11 @@ class AnimationJsonSchemaTest {
     }
 
     @Test
-    void loadsParticipantPhysicalHandItemSource() throws Exception {
+    void rejectsItemWithoutStack() {
         JsonObject root = base();
-        JsonObject display = root.getAsJsonObject("nodes").getAsJsonObject("display");
-        display.remove("item_stack_snbt");
-        display.add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"left\"}"));
-        display.addProperty("item_display", "thirdperson_lefthand");
+        root.getAsJsonObject("nodes").getAsJsonObject("display").remove("item_stack_snbt");
 
-        EmoteAnimation.ItemNode node = (EmoteAnimation.ItemNode) parse(root).animation().nodes().get("display");
-
-        EmoteAnimation.ParticipantHandItemSource source = assertInstanceOf(
-            EmoteAnimation.ParticipantHandItemSource.class,
-            node.itemSource()
-        );
-        assertEquals(HumanoidArm.LEFT, source.arm());
-    }
-
-    @Test
-    void rejectsItemWithBothFixedAndParticipantSources() {
-        JsonObject root = base();
-        root.getAsJsonObject("nodes").getAsJsonObject("display")
-            .add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"right\"}"));
-
-        assertEquals("$.nodes.display", assertInvalid(root).fieldPath());
-    }
-
-    @Test
-    void rejectsParticipantHandItemInSceneSpace() {
-        JsonObject root = base();
-        root.getAsJsonObject("nodes").getAsJsonObject("root").addProperty("space", "scene");
-        JsonObject display = root.getAsJsonObject("nodes").getAsJsonObject("display");
-        display.remove("item_stack_snbt");
-        display.add("item_source", JsonParser.parseString("{\"type\":\"participant_hand\",\"arm\":\"right\"}"));
-
-        assertEquals("$.nodes.display.item_source", assertInvalid(root).fieldPath());
+        assertEquals("$.nodes.display.item_stack_snbt", assertInvalid(root).fieldPath());
     }
 
     @Test

@@ -14,7 +14,7 @@ import {
   splitSnbtTopLevel,
 } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { cachedInputValue } from "../inputCache";
+import { cachedInputValue } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedProject } from "../../domain/conversionSeed";
 
 const decoder = new TextDecoder();
@@ -235,7 +235,7 @@ function importAnimations(
       id: sanitizeResourcePath(animationName, "default"),
       name: prettify(animationName),
       durationTicks,
-      loop: "loop" as const,
+      playbackMode: "loop" as const,
       loopDelayTicks: 0,
       tracks,
       events: { start: [], timeline: [], loop: [], stop: [] },
