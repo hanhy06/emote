@@ -1,8 +1,8 @@
 import { Matrix4, Vector3 } from "three";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
-import { bedrockBoundsToCanonical } from "../coordinateSpace";
-import { humanoidSkinPartHeight, humanoidSkinSlices } from "../humanoid/humanoidPlayerRig";
+import { bedrockBoundsToCanonical } from "./coordinateSpace";
+import { humanoidSkinPartHeight, humanoidSkinSlices } from "../common/humanoidPlayerRig";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
 
@@ -79,7 +79,7 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
       defaultMatrix: matrix4ToRowMajor(world, `Bedrock player slice ${slice.id}`),
       visible: true,
       itemDisplay: "none",
-      itemStackSnbt: '{id:"minecraft:player_head",count:1}',
+      itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(slice.bone, slice.from, slice.to) },
       suggestedSkin: { part: slice.bone.cube.skin, order: slice.order },
     };

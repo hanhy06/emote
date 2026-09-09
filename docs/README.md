@@ -4,6 +4,8 @@
 
 > Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
 
+[▶ Watch the full emote demo on YouTube](https://www.youtube.com/watch?v=ONCSWkwl20o)
+
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/converter/)
 [![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://hanhy06.github.io/emote/)
 [![Modrinth](https://img.shields.io/badge/Modrinth-00AF5C?style=flat-square&logo=modrinth&logoColor=white)](https://modrinth.com/mod/emote)
@@ -24,23 +26,27 @@ On the server, LuckPerms permissions can assign emotes and idle emotes per playe
 
 ### Player
 
-| Command | Description |
-|---|---|
-| `/emote` | Opens the emote menu. |
-| `/emote play <id>` | Plays an emote by ID. |
-| `V` | Opens the client emote wheel. |
+| Command            | Description                   |
+|--------------------|-------------------------------|
+| `/emote`           | Opens the emote menu.         |
+| `/emote play <id>` | Plays an emote by ID.         |
+| `V`                | Opens the client emote wheel. |
 
 Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order is stored on the client separately for each server.
 
 ### Administration
 
-| Command                                   | Description                                                                                                             |
-|-------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
-| `/emote list`                             | Lists loaded emotes with their IDs, durations, and availability.                                                        |
-| `/emote reload`                           | Reloads configuration and animations.                                                                                   |
-| `/emote enable/disable <id>`              | Enables or disables an emote.                                                                                           |
-| `/emote stop <player>`, `/emote stop-all` | Stops one player's emote or all emotes.                                                                                 |
-| `/emote stress-test <time> [count] [packets]` | Plays multiple emotes for the required duration and encodes each packet through a configurable fanout (default 20) to measure server performance. Supports time units such as `10s` and `2m`. |
+| Command                                       | Description                                                                                                                                                                                   |
+|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `/emote list`                                 | Lists loaded emotes with their IDs, durations, and availability.                                                                                                                              |
+| `/emote info`                                 | Shows current playback, display-entity capacity, skin-processing queue, and loaded-emote status.                                                                                              |
+| `/emote reload`                               | Reloads configuration and animations.                                                                                                                                                         |
+| `/emote enable/disable <id>`                  | Enables or disables an emote.                                                                                                                                                                 |
+| `/emote stop <player>`, `/emote stop @a`      | Stops selected players' emotes; use `@a` for all players.                                                                                                                                     |
+| `/emote stress-test <time> [load] [packets]`  | Measures server performance with concurrent emotes and configurable packet fanout (default 20). `100` or `100i` requests 100 instances; `1000d` requests up to 1,000 display entities.       |
+| `/emote account`                              | Lists registered bake accounts and the selected skin provider.                                                                                                                                |
+| `/emote account login`                        | Connects a Minecraft account using Microsoft device login.                                                                                                                                    |
+| `/emote account remove <account>`             | Removes a bake account by name or UUID.                                                                                                                                                       |
 
 Administrative commands use the `emote.manage` permission and are granted to game master operators by default.
 
@@ -71,26 +77,24 @@ Place JSON exported by the converter under `emote/`. Subdirectories are loaded a
 }
 ```
 
-Set `mineskin_api_key` to apply player skins.
+Set `mineskin_api_key` to generate player skin textures when no bake accounts are registered. Completed cached textures remain usable without either credential.
 
 ### `emotes.json`
 
 ```json
 {
-  "schema_version": 2,
-  "disabled": ["example:disabled"],
+  "schema_version": 3,
+  "disabled": ["emote:anvil"],
   "permissions": [
     {
-      "permission": "emote.vip",
-      "emotes": ["example:dance", "example:cry"],
-      "idle": {
-        "delay": "300s",
-        "emote": ["example:dance", 70, "example:cry", 30]
-      }
+      "permission": "emote.default",
+      "emotes": ["emote:hello", "emote:backflip"]
     },
     {
-      "permission": "emote.default",
-      "emotes": ["example:hello", "example:wave"]
+      "permission": "emote.vip",
+      "emotes": ["emote:vip\\..*"],
+      "idle": {"delay": "300s", "emote": ["emote:idle.sit", 70, "emote:idle.piano", 30]},
+      "cooldown": "x0.8"
     },
     {
       "permission": "emote.admin",
@@ -100,11 +104,13 @@ Set `mineskin_api_key` to apply player skins.
 }
 ```
 
-`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Every player receives `emote.default`, and `*` grants every enabled emote. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
+`disabled` turns off emotes, while `permissions` determines the emotes and idle emotes available to each player. Valid emote IDs in `emotes` are matched literally; other entries are Java regular expressions matched against the complete emote ID. `*` is a special value that grants every enabled emote. Regular-expression backslashes must also be escaped for JSON. Every player receives `emote.default`. `emote.bypass` is an administrator and development override that ignores `standalone`, disabled IDs, permissions, and cooldowns.
 
 ## Web converter
 
 [Emote Converter](https://hanhy06.github.io/emote/converter/) converts and configures projects without requiring direct edits to Animation JSON. All processing happens locally in the browser.
+
+For a step-by-step guide to converting and installing your own emotes, see [Adding Custom Emotes](https://hanhy06.github.io/emote/server/custom-emote/).
 
 Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands.
 
@@ -130,18 +136,19 @@ Connect short animation clips in order and combine waits, weighted random choice
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:sit",
+  "id": "emote:idle.sit",
   "steps": [
     {"emote": "emote:sit_down"},
+    {"wait": "10t"},
     {
       "emote": [
-        "emote:idle_sky", 40,
-        "emote:idle_butterfly", 35,
-        "emote:idle_flower", 25
+        "emote:idle_sky", 45,
+        "emote:idle_butterfly", 45,
+        "emote:break", 10
       ],
-      "repeat": 2
+      "repeat": 3
     },
-    {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
+    {"emote": "emote:stand_up1"}
   ]
 }
 ```
@@ -162,13 +169,13 @@ Combine animations for two players in a sequence to create a collaborative emote
     "partner": {"position": "^ ^ ^1.2", "rotation": "~180 0"}
   },
   "steps": [{
-    "await_partner": {"emote": "emote:handshake_offer", "timeout": "10s"},
+    "await_partner": {"emote": "handshake:offer", "timeout": "10s"},
     "matched": [
-      {"emote": "emote:handshake", "repeat": 2},
+      {"emote": "handshake:shake", "repeat": 2},
       {"wait": "1s"},
-      {"emote": "emote:handshake_close"}
+      {"emote": "handshake:close"}
     ],
-    "timeout": [{"emote": "emote:handshake_close"}]
+    "timeout": [{"emote": "handshake:close"}]
   }]
 }
 ```
@@ -182,7 +189,7 @@ Combine animations for two players in a sequence to create a collaborative emote
 | Problem                              | Check                                                                                                                                                                                              |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | An emote does not appear             | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only.                                                                               |
-| A player skin is not applied         | Check the converter's skin part assignments and `mineskin_api_key`. Run the emote again after a new skin finishes processing. If MineSkin is unavailable, the animation's default texture is used. |
+| A player skin is not applied         | Check the converter's skin part assignments and `/emote account` as OWNER. Without registered accounts, check `mineskin_api_key`. Run the emote again after skin processing finishes. Unavailable skin textures use the animation's default texture. |
 | A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces.                                              |
 
 If the problem is not covered here, report it on [Discord](https://discord.gg/CRWqKbSebW) or [GitHub Issues](https://github.com/hanhy06/emote/issues).

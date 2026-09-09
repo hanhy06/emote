@@ -13,7 +13,9 @@ export interface Schema3EmoteAnimation {
   schema_version: 3;
   id: string;
   metadata: EmoteMetadata;
-  settings: Omit<EmoteAnimationSettings, "rotation_deadzone">;
+  settings: Omit<EmoteAnimationSettings, "rotation_deadzone" | "playback"> & {
+    playback: { mode: EmoteAnimationSettings["playback"]["mode"]; loop_delay: MinecraftTime };
+  };
   nodes: Record<string, Schema3EmoteNode>;
   timeline: Schema3EmoteTimeline;
 }

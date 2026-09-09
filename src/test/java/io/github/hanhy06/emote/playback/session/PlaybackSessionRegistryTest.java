@@ -9,10 +9,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
-import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
+import io.github.hanhy06.emote.playback.runtime.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
@@ -110,11 +107,15 @@ class PlaybackSessionRegistryTest {
     }
 
     private static AnimationPlayer timeline(PreparedAnimation emote) {
-        AnimationPlayer animation = new AnimationPlayer(
-            emote,
-            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)), Map.of()),
-            new PlaybackEntityController()
+        PlaybackNodes nodes = new PlaybackNodes(
+            SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
+            Map.of()
         );
+        AnimationPlayer animation = new AnimationPlayer(emote, new EntityTimelineTarget(
+            emote,
+            nodes,
+            new PlaybackEntityController()
+        ));
         animation.bindEvents(ignored -> {
         });
         return animation;
@@ -131,7 +132,7 @@ class PlaybackSessionRegistryTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new EmoteAnimation.FixedItemSource(new CompoundTag()),
+            new CompoundTag(),
             "none",
             null
         );

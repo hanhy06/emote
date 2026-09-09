@@ -15,6 +15,10 @@ public interface PlayerSkinProvider extends ConfigListener {
 
     void cancelPendingBakes();
 
+    default SkinProcessingStats processingStats() {
+        return SkinProcessingStats.unavailable();
+    }
+
     interface Listener {
         default void onReady(UUID playerUuid) {
         }

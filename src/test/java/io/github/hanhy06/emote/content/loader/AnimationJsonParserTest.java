@@ -80,6 +80,52 @@ class AnimationJsonParserTest {
     }
 
     @Test
+    void defaultsOmittedLoopStartAndDelayToZero() throws Exception {
+        JsonObject playback = readReference().getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.remove("loop_start");
+        playback.remove("loop_delay");
+
+        EmoteAnimation.PlaybackSettings settings = parse(readReferenceWithPlayback(playback)).animation().settings().playback();
+
+        assertEquals(0, settings.loopStartTicks());
+        assertEquals(0, settings.loopDelayTicks());
+    }
+
+    @Test
+    void rejectsLoopStartOutsideLoopModeAtItsField() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "once");
+        playback.addProperty("loop_start", "1t");
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.settings.playback.loop_start", exception.fieldPath());
+    }
+
+    @Test
+    void loadsLoopStartBeforeTimelineEnd() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "20t");
+
+        assertEquals(20, parse(root).animation().settings().playback().loopStartTicks());
+    }
+
+    @Test
+    void rejectsLoopStartAtTimelineEnd() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "80t");
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.settings.playback.loop_start", exception.fieldPath());
+    }
+
+    @Test
     void loadsNodeSpaceAndSkinParticipant() throws Exception {
         EmoteAnimation animation = parse(readReference()).animation();
         EmoteAnimation.ItemNode head = (EmoteAnimation.ItemNode) animation.nodes().get("player_head");
@@ -145,11 +191,11 @@ class AnimationJsonParserTest {
         assertFalse(examplePaths.isEmpty());
         int animationCount = 0;
         for (Path examplePath : examplePaths) {
-            EmoteJsonDocument document = EmoteJsonDocument.read(examplePath);
-            if (!document.type().equals("animation")) continue;
-
+            if (!EmoteJsonDocument.read(examplePath).type().equals("animation")) {
+                continue;
+            }
             animationCount++;
-            LoadedAnimation loaded = this.parser.parse(document);
+            LoadedAnimation loaded = this.parser.parse(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
         }
@@ -332,6 +378,12 @@ class AnimationJsonParserTest {
             REFERENCE_PATH,
             root.toString().getBytes(StandardCharsets.UTF_8)
         );
+    }
+
+    private JsonObject readReferenceWithPlayback(JsonObject playback) throws IOException {
+        JsonObject root = readReference();
+        root.getAsJsonObject("settings").add("playback", playback);
+        return root;
     }
 
 }

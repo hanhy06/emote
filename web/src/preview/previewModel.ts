@@ -2,11 +2,11 @@ import {
   documentNodeSpaces,
   documentPartAssignments,
   documentPartOrders,
+  type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
 import { animationAvailability, type ImportedAnimation, type ImportedAnimationAvailability, type ImportedNodeTrack } from "../domain/conversionSeed";
 import type { NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
-import type { ConversionSession } from "../workspace";
 
 type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
 
@@ -34,26 +34,31 @@ export interface PreviewModel {
   hasReviewNodes: boolean;
 }
 
-export function createPreviewModel(session: ConversionSession): PreviewModel {
-  const document = session.document;
-  const animation = document.animations[session.animationIndex]?.source;
+export function createPreviewModel(document: ConversionDocument, animationIndex: number, previewFrameIndex: number): PreviewModel {
+  const animation = document.animations[animationIndex]?.source;
   const availability = animation ? animationAvailability(animation) : null;
   const durationTicks = animation?.preview?.durationTicks ?? animation?.durationTicks ?? 0;
-  const tick = availability?.preview !== "full" || session.previewFrameIndex === 0
+  const tick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
-    : Math.min(session.previewFrameIndex - 1, Math.max(0, durationTicks));
-  const candidates = findSkinCandidates(document.nodes);
+    : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
+  const nodeIds = new Set(document.animations[animationIndex]?.nodeIds ?? []);
+  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => nodeIds.has(nodeId)));
+  const candidates = findSkinCandidates(scopedNodes);
 
   return {
     tick,
     durationTicks,
     availability,
     parts: createPreviewParts(candidates, animation, tick),
-    assignments: documentPartAssignments(document),
-    orders: documentPartOrders(document),
-    spaces: documentNodeSpaces(document),
+    assignments: pickNodeValues(documentPartAssignments(document), nodeIds),
+    orders: pickNodeValues(documentPartOrders(document), nodeIds),
+    spaces: pickNodeValues(documentNodeSpaces(document), nodeIds),
     hasReviewNodes: candidates.length > 0,
   };
+}
+
+function pickNodeValues<T>(values: Record<string, T>, nodeIds: ReadonlySet<string>): Record<string, T> {
+  return Object.fromEntries(Object.entries(values).filter(([nodeId]) => nodeIds.has(nodeId)));
 }
 
 function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): SkinCandidate[] {

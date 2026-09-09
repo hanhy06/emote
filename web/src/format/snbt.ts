@@ -36,7 +36,10 @@ export function readSnbtRawField(compound: string, name: string): string | null 
 
 export function readSnbtStringField(compound: string, name: string): string | null {
   const raw = readSnbtRawField(compound, name);
-  if (!raw) return null;
+  return raw === null ? null : readSnbtString(raw);
+}
+
+export function readSnbtString(raw: string): string | null {
   if (raw.startsWith('"') && raw.endsWith('"')) {
     try {
       const value = JSON.parse(raw) as unknown;

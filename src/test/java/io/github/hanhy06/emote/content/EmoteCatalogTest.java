@@ -10,11 +10,65 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 import static org.junit.jupiter.api.Assertions.*;
 
 class EmoteCatalogTest {
+    @Test
+    void listenerFailureDoesNotInterruptCatalogMutationOrOtherListeners() {
+        EmoteCatalog registry = new EmoteCatalog();
+        AtomicInteger successfulNotifications = new AtomicInteger();
+        registry.addListener(ignored -> {
+            throw new IllegalStateException("listener failure");
+        });
+        registry.addListener(ignored -> successfulNotifications.incrementAndGet());
+
+        registry.register(create("demo:wave", "Wave"));
+
+        assertNotNull(registry.find("demo:wave"));
+        assertEquals(2, successfulNotifications.get());
+    }
+
+    @Test
+    void listenerCanAddAnotherListenerDuringNotification() {
+        EmoteCatalog registry = new EmoteCatalog();
+        AtomicBoolean added = new AtomicBoolean();
+        AtomicInteger nestedNotifications = new AtomicInteger();
+        registry.addListener(ignored -> {
+            if (added.compareAndSet(false, true)) {
+                registry.addListener(nested -> nestedNotifications.incrementAndGet());
+            }
+        });
+
+        registry.register(create("demo:wave", "Wave"));
+
+        assertEquals(2, nestedNotifications.get());
+    }
+
+    @Test
+    void reentrantCatalogChangesAreDeliveredInStateOrder() {
+        EmoteCatalog registry = new EmoteCatalog();
+        AtomicBoolean registeredNestedEmote = new AtomicBoolean();
+        List<List<String>> receivedIds = new ArrayList<>();
+        registry.addListener(emotes -> {
+            if (!emotes.isEmpty() && registeredNestedEmote.compareAndSet(false, true)) {
+                registry.register(create("demo:dance", "Dance"));
+            }
+        });
+        registry.addListener(emotes -> receivedIds.add(emotes.stream().map(PlayableEmote::id).toList()));
+
+        registry.register(create("demo:wave", "Wave"));
+
+        assertEquals(List.of(
+            List.of(),
+            List.of("demo:wave"),
+            List.of("demo:dance", "demo:wave")
+        ), receivedIds);
+    }
+
     @Test
     void findsDefinitionsByExactAnimationId() {
         EmoteCatalog registry = new EmoteCatalog();

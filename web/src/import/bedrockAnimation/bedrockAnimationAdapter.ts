@@ -1,6 +1,6 @@
 import type { ImportedProject } from "../../domain/conversionSeed";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { parseInputJsonc, probeParsedInput } from "../inputCache";
+import { parseInputJsonc, probeParsedInput } from "../common/inputCache";
 import { importBedrockAnimationDocument } from "./bedrockAnimationImporter";
 import { isBedrockAnimationDocument, requireBedrockAnimationDocument } from "./bedrockAnimationSchema";
 

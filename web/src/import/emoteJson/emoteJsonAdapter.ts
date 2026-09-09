@@ -1,3 +1,5 @@
+import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
+import { readRuntimeNodes, readRuntimeTimeline } from "../common/runtimeOutput";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -7,7 +9,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { parseInputJson, probeParsedInput } from "../inputCache";
+import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
@@ -72,7 +74,9 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       sourceName: input.name,
       suggestedMetadata: { ...animation.metadata },
       suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
-      ...(schema1 ? { suggestedMinecraftVersion: schema1.minecraftVersion } : {}),
+      ...(typeof animation.target_minecraft_version === "string"
+        ? { suggestedMinecraftVersion: animation.target_minecraft_version }
+        : schema1 ? { suggestedMinecraftVersion: schema1.minecraftVersion } : {}),
       suggestedNamespace: namespace,
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
@@ -136,7 +140,7 @@ function importNode(
   node: EmoteAnimation["nodes"][string],
   placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "spaceAssignmentGroup">,
 ): ImportedNode {
-  if (node.type === "anchor" || (node.type === "item_display" && node.item_source)) return { id, type: "anchor", ...placement };
+  if (node.type === "anchor") return { id, type: "anchor", ...placement };
   const common = {
     id,
     ...placement,
@@ -146,11 +150,11 @@ function importNode(
   if (node.type === "item_display") return {
     ...common,
     type: "item_display",
-    itemStackSnbt: node.item_stack_snbt!,
+    itemStack: readItemStack(node.item_stack_snbt),
     itemDisplay: node.item_display,
     ...(node.skin ? { skin: { ...node.skin } } : {}),
   };
-  if (node.type === "block_display") return { ...common, type: "block_display", blockStateSnbt: node.block_state_snbt };
+  if (node.type === "block_display") return { ...common, type: "block_display", blockState: readBlockState(node.block_state_snbt) };
   return { ...common, type: "text_display", text: node.text };
 }
 
@@ -162,12 +166,12 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
     if (source.nbt?.some((frame) => typeof frame.value !== "string")) {
-      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang-selected NBT cannot be represented by the web editor");
+      throw unsupportedSchema4(`${id}/${nodeId}.nbt`, "Molang NBT cannot be represented by the web editor");
     }
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
       visibility: [],
-      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value as string })),
+      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbt(frame.value as string) })),
     } as ImportedAnimation["tracks"][string];
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
@@ -180,8 +184,9 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
     durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
-    loop: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    playbackMode: animation.settings.playback.mode,
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks,
     events: importEvents(animation),
   };
@@ -199,8 +204,9 @@ function importRuntimeTimeline(
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
     durationTicks,
-    loop: animation.settings.playback.mode,
-    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay),
+    playbackMode: animation.settings.playback.mode,
+    loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks: {},
     events: importEvents(animation),
     ...(previewTracks
@@ -211,8 +217,8 @@ function importRuntimeTimeline(
         }),
     runtime: {
       ...(animation.molang ? { molang: animation.molang } : {}),
-      nodes: animation.nodes,
-      timeline: animation.timeline,
+      nodes: readRuntimeNodes(animation.nodes),
+      timeline: readRuntimeTimeline(animation.timeline),
     },
   };
 }

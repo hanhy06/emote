@@ -9,15 +9,11 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackDisplayLimitTest {
     @Test
-    void rejectsPlaybackOnlyWhenProjectedPartsExceedPositiveLimit() {
+    void projectsAndRejectsPlaybackOnlyWhenPartsExceedPositiveLimit() {
+        assertEquals(500, PlaybackEngine.projectedDisplayEntityCount(480, 80, 100));
         assertFalse(PlaybackEngine.exceedsDisplayEntityLimit(512, 512));
         assertTrue(PlaybackEngine.exceedsDisplayEntityLimit(513, 512));
         assertFalse(PlaybackEngine.exceedsDisplayEntityLimit(10_000, 0));
-    }
-
-    @Test
-    void replacesCurrentPlaybackPartsBeforeCheckingRequestedParts() {
-        assertEquals(500, PlaybackEngine.projectedDisplayEntityCount(480, 80, 100));
     }
 
     @Test

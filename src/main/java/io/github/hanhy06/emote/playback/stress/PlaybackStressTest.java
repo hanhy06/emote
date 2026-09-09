@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.runtime.EntityTimelineTarget;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
@@ -13,6 +14,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.*;
 import java.util.function.Consumer;
+import java.util.function.ToIntFunction;
 
 public final class PlaybackStressTest {
     public static final int DEFAULT_INSTANCE_COUNT = 100;
@@ -32,7 +34,7 @@ public final class PlaybackStressTest {
         this.entityController = Objects.requireNonNull(entityController, "entityController");
     }
 
-    public int start(
+    public StartResult start(
         ServerLevel level,
         Vec3 origin,
         float yaw,
@@ -56,13 +58,60 @@ public final class PlaybackStressTest {
             throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
         }
 
+        Random random = new Random(RANDOM_SEED);
+        List<PreparedAnimation> selection = createRandomizedSelection(emotes, random, instanceCount);
+        return startSelection(level, origin, yaw, selection, durationTicks, packetFanout, preparedSkin, completion, random);
+    }
+
+    public StartResult startByDisplayCount(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<PreparedAnimation> emotes,
+        int durationTicks,
+        int targetDisplayEntityCount,
+        int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
+        Consumer<PlaybackStressTestReport> completion
+    ) {
+        if (emotes.isEmpty()) {
+            throw new IllegalArgumentException("At least one emote is required for a stress test");
+        }
+        if (targetDisplayEntityCount < 1) {
+            throw new IllegalArgumentException("Stress-test display count must be positive");
+        }
+        Random random = new Random(RANDOM_SEED);
+        List<PreparedAnimation> selection = createDisplayLimitedSelection(emotes, random, targetDisplayEntityCount);
+        if (selection.isEmpty()) {
+            throw new IllegalArgumentException("No registered emote fits within the requested display count: " + targetDisplayEntityCount);
+        }
+        return startSelection(level, origin, yaw, selection, durationTicks, packetFanout, preparedSkin, completion, random);
+    }
+
+    private StartResult startSelection(
+        ServerLevel level,
+        Vec3 origin,
+        float yaw,
+        List<PreparedAnimation> selection,
+        int durationTicks,
+        int packetFanout,
+        @Nullable PreparedPlayerSkin preparedSkin,
+        Consumer<PlaybackStressTestReport> completion,
+        Random random
+    ) {
+        if (durationTicks < 1) {
+            throw new IllegalArgumentException("Stress-test duration must be at least one tick");
+        }
+        if (packetFanout < 0 || packetFanout > MAX_PACKET_FANOUT) {
+            throw new IllegalArgumentException("Stress-test packet fanout is out of range: " + packetFanout);
+        }
+
         stop();
         this.packetLoad.start(EmoteMod.SERVER, packetFanout);
         long startedNanos = System.nanoTime();
         int startedServerTick = EmoteMod.SERVER.getTickCount();
         long baselineTickNanos = EmoteMod.SERVER.getAverageTickTimeNanos();
-        Random random = new Random(RANDOM_SEED);
-        List<PreparedAnimation> selection = createRandomizedSelection(emotes, random, instanceCount);
+        int instanceCount = selection.size();
         List<StressTestInstance> instances = new ArrayList<>(instanceCount);
         int displayEntityCount = 0;
         try {
@@ -76,8 +125,7 @@ public final class PlaybackStressTest {
                 );
                 AnimationPlayer timeline = new AnimationPlayer(
                     emote,
-                    nodes,
-                    this.entityController
+                    new EntityTimelineTarget(emote, nodes, this.entityController)
                 );
                 startAtInitialTick(timeline, emote.animation(), initialTick(random, index));
                 this.entityController.applySkin(nodes, emote.skinBindings(), preparedSkin);
@@ -112,7 +160,7 @@ public final class PlaybackStressTest {
             baselineTickNanos,
             creationNanos
         );
-        return instances.size();
+        return new StartResult(instances.size(), displayEntityCount);
     }
 
     public @Nullable PlaybackStressTestReport stop() {
@@ -178,8 +226,7 @@ public final class PlaybackStressTest {
                         if (result == AnimationPlayer.AdvanceResult.FINISHED) {
                             instance.timeline = new AnimationPlayer(
                                 instance.emote,
-                                instance.nodes,
-                                this.entityController
+                                new EntityTimelineTarget(instance.emote, instance.nodes, this.entityController)
                             );
                             instance.timeline.start();
                         }
@@ -194,7 +241,7 @@ public final class PlaybackStressTest {
                         networkProcessingNanos += System.nanoTime() - networkStartedNanos;
                     }
                 } catch (RuntimeException exception) {
-                    EmoteMod.LOGGER.warn("Failed to run stress-test emote {}", instance.emote.id(), exception);
+                    EmoteMod.LOGGER.warn("Failed to run stress test emote {}", instance.emote.id(), exception);
                     this.packetLoad.unregister(instance.nodes);
                     this.entityController.remove(current.level(), instance.nodes);
                     iterator.remove();
@@ -241,6 +288,46 @@ public final class PlaybackStressTest {
             selection.addAll(deck.subList(0, copyCount));
         }
         return List.copyOf(selection);
+    }
+
+    static <T> List<T> createDisplayLimitedSelection(
+        List<T> values,
+        Random random,
+        int displayLimit,
+        ToIntFunction<T> displayCount
+    ) {
+        if (values.isEmpty()) throw new IllegalArgumentException("Cannot select from an empty list");
+        List<T> deck = new ArrayList<>(values);
+        List<T> selection = new ArrayList<>();
+        int selectedDisplays = 0;
+        boolean added;
+        do {
+            Collections.shuffle(deck, random);
+            added = false;
+            for (T value : deck) {
+                int valueDisplays = displayCount.applyAsInt(value);
+                if (valueDisplays <= 0
+                    || selection.size() >= MAX_INSTANCE_COUNT
+                    || selectedDisplays + (long) valueDisplays > displayLimit) {
+                    continue;
+                }
+                selection.add(value);
+                selectedDisplays += valueDisplays;
+                added = true;
+            }
+        } while (added && selection.size() < MAX_INSTANCE_COUNT);
+        return List.copyOf(selection);
+    }
+
+    private static List<PreparedAnimation> createDisplayLimitedSelection(
+        List<PreparedAnimation> emotes,
+        Random random,
+        int displayLimit
+    ) {
+        return createDisplayLimitedSelection(emotes, random, displayLimit, PreparedAnimation::displayNodeCount);
+    }
+
+    public record StartResult(int instanceCount, int displayEntityCount) {
     }
 
     static int initialTick(Random random, int index) {

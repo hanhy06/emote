@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.resource;
 
 import eu.pb4.polymer.resourcepack.api.ResourcePackBuilder;
+import io.github.hanhy06.emote.util.Sha256;
 import net.minecraft.resources.Identifier;
 
 import java.io.ByteArrayOutputStream;
@@ -11,7 +12,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
@@ -147,20 +147,16 @@ final class ResourcePackContributor {
     }
 
     private static byte[] fingerprint(Map<String, ResourceFile> resources) {
-        try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
-                byte[] path = entry.getKey().getBytes(StandardCharsets.UTF_8);
-                byte[] data = entry.getValue().data();
-                digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(path.length).array());
-                digest.update(path);
-                digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(data.length).array());
-                digest.update(data);
-            }
-            return digest.digest();
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        MessageDigest digest = Sha256.newDigest();
+        for (Map.Entry<String, ResourceFile> entry : resources.entrySet()) {
+            byte[] path = entry.getKey().getBytes(StandardCharsets.UTF_8);
+            byte[] data = entry.getValue().data();
+            digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(path.length).array());
+            digest.update(path);
+            digest.update(ByteBuffer.allocate(Integer.BYTES).putInt(data.length).array());
+            digest.update(data);
         }
+        return digest.digest();
     }
 
     static final class Snapshot {

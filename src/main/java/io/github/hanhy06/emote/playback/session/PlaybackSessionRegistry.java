@@ -64,6 +64,14 @@ public final class PlaybackSessionRegistry {
         return this.activeDisplayEntityCount;
     }
 
+    public int activeSessionCount() {
+        return this.sessions.size();
+    }
+
+    public int activeParticipantCount() {
+        return this.participantSessions.size();
+    }
+
     public boolean contains(PlaybackSession session) {
         return this.sessions.get(session.sessionId()) == session;
     }

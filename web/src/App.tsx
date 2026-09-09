@@ -12,7 +12,7 @@ import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
-import { countImportedCommands } from "./import/securityWarning";
+import { countImportedCommands } from "./import/common/securityWarning";
 import { animationAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,
@@ -22,6 +22,8 @@ import {
   type WorkspacePage,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
+import { createConversionDocument } from "./domain/conversionDocument";
+import { combineConversionDocuments } from "./domain/conversionBatch";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -43,9 +45,9 @@ const IMPORT_FORMATS = [
     description: "Use the original .ajblueprint project from Animated Java. Model, animation, and skin data are imported.",
   },
   {
-    label: "Bedrock Edition",
-    extensions: ".json",
-    description: "Imports Bedrock Edition player animation files. Molang support is not yet complete, so converted animations may look incorrect.",
+    label: "Bedrock & Emotecraft",
+    extensions: ".json .emotecraft",
+    description: "These formats are experimental and may not be fully supported.",
   },
 ] as const;
 
@@ -58,11 +60,13 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const preview = useMemo(() => session ? createPreviewModel(session) : null, [session]);
+  const preview = useMemo(() => session
+    ? createPreviewModel(session.document, session.animationIndex, session.previewFrameIndex)
+    : null, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
-  const selectedParts = session?.selectedParts ?? EMPTY_SELECTION;
+  const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
   const availability = preview?.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
@@ -75,26 +79,28 @@ export function App() {
 
   async function handleFileChange(event: TargetedEvent<HTMLInputElement>) {
     const inputElement = event.currentTarget;
-    const file = inputElement.files?.[0];
-    if (!file) return;
+    const files = [...(inputElement.files ?? [])];
+    if (files.length === 0) return;
     if (busy) {
       inputElement.value = "";
       return;
     }
-    dispatch({ type: "open_started", message: "Opening animation project" });
+    dispatch({ type: "open_started", message: files.length === 1 ? "Opening animation project" : `Opening ${files.length} animation projects` });
     try {
       await showLoadingScreen();
-      const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-      const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-      const imported = await importDetected(detected, input);
-      if (isImportedSequence(imported)) {
-        downloadExport({
-          blob: new Blob([JSON.stringify(imported.sequence)], { type: "application/json" }),
-          fileName: imported.fileName,
-        });
-        return;
+      const imported = await Promise.all(files.map(async (file) => {
+        const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
+        const detected = await detectAdapter(IMPORT_ADAPTERS, input);
+        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
+      }));
+      for (const item of imported) {
+        if (!isImportedSequence(item.source)) continue;
+        downloadExport({ blob: new Blob([JSON.stringify(item.source.sequence)], { type: "application/json" }), fileName: item.source.fileName });
       }
-      dispatch({ type: "open_succeeded", project: imported, adapterLabel: detected.adapter.label });
+      const documents = imported.flatMap((item) => isImportedSequence(item.source)
+        ? []
+        : [createConversionDocument(item.source, item.adapterLabel)]);
+      if (documents.length > 0) dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
@@ -121,44 +127,34 @@ export function App() {
     if (!session) return;
 
     await runExport(async () => {
-      const { documentAnimationUsesGeneratedResources, exportDocumentAnimation } = await import("./export/projectExporter");
-      const results = [exportDocumentAnimation(session.document, index)];
-      if (documentAnimationUsesGeneratedResources(session.document, index)) {
-        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
-        results.push(exportDocumentResourceBundle(session.document));
-      }
-      return results;
+      const { createDocumentAnimationDownload } = await import("./export/projectExporter");
+      return createDocumentAnimationDownload(session.document, index);
     }, "Conversion failed.", "Creating animation file");
   }
 
   async function handleAnimationBundle(includeSequence: boolean) {
     if (!session) return;
     await runExport(async () => {
-      const { documentAnimationsUseGeneratedResources, exportDocumentAnimationFiles } = await import("./export/projectExporter");
-      const results = exportDocumentAnimationFiles(session.document, includeSequence);
-      if (documentAnimationsUseGeneratedResources(session.document)) {
-        const { exportDocumentResourceBundle } = await import("./export/resourceBundleExporter");
-        results.push(exportDocumentResourceBundle(session.document));
-      }
-      return results;
+      const { createDocumentAnimationBundleDownload } = await import("./export/projectExporter");
+      return createDocumentAnimationBundleDownload(session.document, includeSequence);
     }, "File export failed.", includeSequence ? "Creating sequence files" : "Creating animation files");
   }
 
-  const handlePartSelect = useCallback((nodeId: string, additive: boolean) => {
-    dispatch({ type: "part_selected", nodeId, additive });
+  const handleNodeSelect = useCallback((nodeId: string, additive: boolean) => {
+    dispatch({ type: "node_selected", nodeId, additive });
   }, []);
 
-  const handlePartsSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
-    dispatch({ type: "parts_selected", nodeIds, additive });
+  const handleNodesSelect = useCallback((nodeIds: readonly string[], additive: boolean) => {
+    dispatch({ type: "nodes_selected", nodeIds, additive });
   }, []);
 
   function assignSelected(part: PlayerSkinPart | null) {
-    if (selectedParts.size === 0) return;
+    if (selectedNodeIds.size === 0) return;
     dispatch({ type: "skin_part_assigned", part });
   }
 
   function assignSelectedSpace(space: NodeSpace) {
-    if (selectedParts.size === 0) return;
+    if (selectedNodeIds.size === 0) return;
     dispatch({ type: "node_space_assigned", space });
   }
 
@@ -178,11 +174,11 @@ export function App() {
     dispatch({ type: "frame_command_removed", eventIndex, commandIndex });
   }
 
-  const hasSelectedAssignment = [...selectedParts].some((nodeId) => assignments[nodeId] != null);
+  const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
     <label className={`file-input${busy ? " disabled" : ""}`}>
-      <span>{session ? "Open another file" : "Choose animation file"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} onChange={handleFileChange} disabled={busy} />
+      <span>{session ? "Open other files" : "Choose animation files"}</span>
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy} />
     </label>
   );
 
@@ -215,7 +211,7 @@ export function App() {
           <div className="start-copy">
             <span className="step-label">Start a conversion</span>
             <h2 id="start-title">Open an animation project</h2>
-            <p>Open any supported model project or an existing Emote JSON file. Models, animations, and skin parts are processed locally in your browser.</p>
+            <p>Open one or more supported model projects or existing Emote JSON files. Models, animations, and skin parts are processed locally in your browser.</p>
             {filePicker}
           </div>
           <div className="start-details">
@@ -230,7 +226,7 @@ export function App() {
             </ul>
             <h3>Workflow</h3>
             <ol className="workflow-list">
-              <li><span>1</span><p><strong>Open a file</strong><small>The format is detected automatically.</small></p></li>
+              <li><span>1</span><p><strong>Open files</strong><small>Choose one or more files. Each format is detected automatically.</small></p></li>
               <li><span>2</span><p><strong>Review skin parts</strong><small>Assign player skin parts when the project contains them.</small></p></li>
               <li><span>3</span><p><strong>Download the result</strong><small>Export Emote JSON and any generated resources.</small></p></li>
             </ol>
@@ -242,7 +238,7 @@ export function App() {
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
-              <span>Imported file</span>
+              <span>Imported {project.origin.sourceName.includes(", ") ? "files" : "file"}</span>
               <strong>{project.origin.sourceName}</strong>
             </div>
             <label className="project-animation">
@@ -324,9 +320,9 @@ export function App() {
                     key={project.origin.sourceName}
                     parts={previewParts}
                     assignments={assignments}
-                    selectedParts={selectedParts}
-                    onSelectPart={handlePartSelect}
-                    onSelectParts={handlePartsSelect}
+                    selectedNodeIds={selectedNodeIds}
+                    onSelectNode={handleNodeSelect}
+                    onSelectNodes={handleNodesSelect}
                   />
                 </Suspense>
                 <AssignmentPanel
@@ -334,12 +330,12 @@ export function App() {
                   assignments={assignments}
                   orders={orders}
                   spaces={spaces}
-                  selectedParts={selectedParts}
+                  selectedNodeIds={selectedNodeIds}
                   hasSelectedAssignment={hasSelectedAssignment}
                   onAssignPart={assignSelected}
                   onAssignOrder={assignOrder}
                   onAssignSpace={assignSelectedSpace}
-                  onSelectPart={handlePartSelect}
+                  onSelectNode={handleNodeSelect}
                 />
               </div>
             ) : (

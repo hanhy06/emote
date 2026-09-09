@@ -1,3 +1,4 @@
+import { readItemStack } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
@@ -5,7 +6,8 @@ import { createConversionDocument, type AnimationOutputSettings } from "../domai
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import { generatedResourceFiles } from "./generatedResources";
 import {
-  documentAnimationUsesGeneratedResources,
+  createDocumentAnimationBundleDownload,
+  createDocumentAnimationDownload,
   exportDocumentAnimation,
   exportDocumentAnimationFiles,
 } from "./projectExporter";
@@ -63,6 +65,7 @@ function exportDocument(
     standalone: options.standalone ?? true,
     cooldown: options.cooldown ?? "0t",
     rotationDeadzone: document.animations[0].output.rotationDeadzone,
+    loopStart: document.animations[0].output.loopStart,
     loopDelay: options.loopDelay ?? document.animations[0].output.loopDelay,
   };
   for (const [nodeId, space] of Object.entries(spaces)) {
@@ -86,7 +89,7 @@ describe("exportAnimation", () => {
       suggestedPlayer: createDefaultPlayerBehavior(),
       nodes: { root: { id: "root", type: "anchor", defaultMatrix: IDENTITY } },
       animations: ["enter", "idle"].map((id) => ({
-        id, name: id, durationTicks: 2, loop: "once" as const, loopDelayTicks: 0,
+        id, name: id, durationTicks: 2, playbackMode: "once" as const, loopDelayTicks: 0,
         tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
       })),
       diagnostics: [], resources: new Map(),
@@ -102,13 +105,13 @@ describe("exportAnimation", () => {
     const sequence = JSON.parse(sequenceJson);
     expect(sequenceJson).toContain('\n  "steps": [\n');
     expect(sequence.schema_version).toBe(4);
-    expect(sequence.id).toBe("demo:demo");
+    expect(sequence.id).toBe("emote:demo");
     expect(sequence.metadata.name).toBe("Demo");
     expect(sequence.settings.cooldown).toBe("20t");
-    expect(sequence.steps).toEqual([{ emote: "demo:enter" }, { emote: "demo:idle" }]);
+    expect(sequence.steps).toEqual([{ emote: "emote:enter" }, { emote: "emote:idle" }]);
     const animationFiles = files.filter((file) => !file.fileName.endsWith(".sequence.json"));
     const animationNames = animationFiles.map((file) => file.fileName);
-    expect(animationNames).toEqual(["emote.1.entry_display.json", "emote.2.idle_display.json"]);
+    expect(animationNames).toEqual(["emote.entry_display.json", "emote.idle_display.json"]);
     for (const animationFile of animationFiles) {
       const animationJson = await animationFile.blob.text();
       expect(animationJson).not.toContain("\n");
@@ -121,13 +124,14 @@ describe("exportAnimation", () => {
 
     const standaloneFiles = exportDocumentAnimationFiles(document, false);
     expect(standaloneFiles.map((file) => file.fileName)).toEqual([
-      "emote.1.entry_display.json",
-      "emote.2.idle_display.json",
+      "emote.entry_display.json",
+      "emote.idle_display.json",
     ]);
     expect(JSON.parse(await standaloneFiles[0].blob.text()).settings.standalone).toBe(true);
 
     const singleResult = exportDocumentAnimation(document, 0);
     expect(singleResult.fileName).toBe("emote.entry_display.json");
+    expect((await createDocumentAnimationBundleDownload(document, true)).map((file) => file.fileName)).toEqual(files.map((file) => file.fileName));
   });
 
   it("writes a manually assigned order without replacing it with zero", async () => {
@@ -142,7 +146,7 @@ describe("exportAnimation", () => {
           type: "item_display",
           defaultMatrix: IDENTITY,
           visible: true,
-          itemStackSnbt: "{id:\"minecraft:player_head\",count:1}",
+          itemStack: readItemStack("{id:\"minecraft:player_head\",count:1}"),
           itemDisplay: "none",
         },
       },
@@ -150,7 +154,7 @@ describe("exportAnimation", () => {
         id: "test",
         name: "Test",
         durationTicks: 1,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {},
         events: { start: [], timeline: [], loop: [], stop: [] },
@@ -187,12 +191,12 @@ describe("exportAnimation", () => {
       nodes: {
         body: {
           id: "body", type: "item_display", defaultMatrix: IDENTITY, visible: true,
-          itemStackSnbt: "{id:\"minecraft:player_head\",count:1}", itemDisplay: "none",
+          itemStack: readItemStack("{id:\"minecraft:player_head\",count:1}"), itemDisplay: "none",
         },
         origin: { id: "origin", type: "anchor", defaultMatrix: IDENTITY },
       },
       animations: [{
-        id: "partner", name: "Partner", durationTicks: 1, loop: "once", loopDelayTicks: 0,
+        id: "partner", name: "Partner", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
         tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [], resources: new Map(),
@@ -229,7 +233,7 @@ describe("exportAnimation", () => {
           type: "item_display",
           defaultMatrix: IDENTITY,
           visible: true,
-          itemStackSnbt: '{id:"minecraft:paper",count:1}',
+          itemStack: readItemStack('{id:"minecraft:paper",count:1}'),
           itemDisplay: "none",
           playerHeadConversion: { matrix: conversion },
         },
@@ -238,7 +242,7 @@ describe("exportAnimation", () => {
         id: "test",
         name: "Test",
         durationTicks: 1,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {
           cube: {
@@ -266,8 +270,7 @@ describe("exportAnimation", () => {
     expect(animation.nodes.cube.item_stack_snbt).toContain("minecraft:player_head");
     expect(animation.nodes.cube.transform).toEqual({ position: [0.125, 0.25, 0.125], rotation: [0, 0, 0], scale: [0.5, 0.5, 0.5] });
     expect(animation.nodes.cube.skin).toEqual({ participant: "initiator", part: "head", order: 0 });
-    expect(animation.timeline.tracks.cube.position[0].value).toEqual([0.125, 0.25, 0.125]);
-    expect(animation.timeline.tracks.cube.scale[0].value).toEqual([0.5, 0.5, 0.5]);
+    expect(animation.timeline.tracks.cube).toBeUndefined();
 
     const unassignedResult = exportAnimation(project, {
       minecraftVersion: "26.2",
@@ -283,7 +286,7 @@ describe("exportAnimation", () => {
     expect(unassignedAnimation.nodes.cube.item_stack_snbt).toContain("minecraft:paper");
     expect(unassignedAnimation.nodes.cube.skin).toBeUndefined();
     expect(unassignedAnimation.nodes.cube.transform).toEqual({ position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] });
-    expect(unassignedAnimation.timeline.tracks.cube.position[0].value).toEqual([0, 0, 0]);
+    expect(unassignedAnimation.timeline.tracks.cube).toBeUndefined();
   });
 
   it("preserves unrecognized metadata in the exported animation", async () => {
@@ -297,7 +300,7 @@ describe("exportAnimation", () => {
         id: "licensed",
         name: "Licensed",
         durationTicks: 1,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {},
         events: { start: [], timeline: [], loop: [], stop: [] },
@@ -331,13 +334,12 @@ describe("exportAnimation", () => {
       suggestedMetadata: { name: "Test Emote", description: "Test emote." },
       suggestedPlayer: createDefaultPlayerBehavior(),
       suggestedMinecraftVersion: "26.2",
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [{
         id: "test",
         name: "Test",
         durationTicks: 1,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {},
         events: { start: [], timeline: [], loop: [], stop: [] },
@@ -372,13 +374,12 @@ describe("exportAnimation", () => {
     expect(files["pack.mcmeta"]).toBeUndefined();
   });
 
-  it("does not require generated resources after every generated model is replaced with a skin part", () => {
+  it("does not require generated resources after every generated model is replaced with a skin part", async () => {
     const project: ImportedProject = {
       source: "geckolib_bbmodel",
       sourceName: "player.bbmodel",
       suggestedMetadata: { name: "Player", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {
         head: {
           id: "head",
@@ -386,7 +387,7 @@ describe("exportAnimation", () => {
           defaultMatrix: IDENTITY,
           visible: true,
           itemDisplay: "none",
-          itemStackSnbt: '{id:"minecraft:paper",components:{"minecraft:item_model":"test:player/head"}}',
+          itemStack: readItemStack('{id:"minecraft:paper",components:{"minecraft:item_model":"test:player/head"}}'),
           playerHeadConversion: { matrix: IDENTITY },
           suggestedSkin: { part: "head", order: 0 },
         },
@@ -395,7 +396,7 @@ describe("exportAnimation", () => {
         id: "test",
         name: "Test",
         durationTicks: 1,
-        loop: "once",
+        playbackMode: "once",
         loopDelayTicks: 0,
         tracks: {},
         events: { start: [], timeline: [], loop: [], stop: [] },
@@ -421,10 +422,13 @@ describe("exportAnimation", () => {
     skinned.targetMinecraftVersion = "26.1";
     unskinned.targetMinecraftVersion = "26.1";
 
-    expect(documentAnimationUsesGeneratedResources(skinned, 0)).toBe(false);
-    expect(documentAnimationUsesGeneratedResources(unskinned, 0)).toBe(true);
     expect(() => exportDocumentAnimation(skinned, 0)).not.toThrow();
-    expect(() => exportDocumentAnimation(unskinned, 0)).toThrow("Generated resources require Minecraft 26.2.");
+    expect(() => exportDocumentAnimation(unskinned, 0)).not.toThrow();
+    expect((await createDocumentAnimationDownload(skinned, 0)).map((file) => file.fileName)).toEqual(["emote.player.json"]);
+    expect((await createDocumentAnimationDownload(unskinned, 0)).map((file) => file.fileName)).toEqual([
+      "emote.player.json",
+      "emote.player.resources.zip",
+    ]);
   });
 
   it.each([
@@ -439,7 +443,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],
@@ -456,7 +459,6 @@ describe("exportAnimation", () => {
       sourceName: "test.json",
       suggestedMetadata: { name: "Test", description: "" },
       suggestedPlayer: createDefaultPlayerBehavior(),
-      resourceMinecraftVersion: "26.2",
       nodes: {},
       animations: [],
       diagnostics: [],

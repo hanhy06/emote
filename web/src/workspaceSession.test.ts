@@ -1,3 +1,4 @@
+import { readItemStack } from "./format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
@@ -21,7 +22,7 @@ describe("converter session skin assignment", () => {
     expect(documentPartAssignments(session.document)).toEqual({ head: "head", head_variant: "head" });
     expect(documentPartOrders(session.document)).toEqual({ head: 2, head_variant: 2 });
     expect(documentNodeSpaces(session.document)).toEqual({ head: "partner", head_variant: "initiator" });
-    expect(session.document.animations[0].output).toMatchObject({ namespace: "test", displayName: "Test" });
+    expect(session.document.animations[0].output).toMatchObject({ namespace: "emote", displayName: "Test" });
     expect(session.document.targetMinecraftVersion).toBe(DEFAULT_TARGET_MINECRAFT_VERSION);
   });
 
@@ -47,7 +48,7 @@ describe("converter session skin assignment", () => {
 
   it("moves assigned scene parts to initiator space", () => {
     const initial = opened(project());
-    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const selected = workspaceReducer(initial, { type: "node_selected", nodeId: "head_variant", additive: false });
     const moved = workspaceReducer(selected, { type: "node_space_assigned", space: "scene" });
     const result = workspaceReducer(moved, { type: "skin_part_assigned", part: "body" }).session!;
 
@@ -57,7 +58,7 @@ describe("converter session skin assignment", () => {
 
   it("clears a logical skin group in scene space and updates its order together", () => {
     const initial = opened(project());
-    const selected = workspaceReducer(initial, { type: "part_selected", nodeId: "head_variant", additive: false });
+    const selected = workspaceReducer(initial, { type: "node_selected", nodeId: "head_variant", additive: false });
     const ordered = workspaceReducer(selected, { type: "skin_order_assigned", order: 5 });
     const cleared = workspaceReducer(ordered, { type: "node_space_assigned", space: "scene" });
 
@@ -83,7 +84,7 @@ function project(): ImportedProject {
       head: {
         id: "head",
         type: "item_display",
-        itemStackSnbt: "{id:player_head}",
+        itemStack: readItemStack("{id:player_head}"),
         itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX,
         visible: true,
@@ -93,7 +94,7 @@ function project(): ImportedProject {
       head_variant: {
         id: "head_variant",
         type: "item_display",
-        itemStackSnbt: "{id:player_head}",
+        itemStack: readItemStack("{id:player_head}"),
         itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX,
         visible: true,
@@ -105,7 +106,7 @@ function project(): ImportedProject {
       id: "test",
       name: "Test",
       durationTicks: 1,
-      loop: "once",
+      playbackMode: "once",
       loopDelayTicks: 0,
       tracks: {},
       events: { start: [], timeline: [], loop: [], stop: [] },

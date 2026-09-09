@@ -1,0 +1,30 @@
+{
+  "type": "sequence",
+  "schema_version": 4,
+  "id": "emote:idle.piano",
+  "metadata": {
+    "name": "Piano",
+    "description": "Play a piano."
+  },
+  "settings": {
+    "cooldown": "0t",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "steps": [
+    {
+      "emote": ["emote:piano_normal",95,"emote:piano_ode_to_joy",5],
+      "repeat": 1
+    }
+  ]
+}

@@ -69,13 +69,13 @@ class ConfigManagerTest {
         String accessJson = Files.readString(accessPath);
         assertTrue(accessJson.contains("\"disabled\""));
         assertTrue(accessJson.contains("\"permissions\""));
-        assertTrue(accessJson.contains("\"schema_version\": 2"));
+        assertTrue(accessJson.contains("\"schema_version\": 3"));
         assertTrue(accessJson.contains("\"emote.default\""));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:sit"), idle.emote());
+        assertEquals(List.of("emote:idle\\..*"), idle.emote());
         assertTrue(accessJson.contains("\"delay\": \"3600t\""));
-        assertTrue(accessJson.contains("\"emote:sit\""));
+        assertTrue(accessJson.contains("\"emote:idle\\\\..*\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertEquals(30, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(256, manager.getConfig().mineSkinCacheMaxMiB());
@@ -124,10 +124,11 @@ class ConfigManagerTest {
               "schema_version": 2,
               "disabled": ["demo:wave"],
               "permissions": [
-                {"permission":"emote.default","emotes":["demo:wave"]},
+                {"permission":"emote.default","emotes":["demo:wave"],"cooldown":"5s"},
                 {
                   "permission":"emote.vip",
                   "emotes":["*"],
+                  "cooldown":"x0.5",
                   "idle":{"delay":"600s","emote":["demo:wave","demo:sit"]}
                 }
               ]
@@ -139,10 +140,44 @@ class ConfigManagerTest {
         assertTrue(manager.getAccessConfig().isEnabled("demo:bow"));
         assertEquals("emote.default", manager.getAccessConfig().permissions().getFirst().permission());
         assertEquals(List.of("demo:wave"), manager.getAccessConfig().permissions().getFirst().emotes());
+        assertEquals(
+            AccessConfig.CooldownModifier.subtract(100),
+            manager.getAccessConfig().permissions().getFirst().cooldown().orElseThrow()
+        );
         assertTrue(manager.getAccessConfig().permissions().getFirst().idle().isEmpty());
+        assertEquals(
+            AccessConfig.CooldownModifier.multiply(0.5D),
+            manager.getAccessConfig().permissions().get(1).cooldown().orElseThrow()
+        );
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().get(1).idle().orElseThrow();
         assertEquals(12_000, idle.delayTicks());
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
+
+        assertTrue(manager.setEmoteEnabled("demo:bow", false));
+        String rewrittenJson = Files.readString(tempDir.resolve("emote/emotes.json"));
+        assertTrue(rewrittenJson.contains("\"cooldown\": \"100t\""));
+        assertTrue(rewrittenJson.contains("\"cooldown\": \"x0.5\""));
+    }
+
+    @Test
+    void migratesSchemaTwoAccessConfigWithoutChangingEmoteRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Path accessConfigPath = tempDir.resolve("emote/emotes.json");
+        Files.writeString(accessConfigPath, """
+            {
+              "schema_version": 2,
+              "permissions": [
+                {"permission":"emote.default","emotes":["demo:sample.1"]}
+              ]
+            }
+            """);
+
+        assertTrue(manager.readAccessConfig());
+        String migratedJson = Files.readString(accessConfigPath);
+        assertTrue(migratedJson.contains("\"schema_version\": 3"));
+        assertTrue(migratedJson.contains("\"demo:sample.1\""));
+        assertEquals(List.of("demo:sample.1"), manager.getAccessConfig().permissions().getFirst().emotes());
     }
 
     @Test
@@ -193,7 +228,51 @@ class ConfigManagerTest {
         assertFalse(manager.readAccessConfig());
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:sit"), idle.emote());
+        assertEquals(List.of("emote:idle\\..*"), idle.emote());
+    }
+
+    @Test
+    void readsIdleEmotePatternsWithoutWeights(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay":"300s","emote":["demo:idle_.*"]}
+                }
+              ]
+            }
+            """);
+
+        assertTrue(manager.readAccessConfig());
+        AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
+        assertEquals(List.of("demo:idle_.*"), idle.emote());
+        assertTrue(idle.choices().getFirst().isPattern());
+    }
+
+    @Test
+    void rejectsWeightedIdleEmotePatterns(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[
+                {
+                  "permission":"emote.default",
+                  "emotes":["*"],
+                  "idle":{"delay":"300s","emote":["demo:idle_.*",50,"demo:sit",50]}
+                }
+              ]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertEquals(List.of("emote:idle\\..*"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
     }
 
     @Test
@@ -235,6 +314,38 @@ class ConfigManagerTest {
 
         assertFalse(manager.readAccessConfig());
         assertTrue(manager.getAccessConfig().disabled().isEmpty());
+    }
+
+    @Test
+    void rejectsInvalidPermissionRegexAndKeepsCurrentRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        AccessConfig currentConfig = manager.getAccessConfig();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":2,
+              "permissions":[{"permission":"emote.vip","emotes":["demo:["]}]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertSame(currentConfig, manager.getAccessConfig());
+    }
+
+    @Test
+    void rejectsInvalidPermissionCooldownAndKeepsCurrentRules(@TempDir Path tempDir) throws IOException {
+        ConfigManager manager = new ConfigManager(tempDir);
+        manager.configure();
+        AccessConfig currentConfig = manager.getAccessConfig();
+        Files.writeString(tempDir.resolve("emote").resolve("emotes.json"), """
+            {
+              "schema_version":3,
+              "permissions":[{"permission":"emote.vip","emotes":["*"],"cooldown":"xNaN"}]
+            }
+            """);
+
+        assertFalse(manager.readAccessConfig());
+        assertSame(currentConfig, manager.getAccessConfig());
     }
 
     @Test
@@ -344,6 +455,7 @@ class ConfigManagerTest {
         permissions.add(new AccessConfig.PermissionEntry(
             "emote.default",
             List.of("demo:wave"),
+            Optional.empty(),
             Optional.empty()
         ));
         AccessConfig config = new AccessConfig(disabled, permissions);
@@ -356,7 +468,7 @@ class ConfigManagerTest {
         assertEquals("emote.default", config.permissions().getFirst().permission());
         assertThrows(UnsupportedOperationException.class, () -> config.disabled().add("demo:bow"));
         assertThrows(UnsupportedOperationException.class, () -> config.permissions().add(
-            new AccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty())
+            new AccessConfig.PermissionEntry("vip", List.of("demo:bow"), Optional.empty(), Optional.empty())
         ));
     }
 
@@ -380,6 +492,6 @@ class ConfigManagerTest {
         assertFalse(manager.readAccessConfig());
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:sit"), idle.emote());
+        assertEquals(List.of("emote:idle\\..*"), idle.emote());
     }
 }

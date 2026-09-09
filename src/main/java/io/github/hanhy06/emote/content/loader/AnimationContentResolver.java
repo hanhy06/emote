@@ -42,28 +42,13 @@ public final class AnimationContentResolver {
             String path = "$.nodes." + entry.getKey();
             try {
                 if (entry.getValue() instanceof ItemNode itemNode) {
-                    PreparedDisplayData.PreparedItem itemSource = switch (itemNode.itemSource()) {
-                        case FixedItemSource fixed -> {
-                            ItemStack itemStack = ItemStack.CODEC.parse(nbtOps, fixed.itemStackNbt()).getOrThrow();
-                            validateSkinTarget(sourcePath, path, itemNode, itemStack);
-                            yield new PreparedDisplayData.FixedItem(itemStack);
-                        }
-                        case ParticipantHandItemSource hand -> {
-                            if (itemNode.skin() != null) {
-                                throw new EmoteAnimationLoadException(
-                                    sourcePath,
-                                    path + ".skin",
-                                    "is not supported by participant hand items"
-                                );
-                            }
-                            yield new PreparedDisplayData.ParticipantHandItem(hand.arm());
-                        }
-                    };
+                    ItemStack itemStack = ItemStack.CODEC.parse(nbtOps, itemNode.itemStackNbt()).getOrThrow();
+                    validateSkinTarget(sourcePath, path, itemNode, itemStack);
                     ItemDisplayContext itemDisplay = ItemDisplayContext.CODEC.parse(
                         JsonOps.INSTANCE,
                         new JsonPrimitive(itemNode.itemDisplay())
                     ).getOrThrow();
-                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Item(itemSource, itemDisplay));
+                    preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Item(itemStack, itemDisplay));
                 } else if (entry.getValue() instanceof BlockNode blockNode) {
                     BlockState blockState = BlockState.CODEC.parse(nbtOps, blockNode.blockStateNbt()).getOrThrow();
                     preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Block(blockState));
@@ -72,9 +57,7 @@ public final class AnimationContentResolver {
                     preparedDisplayData.put(entry.getKey(), new PreparedDisplayData.Text(text));
                 }
             } catch (RuntimeException exception) {
-                String field = entry.getValue() instanceof ItemNode item && item.itemSource() instanceof ParticipantHandItemSource
-                    ? "item_source"
-                    : entry.getValue() instanceof ItemNode ? "item_stack_snbt"
+                String field = entry.getValue() instanceof ItemNode ? "item_stack_snbt"
                     : entry.getValue() instanceof BlockNode ? "block_state_snbt" : "text";
                 throw new EmoteAnimationLoadException(
                     sourcePath,

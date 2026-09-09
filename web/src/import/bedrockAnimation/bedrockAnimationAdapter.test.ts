@@ -47,7 +47,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(imported.nodes.right_arm_0.type === "item_display" && imported.nodes.right_arm_0.playerHeadConversion?.matrix[3]).toBeCloseTo(0.0625);
     expect(imported.nodes.body_0.defaultMatrix[7]).toBeCloseTo(1.40625);
     expect(imported.animations[0].durationTicks).toBe(25);
-    expect(imported.animations[0].loop).toBe("hold");
+    expect(imported.animations[0].playbackMode).toBe("hold");
     expect(imported.animations[0].tracks.body_0.transforms[0].matrix[7]).toBeCloseTo(1.5234375);
     expect(imported.animations[0].tracks.left_arm_0.transforms[0].matrix).not.toEqual(imported.nodes.left_arm_0.defaultMatrix);
 
@@ -178,7 +178,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(compiled.settings.playback.mode).toBe("once");
     expect(compiled.timeline.tracks.body_y.rotation?.[0].value?.[1]).toBe("-(q.anim_time * 90)");
     expect(validateEmoteAnimation(compiled)).toEqual([]);
-    const [looped] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length", loop: "loop" });
+    const [looped] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "missing_length", playbackMode: "loop" });
     expect(looped.settings.playback.mode).toBe("loop");
   });
 

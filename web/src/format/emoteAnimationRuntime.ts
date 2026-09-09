@@ -60,7 +60,8 @@ function requireSettings(value: unknown): void {
   requireBoolean(stopConditions.game_mode_change, "settings.player.stop_conditions.game_mode_change");
   const playback = requireRecord(settings.playback, "settings.playback");
   requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
-  requireString(playback.loop_delay, "settings.playback.loop_delay");
+  optionalString(playback.loop_start, "settings.playback.loop_start");
+  optionalString(playback.loop_delay, "settings.playback.loop_delay");
 }
 
 function requireSchema4Nodes(value: unknown): void {
@@ -79,15 +80,7 @@ function requireSchema4Nodes(value: unknown): void {
     optionalBoolean(node.visible, `${path}.visible`);
     optionalString(node.entity_nbt, `${path}.entity_nbt`);
     if (type === "item_display") {
-      const hasStack = node.item_stack_snbt !== undefined;
-      const hasSource = node.item_source !== undefined;
-      if (hasStack === hasSource) throw new Error(`${path} must define exactly one of item_stack_snbt or item_source.`);
-      if (hasStack) requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
-      if (hasSource) {
-        const source = requireRecord(node.item_source, `${path}.item_source`);
-        requireStringValue(source.type, ["participant_hand"] as const, `${path}.item_source.type`);
-        requireStringValue(source.arm, ["left", "right"] as const, `${path}.item_source.arm`);
-      }
+      requireString(node.item_stack_snbt, `${path}.item_stack_snbt`);
       requireString(node.item_display, `${path}.item_display`);
       const skin = optionalRecord(node.skin, `${path}.skin`);
       if (skin) {
@@ -188,9 +181,8 @@ function requireNbtTrack(value: unknown, path: string): void {
     requireString(frame.time, `${framePath}.time`);
     const valuePath = `${framePath}.value`;
     if (typeof frame.value === "string") return;
-    const selected = requireRecord(frame.value, valuePath);
-    requireString(selected.select, `${valuePath}.select`);
-    requireStringArray(selected.options, `${valuePath}.options`);
+    const molang = requireRecord(frame.value, valuePath);
+    requireString(molang.molang, `${valuePath}.molang`);
   });
 }
 

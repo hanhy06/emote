@@ -5,7 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "../coordinateSpace";
+import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
@@ -88,7 +88,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
     durationTicks,
-    loop: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
+    playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -156,7 +156,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
     durationTicks,
-    loop: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
+    playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },

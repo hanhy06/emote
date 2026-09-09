@@ -14,12 +14,12 @@ interface AssignmentPanelProps {
   assignments: PartAssignments;
   orders: PartOrders;
   spaces: Readonly<Record<string, NodeSpace>>;
-  selectedParts: ReadonlySet<string>;
+  selectedNodeIds: ReadonlySet<string>;
   hasSelectedAssignment: boolean;
   onAssignPart: (skinPart: SkinPartId | null) => void;
   onAssignOrder: (order: number) => void;
   onAssignSpace: (space: NodeSpace) => void;
-  onSelectPart: (nodeId: string, additive: boolean) => void;
+  onSelectNode: (nodeId: string, additive: boolean) => void;
 }
 
 export function AssignmentPanel({
@@ -27,19 +27,19 @@ export function AssignmentPanel({
   assignments,
   orders,
   spaces,
-  selectedParts,
+  selectedNodeIds,
   hasSelectedAssignment,
   onAssignPart,
   onAssignOrder,
   onAssignSpace,
-  onSelectPart,
+  onSelectNode,
 }: AssignmentPanelProps) {
-  const hasSelection = selectedParts.size > 0;
-  const hasSelectedSkinPart = parts.some((part) => selectedParts.has(part.nodeId));
+  const hasSelection = selectedNodeIds.size > 0;
+  const hasSelectedSkinPart = parts.some((part) => selectedNodeIds.has(part.nodeId));
   const selectableItems = parts.map((part) => ({ nodeId: part.nodeId, label: `#${part.partIndex}`, detail: assignmentLabel(assignments[part.nodeId], orders[part.nodeId]) }));
   const partItems = useRef(new Map<string, HTMLLIElement>());
   const partList = useRef<HTMLUListElement>(null);
-  const selectedOrders = [...selectedParts]
+  const selectedOrders = [...selectedNodeIds]
     .filter((nodeId) => assignments[nodeId] != null && orders[nodeId] != null)
     .map((nodeId) => orders[nodeId]!);
   const selectedOrder = selectedOrders.length > 0 && selectedOrders.every((order) => order === selectedOrders[0])
@@ -49,7 +49,7 @@ export function AssignmentPanel({
   useEffect(() => {
     const list = partList.current;
     const selectedItems = selectableItems
-      .filter((item) => selectedParts.has(item.nodeId))
+      .filter((item) => selectedNodeIds.has(item.nodeId))
       .map((item) => partItems.current.get(item.nodeId))
       .filter((item): item is HTMLLIElement => item != null);
     if (!list || selectedItems.length === 0) return;
@@ -65,16 +65,16 @@ export function AssignmentPanel({
         behavior: "smooth",
       });
     }
-  }, [parts, selectedParts]);
+  }, [parts, selectedNodeIds]);
 
-  function handlePartClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
-    onSelectPart(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
+  function handleNodeClick(event: TargetedMouseEvent<HTMLButtonElement>, nodeId: string) {
+    onSelectNode(nodeId, event.ctrlKey || event.metaKey || event.shiftKey);
   }
 
   function assignOrderAndScroll(order: number) {
     onAssignOrder(order);
     const lastSelectedPosition = parts.reduce(
-      (last, part, index) => selectedParts.has(part.nodeId) ? index : last,
+      (last, part, index) => selectedNodeIds.has(part.nodeId) ? index : last,
       -1,
     );
     const nextPart = parts[lastSelectedPosition + 1];
@@ -143,8 +143,8 @@ export function AssignmentPanel({
           >
             <button
               type="button"
-              className={selectedParts.has(item.nodeId) ? "selected" : ""}
-              onClick={(event) => handlePartClick(event, item.nodeId)}
+              className={selectedNodeIds.has(item.nodeId) ? "selected" : ""}
+              onClick={(event) => handleNodeClick(event, item.nodeId)}
             >
               <span>{item.label}</span>
               <span>{spaces[item.nodeId] ?? "scene"} · {item.detail}</span>

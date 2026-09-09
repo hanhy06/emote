@@ -7,11 +7,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EmoteDirectoryLoaderTest {
@@ -70,6 +72,14 @@ class EmoteDirectoryLoaderTest {
         assertTrue(contents.animations().isEmpty());
         assertEquals(0, contents.detectedFileCount());
         assertTrue(Files.isDirectory(directory));
+    }
+
+    @Test
+    void reportsFailureWhenTheEmoteDirectoryCannotBeCreated(@TempDir Path tempDir) throws Exception {
+        Path file = tempDir.resolve("not-a-directory");
+        Files.writeString(file, "occupied");
+
+        assertThrows(UncheckedIOException.class, () -> this.loader.load(file, animation -> animation));
     }
 
     @Test

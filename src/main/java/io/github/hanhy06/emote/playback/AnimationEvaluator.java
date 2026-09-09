@@ -3,8 +3,8 @@ package io.github.hanhy06.emote.playback;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationTimeline;
-import io.github.hanhy06.emote.playback.molang.MolangEngine;
-import io.github.hanhy06.emote.playback.molang.MolangQueries;
+import io.github.hanhy06.emote.molang.MolangEngine;
+import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import net.minecraft.nbt.CompoundTag;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -13,14 +13,19 @@ import org.joml.Quaternionf;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationTimeline.*;
 
 final class AnimationEvaluator {
+    private static final Set<String> RUNTIME_OWNED_NBT_FIELDS = Set.of(
+        "id", "UUID", "Pos", "Motion", "Rotation", "Tags", "Passengers",
+        "transformation", "interpolation_duration", "start_interpolation", "teleport_duration"
+    );
     private final PreparedAnimation animation;
     private final PreparedAnimationTimeline timeline;
-    private final MolangQueries.Source querySource;
+    private final PlayerMolangQueries.Source querySource;
     private final NodeState[] nodes;
     private final Map<String, Integer> nodeIndexes;
     private final Matrix4f localMatrix = new Matrix4f();
@@ -33,7 +38,7 @@ final class AnimationEvaluator {
 
     private MolangEngine.Session session;
 
-    AnimationEvaluator(PreparedAnimation animation, MolangQueries.Source querySource) {
+    AnimationEvaluator(PreparedAnimation animation, PlayerMolangQueries.Source querySource) {
         this.animation = animation;
         this.timeline = animation.preparedTimeline();
         this.querySource = querySource;
@@ -104,7 +109,11 @@ final class AnimationEvaluator {
 
     CompoundTag nbt(int index) {
         NodeState state = this.nodes[index];
-        return state.nbtCursor < 0 ? null : state.nbtState.copy();
+        if (!state.nbtChanged) {
+            return null;
+        }
+        state.nbtChanged = false;
+        return state.nbtState.copy();
     }
 
     private void evaluate(int tick, int loopCount, double deltaTime, boolean runTick) {
@@ -116,31 +125,35 @@ final class AnimationEvaluator {
         for (NodeState state : this.nodes) {
             CompiledNodeTracks tracks = state.tracks;
             LocalTransform defaults = state.node.transform();
-            state.positionCursor = vector(
-                tracks == null ? List.of() : tracks.position(),
-                state.positionCursor,
-                tick,
-                defaults.position(),
-                this.position
-            );
-            state.scaleCursor = vector(
-                tracks == null ? List.of() : tracks.scale(),
-                state.scaleCursor,
-                tick,
-                defaults.scale(),
-                this.scale
-            );
-            state.rotationCursor = rotation(
-                tracks == null ? List.of() : tracks.rotation(),
-                state.rotationCursor,
-                tick,
-                defaults.rotation(),
-                this.rotation
-            );
-            this.localMatrix.identity()
-                .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
-                .rotate(this.rotation)
-                .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
+            if (state.staticLocalMatrix == null) {
+                state.positionCursor = vector(
+                    tracks == null ? List.of() : tracks.position(),
+                    state.positionCursor,
+                    tick,
+                    defaults.position(),
+                    this.position
+                );
+                state.scaleCursor = vector(
+                    tracks == null ? List.of() : tracks.scale(),
+                    state.scaleCursor,
+                    tick,
+                    defaults.scale(),
+                    this.scale
+                );
+                state.rotationCursor = rotation(
+                    tracks == null ? List.of() : tracks.rotation(),
+                    state.rotationCursor,
+                    tick,
+                    defaults.rotation(),
+                    this.rotation
+                );
+                this.localMatrix.identity()
+                    .translate((float) this.position[0], (float) this.position[1], (float) this.position[2])
+                    .rotate(this.rotation)
+                    .scale((float) this.scale[0], (float) this.scale[1], (float) this.scale[2]);
+            } else {
+                this.localMatrix.set(state.staticLocalMatrix);
+            }
             if (state.parentIndex < 0) {
                 state.worldMatrix.set(this.localMatrix);
             } else {
@@ -254,7 +267,26 @@ final class AnimationEvaluator {
         while (state.nbtCursor + 1 < frames.size() && frames.get(state.nbtCursor + 1).tick() <= tick) {
             CompiledNbtKeyframe frame = frames.get(++state.nbtCursor);
             this.session.setQuery("key_frame_lerp_time", 0.0D);
-            state.nbtState.merge(frame.select(this.session));
+            CompoundTag patch = frame.evaluate(this.session);
+            validateNbtPatch(state, frame, patch);
+            state.nbtState.merge(patch);
+            state.nbtChanged = true;
+        }
+    }
+
+    private void validateNbtPatch(NodeState state, CompiledNbtKeyframe frame, CompoundTag patch) {
+        String path = frame.path() == null ? "NBT keyframe at " + frame.tick() + "t" : frame.path();
+        for (String field : RUNTIME_OWNED_NBT_FIELDS) {
+            if (patch.contains(field)) throw new IllegalStateException(path + " must not modify runtime-owned field " + field);
+        }
+        Set<String> fields = Set.copyOf(patch.keySet());
+        if (state.nbtCursor == 0) {
+            if (state.nbtInitialFields == null) state.nbtInitialFields = fields;
+            else if (!state.nbtInitialFields.equals(fields)) {
+                throw new IllegalStateException(path + " must declare the same fields on every cycle");
+            }
+        } else if (!state.nbtInitialFields.containsAll(fields)) {
+            throw new IllegalStateException(path + " must only modify fields declared by the 0t keyframe");
         }
     }
 
@@ -367,6 +399,7 @@ final class AnimationEvaluator {
         private final Node node;
         private final CompiledNodeTracks tracks;
         private final int parentIndex;
+        private final Matrix4f staticLocalMatrix;
         private final Matrix4f worldMatrix = new Matrix4f();
 
         private int positionCursor;
@@ -375,6 +408,8 @@ final class AnimationEvaluator {
         private int visibilityCursor;
         private int nbtCursor = -1;
         private CompoundTag nbtState = new CompoundTag();
+        private Set<String> nbtInitialFields;
+        private boolean nbtChanged;
         private boolean visible;
 
         private NodeState(String id, Node node, CompiledNodeTracks tracks, int parentIndex) {
@@ -382,6 +417,21 @@ final class AnimationEvaluator {
             this.node = node;
             this.tracks = tracks;
             this.parentIndex = parentIndex;
+            boolean staticTransform = tracks == null
+                || tracks.position().isEmpty() && tracks.rotation().isEmpty() && tracks.scale().isEmpty();
+            if (staticTransform) {
+                LocalTransform transform = node.transform();
+                this.staticLocalMatrix = new Matrix4f()
+                    .translate((float) transform.position().x(), (float) transform.position().y(), (float) transform.position().z())
+                    .rotate(new Quaternionf().rotationXYZ(
+                        (float) Math.toRadians(transform.rotation().x()),
+                        (float) Math.toRadians(transform.rotation().y()),
+                        (float) Math.toRadians(transform.rotation().z())
+                    ))
+                    .scale((float) transform.scale().x(), (float) transform.scale().y(), (float) transform.scale().z());
+            } else {
+                this.staticLocalMatrix = null;
+            }
         }
 
         private void resetCursors(int tick) {
@@ -395,6 +445,7 @@ final class AnimationEvaluator {
                 ? 0 : findVisibilityCursor(this.tracks.visible(), tick);
             this.nbtCursor = -1;
             this.nbtState = new CompoundTag();
+            this.nbtChanged = false;
         }
     }
 
