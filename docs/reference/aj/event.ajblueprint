@@ -9153,11 +9153,28 @@
 								}
 							],
 							"uuid": "e8f998a8-c1e4-4c19-8ad6-438657a2d1bb",
-							"time": 34.55,
+							"time": 34.35,
 							"color": -1,
 							"uniform": true,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "1.15",
+									"y": "1.15",
+									"z": "1.15"
+								}
+							],
+							"uuid": "c4a3b25e-a1fd-4e28-9c49-52b90c69ce68",
+							"time": 34.6,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -9170,11 +9187,11 @@
 								}
 							],
 							"uuid": "9fe75ba6-a616-438b-9720-f20d8d1f2052",
-							"time": 34.9,
+							"time": 34.65,
 							"color": -1,
 							"uniform": true,
-							"interpolation": "linear",
-							"easing": "easeOutSine",
+							"interpolation": "step",
+							"easing": "linear",
 							"easingArgs": []
 						},
 						{
@@ -13127,11 +13144,28 @@
 								}
 							],
 							"uuid": "81d1922c-abaf-48e8-8c4a-8240c19da3e9",
-							"time": 34.55,
+							"time": 34.35,
 							"color": -1,
 							"uniform": true,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "1.15",
+									"y": "1.15",
+									"z": "1.15"
+								}
+							],
+							"uuid": "25a123ab-21aa-4808-b0d6-9278a913001e",
+							"time": 34.6,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -13144,11 +13178,11 @@
 								}
 							],
 							"uuid": "bb5be153-68cd-427b-bd2f-69dead5f96e5",
-							"time": 34.9,
+							"time": 34.65,
 							"color": -1,
 							"uniform": true,
-							"interpolation": "linear",
-							"easing": "easeOutSine",
+							"interpolation": "step",
+							"easing": "linear",
 							"easingArgs": []
 						},
 						{
@@ -16347,6 +16381,23 @@
 							"interpolation": "linear",
 							"easing": "linear",
 							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run particle minecraft:poof ~ ~0.8 ~ 0.45 0.18 0.25 0.025 18 normal @a[distance=..24]\nexecute at @s run particle minecraft:poof ~ ~2.05 ~ 0.3 0.18 0.3 0.025 14 normal @a[distance=..24]\nexecute at @s run particle minecraft:glow ~ ~1.4 ~ 0.45 0.65 0.35 0.015 12 normal @a[distance=..24]",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "113dc1b8-70eb-4773-9f98-66f9a7977bd2",
+							"time": 34.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
 						}
 					]
 				},
@@ -16417,11 +16468,28 @@
 								}
 							],
 							"uuid": "2cbffc71-0561-4357-95e7-473f35ec4d39",
-							"time": 34.55,
+							"time": 34.35,
 							"color": -1,
 							"uniform": true,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "scale",
+							"data_points": [
+								{
+									"x": "1.15",
+									"y": "1.15",
+									"z": "1.15"
+								}
+							],
+							"uuid": "5d47061b-1338-4f1c-a928-98e2e1bb473a",
+							"time": 34.6,
+							"color": -1,
+							"uniform": true,
+							"interpolation": "step",
+							"easing": "easeOutSine",
 							"easingArgs": []
 						},
 						{
@@ -16434,11 +16502,11 @@
 								}
 							],
 							"uuid": "4793a501-14fb-48a6-857e-82aac66c02af",
-							"time": 34.9,
+							"time": 34.65,
 							"color": -1,
 							"uniform": true,
-							"interpolation": "linear",
-							"easing": "easeOutSine",
+							"interpolation": "step",
+							"easing": "linear",
 							"easingArgs": []
 						},
 						{
