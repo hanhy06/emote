@@ -329,7 +329,6 @@ public class PlaybackEngine implements ConfigListener {
         for (PlaybackSession session : this.sessionRegistry.sessions()) {
             PlaybackParticipant initiator = session.initiator();
             ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
-            ServerPlayer partnerPlayer = null;
             PlaybackStopReason stopReason = null;
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer participantPlayer = participant == initiator
@@ -338,9 +337,6 @@ public class PlaybackEngine implements ConfigListener {
                 if (!canKeepPlaying(participantPlayer, session)) {
                     stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
                     break;
-                }
-                if (participant != initiator) {
-                    partnerPlayer = participantPlayer;
                 }
                 if (session.playerBehavior().stopConditions().submerge() && participantPlayer.isUnderWater()) {
                     stopReason = PlaybackStopReason.SUBMERGED;
@@ -383,7 +379,10 @@ public class PlaybackEngine implements ConfigListener {
 
                     if (stopReason == null && !playbackChanged(session)) {
                         for (PlaybackParticipant participant : session.participants()) {
-                            this.playerVisibilityService.tick(participant == initiator ? player : partnerPlayer, session, participant);
+                            ServerPlayer participantPlayer = participant == initiator
+                                ? player
+                                : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                            this.playerVisibilityService.tick(participantPlayer, session, participant);
                         }
                     }
                 } catch (RuntimeException exception) {
