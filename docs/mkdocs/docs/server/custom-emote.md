@@ -11,7 +11,6 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 | Animated Java | `.ajblueprint` |
 | Bedrock Edition | `.json` |
 | Emotecraft | `.emotecraft` |
-| Existing Emote Animation or Sequence | `.json` |
 
 ## 1. Open files
 
