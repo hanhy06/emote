@@ -125,6 +125,14 @@ public final class PlaybackPolicyService implements AccessConfigListener, Playba
         onPlaybackEnded(player, session.id());
     }
 
+    @Override
+    public void onReservationReleased(UUID playerUuid, String emoteId) {
+        this.pendingCooldowns.computeIfPresent(
+            playerUuid,
+            (ignoredPlayerId, pending) -> pending.emoteId().equals(emoteId) ? null : pending
+        );
+    }
+
     void onPlaybackEnded(ServerPlayer player, String emoteId) {
         UUID playerId = this.playerIdResolver.apply(player);
         PendingCooldown pending = this.pendingCooldowns.remove(playerId);

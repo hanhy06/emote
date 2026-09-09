@@ -122,6 +122,25 @@ class PlaybackPolicyServiceTest {
     }
 
     @Test
+    void releasedPartnerReservationCancelsPendingCooldown() {
+        AtomicLong tick = new AtomicLong();
+        PlaybackPolicyService service = service(
+            (ignoredPlayer, permission, defaultValue) -> permission.equals("emote.default") && defaultValue,
+            tick
+        );
+        loadRules(service, new AccessConfig(
+            List.of(),
+            List.of(entry("emote.default", List.of("demo:wave")))
+        ), "demo:wave");
+        PreparedAnimation emote = create("demo:wave", "Wave", 20);
+        PlaybackPolicyService.Decision decision = service.evaluate(null, emote, PlaySource.COMMAND);
+        service.onPlaybackStarted(null, decision);
+        service.onReservationReleased(PLAYER_ID, emote.id());
+
+        assertAllowed(service.evaluate(null, emote, PlaySource.COMMAND));
+    }
+
+    @Test
     void appliesCooldownFromFirstAllowedMatchingPermissionInConfigOrder() {
         AtomicLong tick = new AtomicLong();
         PlaybackPolicyService service = service(

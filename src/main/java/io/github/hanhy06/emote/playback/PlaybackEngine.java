@@ -465,6 +465,9 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackParticipant partner = session.releaseReservedPartner();
         if (partner != null) {
             this.sessionRegistry.releasePartner(session, partner.playerUuid());
+            for (PlaybackStateListener stateListener : this.stateListeners) {
+                stateListener.onReservationReleased(partner.playerUuid(), session.id());
+            }
         }
     }
 
@@ -601,6 +604,7 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
+        releaseReservedPartner(session);
         try {
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
