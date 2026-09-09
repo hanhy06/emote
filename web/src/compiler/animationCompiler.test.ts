@@ -1,6 +1,8 @@
 import { readItemStack, readDisplayNbt } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
-import { createDefaultPlayerBehavior, type Matrix16 } from "../format/emoteAnimation";
+import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from "../format/emoteAnimation";
+import { localTransformToMatrix } from "../format/localTransform";
+import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject } from "../domain/conversionSeed";
 import { compileImportedAnimation, compileImportedProject } from "../test/compileImportedFixture";
 
@@ -54,6 +56,23 @@ describe("compileImportedProject time handling", () => {
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
 
     expect(animation.nodes.anchor.transform).toEqual({ position: [4, 5, 6], rotation: [0, 0, 0], scale: [1, 1, 1] });
+  });
+
+  it("restores full turns from consecutive matrix samples", () => {
+    const project = importedProject();
+    const rotations = [0, 90, 180, 270, 360];
+    project.animations[0].durationTicks = rotations.length - 1;
+    project.animations[0].tracks.anchor.transforms = rotations.map((rotation, tick) => ({
+      tick,
+      matrix: localTransformToMatrix({ position: [0, 0, 0], rotation: [rotation, 0, 0], scale: [1, 1, 1] }, `${rotation} degree source`),
+      interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
+    }));
+
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" });
+    const output = JSON.parse(serializeEmoteAnimation(animation)) as EmoteAnimation;
+
+    animation.timeline.tracks.anchor.rotation?.forEach((frame, index) => expect(frame.value?.[0]).toBeCloseTo(rotations[index], 10));
+    expect(output.timeline.tracks.anchor.rotation?.map((frame) => frame.value?.[0])).toEqual(rotations);
   });
 
   it("compiles only the selected animation after validating project identifiers", () => {

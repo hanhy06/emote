@@ -18,7 +18,7 @@ import {
   type ConversionNode,
 } from "../domain/conversionDocument";
 import { multiplyMatrix16 } from "../format/matrix";
-import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
+import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
@@ -310,7 +310,7 @@ function compileTransformFrames(
   for (const source of sourceFrames) {
     const tick = requireTick(source.tick, `${animation.id}/${nodeId} transform`);
     const matrix = node ? compileNodeMatrix(document, nodeId, node, source.matrix) : source.matrix;
-    const transform = matrixToLocalTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
+    const transform = matrixToContinuousLocalTransform(matrix, result.at(-1)!.transform.rotation, `${animation.id}/${nodeId}/${tick}t`);
     if (tick === 0) {
       result[0] = { tick: 0, transform };
       continue;

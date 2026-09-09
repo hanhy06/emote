@@ -31,6 +31,24 @@ export function matrixToLocalTransform(matrix: Matrix16, label: string): LocalTr
   };
 }
 
+export function matrixToContinuousLocalTransform(matrix: Matrix16, previousRotation: Vec3, label: string): LocalTransform {
+  const transform = matrixToLocalTransform(matrix, label);
+  return { ...transform, rotation: closestEquivalentRotation(transform.rotation, previousRotation) };
+}
+
+function closestEquivalentRotation(rotation: Vec3, reference: Vec3): Vec3 {
+  // XYZ Euler angles have two equivalent branches before whole turns are applied.
+  // Select the representation nearest to the previous sample so matrix decomposition retains winding.
+  const [x, y, z] = rotation;
+  const branches: Vec3[] = [rotation, [x + 180, 180 - y, z + 180]];
+  const candidates = branches.map((branch) => branch.map((value, axis) =>
+    value + 360 * Math.round((reference[axis] - value) / 360)) as unknown as Vec3);
+  const closest = candidates.reduce((result, candidate) => rotationDistance(candidate, reference) < rotationDistance(result, reference)
+    ? candidate
+    : result);
+  return cleanVec3(closest);
+}
+
 function recoverSingularRotation(axes: Vector3[], lengths: number[], rotation: Quaternion): void {
   const present = lengths.map((length) => length > ZERO_SCALE_EPSILON);
   const count = present.filter(Boolean).length;
@@ -61,4 +79,8 @@ export function localTransformToMatrix(transform: LocalTransform, label: string)
 
 function cleanVec3(values: Vec3): Vec3 {
   return values.map((value) => Math.abs(value) < 1e-12 ? 0 : value) as unknown as Vec3;
+}
+
+function rotationDistance(rotation: Vec3, reference: Vec3): number {
+  return rotation.reduce((distance, value, axis) => distance + (value - reference[axis]) ** 2, 0);
 }

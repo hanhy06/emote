@@ -97,6 +97,11 @@ describe("final keyframe cleanup", () => {
     expect(exportAndCompare(source).timeline.tracks).toEqual(source.timeline.tracks);
   });
 
+  it("preserves the sampled path and terminal angle of a full rotation", () => {
+    const rotation = frames([0, 90, 180, 270, 360]);
+    expect(exportAndCompare(animation({ rotation })).timeline.tracks.root.rotation).toEqual(rotation);
+  });
+
   it("removes repeated visibility values but keeps changes and initial state", () => {
     const output = exportAndCompare(animation({ visible: [true, true, false, false, true].map((value, index) => ({ time: `${index * 2}t`, value })) }));
     expect(output.timeline.tracks.root.visible?.map((frame) => frame.time)).toEqual(["0t", "4t", "8t"]);
