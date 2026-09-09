@@ -33,16 +33,18 @@ API and bypass playback must still meet the minimum playback requirements.
 
 ```json
 {
-  "schema_version": 2,
-  "disabled": ["example:broken"],
+  "schema_version": 3,
+  "disabled": ["emote:anvil"],
   "permissions": [
     {
       "permission": "emote.default",
-      "emotes": ["example:wave", "example:hello"]
+      "emotes": ["emote:hello", "emote:backflip"]
     },
     {
       "permission": "emote.vip",
-      "emotes": ["example:dance", "emote:sit"]
+      "emotes": ["emote:vip\\..*"],
+      "idle": {"delay": "300s", "emote": ["emote:idle.sit", 70, "emote:idle.piano", 30]},
+      "cooldown": "x0.8"
     },
     {
       "permission": "emote.admin",
@@ -54,9 +56,9 @@ API and bypass playback must still meet the minimum playback requirements.
 
 | Field            | Behavior                                                                          |
 |------------------|-----------------------------------------------------------------------------------|
-| `schema_version` | Must be `2`.                                                                      |
+| `schema_version` | Must be `3`. Version `2` is upgraded automatically.                              |
 | `disabled`       | Hidden from normal players. Only players with `emote.bypass` can use them.        |
 | `permissions`    | Permission groups used to assemble each player's available emote IDs.             |
 | `permission`     | Permission checked through the installed permission provider.                     |
-| `emotes`         | Exact allowed IDs. `"*"` grants every enabled standalone emote.                   |
+| `emotes`         | Valid emote IDs match literally. Other entries are full Java regular expressions. `"*"` grants every enabled standalone emote. |
 | `idle`           | Optional idle-playback rule. See [Idle Emotes](advanced-usage.md#idle-emotes).    |

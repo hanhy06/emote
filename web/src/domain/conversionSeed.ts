@@ -1,4 +1,6 @@
-import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmoteNode, EmotePlayerBehavior, EmoteTimeline, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNode, RuntimeTimeline } from "./minecraftData";
+import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
@@ -18,8 +20,7 @@ export interface ImportedProject {
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
-  resources: Map<string, Uint8Array>;
-  resourceMinecraftVersion?: string;
+  resources: Map<string, GeneratedResource>;
 }
 
 export interface ImportedNodeBase {
@@ -35,13 +36,13 @@ export interface ImportedNodeBase {
 export type ImportedNode =
   | (ImportedNodeBase & {
     type: "item_display";
-    itemStackSnbt: string;
+    itemStack: ItemStackData;
     itemDisplay: string;
     skin?: ImportedSkinPart;
     suggestedSkin?: ImportedSkinPart;
     playerHeadConversion?: { matrix: Matrix16 };
   })
-  | (ImportedNodeBase & { type: "block_display"; blockStateSnbt: string })
+  | (ImportedNodeBase & { type: "block_display"; blockState: BlockStateData })
   | (ImportedNodeBase & { type: "text_display"; text: unknown })
   | (Omit<ImportedNodeBase, "visible" | "entityNbt"> & { type: "anchor" });
 
@@ -56,7 +57,8 @@ export interface ImportedAnimation {
   name: string;
   suggestedMetadata?: EmoteMetadata;
   durationTicks: number;
-  loop: "once" | "hold" | "loop" | "server_sync";
+  playbackMode: "once" | "hold" | "loop" | "server_sync";
+  loopStartTicks?: number;
   loopDelayTicks: number;
   tracks: Record<string, ImportedNodeTrack>;
   events: {
@@ -72,8 +74,8 @@ export interface ImportedAnimation {
   };
   runtime?: {
     molang?: EmoteAnimation["molang"];
-    nodes: Record<string, EmoteNode>;
-    timeline: EmoteTimeline;
+    nodes: Record<string, RuntimeNode>;
+    timeline: RuntimeTimeline;
   };
 }
 
@@ -115,7 +117,7 @@ export interface ImportedVisibilityKeyframe {
 
 export interface ImportedNbtKeyframe {
   tick: number;
-  value: string;
+  value: DisplayNbtPatch;
 }
 
 export interface ImportedTimelineEvent extends EmoteEvent {

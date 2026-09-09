@@ -6,13 +6,11 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Random;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackStressTestTest {
     @Test
-    void laysOutOneHundredInstancesInAOneBlockSpacedGrid() {
+    void laysOutInstancesInAOneBlockSpacedGrid() {
         Vec3 origin = new Vec3(100.25D, 64.0D, 200.75D);
 
         int instanceCount = PlaybackStressTest.DEFAULT_INSTANCE_COUNT;
@@ -21,10 +19,7 @@ class PlaybackStressTestTest {
         assertEquals(origin.add(4.5D, 0.0D, -4.5D), PlaybackStressTest.gridPosition(origin, 9, instanceCount));
         assertEquals(origin.add(-4.5D, 0.0D, -3.5D), PlaybackStressTest.gridPosition(origin, 10, instanceCount));
         assertEquals(origin.add(4.5D, 0.0D, 4.5D), PlaybackStressTest.gridPosition(origin, 99, instanceCount));
-    }
 
-    @Test
-    void expandsTheGridForARequestedCustomInstanceCount() {
         assertEquals(11, PlaybackStressTest.gridSize(101));
         assertEquals(16, PlaybackStressTest.gridSize(250));
     }
@@ -42,6 +37,32 @@ class PlaybackStressTestTest {
             long count = selection.stream().filter(id::equals).count();
             assertTrue(count == 33L || count == 34L);
         }
+    }
+
+    @Test
+    void fillsARequestedDisplayBudgetWithoutExceedingIt() {
+        List<Integer> selection = PlaybackStressTest.createDisplayLimitedSelection(
+            List.of(3, 5, 8),
+            new Random(1234L),
+            20,
+            Integer::intValue
+        );
+
+        assertFalse(selection.isEmpty());
+        assertTrue(selection.stream().mapToInt(Integer::intValue).sum() <= 20);
+        assertTrue(selection.size() <= PlaybackStressTest.MAX_INSTANCE_COUNT);
+    }
+
+    @Test
+    void displayBudgetIgnoresAnimationsWithoutDisplays() {
+        List<Integer> selection = PlaybackStressTest.createDisplayLimitedSelection(
+            List.of(0, 4),
+            new Random(1234L),
+            3,
+            Integer::intValue
+        );
+
+        assertTrue(selection.isEmpty());
     }
 
     @Test

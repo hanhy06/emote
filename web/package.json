@@ -11,6 +11,7 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@nbsjs/core": "^6.1.0",
     "fflate": "^0.8.3",
     "jsonc-parser": "^3.3.1",
     "molangjs": "^1.7.0",

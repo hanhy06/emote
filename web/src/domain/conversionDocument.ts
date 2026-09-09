@@ -1,7 +1,8 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
-import { readSnbtRawField, readSnbtStringField } from "../format/snbt";
+import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
+import type { GeneratedResource } from "./generatedResource";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -36,7 +37,7 @@ export interface SkinGroup {
 
 export interface AnimationOutputSettings {
   namespace: string;
-  playbackMode: "source" | ImportedAnimation["loop"];
+  playbackMode: "source" | ImportedAnimation["playbackMode"];
   displayName: string;
   description: string;
   player: EmotePlayerBehavior;
@@ -44,12 +45,14 @@ export interface AnimationOutputSettings {
   standalone: boolean;
   cooldown: string;
   rotationDeadzone: number;
+  loopStart: string;
   loopDelay: string;
 }
 
 export interface ConversionAnimation {
   source: ImportedAnimation;
   output: AnimationOutputSettings;
+  nodeIds: string[];
 }
 
 export interface SequenceOutputSettings {
@@ -66,6 +69,7 @@ export interface ConversionDocument {
     source: ImportSource;
     sourceName: string;
     adapterLabel: string;
+    minecraftVersion?: string;
   };
   targetMinecraftVersion: string;
   nodes: Record<string, ConversionNode>;
@@ -73,8 +77,7 @@ export interface ConversionDocument {
   animations: ConversionAnimation[];
   sequence: SequenceOutputSettings;
   diagnostics: ConversionIssue[];
-  resources: Map<string, Uint8Array>;
-  resourceMinecraftVersion?: string;
+  resources: Map<string, GeneratedResource>;
 }
 
 export function createConversionDocument(project: ImportedProject, adapterLabel: string): ConversionDocument {
@@ -108,10 +111,11 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
     .filter(([key]) => key !== "name" && key !== "description"));
-  const namespace = project.suggestedNamespace ?? project.suggestedMetadata.name;
+  const namespace = "emote";
   return {
-    origin: { source: project.source, sourceName: project.sourceName, adapterLabel },
-    targetMinecraftVersion: project.suggestedMinecraftVersion ?? DEFAULT_TARGET_MINECRAFT_VERSION,
+    origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
+    targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
+      ? project.suggestedMinecraftVersion : DEFAULT_TARGET_MINECRAFT_VERSION,
     nodes,
     skinGroups,
     animations: project.animations.map((animation) => {
@@ -121,6 +125,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         : additionalMetadata;
       return {
         source: animation,
+        nodeIds: Object.keys(nodes),
         output: {
           namespace,
           playbackMode: "source",
@@ -131,6 +136,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           standalone: project.suggestedStandalone ?? true,
           cooldown: project.suggestedCooldown ?? "0t",
           rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
+          loopStart: `${animation.loopStartTicks ?? 0}t`,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };
@@ -145,7 +151,6 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     },
     diagnostics: project.diagnostics,
     resources: project.resources,
-    ...(project.resourceMinecraftVersion ? { resourceMinecraftVersion: project.resourceMinecraftVersion } : {}),
   };
 }
 
@@ -270,15 +275,8 @@ export function updateDocumentAnimationOutput(
   };
 }
 
-function isPlayerHeadItemStack(itemStackSnbt: string): boolean {
-  const quotedId = readSnbtStringField(itemStackSnbt, "id");
-  const rawId = quotedId === null ? readSnbtRawField(itemStackSnbt, "id") : null;
-  const id = quotedId ?? (rawId && /^[A-Za-z0-9._+-]+$/.test(rawId) ? rawId : null);
-  return id !== null && normalizeResourceLocation(id) === "minecraft:player_head";
-}
-
 function isSkinCandidate(node: ImportedItemNode): boolean {
-  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || isPlayerHeadItemStack(node.itemStackSnbt));
+  return Boolean(node.skin || node.suggestedSkin || node.playerHeadConversion || normalizeResourceLocation(node.itemStack.id) === "minecraft:player_head");
 }
 
 function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {

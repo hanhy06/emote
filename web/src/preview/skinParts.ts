@@ -13,7 +13,7 @@ export type SkinPartId = PlayerSkinPart;
 export type PartAssignments = Record<string, SkinPartId | null>;
 export type PartOrders = Record<string, number | null>;
 
-export function selectPart(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
+export function selectNode(current: ReadonlySet<string>, nodeId: string, additive: boolean): Set<string> {
   if (!additive) return current.has(nodeId) ? new Set() : new Set([nodeId]);
   const next = new Set(current);
   if (next.has(nodeId)) next.delete(nodeId);
@@ -21,7 +21,7 @@ export function selectPart(current: ReadonlySet<string>, nodeId: string, additiv
   return next;
 }
 
-export function selectParts(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
+export function selectNodes(current: ReadonlySet<string>, nodeIds: readonly string[], additive: boolean): Set<string> {
   const next = additive ? new Set(current) : new Set<string>();
   nodeIds.forEach((nodeId) => next.add(nodeId));
   return next;

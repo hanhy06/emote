@@ -1,10 +1,9 @@
 package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.util.Sha256;
 
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 final class SequenceCompiler {
@@ -68,7 +67,7 @@ final class SequenceCompiler {
                 sequence.settings().cooldownTicks(),
                 layoutAnchor.animation().settings().rotationDeadzone(),
                 sequence.settings().player(),
-                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0)
+                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0)
             ),
             EmoteAnimation.MolangPrograms.empty(),
             layoutAnchor.animation().nodes(),
@@ -154,11 +153,6 @@ final class SequenceCompiler {
                     .append(':').append(emoteStep.transitionTicks());
             }
         }
-        try {
-            byte[] digest = MessageDigest.getInstance("SHA-256").digest(input.toString().getBytes(StandardCharsets.UTF_8));
-            return HexFormat.of().formatHex(digest);
-        } catch (NoSuchAlgorithmException exception) {
-            throw new IllegalStateException("SHA-256 is unavailable", exception);
-        }
+        return Sha256.hashHex(input.toString().getBytes(StandardCharsets.UTF_8));
     }
 }

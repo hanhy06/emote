@@ -1,8 +1,10 @@
+import { readDisplayNbt } from "../../format/minecraftData";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
   EmoteAnimation,
   EmoteEasing,
+  EmoteNbtValue,
   EmoteNode,
   EmoteVectorKeyframe,
   LocalTransform,
@@ -14,7 +16,7 @@ import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedNodeTrack } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_PLAYER_STATE_QUERIES } from "../runtimeMolangQueries";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../common/runtimeMolangQueries";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 const QUERY_ASSIGNMENT = /\b(?:q|query)\s*\.[a-z_][a-z0-9_]*\s*=(?!=)/i;
@@ -53,9 +55,9 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
   const result = Object.fromEntries(states.map((state) => [state.id, {
     transforms: [],
     visibility: [],
-    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame) => ({
+    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame, index) => ({
       tick: parseMinecraftTime(frame.time),
-      value: typeof frame.value === "string" ? frame.value : frame.value.options[0],
+      value: readDisplayNbt(requireFixedNbt(frame.value, `timeline.tracks.${state.id}.nbt[${index}].value`)),
     })),
   }])) as Record<string, ImportedNodeTrack>;
 
@@ -95,12 +97,21 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
   return result;
 }
 
+function requireFixedNbt(value: EmoteNbtValue, path: string): string {
+  if (typeof value === "string") return value;
+  throw previewError(path, "uses Molang NBT");
+}
+
 class PreviewMolangSession {
   private readonly parser = new MolangParser();
-  private readonly queries: Record<string, number> = { ...PREVIEW_PLAYER_STATE_QUERIES };
+  private readonly queries: Record<string, number> = { ...PREVIEW_RUNTIME_QUERY_VALUES };
 
   constructor(private readonly durationTicks: number) {
-    this.parser.variableHandler = (key) => {
+    this.parser.variableHandler = (key, _variables, args) => {
+      if (args) {
+        const value = previewRuntimeQueryFunction(key);
+        if (value !== undefined) return value;
+      }
       if (key.startsWith("variable.") || key.startsWith("temp.")) return 0;
       throw new Error(`references unsupported Molang value ${key}`);
     };

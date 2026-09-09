@@ -1,3 +1,5 @@
+import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
+import { readDisplayNbt } from "../../format/minecraftData";
 import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
 import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
@@ -7,10 +9,9 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeProject, PLAYER_RENDER_SCALE } from "../blockbench/cubeProjectImporter";
-import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "../blockbench/cubeProjectTransformConvention";
-import { evaluateGeckoChannel } from "../blockbench/cubeAnimationBaker";
-import { requireBlockbenchCubeProject, type BbKeyframe } from "../blockbench/cubeProjectSchema";
+import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
+import { evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
+import { requireBlockbenchCubeProject, type BbKeyframe } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
@@ -22,6 +23,7 @@ import type {
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
+import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
 interface ProjectTransformGraph {
   groups: ReadonlyMap<string, AjProjectGroup>;
@@ -39,23 +41,23 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
-  const cubeProject = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
-  const sceneScale = cubeProject ? PLAYER_RENDER_SCALE : 1;
+  const cubeContent = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
+  const sceneScale = cubeContent ? PLAYER_RENDER_SCALE : 1;
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
-  const nodes: Record<string, ImportedNode> = { ...(cubeProject?.nodes ?? {}) };
+  const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
   for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ImportDiagnostic[] = [...(cubeProject?.diagnostics ?? [])];
+  const diagnostics: ImportDiagnostic[] = [...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
       return importProjectAnimation(animation, index, displayElements, transformGraph, sceneScale);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || !["unsupported_animated_java_molang", "unsupported_geckolib_molang"].includes(reason.code)) throw reason;
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
       diagnostics.push({
         severity: "warning",
@@ -67,7 +69,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
-    mergeProjectAnimation(cubeProject?.animations[index], animation),
+    mergeProjectAnimation(cubeContent?.animations[index], animation),
     sourceAnimations[index],
     project,
     nodes,
@@ -84,9 +86,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     nodes,
     animations,
     diagnostics,
-    resources: cubeProject?.resources ?? new Map(),
-    ...(cubeProject?.suggestedNamespace ? { suggestedNamespace: cubeProject.suggestedNamespace } : {}),
-    ...(cubeProject?.resourceMinecraftVersion ? { resourceMinecraftVersion: cubeProject.resourceMinecraftVersion } : {}),
+    resources: cubeContent?.resources ?? new Map(),
+    ...(cubeContent?.namespace ? { suggestedNamespace: cubeContent.namespace } : {}),
   };
 }
 
@@ -122,7 +123,7 @@ function addProjectNode(nodes: Record<string, ImportedNode>, id: string, node: I
   nodes[id] = node;
 }
 
-function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedProject | undefined {
+function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedCubeProjectContent | undefined {
   const supportedIds = new Set(project.elements
     .filter((element) => element.type === "cube" || element.type === "locator")
     .map((element) => element.uuid));
@@ -150,7 +151,11 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
       })),
     })),
   });
-  return importBlockbenchCubeProject(cubeProject, `${sourceStem}.bbmodel`, { transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS });
+  return importBlockbenchCubeContent(cubeProject, `${sourceStem}.bbmodel`, {
+    transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
+    formatLabel: "Animated Java",
+    molangDiagnosticCode: "animated_java_animation_molang_unavailable",
+  });
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
@@ -164,7 +169,7 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
   return {
     ...base,
     durationTicks: Math.max(base.durationTicks, display.durationTicks),
-    loop: display.loop,
+    playbackMode: display.playbackMode,
     loopDelayTicks: display.loopDelayTicks,
     tracks: { ...base.tracks, ...display.tracks },
     events: {
@@ -376,7 +381,7 @@ function applyVariantConfig(animation: ImportedAnimation, nodeId: string, config
   const track = projectTrack(animation, nodeId);
   if (typeof config.invisible === "boolean") track.visibility.push({ tick, visible: !config.invisible });
   const nbt = nativeDisplayConfigNbt(config);
-  if (nbt) track.nbt.push({ tick, value: nbt });
+  if (nbt) track.nbt.push({ tick, value: readDisplayNbt(nbt) });
 }
 
 function projectTrack(animation: ImportedAnimation, nodeId: string) {
@@ -458,7 +463,7 @@ function createPreviewOnlyProjectAnimation(
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    loop: animation.loop === "loop" ? "loop" : "once",
+    playbackMode: animation.loop === "loop" ? "loop" : "once",
     loopDelayTicks: 0,
     tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
@@ -496,7 +501,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       defaultMatrix,
       visible,
       ...(entityNbt ? { entityNbt } : {}),
-      blockStateSnbt: blockArgumentToSnbt(element.block ?? "minecraft:air"),
+      blockState: blockArgumentToData(element.block ?? "minecraft:air"),
     };
   }
   if (element.type === "animated_java:vanilla_item_display") {
@@ -507,7 +512,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       visible,
       ...(entityNbt ? { entityNbt } : {}),
       itemDisplay: element.item_display ?? "none",
-      itemStackSnbt: itemArgumentToSnbt(element.item ?? "minecraft:air"),
+      itemStack: itemArgumentToData(element.item ?? "minecraft:air"),
     };
   }
   return {
@@ -554,7 +559,7 @@ function importProjectAnimation(
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
     name: prettify(animation.name),
     durationTicks,
-    loop: playbackMode,
+    playbackMode,
     loopDelayTicks: playbackMode === "loop"
       ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
@@ -606,6 +611,8 @@ function projectElementMatrix(
     basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),
     element.rotation.map((value, axis) => value + (axis < 2 ? -rotationOffset[axis] : rotationOffset[axis])),
     scale,
+    // AJ display updateTransform copies the mesh's default XYZ order into fix_rotation.
+    isDirectDisplay(element.type) ? "XYZ" : "ZYX",
   );
   const world = parentId ? projectGroupMatrix(parentId, animation, sourceTime, graph, blendWeight, new Map()) : new Matrix4();
   const result = new Matrix4().makeScale(sceneScale, sceneScale, sceneScale).multiply(world).multiply(local);
@@ -647,7 +654,12 @@ function projectGroupMatrix(
 
 function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
   if (sourceTime < 0) return [...fallback];
-  return evaluateGeckoChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+  try {
+    return evaluateBlockbenchChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+  } catch (reason) {
+    if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
+    throw new ConversionError("unsupported_animated_java_molang", reason.message.replace("GeckoLib", "Animated Java"), reason.sourcePath, { cause: reason });
+  }
 }
 
 function projectStepAt(animation: AjProjectAnimation, elementId: string, sourceTime: number): boolean {
@@ -685,33 +697,26 @@ function projectOptionalNumeric(value: string | number | undefined, fallback: nu
   return projectNumeric(value, path);
 }
 
-export function itemArgumentToSnbt(value: string): string {
+export function itemArgumentToData(value: string): ItemStackData {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
-  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component): [string, string][] => {
+  const components = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((component) => {
     const pair = splitSnbtPair(component, "=");
     if (!pair?.[0] || !pair[1]) return [];
-    return [[normalizeResourceLocation(pair[0]), pair[1]]];
+    return [{ name: normalizeResourceLocation(pair[0]), value: pair[1] }];
   }) : [];
-  return serializeSnbtCompound([
-    ["id", serializeSnbtString(id)],
-    ["count", "1"],
-    ["components", components.length ? serializeSnbtCompound(components) : undefined],
-  ]);
+  return { id, count: 1, ...(components.length ? { components } : {}) };
 }
 
-export function blockArgumentToSnbt(value: string): string {
+export function blockArgumentToData(value: string): BlockStateData {
   const match = /^([^\[]+)(?:\[(.*)\])?$/.exec(value.trim());
   const id = normalizeResourceLocation(match?.[1] ?? "air");
   const properties = match?.[2] ? splitSnbtTopLevel(match[2]).flatMap((property): [string, string][] => {
     const pair = splitSnbtPair(property, "=");
     if (!pair?.[0] || !pair[1]) return [];
-    return [[pair[0], serializeSnbtString(pair[1])]];
+    return [[pair[0], pair[1]]];
   }) : [];
-  return serializeSnbtCompound([
-    ["Name", serializeSnbtString(id)],
-    ["Properties", properties.length ? serializeSnbtCompound(properties) : undefined],
-  ]);
+  return { id, ...(properties.length ? { properties: Object.fromEntries(properties) } : {}) };
 }
 
 function prettify(value: string): string {

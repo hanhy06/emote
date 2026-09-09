@@ -1,4 +1,4 @@
-import { Euler, MathUtils, Matrix4, Quaternion, Vector3 } from "three";
+import { Euler, MathUtils, Matrix4, Quaternion, Vector3, type EulerOrder } from "three";
 import type { Matrix16 } from "./emoteAnimation";
 
 const SHEAR_EPSILON = 1e-6;
@@ -34,14 +34,14 @@ export function multiplyMatrix16(left: Matrix16, right: Matrix16, label: string)
   return matrix4ToRowMajor(new Matrix4().set(...left).multiply(new Matrix4().set(...right)), label);
 }
 
-export function composeDegreesTransform(position: readonly number[], rotation: readonly number[], scale: readonly number[]): Matrix4 {
+export function composeDegreesTransform(position: readonly number[], rotation: readonly number[], scale: readonly number[], order: EulerOrder = "ZYX"): Matrix4 {
   return new Matrix4().compose(
     new Vector3(position[0], position[1], position[2]),
     new Quaternion().setFromEuler(new Euler(
       MathUtils.degToRad(rotation[0]),
       MathUtils.degToRad(rotation[1]),
       MathUtils.degToRad(rotation[2]),
-      "ZYX",
+      order,
     )),
     new Vector3(scale[0], scale[1], scale[2]),
   );

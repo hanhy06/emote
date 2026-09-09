@@ -4,16 +4,17 @@ To use your own animation, convert the source project to Emote JSON with the [Em
 
 ## Supported formats
 
-| Source format   | Files          |
-|-----------------|----------------|
-| BD Engine       | `.zip`         |
-| GeckoLib        | `.bbmodel`     |
-| Animated Java   | `.ajblueprint` |
-| Bedrock Edition | `.json`        |
+| Source format | Files |
+|---|---|
+| BD Engine | `.zip` |
+| GeckoLib | `.bbmodel` |
+| Animated Java | `.ajblueprint` |
+| Bedrock Edition | `.json` |
+| Emotecraft | `.emotecraft` |
 
-## 1. Open a file
+## 1. Open files
 
-Select **Choose animation file** in the converter and open the source project. Its format and animations are detected automatically. If the project contains multiple animations, use the **Animation** menu at the top to select the animation you want to configure.
+Select **Choose animation files** in the converter and open one or more source projects. Their formats and animations are detected automatically. If the imported files contain multiple animations, use the **Animation** menu at the top to select the animation you want to configure.
 
 <img src="../../assets/custom-emote/open.gif" alt="Opening an animation file in the converter">
 
@@ -35,6 +36,9 @@ When the configuration is complete, use **Export** to download the Animation JSO
 Place the exported JSON files under `config/emote/emote/`.
 
 When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`; Emote adds its contents to the Polymer resource pack. Client delivery follows the shared Polymer configuration. See the [Polymer documentation](https://polymer.pb4.eu/latest/) for configuration details.
+
+!!! note "Polymer is optional"
+    If none of your emotes use a `*.resources.zip` file, you can disable Polymer integration.
 
 ```text
 config/emote/

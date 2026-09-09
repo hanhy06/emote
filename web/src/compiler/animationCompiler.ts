@@ -18,16 +18,15 @@ import {
   type ConversionNode,
 } from "../domain/conversionDocument";
 import { multiplyMatrix16 } from "../format/matrix";
-import { localTransformToMatrix, matrixToLocalTransform } from "../format/localTransform";
+import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import { omitSnbtFields, serializeSnbtCompound, serializeSnbtString } from "../format/snbt";
+import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
+import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
+import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { animationAvailability, type ImportedAnimation } from "../domain/conversionSeed";
 
-const PLAYER_HEAD_SNBT = serializeSnbtCompound([
-  ["id", serializeSnbtString("minecraft:player_head")],
-  ["count", "1"],
-]);
+const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
 
 export function compileConversionAnimation(
   document: ConversionDocument,
@@ -47,10 +46,14 @@ export function compileConversionAnimation(
   if (!availability.exportable) {
     throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
   }
-  const mode = output.playbackMode === "source" ? animation.loop : output.playbackMode;
+  const mode = output.playbackMode === "source" ? animation.playbackMode : output.playbackMode;
+  const loopStartTicks = mode === "loop" ? parseMinecraftTime(output.loopStart) : 0;
+  const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
+  const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   return {
     type: "animation",
     schema_version: 4,
+    target_minecraft_version: document.targetMinecraftVersion,
     id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: documentMetadata(output),
     settings: {
@@ -60,27 +63,34 @@ export function compileConversionAnimation(
       player: output.player,
       playback: {
         mode,
-        loop_delay: formatMinecraftTime(mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay)),
+        ...(loopStartTicks === 0 ? {} : { loop_start: formatMinecraftTime(loopStartTicks) }),
+        ...(loopDelayTicks === 0 ? {} : { loop_delay: formatMinecraftTime(loopDelayTicks) }),
       },
     },
     ...(animation.runtime?.molang ? { molang: animation.runtime.molang } : {}),
-    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes) : compileNodes(document, animation),
+    nodes: animation.runtime ? compileRuntimeNodes(document, animation.runtime.nodes, profile) : compileNodes(document, animation, entry.nodeIds, profile),
     timeline: animation.runtime
-      ? compileRuntimeTimeline(document, animation.runtime.timeline, animation.durationTicks, animation.id)
-      : compileTimeline(document, animation),
+      ? compileRuntimeTimeline(document, animation.runtime.timeline, animation.durationTicks, animation.id, profile)
+      : compileTimeline(document, animation, profile),
   };
 }
 
-function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<string, EmoteNode>): Record<string, EmoteNode> {
+function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<string, RuntimeNode>, profile: MinecraftVersionProfile): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
-  return Object.fromEntries(Object.entries(sourceNodes).map(([id, node]) => {
+  return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
     const editorNode = document.nodes[id];
-    const common = {
-      ...node,
-      ...(!node.parent && editorNode ? { space: editorNode.space } : {}),
+    const node = {
+      ...sourceNode,
+      ...(!sourceNode.parent && editorNode ? { space: editorNode.space } : {}),
     };
-    if (node.type !== "item_display") return [id, common];
+    if (node.type === "block_display") {
+      const { blockState, ...output } = node;
+      return [id, { ...output, block_state_snbt: writeBlockState(blockState, profile) }];
+    }
+    if (node.type !== "item_display") return [id, node];
+    const { itemStack, ...itemOutput } = node;
     const assignment = assignments[id];
+    const outputItem = assignment ? PLAYER_HEAD : itemStack;
     const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
       ? matrixToLocalTransform(
           multiplyMatrix16(localTransformToMatrix(node.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
@@ -88,14 +98,12 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
         )
       : node.transform;
     return [id, {
-      ...common,
+      ...itemOutput,
       transform,
-      ...(assignment ? {
-        item_stack_snbt: PLAYER_HEAD_SNBT,
-        skin: { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order },
-      } : { skin: undefined }),
+      item_stack_snbt: writeItemStack(outputItem, profile),
+      skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
-  })) as Record<string, EmoteNode>;
+  }));
 }
 
 function validateAnimationIds(document: ConversionDocument): void {
@@ -107,8 +115,8 @@ function validateAnimationIds(document: ConversionDocument): void {
   }
 }
 
-function compileNodes(document: ConversionDocument, animation: ImportedAnimation): Record<string, EmoteNode> {
-  return Object.fromEntries(Object.entries(document.nodes).map(([id, node]) => {
+function compileNodes(document: ConversionDocument, animation: ImportedAnimation, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+  return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = animation.tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
     if (node.type === "anchor") return [id, { type: "anchor", space: node.space, transform }];
@@ -123,7 +131,7 @@ function compileNodes(document: ConversionDocument, animation: ImportedAnimation
       return [id, {
         ...common,
         type: "item_display",
-        item_stack_snbt: assignment && node.playerHeadConversion ? PLAYER_HEAD_SNBT : node.itemStackSnbt,
+        item_stack_snbt: writeItemStack(assignment && node.playerHeadConversion ? PLAYER_HEAD : node.itemStack, profile),
         item_display: node.itemDisplay,
         ...(assignment ? {
           skin: {
@@ -134,7 +142,7 @@ function compileNodes(document: ConversionDocument, animation: ImportedAnimation
         } : {}),
       }];
     }
-    if (node.type === "block_display") return [id, { ...common, type: "block_display", block_state_snbt: node.blockStateSnbt }];
+    if (node.type === "block_display") return [id, { ...common, type: "block_display", block_state_snbt: writeBlockState(node.blockState, profile) }];
     return [id, { ...common, type: "text_display", text: node.text }];
   }));
 }
@@ -150,7 +158,7 @@ function compileNodeMatrix(
   return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
 }
 
-function compileTimeline(document: ConversionDocument, animation: ImportedAnimation): EmoteAnimation["timeline"] {
+function compileTimeline(document: ConversionDocument, animation: ImportedAnimation, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const tracks: Record<string, EmoteNodeTracks> = {};
   for (const [nodeId, track] of Object.entries(animation.tracks)) {
@@ -177,7 +185,7 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
     }
     if (track.nbt.length > 0) {
       const nbt = track.nbt.flatMap((frame) => {
-        const value = compileNodeNbt(document, nodeId, frame.value);
+        const value = compileNodeNbt(document, nodeId, frame.value, profile);
         return value === undefined ? [] : [{
           time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
           value,
@@ -206,14 +214,15 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
 
 function compileRuntimeTimeline(
   document: ConversionDocument,
-  timeline: EmoteAnimation["timeline"],
+  timeline: RuntimeTimeline,
   durationTicks: number,
   animationId: string,
+  profile: MinecraftVersionProfile,
 ): EmoteAnimation["timeline"] {
   const tracks = Object.fromEntries(Object.entries(timeline.tracks).map(([nodeId, track]) => {
     if (!track.nbt?.length) return [nodeId, track];
     const nbt = track.nbt.flatMap((frame) => {
-      const value = compileRuntimeNbtValue(document, nodeId, frame.value);
+      const value = compileRuntimeNbtValue(document, nodeId, frame.value, profile);
       return value === undefined ? [] : [{ ...frame, value }];
     });
     const { nbt: _nbt, ...remaining } = track;
@@ -225,19 +234,60 @@ function compileRuntimeTimeline(
 function compileRuntimeNbtValue(
   document: ConversionDocument,
   nodeId: string,
-  value: EmoteNbtValue,
-): typeof value | undefined {
-  if (typeof value === "string") return compileNodeNbt(document, nodeId, value);
-  const compiled = value.options.map((option) => compileNodeNbt(document, nodeId, option));
-  if (compiled.every((option) => option === undefined)) return undefined;
-  return { ...value, options: compiled.map((option) => option ?? "{}") };
+  value: DisplayNbtValue,
+  profile: MinecraftVersionProfile,
+): EmoteNbtValue | undefined {
+  if ("molang" in value) return { molang: compileMolangNbtLiterals(document, nodeId, value.molang, profile) };
+  return compileNodeNbt(document, nodeId, value, profile);
 }
 
-function compileNodeNbt(document: ConversionDocument, nodeId: string, value: string): string | undefined {
+function compileMolangNbtLiterals(
+  document: ConversionDocument,
+  nodeId: string,
+  source: string,
+  profile: MinecraftVersionProfile,
+): string {
+  return source.replace(/(["'])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g, (literal, quote: string, encoded: string) => {
+    const decoded = decodeMolangString(encoded);
+    if (!decoded.trimStart().startsWith("{")) return literal;
+
+    try {
+      const compiled = compileNodeNbt(document, nodeId, readDisplayNbt(decoded), profile) ?? "{}";
+      return quoteMolangString(compiled, quote);
+    } catch {
+      return literal;
+    }
+  });
+}
+
+function decodeMolangString(value: string): string {
+  return value.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
+    if (character === "n") return "\n";
+    if (character === "r") return "\r";
+    if (character === "t") return "\t";
+    if (character === "b") return "\b";
+    if (character === "f") return "\f";
+    return character;
+  });
+}
+
+function quoteMolangString(value: string, quote: string): string {
+  const escaped = value
+    .replaceAll("\\", "\\\\")
+    .replaceAll(quote, `\\${quote}`)
+    .replaceAll("\n", "\\n")
+    .replaceAll("\r", "\\r")
+    .replaceAll("\t", "\\t");
+  return `${quote}${escaped}${quote}`;
+}
+
+function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {
   const node = document.nodes[nodeId];
-  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.skinGroupId) return value;
-  if (!document.skinGroups[node.skinGroupId]?.assignment) return value;
-  return omitSnbtFields(value, new Set(["item"]));
+  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.skinGroupId
+    || !document.skinGroups[node.skinGroupId]?.assignment) return writeDisplayNbt(value, profile);
+  const { itemStack: _item, ...remaining } = value;
+  if (!remaining.blockState && remaining.rawFields.length === 0) return undefined;
+  return writeDisplayNbt(remaining, profile);
 }
 
 interface TransformFrame {
@@ -260,7 +310,7 @@ function compileTransformFrames(
   for (const source of sourceFrames) {
     const tick = requireTick(source.tick, `${animation.id}/${nodeId} transform`);
     const matrix = node ? compileNodeMatrix(document, nodeId, node, source.matrix) : source.matrix;
-    const transform = matrixToLocalTransform(matrix, `${animation.id}/${nodeId}/${tick}t`);
+    const transform = matrixToContinuousLocalTransform(matrix, result.at(-1)!.transform.rotation, `${animation.id}/${nodeId}/${tick}t`);
     if (tick === 0) {
       result[0] = { tick: 0, transform };
       continue;

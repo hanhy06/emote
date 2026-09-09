@@ -64,6 +64,24 @@ describe("validateEmoteAnimation", () => {
     expect(validateEmoteAnimation(value)).toEqual([]);
   });
 
+  it("defaults omitted loop settings to zero", () => {
+    const value = animation();
+    value.settings.playback = { mode: "loop" };
+    expect(validateEmoteAnimation(value)).toEqual([]);
+  });
+
+  it("validates loop start mode and duration", () => {
+    const value = animation();
+    value.settings.playback = { mode: "loop", loop_start: "1t" };
+    expect(validateEmoteAnimation(value)).toEqual([]);
+
+    value.settings.playback = { mode: "server_sync", loop_start: "1t" };
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_start");
+
+    value.settings.playback = { mode: "loop", loop_start: "2t" };
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_start");
+  });
+
   it("accepts a schema 4 NBT track and rejects runtime-owned fields", () => {
     const value = animation();
     value.timeline.tracks.display.nbt = [
@@ -79,27 +97,22 @@ describe("validateEmoteAnimation", () => {
     });
   });
 
-  it("validates every option of a Molang-selected NBT keyframe", () => {
+  it("validates a Molang NBT string expression", () => {
     const value = animation();
     value.timeline.tracks.display.nbt = [{
       time: "0t",
       value: {
-        select: "math.random_integer(0, 3)",
-        options: [
-          "{item:{id:'minecraft:poppy',count:1}}",
-          "{item:{id:'minecraft:dandelion',count:1}}",
-          "{item:{id:'minecraft:blue_orchid',count:1}}",
-        ],
+        molang: "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'",
       },
     }];
     expect(validateEmoteAnimation(value)).toEqual([]);
 
-    const selected = value.timeline.tracks.display.nbt[0].value;
-    if (typeof selected === "string") throw new Error("Expected selected NBT fixture.");
-    selected.options[1] = "{Glowing:true}";
+    const molang = value.timeline.tracks.display.nbt[0].value;
+    if (typeof molang === "string") throw new Error("Expected Molang NBT fixture.");
+    molang.molang = " ";
     expect(validateEmoteAnimation(value)).toContainEqual({
-      path: "timeline.tracks.display.nbt[0].value.options[1]",
-      message: "0t NBT options must declare the same fields",
+      path: "timeline.tracks.display.nbt[0].value.molang",
+      message: "Molang must not be blank",
     });
   });
 

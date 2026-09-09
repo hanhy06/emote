@@ -1,9 +1,14 @@
 package io.github.hanhy06.emote.config;
 
+import net.minecraft.resources.Identifier;
+
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 public record AccessConfig(List<String> disabled, List<PermissionEntry> permissions) {
-    public static final int CURRENT_SCHEMA_VERSION = 2;
+    public static final int CURRENT_SCHEMA_VERSION = 3;
+    public static final int LEGACY_SCHEMA_VERSION = 2;
 
     public AccessConfig {
         disabled = normalizeIds(disabled, "disabled", "disabled emote id must not be blank", false);
@@ -25,7 +30,8 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             List.of(new PermissionEntry(
                 "emote.default",
                 List.of("*"),
-                Optional.of(new IdleSettings(3 * 60 * 20, List.of("emote:sit")))
+                Optional.empty(),
+                Optional.of(new IdleSettings(3 * 60 * 20, List.of("emote:idle\\..*")))
             ))
         );
     }
@@ -34,20 +40,136 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
         return !disabled.contains(id);
     }
 
-    public record PermissionEntry(String permission, List<String> emotes, Optional<IdleSettings> idle) {
-        public PermissionEntry {
+    public static final class PermissionEntry {
+        private static final String ALL_EMOTES = "*";
+
+        private final String permission;
+        private final List<String> emotes;
+        private final Optional<CooldownModifier> cooldown;
+        private final Optional<IdleSettings> idle;
+        private final boolean allEmotes;
+        private final List<Pattern> emotePatterns;
+
+        public PermissionEntry(
+            String permission,
+            List<String> emotes,
+            Optional<CooldownModifier> cooldown,
+            Optional<IdleSettings> idle
+        ) {
             if (permission == null || permission.isBlank()) {
                 throw new IllegalArgumentException("permission must not be blank");
             }
-            permission = permission.trim();
+            this.permission = permission.trim();
 
-            emotes = normalizeIds(
+            this.emotes = normalizeIds(
                 emotes,
                 "permission emotes",
-                "permission emote id must not be blank",
+                "permission emote pattern must not be blank",
                 false
             );
-            Objects.requireNonNull(idle, "idle");
+            this.cooldown = Objects.requireNonNull(cooldown, "cooldown");
+            this.idle = Objects.requireNonNull(idle, "idle");
+            this.allEmotes = this.emotes.contains(ALL_EMOTES);
+            this.emotePatterns = this.emotes.stream()
+                .filter(pattern -> !pattern.equals(ALL_EMOTES))
+                .map(this::compilePattern)
+                .toList();
+        }
+
+        public String permission() {
+            return this.permission;
+        }
+
+        public List<String> emotes() {
+            return this.emotes;
+        }
+
+        public Optional<IdleSettings> idle() {
+            return this.idle;
+        }
+
+        public Optional<CooldownModifier> cooldown() {
+            return this.cooldown;
+        }
+
+        public boolean appliesToAllEmotes() {
+            return this.allEmotes;
+        }
+
+        public boolean matchesEmote(String id) {
+            return this.emotePatterns.stream().anyMatch(pattern -> pattern.matcher(id).matches());
+        }
+
+        private Pattern compilePattern(String source) {
+            try {
+                return compileIdPattern(source);
+            } catch (PatternSyntaxException exception) {
+                throw new IllegalArgumentException(
+                    "invalid emote pattern '" + source + "' for permission '" + this.permission + "': " + exception.getDescription(),
+                    exception
+                );
+            }
+        }
+
+        @Override
+        public boolean equals(Object object) {
+            if (this == object) {
+                return true;
+            }
+            if (!(object instanceof PermissionEntry other)) {
+                return false;
+            }
+            return this.permission.equals(other.permission)
+                && this.emotes.equals(other.emotes)
+                && this.cooldown.equals(other.cooldown)
+                && this.idle.equals(other.idle);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(this.permission, this.emotes, this.cooldown, this.idle);
+        }
+
+        @Override
+        public String toString() {
+            return "PermissionEntry[permission=" + this.permission + ", emotes=" + this.emotes
+                + ", cooldown=" + this.cooldown + ", idle=" + this.idle + "]";
+        }
+    }
+
+    public record CooldownModifier(Type type, double value) {
+        public CooldownModifier {
+            Objects.requireNonNull(type, "type");
+            if (!Double.isFinite(value) || value < 0.0D) {
+                throw new IllegalArgumentException("cooldown modifier must be a finite nonnegative number");
+            }
+            if (type == Type.SUBTRACT && value != Math.rint(value)) {
+                throw new IllegalArgumentException("cooldown tick reduction must be a whole number");
+            }
+        }
+
+        public static CooldownModifier multiply(double multiplier) {
+            return new CooldownModifier(Type.MULTIPLY, multiplier);
+        }
+
+        public static CooldownModifier subtract(int ticks) {
+            return new CooldownModifier(Type.SUBTRACT, ticks);
+        }
+
+        public int apply(int cooldownTicks) {
+            double adjusted = this.type == Type.MULTIPLY
+                ? cooldownTicks * this.value
+                : cooldownTicks - this.value;
+            return (int)Math.clamp(Math.round(adjusted), 0L, Integer.MAX_VALUE);
+        }
+
+        public String configValue() {
+            return this.type == Type.MULTIPLY ? "x" + this.value : (int)this.value + "t";
+        }
+
+        public enum Type {
+            MULTIPLY,
+            SUBTRACT
         }
     }
 
@@ -73,6 +195,22 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             if (weighted && choices.stream().mapToInt(Choice::chance).sum() != 100) {
                 throw new IllegalArgumentException("idle emote chances must total 100");
             }
+            if (weighted && choices.stream().anyMatch(Choice::isPattern)) {
+                throw new IllegalArgumentException("idle emote patterns cannot use explicit chances");
+            }
+            for (Choice choice : choices) {
+                if (!choice.isPattern()) {
+                    continue;
+                }
+                try {
+                    compileIdPattern(choice.id());
+                } catch (PatternSyntaxException exception) {
+                    throw new IllegalArgumentException(
+                        "invalid idle emote pattern '" + choice.id() + "': " + exception.getDescription(),
+                        exception
+                    );
+                }
+            }
         }
 
         public IdleSettings(int delayTicks, Collection<String> emotes) {
@@ -88,6 +226,25 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
             return this.choices.stream().map(Choice::id).toList();
         }
 
+        public List<Choice> resolveChoices(Collection<String> availableIds) {
+            Objects.requireNonNull(availableIds, "available emote ids");
+            LinkedHashMap<String, Choice> resolved = new LinkedHashMap<>();
+            List<String> sortedIds = availableIds.stream().sorted().toList();
+            for (Choice choice : this.choices) {
+                if (!choice.isPattern()) {
+                    resolved.putIfAbsent(choice.id(), choice);
+                    continue;
+                }
+                Pattern pattern = compileIdPattern(choice.id());
+                for (String id : sortedIds) {
+                    if (pattern.matcher(id).matches()) {
+                        resolved.putIfAbsent(id, new Choice(id, 0));
+                    }
+                }
+            }
+            return List.copyOf(resolved.values());
+        }
+
         public record Choice(String id, int chance) {
             public Choice {
                 if (id == null || id.isBlank()) {
@@ -98,7 +255,17 @@ public record AccessConfig(List<String> disabled, List<PermissionEntry> permissi
                     throw new IllegalArgumentException("idle emote chance must be between 1 and 100");
                 }
             }
+
+            public boolean isPattern() {
+                return Identifier.tryParse(this.id) == null;
+            }
         }
+    }
+
+    private static Pattern compileIdPattern(String source) {
+        return Identifier.tryParse(source) != null
+            ? Pattern.compile(source, Pattern.LITERAL)
+            : Pattern.compile(source);
     }
 
     private static List<String> normalizeIds(

@@ -6,10 +6,6 @@ import com.mojang.authlib.properties.Property;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -26,17 +22,11 @@ public class PlayerSkinManager implements ConfigListener {
     private final PlayerSkinProvider provider;
     private final Function<ServerPlayer, PlayerSkinSource> playerSkinSourceResolver;
     private final List<Consumer<UUID>> readyListeners = new CopyOnWriteArrayList<>();
+    private final Map<UUID, SkinIdentity> connectedSkins = new HashMap<>();
+    private Set<PlayerSkinRegion> modelRegions = Set.of();
 
-    public PlayerSkinManager() {
-        this(
-            new MineSkinProvider(
-                new PlayerSkinBaker(),
-                new MineSkinCache(),
-                new MineSkinClient(),
-                new MineSkinTaskQueue()
-            ),
-            PlayerSkinManager::readPlayerSkinSource
-        );
+    public PlayerSkinManager(PlayerSkinProvider provider) {
+        this(provider, PlayerSkinManager::readPlayerSkinSource);
     }
 
     PlayerSkinManager(
@@ -67,7 +57,7 @@ public class PlayerSkinManager implements ConfigListener {
         if (skinBindings.isEmpty()) {
             return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100);
         }
-        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(skinBindings.size());
+        Set<PlayerSkinRegion> requiredTextureKeys = new LinkedHashSet<>(this.modelRegions);
         for (SkinBinding binding : skinBindings) {
             requiredTextureKeys.add(binding.region());
         }
@@ -78,21 +68,52 @@ public class PlayerSkinManager implements ConfigListener {
         return this.provider.prepare(skinSource, requiredTextureKeys);
     }
 
+    public void setModelBindings(Collection<SkinBinding> bindings) {
+        Set<PlayerSkinRegion> regions = new LinkedHashSet<>();
+        for (SkinBinding binding : bindings) {
+            regions.add(binding.region());
+        }
+        this.modelRegions = Set.copyOf(regions);
+    }
+
+    public void checkPlayerSkin(ServerPlayer player) {
+        PlayerSkinSource source = this.playerSkinSourceResolver.apply(player);
+        if (source == null || this.modelRegions.isEmpty()) {
+            return;
+        }
+        SkinIdentity identity = new SkinIdentity(source.textureHash(), source.slimModel());
+        SkinIdentity previous = this.connectedSkins.put(source.playerUuid(), identity);
+        if (identity.equals(previous)) {
+            return;
+        }
+        PlayerSkinPreparation preparation = this.provider.prepare(source, this.modelRegions);
+        if (previous != null && preparation.state() == PlayerSkinPreparation.State.READY) {
+            for (Consumer<UUID> readyListener : this.readyListeners) {
+                readyListener.accept(source.playerUuid());
+            }
+        }
+    }
+
+    public void removePlayer(UUID playerUuid) {
+        this.connectedSkins.remove(playerUuid);
+    }
+
     public void addReadyListener(Consumer<UUID> readyListener) {
         this.readyListeners.add(Objects.requireNonNull(readyListener, "readyListener"));
     }
 
     public void cancelPendingBakes() {
+        this.connectedSkins.clear();
         this.provider.cancelPendingBakes();
+    }
+
+    public SkinProcessingStats processingStats() {
+        return this.provider.processingStats();
     }
 
     private void notifySkinReady(UUID playerUuid) {
         MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
-            ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
-            if (player != null) {
-                player.sendSystemMessage(Component.literal("Your skin is ready. Play the emote again."));
-            }
             for (Consumer<UUID> readyListener : this.readyListeners) {
                 readyListener.accept(playerUuid);
             }
@@ -128,6 +149,9 @@ public class PlayerSkinManager implements ConfigListener {
             skinTexture.getUrl(),
             slimModel
         );
+    }
+
+    private record SkinIdentity(String textureHash, boolean slimModel) {
     }
 
 }

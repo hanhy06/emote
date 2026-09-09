@@ -1,3 +1,4 @@
+import { readItemStack } from "../format/minecraftData";
 import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "../format/emoteAnimation";
 import { IDENTITY_MATRIX } from "../format/matrix";
@@ -24,7 +25,7 @@ describe("ConversionDocument", () => {
     });
     expect(document.animations[0].output).toMatchObject({
       displayName: "Test",
-      namespace: "test",
+      namespace: "emote",
     });
     expect(document.nodes.head).not.toHaveProperty("suggestedSkin");
   });
@@ -37,8 +38,8 @@ describe("ConversionDocument", () => {
     const document = createConversionDocument(source, "Test adapter");
 
     expect(document.animations.map(({ output }) => output)).toMatchObject([
-      { namespace: "test", displayName: "Test", description: "Test emote." },
-      { namespace: "test", displayName: "Second animation", description: "Second animation emote." },
+      { namespace: "emote", displayName: "Test", description: "Test emote." },
+      { namespace: "emote", displayName: "Second animation", description: "Second animation emote." },
     ]);
   });
 
@@ -68,15 +69,15 @@ describe("ConversionDocument", () => {
     const source = project();
     source.nodes = {
       quoted: {
-        id: "quoted", type: "item_display", itemStackSnbt: '{id:"minecraft:player_head",count:1}', itemDisplay: "none",
+        id: "quoted", type: "item_display", itemStack: readItemStack('{id:"minecraft:player_head",count:1}'), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
       bare: {
-        id: "bare", type: "item_display", itemStackSnbt: "{id:player_head,count:1}", itemDisplay: "none",
+        id: "bare", type: "item_display", itemStack: readItemStack("{id:player_head,count:1}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
       other: {
-        id: "other", type: "item_display", itemStackSnbt: "{id:stone,count:1}", itemDisplay: "none",
+        id: "other", type: "item_display", itemStack: readItemStack("{id:stone,count:1}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true,
       },
     };
@@ -94,18 +95,18 @@ function project(): ImportedProject {
     suggestedNamespace: "test",
     nodes: {
       head: {
-        id: "head", type: "item_display", itemStackSnbt: "{id:player_head}", itemDisplay: "none",
+        id: "head", type: "item_display", itemStack: readItemStack("{id:player_head}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true, skinAssignmentGroup: "head",
         suggestedSkin: { participant: "partner", part: "head", order: 2 },
       },
       head_variant: {
-        id: "head_variant", type: "item_display", itemStackSnbt: "{id:player_head}", itemDisplay: "none",
+        id: "head_variant", type: "item_display", itemStack: readItemStack("{id:player_head}"), itemDisplay: "none",
         defaultMatrix: IDENTITY_MATRIX, visible: true, skinAssignmentGroup: "head",
         suggestedSkin: { part: "head", order: 2 },
       },
     },
     animations: [{
-      id: "test", name: "Test", durationTicks: 1, loop: "once", loopDelayTicks: 0,
+      id: "test", name: "Test", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
       tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
     }],
     diagnostics: [],

@@ -4,17 +4,21 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
+import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.tree.ArgumentCommandNode;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.stress.PlaybackStressTestReport;
 import io.github.hanhy06.emote.playback.stress.StressTestPacketLoad;
 import io.github.hanhy06.emote.server.ReloadResult;
+import io.github.hanhy06.emote.skin.SkinProcessingStats;
 import net.minecraft.ChatFormatting;
 import net.minecraft.SharedConstants;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.Bootstrap;
@@ -23,9 +27,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.LinkedHashMap;
 
-import static io.github.hanhy06.emote.playback.PlaybackEngine.DEFAULT_STRESS_TEST_PACKET_FANOUT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_INSTANCE_COUNT;
-import static io.github.hanhy06.emote.playback.PlaybackEngine.MAX_STRESS_TEST_PACKET_FANOUT;
+import static io.github.hanhy06.emote.playback.PlaybackEngine.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 final class AdminCommandTest {
@@ -46,6 +48,12 @@ final class AdminCommandTest {
     }
 
     @Test
+    void infoRequiresManagePermission() {
+        assertFalse(createCommand(false).createInfoCommand().build().getRequirement().test(null));
+        assertTrue(createCommand(true).createInfoCommand().build().getRequirement().test(null));
+    }
+
+    @Test
     void stopPlayerArgumentCoexistsWithSelfStopCommand() {
         var root = Commands.<CommandSourceStack>literal("emote")
             .then(Commands.<CommandSourceStack>literal("stop").executes(ignoredContext -> 1));
@@ -55,6 +63,18 @@ final class AdminCommandTest {
         var stop = root.build().getChild("stop");
         assertNotNull(stop.getCommand());
         assertNotNull(stop.getChild("player"));
+        assertNull(root.build().getChild("stop-all"));
+    }
+
+    @Test
+    void stopPlayerArgumentAcceptsAllPlayersAndNames() throws Exception {
+        var command = createCommand(true).createStopPlayerCommand().build();
+        var argument = (ArgumentCommandNode<?, ?>) command.getChild("player");
+        var type = (EntityArgument) argument.getType();
+
+        assertEquals(Integer.MAX_VALUE, type.parse(new StringReader("@a")).getMaxResults());
+        assertEquals(1, type.parse(new StringReader("Player")).getMaxResults());
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> type.parse(new StringReader("@e")));
     }
 
     @Test
@@ -111,8 +131,39 @@ final class AdminCommandTest {
     }
 
     @Test
-    void stressTestRequiresTimeBeforeTheOptionalInstanceCountAndPacketFanout() {
-        var command = createCommand(true).createStressTestCommand().build();
+    void infoSummaryShowsRuntimeCapacityAndSkinQueue() {
+        var summary = AdminCommand.createInfoSummary(new AdminCommand.AdminInfoSnapshot(
+            12,
+            14,
+            386,
+            512,
+            new SkinProcessingStats("Account", 2, 7, 1),
+            43,
+            3
+        ));
+
+        assertEquals(
+            "\n\n\n\n\nEmote server info"
+                + "\n\nPlayback"
+                + "\n• Sessions: 12"
+                + "\n• Players: 14"
+                + "\n• Displays: 386 / 512 (75.4%)"
+                + "\n\nSkin processing"
+                + "\n• Provider: Account"
+                + "\n• Jobs: 2 active · 7 queued"
+                + "\n• Retries: 1"
+                + "\n\nContent"
+                + "\n• Emotes: 43 loaded · 3 disable rules",
+            summary.getString()
+        );
+        assertEquals(ChatFormatting.YELLOW, AdminCommand.displayUsageColor(386, 512));
+        assertEquals(ChatFormatting.GREEN, AdminCommand.displayUsageColor(1_000, 0));
+        assertEquals(ChatFormatting.RED, AdminCommand.displayUsageColor(461, 512));
+    }
+
+    @Test
+    void stressTestAcceptsSuffixedLoadBeforeTheOptionalPacketFanout() {
+        var command = createStressTestCommand(true).createCommand().build();
         assertNull(command.getCommand());
 
         var time = (ArgumentCommandNode<?, ?>) command.getChild("time");
@@ -120,20 +171,27 @@ final class AdminCommandTest {
         assertInstanceOf(TimeArgument.class, time.getType());
         assertNotNull(time.getCommand());
 
-        var count = (ArgumentCommandNode<?, ?>) time.getChild("count");
-        assertNotNull(count);
-        var countType = (IntegerArgumentType) count.getType();
-        assertEquals(1, countType.getMinimum());
-        assertEquals(500, countType.getMaximum());
-        assertEquals(MAX_STRESS_TEST_INSTANCE_COUNT, countType.getMaximum());
+        var load = (ArgumentCommandNode<?, ?>) time.getChild("load");
+        assertNotNull(load);
+        assertInstanceOf(StringArgumentType.class, load.getType());
 
-        var packets = (ArgumentCommandNode<?, ?>) count.getChild("packets");
+        var packets = (ArgumentCommandNode<?, ?>) load.getChild("packets");
         assertNotNull(packets);
         var packetsType = (IntegerArgumentType) packets.getType();
         assertEquals(0, packetsType.getMinimum());
         assertEquals(500, packetsType.getMaximum());
         assertEquals(MAX_STRESS_TEST_PACKET_FANOUT, packetsType.getMaximum());
         assertEquals(20, DEFAULT_STRESS_TEST_PACKET_FANOUT);
+    }
+
+    @Test
+    void stressLoadDefaultsToInstancesAndAcceptsExplicitSuffixes() throws Exception {
+        assertEquals(new StressTestCommand.StressLoad(100, StressTestCommand.LoadUnit.INSTANCES), StressTestCommand.parseLoad("100"));
+        assertEquals(new StressTestCommand.StressLoad(100, StressTestCommand.LoadUnit.INSTANCES), StressTestCommand.parseLoad("100i"));
+        assertEquals(new StressTestCommand.StressLoad(1_000, StressTestCommand.LoadUnit.DISPLAYS), StressTestCommand.parseLoad("1000d"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("0d"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("501i"));
+        assertThrows(com.mojang.brigadier.exceptions.CommandSyntaxException.class, () -> StressTestCommand.parseLoad("100D"));
     }
 
     @Test
@@ -156,7 +214,7 @@ final class AdminCommandTest {
             packetLoad
         );
 
-        var summaryComponent = AdminCommand.createPacketLoadSummary(report);
+        var summaryComponent = StressTestCommand.createPacketLoadSummary(report);
         String summary = summaryComponent.getString();
         assertTrue(summary.contains("Fanout: 20×"));
         assertTrue(summary.contains("Throughput: 46 packets/s / 0.05 MiB/s"));
@@ -175,7 +233,7 @@ final class AdminCommandTest {
 
         assertEquals(
             "\n• Duration: 46.7 s\n  Setup 3.0 s + Emote 2.5 s + Network 37.3 s\n  + Server/idle 3.8 s + Cleanup 0.1 s",
-            AdminCommand.createStressDurationSummary(report).getString()
+            StressTestCommand.createStressDurationSummary(report).getString()
         );
         assertEquals(43.52641D, report.runtimeSeconds(), 0.00001D);
         assertEquals(13.78473D, report.observedTps(), 0.00001D);
@@ -183,7 +241,7 @@ final class AdminCommandTest {
 
     @Test
     void stressTestStatisticColorsItsLabelAndKeepsItsValueWhite() {
-        var statistic = AdminCommand.createStressStatistic("\n  ", "avg", "%.2f ms", ChatFormatting.GREEN, 12.5D);
+        var statistic = StressTestCommand.createStressStatistic("\n  ", "avg", "%.2f ms", ChatFormatting.GREEN, 12.5D);
 
         assertEquals("\n  avg: 12.50 ms", statistic.getString());
         assertEquals(Style.EMPTY.withColor(ChatFormatting.GREEN), statistic.getStyle());
@@ -191,12 +249,20 @@ final class AdminCommandTest {
     }
 
     private AdminCommand createCommand(boolean canManage) {
+        return new AdminCommand(null, null, permissionService(canManage), null, null, null);
+    }
+
+    private StressTestCommand createStressTestCommand(boolean canManage) {
+        return new StressTestCommand(null, null, permissionService(canManage));
+    }
+
+    private PermissionService permissionService(boolean canManage) {
         PermissionService permissionService = new PermissionService() {
             @Override
             public boolean canManage(CommandSourceStack source) {
                 return canManage;
             }
         };
-        return new AdminCommand(null, null, permissionService, null, null);
+        return permissionService;
     }
 }

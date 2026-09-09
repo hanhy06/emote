@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback.runtime;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
@@ -61,6 +60,12 @@ class PlaybackNodesTest {
     }
 
     @Test
+    void usesOneTickInterpolationWithoutRotationDeadzone() {
+        assertEquals(1, PlaybackEntityController.positionRotationInterpolationTicks(0.0F));
+        assertEquals(3, PlaybackEntityController.positionRotationInterpolationTicks(50.0F));
+    }
+
+    @Test
     void itemNodeKeepsReplacementStackForVisibilityRestores() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
@@ -68,7 +73,7 @@ class PlaybackNodesTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new EmoteAnimation.FixedItemSource(new CompoundTag()),
+            new CompoundTag(),
             "none",
             null
         );
@@ -87,31 +92,6 @@ class PlaybackNodesTest {
     }
 
     @Test
-    void heldItemNodeKeepsItsPhysicalArmWhenStackChanges() {
-        EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
-            true,
-            EmoteAnimation.NodeSpace.INITIATOR,
-            null,
-            EmoteAnimation.LocalTransform.IDENTITY,
-            new CompoundTag(),
-            new EmoteAnimation.ParticipantHandItemSource(HumanoidArm.RIGHT),
-            "thirdperson_righthand",
-            null
-        );
-        PlaybackNodes.NodeInstance node = new PlaybackNodes.NodeInstance(
-            "right_item",
-            itemNode,
-            null,
-            new PlaybackNodes.HeldItemContent(ItemStack.EMPTY, HumanoidArm.RIGHT)
-        );
-
-        node.setItemStack(ItemStack.EMPTY);
-
-        PlaybackNodes.HeldItemContent content = assertInstanceOf(PlaybackNodes.HeldItemContent.class, node.displayContent());
-        assertEquals(HumanoidArm.RIGHT, content.arm());
-    }
-
-    @Test
     void countsDisplayNodesOnceWithoutIncludingAnchors() {
         EmoteAnimation.ItemNode itemNode = new EmoteAnimation.ItemNode(
             true,
@@ -119,7 +99,7 @@ class PlaybackNodesTest {
             null,
             EmoteAnimation.LocalTransform.IDENTITY,
             new CompoundTag(),
-            new EmoteAnimation.FixedItemSource(new CompoundTag()),
+            new CompoundTag(),
             "none",
             null
         );
@@ -177,6 +157,29 @@ class PlaybackNodesTest {
         nodes.updateViewYaw(90.0F, 50.0F);
         assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
         assertEquals(180.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.PARTNER));
+    }
+
+    @Test
+    void movesEveryNodeSpaceWithTheSceneWhilePreservingRelativePlacement() {
+        RootTransform scene = RootTransform.create(new Vec3(10.0D, 64.0D, 20.0D), 30.0F);
+        RootTransform partner = RootTransform.create(new Vec3(12.0D, 64.0D, 19.0D), -45.0F);
+        PlaybackNodes nodes = new PlaybackNodes(
+            Map.of(
+                EmoteAnimation.NodeSpace.SCENE, scene,
+                EmoteAnimation.NodeSpace.INITIATOR, scene,
+                EmoteAnimation.NodeSpace.PARTNER, partner
+            ),
+            Map.of()
+        );
+
+        assertTrue(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
+
+        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root().position());
+        assertEquals(new Vec3(13.0D, 65.0D, 24.0D), nodes.root(EmoteAnimation.NodeSpace.INITIATOR).position());
+        assertEquals(new Vec3(15.0D, 65.0D, 23.0D), nodes.root(EmoteAnimation.NodeSpace.PARTNER).position());
+        assertEquals(30.0F, nodes.root().yaw());
+        assertEquals(-45.0F, nodes.root(EmoteAnimation.NodeSpace.PARTNER).yaw());
+        assertFalse(nodes.moveSceneTo(new Vec3(13.0D, 65.0D, 24.0D)));
     }
 
     @Test

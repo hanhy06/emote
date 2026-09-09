@@ -3,6 +3,31 @@ import { createDefaultPlayerBehavior } from "./emoteAnimation";
 import { requireEmoteAnimation } from "./emoteAnimationRuntime";
 
 describe("requireEmoteAnimation", () => {
+  it("rejects an item display without an item stack", () => {
+    expect(() => requireEmoteAnimation({
+      type: "animation",
+      schema_version: 4,
+      id: "demo:empty_item",
+      metadata: { name: "Empty item", description: "" },
+      settings: {
+        standalone: true,
+        cooldown: "0t",
+        rotation_deadzone: 50,
+        player: createDefaultPlayerBehavior(),
+        playback: { mode: "once" },
+      },
+      nodes: {
+        item: {
+          type: "item_display",
+          space: "scene",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          item_display: "none",
+        },
+      },
+      timeline: { duration: "1t", tracks: {} },
+    })).toThrow("nodes.item.item_stack_snbt must be a string");
+  });
+
   it.each([undefined, null])("defaults an omitted skin participant to initiator", (participant) => {
     const skin = { part: "head", order: 0, ...(participant === undefined ? {} : { participant }) };
     const animation = requireEmoteAnimation({
@@ -15,7 +40,7 @@ describe("requireEmoteAnimation", () => {
         cooldown: "0t",
         rotation_deadzone: 50,
         player: createDefaultPlayerBehavior(),
-        playback: { mode: "once", loop_delay: "0t" },
+        playback: { mode: "once" },
       },
       nodes: {
         head: {
@@ -31,6 +56,7 @@ describe("requireEmoteAnimation", () => {
     });
 
     expect(animation.nodes.head.type === "item_display" && animation.nodes.head.skin?.participant).toBe("initiator");
+    expect(animation.settings.playback).toEqual({ mode: "once" });
   });
 
   it("preserves an explicit partner participant", () => {
@@ -62,7 +88,7 @@ describe("requireEmoteAnimation", () => {
     expect(animation.nodes.head.type === "item_display" && animation.nodes.head.skin?.participant).toBe("partner");
   });
 
-  it("accepts a Molang-selected NBT keyframe with any number of options", () => {
+  it("accepts a Molang NBT string expression", () => {
     const animation = requireEmoteAnimation({
       type: "animation",
       schema_version: 4,
@@ -91,12 +117,7 @@ describe("requireEmoteAnimation", () => {
             nbt: [{
               time: "0t",
               value: {
-                select: "math.random_integer(0, 3)",
-                options: [
-                  "{item:{id:'minecraft:poppy',count:1}}",
-                  "{item:{id:'minecraft:dandelion',count:1}}",
-                  "{item:{id:'minecraft:blue_orchid',count:1}}",
-                ],
+                molang: "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'",
               },
             }],
           },
@@ -105,8 +126,7 @@ describe("requireEmoteAnimation", () => {
     });
 
     expect(animation.timeline.tracks.flower.nbt?.[0].value).toMatchObject({
-      select: "math.random_integer(0, 3)",
-      options: { length: 3 },
+      molang: "q.is_sneaking ? '{Glowing:1b}' : '{Glowing:0b}'",
     });
   });
 });
