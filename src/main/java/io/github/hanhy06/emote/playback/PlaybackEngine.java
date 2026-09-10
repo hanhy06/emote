@@ -244,8 +244,8 @@ public class PlaybackEngine implements ConfigListener {
             );
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
-            for (PlaybackStateListener stateListener : this.stateListeners) {
-                stateListener.onStarted(player, session, initiator);
+            if (!notifyStarted(player, session, initiator)) {
+                return PlayResult.SUCCESS;
             }
             startedNotified = true;
             session.animation().startEvents();
@@ -432,8 +432,8 @@ public class PlaybackEngine implements ConfigListener {
         this.sessionRegistry.activatePartner(session, partner.playerUuid());
         this.playerVisibilityService.start(player, session, partner);
         this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
-        for (PlaybackStateListener stateListener : this.stateListeners) {
-            stateListener.onStarted(player, session, partner);
+        if (!notifyStarted(player, session, partner)) {
+            return true;
         }
         animation.startEvents();
         return true;
@@ -574,6 +574,16 @@ public class PlaybackEngine implements ConfigListener {
 
     private boolean playbackChanged(PlaybackSession session) {
         return !this.sessionRegistry.contains(session);
+    }
+
+    private boolean notifyStarted(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+        for (PlaybackStateListener stateListener : this.stateListeners) {
+            stateListener.onStarted(player, session, participant);
+            if (playbackChanged(session)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void stopIfCurrent(PlaybackSession session, PlaybackStopReason reason) {
