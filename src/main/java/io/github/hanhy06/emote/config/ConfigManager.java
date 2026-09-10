@@ -45,7 +45,21 @@ public class ConfigManager {
         this.bundledEmoteDirectory = bundledEmoteDirectory;
     }
 
-    public void initialize() {
+    public boolean initialize() {
+        if (Files.isDirectory(this.configDirPath)) {
+            List<String> missingFiles = Stream.of(CONFIG_FILE_NAME, ACCESS_CONFIG_FILE_NAME)
+                .filter(fileName -> !Files.isRegularFile(this.configDirPath.resolve(fileName)))
+                .toList();
+            if (!missingFiles.isEmpty()) {
+                EmoteMod.LOGGER.warn(
+                    "Emote is disabled because required config files are missing from {}: {}",
+                    this.configDirPath,
+                    String.join(", ", missingFiles)
+                );
+                return false;
+            }
+        }
+
         configure();
         if (!readConfig()) {
             broadcastConfig();
@@ -53,6 +67,7 @@ public class ConfigManager {
         if (!readAccessConfig()) {
             broadcastAccessConfig();
         }
+        return true;
     }
 
     public void configure() {

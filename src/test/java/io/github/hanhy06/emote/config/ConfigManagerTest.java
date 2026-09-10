@@ -14,6 +14,19 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
+    void disablesExistingInstallationWhenRequiredConfigIsMissing(@TempDir Path tempDir) throws IOException {
+        Path configDirectory = tempDir.resolve("emote");
+        Files.createDirectories(configDirectory);
+        Files.writeString(configDirectory.resolve("config.json"), "{}");
+
+        ConfigManager manager = new ConfigManager(tempDir);
+
+        assertFalse(manager.initialize());
+        assertFalse(Files.exists(configDirectory.resolve("emotes.json")));
+        assertFalse(Files.exists(manager.getEmoteDirectory()));
+    }
+
+    @Test
     void installsBundledEmotesWhenConfigDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
         Path bundledDirectory = tempDir.resolve("bundled");
         Files.createDirectories(bundledDirectory.resolve("nested"));

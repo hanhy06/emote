@@ -25,6 +25,28 @@ import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
+    void skipsInitialLoadWhenRequiredConfigIsMissing(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("emote"));
+        List<String> operations = new ArrayList<>();
+        ReloadService service = new ReloadService(
+            new ConfigManager(tempDir),
+            new EmoteCatalog(),
+            ignored -> {
+                operations.add("load");
+                return new EmoteDirectoryLoader.LoadResult(List.of(), List.of(), 0);
+            },
+            ignored -> {},
+            () -> {},
+            () -> PolymerResourcePackDistributor.BuildResult.UNCHANGED,
+            () -> {}
+        );
+
+        service.loadOnServerStart();
+
+        assertEquals(List.of(), operations);
+    }
+
+    @Test
     void keepsDisabledAnimationsLoadedInTheRegistry(@TempDir Path tempDir) throws Exception {
         ConfigManager configManager = new ConfigManager(tempDir);
         Files.createDirectories(tempDir.resolve("emote/emote"));

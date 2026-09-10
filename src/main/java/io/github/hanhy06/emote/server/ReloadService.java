@@ -60,7 +60,9 @@ public final class ReloadService {
     }
 
     public void loadOnServerStart() {
-        this.configManager.initialize();
+        if (!this.configManager.initialize()) {
+            return;
+        }
         ReloadStats stats;
         try {
             stats = replaceRegistry(prepareRegistry());
