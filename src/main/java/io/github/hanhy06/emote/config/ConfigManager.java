@@ -9,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,26 +47,40 @@ public class ConfigManager {
     }
 
     public boolean initialize() {
-        if (Files.isDirectory(this.configDirPath)) {
-            List<String> missingFiles = Stream.of(CONFIG_FILE_NAME, ACCESS_CONFIG_FILE_NAME)
-                .filter(fileName -> !Files.isRegularFile(this.configDirPath.resolve(fileName)))
-                .toList();
-            if (!missingFiles.isEmpty()) {
-                EmoteMod.LOGGER.warn(
-                    "Emote is disabled because required config files are missing from {}: {}",
-                    this.configDirPath,
-                    String.join(", ", missingFiles)
-                );
-                return false;
-            }
+        if (!initializeAccessConfig()) {
+            return false;
         }
 
         configure();
         if (!readConfig()) {
             broadcastConfig();
         }
-        if (!readAccessConfig()) {
+        return true;
+    }
+
+    private boolean initializeAccessConfig() {
+        Path filePath = this.configDirPath.resolve(ACCESS_CONFIG_FILE_NAME);
+        JsonObject configJson;
+        try {
+            configJson = JsonFileStore.readObject(filePath);
+        } catch (NoSuchFileException exception) {
+            if (!writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig))) {
+                EmoteMod.LOGGER.warn("Emote loading is disabled because {} could not be created", ACCESS_CONFIG_FILE_NAME);
+                return false;
+            }
             broadcastAccessConfig();
+            return true;
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Emote loading is disabled because {} could not be read", ACCESS_CONFIG_FILE_NAME, exception);
+            return false;
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Emote loading is disabled because {} could not be parsed: {}", ACCESS_CONFIG_FILE_NAME, exception.getMessage());
+            return false;
+        }
+
+        if (!applyAccessConfig(configJson)) {
+            EmoteMod.LOGGER.warn("Emote loading is disabled because {} is invalid", ACCESS_CONFIG_FILE_NAME);
+            return false;
         }
         return true;
     }
@@ -159,6 +174,10 @@ public class ConfigManager {
 
     public boolean readAccessConfig() {
         JsonObject configJson = readJsonFile(ACCESS_CONFIG_FILE_NAME);
+        return applyAccessConfig(configJson);
+    }
+
+    private boolean applyAccessConfig(@Nullable JsonObject configJson) {
         AccessConfig loadedConfig;
         try {
             loadedConfig = this.jsonCodec.readAccessConfig(configJson);

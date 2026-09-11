@@ -25,8 +25,8 @@ import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
-    void skipsInitialLoadWhenRequiredConfigIsMissing(@TempDir Path tempDir) throws IOException {
-        Files.createDirectories(tempDir.resolve("emote"));
+    void skipsInitialLoadWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         List<String> operations = new ArrayList<>();
         ReloadService service = new ReloadService(
             new ConfigManager(tempDir),

@@ -14,16 +14,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void disablesExistingInstallationWhenRequiredConfigIsMissing(@TempDir Path tempDir) throws IOException {
-        Path configDirectory = tempDir.resolve("emote");
-        Files.createDirectories(configDirectory);
-        Files.writeString(configDirectory.resolve("config.json"), "{}");
+    void createsMissingAccessConfigDuringInitialization(@TempDir Path tempDir) {
+        ConfigManager manager = new ConfigManager(tempDir);
 
+        assertTrue(manager.initialize());
+        assertTrue(Files.isRegularFile(tempDir.resolve("emote/emotes.json")));
+    }
+
+    @Test
+    void disablesEmoteLoadingWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         ConfigManager manager = new ConfigManager(tempDir);
 
         assertFalse(manager.initialize());
-        assertFalse(Files.exists(configDirectory.resolve("emotes.json")));
         assertFalse(Files.exists(manager.getEmoteDirectory()));
+    }
+
+    @Test
+    void mainConfigReadFailureDoesNotDisableEmoteLoading(@TempDir Path tempDir) throws IOException {
+        Files.createDirectories(tempDir.resolve("emote/config.json"));
+        Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":3,\"disabled\":[],\"permissions\":[]}");
+
+        ConfigManager manager = new ConfigManager(tempDir);
+
+        assertTrue(manager.initialize());
     }
 
     @Test
@@ -52,10 +66,25 @@ class ConfigManagerTest {
 
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configureResourcePack();
-        manager.configure();
+        assertTrue(manager.initialize());
 
         assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
         assertTrue(Files.isDirectory(manager.getResourcePackDirectory()));
+        assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
+    }
+
+    @Test
+    void reinstallsBundledEmotesWhenConfigsExistButEmoteDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
+        Path bundledDirectory = tempDir.resolve("bundled");
+        Files.createDirectories(bundledDirectory);
+        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
+        Files.createDirectories(tempDir.resolve("emote"));
+        Files.writeString(tempDir.resolve("emote/config.json"), "{}");
+        Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":3,\"disabled\":[],\"permissions\":[]}");
+
+        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
+
+        assertTrue(manager.initialize());
         assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
     }
 
@@ -392,7 +421,7 @@ class ConfigManagerTest {
     }
 
     @Test
-    void initializesListenersWithCurrentDefaultsWhenInitialConfigIsInvalid(@TempDir Path tempDir) throws IOException {
+    void stopsInitializationWithoutNotifyingListenersWhenInitialAccessConfigIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
         List<Config> receivedConfigs = new ArrayList<>();
@@ -402,10 +431,10 @@ class ConfigManagerTest {
         Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":{}}");
         Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":2,\"disabled\":{}}");
 
-        manager.initialize();
+        assertFalse(manager.initialize());
 
-        assertEquals(List.of(manager.getConfig()), receivedConfigs);
-        assertEquals(List.of(manager.getAccessConfig()), receivedAccessConfigs);
+        assertTrue(receivedConfigs.isEmpty());
+        assertTrue(receivedAccessConfigs.isEmpty());
     }
 
     @Test
