@@ -5,7 +5,6 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.account.AccountBakeQueue;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountManager;
 import io.github.hanhy06.emote.skin.account.MinecraftSkinClient;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
@@ -23,7 +22,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private final MinecraftAccountManager accounts;
     private final PlayerSkinBaker baker;
     private final MinecraftSkinClient skinClient;
-    private final MineSkinCache cache;
+    private final SkinCache cache;
     private final AccountBakeQueue accountUploads;
     private final FallbackUploader fallbackUploader;
     private final Map<SkinKey, Bake> bakes = new HashMap<>();
@@ -40,7 +39,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         MinecraftAccountManager accounts,
         PlayerSkinBaker baker,
         MinecraftSkinClient skinClient,
-        MineSkinCache cache,
+        SkinCache cache,
         AccountBakeQueue accountUploads,
         FallbackUploader fallbackUploader
     ) {
@@ -202,7 +201,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         if (expectedGeneration != this.generation) {
             return CompletableFuture.failedFuture(new CancellationException());
         }
-        String contentKey = MineSkinCache.createContentKey(png, slimModel);
+        String contentKey = SkinCache.createContentKey(png, slimModel);
         String cached = this.cache.loadContent(contentKey);
         if (cached != null) {
             return CompletableFuture.completedFuture(cached);

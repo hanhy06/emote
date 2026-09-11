@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin.mineskin;
+package io.github.hanhy06.emote.skin;
 
 import com.google.gson.*;
 import io.github.hanhy06.emote.EmoteMod;
@@ -19,12 +19,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
-public final class MineSkinCache {
+public final class SkinCache {
     private static final int CONTENT_CACHE_VERSION = 1;
     private static final int JOB_CACHE_VERSION = 1;
     private static final int SKIN_MEMORY_CACHE_MAX_ENTRIES = 1_024;
     private static final int CONTENT_MEMORY_CACHE_MAX_ENTRIES = 8_192;
-    static final long PENDING_JOB_MAX_AGE_MILLIS = TimeUnit.MINUTES.toMillis(35);
+    public static final long PENDING_JOB_MAX_AGE_MILLIS = TimeUnit.MINUTES.toMillis(35);
     private static final long LAST_ACCESS_REFRESH_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final Pattern CONTENT_HASH_PATTERN = Pattern.compile("[0-9a-f]{64}");
 
@@ -40,11 +40,11 @@ public final class MineSkinCache {
         .disableHtmlEscaping()
         .create();
 
-    public MineSkinCache() {
+    public SkinCache() {
         this(resolveDefaultSkinDirPath());
     }
 
-    public MineSkinCache(Path skinDirPath) {
+    public SkinCache(Path skinDirPath) {
         this.skinDirPath = Objects.requireNonNull(skinDirPath, "skinDirPath");
     }
 
@@ -96,7 +96,7 @@ public final class MineSkinCache {
             refreshLastUsed(filePath);
             return cacheSkinTextures(cacheKey, Map.copyOf(textureUrlMap));
         } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read MineSkin texture store: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read skin texture cache: {}", filePath, exception);
             return cacheSkinTextures(cacheKey, Map.of());
         }
     }
@@ -116,7 +116,7 @@ public final class MineSkinCache {
             this.skinTextures.put(new SkinCacheKey(textureHash, slimModel), savedTextureUrls);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to write MineSkin texture store: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write skin texture cache: {}", filePath, exception);
         }
     }
 
@@ -148,7 +148,7 @@ public final class MineSkinCache {
             refreshLastUsed(filePath);
             return existingTextureUrl == null ? textureUrl : existingTextureUrl;
         } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read MineSkin content cache: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read skin content cache: {}", filePath, exception);
             return null;
         }
     }
@@ -168,11 +168,11 @@ public final class MineSkinCache {
             this.contentTextureUrls.put(contentHash, textureUrl);
             this.refreshedAccessTimes.put(filePath, System.currentTimeMillis());
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to write MineSkin content cache: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write skin content cache: {}", filePath, exception);
         }
     }
 
-    synchronized MineSkinPendingJob loadPendingJob(String contentHash) {
+    public synchronized PendingJob loadPendingJob(String contentHash) {
         Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -191,14 +191,14 @@ public final class MineSkinCache {
                 clearPendingJob(contentHash);
                 return null;
             }
-            return new MineSkinPendingJob(jobId, submittedAt);
+            return new PendingJob(jobId, submittedAt);
         } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read MineSkin pending job: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read pending skin upload: {}", filePath, exception);
             return null;
         }
     }
 
-    synchronized void savePendingJob(String contentHash, String jobId) {
+    public synchronized void savePendingJob(String contentHash, String jobId) {
         Path filePath = resolveCacheFilePath(contentHash, "pending");
         if (filePath == null || jobId == null || jobId.isBlank()) {
             return;
@@ -211,15 +211,15 @@ public final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to write MineSkin pending job: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write pending skin upload: {}", filePath, exception);
         }
     }
 
-    synchronized void clearPendingJob(String contentHash) {
+    public synchronized void clearPendingJob(String contentHash) {
         deleteCacheFile(contentHash, "pending", "pending job");
     }
 
-    synchronized MineSkinFailure loadFailure(String contentHash, long nowEpochMillis) {
+    public synchronized Failure loadFailure(String contentHash, long nowEpochMillis) {
         Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null || !Files.isRegularFile(filePath)) {
             return null;
@@ -232,14 +232,14 @@ public final class MineSkinCache {
                 return null;
             }
             String errorMessage = readString(object, "last_error");
-            return new MineSkinFailure(retryAfter, errorMessage == null ? "MineSkin request failed" : errorMessage);
+            return new Failure(retryAfter, errorMessage == null ? "Skin upload request failed" : errorMessage);
         } catch (IOException | RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to read MineSkin failure state: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to read skin upload failure state: {}", filePath, exception);
             return null;
         }
     }
 
-    synchronized void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
+    public synchronized void saveFailure(String contentHash, String errorMessage, long retryAfterEpochMillis) {
         Path filePath = resolveCacheFilePath(contentHash, "failures");
         if (filePath == null) {
             return;
@@ -252,11 +252,11 @@ public final class MineSkinCache {
         try {
             JsonFileStore.writeObjectAtomically(filePath, object, this.gson);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to write MineSkin failure state: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to write skin upload failure state: {}", filePath, exception);
         }
     }
 
-    synchronized void clearFailure(String contentHash) {
+    public synchronized void clearFailure(String contentHash) {
         deleteCacheFile(contentHash, "failures", "failure state");
     }
 
@@ -268,7 +268,7 @@ public final class MineSkinCache {
         try {
             Files.deleteIfExists(filePath);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to clear MineSkin {}: {}", description, filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to clear skin cache {}: {}", description, filePath, exception);
         }
     }
 
@@ -278,7 +278,7 @@ public final class MineSkinCache {
         this.refreshedAccessTimes.clear();
     }
 
-    synchronized CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
+    public synchronized CleanupResult cleanup(long retentionMillis, long maximumBytes, long nowEpochMillis) {
         if (retentionMillis < 1L) {
             throw new IllegalArgumentException("retentionMillis must be positive");
         }
@@ -400,7 +400,7 @@ public final class MineSkinCache {
                 Files.getLastModifiedTime(filePath).toMillis()
             ));
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to inspect MineSkin cache file: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to inspect skin cache file: {}", filePath, exception);
         }
     }
 
@@ -414,7 +414,7 @@ public final class MineSkinCache {
                 .filter(path -> path.getFileName().toString().endsWith(".json"))
                 .toList();
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to list MineSkin cache directory: {}", directory, exception);
+            EmoteMod.LOGGER.warn("Failed to list skin cache directory: {}", directory, exception);
             return List.of();
         }
     }
@@ -432,7 +432,7 @@ public final class MineSkinCache {
         try {
             return Files.deleteIfExists(filePath);
         } catch (IOException exception) {
-            EmoteMod.LOGGER.warn("Failed to delete MineSkin cache file: {}", filePath, exception);
+            EmoteMod.LOGGER.warn("Failed to delete skin cache file: {}", filePath, exception);
             return false;
         }
     }
@@ -535,8 +535,8 @@ public final class MineSkinCache {
         return this.skinDirPath.resolve(directoryName).resolve(contentHash + ".json");
     }
 
-    record MineSkinPendingJob(String jobId, long submittedAtEpochMillis) {
-        MineSkinPendingJob {
+    public record PendingJob(String jobId, long submittedAtEpochMillis) {
+        public PendingJob {
             Objects.requireNonNull(jobId, "jobId");
         }
     }
@@ -585,19 +585,19 @@ public final class MineSkinCache {
         }
     }
 
-    record MineSkinFailure(long retryAfterEpochMillis, String errorMessage) {
-        MineSkinFailure {
+    public record Failure(long retryAfterEpochMillis, String errorMessage) {
+        public Failure {
             Objects.requireNonNull(errorMessage, "errorMessage");
         }
     }
 
-    record CleanupResult(
+    public record CleanupResult(
         int expiredFilesDeleted,
         int capacityFilesDeleted,
         int transientFilesDeleted,
         long retainedBytes
     ) {
-        int totalFilesDeleted() {
+        public int totalFilesDeleted() {
             return this.expiredFilesDeleted + this.capacityFilesDeleted + this.transientFilesDeleted;
         }
     }

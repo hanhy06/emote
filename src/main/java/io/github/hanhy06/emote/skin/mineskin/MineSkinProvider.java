@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.skin.mineskin;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
+import io.github.hanhy06.emote.skin.SkinCache;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -14,11 +15,11 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
     private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
 
-    private final MineSkinCache cache;
+    private final SkinCache cache;
     private final MineSkinClient client;
     private volatile String apiKey = "";
 
-    public MineSkinProvider(MineSkinCache cache, MineSkinClient client) {
+    public MineSkinProvider(SkinCache cache, MineSkinClient client) {
         this.cache = Objects.requireNonNull(cache, "cache");
         this.client = Objects.requireNonNull(client, "client");
     }
@@ -37,7 +38,7 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
     @Override
     public void cleanupCache(int retentionDays, int maximumMiB) {
         try {
-            MineSkinCache.CleanupResult result = this.cache.cleanup(
+            SkinCache.CleanupResult result = this.cache.cleanup(
                 TimeUnit.DAYS.toMillis(retentionDays),
                 maximumMiB * MEBIBYTE_BYTES,
                 System.currentTimeMillis()
@@ -58,7 +59,7 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
 
     @Override
     public String upload(byte[] png, boolean slimModel) throws IOException, InterruptedException {
-        String contentHash = MineSkinCache.createContentKey(png, slimModel);
+        String contentHash = SkinCache.createContentKey(png, slimModel);
         for (int attempt = 0; attempt <= RATE_LIMIT_RETRY_LIMIT; attempt++) {
             TextureResolution resolution = resolveTextureUrl(this.apiKey, contentHash, png, slimModel);
             if (resolution.textureUrl() != null) {
@@ -84,13 +85,13 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
         }
 
         long now = System.currentTimeMillis();
-        MineSkinCache.MineSkinFailure failure = this.cache.loadFailure(contentHash, now);
+        SkinCache.Failure failure = this.cache.loadFailure(contentHash, now);
         if (failure != null) {
             return TextureResolution.retry(failure.retryAfterEpochMillis(), failure.errorMessage());
         }
-        MineSkinCache.MineSkinPendingJob pendingJob = this.cache.loadPendingJob(contentHash);
+        SkinCache.PendingJob pendingJob = this.cache.loadPendingJob(contentHash);
         if (pendingJob != null
-            && now - pendingJob.submittedAtEpochMillis() > MineSkinCache.PENDING_JOB_MAX_AGE_MILLIS) {
+            && now - pendingJob.submittedAtEpochMillis() > SkinCache.PENDING_JOB_MAX_AGE_MILLIS) {
             this.cache.clearPendingJob(contentHash);
             pendingJob = null;
         }

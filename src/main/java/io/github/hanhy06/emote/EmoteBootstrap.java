@@ -22,7 +22,7 @@ import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
 import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
 import io.github.hanhy06.emote.skin.account.*;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.SkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -43,7 +43,7 @@ final class EmoteBootstrap {
         );
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
-        MineSkinCache skinCache = new MineSkinCache();
+        SkinCache skinCache = new SkinCache();
         MineSkinProvider mineSkin = new MineSkinProvider(skinCache, new MineSkinClient());
         MinecraftSkinClient minecraftSkins = new MinecraftSkinClient();
         AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins);

@@ -5,7 +5,7 @@ import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
 import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
+import io.github.hanhy06.emote.skin.SkinCache;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -142,7 +142,7 @@ class SkinBakeCoordinatorTest {
         MinecraftSkinClient skinClient,
         SkinBakeCoordinator.FallbackUploader fallback
     ) {
-        MineSkinCache cache = new MineSkinCache(tempDir.resolve("skin"));
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
         return new SkinBakeCoordinator(
             accounts,
             new PlayerSkinBaker(),
