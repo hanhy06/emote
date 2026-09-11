@@ -14,30 +14,30 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void createsMissingAccessConfigDuringInitialization(@TempDir Path tempDir) {
+    void createsMissingAccessConfigDuringPreparation(@TempDir Path tempDir) {
         ConfigManager manager = new ConfigManager(tempDir);
 
-        assertTrue(manager.initialize());
+        assertNotNull(manager.prepare());
         assertTrue(Files.isRegularFile(tempDir.resolve("emote/emotes.json")));
     }
 
     @Test
-    void disablesEmoteLoadingWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
+    void rejectsPreparationWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         ConfigManager manager = new ConfigManager(tempDir);
 
-        assertFalse(manager.initialize());
-        assertFalse(Files.exists(manager.getEmoteDirectory()));
+        assertNull(manager.prepare());
+        assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
     }
 
     @Test
-    void mainConfigReadFailureDoesNotDisableEmoteLoading(@TempDir Path tempDir) throws IOException {
+    void rejectsPreparationWhenMainConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("emote/config.json"));
         Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":3,\"disabled\":[],\"permissions\":[]}");
 
         ConfigManager manager = new ConfigManager(tempDir);
 
-        assertTrue(manager.initialize());
+        assertNull(manager.prepare());
     }
 
     @Test
@@ -66,7 +66,7 @@ class ConfigManagerTest {
 
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
         manager.configureResourcePack();
-        assertTrue(manager.initialize());
+        assertNotNull(manager.prepare());
 
         assertTrue(Files.isDirectory(manager.getEmoteDirectory()));
         assertTrue(Files.isDirectory(manager.getResourcePackDirectory()));
@@ -84,7 +84,7 @@ class ConfigManagerTest {
 
         ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
 
-        assertTrue(manager.initialize());
+        assertNotNull(manager.prepare());
         assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
     }
 
@@ -140,7 +140,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readConfig());
+        assertTrue(prepareAndApply(manager));
         assertEquals(45, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(512, manager.getConfig().mineSkinCacheMaxMiB());
     }
@@ -153,7 +153,7 @@ class ConfigManagerTest {
             {"max_active_display_entities": 900}
             """);
 
-        assertTrue(manager.readConfig());
+        assertTrue(prepareAndApply(manager));
         assertEquals(900, manager.getConfig().maxActiveDisplayEntities());
     }
 
@@ -177,7 +177,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
         assertFalse(manager.getAccessConfig().isEnabled("demo:wave"));
         assertTrue(manager.getAccessConfig().isEnabled("demo:bow"));
         assertEquals("emote.default", manager.getAccessConfig().permissions().getFirst().permission());
@@ -215,7 +215,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
         String migratedJson = Files.readString(accessConfigPath);
         assertTrue(migratedJson.contains("\"schema_version\": 3"));
         assertTrue(migratedJson.contains("\"demo:sample.1\""));
@@ -239,13 +239,13 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(List.of("demo:wave", "demo:sit"), idle.emote());
         assertEquals(List.of(30, 70), idle.choices().stream().map(AccessConfig.IdleSettings.Choice::chance).toList());
 
         assertTrue(manager.setEmoteEnabled("demo:wave", false));
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
         AccessConfig.IdleSettings rewrittenIdle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(List.of(30, 70), rewrittenIdle.choices().stream().map(AccessConfig.IdleSettings.Choice::chance).toList());
     }
@@ -267,7 +267,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
         assertEquals(List.of("emote:idle\\..*"), idle.emote());
@@ -290,7 +290,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(List.of("demo:idle_.*"), idle.emote());
         assertTrue(idle.choices().getFirst().isPattern());
@@ -313,7 +313,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertEquals(List.of("emote:idle\\..*"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
     }
 
@@ -334,7 +334,7 @@ class ConfigManagerTest {
               ]
             }
             """);
-        assertTrue(manager.readAccessConfig());
+        assertTrue(prepareAndApply(manager));
 
         assertTrue(manager.setEmoteEnabled("demo:wave", false));
         assertEquals(List.of("demo:wave"), manager.getAccessConfig().disabled());
@@ -354,7 +354,7 @@ class ConfigManagerTest {
             {"schema_version":2,"disabled":["   "]}
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertTrue(manager.getAccessConfig().disabled().isEmpty());
     }
 
@@ -370,7 +370,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertSame(currentConfig, manager.getAccessConfig());
     }
 
@@ -386,7 +386,7 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertSame(currentConfig, manager.getAccessConfig());
     }
 
@@ -399,7 +399,7 @@ class ConfigManagerTest {
             {"menu_page_size":{"invalid":true}}
             """);
 
-        assertFalse(manager.readConfig());
+        assertFalse(prepareAndApply(manager));
         assertEquals(currentPageSize, manager.getConfig().menuPageSize());
     }
 
@@ -414,14 +414,13 @@ class ConfigManagerTest {
         Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":{}}");
         Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":2,\"disabled\":{}}");
 
-        assertFalse(manager.readConfig());
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertTrue(receivedConfigs.isEmpty());
         assertTrue(receivedAccessConfigs.isEmpty());
     }
 
     @Test
-    void stopsInitializationWithoutNotifyingListenersWhenInitialAccessConfigIsInvalid(@TempDir Path tempDir) throws IOException {
+    void stopsPreparationWithoutNotifyingListenersWhenAccessConfigIsInvalid(@TempDir Path tempDir) throws IOException {
         ConfigManager manager = new ConfigManager(tempDir);
         manager.configure();
         List<Config> receivedConfigs = new ArrayList<>();
@@ -431,7 +430,7 @@ class ConfigManagerTest {
         Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":{}}");
         Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":2,\"disabled\":{}}");
 
-        assertFalse(manager.initialize());
+        assertNull(manager.prepare());
 
         assertTrue(receivedConfigs.isEmpty());
         assertTrue(receivedAccessConfigs.isEmpty());
@@ -445,7 +444,7 @@ class ConfigManagerTest {
             {"schema_version":2,"disabled":{"invalid":true}}
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertTrue(manager.getAccessConfig().disabled().isEmpty());
     }
 
@@ -457,7 +456,7 @@ class ConfigManagerTest {
             {"schema_version":1,"disabled":[],"permissions":[]}
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         assertFalse(manager.getAccessConfig().permissions().isEmpty());
     }
 
@@ -469,7 +468,7 @@ class ConfigManagerTest {
             {"schema_version":2}
             """);
 
-        assertFalse(manager.readConfig());
+        assertFalse(prepareAndApply(manager));
         assertEquals(1, manager.getConfig().schemaVersion());
     }
 
@@ -531,9 +530,19 @@ class ConfigManagerTest {
             }
             """);
 
-        assertFalse(manager.readAccessConfig());
+        assertFalse(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
         assertEquals(List.of("emote:idle\\..*"), idle.emote());
+    }
+
+    private static boolean prepareAndApply(ConfigManager manager) {
+        ConfigManager.PreparedConfig preparedConfig = manager.prepare();
+        if (preparedConfig == null) {
+            return false;
+        }
+
+        manager.apply(preparedConfig);
+        return true;
     }
 }

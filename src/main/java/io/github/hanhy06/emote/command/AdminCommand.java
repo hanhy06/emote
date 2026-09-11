@@ -186,11 +186,13 @@ public final class AdminCommand {
     }
 
     private int reload(CommandSourceStack source) {
-        ReloadResult result = this.reloadService.reloadFromCommand();
+        ReloadResult result = this.reloadService.reload();
         if (!result.successful()) {
-            String message = result.failure() == ReloadResult.Failure.RESOURCE_PACK_BUILD
-                ? "Resource pack build failed. Previous emotes were kept. Check the server log."
-                : "Emote reload failed. The previous state was kept.";
+            String message = switch (result.failure()) {
+                case CONFIG_LOAD -> "Emote configuration is invalid. The previous state was kept. Check the server log.";
+                case RESOURCE_PACK_BUILD -> "Resource pack build failed. Previous emotes were kept. Check the server log.";
+                default -> "Emote reload failed. The previous state was kept.";
+            };
             source.sendFailure(Component.literal(message));
             return 0;
         }
@@ -344,7 +346,7 @@ public final class AdminCommand {
             this.playbackEngine.stopById(id);
         }
 
-        this.reloadService.reloadFromCommand();
+        this.reloadService.reload();
         String action = enabled ? "Enabled" : "Disabled";
         source.sendSuccess(
             () -> Component.literal(action + " " + id + "."),

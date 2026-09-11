@@ -59,22 +59,18 @@ public final class ReloadService {
         this.resourcePackPusher = resourcePackPusher;
     }
 
-    public void loadOnServerStart() {
-        if (!this.configManager.initialize()) {
-            return;
+    public ReloadResult reload() {
+        ConfigManager.PreparedConfig preparedConfig = this.configManager.prepare();
+        if (preparedConfig == null) {
+            EmoteMod.LOGGER.warn("Emote reload failed; keeping the current state because the configuration is invalid");
+            return result(ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.CONFIG_LOAD));
         }
-        ReloadStats stats;
-        try {
-            stats = replaceRegistry(prepareRegistry());
-        } catch (UncheckedIOException exception) {
-            EmoteMod.LOGGER.warn("Initial emote load failed; keeping the current registry");
-            return;
-        }
-        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+
+        ReloadStats stats = reloadPreparedConfig(preparedConfig);
+        return result(stats);
     }
 
-    public ReloadResult reloadFromCommand() {
-        ReloadStats stats = reloadLoadedConfig();
+    private ReloadResult result(ReloadStats stats) {
         var accessConfig = this.configManager.getAccessConfig();
         return new ReloadResult(
             accessConfig.disabled().size(),
@@ -85,7 +81,7 @@ public final class ReloadService {
         );
     }
 
-    private ReloadStats reloadLoadedConfig() {
+    private ReloadStats reloadPreparedConfig(ConfigManager.PreparedConfig preparedConfig) {
         PreparedRegistry prepared;
         try {
             prepared = prepareRegistry();
@@ -99,15 +95,14 @@ public final class ReloadService {
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
         }
 
-        this.configManager.readConfig();
-        this.configManager.readAccessConfig();
+        this.configManager.apply(preparedConfig);
         ReloadStats stats = replaceRegistry(prepared);
         this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
         if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.BUILT) {
             this.resourcePackPusher.run();
         }
         this.wheelSynchronizer.run();
-        EmoteMod.LOGGER.info("Reloaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
     }
 

@@ -25,7 +25,37 @@ import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
 
 class ReloadServiceTest {
     @Test
-    void skipsInitialLoadWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
+    void recreatesMissingConfigurationFilesOnReload(@TempDir Path tempDir) throws IOException {
+        ConfigManager configManager = new ConfigManager(tempDir);
+        ReloadService service = new ReloadService(
+            configManager,
+            new EmoteCatalog(),
+            ignored -> new EmoteDirectoryLoader.LoadResult(List.of(), List.of(), 0),
+            ignored -> {},
+            () -> {},
+            () -> PolymerResourcePackDistributor.BuildResult.UNCHANGED,
+            () -> {}
+        );
+
+        assertTrue(service.reload().successful());
+        Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":12}");
+        Files.writeString(tempDir.resolve("emote/emotes.json"), "{\"schema_version\":3,\"disabled\":[\"example:wave\"],\"permissions\":[]}");
+        assertTrue(service.reload().successful());
+        assertEquals(12, configManager.getConfig().menuPageSize());
+        assertEquals(List.of("example:wave"), configManager.getAccessConfig().disabled());
+
+        Files.delete(tempDir.resolve("emote/config.json"));
+        Files.delete(tempDir.resolve("emote/emotes.json"));
+
+        assertTrue(service.reload().successful());
+        assertEquals(6, configManager.getConfig().menuPageSize());
+        assertTrue(configManager.getAccessConfig().disabled().isEmpty());
+        assertTrue(Files.isRegularFile(tempDir.resolve("emote/config.json")));
+        assertTrue(Files.isRegularFile(tempDir.resolve("emote/emotes.json")));
+    }
+
+    @Test
+    void rejectsReloadWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         List<String> operations = new ArrayList<>();
         ReloadService service = new ReloadService(
@@ -41,8 +71,9 @@ class ReloadServiceTest {
             () -> {}
         );
 
-        service.loadOnServerStart();
+        ReloadResult result = service.reload();
 
+        assertEquals(ReloadResult.Failure.CONFIG_LOAD, result.failure());
         assertEquals(List.of(), operations);
     }
 
@@ -104,14 +135,17 @@ class ReloadServiceTest {
             configManager,
             registry,
             ignored -> new EmoteDirectoryLoader.LoadResult(List.of(invalid, loaded), List.of(), 2),
-            null,
-            null,
-            null,
+            ignored -> {},
+            () -> {},
+            () -> PolymerResourcePackDistributor.BuildResult.UNCHANGED,
             () -> {}
         );
 
-        service.loadOnServerStart();
+        ReloadResult result = service.reload();
 
+        assertTrue(result.successful());
+        assertEquals(2, result.detectedFileCount());
+        assertEquals(1, result.loadedEmoteCount());
         assertNotNull(registry.find("example:disabled"));
         assertNull(registry.find("example:invalid"));
     }
@@ -144,7 +178,7 @@ class ReloadServiceTest {
             () -> operations.add("push")
         );
 
-        service.reloadFromCommand();
+        service.reload();
 
         assertEquals(List.of("prepare", "build", "replace", "stop", "push", "sync"), operations);
     }
@@ -169,7 +203,7 @@ class ReloadServiceTest {
             () -> operations.add("push")
         );
 
-        ReloadResult result = service.reloadFromCommand();
+        ReloadResult result = service.reload();
 
         assertFalse(result.successful());
         assertNotNull(registry.find("example:current"));
@@ -177,9 +211,10 @@ class ReloadServiceTest {
     }
 
     @Test
-    void keepsCurrentRuntimeStateWhenResourcePackBuildFails(@TempDir Path tempDir) {
+    void keepsCurrentRuntimeStateWhenResourcePackBuildFails(@TempDir Path tempDir) throws IOException {
         ConfigManager configManager = new ConfigManager(tempDir);
         configManager.configure();
+        Files.writeString(tempDir.resolve("emote/config.json"), "{\"menu_page_size\":12}");
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(create("example:current", "Current")));
         List<String> operations = new ArrayList<>();
@@ -199,9 +234,10 @@ class ReloadServiceTest {
             () -> operations.add("push")
         );
 
-        ReloadResult result = service.reloadFromCommand();
+        ReloadResult result = service.reload();
 
         assertEquals(ReloadResult.Failure.RESOURCE_PACK_BUILD, result.failure());
+        assertEquals(6, configManager.getConfig().menuPageSize());
         assertNotNull(registry.find("example:current"));
         assertEquals(List.of("prepare", "build"), operations);
     }

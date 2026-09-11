@@ -17,6 +17,7 @@ public record ReloadResult(
 
     public enum Failure {
         NONE,
+        CONFIG_LOAD,
         EMOTE_LOAD,
         RESOURCE_PACK_BUILD
     }

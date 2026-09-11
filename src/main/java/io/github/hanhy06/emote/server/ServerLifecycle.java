@@ -95,7 +95,7 @@ public class ServerLifecycle {
     private void handleServerStarted(MinecraftServer server) {
         EmoteMod.SERVER = server;
         removeOrphanedRuntimeEntities(server);
-        this.reloadService.loadOnServerStart();
+        this.reloadService.reload();
     }
 
     private static void removeOrphanedRuntimeEntities(MinecraftServer server) {
