@@ -18,14 +18,13 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
-import io.github.hanhy06.emote.skin.AutomaticSkinProvider;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
 import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -45,11 +44,12 @@ final class EmoteBootstrap {
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
         MineSkinCache skinCache = new MineSkinCache();
-        MineSkinProvider mineSkin = new MineSkinProvider(skinBaker, skinCache, new MineSkinClient(), new MineSkinTaskQueue());
+        MineSkinProvider mineSkin = new MineSkinProvider(skinCache, new MineSkinClient());
         MinecraftSkinClient minecraftSkins = new MinecraftSkinClient();
-        AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins, mineSkin::generateTexture);
-        AccountSkinProvider accountSkins = new AccountSkinProvider(accounts, skinBaker, minecraftSkins, skinCache, accountQueue);
-        PlayerSkinManager skins = new PlayerSkinManager(new AutomaticSkinProvider(accounts::hasAccounts, accountSkins, mineSkin));
+        AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins);
+        PlayerSkinManager skins = new PlayerSkinManager(
+            new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
+        );
         catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
             case PreparedAnimation animation -> animation.skinBindings().stream();
             case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();

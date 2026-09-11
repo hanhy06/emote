@@ -272,7 +272,7 @@ public final class MineSkinCache {
         }
     }
 
-    synchronized void clearMemory() {
+    public synchronized void clearMemory() {
         this.skinTextures.clear();
         this.contentTextureUrls.clear();
         this.refreshedAccessTimes.clear();
@@ -610,6 +610,6 @@ public final class MineSkinCache {
     }
 
     private static Path resolveDefaultSkinDirPath() {
-        return FabricLoader.getInstance().getConfigDir().resolve(EmoteMod.MOD_ID).resolve("skin").resolve("mineskin");
+        return FabricLoader.getInstance().getConfigDir().resolve(EmoteMod.MOD_ID).resolve("skin");
     }
 }

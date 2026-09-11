@@ -13,16 +13,14 @@ import java.util.concurrent.Executors;
 public final class AccountBakeQueue {
     private final MinecraftAccountManager accounts;
     private final MinecraftSkinClient client;
-    private final Upload fallback;
     private final Map<UUID, Worker> workers = new HashMap<>();
     private ExecutorService executor;
     private long nextAccount;
     private long generation;
 
-    public AccountBakeQueue(MinecraftAccountManager accounts, MinecraftSkinClient client, Upload fallback) {
+    public AccountBakeQueue(MinecraftAccountManager accounts, MinecraftSkinClient client) {
         this.accounts = accounts;
         this.client = client;
-        this.fallback = fallback;
         accounts.addChangeListener(this::redistributePending);
     }
 
@@ -47,13 +45,12 @@ public final class AccountBakeQueue {
                 }
             }
         }
-        if (selected == null && this.accounts.hasAccounts()) {
+        if (selected == null) {
             task.result.completeExceptionally(new IOException("No usable bake account; run /emote account login"));
             return;
         }
         task.account = selected;
-        // A null UUID is the single serial MineSkin worker for tasks displaced by the last removal.
-        UUID key = selected == null ? null : selected.uuid();
+        UUID key = selected.uuid();
         Worker worker = this.workers.computeIfAbsent(key, ignored -> new Worker());
         worker.pending.addLast(task);
         if (!worker.running) {
@@ -79,8 +76,7 @@ public final class AccountBakeQueue {
                 worker.active = task;
             }
             try {
-                String url = task.account == null ? this.fallback.upload(task.png, task.slim) : upload(task);
-                task.result.complete(url);
+                task.result.complete(upload(task));
             } catch (InterruptedException exception) {
                 Thread.currentThread().interrupt();
                 task.result.cancel(false);
@@ -157,10 +153,6 @@ public final class AccountBakeQueue {
     }
 
     record Stats(int active, int queued) {
-    }
-
-    @FunctionalInterface public interface Upload {
-        String upload(byte[] png, boolean slim) throws IOException, InterruptedException;
     }
 
     private static final class Worker {
