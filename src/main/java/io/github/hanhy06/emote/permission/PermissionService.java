@@ -8,34 +8,47 @@ import net.minecraft.server.permissions.PermissionLevel;
 import java.util.Objects;
 import java.util.function.Predicate;
 
-public class PermissionService {
+public final class PermissionService {
     public static final String MANAGE_PERMISSION = "emote.manage";
     public static final String BYPASS_PERMISSION = "emote.bypass";
 
-    private final PermissionChecker permissionChecker;
+    private final PermissionBackend permissionBackend;
 
     public PermissionService() {
-        this(Permissions::check);
+        this(new FabricPermissionBackend());
     }
 
-    PermissionService(PermissionChecker permissionChecker) {
-        this.permissionChecker = Objects.requireNonNull(permissionChecker, "permission checker");
+    public PermissionService(PermissionBackend permissionBackend) {
+        this.permissionBackend = Objects.requireNonNull(permissionBackend, "permission backend");
     }
 
     public boolean canManage(CommandSourceStack source) {
-        return Permissions.check(source, MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
+        return this.permissionBackend.has(source, MANAGE_PERMISSION, PermissionLevel.GAMEMASTERS);
     }
 
     public boolean has(ServerPlayer player, String permission, boolean defaultValue) {
-        return this.permissionChecker.test(player, permission, defaultValue);
+        return this.permissionBackend.has(player, permission, defaultValue);
     }
 
     public Predicate<CommandSourceStack> requireManage() {
         return this::canManage;
     }
 
-    @FunctionalInterface
-    interface PermissionChecker {
-        boolean test(ServerPlayer player, String permission, boolean defaultValue);
+    public interface PermissionBackend {
+        boolean has(CommandSourceStack source, String permission, PermissionLevel defaultLevel);
+
+        boolean has(ServerPlayer player, String permission, boolean defaultValue);
+    }
+
+    private static final class FabricPermissionBackend implements PermissionBackend {
+        @Override
+        public boolean has(CommandSourceStack source, String permission, PermissionLevel defaultLevel) {
+            return Permissions.check(source, permission, defaultLevel);
+        }
+
+        @Override
+        public boolean has(ServerPlayer player, String permission, boolean defaultValue) {
+            return Permissions.check(player, permission, defaultValue);
+        }
     }
 }
