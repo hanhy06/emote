@@ -18,6 +18,7 @@ import java.util.concurrent.*;
 public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private static final long FAILED_BAKE_RETRY_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
+    private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
 
     private final MinecraftAccountManager accounts;
     private final PlayerSkinBaker baker;
@@ -320,7 +321,24 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                 return;
             }
         }
-        this.fallbackUploader.cleanupCache(config.mineSkinCacheRetentionDays(), config.mineSkinCacheMaxMiB());
+        try {
+            SkinCache.CleanupResult result = this.cache.cleanup(
+                TimeUnit.DAYS.toMillis(config.mineSkinCacheRetentionDays()),
+                config.mineSkinCacheMaxMiB() * MEBIBYTE_BYTES,
+                System.currentTimeMillis()
+            );
+            if (result.totalFilesDeleted() > 0) {
+                EmoteMod.LOGGER.info(
+                    "Cleaned skin cache by deleting {} expired, {} over-capacity, and {} transient files; retained {} bytes",
+                    result.expiredFilesDeleted(),
+                    result.capacityFilesDeleted(),
+                    result.transientFilesDeleted(),
+                    result.retainedBytes()
+                );
+            }
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to clean skin cache", exception);
+        }
         synchronized (this) {
             if (expectedGeneration == this.generation && this.scheduler != null) {
                 this.cacheCleanup = this.scheduler.schedule(
@@ -399,7 +417,5 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         boolean available();
 
         String upload(byte[] png, boolean slimModel) throws IOException, InterruptedException;
-
-        void cleanupCache(int retentionDays, int maximumMiB);
     }
 }

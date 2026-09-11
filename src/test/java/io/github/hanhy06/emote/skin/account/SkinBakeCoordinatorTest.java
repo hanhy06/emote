@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
 import java.util.UUID;
@@ -20,6 +21,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SkinBakeCoordinatorTest {
@@ -136,6 +138,38 @@ class SkinBakeCoordinatorTest {
         }
     }
 
+    @Test
+    void configReloadCleansTheSharedSkinCache(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        MinecraftSkinClient skinClient = new MinecraftSkinClient();
+        Path skinDirectory = tempDir.resolve("skin");
+        SkinCache cache = new SkinCache(skinDirectory);
+        String contentHash = SkinCache.createContentKey(new byte[] {1, 2, 3}, false);
+        Path expiredFailure = skinDirectory.resolve("failures").resolve(contentHash + ".json");
+        cache.saveFailure(contentHash, "expired", 1L);
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(
+            accounts,
+            new PlayerSkinBaker(),
+            skinClient,
+            cache,
+            new AccountBakeQueue(accounts, skinClient),
+            new RecordingFallback()
+        );
+
+        try {
+            coordinator.onConfigReload(Config.createDefault());
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (Files.exists(expiredFailure) && System.nanoTime() < deadline) {
+                Thread.sleep(10L);
+            }
+
+            assertFalse(Files.exists(expiredFailure));
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
     private static SkinBakeCoordinator coordinator(
         Path tempDir,
         MinecraftAccountManager accounts,
@@ -197,6 +231,5 @@ class SkinBakeCoordinatorTest {
             this.uploads.incrementAndGet();
             return "fallback-texture";
         }
-        @Override public void cleanupCache(int retentionDays, int maximumMiB) {}
     }
 }

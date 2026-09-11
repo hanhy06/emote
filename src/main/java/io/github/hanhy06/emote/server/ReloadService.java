@@ -10,7 +10,14 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public final class ReloadService {
     private final ConfigManager configManager;
@@ -110,17 +117,17 @@ public final class ReloadService {
         var contents = this.directoryLoader.load(this.configManager.getEmoteDirectory());
         var emotes = contents.animations().stream()
             .map(this::prepareAnimation)
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .toList();
-        var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
+        var animationsById = emotes.stream().collect(Collectors.toMap(
             PreparedAnimation::id,
-            java.util.function.Function.identity()
+            Function.identity()
         ));
         var sequences = contents.sequences().stream()
             .map(sequence -> resolveSequence(sequence, animationsById))
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .toList();
-        java.util.List<PlayableEmote> definitions = new java.util.ArrayList<>(emotes);
+        List<PlayableEmote> definitions = new ArrayList<>(emotes);
         definitions.addAll(sequences);
         return new PreparedRegistry(contents.detectedFileCount(), definitions);
     }
@@ -148,7 +155,7 @@ public final class ReloadService {
 
     private PreparedSequence resolveSequence(
         EmoteSequence sequence,
-        java.util.Map<String, PreparedAnimation> animationsById
+        Map<String, PreparedAnimation> animationsById
     ) {
         try {
             return PreparedSequence.resolve(sequence, animationsById);
@@ -160,7 +167,7 @@ public final class ReloadService {
 
     @FunctionalInterface
     interface LoadResultLoader {
-        EmoteDirectoryLoader.LoadResult load(java.nio.file.Path directory);
+        EmoteDirectoryLoader.LoadResult load(Path directory);
     }
 
     @FunctionalInterface
@@ -174,9 +181,9 @@ public final class ReloadService {
         }
     }
 
-    private record PreparedRegistry(int detectedFileCount, java.util.List<PlayableEmote> definitions) {
+    private record PreparedRegistry(int detectedFileCount, List<PlayableEmote> definitions) {
         private PreparedRegistry {
-            definitions = java.util.List.copyOf(definitions);
+            definitions = List.copyOf(definitions);
         }
     }
 }

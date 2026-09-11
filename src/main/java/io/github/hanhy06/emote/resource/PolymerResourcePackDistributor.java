@@ -13,11 +13,11 @@ import net.minecraft.resources.Identifier;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
@@ -57,7 +57,7 @@ public final class PolymerResourcePackDistributor {
             AutoHostUtils.SEND_RESOURCE_PACK_COLLECTOR.register((provider, context, consumer) -> {
                 PublishedPack published = this.publishedPack;
                 if (published != null) {
-                    consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.result().hash()));
+                    consumer.accept(provider.createProperties(context, PACK_UUID, PACK_ID, published.hash()));
                 }
             });
         }
@@ -96,8 +96,7 @@ public final class PolymerResourcePackDistributor {
             }
 
             publish(stagingPath);
-            OutputGenerator.Result result = new OutputGenerator.Result(this.outputPath, staged.hash(), false);
-            this.publishedPack = new PublishedPack(snapshot, result);
+            this.publishedPack = new PublishedPack(snapshot, staged.hash());
             return BuildResult.BUILT;
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
@@ -152,7 +151,7 @@ public final class PolymerResourcePackDistributor {
             if (!provider.isReady(context)) {
                 continue;
             }
-            var pack = provider.createProperties(context, PACK_UUID, PACK_ID, published.result().hash());
+            var pack = provider.createProperties(context, PACK_UUID, PACK_ID, published.hash());
             player.connection.send(new ClientboundResourcePackPushPacket(
                 pack.id(),
                 pack.url(),
@@ -163,7 +162,7 @@ public final class PolymerResourcePackDistributor {
         }
     }
 
-    private record PublishedPack(ResourcePackContributor.Snapshot snapshot, OutputGenerator.Result result) {
+    private record PublishedPack(ResourcePackContributor.Snapshot snapshot, String hash) {
     }
 
     @FunctionalInterface

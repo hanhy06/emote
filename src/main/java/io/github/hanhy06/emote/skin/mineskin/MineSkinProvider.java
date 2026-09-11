@@ -7,13 +7,11 @@ import io.github.hanhy06.emote.skin.SkinCache;
 
 import java.io.IOException;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploader {
     private static final long FAILED_JOB_RETRY_DELAY_MILLIS = 5L * 60L * 1000L;
     private static final long RATE_LIMIT_RETRY_DELAY_MILLIS = 2L * 60L * 1000L;
     private static final int RATE_LIMIT_RETRY_LIMIT = 3;
-    private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
 
     private final SkinCache cache;
     private final MineSkinClient client;
@@ -33,28 +31,6 @@ public final class MineSkinProvider implements SkinBakeCoordinator.FallbackUploa
     @Override
     public boolean available() {
         return MineSkinClient.hasApiKey(this.apiKey);
-    }
-
-    @Override
-    public void cleanupCache(int retentionDays, int maximumMiB) {
-        try {
-            SkinCache.CleanupResult result = this.cache.cleanup(
-                TimeUnit.DAYS.toMillis(retentionDays),
-                maximumMiB * MEBIBYTE_BYTES,
-                System.currentTimeMillis()
-            );
-            if (result.totalFilesDeleted() > 0) {
-                EmoteMod.LOGGER.info(
-                    "Cleaned skin cache by deleting {} expired, {} over-capacity, and {} transient files; retained {} bytes",
-                    result.expiredFilesDeleted(),
-                    result.capacityFilesDeleted(),
-                    result.transientFilesDeleted(),
-                    result.retainedBytes()
-                );
-            }
-        } catch (RuntimeException exception) {
-            EmoteMod.LOGGER.warn("Failed to clean skin cache", exception);
-        }
     }
 
     @Override
