@@ -165,15 +165,23 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
 
             while (true) {
                 Set<PlayerSkinRegion> missing;
+                Set<UUID> completedSubscribers = null;
+                Listener completionListener = null;
                 synchronized (this) {
                     if (!isCurrent(key, bake)) {
                         return;
                     }
                     missing = new LinkedHashSet<>(bake.requiredRegions);
                     missing.removeAll(this.cache.load(source.textureHash(), source.slimModel()).keySet());
+                    if (missing.isEmpty()) {
+                        this.bakes.remove(key, bake);
+                        completedSubscribers = Set.copyOf(bake.subscribers);
+                        completionListener = this.listener;
+                    }
                 }
-                if (missing.isEmpty()) {
-                    complete(key, bake);
+                if (completedSubscribers != null) {
+                    Listener listener = completionListener;
+                    completedSubscribers.forEach(listener::onReady);
                     return;
                 }
 
@@ -281,19 +289,6 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         }
         this.uploads.remove(contentKey, result);
         result.completeExceptionally(exception);
-    }
-
-    private void complete(SkinKey key, Bake bake) {
-        Set<UUID> subscribers;
-        Listener currentListener;
-        synchronized (this) {
-            if (!this.bakes.remove(key, bake)) {
-                return;
-            }
-            subscribers = Set.copyOf(bake.subscribers);
-            currentListener = this.listener;
-        }
-        subscribers.forEach(currentListener::onReady);
     }
 
     private void fail(SkinKey key, Bake bake, Throwable exception) {
