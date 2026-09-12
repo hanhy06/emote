@@ -352,7 +352,7 @@ public final class ExampleCallbacks {
         var random = ThreadLocalRandom.current();
         var particle = new ClientboundLevelParticlesPacket(
             ParticleTypes.NOTE, false, false,
-            origin.x + random.nextDouble(-0.45D, 0.45D), origin.y + random.nextDouble(1.6D, 2.1D), origin.z + random.nextDouble(-0.45D, 0.45D),
+            origin.x + random.nextDouble(-0.8D, 0.8D), origin.y + random.nextDouble(0.8D, 2.1D), origin.z + random.nextDouble(-0.8D, 0.8D),
             (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
         );
         List<HornVoice> voices = new ArrayList<>();
