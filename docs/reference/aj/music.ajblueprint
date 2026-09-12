@@ -116553,7 +116553,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116570,41 +116570,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "f7e601a7-9be4-4752-a9db-c18b84bdd306",
-							"time": 1.7,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "c0fcd5f8-e2e9-4975-ab75-3daa12471cd9",
-							"time": 1.85,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116638,7 +116604,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116655,7 +116621,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116672,7 +116638,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116689,7 +116655,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116706,24 +116672,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "fd098dec-634b-4cbe-a0ad-5044e9c85804",
-							"time": 3.05,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116757,7 +116706,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116774,7 +116723,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116791,7 +116740,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116808,7 +116757,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116825,24 +116774,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "1e82a594-71e3-4f00-9109-e3745027c4ba",
-							"time": 4.25,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116876,7 +116808,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116893,7 +116825,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116910,7 +116842,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116944,7 +116876,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116961,7 +116893,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116978,7 +116910,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117012,7 +116944,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117029,7 +116961,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117046,7 +116978,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117063,41 +116995,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "99441210-9e4c-4778-bd8e-6ee48ffada05",
-							"time": 6.5,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "bc6ccc20-8c3b-4749-bb0b-6d1119f03af9",
-							"time": 6.65,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117131,7 +117029,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117148,7 +117046,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117165,7 +117063,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117182,7 +117080,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117199,24 +117097,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "0cd3f85d-1c91-48c3-97ee-366b5ba16b72",
-							"time": 7.85,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117250,7 +117131,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117267,7 +117148,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117284,7 +117165,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117301,7 +117182,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117318,24 +117199,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "1ffca2c0-6b3a-4ec7-b8ee-72dfc47e9420",
-							"time": 9.05,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117369,7 +117233,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117386,7 +117250,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117403,7 +117267,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117437,7 +117301,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117454,7 +117318,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117471,7 +117335,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117488,7 +117352,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117505,24 +117369,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "f3397f28-275a-42dc-85ff-bd6a5d1ef1d0",
-							"time": 10.85,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117539,41 +117386,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "8e5ffc5c-8d41-4406-aeef-ee2444da1a73",
-							"time": 11.3,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "946aabab-50ff-4c29-82b9-f3423d561c05",
-							"time": 11.45,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117607,7 +117420,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117624,7 +117437,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117641,7 +117454,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117658,7 +117471,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117675,24 +117488,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "ee3ae99f-4791-4f48-95d0-0c9860b953a2",
-							"time": 12.65,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117726,7 +117522,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117743,7 +117539,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117760,7 +117556,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117777,7 +117573,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117794,24 +117590,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "997479e0-954c-4009-88b3-e6517a850666",
-							"time": 13.85,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117845,7 +117624,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117862,7 +117641,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117879,7 +117658,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117913,7 +117692,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117930,7 +117709,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117947,7 +117726,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117981,7 +117760,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117998,7 +117777,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118015,7 +117794,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118032,41 +117811,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "2498aa12-a8b3-4091-9896-289d953d4c48",
-							"time": 16.1,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "56c5c02f-899c-4edf-80e6-c25836a54f87",
-							"time": 16.25,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118100,7 +117845,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118117,7 +117862,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118134,7 +117879,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118151,7 +117896,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118168,24 +117913,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "947b194a-37b4-4293-9fd0-45b846a7df5a",
-							"time": 17.45,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118219,7 +117947,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118236,7 +117964,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118253,7 +117981,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118270,7 +117998,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118287,24 +118015,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "157fcfec-7860-48b7-86f1-03d80a177a02",
-							"time": 18.65,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118338,7 +118049,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118355,7 +118066,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118372,7 +118083,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118406,7 +118117,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.189207 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.414214 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118423,7 +118134,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118440,7 +118151,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.note_block.bass record @a[distance=..24] ~ ~1.2 ~ 0.36 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.059463 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.33484 0.02\nexecute at @s run playsound minecraft:block.note_block.harp record @a[distance=..24] ~ ~1.2 ~ 0.18 1.587401 0.02",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118448,40 +118159,6 @@
 							],
 							"uuid": "b0a3b5e2-2124-4dba-b185-d350a367a203",
 							"time": 20,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.harp",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "a1576974-258e-4fd9-9678-fe664e5d7eba",
-							"time": 20.15,
-							"color": -1,
-							"interpolation": "linear",
-							"easing": "linear",
-							"easingArgs": []
-						},
-						{
-							"channel": "function",
-							"data_points": [
-								{
-									"function": "execute at @s run stopsound @a[distance=..24] record minecraft:block.note_block.bass",
-									"execute_condition": "",
-									"repeat": false,
-									"repeat_frequency": 1
-								}
-							],
-							"uuid": "5b5e7349-c331-47bb-a190-ca94c2f5db26",
-							"time": 20.3,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
