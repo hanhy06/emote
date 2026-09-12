@@ -46,6 +46,19 @@ class EmoteQueryServiceTest {
     }
 
     @Test
+    void clientFilteringPreservesShortcutOrder() {
+        List<EmoteSummary> emotes = List.of(
+            new EmoteSummary("demo:second", "Second", "#dance"),
+            new EmoteSummary("demo:first", "Dance", "#dance")
+        );
+
+        assertEquals(
+            List.of("demo:second", "demo:first"),
+            EmoteSearch.filterPreservingOrder(emotes, "#dance").stream().map(EmoteSummary::id).toList()
+        );
+    }
+
+    @Test
     void delegatesStandaloneVisibilityToThePlaybackPolicy() {
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(

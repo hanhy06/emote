@@ -1,9 +1,11 @@
 package io.github.hanhy06.emote.client;
 
+import io.github.hanhy06.emote.application.EmoteSearch;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
@@ -14,7 +16,9 @@ import java.util.List;
 public class WheelShortcutScreen extends Screen {
     private static final int LIST_MAX_WIDTH = 200;
     private static final int LIST_GAP = 8;
-    private static final int LIST_TOP = 42;
+    private static final int SEARCH_TOP = 22;
+    private static final int LIST_LABEL_TOP = 48;
+    private static final int LIST_TOP = 62;
     private static final int FOOTER_HEIGHT = 32;
     private static final int BUTTON_WIDTH = 150;
     private static final int BUTTON_GAP = 8;
@@ -23,6 +27,7 @@ public class WheelShortcutScreen extends Screen {
     private final List<String> initialShortcutIds;
     private EmoteShortcutList selectedList;
     private EmoteShortcutList availableList;
+    private EditBox searchBox;
     private boolean accepted;
 
     public WheelShortcutScreen(WheelController controller) {
@@ -36,6 +41,18 @@ public class WheelShortcutScreen extends Screen {
         int listWidth = Math.clamp((this.width - LIST_GAP) / 2, 100, LIST_MAX_WIDTH);
         int listHeight = EmoteShortcutList.fitHeight(Math.max(40, this.height - LIST_TOP - FOOTER_HEIGHT));
         int centerX = this.width / 2;
+
+        this.searchBox = this.addRenderableWidget(new EditBox(
+            this.font,
+            centerX + LIST_GAP / 2,
+            SEARCH_TOP,
+            listWidth,
+            20,
+            this.searchBox,
+            Component.translatable("screen.emote.shortcuts.search")
+        ));
+        this.searchBox.setMaxLength(64);
+        this.searchBox.setHint(Component.translatable("screen.emote.shortcuts.search").setStyle(EditBox.SEARCH_HINT_STYLE));
 
         this.selectedList = this.addRenderableWidget(new EmoteShortcutList(
             this.minecraft,
@@ -57,6 +74,7 @@ public class WheelShortcutScreen extends Screen {
             listWidth,
             listHeight
         ));
+        this.searchBox.setResponder(ignoredValue -> refreshLists());
         refreshLists();
 
         this.addRenderableWidget(Button.builder(
@@ -98,8 +116,8 @@ public class WheelShortcutScreen extends Screen {
         int availableCenterX = this.availableList.getX() + this.availableList.getWidth() / 2;
 
         graphics.centeredText(this.font, this.title, centerX, 10, 0xFFFFFFFF);
-        graphics.centeredText(this.font, Component.translatable("screen.emote.shortcuts.selected"), selectedCenterX, 28, 0xFFFFFFFF);
-        graphics.centeredText(this.font, Component.translatable("screen.emote.shortcuts.available"), availableCenterX, 28, 0xFFFFFFFF);
+        graphics.centeredText(this.font, Component.translatable("screen.emote.shortcuts.selected"), selectedCenterX, LIST_LABEL_TOP, 0xFFFFFFFF);
+        graphics.centeredText(this.font, Component.translatable("screen.emote.shortcuts.available"), availableCenterX, LIST_LABEL_TOP, 0xFFFFFFFF);
 
         if (this.selectedList.isEmpty()) {
             graphics.centeredText(
@@ -113,7 +131,11 @@ public class WheelShortcutScreen extends Screen {
         if (this.availableList.isEmpty()) {
             graphics.centeredText(
                 this.font,
-                fitText(Component.translatable("screen.emote.shortcuts.empty_available"), this.availableList.getWidth() - 12),
+                fitText(Component.translatable(
+                    this.searchBox.getValue().isBlank()
+                        ? "screen.emote.shortcuts.empty_available"
+                        : "screen.emote.shortcuts.empty_search"
+                ), this.availableList.getWidth() - 12),
                 availableCenterX,
                 LIST_TOP + 18,
                 0xFFB8C4CC
@@ -123,7 +145,8 @@ public class WheelShortcutScreen extends Screen {
 
     void refreshLists() {
         this.selectedList.updateEntries(this.controller.getShortcutEmotes());
-        this.availableList.updateEntries(this.controller.getAvailableShortcutEmotes());
+        String query = this.searchBox == null ? "" : this.searchBox.getValue();
+        this.availableList.updateEntries(EmoteSearch.filterPreservingOrder(this.controller.getAvailableShortcutEmotes(), query));
     }
 
     private Component fitText(Component text, int maxWidth) {

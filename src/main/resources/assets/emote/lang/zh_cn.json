@@ -13,6 +13,8 @@
     "screen.emote.shortcuts.title": "自定义表情轮盘",
     "screen.emote.shortcuts.selected": "轮盘中的表情",
     "screen.emote.shortcuts.available": "可用表情",
+    "screen.emote.shortcuts.search": "搜索表情或 #标签",
+    "screen.emote.shortcuts.empty_search": "没有匹配的表情。",
     "screen.emote.shortcuts.selected_help": "拖动以重新排序。",
     "screen.emote.shortcuts.empty_selected": "轮盘中没有表情。",
     "screen.emote.shortcuts.empty_available": "所有可用表情都已在轮盘中。",
