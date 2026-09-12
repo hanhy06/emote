@@ -141,6 +141,7 @@ class ExampleCallbacksTest {
         Object listener = listenerConstructor.newInstance(UUID.randomUUID(), (Consumer<Packet<?>>) packets::add);
         var packetMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
         int sounds = 0;
+        var particlePositions = new java.util.HashSet<Vec3>();
         for (int tick = 0; tick <= 435; tick++) {
             var notes = new ArrayList<ExampleCallbacks.HornNote>();
             packetMelody.advance(tick, notes::add);
@@ -151,11 +152,16 @@ class ExampleCallbacksTest {
                 var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
                 assertEquals(ParticleTypes.NOTE, particle.getParticle());
                 assertEquals(0, particle.getCount());
+                assertTrue(particle.getX() >= -0.45D && particle.getX() < 0.45D);
+                assertTrue(particle.getY() >= 1.6D && particle.getY() < 2.1D);
+                assertTrue(particle.getZ() >= -0.45D && particle.getZ() < 0.45D);
+                particlePositions.add(new Vec3(particle.getX(), particle.getY(), particle.getZ()));
                 assertEquals(1, packets.stream().filter(ClientboundLevelParticlesPacket.class::isInstance).count());
                 sounds++;
             }
         }
         assertEquals(99, sounds, "Every actual note, including retriggers, sends exactly one particle immediately after its sound");
+        assertTrue(particlePositions.size() > 1, "Particle positions must vary between notes");
         packets.clear();
         playHorn.invoke(callbacks, UUID.randomUUID(), Vec3.ZERO, new ExampleCallbacks.HornNote(55, 6, 0.65F), List.of(listener));
         assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");

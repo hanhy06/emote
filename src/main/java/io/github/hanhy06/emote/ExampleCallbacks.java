@@ -29,6 +29,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
 /**
@@ -348,6 +349,12 @@ public final class ExampleCallbacks {
         float pitch = Mth.clamp((float) (frequency / HORN_BASE_FREQUENCY), 0.5F, 2.0F);
         stopHornNote(performer);
 
+        var random = ThreadLocalRandom.current();
+        var particle = new ClientboundLevelParticlesPacket(
+            ParticleTypes.NOTE, false, false,
+            origin.x + random.nextDouble(-0.45D, 0.45D), origin.y + random.nextDouble(1.6D, 2.1D), origin.z + random.nextDouble(-0.45D, 0.45D),
+            (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
+        );
         List<HornVoice> voices = new ArrayList<>();
         for (HornListener listener : listeners) {
             boolean soundOccupied = this.playingHorns.values().stream()
@@ -358,10 +365,7 @@ public final class ExampleCallbacks {
                 Holder.direct(SoundEvent.createFixedRangeEvent(HORN_SOUND, HORN_RANGE)), SoundSource.RECORDS,
                 origin.x, origin.y, origin.z, note.volume(), pitch, this.hornTick
             ));
-            listener.send().accept(new ClientboundLevelParticlesPacket(
-                ParticleTypes.NOTE, false, false, origin.x, origin.y + 1.8D, origin.z,
-                (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
-            ));
+            listener.send().accept(particle);
             voices.add(new HornVoice(listener, HORN_SOUND));
         }
         if (!voices.isEmpty()) {
