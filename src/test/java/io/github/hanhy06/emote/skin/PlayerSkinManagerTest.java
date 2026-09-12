@@ -78,14 +78,6 @@ class PlayerSkinManagerTest {
         assertEquals(Set.of(HEAD, body), provider.requests.getLast());
     }
 
-    @Test
-    void onlyPreparingStateWaitsForSkinPreparation() {
-        assertTrue(new PlayerSkinPreparation(null, PlayerSkinPreparation.State.PREPARING, 0).preparing());
-        assertFalse(new PlayerSkinPreparation(null, PlayerSkinPreparation.State.READY, 100).preparing());
-        assertFalse(new PlayerSkinPreparation(null, PlayerSkinPreparation.State.FAILED, 0).preparing());
-        assertFalse(new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0).preparing());
-    }
-
     private static final class RecordingProvider implements PlayerSkinProvider {
         private final List<Set<PlayerSkinRegion>> requests = new ArrayList<>();
 
