@@ -50,14 +50,14 @@ public final class ExampleCallbacks {
     private static final double ALLAY_SCALE = 0.35D;
 
     private static final float HORN_RANGE = 24.0F;
-    private static final int MAX_HORN_DURATION_TICKS = 12;
+    private static final int MAX_HORN_DURATION_TICKS = 7;
     private static final Identifier HORN_SOUND = Identifier.parse("minecraft:item.goat_horn.sound.0");
     private static final double HORN_BASE_FREQUENCY = 130.8D;
     private static final double HORN_PITCH_OFFSET = 4.9D;
 
-    // Offenbach: public-domain Can-Can refrain in G, 200 BPM (3 ticks per eighth note).
     private static final List<ScheduledHornNote> TRUMPET_CAN_CAN_NOTES = List.of(
-        new ScheduledHornNote(28, new HornNote(55, 12, 0.65F)),
+        new ScheduledHornNote(28, new HornNote(55, 6, 0.65F)),
+        new ScheduledHornNote(34, new HornNote(55, 6, 0.65F)),
         new ScheduledHornNote(40, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(43, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(46, new HornNote(59, 3, 0.65F)),
@@ -82,7 +82,8 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(115, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(118, new HornNote(59, 3, 0.65F)),
         new ScheduledHornNote(121, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(124, new HornNote(55, 12, 0.65F)),
+        new ScheduledHornNote(124, new HornNote(55, 6, 0.65F)),
+        new ScheduledHornNote(130, new HornNote(55, 6, 0.65F)),
         new ScheduledHornNote(136, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(139, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(142, new HornNote(59, 3, 0.65F)),
@@ -105,7 +106,8 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(205, new HornNote(59, 3, 0.65F)),
         new ScheduledHornNote(208, new HornNote(55, 6, 0.65F)),
         new ScheduledHornNote(214, new HornNote(50, 6, 0.65F)),
-        new ScheduledHornNote(220, new HornNote(55, 12, 0.65F)),
+        new ScheduledHornNote(220, new HornNote(55, 6, 0.65F)),
+        new ScheduledHornNote(226, new HornNote(55, 6, 0.65F)),
         new ScheduledHornNote(232, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(235, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(238, new HornNote(59, 3, 0.65F)),
@@ -130,7 +132,8 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(307, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(310, new HornNote(59, 3, 0.65F)),
         new ScheduledHornNote(313, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(316, new HornNote(55, 12, 0.65F)),
+        new ScheduledHornNote(316, new HornNote(55, 6, 0.65F)),
+        new ScheduledHornNote(322, new HornNote(55, 6, 0.65F)),
         new ScheduledHornNote(328, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(331, new HornNote(60, 3, 0.65F)),
         new ScheduledHornNote(334, new HornNote(59, 3, 0.65F)),
@@ -151,7 +154,8 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(391, new HornNote(62, 3, 0.65F)),
         new ScheduledHornNote(394, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(397, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(400, new HornNote(55, 12, 0.65F))
+        new ScheduledHornNote(400, new HornNote(55, 6, 0.65F)),
+        new ScheduledHornNote(406, new HornNote(55, 6, 0.65F))
     );
 
     private final Map<UUID, TrumpetCanCan> trumpetCanCans = new HashMap<>();

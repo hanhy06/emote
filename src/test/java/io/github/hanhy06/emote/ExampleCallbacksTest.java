@@ -26,17 +26,23 @@ class ExampleCallbacksTest {
         assertFalse(melody.advance(127, played::add));
         assertTrue(played.isEmpty());
         assertFalse(melody.advance(128, played::add));
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 12, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
         melody.advance(128, played::add);
         assertEquals(1, played.size());
+        melody.advance(133, played::add);
+        assertEquals(1, played.size());
+        melody.advance(134, played::add);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F), new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
         melody.advance(140, played::add);
         assertEquals(new ExampleCallbacks.HornNote(57, 3, 0.65F), played.getLast());
 
-        assertTrue(melody.advance(500, played::add));
-        assertEquals(95, played.size());
-        assertEquals(new ExampleCallbacks.HornNote(55, 12, 0.65F), played.getLast());
+        assertFalse(melody.advance(500, played::add));
+        assertEquals(99, played.size());
+        assertTrue(melody.advance(506, played::add));
+        assertEquals(100, played.size());
+        assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), played.getLast());
         assertTrue(melody.advance(535, played::add));
-        assertEquals(95, played.size());
+        assertEquals(100, played.size());
     }
 
     @Test
@@ -60,6 +66,7 @@ class ExampleCallbacksTest {
         var melody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
         var noteTicks = new ArrayList<Integer>();
         var noteEndTicks = new ArrayList<Integer>();
+        var retriggerTicks = List.of(34, 130, 226, 322, 406);
         var particleTicks = animation.timeline().events().timeline().stream()
             .filter(event -> event.commands().stream().anyMatch(command -> command.contains("particle minecraft:note ")))
             .map(EmoteAnimation.TimelineEvent::tick)
@@ -75,12 +82,18 @@ class ExampleCallbacksTest {
                 noteEndTicks.add(at + note.durationTicks());
                 double pitch = 440.0 * Math.pow(2.0, (note.midi() + 4.9 - 12.0 - 69.0) / 12.0) / 130.8;
                 assertTrue(pitch >= 0.5 && pitch <= 2.0, "Can-Can note must fit the vanilla sound pitch range");
-                assertTrue(note.durationTicks() <= 12, "Duration cap must not shorten the written rhythm");
+                assertTrue(note.durationTicks() <= 7, "Every breath must fit the user's 7-tick cap");
+                if (retriggerTicks.contains(at)) {
+                    assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), note);
+                    assertEquals(at - 6, noteTicks.get(noteTicks.size() - 2));
+                }
                 assertTrue(at + note.durationTicks() < 419, "Notes must finish before the trumpet disappears");
             });
         }
-        assertEquals(95, noteTicks.size());
-        assertEquals(noteTicks, particleTicks);
+        assertEquals(100, noteTicks.size());
+        assertTrue(noteTicks.containsAll(retriggerTicks));
+        assertEquals(particleTicks, noteTicks.stream().filter(tick -> !retriggerTicks.contains(tick)).toList());
+        assertEquals(412, noteEndTicks.getLast());
         assertEquals(noteTicks.subList(1, noteTicks.size()), noteEndTicks.subList(0, noteEndTicks.size() - 1), "Each note sustains until the next one without a forced rest");
     }
 
