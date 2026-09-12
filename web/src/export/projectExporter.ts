@@ -20,7 +20,7 @@ export async function createDocumentAnimationDownload(document: ConversionDocume
   const files = [compiled.file];
   if (animationUsesGeneratedResources(compiled.animation, document.resources)) {
     const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-    files.push(exportDocumentResourceBundle(document));
+    files.push(exportDocumentResourceBundle(document, [compiled.animation]));
   }
   return files;
 }
@@ -29,7 +29,7 @@ export async function createDocumentAnimationBundleDownload(document: Conversion
   const compiled = compileAnimationFiles(document, includeSequence);
   if (!compiled.animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) return compiled.files;
   const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-  return [...compiled.files, exportDocumentResourceBundle(document)];
+  return [...compiled.files, exportDocumentResourceBundle(document, compiled.animations)];
 }
 
 interface CompiledAnimationFile {

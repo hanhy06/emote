@@ -29,11 +29,16 @@ export function animationUsesGeneratedResources(
   }));
 }
 
-export function generatedResourceFiles(project: GeneratedResourceSource, minecraftVersion: string): ReadonlyMap<string, Uint8Array> {
+export function generatedResourceFiles(
+  project: GeneratedResourceSource,
+  minecraftVersion: string,
+  animations?: readonly EmoteAnimation[],
+): ReadonlyMap<string, Uint8Array> {
   if (project.resources.size === 0) throw new Error("This emote does not contain generated resources.");
   const profile = minecraftVersionProfile(minecraftVersion);
   const encoder = new TextEncoder();
   const files = new Map<string, Uint8Array>();
+  const includedPaths = animations ? referencedResourcePaths(animations, project.resources) : undefined;
   for (const [path, resource] of project.resources) {
     if (path === "pack.mcmeta") throw new Error("Generated resources cannot replace pack.mcmeta.");
     const segments = path.split("/");
@@ -44,6 +49,7 @@ export function generatedResourceFiles(project: GeneratedResourceSource, minecra
     ) {
       throw new Error(`Generated resource has an invalid pack path: ${path}`);
     }
+    if (includedPaths && !includedPaths.has(path)) continue;
     if (resource instanceof Uint8Array) {
       files.set(path, resource);
       continue;
@@ -54,4 +60,56 @@ export function generatedResourceFiles(project: GeneratedResourceSource, minecra
     files.set(path, encoder.encode(`${JSON.stringify(value, null, 2)}\n`));
   }
   return files;
+}
+
+function referencedResourcePaths(
+  animations: readonly EmoteAnimation[],
+  resources: ReadonlyMap<string, GeneratedResource>,
+): ReadonlySet<string> {
+  const included = new Set<string>();
+  const itemModels = new Map<string, string>();
+  for (const path of resources.keys()) {
+    const match = /^assets\/([^/]+)\/items\/(.+)\.json$/.exec(path);
+    if (match) itemModels.set(`${match[1]}:${match[2]}`, path);
+  }
+
+  for (const [id, itemPath] of itemModels) {
+    if (!animations.some((animation) => animationReferencesItemModel(animation, id))) continue;
+    included.add(itemPath);
+    const item = resources.get(itemPath);
+    if (!item || item instanceof Uint8Array || item.kind !== "item_model") continue;
+    const modelPath = modelResourcePath(item.model);
+    if (!modelPath || !resources.has(modelPath)) continue;
+    included.add(modelPath);
+    const model = resources.get(modelPath);
+    if (!model || model instanceof Uint8Array || model.kind !== "cuboid_model") continue;
+    for (const texture of Object.values(model.textures)) {
+      const texturePath = textureResourcePath(texture);
+      if (!texturePath || !resources.has(texturePath)) continue;
+      included.add(texturePath);
+      if (resources.has(`${texturePath}.mcmeta`)) included.add(`${texturePath}.mcmeta`);
+    }
+  }
+  return included;
+}
+
+function animationReferencesItemModel(animation: EmoteAnimation, id: string): boolean {
+  const references = (snbt: string | undefined) => snbt?.includes(`"${id}"`) === true || snbt?.includes(`'${id}'`) === true;
+  if (Object.values(animation.nodes).some((node) => node.type === "item_display" && references(node.item_stack_snbt))) return true;
+  return Object.values(animation.timeline.tracks).some((track) => track.nbt?.some((frame) => {
+    return references(typeof frame.value === "string" ? frame.value : frame.value.molang);
+  }));
+}
+
+function modelResourcePath(id: string): string | undefined {
+  const separator = id.indexOf(":");
+  if (separator < 1 || separator === id.length - 1) return undefined;
+  return `assets/${id.slice(0, separator)}/models/${id.slice(separator + 1)}.json`;
+}
+
+function textureResourcePath(id: string): string | undefined {
+  if (id.startsWith("#")) return undefined;
+  const separator = id.indexOf(":");
+  if (separator < 1 || separator === id.length - 1) return undefined;
+  return `assets/${id.slice(0, separator)}/textures/${id.slice(separator + 1)}.png`;
 }

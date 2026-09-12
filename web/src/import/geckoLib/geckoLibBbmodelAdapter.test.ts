@@ -542,6 +542,20 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(metadata).toEqual({ animation: { frametime: 3, interpolate: true, frames: [0, 2, 1] } });
   });
 
+  it("declares only textures referenced by each generated cube model", async () => {
+    const value = project();
+    value.textures.push({
+      id: "1",
+      name: "unused.png",
+      source: "data:image/png;base64,iVBORw0KGgo=",
+    });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const model = JSON.parse(new TextDecoder().decode(generatedResourceFiles(imported, "26.2").get("assets/demo/models/item/test_model/root.json")));
+
+    expect(model.textures).toEqual({ layer0: "demo:item/test_model/texture_0" });
+  });
+
   it("preserves GeckoLib hold-on-last-frame playback", async () => {
     const value = project();
     value.animations[0].loop = "hold_on_last_frame";
