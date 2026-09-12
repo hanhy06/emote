@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.resources.Identifier;
@@ -356,6 +357,10 @@ public final class ExampleCallbacks {
             listener.send().accept(new ClientboundSoundPacket(
                 Holder.direct(SoundEvent.createFixedRangeEvent(HORN_SOUND, HORN_RANGE)), SoundSource.RECORDS,
                 origin.x, origin.y, origin.z, note.volume(), pitch, this.hornTick
+            ));
+            listener.send().accept(new ClientboundLevelParticlesPacket(
+                ParticleTypes.NOTE, false, false, origin.x, origin.y + 1.8D, origin.z,
+                (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
             ));
             voices.add(new HornVoice(listener, HORN_SOUND));
         }

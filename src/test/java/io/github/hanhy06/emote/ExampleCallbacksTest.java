@@ -3,6 +3,12 @@ package io.github.hanhy06.emote;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
+import net.minecraft.SharedConstants;
+import net.minecraft.server.Bootstrap;
+import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
@@ -14,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -93,7 +100,7 @@ class ExampleCallbacksTest {
         assertEquals(99, noteTicks.size());
         assertFalse(noteTicks.contains(406), "The final note must not be played a second time");
         assertTrue(noteTicks.containsAll(retriggerTicks));
-        assertEquals(particleTicks, noteTicks.stream().filter(tick -> !retriggerTicks.contains(tick)).toList());
+        assertTrue(particleTicks.isEmpty(), "Note particles are sent with sound packets, not timeline commands");
         assertEquals(406, noteEndTicks.getLast());
         assertEquals(noteTicks.subList(1, noteTicks.size()), noteEndTicks.subList(0, noteEndTicks.size() - 1), "Each note sustains until the next one without a forced rest");
     }
@@ -101,6 +108,8 @@ class ExampleCallbacksTest {
     @Test
     @SuppressWarnings("unchecked")
     void outOfRangePitchesDoNotThrowAndStoppingCancelsCanCan() throws Exception {
+        SharedConstants.tryDetectVersion();
+        Bootstrap.bootStrap();
         EmoteApi previous = EmoteApi.INSTANCE;
         EmoteApi.INSTANCE = null;
         EmoteApi api;
@@ -126,6 +135,30 @@ class ExampleCallbacksTest {
         UUID performer = UUID.randomUUID();
         var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", UUID.class, Vec3.class, ExampleCallbacks.HornNote.class, List.class);
         playHorn.setAccessible(true);
+        var listenerConstructor = Class.forName("io.github.hanhy06.emote.ExampleCallbacks$HornListener").getDeclaredConstructor(UUID.class, Consumer.class);
+        listenerConstructor.setAccessible(true);
+        var packets = new ArrayList<Packet<?>>();
+        Object listener = listenerConstructor.newInstance(UUID.randomUUID(), (Consumer<Packet<?>>) packets::add);
+        var packetMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
+        int sounds = 0;
+        for (int tick = 0; tick <= 435; tick++) {
+            var notes = new ArrayList<ExampleCallbacks.HornNote>();
+            packetMelody.advance(tick, notes::add);
+            for (var note : notes) {
+                packets.clear();
+                playHorn.invoke(callbacks, performer, Vec3.ZERO, note, List.of(listener));
+                assertInstanceOf(ClientboundSoundPacket.class, packets.get(packets.size() - 2));
+                var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
+                assertEquals(ParticleTypes.NOTE, particle.getParticle());
+                assertEquals(0, particle.getCount());
+                assertEquals(1, packets.stream().filter(ClientboundLevelParticlesPacket.class::isInstance).count());
+                sounds++;
+            }
+        }
+        assertEquals(99, sounds, "Every actual note, including retriggers, sends exactly one particle immediately after its sound");
+        packets.clear();
+        playHorn.invoke(callbacks, UUID.randomUUID(), Vec3.ZERO, new ExampleCallbacks.HornNote(55, 6, 0.65F), List.of(listener));
+        assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");
         assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(127, 12, 0.65F), List.of()));
         assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(0, 12, 0.65F), List.of()));
         melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
