@@ -26,15 +26,15 @@ class ExampleCallbacksTest {
         assertFalse(melody.advance(127, played::add));
         assertTrue(played.isEmpty());
         assertFalse(melody.advance(128, played::add));
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 11, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 12, 0.65F)), played);
         melody.advance(128, played::add);
         assertEquals(1, played.size());
         melody.advance(140, played::add);
-        assertEquals(new ExampleCallbacks.HornNote(57, 2, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(57, 3, 0.65F), played.getLast());
 
         assertTrue(melody.advance(500, played::add));
         assertEquals(95, played.size());
-        assertEquals(new ExampleCallbacks.HornNote(55, 11, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(55, 12, 0.65F), played.getLast());
         assertTrue(melody.advance(535, played::add));
         assertEquals(95, played.size());
     }
@@ -59,6 +59,7 @@ class ExampleCallbacksTest {
         var animation = new AnimationJsonParser().parse(Path.of("docs/sample/music/emote.trumpet_can_can.json")).animation();
         var melody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
         var noteTicks = new ArrayList<Integer>();
+        var noteEndTicks = new ArrayList<Integer>();
         var particleTicks = animation.timeline().events().timeline().stream()
             .filter(event -> event.commands().stream().anyMatch(command -> command.contains("particle minecraft:note ")))
             .map(EmoteAnimation.TimelineEvent::tick)
@@ -71,18 +72,21 @@ class ExampleCallbacksTest {
             int at = tick;
             melody.advance(tick, note -> {
                 noteTicks.add(at);
-                double pitch = 440.0 * Math.pow(2.0, (note.midi() + 4.5 - 12.0 - 69.0) / 12.0) / 130.8;
+                noteEndTicks.add(at + note.durationTicks());
+                double pitch = 440.0 * Math.pow(2.0, (note.midi() + 4.9 - 12.0 - 69.0) / 12.0) / 130.8;
                 assertTrue(pitch >= 0.5 && pitch <= 2.0, "Can-Can note must fit the vanilla sound pitch range");
+                assertTrue(note.durationTicks() <= 12, "Duration cap must not shorten the written rhythm");
                 assertTrue(at + note.durationTicks() < 419, "Notes must finish before the trumpet disappears");
             });
         }
         assertEquals(95, noteTicks.size());
         assertEquals(noteTicks, particleTicks);
+        assertEquals(noteTicks.subList(1, noteTicks.size()), noteEndTicks.subList(0, noteEndTicks.size() - 1), "Each note sustains until the next one without a forced rest");
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void stoppingAndUnregisteringCancelPendingCanCan() throws Exception {
+    void outOfRangePitchesDoNotThrowAndStoppingCancelsCanCan() throws Exception {
         EmoteApi previous = EmoteApi.INSTANCE;
         EmoteApi.INSTANCE = null;
         EmoteApi api;
@@ -106,6 +110,10 @@ class ExampleCallbacksTest {
         field.setAccessible(true);
         var melodies = (Map<UUID, ExampleCallbacks.TrumpetCanCan>) field.get(callbacks);
         UUID performer = UUID.randomUUID();
+        var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", UUID.class, Vec3.class, ExampleCallbacks.HornNote.class, List.class);
+        playHorn.setAccessible(true);
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(127, 12, 0.65F), List.of()));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(0, 12, 0.65F), List.of()));
         melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
         var stop = ExampleCallbacks.class.getDeclaredMethod("stopTrumpetCanCan", UUID.class);
         stop.setAccessible(true);
