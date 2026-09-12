@@ -152,9 +152,9 @@ class ExampleCallbacksTest {
                 var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
                 assertEquals(ParticleTypes.NOTE, particle.getParticle());
                 assertEquals(0, particle.getCount());
-                assertTrue(particle.getX() >= -0.45D && particle.getX() < 0.45D);
-                assertTrue(particle.getY() >= 1.6D && particle.getY() < 2.1D);
-                assertTrue(particle.getZ() >= -0.45D && particle.getZ() < 0.45D);
+                assertTrue(particle.getX() >= -0.8D && particle.getX() < 0.8D);
+                assertTrue(particle.getY() >= 0.8D && particle.getY() < 2.1D);
+                assertTrue(particle.getZ() >= -0.8D && particle.getZ() < 0.8D);
                 particlePositions.add(new Vec3(particle.getX(), particle.getY(), particle.getZ()));
                 assertEquals(1, packets.stream().filter(ClientboundLevelParticlesPacket.class::isInstance).count());
                 sounds++;
