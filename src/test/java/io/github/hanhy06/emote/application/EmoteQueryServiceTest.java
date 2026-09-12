@@ -28,6 +28,24 @@ class EmoteQueryServiceTest {
     }
 
     @Test
+    void searchMatchesExactTagsAndCombinesThemWithText() {
+        List<EmoteSummary> emotes = List.of(
+            new EmoteSummary("demo:fast", "Fast Dance", "Quick movement #Dance #Solo"),
+            new EmoteSummary("demo:group", "Group Dance", "Dance together #dance #group"),
+            new EmoteSummary("demo:dancer", "Dancer", "A performer #dancer #solo")
+        );
+
+        assertEquals(
+            List.of("demo:fast", "demo:group"),
+            EmoteQueryService.filter(emotes, "#DANCE").stream().map(EmoteSummary::id).toList()
+        );
+        assertEquals(
+            List.of("demo:fast"),
+            EmoteQueryService.filter(emotes, "fast #dance #solo").stream().map(EmoteSummary::id).toList()
+        );
+    }
+
+    @Test
     void delegatesStandaloneVisibilityToThePlaybackPolicy() {
         EmoteCatalog registry = new EmoteCatalog();
         registry.replace(List.of(
