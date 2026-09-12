@@ -36,13 +36,13 @@ class ExampleCallbacksTest {
         melody.advance(140, played::add);
         assertEquals(new ExampleCallbacks.HornNote(57, 3, 0.65F), played.getLast());
 
-        assertFalse(melody.advance(500, played::add));
+        assertTrue(melody.advance(500, played::add));
         assertEquals(99, played.size());
         assertTrue(melody.advance(506, played::add));
-        assertEquals(100, played.size());
+        assertEquals(99, played.size());
         assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), played.getLast());
         assertTrue(melody.advance(535, played::add));
-        assertEquals(100, played.size());
+        assertEquals(99, played.size());
     }
 
     @Test
@@ -66,7 +66,7 @@ class ExampleCallbacksTest {
         var melody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
         var noteTicks = new ArrayList<Integer>();
         var noteEndTicks = new ArrayList<Integer>();
-        var retriggerTicks = List.of(34, 130, 226, 322, 406);
+        var retriggerTicks = List.of(34, 130, 226, 322);
         var particleTicks = animation.timeline().events().timeline().stream()
             .filter(event -> event.commands().stream().anyMatch(command -> command.contains("particle minecraft:note ")))
             .map(EmoteAnimation.TimelineEvent::tick)
@@ -90,10 +90,11 @@ class ExampleCallbacksTest {
                 assertTrue(at + note.durationTicks() < 419, "Notes must finish before the trumpet disappears");
             });
         }
-        assertEquals(100, noteTicks.size());
+        assertEquals(99, noteTicks.size());
+        assertFalse(noteTicks.contains(406), "The final note must not be played a second time");
         assertTrue(noteTicks.containsAll(retriggerTicks));
         assertEquals(particleTicks, noteTicks.stream().filter(tick -> !retriggerTicks.contains(tick)).toList());
-        assertEquals(412, noteEndTicks.getLast());
+        assertEquals(406, noteEndTicks.getLast());
         assertEquals(noteTicks.subList(1, noteTicks.size()), noteEndTicks.subList(0, noteEndTicks.size() - 1), "Each note sustains until the next one without a forced rest");
     }
 

@@ -154,8 +154,7 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(391, new HornNote(62, 3, 0.65F)),
         new ScheduledHornNote(394, new HornNote(57, 3, 0.65F)),
         new ScheduledHornNote(397, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(400, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(406, new HornNote(55, 6, 0.65F))
+        new ScheduledHornNote(400, new HornNote(55, 6, 0.65F))
     );
 
     private final Map<UUID, TrumpetCanCan> trumpetCanCans = new HashMap<>();
