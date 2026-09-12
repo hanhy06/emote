@@ -106494,7 +106494,7 @@
 									"z": "0"
 								}
 							],
-							"uuid": "c21d8b78-ae31-462f-a8b5-ca67bacccb47",
+							"uuid": "19be3313-c69a-491b-ae67-596bed1e6119",
 							"time": 0,
 							"color": -1,
 							"interpolation": "linear",
@@ -106510,8 +106510,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "65b7e7e2-bd81-422f-88b1-c37a81354c48",
-							"time": 1.2,
+							"uuid": "571023eb-0866-44b2-ae48-9a62301f1798",
+							"time": 1.4,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106521,13 +106521,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "1.5"
 								}
 							],
-							"uuid": "496a3155-74b2-4c02-bef2-f5779b198f92",
-							"time": 1.4,
+							"uuid": "2174d636-ef99-43bf-9703-b6d912a84817",
+							"time": 2,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106542,8 +106542,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "0b808b28-933d-4076-9239-9b831fa8e2ee",
-							"time": 1.8,
+							"uuid": "3670c94c-09f0-42f1-a359-e1941ddb59ab",
+							"time": 2.3,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106553,12 +106553,12 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "-1.5"
 								}
 							],
-							"uuid": "50173685-6646-4412-9761-9aa5cd30d0a7",
+							"uuid": "7d849d73-6cda-46aa-a11a-62b340c3fcbb",
 							"time": 2.6,
 							"color": -1,
 							"interpolation": "linear",
@@ -106574,8 +106574,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "ad0189f7-e749-4a4c-8c67-4d38d1b47e79",
-							"time": 3,
+							"uuid": "fb093ea2-1e31-403a-b125-c6f28ce99115",
+							"time": 3.2,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106585,13 +106585,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "1.5"
 								}
 							],
-							"uuid": "b0d0ac06-5b68-4761-a7d7-31e9afa000f1",
-							"time": 3.8,
+							"uuid": "ecb0905d-163f-42c4-b25a-c397c33a4508",
+							"time": 3.5,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106606,8 +106606,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "b9a40af9-9d53-4036-a71e-fdf80cc6227b",
-							"time": 4.2,
+							"uuid": "5fd47c99-39d4-46a5-a803-e05088c594c3",
+							"time": 3.8,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106617,12 +106617,108 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "30daa9a5-e693-4586-a45b-55a99bf271f4",
+							"time": 4.4,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "b4100afa-f7da-40bf-a536-63df7c4162a6",
+							"uuid": "66aa7429-4dbd-45f8-b2be-9aabaf307404",
+							"time": 4.7,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "3e69f6f7-eaa9-4077-a77c-8134c7bca1d8",
+							"time": 5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "f7a542b2-0f64-44d9-a69b-2de1aa3984ba",
+							"time": 5.3,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "7382e709-e7db-4e02-94b4-fbca7cebfb3b",
+							"time": 5.6,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "8e06a399-ff6f-4776-b590-502d6df3bc81",
+							"time": 5.9,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "e911a8f2-deac-4743-a85c-c4c085d600c8",
 							"time": 6.2,
 							"color": -1,
 							"interpolation": "linear",
@@ -106638,8 +106734,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "9b6cedfd-2fb8-46f2-a336-01168b5b3dda",
-							"time": 6.6,
+							"uuid": "fb7df21d-5b5f-4251-8bf4-59596e18b3f4",
+							"time": 6.8,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106649,13 +106745,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "-1.5"
 								}
 							],
-							"uuid": "5ea916e4-c9e9-4f8e-91e6-f15442eba415",
-							"time": 7.4,
+							"uuid": "d486948e-029a-4e5a-8065-0d8c238ab7b6",
+							"time": 7.1,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106670,8 +106766,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "74088257-21e2-4f64-9a00-db9c6a521e22",
-							"time": 7.8,
+							"uuid": "82e9e720-4864-4300-b66e-59420ef5d771",
+							"time": 7.4,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106681,12 +106777,44 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "831b140b-4a1c-447c-9eb4-f91e3bb84cad",
+							"time": 8,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "d39208cf-f604-4d69-8417-a97c7191211b",
+							"uuid": "3f93e910-43c7-4451-9f22-df469d700317",
+							"time": 8.3,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "0df1fd68-0e5a-4959-9624-31e5a29ada9d",
 							"time": 8.6,
 							"color": -1,
 							"interpolation": "linear",
@@ -106702,8 +106830,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "a2841bd2-8b76-4782-936b-11571a56a124",
-							"time": 9,
+							"uuid": "ac409e7f-8d21-43c8-ba0d-5107fea63bef",
+							"time": 9.2,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106713,12 +106841,76 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "27e2d294-5f41-4096-aa23-24ad6a139c81",
+							"time": 9.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "676401a8-bf15-4aeb-8eee-64aec03392e9",
+							"uuid": "a9f1b210-4410-4a89-b2c5-e095b2226d18",
+							"time": 9.8,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "8c9828d9-0110-4ab9-8f9b-4b5e352b758f",
+							"time": 10.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "482e3747-ebfe-4df4-8087-6f3522100378",
+							"time": 10.4,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "4d0d04a7-903b-44f9-88bd-1ded619e35d2",
 							"time": 11,
 							"color": -1,
 							"interpolation": "linear",
@@ -106734,8 +106926,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "f542ac86-25eb-4bc4-9833-86631c42eda5",
-							"time": 11.4,
+							"uuid": "045a7847-10aa-4963-82c3-9d5110c544de",
+							"time": 11.6,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106745,13 +106937,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "-1.5"
 								}
 							],
-							"uuid": "77cce006-f696-4cd4-809d-4e15dda13452",
-							"time": 12.2,
+							"uuid": "6bfc3d38-1ec0-4a0a-bf17-27bfdc9a8479",
+							"time": 11.9,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106766,8 +106958,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "0681df9f-098f-4b2d-a895-7e7284816ed0",
-							"time": 12.6,
+							"uuid": "79dacb97-8dc7-4c6f-bed6-ee44ccc68f4a",
+							"time": 12.2,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106777,12 +106969,44 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "82575590-f326-4252-8631-84a8bcf2e957",
+							"time": 12.8,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "ceb45f75-ac8b-4f99-8b39-bc308a7542da",
+							"uuid": "24dfe108-4ab9-4b6b-a3b9-907338b78909",
+							"time": 13.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "81b38630-91e0-496f-b766-4c7f6e111e95",
 							"time": 13.4,
 							"color": -1,
 							"interpolation": "linear",
@@ -106798,8 +107022,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "dcf3f253-b7b3-45fd-992e-b94c9338dcee",
-							"time": 13.8,
+							"uuid": "df91da2c-9079-4ff3-a65f-4c70034952cf",
+							"time": 14,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106809,13 +107033,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "1.5"
 								}
 							],
-							"uuid": "058972d2-7c55-455f-9788-4d13245261f4",
-							"time": 15.8,
+							"uuid": "3953ad37-9cfe-4fe4-b79d-13a7aac56d96",
+							"time": 14.3,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106830,8 +107054,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "acfb5cf4-0b60-4bdc-bb64-3c135ff0ec38",
-							"time": 16.2,
+							"uuid": "a0a19830-acdb-40b4-b986-6713558146dc",
+							"time": 14.6,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106841,12 +107065,108 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "57609ba5-76ae-4b14-99ee-5f9ce21b4cd4",
+							"time": 14.9,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "a324ed23-792a-4b6f-b83d-908b16c823b9",
+							"uuid": "adfed778-2825-4f30-ba28-12ffd6412da6",
+							"time": 15.2,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "264fb64f-a115-4f26-b144-fc4ded7ca862",
+							"time": 15.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "5f208345-8324-4c6d-a383-d8ed43527563",
+							"time": 15.8,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "520ff9e5-99d2-4308-9d93-e0302c3bb0bf",
+							"time": 16.4,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "b6b1da72-ba9e-496b-b2a6-c7d48d1d6221",
+							"time": 16.7,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "2e20f287-2647-414a-aec3-e301ed593cf4",
 							"time": 17,
 							"color": -1,
 							"interpolation": "linear",
@@ -106862,8 +107182,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "20fbe747-e372-450a-981a-6da869add6f7",
-							"time": 17.4,
+							"uuid": "f66aed73-91fc-48db-ac22-d0c771972a74",
+							"time": 17.6,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106873,13 +107193,13 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
 									"y": "0",
-									"z": "0"
+									"z": "-1.5"
 								}
 							],
-							"uuid": "aca1d13b-b987-478d-9fe8-32c843967d8c",
-							"time": 18.2,
+							"uuid": "54d34c72-7a4e-47dc-98af-886017937dea",
+							"time": 17.9,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106894,8 +107214,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "10b1c211-0bd4-45f7-9293-773582fd8a12",
-							"time": 18.6,
+							"uuid": "ac03ee02-6ffb-49b2-a522-618179a7f065",
+							"time": 18.2,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106905,12 +107225,76 @@
 							"channel": "rotation",
 							"data_points": [
 								{
-									"x": "-0.8",
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "5d7cd462-0b44-4d9c-b08d-6e8e1aa2149d",
+							"time": 18.8,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
 									"y": "0",
 									"z": "0"
 								}
 							],
-							"uuid": "be8dd23e-ff13-4aa9-9172-1008e71a3310",
+							"uuid": "694ba215-a6eb-43e7-af9e-4052ef67c51d",
+							"time": 19.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "-1.5"
+								}
+							],
+							"uuid": "455bc0c8-a1d9-48ea-a81e-3fa1ec2bf727",
+							"time": 19.4,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "0"
+								}
+							],
+							"uuid": "aec9c01c-92d5-4056-b5d9-36d51f87fbd4",
+							"time": 19.7,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "easeInOutSine",
+							"easingArgs": []
+						},
+						{
+							"channel": "rotation",
+							"data_points": [
+								{
+									"x": "0",
+									"y": "0",
+									"z": "1.5"
+								}
+							],
+							"uuid": "aa5af11e-d37b-4fe0-ba30-74eb3bcab63e",
 							"time": 20,
 							"color": -1,
 							"interpolation": "linear",
@@ -106926,8 +107310,8 @@
 									"z": "0"
 								}
 							],
-							"uuid": "ea5d65fc-df19-4605-99e4-d5d958acba5b",
-							"time": 20.4,
+							"uuid": "72569934-6ddc-44a2-ad54-80a44bfc0c41",
+							"time": 20.3,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "easeInOutSine",
@@ -106942,7 +107326,7 @@
 									"z": "0"
 								}
 							],
-							"uuid": "f3336dee-b03b-4e21-ab1d-3e8e43b1dfc6",
+							"uuid": "a09227f2-1291-48f6-a3bc-57d21fb17677",
 							"time": 20.95,
 							"color": -1,
 							"interpolation": "linear",
@@ -106958,7 +107342,7 @@
 									"z": "0"
 								}
 							],
-							"uuid": "c92a2dc0-3193-4d8a-acd6-950e9739a9b6",
+							"uuid": "333a60e3-0f0a-4d13-8cbf-385e33c8ce0a",
 							"time": 21.75,
 							"color": -1,
 							"interpolation": "linear",
@@ -116745,7 +117129,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run particle minecraft:happy_villager ~ ~1.3 ~ 0.45 0.35 0.45 0 4 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116762,7 +117146,58 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "4e0598b3-7eba-418a-a3d0-f504d0136c47",
+							"time": 1.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "57dc187e-d25e-4088-98cb-e4ffb1aa0deb",
+							"time": 1.7,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c2259b3c-4a09-40bc-9c73-3c8cc53ea039",
+							"time": 1.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116779,7 +117214,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116796,7 +117231,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116813,7 +117248,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116830,7 +117265,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116847,7 +117282,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5423acf5-d60e-4a7b-8dc8-43c0807f826d",
+							"time": 2.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116864,7 +117316,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5bc9b089-a89c-4c75-bdc7-475b5ab54289",
+							"time": 3.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116881,7 +117350,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116898,7 +117367,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116915,7 +117384,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116932,7 +117401,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116949,7 +117418,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "60eebe19-5760-4095-982e-fdc96232e3a8",
+							"time": 3.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116966,7 +117452,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "9296e3e3-238e-471b-98fe-f7009bfeab95",
+							"time": 4.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -116983,7 +117486,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117000,7 +117503,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117017,7 +117520,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117034,7 +117537,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117051,7 +117554,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117068,7 +117571,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117085,7 +117588,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117102,7 +117605,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117119,7 +117622,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117136,7 +117639,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117153,7 +117656,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117170,7 +117673,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run particle minecraft:happy_villager ~ ~1.3 ~ 0.45 0.35 0.45 0 4 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117187,7 +117690,58 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "1e42d47b-47e1-4c3b-b1af-00af5d84462d",
+							"time": 6.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bfe85ccf-29e9-43f3-963d-e959f21493cc",
+							"time": 6.5,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "dbc4317e-3c53-44d3-a4e6-812d7831d07c",
+							"time": 6.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117204,7 +117758,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117221,7 +117775,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117238,7 +117792,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117255,7 +117809,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117272,7 +117826,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "b1d4a9aa-be75-4b18-b765-d93127c03d6d",
+							"time": 7.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117289,7 +117860,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3c6afc9d-730b-432e-a51c-a1cce55d4111",
+							"time": 7.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117306,7 +117894,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117323,7 +117911,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117340,7 +117928,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117357,7 +117945,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117374,7 +117962,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0e037fcf-1079-4a4b-84e1-6eceda3f33ea",
+							"time": 8.75,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117391,7 +117996,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0e45e687-a73d-4793-bc3f-81170f6c4333",
+							"time": 9.05,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117408,7 +118030,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117425,7 +118047,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117442,7 +118064,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117459,7 +118081,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117476,7 +118098,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117493,7 +118115,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117510,7 +118132,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117527,7 +118149,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117544,7 +118166,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "5e1699ea-bf08-4cfb-be68-7ed74c189b1d",
+							"time": 10.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117561,7 +118200,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run particle minecraft:happy_villager ~ ~1.3 ~ 0.45 0.35 0.45 0 4 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "3dd19539-6174-4ed1-9d15-50e098cffa6a",
+							"time": 10.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117578,7 +118234,58 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "bbb715b8-7be4-48c3-829f-2fce8470547a",
+							"time": 11.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "7afa5b17-3bc8-4d04-a1c0-dd173da620be",
+							"time": 11.3,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "72db6ed6-c7ea-4f46-a99b-c441878db0bb",
+							"time": 11.45,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117595,7 +118302,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117612,7 +118319,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117629,7 +118336,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117646,7 +118353,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117663,7 +118370,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8d5a59cc-e997-469e-8bdf-3899b3d0f609",
+							"time": 12.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117680,7 +118404,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "0294ab07-4d30-4671-93d8-c8fff9c0ba58",
+							"time": 12.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117697,7 +118438,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117714,7 +118455,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117731,7 +118472,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117748,7 +118489,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117765,7 +118506,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a2d9c65c-1909-4525-8e43-5168f610d212",
+							"time": 13.55,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117782,7 +118540,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "8ed9124f-a98c-4f34-ad7f-92288fb7f6ae",
+							"time": 13.85,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117799,7 +118574,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117816,7 +118591,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117833,7 +118608,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117850,7 +118625,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117867,7 +118642,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117884,7 +118659,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.333333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117901,7 +118676,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117918,7 +118693,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117935,7 +118710,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117952,7 +118727,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117969,7 +118744,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -117986,7 +118761,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run particle minecraft:happy_villager ~ ~1.3 ~ 0.45 0.35 0.45 0 4 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118003,7 +118778,58 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c7afbe7b-3150-4b2f-b474-a7c3d3aa6b1d",
+							"time": 15.95,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "ed29a9b2-02ca-4d65-a46d-0ebfcc2dcf6c",
+							"time": 16.1,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "abe75565-c70e-44cc-9c87-2af1a8bb2d72",
+							"time": 16.25,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118020,7 +118846,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118037,7 +118863,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118054,7 +118880,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118071,7 +118897,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118088,7 +118914,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a19f12d1-066c-4b29-8649-a69ef6372d01",
+							"time": 17.15,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118105,7 +118948,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c97f6ca0-b120-4c6b-89a3-71ac69c18a2f",
+							"time": 17.45,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118122,7 +118982,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.166667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118139,7 +118999,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118156,7 +119016,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118173,7 +119033,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118190,7 +119050,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "40f28c8b-c8dc-494d-a935-3f09043fa3a1",
+							"time": 18.35,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118207,7 +119084,24 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "a845bee9-f895-4b9c-9026-52c9f6527ab3",
+							"time": 18.65,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118224,7 +119118,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.833333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118241,7 +119135,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118258,7 +119152,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118275,7 +119169,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118292,7 +119186,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118309,7 +119203,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.583333 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118326,7 +119220,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^-0.55 ^1.8 ^0.5 0.75 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118343,7 +119237,7 @@
 							"channel": "function",
 							"data_points": [
 								{
-									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run particle minecraft:happy_villager ~ ~1.3 ~ 0.45 0.35 0.45 0 4 normal @a[distance=..24]",
+									"function": "execute at @s rotated ~ 0 run particle minecraft:note ^0.55 ^1.8 ^0.5 0.416667 0 0 1 0 normal @a[distance=..24]\nexecute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.16 1.7 0.02",
 									"execute_condition": "",
 									"repeat": false,
 									"repeat_frequency": 1
@@ -118351,6 +119245,23 @@
 							],
 							"uuid": "b0a3b5e2-2124-4dba-b185-d350a367a203",
 							"time": 20,
+							"color": -1,
+							"interpolation": "linear",
+							"easing": "linear",
+							"easingArgs": []
+						},
+						{
+							"channel": "function",
+							"data_points": [
+								{
+									"function": "execute at @s run playsound minecraft:block.sand.break record @a[distance=..24] ~ ~1.2 ~ 0.10 1.9 0.02",
+									"execute_condition": "",
+									"repeat": false,
+									"repeat_frequency": 1
+								}
+							],
+							"uuid": "c14b3f9a-86ab-4fa7-90e2-1cd837bafeda",
+							"time": 20.15,
 							"color": -1,
 							"interpolation": "linear",
 							"easing": "linear",
