@@ -8,9 +8,10 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
-import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
+import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
+import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
@@ -26,6 +27,7 @@ import io.github.hanhy06.emote.skin.account.*;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 
 final class EmoteBootstrap {
@@ -98,12 +100,17 @@ final class EmoteBootstrap {
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();
-        PayloadRegistry.register();
+        registerPayloads();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
         lifecycle.register();
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
         commands.register();
 
         EmoteMod.LOGGER.info("Emote initialized");
+    }
+
+    private static void registerPayloads() {
+        PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
     }
 }
