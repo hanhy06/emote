@@ -41,7 +41,7 @@ class AccountBakeQueueTest {
                     return "texture-" + png[0];
                 } finally { running.decrementAndGet(); }
             }
-        }, (png, slim) -> { throw new AssertionError("Unexpected MineSkin fallback"); });
+        });
         try {
             List<CompletableFuture<String>> jobs = new ArrayList<>();
             for (int i = 0; i < 6; i++) jobs.add(queue.submit(new byte[]{(byte) i}, false));
@@ -58,7 +58,7 @@ class AccountBakeQueueTest {
         }
     }
 
-    @Test void lastRemovalMovesUnstartedWorkToMineSkinWithoutWaitingForActiveUpload() throws Exception {
+    @Test void lastRemovalRejectsUnstartedAccountWorkWithoutWaitingForActiveUpload() throws Exception {
         var accounts = manager();
         UUID a = UUID.randomUUID();
         accounts.register(new MinecraftSession(a, "Alpha", "test", Long.MAX_VALUE), "refresh-a");
@@ -70,13 +70,13 @@ class AccountBakeQueueTest {
                 release.await();
                 return "account";
             }
-        }, (png, slim) -> "mineskin");
+        });
         try {
             var first = queue.submit(new byte[]{1}, false);
             assertTrue(started.await(5, TimeUnit.SECONDS));
             var second = queue.submit(new byte[]{2}, false);
             accounts.remove(a.toString());
-            assertEquals("mineskin", second.get(5, TimeUnit.SECONDS));
+            assertThrows(ExecutionException.class, () -> second.get(5, TimeUnit.SECONDS));
             assertFalse(first.isDone());
             release.countDown();
             assertEquals("account", first.get(5, TimeUnit.SECONDS));
@@ -91,7 +91,7 @@ class AccountBakeQueueTest {
         var accounts = manager();
         accounts.register(new MinecraftSession(UUID.randomUUID(), "Alpha", "test", Long.MAX_VALUE), "refresh-a");
         accounts.requireLogin(accounts.accounts().getFirst());
-        var queue = new AccountBakeQueue(accounts, new MinecraftSkinClient(), (png, slim) -> { throw new AssertionError("Unexpected fallback"); });
+        var queue = new AccountBakeQueue(accounts, new MinecraftSkinClient());
         try {
             assertThrows(ExecutionException.class, () -> queue.submit(new byte[]{1}, false).get(5, TimeUnit.SECONDS));
         } finally {
@@ -110,7 +110,7 @@ class AccountBakeQueueTest {
                 new CountDownLatch(1).await();
                 return "never";
             }
-        }, (png, slim) -> "fallback");
+        });
         try {
             var first = queue.submit(new byte[]{1}, false);
             assertTrue(started.await(5, TimeUnit.SECONDS));

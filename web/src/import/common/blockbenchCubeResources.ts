@@ -46,8 +46,9 @@ export function writeCubeResources(
   transforms: CubeProjectTransformConvention,
 ): void {
   const sourceTextures = project.textures.length > 0 ? project.textures : [{}];
+  const usedTextureIndexes = referencedTextureIndexes(cube, sourceTextures);
   const textures = project.textures.length > 0
-    ? Object.fromEntries(project.textures.map((_, index) => [
+    ? Object.fromEntries([...usedTextureIndexes].map((index) => [
         `layer${index}`,
         `${namespace}:item/${modelPath.split("/").slice(0, -1).join("/")}/${textureFileStem(project.textures.length, index)}`,
       ]))
@@ -59,6 +60,15 @@ export function writeCubeResources(
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, model);
   resources.set(`assets/${namespace}/items/${modelPath}.json`, { kind: "item_model", model: `${namespace}:item/${modelPath}` });
+}
+
+function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {
+  const result = new Set<number>();
+  for (const [direction, face] of Object.entries(cube.faces)) {
+    if (!SUPPORTED_FACES.has(direction) || face.enabled === false || face.texture === null || face.uv == null) continue;
+    result.add(resolveFaceTextureIndex(face.texture, textures));
+  }
+  return result;
 }
 
 function cubeModelElement(cube: BbCube, boneOrigin: number[], resolution: { width: number; height: number }, textures: BbTexture[], transforms: CubeProjectTransformConvention): Record<string, unknown> {

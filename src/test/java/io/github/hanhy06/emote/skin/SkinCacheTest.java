@@ -1,4 +1,4 @@
-package io.github.hanhy06.emote.skin.mineskin;
+package io.github.hanhy06.emote.skin;
 
 import io.github.hanhy06.emote.skin.model.PlayerSkinPart;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
@@ -15,10 +15,10 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MineSkinCacheTest {
+class SkinCacheTest {
     @Test
     void saveAndLoadRoundTrip(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
+        SkinCache store = new SkinCache(tempDir);
         Map<PlayerSkinRegion, String> savedTextureUrls = Map.of(
             new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL), "https://textures.minecraft.net/texture/head",
             new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(2, 8)), "https://textures.minecraft.net/texture/left_arm"
@@ -31,8 +31,8 @@ class MineSkinCacheTest {
 
     @Test
     void contentCacheRoundTrip(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[] {1, 2, 3}, false);
+        SkinCache store = new SkinCache(tempDir);
+        String contentHash = SkinCache.createContentKey(new byte[] {1, 2, 3}, false);
         String result = "https://textures.minecraft.net/texture/shared";
 
         store.saveContent(contentHash, result);
@@ -44,8 +44,8 @@ class MineSkinCacheTest {
     void repeatedSkinLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
         PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         Map<PlayerSkinRegion, String> saved = Map.of(textureKey, "https://textures.example/head");
-        new MineSkinCache(tempDir).save("ABCDEF", false, saved);
-        MineSkinCache store = new MineSkinCache(tempDir);
+        new SkinCache(tempDir).save("ABCDEF", false, saved);
+        SkinCache store = new SkinCache(tempDir);
 
         assertEquals(saved, store.load("abcdef", false));
         Files.delete(tempDir.resolve("abcdef-classic.json"));
@@ -57,12 +57,12 @@ class MineSkinCacheTest {
 
     @Test
     void repeatedMissingSkinLoadUsesMemoryCache(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
+        SkinCache store = new SkinCache(tempDir);
         PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         Map<PlayerSkinRegion, String> saved = Map.of(textureKey, "https://textures.example/head");
 
         assertTrue(store.load("abcdef", false).isEmpty());
-        new MineSkinCache(tempDir).save("abcdef", false, saved);
+        new SkinCache(tempDir).save("abcdef", false, saved);
 
         assertTrue(store.load("abcdef", false).isEmpty());
         store.clearMemory();
@@ -71,10 +71,10 @@ class MineSkinCacheTest {
 
     @Test
     void repeatedContentLoadUsesMemoryCache(@TempDir Path tempDir) throws IOException {
-        String contentHash = MineSkinCache.createContentKey(new byte[] {4, 5, 6}, true);
+        String contentHash = SkinCache.createContentKey(new byte[] {4, 5, 6}, true);
         String textureUrl = "https://textures.example/shared";
-        new MineSkinCache(tempDir).saveContent(contentHash, textureUrl);
-        MineSkinCache store = new MineSkinCache(tempDir);
+        new SkinCache(tempDir).saveContent(contentHash, textureUrl);
+        SkinCache store = new SkinCache(tempDir);
 
         assertEquals(textureUrl, store.loadContent(contentHash));
         Files.delete(tempDir.resolve("content").resolve(contentHash + ".json"));
@@ -88,23 +88,23 @@ class MineSkinCacheTest {
     void contentKeyIncludesModelVariant() {
         byte[] image = new byte[] {4, 5, 6};
 
-        assertNotEquals(MineSkinCache.createContentKey(image, false), MineSkinCache.createContentKey(image, true));
+        assertNotEquals(SkinCache.createContentKey(image, false), SkinCache.createContentKey(image, true));
     }
 
     @Test
     void rejectsInvalidContentHash(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
+        SkinCache store = new SkinCache(tempDir);
 
         assertNull(store.loadContent("../invalid"));
     }
 
     @Test
     void pendingJobRoundTrip(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[] {7, 8, 9}, true);
+        SkinCache store = new SkinCache(tempDir);
+        String contentHash = SkinCache.createContentKey(new byte[] {7, 8, 9}, true);
 
         store.savePendingJob(contentHash, "job-123");
-        MineSkinCache.MineSkinPendingJob pendingJob = store.loadPendingJob(contentHash);
+        SkinCache.PendingJob pendingJob = store.loadPendingJob(contentHash);
         assertNotNull(pendingJob);
         assertEquals("job-123", pendingJob.jobId());
         assertTrue(pendingJob.submittedAtEpochMillis() > 0L);
@@ -115,12 +115,12 @@ class MineSkinCacheTest {
 
     @Test
     void failureBlocksRetryUntilCooldownExpires(@TempDir Path tempDir) {
-        MineSkinCache store = new MineSkinCache(tempDir);
-        String contentHash = MineSkinCache.createContentKey(new byte[] {10, 11, 12}, false);
+        SkinCache store = new SkinCache(tempDir);
+        String contentHash = SkinCache.createContentKey(new byte[] {10, 11, 12}, false);
 
         store.saveFailure(contentHash, "failed", 2_000L);
 
-        MineSkinCache.MineSkinFailure failure = store.loadFailure(contentHash, 1_999L);
+        SkinCache.Failure failure = store.loadFailure(contentHash, 1_999L);
         assertNotNull(failure);
         assertEquals(2_000L, failure.retryAfterEpochMillis());
         assertEquals("failed", failure.errorMessage());
@@ -129,12 +129,12 @@ class MineSkinCacheTest {
 
     @Test
     void cleanupRemovesExpiredCacheAndRetainsRecentlyUsedEntry(@TempDir Path tempDir) throws IOException {
-        MineSkinCache store = new MineSkinCache(tempDir);
+        SkinCache store = new SkinCache(tempDir);
         PlayerSkinRegion textureKey = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
         Path expiredPath = tempDir.resolve("expired-classic.json");
         store.save("expired", false, Map.of(textureKey, "https://textures.example/expired"));
 
-        String usedContentHash = MineSkinCache.createContentKey(new byte[] {13, 14, 15}, false);
+        String usedContentHash = SkinCache.createContentKey(new byte[] {13, 14, 15}, false);
         Path usedContentPath = tempDir.resolve("content").resolve(usedContentHash + ".json");
         store.saveContent(usedContentHash, "https://textures.example/used");
 
@@ -145,7 +145,7 @@ class MineSkinCacheTest {
         store.clearMemory();
 
         assertEquals("https://textures.example/used", store.loadContent(usedContentHash));
-        MineSkinCache.CleanupResult result = store.cleanup(
+        SkinCache.CleanupResult result = store.cleanup(
             TimeUnit.DAYS.toMillis(30),
             256L * 1_024L * 1_024L,
             System.currentTimeMillis()
@@ -158,9 +158,9 @@ class MineSkinCacheTest {
 
     @Test
     void cleanupEvictsOldestFilesUntilUnderCapacity(@TempDir Path tempDir) throws IOException {
-        MineSkinCache store = new MineSkinCache(tempDir);
-        String oldestHash = MineSkinCache.createContentKey(new byte[] {16}, false);
-        String newestHash = MineSkinCache.createContentKey(new byte[] {17}, false);
+        SkinCache store = new SkinCache(tempDir);
+        String oldestHash = SkinCache.createContentKey(new byte[] {16}, false);
+        String newestHash = SkinCache.createContentKey(new byte[] {17}, false);
         Path oldestPath = tempDir.resolve("content").resolve(oldestHash + ".json");
         Path newestPath = tempDir.resolve("content").resolve(newestHash + ".json");
         store.saveContent(oldestHash, "https://textures.example/oldest");
@@ -171,7 +171,7 @@ class MineSkinCacheTest {
         Files.setLastModifiedTime(newestPath, FileTime.fromMillis(now - TimeUnit.DAYS.toMillis(1)));
         long maximumBytes = Files.size(newestPath);
 
-        MineSkinCache.CleanupResult result = store.cleanup(
+        SkinCache.CleanupResult result = store.cleanup(
             TimeUnit.DAYS.toMillis(30),
             maximumBytes,
             now
@@ -185,9 +185,9 @@ class MineSkinCacheTest {
 
     @Test
     void cleanupRemovesAbandonedPendingAndExpiredFailureFiles(@TempDir Path tempDir) throws IOException {
-        MineSkinCache store = new MineSkinCache(tempDir);
-        String pendingHash = MineSkinCache.createContentKey(new byte[] {18}, false);
-        String failureHash = MineSkinCache.createContentKey(new byte[] {19}, false);
+        SkinCache store = new SkinCache(tempDir);
+        String pendingHash = SkinCache.createContentKey(new byte[] {18}, false);
+        String failureHash = SkinCache.createContentKey(new byte[] {19}, false);
         store.savePendingJob(pendingHash, "job-abandoned");
         store.saveFailure(failureHash, "retry later", 1_000L);
 
@@ -201,10 +201,10 @@ class MineSkinCacheTest {
             }
             """.formatted(pendingHash));
 
-        MineSkinCache.CleanupResult result = store.cleanup(
+        SkinCache.CleanupResult result = store.cleanup(
             TimeUnit.DAYS.toMillis(30),
             256L * 1_024L * 1_024L,
-            MineSkinCache.PENDING_JOB_MAX_AGE_MILLIS + 2_000L
+            SkinCache.PENDING_JOB_MAX_AGE_MILLIS + 2_000L
         );
 
         assertEquals(2, result.transientFilesDeleted());
