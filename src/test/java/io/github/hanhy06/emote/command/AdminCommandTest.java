@@ -22,6 +22,8 @@ import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.commands.arguments.TimeArgument;
 import net.minecraft.network.chat.Style;
 import net.minecraft.server.Bootstrap;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.permissions.PermissionLevel;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -257,12 +259,16 @@ final class AdminCommandTest {
     }
 
     private PermissionService permissionService(boolean canManage) {
-        PermissionService permissionService = new PermissionService() {
+        return new PermissionService(new PermissionService.PermissionBackend() {
             @Override
-            public boolean canManage(CommandSourceStack source) {
+            public boolean has(CommandSourceStack source, String permission, PermissionLevel defaultLevel) {
                 return canManage;
             }
-        };
-        return permissionService;
+
+            @Override
+            public boolean has(ServerPlayer player, String permission, boolean defaultValue) {
+                return defaultValue;
+            }
+        });
     }
 }

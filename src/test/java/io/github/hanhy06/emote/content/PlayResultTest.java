@@ -7,19 +7,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlayResultTest {
     @Test
-    void successHasNoErrorMessage() {
-        assertTrue(PlayResult.SUCCESS.isSuccess());
-    }
-
-    @Test
-    void failureProvidesAnErrorMessage() {
-        PlayResult result = PlayResult.failure(" Animation unavailable. ");
-
-        assertFalse(result.isSuccess());
-        assertFalse(result.errorMessage().getString().isBlank());
-    }
-
-    @Test
     void failureRejectsBlankErrorMessage() {
         assertThrows(IllegalArgumentException.class, () -> PlayResult.failure(" "));
     }

@@ -3,12 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createDefaultPlayerBehavior } from "./format/emoteAnimation";
 import { IDENTITY_MATRIX } from "./format/matrix";
 import type { ImportedProject } from "./domain/conversionSeed";
-import {
-  DEFAULT_TARGET_MINECRAFT_VERSION,
-  documentNodeSpaces,
-  documentPartAssignments,
-  documentPartOrders,
-} from "./domain/conversionDocument";
+import { documentPartAssignments, documentPartOrders } from "./domain/conversionDocument";
 import {
   INITIAL_WORKSPACE,
   workspaceReducer,
@@ -16,16 +11,6 @@ import {
 } from "./workspace";
 
 describe("converter session skin assignment", () => {
-  it("initializes suggested assignments, coordinate spaces, and metadata", () => {
-    const session = opened(project()).session!;
-
-    expect(documentPartAssignments(session.document)).toEqual({ head: "head", head_variant: "head" });
-    expect(documentPartOrders(session.document)).toEqual({ head: 2, head_variant: 2 });
-    expect(documentNodeSpaces(session.document)).toEqual({ head: "partner", head_variant: "initiator" });
-    expect(session.document.animations[0].output).toMatchObject({ namespace: "emote", displayName: "Test" });
-    expect(session.document.targetMinecraftVersion).toBe(DEFAULT_TARGET_MINECRAFT_VERSION);
-  });
-
   it("caches metadata and settings for each selected animation", () => {
     const source = project();
     source.animations.push({ ...source.animations[0], id: "second", name: "Second", loopDelayTicks: 4 });

@@ -76,7 +76,7 @@ public final class EmoteMenu {
             true,
             false,
             DialogAction.CLOSE,
-            List.of(new PlainMessage(Component.literal("Search by name, command, or description."), 310)),
+            List.of(new PlainMessage(Component.literal("Search by name, command, description, or #tag."), 310)),
             inputs
         );
         ActionButton submitButton = createSearchSubmitButton();

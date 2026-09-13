@@ -45,17 +45,35 @@ public class ConfigManager {
         this.bundledEmoteDirectory = bundledEmoteDirectory;
     }
 
-    public void initialize() {
-        configure();
-        if (!readConfig()) {
-            broadcastConfig();
+    public @Nullable PreparedConfig prepare() {
+        if (!configure()) {
+            return null;
         }
-        if (!readAccessConfig()) {
-            broadcastAccessConfig();
+
+        JsonObject configJson = readJsonFile(CONFIG_FILE_NAME);
+        JsonObject accessConfigJson = readJsonFile(ACCESS_CONFIG_FILE_NAME);
+        Config loadedConfig = parseConfig(configJson);
+        AccessConfig loadedAccessConfig = parseAccessConfig(accessConfigJson);
+        if (loadedConfig == null || loadedAccessConfig == null) {
+            return null;
         }
+
+        boolean migrateAccessConfig = accessConfigJson.get("schema_version").getAsInt() == AccessConfig.LEGACY_SCHEMA_VERSION;
+        return new PreparedConfig(loadedConfig, loadedAccessConfig, migrateAccessConfig);
     }
 
-    public void configure() {
+    public void apply(PreparedConfig preparedConfig) {
+        this.config = preparedConfig.config();
+        this.accessConfig = preparedConfig.accessConfig();
+        if (preparedConfig.migrateAccessConfig()) {
+            writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig));
+        }
+        broadcastConfig();
+        broadcastAccessConfig();
+        EmoteMod.LOGGER.info("Applied emote configuration");
+    }
+
+    public boolean configure() {
         boolean installBundledEmotes = Files.notExists(getEmoteDirectory());
 
         try {
@@ -63,7 +81,7 @@ public class ConfigManager {
             Files.createDirectories(getEmoteDirectory());
         } catch (IOException exception) {
             EmoteMod.LOGGER.warn("Failed to create config files; using default settings", exception);
-            return;
+            return false;
         }
 
         if (installBundledEmotes) {
@@ -74,8 +92,8 @@ public class ConfigManager {
             }
         }
 
-        writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(this.config));
-        writeIfAbsent(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(this.accessConfig));
+        return writeIfAbsent(CONFIG_FILE_NAME, this.jsonCodec.writeConfig(Config.createDefault()))
+            && writeIfAbsent(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(AccessConfig.createDefault()));
     }
 
     private static Optional<Path> findBundledEmoteDirectory() {
@@ -122,49 +140,32 @@ public class ConfigManager {
         Files.createDirectories(getResourcePackDirectory());
     }
 
-    public boolean readConfig() {
-        JsonObject configJson = readJsonFile(CONFIG_FILE_NAME);
+    private Config parseConfig(@Nullable JsonObject configJson) {
         Config loadedConfig;
         try {
             loadedConfig = this.jsonCodec.readConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Main config contains invalid field values; keeping the current config: {}", exception.getMessage());
-            return false;
+            return null;
         }
         if (loadedConfig == null) {
             EmoteMod.LOGGER.warn("Main config is empty or invalid; keeping the current config");
-            return false;
         }
-
-        this.config = loadedConfig;
-        broadcastConfig();
-        EmoteMod.LOGGER.info("Loaded main config from {}", CONFIG_FILE_NAME);
-        return true;
+        return loadedConfig;
     }
 
-    public boolean readAccessConfig() {
-        JsonObject configJson = readJsonFile(ACCESS_CONFIG_FILE_NAME);
+    private AccessConfig parseAccessConfig(@Nullable JsonObject configJson) {
         AccessConfig loadedConfig;
         try {
             loadedConfig = this.jsonCodec.readAccessConfig(configJson);
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Emote access config contains invalid field values; keeping the current config: {}", exception.getMessage());
-            return false;
+            return null;
         }
-
         if (loadedConfig == null) {
             EmoteMod.LOGGER.warn("Emote access config is empty or invalid; keeping the current config");
-            return false;
         }
-
-        boolean requiresMigration = configJson.get("schema_version").getAsInt() == AccessConfig.LEGACY_SCHEMA_VERSION;
-        this.accessConfig = loadedConfig;
-        if (requiresMigration) {
-            writeJsonFile(ACCESS_CONFIG_FILE_NAME, this.jsonCodec.writeAccessConfig(loadedConfig));
-        }
-        broadcastAccessConfig();
-        EmoteMod.LOGGER.info("Loaded emote access rules from {}", ACCESS_CONFIG_FILE_NAME);
-        return true;
+        return loadedConfig;
     }
 
     public void addListener(ConfigListener listener) {
@@ -226,13 +227,13 @@ public class ConfigManager {
         }
     }
 
-    private void writeIfAbsent(String fileName, JsonObject json) {
+    private boolean writeIfAbsent(String fileName, JsonObject json) {
         Path filePath = this.configDirPath.resolve(fileName);
         if (Files.exists(filePath)) {
-            return;
+            return true;
         }
 
-        writeJsonFile(fileName, json);
+        return writeJsonFile(fileName, json);
     }
 
     private boolean writeJsonFile(String fileName, JsonObject json) {
@@ -246,5 +247,8 @@ public class ConfigManager {
             EmoteMod.LOGGER.error("Failed to write {}", fileName, exception);
             return false;
         }
+    }
+
+    public record PreparedConfig(Config config, AccessConfig accessConfig, boolean migrateAccessConfig) {
     }
 }

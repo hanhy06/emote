@@ -8,9 +8,10 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.content.loader.EmoteDirectoryLoader;
-import io.github.hanhy06.emote.network.PayloadRegistry;
 import io.github.hanhy06.emote.network.PlaybackStateSyncService;
 import io.github.hanhy06.emote.network.WheelSyncService;
+import io.github.hanhy06.emote.network.payload.PlaybackStatePayload;
+import io.github.hanhy06.emote.network.payload.WheelSyncPayload;
 import io.github.hanhy06.emote.permission.PermissionService;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
@@ -18,15 +19,15 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import io.github.hanhy06.emote.server.IdlePlaybackService;
 import io.github.hanhy06.emote.server.ReloadService;
 import io.github.hanhy06.emote.server.ServerLifecycle;
-import io.github.hanhy06.emote.skin.AutomaticSkinProvider;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
+import io.github.hanhy06.emote.skin.SkinCache;
 import io.github.hanhy06.emote.skin.account.*;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinCache;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinClient;
 import io.github.hanhy06.emote.skin.mineskin.MineSkinProvider;
-import io.github.hanhy06.emote.skin.mineskin.MineSkinTaskQueue;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.loader.api.FabricLoader;
 
 final class EmoteBootstrap {
@@ -44,12 +45,13 @@ final class EmoteBootstrap {
         );
         PlaybackPolicyService playbackPolicy = new PlaybackPolicyService(permissions, catalog, cooldowns);
         PlayerSkinBaker skinBaker = new PlayerSkinBaker();
-        MineSkinCache skinCache = new MineSkinCache();
-        MineSkinProvider mineSkin = new MineSkinProvider(skinBaker, skinCache, new MineSkinClient(), new MineSkinTaskQueue());
+        SkinCache skinCache = new SkinCache();
+        MineSkinProvider mineSkin = new MineSkinProvider(skinCache, new MineSkinClient());
         MinecraftSkinClient minecraftSkins = new MinecraftSkinClient();
-        AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins, mineSkin::generateTexture);
-        AccountSkinProvider accountSkins = new AccountSkinProvider(accounts, skinBaker, minecraftSkins, skinCache, accountQueue);
-        PlayerSkinManager skins = new PlayerSkinManager(new AutomaticSkinProvider(accounts::hasAccounts, accountSkins, mineSkin));
+        AccountBakeQueue accountQueue = new AccountBakeQueue(accounts, minecraftSkins);
+        PlayerSkinManager skins = new PlayerSkinManager(
+            new SkinBakeCoordinator(accounts, skinBaker, minecraftSkins, skinCache, accountQueue, mineSkin)
+        );
         catalog.addListener(emotes -> skins.setModelBindings(emotes.stream().flatMap(emote -> switch (emote) {
             case PreparedAnimation animation -> animation.skinBindings().stream();
             case PreparedSequence sequence -> sequence.layoutAnchor().skinBindings().stream();
@@ -98,12 +100,17 @@ final class EmoteBootstrap {
         playback.addStateListener(playbackStateSync);
         playback.addStateListener(apiEvents);
         playback.registerVisibilityService();
-        PayloadRegistry.register();
+        registerPayloads();
         ServerLifecycleEvents.SERVER_STARTED.register(server -> accounts.initialize());
         lifecycle.register();
         ServerLifecycleEvents.SERVER_STOPPING.register(server -> accounts.close());
         commands.register();
 
         EmoteMod.LOGGER.info("Emote initialized");
+    }
+
+    private static void registerPayloads() {
+        PayloadTypeRegistry.clientboundPlay().register(PlaybackStatePayload.TYPE, PlaybackStatePayload.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(WheelSyncPayload.TYPE, WheelSyncPayload.STREAM_CODEC);
     }
 }

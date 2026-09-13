@@ -13,6 +13,8 @@
     "screen.emote.shortcuts.title": "Emote-Rad anpassen",
     "screen.emote.shortcuts.selected": "Im Rad",
     "screen.emote.shortcuts.available": "Verfügbar",
+    "screen.emote.shortcuts.search": "Emotes oder #Tags suchen",
+    "screen.emote.shortcuts.empty_search": "Keine passenden Emotes.",
     "screen.emote.shortcuts.selected_help": "Zum Sortieren ziehen.",
     "screen.emote.shortcuts.empty_selected": "Keine Emotes im Rad.",
     "screen.emote.shortcuts.empty_available": "Alle verfügbaren Emotes sind im Rad.",

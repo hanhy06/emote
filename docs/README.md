@@ -28,11 +28,12 @@ On the server, LuckPerms permissions can assign emotes and idle emotes per playe
 
 | Command            | Description                   |
 |--------------------|-------------------------------|
-| `/emote`           | Opens the emote menu.         |
+| `/emote`           | Opens the Emote Menu dialog.  |
 | `/emote play <id>` | Plays an emote by ID.         |
 | `V`                | Opens the client emote wheel. |
 
 Use the wheel's Edit Wheel button to add, remove, or reorder entries. The order is stored on the client separately for each server.
+The emote menu and wheel editor can search by name, ID, description, or `#tags` included in the description. Multiple `#tags` match emotes containing all specified tags.
 
 ### Administration
 
