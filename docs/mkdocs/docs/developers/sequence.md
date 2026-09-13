@@ -6,10 +6,11 @@ Sequence files use schema version `4` and combine existing Animations into one e
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:sit",
+  "id": "emote:idle.sit",
   "metadata": {
-    "name": "Emote sit",
-    "description": "Idle emote sit down emote."
+    "name": "Sit",
+    "description": "Sit down and relax.",
+    "author": "@soji2318"
   },
   "settings": {
     "cooldown": "0t",
@@ -34,6 +35,7 @@ Sequence files use schema version `4` and combine existing Animations into one e
         "emote:idle_butterfly", 35,
         "emote:idle_flower", 25
       ],
+      "transition": "2t",
       "repeat": 2
     },
     {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}

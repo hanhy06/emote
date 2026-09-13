@@ -61,10 +61,17 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     index,
     includeSequence ? { standalone: false } : undefined,
   ));
-  const files: ExportResult[] = animations.map((animation, index) => ({
-    blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-    fileName: `emote.${sanitizeAnimationFileName(document.animations[index].output.displayName)}.json`,
-  }));
+  const usedFileNames = new Set<string>();
+  const files: ExportResult[] = animations.map((animation, index) => {
+    const baseName = sanitizeAnimationFileName(document.animations[index].output.displayName);
+    let uniqueName = baseName;
+    for (let suffix = 2; usedFileNames.has(uniqueName); suffix++) uniqueName = `${baseName}_${suffix}`;
+    usedFileNames.add(uniqueName);
+    return {
+      blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
+      fileName: `emote.${uniqueName}.json`,
+    };
+  });
   if (includeSequence) {
     const sequenceOutput = document.sequence;
     const sequence = {
