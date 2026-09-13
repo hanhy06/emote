@@ -38,7 +38,7 @@ Place the exported JSON files under `config/emote/emote/`.
 When an animation requires additional resources, the converter also downloads a `*.resources.zip` file. Place it under `config/emote/resource-pack/`; Emote adds its contents to the Polymer resource pack. Client delivery follows the shared Polymer configuration. See the [Polymer documentation](https://polymer.pb4.eu/latest/) for configuration details.
 
 !!! note "Polymer is optional"
-    If none of your emotes use a `*.resources.zip` file, you can disable Polymer integration.
+    The emotes bundled with Emote do not require a resource pack.<br>If none of your custom emotes use a `*.resources.zip` file, you can disable Polymer integration.
 
 ```text
 config/emote/
