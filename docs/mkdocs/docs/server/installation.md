@@ -21,9 +21,10 @@ emote/
 │   ├── wave.json
 │   └── dance.json
 └── idle/
-    ├── sit-down.json
-    ├── sit-idle.json
-    └── sit-sequence.json
+    ├── emote.idle_butterfly.json
+    ├── emote.idle_flower.json
+    ├── emote.idle_sky.json
+    └── emote.sit.json
 ```
 
 The directory is scanned recursively, so file location within it does not matter.<br>

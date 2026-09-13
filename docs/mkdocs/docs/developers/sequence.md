@@ -6,13 +6,14 @@ Sequence files use schema version `4` and combine existing Animations into one e
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "example:sit",
+  "id": "emote:idle.sit",
   "metadata": {
     "name": "Sit",
-    "description": "Sit down, wait, and stand up."
+    "description": "Sit down and relax.",
+    "author": "@soji2318"
   },
   "settings": {
-    "cooldown": "5s",
+    "cooldown": "0t",
     "player": {
       "hidden": true,
       "stop_conditions": {
@@ -27,10 +28,17 @@ Sequence files use schema version `4` and combine existing Animations into one e
     }
   },
   "steps": [
-    {"emote": "example:sit_down"},
-    {"wait": "10t"},
-    {"emote": "example:sit_idle", "repeat": 3},
-    {"emote": "example:stand_up"}
+    {"emote": "emote:sit_down"},
+    {
+      "emote": [
+        "emote:idle_sky", 40,
+        "emote:idle_butterfly", 35,
+        "emote:idle_flower", 25
+      ],
+      "transition": "2t",
+      "repeat": 2
+    },
+    {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
   ]
 }
 ```
@@ -77,7 +85,7 @@ Sequences do not define `standalone`, `rotation_deadzone`, or `playback`. They a
 Specify one Animation with `emote` and optionally add `repeat` or `transition`.
 
 ```json
-{"emote": "example:sit_idle", "repeat": 3}
+{"emote": "emote:idle_sky", "repeat": 3}
 ```
 
 `repeat` defaults to `1`. Each repetition runs one complete playback cycle of the Animation. Repeating Animations include their `loop_delay` between cycles.
@@ -85,7 +93,7 @@ Specify one Animation with `emote` and optionally add `repeat` or `transition`.
 `transition` linearly moves the shared display nodes from the previous Animation's final pose to the next Animation's initial pose before its timeline begins:
 
 ```json
-{"emote": "example:stand_up", "transition": "4t"}
+{"emote": "emote:stand_up1", "transition": "4t"}
 ```
 
 It defaults to `0t` and applies before every real Animation selected by the step, including repetitions. The first Animation of a normal Sequence has no previous pose, so its transition is skipped. The first Animation of a cooperative `matched` or `timeout` branch transitions from the offer pose. Waits and loop delays hold the previous pose before the transition. Visibility, display data, timeline events, and Molang time change only when the next Animation begins.
@@ -101,9 +109,9 @@ An array of IDs selects one with equal probability on each repetition.
 ```json
 {
   "emote": [
-    "example:sit_idle_1",
-    "example:sit_idle_2",
-    "example:sit_idle_3"
+    "emote:idle_sky",
+    "emote:idle_butterfly",
+    "emote:idle_flower"
   ],
   "repeat": 3
 }
@@ -114,9 +122,9 @@ For explicit probabilities, alternate IDs and integer weights. The weights must 
 ```json
 {
   "emote": [
-    "example:sit_idle_1", 30,
-    "example:sit_idle_2", 40,
-    "example:sit_idle_3", 30
+    "emote:idle_sky", 40,
+    "emote:idle_butterfly", 35,
+    "emote:idle_flower", 25
   ],
   "repeat": 3
 }
@@ -136,8 +144,8 @@ Two reserved IDs control repetition of the current Animation step.
 ```json
 {
   "emote": [
-    "example:sit_idle_1", 50,
-    "example:sit_idle_2", 30,
+    "emote:idle_sky", 50,
+    "emote:idle_butterfly", 30,
     "emote:continue", 15,
     "emote:break", 5
   ],

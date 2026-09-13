@@ -199,14 +199,17 @@ class AnimationJsonParserTest {
         }
 
         assertFalse(examplePaths.isEmpty());
+        int animationCount = 0;
         for (Path examplePath : examplePaths) {
             if (!EmoteJsonDocument.read(examplePath).type().equals("animation")) {
                 continue;
             }
+            animationCount++;
             LoadedAnimation loaded = this.parser.parse(examplePath);
             assertFalse(loaded.animation().nodes().isEmpty(), examplePath.toString());
             assertTrue(loaded.animation().settings().player().hidden(), examplePath.toString());
         }
+        assertTrue(animationCount > 0);
     }
 
     @Test
