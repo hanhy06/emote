@@ -54,7 +54,7 @@ class EmoteQueryServiceTest {
 
         assertEquals(
             List.of("demo:second", "demo:first"),
-            EmoteSearch.filterPreservingOrder(emotes, "#dance").stream().map(EmoteSummary::id).toList()
+            EmoteQueryService.filterPreservingOrder(emotes, "#dance").stream().map(EmoteSummary::id).toList()
         );
     }
 

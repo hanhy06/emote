@@ -1,6 +1,6 @@
 package io.github.hanhy06.emote.client;
 
-import io.github.hanhy06.emote.application.EmoteSearch;
+import io.github.hanhy06.emote.application.EmoteQueryService;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.Environment;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -146,7 +146,7 @@ public class WheelShortcutScreen extends Screen {
     void refreshLists() {
         this.selectedList.updateEntries(this.controller.getShortcutEmotes());
         String query = this.searchBox == null ? "" : this.searchBox.getValue();
-        this.availableList.updateEntries(EmoteSearch.filterPreservingOrder(this.controller.getAvailableShortcutEmotes(), query));
+        this.availableList.updateEntries(EmoteQueryService.filterPreservingOrder(this.controller.getAvailableShortcutEmotes(), query));
     }
 
     private Component fitText(Component text, int maxWidth) {
