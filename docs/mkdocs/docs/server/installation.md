@@ -21,12 +21,9 @@ emote/
 │   ├── wave.json
 │   └── dance.json
 └── idle/
-    ├── emote.1.sit_down.json
-    ├── emote.2.idle_sky.json
-    ├── emote.3.idle_butterfly.json
-    ├── emote.4.idle_flower.json
-    ├── emote.5.stand_up1.json
-    ├── emote.6.stand_up2.json
+    ├── emote.idle_butterfly.json
+    ├── emote.idle_flower.json
+    ├── emote.idle_sky.json
     └── emote.sit.json
 ```
 

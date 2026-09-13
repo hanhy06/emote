@@ -1,10 +1,11 @@
 {
     "type": "sequence",
     "schema_version": 4,
-    "id": "emote:sit",
+    "id": "emote:idle.sit",
     "metadata": {
-        "name": "Emote sit",
-        "description": "Idle emote sit down emote."
+        "name": "Sit",
+        "description": "Sit down and relax.",
+        "author": "@soji2318"
     },
     "settings": {
         "cooldown": "0t",
@@ -31,6 +32,7 @@
                 "emote:idle_butterfly", 35,
                 "emote:idle_flower", 25
             ],
+            "transition": "2t",
             "repeat": 2
         },
         {

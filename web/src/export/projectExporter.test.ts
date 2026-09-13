@@ -135,6 +135,31 @@ describe("exportAnimation", () => {
     expect((await createDocumentAnimationBundleDownload(document, true)).map((file) => file.fileName)).toEqual(files.map((file) => file.fileName));
   });
 
+  it("adds suffixes when batch animation display names produce the same file name", () => {
+    const project: ImportedProject = {
+      source: "emote_json",
+      sourceName: "multi.json",
+      suggestedMetadata: { name: "Demo", description: "Sequence demo" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      nodes: { root: { id: "root", type: "anchor", defaultMatrix: IDENTITY } },
+      animations: ["first", "second", "third"].map((id) => ({
+        id, name: id, durationTicks: 1, playbackMode: "once" as const, loopDelayTicks: 0,
+        tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+      })),
+      diagnostics: [], resources: new Map(),
+    };
+    const document = createConversionDocument(project, "Test adapter");
+    document.animations.forEach((animation) => {
+      animation.output = { ...animation.output, displayName: "Same name" };
+    });
+
+    expect(exportDocumentAnimationFiles(document, false).map((file) => file.fileName)).toEqual([
+      "emote.same_name.json",
+      "emote.same_name_2.json",
+      "emote.same_name_3.json",
+    ]);
+  });
+
   it("writes a manually assigned order without replacing it with zero", async () => {
     const project: ImportedProject = {
       source: "emote_json",
