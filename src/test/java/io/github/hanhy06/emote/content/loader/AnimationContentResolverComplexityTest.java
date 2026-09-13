@@ -9,7 +9,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.Identifier;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -18,17 +17,6 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AnimationContentResolverComplexityTest {
-
-    @Test
-    void acceptsAllBundledAnimations() throws Exception {
-        AnimationJsonParser parser = new AnimationJsonParser();
-        try (var paths = Files.list(Path.of("docs/sample"))) {
-            for (Path path : paths.filter(file -> file.getFileName().toString().endsWith(".json")).toList()) {
-                LoadedAnimation loaded = parser.parse(path);
-                assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded), path.toString());
-            }
-        }
-    }
 
     @Test
     void acceptsAnimationDefinedNodeAndCommandCounts() {

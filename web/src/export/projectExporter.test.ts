@@ -4,6 +4,7 @@ import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
 import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
 import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
+import type { GeneratedResource } from "../domain/generatedResource";
 import { generatedResourceFiles } from "./generatedResources";
 import {
   createDocumentAnimationBundleDownload,
@@ -345,7 +346,7 @@ describe("exportAnimation", () => {
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
-      resources: new Map([
+      resources: new Map<string, GeneratedResource>([
         ["assets/test/textures/entity/test.png", texture],
         ["assets/test/textures/entity/test.png.mcmeta", new Uint8Array([4])],
         ["assets/test/models/item/test.json", new Uint8Array([5])],
@@ -429,6 +430,69 @@ describe("exportAnimation", () => {
       "emote.player.json",
       "emote.player.resources.zip",
     ]);
+  });
+
+  it("exports only generated models and textures referenced by the compiled animation", async () => {
+    const playerTexture = new Uint8Array([1]);
+    const customTexture = new Uint8Array([2]);
+    const unusedTexture = new Uint8Array([3]);
+    const project: ImportedProject = {
+      source: "geckolib_bbmodel",
+      sourceName: "mixed.bbmodel",
+      suggestedMetadata: { name: "Mixed", description: "" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      nodes: {
+        head: {
+          id: "head",
+          type: "item_display",
+          defaultMatrix: IDENTITY,
+          visible: true,
+          itemDisplay: "none",
+          itemStack: readItemStack('{id:"minecraft:paper",components:{"minecraft:item_model":"test:mixed/head"}}'),
+          playerHeadConversion: { matrix: IDENTITY },
+          suggestedSkin: { part: "head", order: 0 },
+        },
+        prop: {
+          id: "prop",
+          type: "item_display",
+          defaultMatrix: IDENTITY,
+          visible: true,
+          itemDisplay: "none",
+          itemStack: readItemStack('{id:"minecraft:paper",components:{"minecraft:item_model":"test:mixed/prop"}}'),
+        },
+      },
+      animations: [{
+        id: "mixed",
+        name: "Mixed",
+        durationTicks: 1,
+        playbackMode: "once",
+        loopDelayTicks: 0,
+        tracks: {},
+        events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [],
+      resources: new Map<string, GeneratedResource>([
+        ["assets/test/items/mixed/head.json", { kind: "item_model", model: "test:item/mixed/head" }],
+        ["assets/test/models/item/mixed/head.json", { kind: "cuboid_model", textures: { layer0: "test:item/mixed/player" }, elements: [] }],
+        ["assets/test/textures/item/mixed/player.png", playerTexture],
+        ["assets/test/items/mixed/prop.json", { kind: "item_model", model: "test:item/mixed/prop" }],
+        ["assets/test/models/item/mixed/prop.json", { kind: "cuboid_model", textures: { layer1: "test:item/mixed/custom" }, elements: [] }],
+        ["assets/test/textures/item/mixed/custom.png", customTexture],
+        ["assets/test/textures/item/mixed/unused.png", unusedTexture],
+      ]),
+    };
+    const document = createConversionDocument(project, "test");
+    document.targetMinecraftVersion = "26.2";
+
+    const downloads = await createDocumentAnimationDownload(document, 0);
+    const files = unzipSync(new Uint8Array(await downloads[1].blob.arrayBuffer()));
+
+    expect(Object.keys(files).sort()).toEqual([
+      "models/test]items]mixed]prop.json",
+      "models/test]models]item]mixed]prop.json",
+      "textures/test]textures]item]mixed]custom.png",
+    ]);
+    expect(files["textures/test]textures]item]mixed]custom.png"]).toEqual(customTexture);
   });
 
   it.each([

@@ -52,6 +52,16 @@ class AnimationJsonParserTest {
     }
 
     @Test
+    void extractsDescriptionTagsWhileLoadingMetadata() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("metadata").addProperty("description", "Friendly dance #Dance #친구 #dance");
+
+        LoadedAnimation loaded = parse(root);
+
+        assertEquals(List.of("dance", "친구"), loaded.animation().metadata().tags());
+    }
+
+    @Test
     void readsExplicitStandaloneSetting() throws Exception {
         JsonObject root = readReference();
         assertTrue(parse(root).animation().settings().standalone());

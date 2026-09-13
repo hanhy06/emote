@@ -10,7 +10,14 @@ import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 
 import java.io.UncheckedIOException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 public final class ReloadService {
     private final ConfigManager configManager;
@@ -59,20 +66,18 @@ public final class ReloadService {
         this.resourcePackPusher = resourcePackPusher;
     }
 
-    public void loadOnServerStart() {
-        this.configManager.initialize();
-        ReloadStats stats;
-        try {
-            stats = replaceRegistry(prepareRegistry());
-        } catch (UncheckedIOException exception) {
-            EmoteMod.LOGGER.warn("Initial emote load failed; keeping the current registry");
-            return;
+    public ReloadResult reload() {
+        ConfigManager.PreparedConfig preparedConfig = this.configManager.prepare();
+        if (preparedConfig == null) {
+            EmoteMod.LOGGER.warn("Emote reload failed; keeping the current state because the configuration is invalid");
+            return result(ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.CONFIG_LOAD));
         }
-        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+
+        ReloadStats stats = reloadPreparedConfig(preparedConfig);
+        return result(stats);
     }
 
-    public ReloadResult reloadFromCommand() {
-        ReloadStats stats = reloadLoadedConfig();
+    private ReloadResult result(ReloadStats stats) {
         var accessConfig = this.configManager.getAccessConfig();
         return new ReloadResult(
             accessConfig.disabled().size(),
@@ -83,7 +88,7 @@ public final class ReloadService {
         );
     }
 
-    private ReloadStats reloadLoadedConfig() {
+    private ReloadStats reloadPreparedConfig(ConfigManager.PreparedConfig preparedConfig) {
         PreparedRegistry prepared;
         try {
             prepared = prepareRegistry();
@@ -97,15 +102,14 @@ public final class ReloadService {
             return ReloadStats.failed(this.emoteCatalog.fileEmotes().size(), ReloadResult.Failure.RESOURCE_PACK_BUILD);
         }
 
-        this.configManager.readConfig();
-        this.configManager.readAccessConfig();
+        this.configManager.apply(preparedConfig);
         ReloadStats stats = replaceRegistry(prepared);
         this.playbackStopper.stopAll(PlaybackStopReason.RELOAD);
         if (resourcePackResult == PolymerResourcePackDistributor.BuildResult.BUILT) {
             this.resourcePackPusher.run();
         }
         this.wheelSynchronizer.run();
-        EmoteMod.LOGGER.info("Reloaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
+        EmoteMod.LOGGER.info("Loaded {} emotes from {} files", stats.loadedEmoteCount(), stats.detectedFileCount());
         return stats;
     }
 
@@ -113,17 +117,17 @@ public final class ReloadService {
         var contents = this.directoryLoader.load(this.configManager.getEmoteDirectory());
         var emotes = contents.animations().stream()
             .map(this::prepareAnimation)
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .toList();
-        var animationsById = emotes.stream().collect(java.util.stream.Collectors.toMap(
+        var animationsById = emotes.stream().collect(Collectors.toMap(
             PreparedAnimation::id,
-            java.util.function.Function.identity()
+            Function.identity()
         ));
         var sequences = contents.sequences().stream()
             .map(sequence -> resolveSequence(sequence, animationsById))
-            .filter(java.util.Objects::nonNull)
+            .filter(Objects::nonNull)
             .toList();
-        java.util.List<PlayableEmote> definitions = new java.util.ArrayList<>(emotes);
+        List<PlayableEmote> definitions = new ArrayList<>(emotes);
         definitions.addAll(sequences);
         return new PreparedRegistry(contents.detectedFileCount(), definitions);
     }
@@ -151,7 +155,7 @@ public final class ReloadService {
 
     private PreparedSequence resolveSequence(
         EmoteSequence sequence,
-        java.util.Map<String, PreparedAnimation> animationsById
+        Map<String, PreparedAnimation> animationsById
     ) {
         try {
             return PreparedSequence.resolve(sequence, animationsById);
@@ -163,7 +167,7 @@ public final class ReloadService {
 
     @FunctionalInterface
     interface LoadResultLoader {
-        EmoteDirectoryLoader.LoadResult load(java.nio.file.Path directory);
+        EmoteDirectoryLoader.LoadResult load(Path directory);
     }
 
     @FunctionalInterface
@@ -177,9 +181,9 @@ public final class ReloadService {
         }
     }
 
-    private record PreparedRegistry(int detectedFileCount, java.util.List<PlayableEmote> definitions) {
+    private record PreparedRegistry(int detectedFileCount, List<PlayableEmote> definitions) {
         private PreparedRegistry {
-            definitions = java.util.List.copyOf(definitions);
+            definitions = List.copyOf(definitions);
         }
     }
 }

@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 
 import java.nio.file.Path;
+import java.util.List;
 
 public sealed interface PlayableEmote permits PreparedAnimation, PreparedSequence {
     String id();
@@ -17,6 +18,10 @@ public sealed interface PlayableEmote permits PreparedAnimation, PreparedSequenc
 
     default String description() {
         return metadata().description();
+    }
+
+    default List<String> tags() {
+        return metadata().tags();
     }
 
     boolean standalone();

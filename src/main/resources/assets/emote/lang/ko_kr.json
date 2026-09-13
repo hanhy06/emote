@@ -13,6 +13,8 @@
     "screen.emote.shortcuts.title": "이모트 휠 편집",
     "screen.emote.shortcuts.selected": "휠에 표시",
     "screen.emote.shortcuts.available": "추가 가능한 이모트",
+    "screen.emote.shortcuts.search": "이모트 또는 #태그 검색",
+    "screen.emote.shortcuts.empty_search": "검색 결과가 없습니다.",
     "screen.emote.shortcuts.selected_help": "드래그해서 순서를 바꾸세요.",
     "screen.emote.shortcuts.empty_selected": "휠에 표시할 이모트가 없습니다.",
     "screen.emote.shortcuts.empty_available": "사용 가능한 모든 이모트가 휠에 있습니다.",
