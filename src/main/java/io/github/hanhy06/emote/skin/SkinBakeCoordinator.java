@@ -91,7 +91,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     public synchronized void onConfigReload(Config config) {
         this.fallbackUploader.configure(config);
         if (!hasUploadProvider()) {
-            EmoteMod.LOGGER.warn("No bake accounts or MineSkin API key configured; only cached skin textures are available");
+            EmoteMod.LOGGER.error("No bake accounts or MineSkin API key configured; only cached skin textures are available");
         }
 
         if (this.cacheCleanup != null) {
