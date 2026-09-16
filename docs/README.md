@@ -4,7 +4,7 @@
 
 > Thanks to [Popular Vibe](https://block-display.com/bd/77774) for allowing us to use their animation!
 
-[▶ Watch the full emote demo on YouTube](https://www.youtube.com/watch?v=ONCSWkwl20o)
+[▶ Watch the full emote demo on YouTube](https://www.youtube.com/watch?v=ONCSWkwl20o&list=PLXqBJ1wZw7O0)
 
 [![Web converter](https://img.shields.io/badge/Web_converter-0067C0?style=flat-square&logo=githubpages&logoColor=white)](https://hanhy06.github.io/emote/converter/)
 [![Wiki](https://img.shields.io/badge/Wiki-9d4edd?style=flat-square&logo=materialformkdocs&logoColor=white)](https://hanhy06.github.io/emote/)
