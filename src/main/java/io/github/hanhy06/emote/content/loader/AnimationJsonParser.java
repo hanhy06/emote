@@ -130,6 +130,10 @@ public final class AnimationJsonParser {
         if (rotationDeadzone < 0.0D || rotationDeadzone > 180.0D) {
             throw document.error("$.settings.rotation_deadzone", "must be between 0 and 180 degrees");
         }
+        JsonElement displayInterpolationElement = object.get("display_interpolation");
+        int displayInterpolationTicks = displayInterpolationElement == null || displayInterpolationElement.isJsonNull()
+            ? 1
+            : document.requireTime(object, "display_interpolation", "$.settings", 0);
         EmotePlayerBehavior player = parsePlayer(
             document.requireObject(object, "player", "$.settings"),
             "$.settings.player",
@@ -166,7 +170,14 @@ public final class AnimationJsonParser {
         if (loopDelayTicks != 0 && (mode == LoopMode.ONCE || mode == LoopMode.HOLD)) {
             throw document.error("$.settings.playback.loop_delay", "must be zero when playback mode is once or hold");
         }
-        return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks));
+        return new Settings(
+            standalone,
+            cooldownTicks,
+            (float) rotationDeadzone,
+            displayInterpolationTicks,
+            player,
+            new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks)
+        );
     }
 
     private int optionalTime(JsonObject object, String key, String path, EmoteJsonDocument document)

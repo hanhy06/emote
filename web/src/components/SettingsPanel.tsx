@@ -72,6 +72,7 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
           <label>Cooldown<input value={metadata.cooldown ?? "0t"} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, cooldown: event.currentTarget.value })} /></label>
           <label>Movement distance<input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} /></label>
           <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={metadata.rotationDeadzone} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, rotationDeadzone: Number(event.currentTarget.value) })} /></label>
+          <label>Display interpolation<input value={metadata.displayInterpolation} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, displayInterpolation: event.currentTarget.value })} /></label>
         </div>
         <div className="fields settings-toggles">
           <label className="checkbox"><input type="checkbox" checked={metadata.standalone ?? true} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, standalone: event.currentTarget.checked })} />Standalone animation</label>

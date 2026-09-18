@@ -17,6 +17,7 @@ export interface ImportedProject {
   suggestedStandalone?: boolean;
   suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
+  suggestedDisplayInterpolation?: string;
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];

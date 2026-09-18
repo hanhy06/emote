@@ -81,6 +81,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
       suggestedRotationDeadzone: animation.settings.rotation_deadzone,
+      suggestedDisplayInterpolation: animation.settings.display_interpolation ?? "1t",
       nodes,
       animations: [importedAnimation],
       diagnostics,

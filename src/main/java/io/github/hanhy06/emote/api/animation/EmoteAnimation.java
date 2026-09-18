@@ -38,6 +38,7 @@ public record EmoteAnimation(
         boolean standalone,
         int cooldownTicks,
         float rotationDeadzone,
+        int displayInterpolationTicks,
         EmotePlayerBehavior player,
         PlaybackSettings playback
     ) {
@@ -47,6 +48,9 @@ public record EmoteAnimation(
             }
             if (!Float.isFinite(rotationDeadzone) || rotationDeadzone < 0.0F || rotationDeadzone > 180.0F) {
                 throw new IllegalArgumentException("rotation deadzone must be finite and between 0 and 180 degrees");
+            }
+            if (displayInterpolationTicks < 0) {
+                throw new IllegalArgumentException("display interpolation must not be negative");
             }
             Objects.requireNonNull(player, "player");
             Objects.requireNonNull(playback, "playback");

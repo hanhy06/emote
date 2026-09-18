@@ -62,6 +62,7 @@ export function compileConversionAnimation(
       standalone: output.standalone,
       cooldown: formatMinecraftTime(parseMinecraftTime(output.cooldown)),
       rotation_deadzone: output.rotationDeadzone,
+      display_interpolation: formatMinecraftTime(parseMinecraftTime(output.displayInterpolation)),
       player: output.player,
       playback: {
         mode,

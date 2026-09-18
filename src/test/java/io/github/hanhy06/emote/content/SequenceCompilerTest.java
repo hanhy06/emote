@@ -649,7 +649,7 @@ class SequenceCompilerTest {
         EmoteAnimation animation = new EmoteAnimation(
             Identifier.parse(id),
             new EmoteMetadata(id, id),
-            new EmoteAnimation.Settings(false, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
+            new EmoteAnimation.Settings(false, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
                 loop,
                 0,
                 loop == EmoteAnimation.LoopMode.LOOP ? duration : 0,

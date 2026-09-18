@@ -86,6 +86,10 @@ final class AnimationEvaluator {
         return this.nodes.length;
     }
 
+    int displayInterpolationTicks() {
+        return this.animation.animation().settings().displayInterpolationTicks();
+    }
+
     String nodeId(int index) {
         return this.nodes[index].id;
     }

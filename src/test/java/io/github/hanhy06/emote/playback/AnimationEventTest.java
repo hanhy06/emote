@@ -127,7 +127,7 @@ class AnimationEventTest {
         return new EmoteAnimation(
             Identifier.parse("test:event-dispatch"),
             new EmoteMetadata("Event Dispatch", "Event Dispatch"),
-            new EmoteAnimation.Settings(true, 0, 50.0F, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
+            new EmoteAnimation.Settings(true, 0, 50.0F, 1, EmotePlayerBehavior.createDefault(), new EmoteAnimation.PlaybackSettings(
                 loopMode,
                 0,
                 loopMode == EmoteAnimation.LoopMode.LOOP ? durationTicks : 0,

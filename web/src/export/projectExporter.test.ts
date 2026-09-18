@@ -74,6 +74,7 @@ function exportDocument(
     standalone: options.standalone ?? true,
     cooldown: options.cooldown ?? "0t",
     rotationDeadzone: document.animations[0].output.rotationDeadzone,
+    displayInterpolation: document.animations[0].output.displayInterpolation,
     loopStart: document.animations[0].output.loopStart,
     loopEnd: options.loopEnd ?? document.animations[0].output.loopEnd,
     loopDelay: options.loopDelay ?? document.animations[0].output.loopDelay,

@@ -109,6 +109,7 @@ function validateCommon(animation: EmoteAnimation, issues: ValidationIssue[]): {
     add(issues, "settings.rotation_deadzone", "must be a finite number between 0 and 180");
   }
   validateTime(animation.settings.cooldown, 0, "settings.cooldown", issues);
+  validateTime(animation.settings.display_interpolation ?? "1t", 0, "settings.display_interpolation", issues);
   const loopStartTicks = validateTime(animation.settings.playback.loop_start ?? "0t", 0, "settings.playback.loop_start", issues);
   const loopEndTicks = animation.settings.playback.loop_end === undefined
     ? null

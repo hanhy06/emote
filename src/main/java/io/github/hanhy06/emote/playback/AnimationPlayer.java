@@ -305,11 +305,9 @@ public final class AnimationPlayer {
             resetToTick(tick);
             return;
         }
-        this.target.resetAll();
-        clearState();
         this.currentTick = tick;
         this.evaluator.rewindLoop(tick, this.loopCount);
-        applyEvaluator(0, Map.of());
+        applyEvaluator(this.evaluator.displayInterpolationTicks(), Map.of());
     }
 
     private void resetToTick(int tick) {
@@ -349,7 +347,7 @@ public final class AnimationPlayer {
             return;
         }
         this.evaluator.evaluate(tick, this.loopCount);
-        applyEvaluator(tick == 0 ? 0 : 1, Map.of());
+        applyEvaluator(tick == 0 ? 0 : this.evaluator.displayInterpolationTicks(), Map.of());
     }
 
     private void applyPlaybackSegment(int tick) {
@@ -383,7 +381,7 @@ public final class AnimationPlayer {
             }
             return;
         }
-        applyEvaluator(tick == 0 || localTick == 0 ? 0 : 1, this.mirroredNodes);
+        applyEvaluator(tick == 0 || localTick == 0 ? 0 : this.evaluator.displayInterpolationTicks(), this.mirroredNodes);
     }
 
     private void applyHiddenNodes(int tick) {
