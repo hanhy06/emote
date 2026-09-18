@@ -355,7 +355,9 @@ public class PlaybackEngine implements ConfigListener {
                 }
             }
             if (stopReason == null && movementOutroRequested) {
-                requestOutro(session, PlaybackStopReason.MOVED);
+                if (!requestOutro(session, PlaybackStopReason.MOVED)) {
+                    stopReason = PlaybackStopReason.MOVED;
+                }
             }
             if (stopReason == null) {
                 try {
