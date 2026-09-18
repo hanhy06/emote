@@ -162,6 +162,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
   if (animation.molang?.initialize || animation.molang?.tick) {
     throw unsupportedSchema4("molang", "animation-level Molang cannot be represented by the web editor");
   }
+  const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
   const tracks: ImportedAnimation["tracks"] = {};
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
@@ -183,9 +184,10 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     id,
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
-    durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
+    durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? animation.timeline.duration),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks,
     events: importEvents(animation),
@@ -206,6 +208,7 @@ function importRuntimeTimeline(
     durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? animation.timeline.duration),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     tracks: {},
     events: importEvents(animation),

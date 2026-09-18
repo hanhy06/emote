@@ -82,6 +82,21 @@ describe("validateEmoteAnimation", () => {
     expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_start");
   });
 
+  it("validates loop end mode, order, and duration", () => {
+    const value = animation();
+    value.settings.playback = { mode: "loop", loop_start: "0t", loop_end: "1t" };
+    expect(validateEmoteAnimation(value)).toEqual([]);
+
+    value.settings.playback = { mode: "once", loop_end: "1t" };
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_end");
+
+    value.settings.playback = { mode: "loop", loop_start: "1t", loop_end: "1t" };
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_end");
+
+    value.settings.playback = { mode: "loop", loop_end: "3t" };
+    expect(validateEmoteAnimation(value).map((issue) => issue.path)).toContain("settings.playback.loop_end");
+  });
+
   it("accepts a schema 4 NBT track and rejects runtime-owned fields", () => {
     const value = animation();
     value.timeline.tracks.display.nbt = [

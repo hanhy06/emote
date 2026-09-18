@@ -61,6 +61,7 @@ function requireSettings(value: unknown): void {
   const playback = requireRecord(settings.playback, "settings.playback");
   requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
   optionalString(playback.loop_start, "settings.playback.loop_start");
+  optionalString(playback.loop_end, "settings.playback.loop_end");
   optionalString(playback.loop_delay, "settings.playback.loop_delay");
 }
 

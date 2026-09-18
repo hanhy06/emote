@@ -23,7 +23,7 @@ describe("emoteJsonAdapter", () => {
         cooldown: "0t",
         rotation_deadzone: 35,
         player: createDefaultPlayerBehavior(),
-        playback: { mode: "once", loop_delay: "0t" },
+        playback: { mode: "loop", loop_start: "1t", loop_end: "3t", loop_delay: "0t" },
       },
       nodes: {
         arm: {
@@ -75,6 +75,7 @@ describe("emoteJsonAdapter", () => {
 
     expect(recompiled.schema_version).toBe(4);
     expect(recompiled.settings.rotation_deadzone).toBe(35);
+    expect(recompiled.settings.playback).toEqual({ mode: "loop", loop_start: "1t", loop_end: "3t" });
     expect(recompiled.timeline.tracks.arm.position?.map((frame) => frame.time)).toEqual(["0t", "4t"]);
     expect(recompiled.timeline.tracks.arm.position?.[1].value?.[0]).toBeCloseTo(1);
     expect(recompiled.timeline.tracks.arm.rotation?.[1].value?.[1]).toBeCloseTo(90);
