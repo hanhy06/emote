@@ -48,7 +48,9 @@ describe("compileImportedProject time handling", () => {
   it("uses the animation's tick-zero pose as the node default", () => {
     const project = importedProject();
     const initialPose: Matrix16 = [1, 0, 0, 4, 0, 1, 0, 5, 0, 0, 1, 6, 0, 0, 0, 1];
-    project.animations[0].tracks.anchor.transforms.unshift({
+    const runtime = project.animations[0].runtime;
+    if (runtime.kind !== "baked") throw new Error("Expected baked test runtime.");
+    runtime.tracks.anchor.transforms.unshift({
       tick: 0,
       matrix: initialPose,
       interpolation: { type: "step" },
@@ -63,7 +65,9 @@ describe("compileImportedProject time handling", () => {
     const project = importedProject();
     const rotations = [0, 90, 180, 270, 360];
     project.animations[0].durationTicks = rotations.length - 1;
-    project.animations[0].tracks.anchor.transforms = rotations.map((rotation, tick) => ({
+    const runtime = project.animations[0].runtime;
+    if (runtime.kind !== "baked") throw new Error("Expected baked test runtime.");
+    runtime.tracks.anchor.transforms = rotations.map((rotation, tick) => ({
       tick,
       matrix: localTransformToMatrix({ position: [0, 0, 0], rotation: [rotation, 0, 0], scale: [1, 1, 1] }, `${rotation} degree source`),
       interpolation: tick === 0 ? { type: "step" } : { type: "linear", durationTicks: 1 },
@@ -92,7 +96,7 @@ describe("compileImportedProject time handling", () => {
 
   it("rejects export only when neither preview nor fallback output is available", () => {
     const project = importedProject();
-    project.animations[0].availability = {
+    project.animations[0].preview.availability = {
       preview: "unavailable",
       exportable: false,
       reason: "Runtime Molang cannot be evaluated.",
@@ -104,15 +108,19 @@ describe("compileImportedProject time handling", () => {
 
   it("keeps runtime Molang output separate from numeric preview tracks", () => {
     const project = importedProject();
-    project.animations[0].preview = { durationTicks: 20, tracks: project.animations[0].tracks };
+    const runtime = project.animations[0].runtime;
+    if (runtime.kind !== "baked") throw new Error("Expected baked test runtime.");
+    project.animations[0].preview = { durationTicks: 20, tracks: runtime.tracks, availability: { preview: "full", exportable: true } };
     project.animations[0].durationTicks = 12_000;
     project.animations[0].runtime = {
+      kind: "native",
       nodes: { anchor: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } } },
       timeline: {
         duration: "12000t",
         tracks: { anchor: { position: [{ time: "0t", value: ["q.anim_time", 0, 0] }] } },
       },
     };
+    project.animations[0].preview.tracks.anchor.transforms[0].matrix = [1, 0, 0, 999, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
     const animation = compileImportedAnimation(project, { minecraftVersion: "26.2", namespace: "runtime" }, 0);
 
@@ -134,7 +142,7 @@ describe("compileImportedProject time handling", () => {
         playerHeadConversion: { matrix: IDENTITY },
       },
     };
-    project.animations[0].tracks = {
+    const itemTracks = {
       item: {
         transforms: [],
         visibility: [],
@@ -144,6 +152,8 @@ describe("compileImportedProject time handling", () => {
         }],
       },
     };
+    project.animations[0].preview.tracks = itemTracks;
+    project.animations[0].runtime = { kind: "baked", tracks: itemTracks };
 
     const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "skin" });
 
@@ -156,6 +166,17 @@ describe("compileImportedProject time handling", () => {
 });
 
 function importedProject(): ImportedProject {
+  const tracks = {
+    anchor: {
+      transforms: [
+        { tick: 2, matrix: IDENTITY, interpolation: { type: "step" as const } },
+        { tick: 5, matrix: IDENTITY, interpolation: { type: "linear" as const, durationTicks: 2 } },
+        { tick: 8, matrix: IDENTITY, interpolation: { type: "linear" as const } },
+      ],
+      visibility: [],
+      nbt: [],
+    },
+  };
   return {
       source: "emote_json",
       sourceName: "test.json",
@@ -168,18 +189,9 @@ function importedProject(): ImportedProject {
         durationTicks: 10,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {
-          anchor: {
-            transforms: [
-              { tick: 2, matrix: IDENTITY, interpolation: { type: "step" } },
-              { tick: 5, matrix: IDENTITY, interpolation: { type: "linear", durationTicks: 2 } },
-              { tick: 8, matrix: IDENTITY, interpolation: { type: "linear" } },
-            ],
-            visibility: [],
-            nbt: [],
-          },
-        },
         events: { start: [], timeline: [], loop: [], stop: [] },
+        preview: { durationTicks: 10, tracks, availability: { preview: "full", exportable: true } },
+        runtime: { kind: "baked", tracks },
       }],
       diagnostics: [],
       resources: new Map(),

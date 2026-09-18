@@ -37,7 +37,7 @@ export interface PreviewModel {
 export function createPreviewModel(document: ConversionDocument, animationIndex: number, previewFrameIndex: number): PreviewModel {
   const animation = document.animations[animationIndex]?.source;
   const availability = animation ? animationAvailability(animation) : null;
-  const durationTicks = animation?.preview?.durationTicks ?? animation?.durationTicks ?? 0;
+  const durationTicks = animation?.preview.durationTicks ?? 0;
   const tick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null
     : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
@@ -78,7 +78,7 @@ function createPreviewParts(
   animation: ImportedAnimation | undefined,
   tick: number | null,
 ): PreviewPart[] {
-  const previewTracks = animation?.preview?.tracks ?? animation?.tracks;
+  const previewTracks = animation?.preview.tracks;
   return candidates.filter((candidate) => isVisibleAtTick(
     candidate.node.visible,
     previewTracks?.[candidate.nodeId],

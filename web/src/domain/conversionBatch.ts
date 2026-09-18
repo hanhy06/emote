@@ -66,17 +66,14 @@ function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<str
 function remapAnimation(animation: ImportedAnimation, nodeId: (id: string) => string): ImportedAnimation {
   return {
     ...animation,
-    tracks: remapTracks(animation.tracks, nodeId),
-    ...(animation.preview ? {
-      preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, nodeId) },
-    } : {}),
-    ...(animation.runtime ? {
-      runtime: {
-        ...animation.runtime,
-        nodes: remapRuntimeNodes(animation.runtime.nodes, nodeId),
-        timeline: remapRuntimeTimeline(animation.runtime.timeline, nodeId),
-      },
-    } : {}),
+    preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, nodeId) },
+    runtime: animation.runtime.kind === "baked"
+      ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, nodeId) }
+      : {
+          ...animation.runtime,
+          nodes: remapRuntimeNodes(animation.runtime.nodes, nodeId),
+          timeline: remapRuntimeTimeline(animation.runtime.timeline, nodeId),
+        },
   };
 }
 

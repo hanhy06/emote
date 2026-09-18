@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { strFromU8, unzipSync } from "fflate";
 import { createDefaultPlayerBehavior, type Matrix16, type NodeSpace } from "../format/emoteAnimation";
 import { createConversionDocument, type AnimationOutputSettings } from "../domain/conversionDocument";
-import type { ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
+import type { ImportedNodeTrack, ImportedProject, ImportedSkinPart } from "../domain/conversionSeed";
 import type { GeneratedResource } from "../domain/generatedResource";
 import { generatedResourceFiles } from "./generatedResources";
 import {
@@ -15,6 +15,13 @@ import {
 import { exportDocumentResourceBundle } from "./resourceBundleExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+
+function bakedAnimationData(durationTicks: number, tracks: Record<string, ImportedNodeTrack>) {
+  return {
+    preview: { durationTicks, tracks, availability: { preview: "full" as const, exportable: true } },
+    runtime: { kind: "baked" as const, tracks },
+  };
+}
 
 interface FixtureExportOptions {
   minecraftVersion: string;
@@ -93,7 +100,7 @@ describe("exportAnimation", () => {
       nodes: { root: { id: "root", type: "anchor", defaultMatrix: IDENTITY } },
       animations: ["enter", "idle"].map((id) => ({
         id, name: id, durationTicks: 2, playbackMode: "once" as const, loopDelayTicks: 0,
-        tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+        ...bakedAnimationData(2, {}), events: { start: [], timeline: [], loop: [], stop: [] },
       })),
       diagnostics: [], resources: new Map(),
     };
@@ -146,7 +153,7 @@ describe("exportAnimation", () => {
       nodes: { root: { id: "root", type: "anchor", defaultMatrix: IDENTITY } },
       animations: ["first", "second", "third"].map((id) => ({
         id, name: id, durationTicks: 1, playbackMode: "once" as const, loopDelayTicks: 0,
-        tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+        ...bakedAnimationData(1, {}), events: { start: [], timeline: [], loop: [], stop: [] },
       })),
       diagnostics: [], resources: new Map(),
     };
@@ -184,7 +191,7 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {},
+        ...bakedAnimationData(1, {}),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
@@ -225,7 +232,7 @@ describe("exportAnimation", () => {
       },
       animations: [{
         id: "partner", name: "Partner", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
-        tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+        ...bakedAnimationData(1, {}), events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [], resources: new Map(),
     };
@@ -272,13 +279,13 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {
+        ...bakedAnimationData(1, {
           cube: {
             transforms: [{ tick: 0, matrix: IDENTITY, interpolation: { type: "step" } }],
             visibility: [],
             nbt: [],
           },
-        },
+        }),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
@@ -330,7 +337,7 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {},
+        ...bakedAnimationData(1, {}),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
@@ -369,7 +376,7 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {},
+        ...bakedAnimationData(1, {}),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
@@ -426,7 +433,7 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {},
+        ...bakedAnimationData(1, {}),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],
@@ -494,7 +501,7 @@ describe("exportAnimation", () => {
         durationTicks: 1,
         playbackMode: "once",
         loopDelayTicks: 0,
-        tracks: {},
+        ...bakedAnimationData(1, {}),
         events: { start: [], timeline: [], loop: [], stop: [] },
       }],
       diagnostics: [],

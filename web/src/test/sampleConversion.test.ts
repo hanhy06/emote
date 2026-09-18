@@ -100,8 +100,8 @@ async function expectAnimationMatricesEquivalent(actual: EmoteAnimation, expecte
     expectMatrix(actualNode.defaultMatrix, expectedNode.defaultMatrix, `nodes.${nodeId}`);
   }
 
-  for (const [nodeId, expectedTrack] of Object.entries(expectedAnimation.tracks)) {
-    const actualTrack = actualAnimation.tracks[nodeId];
+  for (const [nodeId, expectedTrack] of Object.entries(expectedAnimation.preview.tracks)) {
+    const actualTrack = actualAnimation.preview.tracks[nodeId];
     expect(actualTrack, `tracks.${nodeId} must exist`).toBeDefined();
     expect(actualTrack.transforms.length, `${nodeId} transform count`).toBe(expectedTrack.transforms.length);
     expectedTrack.transforms.forEach((expectedFrame, index) => {

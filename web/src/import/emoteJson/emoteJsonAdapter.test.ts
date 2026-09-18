@@ -148,17 +148,17 @@ describe("emoteJsonAdapter", () => {
     const input = { name: "emote.dynamic.json", bytes: encoder.encode(JSON.stringify(source)) };
 
     const project = await emoteJsonAdapter.import(input);
-    expect(project.animations[0].availability).toBeUndefined();
+    expect(project.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
     expect(project.diagnostics).toEqual([]);
-    expect(project.animations[0].preview?.tracks.root.transforms[0].matrix[3]).toBeCloseTo(3.5);
-    expect(project.animations[0].preview?.tracks.root.transforms[1].matrix[3]).toBeCloseTo(4.55);
-    expect(project.animations[0].preview?.tracks.root.transforms[0].matrix[7]).toBeCloseTo(1);
-    expect(project.animations[0].preview?.tracks.root.transforms[1].matrix[7]).toBeCloseTo(1);
-    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[3]).toBeCloseTo(9.9267767);
-    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[0]).toBeCloseTo(0);
-    expect(project.animations[0].preview?.tracks.child.transforms[5].matrix[2]).toBeCloseTo(1);
-    expect(project.animations[0].preview?.tracks.child.visibility).toEqual([{ tick: 0, visible: false }]);
-    expect(project.animations[0].preview?.tracks.child.nbt).toEqual([{
+    expect(project.animations[0].preview.tracks.root.transforms[0].matrix[3]).toBeCloseTo(3.5);
+    expect(project.animations[0].preview.tracks.root.transforms[1].matrix[3]).toBeCloseTo(4.55);
+    expect(project.animations[0].preview.tracks.root.transforms[0].matrix[7]).toBeCloseTo(1);
+    expect(project.animations[0].preview.tracks.root.transforms[1].matrix[7]).toBeCloseTo(1);
+    expect(project.animations[0].preview.tracks.child.transforms[5].matrix[3]).toBeCloseTo(9.9267767);
+    expect(project.animations[0].preview.tracks.child.transforms[5].matrix[0]).toBeCloseTo(0);
+    expect(project.animations[0].preview.tracks.child.transforms[5].matrix[2]).toBeCloseTo(1);
+    expect(project.animations[0].preview.tracks.child.visibility).toEqual([{ tick: 0, visible: false }]);
+    expect(project.animations[0].preview.tracks.child.nbt).toEqual([{
       tick: 0,
       value: { rawFields: [], itemStack: { id: "minecraft:poppy", count: 1 } },
     }]);
@@ -212,7 +212,7 @@ describe("emoteJsonAdapter", () => {
 
     const project = await emoteJsonAdapter.import({ name: "emote.random.json", bytes: encoder.encode(JSON.stringify(source)) });
 
-    expect(project.animations[0].availability).toMatchObject({ preview: "create_pose", exportable: true });
+    expect(project.animations[0].preview.availability).toMatchObject({ preview: "create_pose", exportable: true });
     expect(project.diagnostics).toContainEqual(expect.objectContaining({
       code: "schema_4_preview_limited",
       sourcePath: "timeline.tracks.item.position[0].value[0]",

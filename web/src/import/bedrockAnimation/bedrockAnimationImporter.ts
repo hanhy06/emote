@@ -90,11 +90,13 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     durationTicks,
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
-    tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: true, reason },
-    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createBedrockRuntime(animation, durationTicks, null, startDelayTicks),
+    preview: {
+      durationTicks: TICKS_PER_SECOND,
+      tracks: {},
+      availability: { preview: "create_pose", exportable: true, reason },
+    },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, durationTicks, null, startDelayTicks) },
   };
 }
 
@@ -123,7 +125,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
   const previewDurationTicks = previewAnimationDurationTicks + startDelayTicks;
   const samplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
-  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
+  const tracks: ImportedAnimation["preview"]["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
     transforms: [],
     visibility: [],
     nbt: [],
@@ -158,10 +160,9 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     durationTicks,
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
-    tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks: previewDurationTicks, tracks },
-    runtime: createBedrockRuntime(animation, durationTicks, playbackRate, startDelayTicks),
+    preview: { durationTicks: previewDurationTicks, tracks, availability: { preview: "full", exportable: true } },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, durationTicks, playbackRate, startDelayTicks) },
   };
 }
 

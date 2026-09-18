@@ -61,24 +61,31 @@ export interface ImportedAnimation {
   loopStartTicks?: number;
   loopEndTicks?: number;
   loopDelayTicks: number;
-  tracks: Record<string, ImportedNodeTrack>;
   events: {
     start: EmoteEvent[];
     timeline: ImportedTimelineEvent[];
     loop: EmoteEvent[];
     stop: EmoteEvent[];
   };
-  availability?: ImportedAnimationAvailability;
-  preview?: {
+  preview: {
     durationTicks: number;
     tracks: Record<string, ImportedNodeTrack>;
+    availability: ImportedAnimationAvailability;
   };
-  runtime?: {
+  runtime: ImportedAnimationRuntime;
+}
+
+export type ImportedAnimationRuntime =
+  | {
+    kind: "baked";
+    tracks: Record<string, ImportedNodeTrack>;
+  }
+  | {
+    kind: "native";
     molang?: EmoteAnimation["molang"];
     nodes: Record<string, RuntimeNode>;
     timeline: RuntimeTimeline;
   };
-}
 
 export interface ImportedAnimationAvailability {
   preview: "full" | "create_pose" | "unavailable";
@@ -92,7 +99,7 @@ export const DEFAULT_ANIMATION_AVAILABILITY: ImportedAnimationAvailability = {
 };
 
 export function animationAvailability(animation: ImportedAnimation): ImportedAnimationAvailability {
-  return animation.availability ?? DEFAULT_ANIMATION_AVAILABILITY;
+  return animation.preview.availability;
 }
 
 export interface ImportedNodeTrack {

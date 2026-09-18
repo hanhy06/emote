@@ -12,7 +12,8 @@ export function createAjProjectRuntime(
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
   sceneScale: number,
-): NonNullable<ImportedAnimation["runtime"]> {
+  startDelayTicks = 0,
+): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const nodes: Record<string, RuntimeNode> = {};
   const tracks: Record<string, RuntimeNodeTracks> = {};
   for (const element of elements) {
@@ -30,9 +31,9 @@ export function createAjProjectRuntime(
       : IDENTITY_TRANSFORM;
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, (value, axis) => axis === 2 ? value : affineMolang(value, -1, 0));
-    const scale = ajProjectFrames(keyframes, "scale", baseScale, (value, axis) => multiply(value, element.type === "animated_java:vanilla_item_display" ? sceneScale : baseScale[axis]));
+    const position = ajProjectFrames(keyframes, "position", basePosition, startDelayTicks, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, startDelayTicks, (value, axis) => axis === 2 ? value : affineMolang(value, -1, 0));
+    const scale = ajProjectFrames(keyframes, "scale", baseScale, startDelayTicks, (value, axis) => multiply(value, element.type === "animated_java:vanilla_item_display" ? sceneScale : baseScale[axis]));
     if (position) tracks[ids.x] = { position };
     if (rotation) {
       tracks[ids.z] = { ...tracks[ids.z], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
@@ -48,6 +49,7 @@ function ajProjectFrames(
   keyframes: AjProjectKeyframe[],
   channel: "position" | "rotation" | "scale",
   fallback: readonly number[],
+  startDelayTicks: number,
   transform: (value: MolangScalar, axis: number) => MolangScalar,
 ): EmoteVectorKeyframe[] | undefined {
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
@@ -61,8 +63,8 @@ function ajProjectFrames(
     });
     const interpolation = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
     return vectors.length === 1
-      ? { time: formatMinecraftTime(Math.round(frame.time * 20)), value: vectors[0], interpolation }
-      : { time: formatMinecraftTime(Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation };
+      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), value: vectors[0], interpolation }
+      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation };
   });
   if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...fallback] as MolangVector, interpolation: "step" });
   return withoutLastInterpolation(frames);

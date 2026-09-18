@@ -6,7 +6,7 @@ import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix"
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
-import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
+import { formatMinecraftTime, requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
@@ -55,7 +55,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
-      return importProjectAnimation(animation, index, displayElements, transformGraph, sceneScale);
+      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -155,6 +155,7 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
     formatLabel: "Animated Java",
     molangDiagnosticCode: "animated_java_animation_molang_unavailable",
+    runtimeOutput: "native",
   });
 }
 
@@ -171,14 +172,18 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
     durationTicks: Math.max(base.durationTicks, display.durationTicks),
     playbackMode: display.playbackMode,
     loopDelayTicks: display.loopDelayTicks,
-    tracks: { ...base.tracks, ...display.tracks },
+    preview: {
+      durationTicks: Math.max(base.preview.durationTicks, display.preview.durationTicks),
+      tracks: { ...base.preview.tracks, ...display.preview.tracks },
+      availability: base.preview.availability.preview === "full" ? display.preview.availability : base.preview.availability,
+    },
     events: {
       start: [...base.events.start, ...display.events.start],
       timeline: [...base.events.timeline, ...display.events.timeline].sort((first, second) => first.tick - second.tick),
       loop: [...base.events.loop, ...display.events.loop],
       stop: [...base.events.stop, ...display.events.stop],
     },
-    ...(runtime ? { runtime } : {}),
+    runtime,
   };
 }
 
@@ -186,8 +191,7 @@ function mergeProjectRuntime(
   base: ImportedAnimation["runtime"],
   display: ImportedAnimation["runtime"],
 ): ImportedAnimation["runtime"] {
-  if (!base) return display;
-  if (!display) return base;
+  if (base.kind !== "native" || display.kind !== "native") throw new Error("Animated Java runtime merge requires native animation output.");
   const events = {
     start: [...(base.timeline.events?.start ?? []), ...(display.timeline.events?.start ?? [])],
     timeline: [...(base.timeline.events?.timeline ?? []), ...(display.timeline.events?.timeline ?? [])],
@@ -197,6 +201,7 @@ function mergeProjectRuntime(
   const initialize = [base.molang?.initialize, display.molang?.initialize].filter((value): value is string => Boolean(value)).join("\n");
   const tick = [base.molang?.tick, display.molang?.tick].filter((value): value is string => Boolean(value)).join("\n");
   return {
+    kind: "native",
     ...((initialize || tick) ? { molang: { ...(initialize ? { initialize } : {}), ...(tick ? { tick } : {}) } } : {}),
     nodes: { ...base.nodes, ...display.nodes },
     timeline: {
@@ -245,7 +250,19 @@ function enrichProjectAnimation(
       }
     }
   }
-  return { ...imported, events: { ...imported.events, start, timeline: timeline.sort((first, second) => first.tick - second.tick) } };
+  const enriched = { ...imported, events: { ...imported.events, start, timeline: timeline.sort((first, second) => first.tick - second.tick) } };
+  synchronizeNativeRuntime(enriched);
+  return enriched;
+}
+
+function synchronizeNativeRuntime(animation: ImportedAnimation): void {
+  if (animation.runtime.kind !== "native") return;
+  for (const [nodeId, track] of Object.entries(animation.preview.tracks)) {
+    if (track.visibility.length === 0 && track.nbt.length === 0) continue;
+    const runtimeTrack = animation.runtime.timeline.tracks[nodeId] ??= {};
+    if (track.visibility.length > 0) runtimeTrack.visible = track.visibility.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.visible }));
+    if (track.nbt.length > 0) runtimeTrack.nbt = track.nbt.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.value }));
+  }
 }
 
 function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph): ImportedAnimation["events"]["start"] {
@@ -385,7 +402,7 @@ function applyVariantConfig(animation: ImportedAnimation, nodeId: string, config
 }
 
 function projectTrack(animation: ImportedAnimation, nodeId: string) {
-  return animation.tracks[nodeId] ??= { transforms: [], visibility: [], nbt: [] };
+  return animation.preview.tracks[nodeId] ??= { transforms: [], visibility: [], nbt: [] };
 }
 
 function projectOutputNodeIds(sourceId: string, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, includeDescendants = true): string[] {
@@ -465,11 +482,13 @@ function createPreviewOnlyProjectAnimation(
     durationTicks,
     playbackMode: animation.loop === "loop" ? "loop" : "once",
     loopDelayTicks: 0,
-    tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: true, reason },
-    preview: { durationTicks: 20, tracks: {} },
-    runtime: createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale),
+    preview: {
+      durationTicks: 20,
+      tracks: {},
+      availability: { preview: "create_pose", exportable: true, reason },
+    },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale) },
   };
 }
 
@@ -529,6 +548,7 @@ function importProjectAnimation(
   animation: AjProjectAnimation,
   animationIndex: number,
   elements: AjProjectDisplayElement[],
+  nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
   sceneScale: number,
 ): ImportedAnimation {
@@ -541,7 +561,7 @@ function importProjectAnimation(
     secondsToTicks(animation.length, `${animation.name}.length`) + startDelayTicks,
     `${animation.name}.length`,
   );
-  const tracks: ImportedAnimation["tracks"] = {};
+  const tracks: ImportedAnimation["preview"]["tracks"] = {};
   for (const element of elements) {
     validateProjectKeyframes(animation.animators[element.uuid]?.keyframes ?? [], animationIndex, element.uuid);
     const transforms: ImportedTransformKeyframe[] = [];
@@ -563,8 +583,9 @@ function importProjectAnimation(
     loopDelayTicks: playbackMode === "loop"
       ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
-    tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
+    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale, startDelayTicks) },
   };
 }
 
@@ -667,7 +688,7 @@ function projectStepAt(animation: AjProjectAnimation, elementId: string, sourceT
   return (animation.animators[elementId]?.keyframes ?? []).some((frame) => frame.interpolation === "step" && Math.abs(frame.time - sourceTime) < 1e-9);
 }
 
-function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): ImportedAnimation["tracks"][string]["visibility"] {
+function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): ImportedAnimation["preview"]["tracks"][string]["visibility"] {
   const frames = (animation.animators[element.uuid]?.keyframes ?? [])
     .filter((frame) => frame.channel === "visibility")
     .map((frame) => ({ tick: startDelayTicks + Math.round(frame.time * 20), visible: projectVisibility(frame, element) }))

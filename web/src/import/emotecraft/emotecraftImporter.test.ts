@@ -38,11 +38,11 @@ describe("importEmotecraftFile", () => {
     expect(imported.nodes.right_arm_joint_lower.type === "item_display" && imported.nodes.right_arm_joint_lower.skinAssignmentGroup).toBe("right_arm_2");
     expect(imported.nodes.right_arm_joint_upper.type === "item_display"
       && Math.abs(imported.nodes.right_arm_joint_upper.playerHeadConversion!.matrix[6])).toBeGreaterThan(0.1);
-    expect(imported.animations[0].tracks.left_arm_0.transforms).toHaveLength(3);
-    expect(imported.animations[0].tracks.left_arm_2.transforms[2].matrix).not.toEqual(imported.animations[0].tracks.left_arm_0.transforms[2].matrix);
+    expect(imported.animations[0].preview.tracks.left_arm_0.transforms).toHaveLength(3);
+    expect(imported.animations[0].preview.tracks.left_arm_2.transforms[2].matrix).not.toEqual(imported.animations[0].preview.tracks.left_arm_0.transforms[2].matrix);
     for (const arm of ["left_arm", "right_arm"] as const) {
-      const upper = imported.animations[0].tracks[`${arm}_1`].transforms[2].matrix;
-      const lower = imported.animations[0].tracks[`${arm}_2`].transforms[2].matrix;
+      const upper = imported.animations[0].preview.tracks[`${arm}_1`].transforms[2].matrix;
+      const lower = imported.animations[0].preview.tracks[`${arm}_2`].transforms[2].matrix;
       const upperJoint = new Vector3(0, -4 / 16, 0).applyMatrix4(new Matrix4().set(...upper));
       const lowerJoint = new Vector3(0, 2 / 16, 0).applyMatrix4(new Matrix4().set(...lower));
       expect(lowerJoint.distanceTo(upperJoint)).toBeLessThan(1e-10);
@@ -71,15 +71,22 @@ describe("importEmotecraftFile", () => {
       "head", "body_0", "body_1", "right_arm_0", "right_arm_1", "left_arm_0", "left_arm_1",
       "left_leg_0", "left_leg_1", "right_leg_0", "right_leg_1",
     ]);
-    expect(imported.animations[0].tracks.head.transforms[2].matrix[3]).not.toBeCloseTo(0);
-    expect(imported.animations[0].tracks.head.transforms).toHaveLength(3);
+    expect(imported.animations[0].preview.tracks.head.transforms[2].matrix[3]).not.toBeCloseTo(0);
+    expect(imported.animations[0].preview.tracks.head.transforms).toHaveLength(3);
   });
 
   it("treats numeric angular values as radians and expression angular values as degrees", () => {
     const numeric = importEmotecraftFile(file({ head: bone(undefined, undefined, axis(frame(0, Math.PI / 2))) }), "numeric.emotecraft");
     const expression = importEmotecraftFile(file({ head: bone(undefined, undefined, axis(frame(0, "90"))) }), "expression.emotecraft");
-    expect(numeric.animations[0].tracks.head.transforms[2].matrix).toEqual(expression.animations[0].tracks.head.transforms[2].matrix);
-    expect(numeric.animations[0].tracks.head.transforms[2].matrix[6]).toBeCloseTo(0.9375);
+    expect(numeric.animations[0].preview.tracks.head.transforms[2].matrix).toEqual(expression.animations[0].preview.tracks.head.transforms[2].matrix);
+    expect(numeric.animations[0].preview.tracks.head.transforms[2].matrix[6]).toBeCloseTo(0.9375);
+  });
+
+  it("rejects player-dependent Molang instead of baking preview defaults into output", () => {
+    expect(() => importEmotecraftFile(
+      file({ head: bone(undefined, undefined, axis(frame(0, "q.target_x_rotation"))) }),
+      "runtime.emotecraft",
+    )).toThrow("player-dependent Emotecraft MoLang");
   });
 
   it("assigns fractional keyframe anchors to integer ticks using the shared approximation planner", () => {
@@ -93,8 +100,8 @@ describe("importEmotecraftFile", () => {
     })) });
     const imported = importEmotecraftFile(source, "fractional.emotecraft");
 
-    expect(imported.animations[0].tracks.body_0.transforms[1].interpolation).toEqual({ type: "step" });
-    expect(imported.animations[0].tracks.body_0.transforms[1].matrix[3]).not.toBe(imported.animations[0].tracks.body_0.transforms[0].matrix[3]);
+    expect(imported.animations[0].preview.tracks.body_0.transforms[1].interpolation).toEqual({ type: "step" });
+    expect(imported.animations[0].preview.tracks.body_0.transforms[1].matrix[3]).not.toBe(imported.animations[0].preview.tracks.body_0.transforms[0].matrix[3]);
   });
 
   it("preserves Emotecraft return-to-tick loops", () => {
