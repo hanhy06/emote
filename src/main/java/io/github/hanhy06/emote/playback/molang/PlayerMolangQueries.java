@@ -76,7 +76,7 @@ public final class PlayerMolangQueries {
                 player.isInWaterOrRain(),
                 player.hurtTime,
                 player.deathTime,
-                player.invulnerableTime,
+                player.getInvulnerableTime(),
                 player.experienceLevel,
                 maxUseTicks,
                 remainingUseTicks,

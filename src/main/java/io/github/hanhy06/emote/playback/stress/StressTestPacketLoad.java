@@ -17,6 +17,7 @@ import net.minecraft.server.level.ServerEntity;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.UpdateInterval;
 import net.minecraft.world.item.ItemStack;
 import org.jspecify.annotations.Nullable;
 
@@ -88,7 +89,7 @@ public final class StressTestPacketLoad {
             ServerEntity pairingEntity = new ServerEntity(
                 level,
                 entity,
-                entity.getType().updateInterval(),
+                entity.getType().hasUpdateInterval() ? UpdateInterval.periodic(entity.getType().updateInterval()) : UpdateInterval.NEVER,
                 entity.getType().trackDeltas(),
                 NOOP_SYNCHRONIZER
             );

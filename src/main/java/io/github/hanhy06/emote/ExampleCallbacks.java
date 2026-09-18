@@ -241,7 +241,7 @@ public final class ExampleCallbacks {
 
         allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
         allay.setNoAi(true);
-        allay.setInvulnerable(true);
+        allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
         allay.setCanPickUpLoot(false);
         allay.addTag(PlaybackEntityController.RUNTIME_TAG);
@@ -300,7 +300,7 @@ public final class ExampleCallbacks {
         bat.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
-        bat.setInvulnerable(true);
+        bat.setPermanentlyInvulnerable(true);
         bat.setSilent(true);
         bat.setResting(false);
         bat.addTag(PlaybackEntityController.RUNTIME_TAG);

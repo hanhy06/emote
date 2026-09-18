@@ -150,12 +150,12 @@ class ExampleCallbacksTest {
                 playHorn.invoke(callbacks, performer, Vec3.ZERO, note, List.of(listener));
                 assertInstanceOf(ClientboundSoundPacket.class, packets.get(packets.size() - 2));
                 var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
-                assertEquals(ParticleTypes.NOTE, particle.getParticle());
-                assertEquals(0, particle.getCount());
-                assertTrue(particle.getX() >= -0.8D && particle.getX() < 0.8D);
-                assertTrue(particle.getY() >= 0.8D && particle.getY() < 2.1D);
-                assertTrue(particle.getZ() >= -0.8D && particle.getZ() < 0.8D);
-                particlePositions.add(new Vec3(particle.getX(), particle.getY(), particle.getZ()));
+                assertEquals(ParticleTypes.NOTE, particle.particle());
+                assertEquals(0, particle.count());
+                assertTrue(particle.x() >= -0.8D && particle.x() < 0.8D);
+                assertTrue(particle.y() >= 0.8D && particle.y() < 2.1D);
+                assertTrue(particle.z() >= -0.8D && particle.z() < 0.8D);
+                particlePositions.add(new Vec3(particle.x(), particle.y(), particle.z()));
                 assertEquals(1, packets.stream().filter(ClientboundLevelParticlesPacket.class::isInstance).count());
                 sounds++;
             }
@@ -178,4 +178,3 @@ class ExampleCallbacksTest {
         assertTrue(melodies.isEmpty());
     }
 }
-
