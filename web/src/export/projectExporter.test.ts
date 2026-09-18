@@ -26,6 +26,7 @@ interface FixtureExportOptions {
   additionalMetadata: Record<string, unknown>;
   standalone?: boolean;
   cooldown?: string;
+  loopEnd?: string;
   loopDelay?: string;
 }
 
@@ -67,6 +68,7 @@ function exportDocument(
     cooldown: options.cooldown ?? "0t",
     rotationDeadzone: document.animations[0].output.rotationDeadzone,
     loopStart: document.animations[0].output.loopStart,
+    loopEnd: options.loopEnd ?? document.animations[0].output.loopEnd,
     loopDelay: options.loopDelay ?? document.animations[0].output.loopDelay,
   };
   for (const [nodeId, space] of Object.entries(spaces)) {

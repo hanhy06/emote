@@ -46,6 +46,7 @@ export interface AnimationOutputSettings {
   cooldown: string;
   rotationDeadzone: number;
   loopStart: string;
+  loopEnd: string;
   loopDelay: string;
 }
 
@@ -137,6 +138,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           cooldown: project.suggestedCooldown ?? "0t",
           rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
           loopStart: `${animation.loopStartTicks ?? 0}t`,
+          loopEnd: `${animation.loopEndTicks ?? animation.durationTicks}t`,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };

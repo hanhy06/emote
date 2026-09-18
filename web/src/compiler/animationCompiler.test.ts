@@ -17,13 +17,14 @@ describe("compileImportedProject time handling", () => {
       cooldown: "10s",
       playbackMode: "loop",
       loopStart: "0.25s",
+      loopEnd: "0.3s",
       loopDelay: "0.5s",
     });
 
     expect(animation.settings.standalone).toBe(false);
     expect(animation.settings.cooldown).toBe("200t");
     expect(animation.settings.rotation_deadzone).toBe(50);
-    expect(animation.settings.playback).toEqual({ mode: "loop", loop_start: "5t", loop_delay: "10t" });
+    expect(animation.settings.playback).toEqual({ mode: "loop", loop_start: "5t", loop_end: "6t", loop_delay: "10t" });
   });
 
   it("omits zero-valued loop settings", () => {
