@@ -16,7 +16,7 @@ type ImportedBlockNode = Extract<ImportedNode, { type: "block_display" }>;
 type ImportedTextNode = Extract<ImportedNode, { type: "text_display" }>;
 type ImportedAnchorNode = Extract<ImportedNode, { type: "anchor" }>;
 
-export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.2";
+export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
 export type ConversionNode =
   | (Omit<ImportedItemNode, "id" | "skin" | "suggestedSkin" | "skinAssignmentGroup" | "space"> & {
