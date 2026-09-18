@@ -2,6 +2,7 @@ package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -27,6 +28,7 @@ public final class PlaybackSession {
     private State state;
     private int remainingTimeoutTicks;
     private @Nullable PlaybackParticipant reservedPartner;
+    private @Nullable PlaybackStopReason pendingStopReason;
 
     public PlaybackSession(
         UUID sessionId,
@@ -143,7 +145,24 @@ public final class PlaybackSession {
     }
 
     public boolean acceptsPartner() {
-        return (this.state == State.OFFERING || this.state == State.WAITING) && this.reservedPartner == null;
+        return this.pendingStopReason == null
+            && (this.state == State.OFFERING || this.state == State.WAITING)
+            && this.reservedPartner == null;
+    }
+
+    public boolean requestStop(PlaybackStopReason reason) {
+        if (this.pendingStopReason != null) {
+            return true;
+        }
+        if (!this.animation.beginOutro()) {
+            return false;
+        }
+        this.pendingStopReason = Objects.requireNonNull(reason, "reason");
+        return true;
+    }
+
+    public @Nullable PlaybackStopReason pendingStopReason() {
+        return this.pendingStopReason;
     }
 
     public @Nullable PlaybackParticipant reservedPartner() {

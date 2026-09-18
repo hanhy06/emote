@@ -63,14 +63,11 @@ public final class AnimationJsonParser {
         String idText = document.requireString(root, "id", "$");
         Identifier id = document.requireIdentifier(idText, "$.id");
         EmoteMetadata metadata = parseMetadata(document.requireObject(root, "metadata", "$"), document);
-        JsonObject settingsObject = document.requireObject(root, "settings", "$");
-        Settings settings = parseSettings(settingsObject, document);
-        MolangPrograms molang = parseMolang(document.optionalObject(root, "molang", "$"), settings, document);
         Map<String, Node> nodes = parseNodes(document.requireObject(root, "nodes", "$"), document);
         Timeline timeline = this.timelineParser.parse(document.requireObject(root, "timeline", "$"), nodes, document);
-        if (settings.playback().loopStartTicks() != 0 && settings.playback().loopStartTicks() >= timeline.durationTicks()) {
-            throw document.error("$.settings.playback.loop_start", "must be less than the timeline duration");
-        }
+        JsonObject settingsObject = document.requireObject(root, "settings", "$");
+        Settings settings = parseSettings(settingsObject, timeline.durationTicks(), document);
+        MolangPrograms molang = parseMolang(document.optionalObject(root, "molang", "$"), settings, document);
         return new LoadedAnimation(
             document.sourcePath(),
             Sha256.hashHex(document.bytes()),
@@ -122,7 +119,7 @@ public final class AnimationJsonParser {
         return new EmoteMetadata(name, description, additional);
     }
 
-    private Settings parseSettings(JsonObject object, EmoteJsonDocument document)
+    private Settings parseSettings(JsonObject object, int durationTicks, EmoteJsonDocument document)
         throws EmoteAnimationLoadException {
         boolean standalone = document.requireBoolean(object, "standalone", "$.settings");
         int cooldownTicks = document.requireTime(object, "cooldown", "$.settings", 0);
@@ -148,14 +145,30 @@ public final class AnimationJsonParser {
             default -> throw document.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
         };
         int loopStartTicks = optionalTime(playbackObject, "loop_start", "$.settings.playback", document);
+        boolean hasLoopEnd = playbackObject.has("loop_end") && !playbackObject.get("loop_end").isJsonNull();
+        int loopEndTicks = hasLoopEnd
+            ? optionalTime(playbackObject, "loop_end", "$.settings.playback", document)
+            : mode == LoopMode.LOOP ? durationTicks : 0;
         int loopDelayTicks = optionalTime(playbackObject, "loop_delay", "$.settings.playback", document);
         if (loopStartTicks != 0 && mode != LoopMode.LOOP) {
             throw document.error("$.settings.playback.loop_start", "must be zero unless playback mode is loop");
         }
+        if (loopEndTicks != 0 && mode != LoopMode.LOOP) {
+            throw document.error("$.settings.playback.loop_end", "must be zero unless playback mode is loop");
+        }
+        if (mode == LoopMode.LOOP && loopStartTicks >= durationTicks) {
+            throw document.error("$.settings.playback.loop_start", "must be less than the timeline duration");
+        }
+        if (mode == LoopMode.LOOP && loopEndTicks <= loopStartTicks) {
+            throw document.error("$.settings.playback.loop_end", "must be greater than loop_start");
+        }
+        if (mode == LoopMode.LOOP && loopEndTicks > durationTicks) {
+            throw document.error("$.settings.playback.loop_end", "must not exceed the timeline duration");
+        }
         if (loopDelayTicks != 0 && (mode == LoopMode.ONCE || mode == LoopMode.HOLD)) {
             throw document.error("$.settings.playback.loop_delay", "must be zero when playback mode is once or hold");
         }
-        return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopStartTicks, loopDelayTicks));
+        return new Settings(standalone, cooldownTicks, (float) rotationDeadzone, player, new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks));
     }
 
     private int optionalTime(JsonObject object, String key, String path, EmoteJsonDocument document)

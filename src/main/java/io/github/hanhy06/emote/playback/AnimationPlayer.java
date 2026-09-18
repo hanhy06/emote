@@ -33,6 +33,7 @@ public final class AnimationPlayer {
     private boolean started;
     private boolean finished;
     private boolean awaitingLoopContinuation;
+    private boolean ending;
     private boolean initialVisibilityDeferred;
     private EventExecutor eventExecutor;
     private boolean eventsStarted;
@@ -82,13 +83,16 @@ public final class AnimationPlayer {
         this.started = true;
         clearState();
         int duration = this.animation.timeline().durationTicks();
-        long cycleLength = (long) duration + this.animation.settings().playback().loopDelayTicks();
+        EmoteAnimation.PlaybackSettings playback = this.animation.settings().playback();
+        int cycleStart = playback.mode() == EmoteAnimation.LoopMode.LOOP ? playback.loopStartTicks() : 0;
+        int cycleEnd = playback.mode() == EmoteAnimation.LoopMode.LOOP ? playback.loopEndTicks() : duration;
+        long cycleLength = (long) cycleEnd - cycleStart + playback.loopDelayTicks();
         long phase = Math.floorMod(cycleTick, cycleLength);
-        int timelineTick = (int) Math.min(phase, duration);
+        int timelineTick = cycleStart + (int) Math.min(phase, cycleEnd - cycleStart);
         this.currentTick = timelineTick;
         this.loopCount = (int) Math.min(Integer.MAX_VALUE, Math.floorDiv(cycleTick, cycleLength));
         applySynchronizedSnapshot(timelineTick);
-        if (phase >= duration) {
+        if (phase >= cycleEnd - cycleStart) {
             this.remainingLoopDelay = (int) (cycleLength - phase);
         }
     }
@@ -151,7 +155,7 @@ public final class AnimationPlayer {
             execute(
                 this.animation.timeline().events().loop(),
                 this.animation.id(),
-                this.animation.timeline().durationTicks(),
+                this.animation.settings().playback().loopEndTicks(),
                 EmoteCallbackPhase.LOOP
             );
             if (continueAfterLoopBoundary) {
@@ -192,10 +196,16 @@ public final class AnimationPlayer {
 
         this.currentTick++;
         applyTick(this.currentTick);
+        if (!this.ending
+            && this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
+            && this.currentTick >= this.animation.settings().playback().loopEndTicks()) {
+            this.awaitingLoopContinuation = true;
+            return AdvanceResult.LOOP_BOUNDARY;
+        }
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
         }
-        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
+        if (this.ending || this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             this.finished = true;
             return AdvanceResult.FINISHED;
         }
@@ -219,6 +229,27 @@ public final class AnimationPlayer {
         }
         this.remainingLoopDelay = loopDelay;
         return AdvanceResult.CONTINUE;
+    }
+
+    public boolean beginOutro() {
+        int loopEnd = this.animation.settings().playback().loopEndTicks();
+        if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.LOOP
+            || loopEnd >= this.animation.timeline().durationTicks()
+            || this.finished) {
+            return false;
+        }
+        if (this.ending) {
+            return true;
+        }
+
+        this.ending = true;
+        this.awaitingLoopContinuation = false;
+        this.remainingLoopDelay = 0;
+        if (this.currentTick < loopEnd) {
+            this.currentTick = loopEnd;
+            applyTick(loopEnd);
+        }
+        return true;
     }
 
     public int currentTick() {

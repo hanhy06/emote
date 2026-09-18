@@ -307,6 +307,9 @@ public class PlaybackEngine implements ConfigListener {
         if (session == null) {
             return releasePlayerReservation(playerUuid);
         }
+        if (supportsOutro(reason) && requestOutro(session, reason)) {
+            return session;
+        }
         if (!this.sessionRegistry.remove(session)) {
             return null;
         }
@@ -329,6 +332,7 @@ public class PlaybackEngine implements ConfigListener {
             PlaybackParticipant initiator = session.initiator();
             ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(initiator.playerUuid());
             PlaybackStopReason stopReason = null;
+            boolean movementOutroRequested = false;
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer participantPlayer = participant == initiator
                     ? player
@@ -341,10 +345,17 @@ public class PlaybackEngine implements ConfigListener {
                     stopReason = PlaybackStopReason.SUBMERGED;
                     break;
                 }
-                if (hasMovedDuringPlayback(participantPlayer, session, participant)) {
+                MovementResult movement = movementResult(participantPlayer, session, participant);
+                if (movement == MovementResult.IMMEDIATE_STOP) {
                     stopReason = PlaybackStopReason.MOVED;
                     break;
                 }
+                if (movement == MovementResult.REQUEST_OUTRO) {
+                    movementOutroRequested = true;
+                }
+            }
+            if (stopReason == null && movementOutroRequested) {
+                requestOutro(session, PlaybackStopReason.MOVED);
             }
             if (stopReason == null) {
                 try {
@@ -405,6 +416,9 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private @Nullable PlaybackStopReason handleFinishedTimeline(PlaybackSession session) {
+        if (session.pendingStopReason() != null) {
+            return session.pendingStopReason();
+        }
         return switch (session.state()) {
             case SOLO, MATCHED, TIMEOUT -> PlaybackStopReason.FINISHED;
             case OFFERING -> {
@@ -497,6 +511,9 @@ public class PlaybackEngine implements ConfigListener {
     public void stopAll(PlaybackStopReason reason) {
         this.stressTest.stop();
         for (PlaybackSession session : List.copyOf(this.sessionRegistry.sessions())) {
+            if (supportsOutro(reason) && requestOutro(session, reason)) {
+                continue;
+            }
             stopIfCurrent(session, reason);
         }
     }
@@ -635,17 +652,45 @@ public class PlaybackEngine implements ConfigListener {
             && player.level().dimension().equals(session.levelKey());
     }
 
-    private boolean hasMovedDuringPlayback(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
+    private MovementResult movementResult(ServerPlayer player, PlaybackSession session, PlaybackParticipant participant) {
         double movementDistance = session.playerBehavior().stopConditions().movementDistance();
         if (movementDistance == 0.0D) {
-            return false;
+            return MovementResult.NONE;
         }
         Vec3 currentPosition = player.position();
         Vec3 startPosition = participant.startPosition();
         double xDistance = currentPosition.x - startPosition.x;
         double zDistance = currentPosition.z - startPosition.z;
         double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
-        return horizontalDistanceSquared > movementDistance * movementDistance;
+        return movementResult(horizontalDistanceSquared, movementDistance, session.pendingStopReason() != null);
+    }
+
+    static MovementResult movementResult(double horizontalDistanceSquared, double movementDistance, boolean outroStarted) {
+        if (movementDistance == 0.0D) {
+            return MovementResult.NONE;
+        }
+        double immediateStopDistance = movementDistance * 1.3D;
+        if (horizontalDistanceSquared > immediateStopDistance * immediateStopDistance) {
+            return MovementResult.IMMEDIATE_STOP;
+        }
+        if (!outroStarted && horizontalDistanceSquared > movementDistance * movementDistance) {
+            return MovementResult.REQUEST_OUTRO;
+        }
+        return MovementResult.NONE;
+    }
+
+    private boolean requestOutro(PlaybackSession session, PlaybackStopReason reason) {
+        if (!session.requestStop(reason)) {
+            return false;
+        }
+        releaseReservedPartner(session);
+        return true;
+    }
+
+    private static boolean supportsOutro(PlaybackStopReason reason) {
+        return reason == PlaybackStopReason.MANUAL
+            || reason == PlaybackStopReason.MOVED
+            || reason == PlaybackStopReason.JUMPED;
     }
 
     static boolean shouldStopFor(EmotePlayerBehavior.StopConditions conditions, PlaybackStopReason reason) {
@@ -691,6 +736,12 @@ public class PlaybackEngine implements ConfigListener {
     }
 
     private record StopRequest(PlaybackSession session, PlaybackStopReason reason) {
+    }
+
+    enum MovementResult {
+        NONE,
+        REQUEST_OUTRO,
+        IMMEDIATE_STOP
     }
 
 }

@@ -134,6 +134,54 @@ class AnimationPlayerTest {
     }
 
     @Test
+    void loopsBetweenConfiguredBoundsThenPlaysOutro() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "2t");
+        playback.addProperty("loop_end", "6t");
+
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+
+        for (int tick = 0; tick < 5; tick++) {
+            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        }
+        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
+        assertEquals(6, player.currentTick());
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2, player.currentTick());
+
+        assertTrue(player.beginOutro());
+        assertEquals(6, player.currentTick());
+        for (int tick = 7; tick < 10; tick++) {
+            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        }
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(10, player.currentTick());
+        assertEquals(11.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void stoppingDuringLoopDelayStartsOutroImmediately() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_end", "6t");
+        playback.addProperty("loop_delay", "5t");
+
+        AnimationPlayer player = player(root, new FakeTarget());
+        player.start();
+        for (int tick = 0; tick < 6; tick++) player.advance(false);
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+
+        assertTrue(player.beginOutro());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(7, player.currentTick());
+    }
+
+    @Test
     void appliesNbtOnlyWhenTheStepFrameChangesAndRestoresItOnLoop() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
