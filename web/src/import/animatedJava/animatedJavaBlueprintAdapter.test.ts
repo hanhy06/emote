@@ -34,6 +34,24 @@ describe("animatedJavaBlueprintAdapter", () => {
     }
   });
 
+  it("preserves supported player queries independently from the numeric preview", async () => {
+    const input = nativeProject({
+      elements: [{ uuid: "display", name: "Display", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" }],
+      outliner: ["display"],
+      animations: [{
+        name: "look", loop: "once", length: 0.05,
+        animators: { display: { name: "Display", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("rotation", 0, ["q.target_x_rotation", "q.target_y_rotation", "0"])] } },
+      }],
+    });
+
+    const project = await animatedJavaBlueprintAdapter.import(input);
+    expect(project.animations[0].preview.tracks.display.transforms[0].matrix.every(Number.isFinite)).toBe(true);
+    expect(project.animations[0].runtime.kind).toBe("native");
+    const [compiled] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(JSON.stringify(compiled.timeline.tracks)).toContain("q.target_x_rotation");
+    expect(JSON.stringify(compiled.timeline.tracks)).toContain("q.target_y_rotation");
+  });
+
   it("accepts Animated Java project files", async () => {
     expect(animatedJavaBlueprintAdapter.extensions).toEqual(["ajblueprint"]);
     expect(animatedJavaBlueprintAdapter.label).toBe("Animated Java project");
@@ -99,10 +117,10 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(project.sourceName).toBe("unnamed.ajblueprint");
     expect(project.nodes.block.type).toBe("block_display");
     expect(project.nodes.block.defaultMatrix[3]).toBeCloseTo(1);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(-0.5);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
-    expect(project.animations[0].tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
+    expect(project.animations[0].preview.tracks.block.transforms[2].matrix[3]).toBeCloseTo(0.5);
+    expect(project.animations[0].preview.tracks.block.transforms[2].matrix[3] - project.nodes.block.defaultMatrix[3]).toBeCloseTo(-0.5);
+    expect(project.animations[0].preview.tracks.block.transforms[2].matrix[0]).toBeCloseTo(0.5);
+    expect(project.animations[0].preview.tracks.block.transforms[2].matrix[11]).toBeCloseTo(-1);
   });
 
   it.each(displayTypes)("applies native scale semantics and blend weights for %s", async (type) => {
@@ -123,8 +141,8 @@ describe("animatedJavaBlueprintAdapter", () => {
       : [[0.5, 2, 3], [1, 6, 12], [0.75, 4, 7.5]];
 
     for (const [index, animation] of project.animations.entries()) {
-      const initial = animation.tracks.display.transforms[0].matrix;
-      const animated = animation.tracks.display.transforms.at(-1)!.matrix;
+      const initial = animation.preview.tracks.display.transforms[0].matrix;
+      const animated = animation.preview.tracks.display.transforms.at(-1)!.matrix;
       for (let axis = 0; axis < 3; axis++) {
         expect(Math.hypot(initial[axis], initial[axis + 4], initial[axis + 8])).toBeCloseTo([0.5, 2, 3][axis]);
         expect(Math.hypot(animated[axis], animated[axis + 4], animated[axis + 8])).toBeCloseTo(expected[index][axis]);
@@ -188,7 +206,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(Object.keys(project.nodes).length).toBeGreaterThan(0);
     expect(project.animations).toHaveLength(1);
     expect(project.nodes.right_arm.defaultMatrix[3]).toBeCloseTo(0.29296875);
-    expect(project.animations[0].tracks.right_arm.transforms[0].matrix[3]).toBeCloseTo(0.29296875);
+    expect(project.animations[0].preview.tracks.right_arm.transforms[0].matrix[3]).toBeCloseTo(0.29296875);
   });
 
   it("reflects native cube rotations without reversing the Z axis", async () => {
@@ -253,8 +271,8 @@ describe("animatedJavaBlueprintAdapter", () => {
     };
 
     const project = await animatedJavaBlueprintAdapter.import(input);
-    const cubeMatrix = project.animations[0].tracks.root.transforms[0].matrix;
-    const itemMatrix = project.animations[0].tracks.item.transforms[0].matrix;
+    const cubeMatrix = project.animations[0].preview.tracks.root.transforms[0].matrix;
+    const itemMatrix = project.animations[0].preview.tracks.item.transforms[0].matrix;
 
     expect(cubeMatrix[3]).toBeCloseTo(0.46875);
     expect(itemMatrix[3]).toBeCloseTo(-0.46875);
@@ -337,12 +355,12 @@ describe("animatedJavaBlueprintAdapter", () => {
     const [hidden, shown] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
 
     expect(project.nodes.item.defaultMatrix[0]).toBe(0);
-    expect(project.animations[0].tracks.item.transforms[0].matrix[0]).toBe(0);
-    expect(hidden.nodes.item.transform.scale).toEqual([0, 0, 0]);
-    expect(hidden.timeline.tracks.item.scale?.[0].value).toEqual([0, 0, 0]);
-    expect(project.animations[1].tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
-    expect(shown.nodes.item.transform.scale).toEqual([0.46875, 0.46875, 0.46875]);
-    expect(shown.timeline.tracks.item.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(project.animations[0].preview.tracks.item.transforms[0].matrix[0]).toBe(0);
+    expect(hidden.nodes.aj_item_z.transform.scale).toEqual([0, 0, 0]);
+    expect(hidden.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0, 0, 0]);
+    expect(project.animations[1].preview.tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
+    expect(shown.nodes.aj_item_z.transform.scale).toEqual([0, 0, 0]);
+    expect(shown.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {
@@ -612,11 +630,11 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     const project = await animatedJavaBlueprintAdapter.import(input);
     const animation = project.animations[0];
-    const finalMatrix = animation.tracks.item.transforms.at(-1)!.matrix;
+    const finalMatrix = animation.preview.tracks.item.transforms.at(-1)!.matrix;
 
     expect(animation.playbackMode).toBe("hold");
     expect(animation.durationTicks).toBe(3);
-    expect(animation.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
+    expect(animation.preview.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
     expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
   });
@@ -676,9 +694,9 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 1, commands: ["say hello"] }));
     expect(animation.events.start).toContainEqual(expect.objectContaining({ commands: ["say summoned"] }));
     expect(animation.events.timeline).toContainEqual(expect.objectContaining({ tick: 2, commands: ["say applied"] }));
-    expect(animation.tracks.item.visibility).toContainEqual({ tick: 2, visible: false });
-    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "Glowing", value: "0b" }]) }) });
-    expect(animation.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "shadow_radius", value: "1" }]) }) });
+    expect(animation.preview.tracks.item.visibility).toContainEqual({ tick: 2, visible: false });
+    expect(animation.preview.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "Glowing", value: "0b" }]) }) });
+    expect(animation.preview.tracks.item.nbt).toContainEqual({ tick: 2, value: expect.objectContaining({ rawFields: expect.arrayContaining([{ name: "shadow_radius", value: "1" }]) }) });
     expect(project.diagnostics.map((diagnostic) => diagnostic.code)).toEqual(expect.arrayContaining([
       "unsupported_animated_java_interaction",
       "unsupported_animated_java_animation_controllers",

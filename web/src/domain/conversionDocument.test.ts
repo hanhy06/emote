@@ -109,7 +109,9 @@ function project(): ImportedProject {
     },
     animations: [{
       id: "test", name: "Test", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
-      tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] },
+      events: { start: [], timeline: [], loop: [], stop: [] },
+      preview: { durationTicks: 1, tracks: {}, availability: { preview: "full", exportable: true } },
+      runtime: { kind: "baked", tracks: {} },
     }],
     diagnostics: [],
     resources: new Map(),

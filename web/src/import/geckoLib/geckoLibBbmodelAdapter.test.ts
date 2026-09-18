@@ -90,10 +90,10 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(animation.durationTicks).toBe(2);
     expect(animation.playbackMode).toBe("loop");
     expect(animation.loopDelayTicks).toBe(1);
-    expect(animation.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
-    expect(animation.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
-    expect(animation.tracks.child.transforms[2].matrix[3]).toBeCloseTo(0.9375);
-    expect(animation.tracks.child.transforms[2].matrix[7]).toBeCloseTo(0.9375);
+    expect(animation.preview.tracks.root.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2]);
+    expect(animation.preview.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(animation.preview.tracks.child.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(animation.preview.tracks.child.transforms[2].matrix[7]).toBeCloseTo(0.9375);
 
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
@@ -124,7 +124,7 @@ describe("geckoLibBbmodelAdapter", () => {
     ];
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
-    const pose = imported.animations[0].tracks.root.transforms[0].matrix;
+    const pose = imported.animations[0].preview.tracks.root.transforms[0].matrix;
 
     expect(pose[6]).toBeCloseTo(-0.9375);
     expect(pose[9]).toBeCloseTo(0.9375);
@@ -147,7 +147,7 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(imported.nodes.root_second_cube.type).toBe("item_display");
     expect(imported.nodes.root.type === "item_display" && imported.nodes.root.suggestedSkin).toBeUndefined();
     expect(imported.nodes.root_second_cube.type === "item_display" && imported.nodes.root_second_cube.suggestedSkin).toBeUndefined();
-    expect(imported.animations[0].tracks.root_second_cube.transforms).toEqual(imported.animations[0].tracks.root.transforms);
+    expect(imported.animations[0].preview.tracks.root_second_cube.transforms).toEqual(imported.animations[0].preview.tracks.root.transforms);
     expect([...imported.resources.keys()]).toContain("assets/demo/models/item/test_model/root_second_cube.json");
   });
 
@@ -249,11 +249,11 @@ describe("geckoLibBbmodelAdapter", () => {
       && imported.nodes.right_arm_right_arm_skin_joint_upper_1.skinAssignmentGroup).toBe("right_arm_1");
     expect(imported.nodes.right_arm_right_arm_skin_joint_upper_1.type === "item_display"
       && Math.abs(imported.nodes.right_arm_right_arm_skin_joint_upper_1.playerHeadConversion!.matrix[6])).toBeGreaterThan(0.1);
-    expect(imported.animations[0].tracks.right_forearm.transforms[2].matrix)
-      .not.toEqual(imported.animations[0].tracks.right_arm.transforms[2].matrix);
+    expect(imported.animations[0].preview.tracks.right_forearm.transforms[2].matrix)
+      .not.toEqual(imported.animations[0].preview.tracks.right_arm.transforms[2].matrix);
 
-    expect(imported.animations[0].tracks.right_forearm_right_arm_skin_3.transforms[2].matrix)
-      .not.toEqual(imported.animations[0].tracks.right_arm_right_arm_skin_1.transforms[2].matrix);
+    expect(imported.animations[0].preview.tracks.right_forearm_right_arm_skin_3.transforms[2].matrix)
+      .not.toEqual(imported.animations[0].preview.tracks.right_arm_right_arm_skin_1.transforms[2].matrix);
   });
 
   it("converts presegmented limb cubes and removes their skin-layer duplicates", async () => {
@@ -300,7 +300,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(imported.animations[0].preview.tracks.root.transforms[2].matrix[3]).toBeCloseTo(0.9375);
   });
 
   it("bakes Catmull-Rom interpolation", async () => {
@@ -309,7 +309,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+    expect(imported.animations[0].preview.tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
   });
 
   it("bakes Bezier handles, pre/post values, easing arguments, and time-based Molang", async () => {
@@ -338,7 +338,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    const transforms = imported.animations[0].tracks.root.transforms;
+    const transforms = imported.animations[0].preview.tracks.root.transforms;
     expect(transforms).toHaveLength(5);
     expect(transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
     expect(transforms[0].matrix[3]).toBeCloseTo(0.234375);
@@ -351,7 +351,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
+    expect(imported.animations[0].preview.tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
   });
 
   it("preserves an easing key pose that falls between Minecraft ticks", async () => {
@@ -366,7 +366,7 @@ describe("geckoLibBbmodelAdapter", () => {
     Object.assign(value.animations[0].animators.root.keyframes[2], { easing: "easeOutQuart" });
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
-    const translations = imported.animations[0].tracks.root.transforms.map((frame) => frame.matrix[3]);
+    const translations = imported.animations[0].preview.tracks.root.transforms.map((frame) => frame.matrix[3]);
 
     expect(translations).toContainEqual(expect.closeTo(0.9375));
   });
@@ -381,7 +381,7 @@ describe("geckoLibBbmodelAdapter", () => {
     ];
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
-    const transition = imported.animations[0].tracks.root.transforms.find((frame) => Math.abs(frame.matrix[3] - 0.9375) < 1e-8);
+    const transition = imported.animations[0].preview.tracks.root.transforms.find((frame) => Math.abs(frame.matrix[3] - 0.9375) < 1e-8);
 
     expect(transition?.interpolation).toEqual({ type: "step" });
   });
@@ -400,8 +400,8 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(imported.animations[0]).toMatchObject({
-      tracks: {},
-      availability: { preview: "create_pose", exportable: true },
+      preview: { tracks: {}, availability: { preview: "create_pose", exportable: true } },
+      runtime: { kind: "native" },
     });
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
       code: "geckolib_animation_molang_unavailable",
@@ -411,6 +411,24 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((v.runtime_speed * 16) * 0.0625)");
     expect(compiled.nodes.root.type).toBe("item_display");
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
+  });
+
+  it("uses zero-valued player queries only for preview and preserves them in runtime output", async () => {
+    const value = project();
+    Object.assign(value.animations[0].animators.root.keyframes[1].data_points[0], {
+      x: "q.target_x_rotation",
+      y: "q.target_y_rotation",
+    });
+
+    const imported = await geckoLibBbmodelAdapter.import(input(value));
+    const source = imported.animations[0];
+
+    expect(source.preview.availability.preview).toBe("full");
+    expect(source.preview.tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+    expect(source.runtime.kind).toBe("native");
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(JSON.stringify(compiled.timeline.tracks)).toContain("q.target_x_rotation");
+    expect(JSON.stringify(compiled.timeline.tracks)).toContain("q.target_y_rotation");
   });
 
   it("requires the texture to be embedded", async () => {
@@ -430,7 +448,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(imported.nodes.root.type).toBe("anchor");
     expect(imported.resources.size).toBe(0);
-    expect(imported.animations[0].tracks.root.transforms).toHaveLength(3);
+    expect(imported.animations[0].preview.tracks.root.transforms).toHaveLength(3);
   });
 
   it("hides item and cape bones without creating skin candidates", async () => {
@@ -459,7 +477,7 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].availability).toBeUndefined();
+    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
   });
 
   it("moves arbitrary multi-axis cube rotation into the display transform", async () => {
@@ -474,7 +492,7 @@ describe("geckoLibBbmodelAdapter", () => {
       elements: { rotation?: unknown }[];
     };
     expect(model.elements[0].rotation).toBeUndefined();
-    expect(imported.animations[0].tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
+    expect(imported.animations[0].preview.tracks.root.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2" });
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
   });
@@ -495,8 +513,8 @@ describe("geckoLibBbmodelAdapter", () => {
 
     expect(imported.nodes.root_hand_socket.type).toBe("anchor");
     expect(imported.nodes.root_hand_socket.defaultMatrix[7]).toBeCloseTo(1);
-    expect(imported.animations[0].tracks.root_hand_socket.transforms).toHaveLength(3);
-    expect(imported.animations[0].tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(0.9375);
+    expect(imported.animations[0].preview.tracks.root_hand_socket.transforms).toHaveLength(3);
+    expect(imported.animations[0].preview.tracks.root_hand_socket.transforms[2].matrix[3]).toBeCloseTo(0.9375);
   });
 
   it("converts GeckoLib sound, particle, and slash-command effect keyframes", async () => {

@@ -163,7 +163,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     throw unsupportedSchema4("molang", "animation-level Molang cannot be represented by the web editor");
   }
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
-  const tracks: ImportedAnimation["tracks"] = {};
+  const tracks: ImportedAnimation["preview"]["tracks"] = {};
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
     if (source.nbt?.some((frame) => typeof frame.value !== "string")) {
@@ -173,7 +173,7 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
       visibility: [],
       nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbt(frame.value as string) })),
-    } as ImportedAnimation["tracks"][string];
+    } as ImportedAnimation["preview"]["tracks"][string];
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
       track.visibility.push({ tick: parseMinecraftTime(frame.time), visible: frame.value });
@@ -189,15 +189,16 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
     loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
-    tracks,
     events: importEvents(animation),
+    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    runtime: { kind: "baked", tracks },
   };
 }
 
 function importRuntimeTimeline(
   animation: EmoteAnimation,
   id: string,
-  previewTracks?: Record<string, ImportedAnimation["tracks"][string]>,
+  previewTracks?: Record<string, ImportedAnimation["preview"]["tracks"][string]>,
   reason?: string,
 ): ImportedAnimation {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
@@ -210,15 +211,18 @@ function importRuntimeTimeline(
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
     loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
-    tracks: {},
     events: importEvents(animation),
     ...(previewTracks
-      ? { preview: { durationTicks, tracks: previewTracks } }
+      ? { preview: { durationTicks, tracks: previewTracks, availability: { preview: "full" as const, exportable: true } } }
       : {
-          availability: { preview: "create_pose", exportable: true, reason },
-          preview: { durationTicks, tracks: {} },
+          preview: {
+            durationTicks,
+            tracks: {},
+            availability: { preview: "create_pose" as const, exportable: true, reason },
+          },
         }),
     runtime: {
+      kind: "native",
       ...(animation.molang ? { molang: animation.molang } : {}),
       nodes: readRuntimeNodes(animation.nodes),
       timeline: readRuntimeTimeline(animation.timeline),
@@ -236,7 +240,7 @@ function importEvents(animation: EmoteAnimation): ImportedAnimation["events"] {
   };
 }
 
-function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): ImportedAnimation["tracks"][string]["transforms"] {
+function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): ImportedAnimation["preview"]["tracks"][string]["transforms"] {
   const channels = [source.position, source.rotation, source.scale].filter((channel): channel is EmoteVectorKeyframe[] => channel !== undefined);
   if (channels.length === 0) return [];
   const reference = channels[0];

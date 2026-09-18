@@ -72,6 +72,7 @@ export const MOD_SUPPORTED_QUERY_FUNCTION_NAMES = [
 ] as const;
 
 const BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(["all", "any", "approx_eq", "in_range"]);
+const BAKEABLE_TIME_QUERY_VALUE_NAMES = new Set<string>(["anim_time", "delta_time", "key_frame_lerp_time", "life_time"]);
 const ZERO_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(
   MOD_SUPPORTED_QUERY_FUNCTION_NAMES.filter((name) => !BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES.has(name)),
 );
@@ -86,4 +87,17 @@ export const PREVIEW_RUNTIME_QUERY_VALUES: Readonly<Record<string, number>> = Ob
 export function previewRuntimeQueryFunction(key: string): number | undefined {
   const name = key.replace(/^(?:q|query)\./, "");
   return ZERO_PREVIEW_QUERY_FUNCTION_NAMES.has(name) ? 0 : undefined;
+}
+
+export function usesRuntimeMolangState(value: unknown): boolean {
+  if (typeof value !== "string") return false;
+  for (const match of value.matchAll(/(?:^|[^A-Za-z0-9_])(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)\s*(\()?/gi)) {
+    const name = match[1].toLowerCase();
+    if (match[2]) {
+      if (ZERO_PREVIEW_QUERY_FUNCTION_NAMES.has(name)) return true;
+      continue;
+    }
+    if ((MOD_SUPPORTED_QUERY_VALUE_NAMES as readonly string[]).includes(name) && !BAKEABLE_TIME_QUERY_VALUE_NAMES.has(name)) return true;
+  }
+  return false;
 }

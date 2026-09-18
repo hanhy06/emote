@@ -19,6 +19,16 @@ describe("createPreviewModel", () => {
 });
 
 function preview(previewFrameIndex: number) {
+  const tracks = {
+    head: {
+      transforms: [],
+      visibility: [
+        { tick: 4, visible: false },
+        { tick: 8, visible: true },
+      ],
+      nbt: [],
+    },
+  };
   const project: ImportedProject = {
     source: "emote_json",
     sourceName: "preview.json",
@@ -41,17 +51,9 @@ function preview(previewFrameIndex: number) {
       durationTicks: 10,
       playbackMode: "once",
       loopDelayTicks: 0,
-      tracks: {
-        head: {
-          transforms: [],
-          visibility: [
-            { tick: 4, visible: false },
-            { tick: 8, visible: true },
-          ],
-          nbt: [],
-        },
-      },
       events: { start: [], timeline: [], loop: [], stop: [] },
+      preview: { durationTicks: 10, tracks, availability: { preview: "full", exportable: true } },
+      runtime: { kind: "baked", tracks },
     }],
     diagnostics: [],
     resources: new Map(),

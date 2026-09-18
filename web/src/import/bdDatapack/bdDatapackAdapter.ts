@@ -237,8 +237,9 @@ function importAnimations(
       durationTicks,
       playbackMode: "loop" as const,
       loopDelayTicks: 0,
-      tracks,
       events: { start: [], timeline: [], loop: [], stop: [] },
+      preview: { durationTicks, tracks, availability: { preview: "full" as const, exportable: true } },
+      runtime: { kind: "baked" as const, tracks },
     };
   });
   if (droppedCamera) diagnostics.push({

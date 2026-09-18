@@ -53,6 +53,11 @@ function project(): ImportedProject {
     source: "emote_json", sourceName: "test.json", suggestedMetadata: { name: "Test", description: "" },
     suggestedPlayer: createDefaultPlayerBehavior(), resources: new Map(), diagnostics: [],
     nodes: { root: { type: "anchor", id: "root", defaultMatrix: [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1] } },
-    animations: [{ id: "test", name: "Test", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0, tracks: {}, events: { start: [], timeline: [], loop: [], stop: [] } }],
+    animations: [{
+      id: "test", name: "Test", durationTicks: 1, playbackMode: "once", loopDelayTicks: 0,
+      events: { start: [], timeline: [], loop: [], stop: [] },
+      preview: { durationTicks: 1, tracks: {}, availability: { preview: "full", exportable: true } },
+      runtime: { kind: "baked", tracks: {} },
+    }],
   };
 }

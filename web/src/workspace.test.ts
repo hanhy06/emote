@@ -43,9 +43,11 @@ function project(preview: "full" | "unavailable"): ImportedProject {
       durationTicks: 20,
       playbackMode: "once",
       loopDelayTicks: 0,
-      tracks: {},
       events: { start: [], timeline: [], loop: [], stop: [] },
-      availability: preview === "full" ? undefined : { preview, exportable: false, reason: "No preview" },
+      preview: { durationTicks: 20, tracks: {}, availability: preview === "full"
+        ? { preview: "full", exportable: true }
+        : { preview, exportable: false, reason: "No preview" } },
+      runtime: { kind: "baked", tracks: {} },
     }],
     diagnostics: [],
     resources: new Map(),

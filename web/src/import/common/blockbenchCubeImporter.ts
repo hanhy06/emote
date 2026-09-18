@@ -38,6 +38,7 @@ import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type Molan
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import { planAnimationSamples } from "./blockbenchAnimationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
+import { usesRuntimeMolangState } from "./runtimeMolangQueries";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
 
@@ -45,6 +46,7 @@ export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
   formatLabel: string;
   molangDiagnosticCode: string;
+  runtimeOutput?: "auto" | "native";
 }
 
 export interface ImportedCubeProjectContent {
@@ -121,7 +123,7 @@ export function importBlockbenchCubeContent(
   if (project.animations.length === 0) throw new Error(`${formatLabel} cube project does not contain animations.`);
   const animations = project.animations.map((animation, index) => {
     try {
-      return importAnimation(animation, index, bones, diagnostics, transforms);
+      return importAnimation(animation, index, bones, nodes, diagnostics, transforms, options.runtimeOutput === "native");
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -156,11 +158,13 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
     durationTicks,
     playbackMode: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
     loopDelayTicks: 0,
-    tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: true, reason },
-    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, transforms),
+    preview: {
+      durationTicks: TICKS_PER_SECOND,
+      tracks: {},
+      availability: { preview: "create_pose", exportable: true, reason },
+    },
+    runtime: { kind: "native", ...createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, transforms) },
   };
 }
 
@@ -171,7 +175,7 @@ function createBlockbenchRuntime(
   bones: BoneEntry[],
   importedNodes: Record<string, ImportedNode>,
   transforms: CubeProjectTransformConvention,
-): NonNullable<ImportedAnimation["runtime"]> {
+): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const sceneId = "geckolib_scene";
   const nodes: Record<string, RuntimeNode> = {
     [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
@@ -306,7 +310,7 @@ function bindLocalMatrix(bone: BoneEntry, convention: CubeProjectTransformConven
   );
 }
 
-function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], diagnostics: ImportDiagnostic[], convention: CubeProjectTransformConvention): ImportedAnimation {
+function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], nodes: Record<string, ImportedNode>, diagnostics: ImportDiagnostic[], convention: CubeProjectTransformConvention, forceNativeRuntime: boolean): ImportedAnimation {
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
@@ -330,7 +334,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     return result;
   };
   const samplePlan = planAnimationSamples(animation, index, durationTicks, bones.length, snapshotAt);
-  const tracks: ImportedAnimation["tracks"] = {};
+  const tracks: ImportedAnimation["preview"]["tracks"] = {};
   for (const bone of bones) {
     validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
     const transforms: ImportedTransformKeyframe[] = [];
@@ -357,6 +361,12 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       };
     }
   }
+  const runtime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation)
+    ? { kind: "native" as const, ...createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, convention) }
+    : { kind: "baked" as const, tracks };
+  if (runtime.kind === "native" && effectEvents.length > 0) runtime.timeline.events = {
+    timeline: effectEvents.map(({ tick, ...event }) => ({ ...event, time: formatMinecraftTime(tick) })),
+  };
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
@@ -365,9 +375,16 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     loopDelayTicks: playbackMode === "loop"
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,
-    tracks,
     events: { start: [], timeline: effectEvents, loop: [], stop: [] },
+    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    runtime,
   };
+}
+
+function blockbenchAnimationUsesRuntimeState(animation: BbAnimation): boolean {
+  return Object.values(animation.animators).some((animator) => (animator.keyframes ?? []).some((keyframe) => keyframe.data_points.some((point) =>
+    usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
+  )));
 }
 
 function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[]): Map<string, BbAnimator> {

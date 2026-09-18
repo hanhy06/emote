@@ -7,6 +7,8 @@ import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagn
 import { animationEasingProgress } from "../common/animationEasing";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
+import { usesRuntimeMolangState } from "../common/runtimeMolangQueries";
+import { ConversionError } from "../../foundation/diagnostics";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";
 import {
@@ -50,7 +52,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
-  const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["tracks"];
+  const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["preview"]["tracks"];
   const snapshotAt = (time: number) => {
     const poses = evaluatePoses(animation, time * 20);
     const matrices = buildSliceMatrices(animation, slices, poses);
@@ -85,8 +87,9 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     playbackMode: animation.loop === "once" ? "once" : animation.loop === "hold" ? "hold" : "loop",
     loopStartTicks,
     loopDelayTicks: 0,
-    tracks,
     events: { start: [], timeline: song.events, loop: [], stop: [] },
+    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    runtime: { kind: "baked", tracks },
   };
   return {
     source: "emotecraft_binary",
@@ -174,6 +177,9 @@ function evaluateChannel(frames: readonly PalKeyframe[], tick: number, animation
 }
 
 function evaluateExpression(expression: PalExpression, context: { animationTime: number; keyframeLerpTime: number }, path: string, angular: boolean): number {
+  if (usesRuntimeMolangState(expression)) {
+    throw new ConversionError("unsupported_emotecraft_runtime_molang", `${path} uses player-dependent Emotecraft MoLang that cannot be represented by the output rig: ${expression}`, path);
+  }
   const value = EVALUATOR.evaluate(expression, context, path);
   return angular && typeof expression === "string" ? value * Math.PI / 180 : value;
 }

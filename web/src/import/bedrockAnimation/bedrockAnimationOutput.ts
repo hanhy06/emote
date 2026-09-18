@@ -15,7 +15,7 @@ export function createBedrockRuntime(
   durationTicks: number,
   playbackRate: number | null,
   startDelayTicks: number,
-): NonNullable<ImportedAnimation["runtime"]> {
+): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
     bedrock_scene: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
