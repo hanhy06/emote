@@ -17,6 +17,7 @@ describe("ConversionDocument", () => {
   it("consumes import suggestions into editable node and skin state", () => {
     const document = createConversionDocument(project(), "Test adapter");
 
+    expect(document.targetMinecraftVersion).toBe("26.3");
     expect(document.nodes.head.space).toBe("partner");
     expect(document.nodes.head_variant.space).toBe("initiator");
     expect(document.skinGroups.head).toEqual({
