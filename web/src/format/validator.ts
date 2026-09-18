@@ -67,7 +67,7 @@ export function validateEmoteAnimation(animation: EmoteAnimation): ValidationIss
     add(issues, "settings.playback.loop_start", "must be within 0..duration - 1 tick");
   }
   if (animation.settings.playback.mode === "loop" && durationTicks !== null) {
-    const effectiveLoopEndTicks = loopEndTicks ?? durationTicks;
+    const effectiveLoopEndTicks = loopEndTicks === null || loopEndTicks === 0 ? durationTicks : loopEndTicks;
     if (loopStartTicks !== null && effectiveLoopEndTicks <= loopStartTicks) {
       add(issues, "settings.playback.loop_end", "must be after loop_start");
     }

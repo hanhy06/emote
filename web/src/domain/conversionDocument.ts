@@ -138,7 +138,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           cooldown: project.suggestedCooldown ?? "0t",
           rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
           loopStart: `${animation.loopStartTicks ?? 0}t`,
-          loopEnd: `${animation.loopEndTicks ?? animation.durationTicks}t`,
+          loopEnd: `${animation.loopEndTicks ?? 0}t`,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };

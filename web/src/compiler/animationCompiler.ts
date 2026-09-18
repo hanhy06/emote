@@ -65,7 +65,7 @@ export function compileConversionAnimation(
       playback: {
         mode,
         ...(loopStartTicks === 0 ? {} : { loop_start: formatMinecraftTime(loopStartTicks) }),
-        ...(mode === "loop" && loopEndTicks !== animation.durationTicks ? { loop_end: formatMinecraftTime(loopEndTicks) } : {}),
+        ...(mode === "loop" && loopEndTicks !== 0 ? { loop_end: formatMinecraftTime(loopEndTicks) } : {}),
         ...(loopDelayTicks === 0 ? {} : { loop_delay: formatMinecraftTime(loopDelayTicks) }),
       },
     },

@@ -68,6 +68,9 @@ describe("validateEmoteAnimation", () => {
     const value = animation();
     value.settings.playback = { mode: "loop" };
     expect(validateEmoteAnimation(value)).toEqual([]);
+
+    value.settings.playback = { mode: "loop", loop_end: "0t" };
+    expect(validateEmoteAnimation(value)).toEqual([]);
   });
 
   it("validates loop start mode and duration", () => {

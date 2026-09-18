@@ -26,6 +26,7 @@ describe("ConversionDocument", () => {
     expect(document.animations[0].output).toMatchObject({
       displayName: "Test",
       namespace: "emote",
+      loopEnd: "0t",
     });
     expect(document.nodes.head).not.toHaveProperty("suggestedSkin");
   });
