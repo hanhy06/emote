@@ -1,4 +1,5 @@
 import type { CubeProjectTransformConvention } from "../common/blockbenchCubeTransform";
+import { negatePlayerRotationQueries } from "../common/runtimeMolangQueries";
 
 function projectPosition<T>(values: readonly T[]): [T, T, T] {
   return [values[0], values[1], values[2]];
@@ -6,6 +7,7 @@ function projectPosition<T>(values: readonly T[]): [T, T, T] {
 
 export const GECKOLIB_BBMODEL_TRANSFORMS: CubeProjectTransformConvention = {
   id: "geckolib_bbmodel",
+  runtimeMolang: negatePlayerRotationQueries,
   position: projectPosition,
   rotation: projectPosition,
   bounds(from, to) {

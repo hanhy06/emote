@@ -199,10 +199,10 @@ function createBlockbenchRuntime(
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = blockbenchChannelFrames(animator, "position", ZERO_VECTOR, (values) => transforms.position(values, negateMolang)
+    const position = blockbenchChannelFrames(animator, "position", ZERO_VECTOR, transforms, (values) => transforms.position(values, negateMolang)
       .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = blockbenchChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => transforms.rotation(values, negateMolang));
-    const scale = blockbenchChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
+    const rotation = blockbenchChannelFrames(animator, "rotation", ZERO_VECTOR, transforms, (values) => transforms.rotation(values, negateMolang));
+    const scale = blockbenchChannelFrames(animator, "scale", ONE_VECTOR, transforms, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
@@ -218,6 +218,7 @@ function blockbenchChannelFrames(
   animator: BbAnimator,
   channel: "position" | "rotation" | "scale",
   fallback: readonly [number, number, number],
+  transforms: CubeProjectTransformConvention,
   transform: (value: MolangVector) => MolangVector,
 ): EmoteVectorKeyframe[] | undefined {
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
@@ -225,7 +226,7 @@ function blockbenchChannelFrames(
   const result = source.map((frame): EmoteVectorKeyframe => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new ConversionError("unsupported_geckolib_keyframe", "GeckoLib transform keyframes must contain one value or a pre/post pair.");
-    const vectors = points.map((point) => transform(geckoPointVector(point)));
+    const vectors = points.map((point) => transform(blockbenchPointVector(point, transforms)));
     const interpolation = frame.interpolation === "step" ? "step" : "linear";
     return vectors.length === 1
       ? { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation }
@@ -235,9 +236,12 @@ function blockbenchChannelFrames(
   return result.map((frame, index) => index + 1 < result.length ? frame : (({ interpolation: _, ...last }) => last)(frame));
 }
 
-function geckoPointVector(point: BbKeyframe["data_points"][number]): MolangVector {
+function blockbenchPointVector(point: BbKeyframe["data_points"][number], transforms: CubeProjectTransformConvention): MolangVector {
   if (point.x === undefined || point.y === undefined || point.z === undefined) throw new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.");
-  return [point.x, point.y, point.z].map(molangScalar) as MolangVector;
+  return [point.x, point.y, point.z].map((value) => {
+    const scalar = molangScalar(value);
+    return typeof scalar === "string" ? transforms.runtimeMolang(scalar) : scalar;
+  }) as MolangVector;
 }
 
 function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
