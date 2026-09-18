@@ -145,10 +145,8 @@ public final class AnimationJsonParser {
             default -> throw document.error("$.settings.playback.mode", "unsupported playback mode: " + modeText);
         };
         int loopStartTicks = optionalTime(playbackObject, "loop_start", "$.settings.playback", document);
-        boolean hasLoopEnd = playbackObject.has("loop_end") && !playbackObject.get("loop_end").isJsonNull();
-        int loopEndTicks = hasLoopEnd
-            ? optionalTime(playbackObject, "loop_end", "$.settings.playback", document)
-            : mode == LoopMode.LOOP ? durationTicks : 0;
+        int configuredLoopEndTicks = optionalTime(playbackObject, "loop_end", "$.settings.playback", document);
+        int loopEndTicks = mode == LoopMode.LOOP && configuredLoopEndTicks == 0 ? durationTicks : configuredLoopEndTicks;
         int loopDelayTicks = optionalTime(playbackObject, "loop_delay", "$.settings.playback", document);
         if (loopStartTicks != 0 && mode != LoopMode.LOOP) {
             throw document.error("$.settings.playback.loop_start", "must be zero unless playback mode is loop");
