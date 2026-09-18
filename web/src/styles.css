@@ -124,6 +124,8 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .fields .checkbox { display: flex; align-items: center; align-self: end; min-height: 34px; gap: 8px; }
 .fields .checkbox input { min-height: 0; }
 .fields label small { color: #666; font-size: 11px; line-height: 1.4; }
+.minecraft-version-field { width: min(260px, 100%); margin: 0 0 18px; }
+.minecraft-version-field label { display: grid; gap: 4px; font-size: 13px; }
 .settings-section h3 { margin-top: 0; }
 .playback-behavior { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
 .playback-behavior > p { margin: -4px 0 10px; color: #666; font-size: 12px; }
@@ -132,7 +134,8 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
 .field-heading { display: flex; align-items: baseline; height: 18px; gap: 8px; line-height: 18px; white-space: nowrap; }
 .field-heading small { overflow: hidden; text-overflow: ellipsis; font-weight: 400; line-height: inherit; }
 .settings-selectors { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.playback-settings-group { display: contents; }
+.playback-settings-group { display: grid; grid-column: 1 / -1; grid-template-columns: minmax(150px, 1.35fr) repeat(3, minmax(80px, 0.65fr)); gap: 12px; }
+.playback-settings-group input, .playback-settings-group select { min-width: 0; }
 .settings-toggles { grid-template-columns: repeat(4, max-content); margin-top: 14px; column-gap: 48px; row-gap: 6px; }
 .settings-toggles .checkbox { align-self: center; min-height: 28px; }
 .additional-metadata { margin-top: 18px; padding-top: 2px; border-top: 1px solid #e2e2e2; }
@@ -178,5 +181,6 @@ h3 { margin: 20px 0 10px; font-size: 15px; font-weight: 600; }
   .command-label-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
   .fields { grid-template-columns: 1fr; }
   .settings-selectors, .settings-toggles { grid-template-columns: 1fr; }
+  .playback-settings-group { grid-template-columns: 1fr; }
     .metadata-editor-row { grid-template-columns: 1fr; }
 }
