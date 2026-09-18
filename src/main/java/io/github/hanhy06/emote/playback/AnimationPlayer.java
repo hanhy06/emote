@@ -300,7 +300,16 @@ public final class AnimationPlayer {
     }
 
     private void resetToLoopStart() {
-        resetToTick(this.animation.settings().playback().loopStartTicks());
+        int tick = this.animation.settings().playback().loopStartTicks();
+        if (!this.emote.playbackSegments().isEmpty()) {
+            resetToTick(tick);
+            return;
+        }
+        this.target.resetAll();
+        clearState();
+        this.currentTick = tick;
+        this.evaluator.rewindLoop(tick, this.loopCount);
+        applyEvaluator(0, Map.of());
     }
 
     private void resetToTick(int tick) {

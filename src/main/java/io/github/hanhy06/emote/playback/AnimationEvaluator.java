@@ -73,6 +73,11 @@ final class AnimationEvaluator {
         evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
     }
 
+    void rewindLoop(int tick, int loopCount) {
+        for (NodeState node : this.nodes) node.resetCursors(tick);
+        evaluate(tick, loopCount, 0.0D, this.timeline.tick() != null);
+    }
+
     void evaluate(int tick, int loopCount) {
         evaluate(tick, loopCount, 0.05D, this.timeline.tick() != null);
     }
