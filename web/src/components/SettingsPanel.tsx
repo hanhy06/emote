@@ -30,7 +30,14 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
   return (
     <section className="export settings-page">
       <div className="section-heading export-heading">
-        <div><span className="step-label">Page 2</span><h2>Metadata, settings &amp; other</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
+        <div><span className="step-label">Page 2</span><h2>Metadata &amp; settings</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
+      </div>
+      <div className="minecraft-version-field">
+        <label>Target Minecraft version
+          <select value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)}>
+            {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
+          </select>
+        </label>
       </div>
       <section className="settings-section" aria-labelledby="metadata-heading">
         <h3 id="metadata-heading">Metadata</h3>
@@ -72,13 +79,6 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
       </section>
-      <section className="playback-behavior"><h3>Other</h3><div className="fields">
-        <label>Target Minecraft version <small>Choose the server version for animation and resource output.</small>
-          <select value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)}>
-            {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
-          </select>
-        </label>
-      </div></section>
     </section>
   );
 }
