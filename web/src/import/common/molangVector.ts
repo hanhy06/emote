@@ -10,6 +10,7 @@ export function molangScalar(value: string | number): MolangScalar {
 
 export function affineMolang(value: MolangScalar, factor: number, offset: number): MolangScalar {
   if (typeof value === "number") return value * factor + offset;
+  if (factor === 1 && offset === 0) return value;
   const scaled = factor === 1 ? `(${value})` : `((${value}) * ${factor})`;
   return offset === 0 ? scaled : `(${scaled} + ${offset})`;
 }
