@@ -73,6 +73,17 @@ export const MOD_SUPPORTED_QUERY_FUNCTION_NAMES = [
 
 const BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(["all", "any", "approx_eq", "in_range"]);
 const BAKEABLE_TIME_QUERY_VALUE_NAMES = new Set<string>(["anim_time", "delta_time", "key_frame_lerp_time", "life_time"]);
+const PLAYER_ROTATION_QUERY_VALUE_NAMES = new Set<string>([
+  "target_x_rotation",
+  "target_y_rotation",
+  "body_x_rotation",
+  "body_y_rotation",
+  "head_x_rotation",
+  "head_y_rotation",
+  "eye_target_x_rotation",
+  "eye_target_y_rotation",
+  "yaw_speed",
+]);
 const ZERO_PREVIEW_QUERY_FUNCTION_NAMES = new Set<string>(
   MOD_SUPPORTED_QUERY_FUNCTION_NAMES.filter((name) => !BUILT_IN_PREVIEW_QUERY_FUNCTION_NAMES.has(name)),
 );
@@ -100,4 +111,32 @@ export function usesRuntimeMolangState(value: unknown): boolean {
     if ((MOD_SUPPORTED_QUERY_VALUE_NAMES as readonly string[]).includes(name) && !BAKEABLE_TIME_QUERY_VALUE_NAMES.has(name)) return true;
   }
   return false;
+}
+
+export function negatePlayerRotationQueries(expression: string): string {
+  let result = "";
+  for (let index = 0; index < expression.length;) {
+    const character = expression[index];
+    if (character === "'" || character === '"') {
+      const quote = character;
+      const start = index++;
+      while (index < expression.length) {
+        if (expression[index] === "\\") index += 2;
+        else if (expression[index++] === quote) break;
+      }
+      result += expression.slice(start, index);
+      continue;
+    }
+    if (!/[A-Za-z_]/.test(character)) {
+      result += character;
+      index++;
+      continue;
+    }
+    const start = index++;
+    while (index < expression.length && /[A-Za-z0-9_.]/.test(expression[index])) index++;
+    const identifier = expression.slice(start, index);
+    const match = /^(?:q|query)\.([A-Za-z_][A-Za-z0-9_]*)$/i.exec(identifier);
+    result += match && PLAYER_ROTATION_QUERY_VALUE_NAMES.has(match[1].toLowerCase()) ? `-(${identifier})` : identifier;
+  }
+  return result;
 }
