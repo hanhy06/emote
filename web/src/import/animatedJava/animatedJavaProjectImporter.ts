@@ -10,7 +10,8 @@ import { formatMinecraftTime, parseMinecraftTime, requireAnimationDurationTicks,
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
-import { evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
+import { evaluateApproximateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
+import { blockbenchIntervalIsStep } from "../common/animationEasing";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
@@ -600,15 +601,19 @@ function importProjectAnimation(
   );
   const tracks: ImportedAnimation["preview"]["tracks"] = {};
   const stateFrames: ProjectNodeStateFrame[] = [];
+  const previewTicks = approximateProjectPreviewTicks(animation, durationTicks, startDelayTicks);
   for (const element of elements) {
     validateProjectKeyframes(animation.animators[element.uuid]?.keyframes ?? [], animationIndex, element.uuid);
     const transforms: ImportedTransformKeyframe[] = [];
-    for (let tick = 0; tick <= durationTicks; tick++) {
+    for (const [tickIndex, tick] of previewTicks.entries()) {
       const sourceTime = tick / 20 - startDelaySeconds;
+      const previousTick = previewTicks[tickIndex - 1];
       transforms.push({
         tick,
         matrix: projectElementMatrix(element, animation, sourceTime, graph, blendWeight, sceneScale),
-        interpolation: tick === 0 || projectStepAt(animation, element.uuid, sourceTime) ? { type: "step" } : { type: "linear", durationTicks: 1 },
+        interpolation: tick === 0 || projectStepBetween(animation, previousTick / 20 - startDelaySeconds, sourceTime)
+          ? { type: "step" }
+          : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
       });
     }
     const visibility = projectVisibilityFrames(animation, element, startDelayTicks);
@@ -718,17 +723,31 @@ function projectGroupMatrix(
 
 function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
   if (sourceTime < 0) return [...fallback];
-  try {
-    return evaluateBlockbenchChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
-  } catch (reason) {
-    if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
-    throw new ConversionError("unsupported_animated_java_molang", reason.message.replace("GeckoLib", "Animated Java"), reason.sourcePath, { cause: reason });
-  }
+  return evaluateApproximateBlockbenchChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
 }
 
-function projectStepAt(animation: AjProjectAnimation, elementId: string, sourceTime: number): boolean {
-  if (sourceTime < 0) return true;
-  return (animation.animators[elementId]?.keyframes ?? []).some((frame) => frame.interpolation === "step" && Math.abs(frame.time - sourceTime) < 1e-9);
+function approximateProjectPreviewTicks(animation: AjProjectAnimation, durationTicks: number, startDelayTicks: number): number[] {
+  const ticks = new Set<number>([0, durationTicks]);
+  const stride = Math.max(1, Math.ceil(durationTicks / 199));
+  for (let tick = 0; tick <= durationTicks; tick += stride) ticks.add(tick);
+  for (const animator of Object.values(animation.animators)) {
+    for (const frame of animator.keyframes ?? []) {
+      if (!["position", "rotation", "scale"].includes(frame.channel)) continue;
+      ticks.add(Math.max(0, Math.min(durationTicks, startDelayTicks + Math.round(frame.time * 20))));
+    }
+  }
+  return [...ticks].sort((first, second) => first - second);
+}
+
+function projectStepBetween(animation: AjProjectAnimation, fromTime: number, toTime: number): boolean {
+  if (toTime <= 0) return true;
+  for (const animator of Object.values(animation.animators)) {
+    for (const channel of ["position", "rotation", "scale"]) {
+      const frames = (animator.keyframes ?? []).filter((frame) => frame.channel === channel) as BbKeyframe[];
+      if (blockbenchIntervalIsStep(frames, fromTime, toTime)) return true;
+    }
+  }
+  return false;
 }
 
 function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): ImportedAnimation["preview"]["tracks"][string]["visibility"] {
