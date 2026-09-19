@@ -57,6 +57,8 @@ export interface ImportedCubeProjectContent {
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
   resources: Map<string, GeneratedResource>;
+  runtimeSceneId: string;
+  runtimeParentByGroupUuid: Readonly<Record<string, string>>;
 }
 
 export function importBlockbenchCubeContent(
@@ -150,6 +152,8 @@ export function importBlockbenchCubeContent(
     animations,
     diagnostics,
     resources,
+    runtimeSceneId: BLOCKBENCH_RUNTIME_SCENE_ID,
+    runtimeParentByGroupUuid: Object.fromEntries(bones.map((bone) => [bone.uuid, `${bone.id}_x`])),
   };
 }
 

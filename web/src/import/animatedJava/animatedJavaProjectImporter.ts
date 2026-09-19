@@ -22,7 +22,7 @@ import type {
   AjProjectOutlinerEntry,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
-import { ajRuntimeRootId, createAjProjectRuntime } from "./animatedJavaAnimationOutput";
+import { ajRuntimeRootId, createAjProjectRuntime, type AjRuntimeHierarchy } from "./animatedJavaAnimationOutput";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
 interface ProjectTransformGraph {
@@ -50,12 +50,19 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const transformGraph = buildProjectTransformGraph(project);
   const cubeContent = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
   const sceneScale = cubeContent ? PLAYER_RENDER_SCALE : 1;
+  const runtimeHierarchy: AjRuntimeHierarchy = {
+    sceneId: cubeContent?.runtimeSceneId,
+    runtimeParentByGroupUuid: cubeContent?.runtimeParentByGroupUuid ?? {},
+    parentGroupByElementUuid: transformGraph.elementParents,
+    groupOrigins: new Map([...transformGraph.groups].map(([id, group]) => [id, group.origin])),
+  };
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
   for (const element of displayElements) addProjectNode(nodes, element.uuid, {
     ...importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)),
-    spaceAssignmentGroup: ajRuntimeRootId(element.uuid),
+    spaceAssignmentGroup: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid),
+    ...(cubeContent ? { space: "initiator" as const } : {}),
   });
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
@@ -65,7 +72,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
-      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale);
+      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -75,7 +82,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, sceneScale);
+      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, runtimeHierarchy);
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
@@ -498,9 +505,11 @@ function createPreviewOnlyProjectAnimation(
   reason: string,
   elements: AjProjectDisplayElement[],
   nodes: Record<string, ImportedNode>,
-  sceneScale: number,
+  runtimeHierarchy: AjRuntimeHierarchy,
 ): ImportedAnimation {
   const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
+  const startDelayTicks = secondsToTicks(projectOptionalNumeric(animation.start_delay, 0, `animations[${index}].start_delay`), `${animation.name}.start_delay`);
+  const blendWeight = projectOptionalNumeric(animation.blend_weight, 1, `animations[${index}].blend_weight`);
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: prettify(animation.name),
@@ -513,7 +522,7 @@ function createPreviewOnlyProjectAnimation(
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, sceneScale) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks) },
   };
 }
 
@@ -555,7 +564,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
       defaultMatrix,
       visible,
       ...(entityNbt ? { entityNbt } : {}),
-      itemDisplay: element.item_display ?? "none",
+      itemDisplay: element.itemDisplay ?? element.item_display ?? "none",
       itemStack: itemArgumentToData(element.item ?? "minecraft:air"),
     };
   }
@@ -576,6 +585,7 @@ function importProjectAnimation(
   nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
   sceneScale: number,
+  runtimeHierarchy: AjRuntimeHierarchy,
 ): ImportedAnimation {
   const playbackMode = animation.loop === "hold_on_last_frame" ? "hold" : animation.loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
@@ -613,7 +623,7 @@ function importProjectAnimation(
       : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, sceneScale, startDelayTicks) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks) },
   }, stateFrames);
 }
 
@@ -651,10 +661,13 @@ function projectElementMatrix(
   const baseScale = "scale" in element ? element.scale : [1, 1, 1];
   // AJ item displays replace scale; block and text displays multiply their base scale.
   const absoluteScale = element.type === "animated_java:vanilla_item_display";
-  const scale = evaluateProjectTransformChannel(animator?.keyframes ?? [], "scale", sourceTime, absoluteScale ? baseScale : [1, 1, 1], `${path}/scale`)
-    .map((value, axis) => absoluteScale
-      ? baseScale[axis] + (value - baseScale[axis]) * blendWeight
-      : baseScale[axis] * (1 + (value - 1) * blendWeight));
+  const scaleKeyframes = (animator?.keyframes ?? []).filter((frame) => frame.channel === "scale");
+  const scale = scaleKeyframes.some((frame) => frame.time <= sourceTime + 1e-9)
+    ? evaluateProjectTransformChannel(scaleKeyframes, "scale", sourceTime, [1, 1, 1], `${path}/scale`)
+        .map((value, axis) => absoluteScale
+          ? 1 + (value - 1) * blendWeight
+          : baseScale[axis] * (1 + (value - 1) * blendWeight))
+    : [...baseScale];
   const basePosition = element.position.map((value, axis) => value - (parent?.origin[axis] ?? 0));
   const local = composeDegreesTransform(
     basePosition.map((value, axis) => (value + (axis === 0 ? -positionOffset[axis] : positionOffset[axis])) / 16),

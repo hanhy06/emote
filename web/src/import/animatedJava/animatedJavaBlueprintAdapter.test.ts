@@ -137,8 +137,9 @@ describe("animatedJavaBlueprintAdapter", () => {
     });
     const project = await animatedJavaBlueprintAdapter.import(input);
     const expected = type === "animated_java:vanilla_item_display"
-      ? [[0.5, 2, 3], [2, 3, 4], [1.25, 2.5, 3.5]]
+      ? [[0.5, 2, 3], [2, 3, 4], [1.5, 2, 2.5]]
       : [[0.5, 2, 3], [1, 6, 12], [0.75, 4, 7.5]];
+    const compiled = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "scale" });
 
     for (const [index, animation] of project.animations.entries()) {
       const initial = animation.preview.tracks.display.transforms[0].matrix;
@@ -147,7 +148,39 @@ describe("animatedJavaBlueprintAdapter", () => {
         expect(Math.hypot(initial[axis], initial[axis + 4], initial[axis + 8])).toBeCloseTo([0.5, 2, 3][axis]);
         expect(Math.hypot(animated[axis], animated[axis + 4], animated[axis + 8])).toBeCloseTo(expected[index][axis]);
       }
+      if (index > 0) expect(compiled[index].timeline.tracks.aj_display_z.scale?.at(-1)?.value).toEqual(expected[index]);
     }
+  });
+
+  it.each(displayTypes)("connects parent group transforms to %s runtime nodes", async (type) => {
+    const input = nativeProject({
+      elements: [{ uuid: "display", name: "Display", type, position: [20, 5, 6], rotation: [0, 0, 0], scale: [0.5, 2, 3], visibility: true, block: "minecraft:stone", item: "minecraft:stick", text: { text: "Test" } }],
+      outliner: [{ uuid: "root", name: "Root", origin: [4, 5, 6], children: ["display"] }],
+      animations: [{
+        name: "group_scale", loop: "once", length: 0.05,
+        animators: { root: { name: "Root", type: "bone", keyframes: [projectFrame("scale", 0, ["2", "3", "4"])] } },
+      }],
+    });
+    const project = await animatedJavaBlueprintAdapter.import(input);
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "hierarchy" });
+    const actual = bakeSchema4Preview(animation).display.transforms[0].matrix;
+    const expected = project.animations[0].preview.tracks.display.transforms[0].matrix;
+
+    expect(animation.nodes.aj_display_x.parent).toBe("root_x");
+    expect(animation.nodes.aj_display_x.transform.position).toEqual([1, 0, 0]);
+    actual.forEach((value, index) => expect(value).toBeCloseTo(expected[index], 6));
+    expect([0, 1, 2].map((axis) => Math.hypot(actual[axis], actual[axis + 4], actual[axis + 8])))
+      .toEqual(expect.arrayContaining([expect.closeTo(0.9375), expect.closeTo(5.625), expect.closeTo(11.25)]));
+  });
+
+  it("reads the Animated Java itemDisplay field", async () => {
+    const project = await animatedJavaBlueprintAdapter.import(nativeProject({
+      elements: [{ uuid: "item", name: "Item", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick", itemDisplay: "head" }],
+      outliner: ["item"],
+      animations: [],
+    }));
+
+    expect(project.nodes.item.type === "item_display" && project.nodes.item.itemDisplay).toBe("head");
   });
 
   it.each(displayTypes)("preserves native scale semantics in Molang output for %s", async (type) => {
@@ -319,9 +352,10 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.nodes.item).toBeDefined();
     expect(animation.timeline.tracks.root_z.position).toBeDefined();
     expect(animation.nodes.aj_item_z.transform.scale).toEqual([0, 0, 0]);
-    expect(animation.timeline.tracks.aj_item_x.position?.[0].value).toEqual([0.9375, 0, 0]);
-    expect(animation.timeline.tracks.aj_item_x.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.05859375) + 0.9375)");
-    expect(animation.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(animation.nodes.aj_item_x.parent).toBe("geckolib_scene");
+    expect(animation.timeline.tracks.aj_item_x.position?.[0].value).toEqual([1, 0, 0]);
+    expect(animation.timeline.tracks.aj_item_x.position?.[1].value?.[0]).toBe("(((v.item_x) * -0.0625) + 1)");
+    expect(animation.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.5, 0.5, 0.5]);
   });
 
   it("preserves and restores a zero-scale direct display before applying scene scale", async () => {
@@ -360,7 +394,7 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(hidden.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0, 0, 0]);
     expect(project.animations[1].preview.tracks.item.transforms[0].matrix[0]).toBeCloseTo(0.46875);
     expect(shown.nodes.aj_item_z.transform.scale).toEqual([0, 0, 0]);
-    expect(shown.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.46875, 0.46875, 0.46875]);
+    expect(shown.timeline.tracks.aj_item_z.scale?.[0].value).toEqual([0.5, 0.5, 0.5]);
   });
 
   it("assigns planar native cubes to player heads with a zero scale axis", async () => {

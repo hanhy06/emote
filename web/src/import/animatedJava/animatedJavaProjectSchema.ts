@@ -44,6 +44,7 @@ export interface AjProjectDisplayElement extends AjProjectElementBase {
   visibility: boolean;
   block?: string;
   item?: string;
+  itemDisplay?: string;
   item_display?: string;
   text?: unknown;
   config?: Record<string, unknown>;
@@ -217,6 +218,7 @@ function requireElement(value: unknown, path: string): void {
     optionalLegacyBoolean(element.visibility, `${path}.visibility`);
     optionalString(element.block, `${path}.block`);
     optionalString(element.item, `${path}.item`);
+    optionalString(element.itemDisplay, `${path}.itemDisplay`);
     optionalString(element.item_display, `${path}.item_display`);
     optionalRecord(element.config, `${path}.config`);
     optionalRecord(element.configs, `${path}.configs`);

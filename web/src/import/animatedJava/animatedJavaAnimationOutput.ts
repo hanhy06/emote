@@ -6,11 +6,19 @@ import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
 
+export interface AjRuntimeHierarchy {
+  sceneId?: string;
+  runtimeParentByGroupUuid: Readonly<Record<string, string>>;
+  parentGroupByElementUuid: ReadonlyMap<string, string | undefined>;
+  groupOrigins: ReadonlyMap<string, readonly number[]>;
+}
+
 export function createAjProjectRuntime(
   animation: AjProjectAnimation,
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
-  sceneScale: number,
+  hierarchy: AjRuntimeHierarchy,
+  blendWeight: number,
   startDelayTicks = 0,
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const nodes: Record<string, RuntimeNode> = {};
@@ -21,23 +29,34 @@ export function createAjProjectRuntime(
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
     const ids = ajAnchorIds(element.uuid);
+    const parentGroupUuid = hierarchy.parentGroupByElementUuid.get(element.uuid);
+    const parentId = parentGroupUuid ? hierarchy.runtimeParentByGroupUuid[parentGroupUuid] : hierarchy.sceneId;
+    if (parentGroupUuid && !parentId) throw new Error(`Animated Java display ${element.name} references an unavailable runtime group ${parentGroupUuid}.`);
+    const parentOrigin = parentGroupUuid ? hierarchy.groupOrigins.get(parentGroupUuid) : undefined;
     const spaceGroup = sourceNode.spaceAssignmentGroup ?? ajRuntimeRootId(element.uuid);
-    const basePosition = [element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
+    const basePosition = element.position.map((value, axis) => (value - (parentOrigin?.[axis] ?? 0)) / 16) as [number, number, number];
     const baseRotation = element.rotation;
-    nodes[ids.x] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
+    nodes[ids.x] = {
+      type: "anchor",
+      ...(parentId ? { parent: parentId } : { space: sourceNode.space ?? "initiator" }),
+      transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR },
+    };
     nodes[ids.y] = { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
-    const baseScale = element.scale.map((value) => value * sceneScale) as [number, number, number];
+    const baseScale = [...element.scale] as [number, number, number];
     nodes[ids.z] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [0, 0, baseRotation[2]], scale: baseScale } };
     const nodeTransform = element.type === "animated_java:vanilla_text_display" || element.type === "animated_java:text_display"
       ? { ...IDENTITY_TRANSFORM, rotation: [0, 180, 0] as const }
       : IDENTITY_TRANSFORM;
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
-    spaceGroupByRuntimeRoot[ids.x] = spaceGroup;
+    if (!parentId) spaceGroupByRuntimeRoot[ids.x] = spaceGroup;
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, startDelayTicks, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, startDelayTicks, (value, axis) => axis === 2 ? value : affineMolang(value, -1, 0));
-    const scale = ajProjectFrames(keyframes, "scale", baseScale, startDelayTicks, (value, axis) => multiply(value, element.type === "animated_java:vanilla_item_display" ? sceneScale : baseScale[axis]));
+    const position = ajProjectFrames(keyframes, "position", basePosition, startDelayTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, startDelayTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
+    const scale = ajProjectFrames(keyframes, "scale", baseScale, startDelayTicks, (value, axis) => {
+      const blended = affineMolang(value, blendWeight, 1 - blendWeight);
+      return element.type === "animated_java:vanilla_item_display" ? blended : multiply(blended, baseScale[axis]);
+    });
     if (position) tracks[ids.x] = { position };
     if (rotation) {
       tracks[ids.z] = { ...tracks[ids.z], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
