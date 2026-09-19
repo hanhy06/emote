@@ -85,6 +85,7 @@ export function importBlockbenchCubeContent(
         id: bone.id,
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`),
+        space: "initiator",
         spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
@@ -103,6 +104,7 @@ export function importBlockbenchCubeContent(
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
         visible: true,
+        space: "initiator",
         spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
         itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
@@ -119,6 +121,7 @@ export function importBlockbenchCubeContent(
         id: nodeId,
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
+        space: "initiator",
         spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
     }
