@@ -3,6 +3,7 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent } from "../common/blockbenchCubeImporter";
 import type { BbmodelProject } from "../common/blockbenchCubeSchema";
+import { createGeckoLibRuntime } from "./geckoLibAnimationOutput";
 import { GECKOLIB_BBMODEL_TRANSFORMS } from "./geckoLibCubeTransform";
 
 export function importGeckoLibProject(project: BbmodelProject, sourceName: string): ImportedProject {
@@ -15,6 +16,7 @@ export function importGeckoLibProject(project: BbmodelProject, sourceName: strin
     transforms: GECKOLIB_BBMODEL_TRANSFORMS,
     formatLabel: "GeckoLib",
     molangDiagnosticCode: "geckolib_animation_molang_unavailable",
+    createNativeRuntime: createGeckoLibRuntime,
   });
   return {
     source: "geckolib_bbmodel",

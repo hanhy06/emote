@@ -23,6 +23,7 @@ import type {
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
 import { ajRuntimeRootId, createAjProjectRuntime, type AjRuntimeHierarchy } from "./animatedJavaAnimationOutput";
+import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeAnimationOutput";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
 interface ProjectTransformGraph {
@@ -173,6 +174,7 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     formatLabel: "Animated Java",
     molangDiagnosticCode: "animated_java_animation_molang_unavailable",
     runtimeOutput: "native",
+    createNativeRuntime: createAnimatedJavaCubeRuntime,
   });
 }
 
