@@ -77,7 +77,7 @@ export function compileConversionAnimation(
       ? compileRuntimeNodes(document, runtime.nodes, runtime.bindings, profile)
       : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile),
     timeline: runtime.kind === "native"
-      ? compileRuntimeTimeline(document, animation, runtime.tracks, profile)
+      ? compileRuntimeTimeline(document, animation, runtime.tracks, runtime.bindings, profile)
       : compileTimeline(document, animation, runtime.tracks, profile),
   };
 }
@@ -234,12 +234,13 @@ function compileRuntimeTimeline(
   document: ConversionDocument,
   animation: ImportedAnimation,
   sourceTracks: Record<string, RuntimeNodeTracks>,
+  bindings: NativeRuntimeBindings,
   profile: MinecraftVersionProfile,
 ): EmoteAnimation["timeline"] {
   const tracks = Object.fromEntries(Object.entries(sourceTracks).map(([nodeId, track]) => {
     if (!track.nbt?.length) return [nodeId, track];
     const nbt = track.nbt.flatMap((frame) => {
-      const value = compileRuntimeNbtValue(document, nodeId, frame.value, profile);
+      const value = compileRuntimeNbtValue(document, bindings.editorNodeByRuntimeNode[nodeId] ?? nodeId, frame.value, profile);
       return value === undefined ? [] : [{ ...frame, value }];
     });
     const { nbt: _nbt, ...remaining } = track;

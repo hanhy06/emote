@@ -6,7 +6,7 @@ import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix"
 import { normalizeResourceLocation, sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
-import { formatMinecraftTime, requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
+import { formatMinecraftTime, parseMinecraftTime, requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
@@ -428,8 +428,8 @@ function applyProjectStateFrames(animation: ImportedAnimation, frames: ProjectNo
     const nbt = nodeFrames.flatMap((frame) => frame.nbt ? [{ time: formatMinecraftTime(frame.tick), value: frame.nbt }] : []);
     runtimeTracks[nodeId] = {
       ...runtime,
-      ...(visible.length ? { visible: [...(runtime.visible ?? []), ...visible] } : {}),
-      ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt] } : {}),
+      ...(visible.length ? { visible: [...(runtime.visible ?? []), ...visible].sort((first, second) => parseMinecraftTime(first.time) - parseMinecraftTime(second.time)) } : {}),
+      ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt].sort((first, second) => parseMinecraftTime(first.time) - parseMinecraftTime(second.time)) } : {}),
     };
   }
   return {

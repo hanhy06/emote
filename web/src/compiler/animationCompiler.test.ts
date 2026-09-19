@@ -202,6 +202,43 @@ describe("compileImportedProject time handling", () => {
       value: "{brightness:{block:15,sky:15}}",
     }]);
   });
+
+  it("uses native runtime bindings when compiling display NBT", () => {
+    const project = importedProject();
+    project.nodes = {
+      item: {
+        id: "item",
+        type: "item_display",
+        defaultMatrix: IDENTITY,
+        visible: true,
+        itemStack: readItemStack('{id:"minecraft:paper",count:1}'),
+        itemDisplay: "none",
+        suggestedSkin: { part: "head", order: 0 },
+        playerHeadConversion: { matrix: IDENTITY },
+      },
+    };
+    project.animations[0].preview.tracks = {};
+    project.animations[0].runtime = {
+      kind: "native",
+      nodes: {
+        runtime_item: {
+          type: "item_display",
+          space: "initiator",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          itemStack: { id: "minecraft:paper", count: 1 },
+          item_display: "none",
+        },
+      },
+      tracks: {
+        runtime_item: { nbt: [{ time: "0t", value: readDisplayNbt('{item:{id:"minecraft:paper",count:1},brightness:{block:15,sky:15}}') }] },
+      },
+      bindings: { editorNodeByRuntimeNode: { runtime_item: "item" }, spaceGroupByRuntimeRoot: { runtime_item: "item" } },
+    };
+
+    const [animation] = compileImportedProject(project, { minecraftVersion: "26.2", namespace: "skin" });
+
+    expect(animation.timeline.tracks.runtime_item.nbt).toEqual([{ time: "0t", value: "{brightness:{block:15,sky:15}}" }]);
+  });
 });
 
 function importedProject(): ImportedProject {
