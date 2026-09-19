@@ -41,6 +41,7 @@ import type { BoneEntry } from "./blockbenchCubeModel";
 import { usesRuntimeMolangState } from "./runtimeMolangQueries";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
+const BLOCKBENCH_RUNTIME_SCENE_ID = "geckolib_scene";
 
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
@@ -84,6 +85,7 @@ export function importBlockbenchCubeContent(
         id: bone.id,
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`),
+        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
@@ -101,6 +103,7 @@ export function importBlockbenchCubeContent(
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
         visible: true,
+        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
         itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
@@ -116,6 +119,7 @@ export function importBlockbenchCubeContent(
         id: nodeId,
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
+        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
     }
   }
@@ -175,11 +179,12 @@ function createBlockbenchRuntime(
   importedNodes: Record<string, ImportedNode>,
   transforms: CubeProjectTransformConvention,
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
-  const sceneId = "geckolib_scene";
+  const sceneId = BLOCKBENCH_RUNTIME_SCENE_ID;
   const nodes: Record<string, RuntimeNode> = {
     [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
+  const editorNodeByRuntimeNode: Record<string, string> = {};
   const animators = resolveBoneAnimators(animation, animationIndex, bones);
   for (const bone of bones) {
     const parent = bone.parent ? `${bone.parent.id}_x` : sceneId;
@@ -194,7 +199,10 @@ function createBlockbenchRuntime(
     nodes[`${bone.id}_x`] = { type: "anchor", parent: `${bone.id}_y`, transform: { position: ZERO_VECTOR, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
     for (const entry of bone.nodes) {
       const imported = importedNodes[entry.id];
-      if (imported) nodes[entry.id] = importedNodeToRuntimeNode(imported, matrixToLocalTransform(matrix4ToRowMajor(entry.localMatrix, `GeckoLib runtime node ${entry.id}`), `GeckoLib runtime node ${entry.id}`), `${bone.id}_x`);
+      if (imported) {
+        nodes[entry.id] = importedNodeToRuntimeNode(imported, matrixToLocalTransform(matrix4ToRowMajor(entry.localMatrix, `GeckoLib runtime node ${entry.id}`), `GeckoLib runtime node ${entry.id}`), `${bone.id}_x`);
+        editorNodeByRuntimeNode[entry.id] = entry.id;
+      }
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
@@ -210,7 +218,14 @@ function createBlockbenchRuntime(
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
-  return { nodes, tracks };
+  return {
+    nodes,
+    tracks,
+    bindings: {
+      editorNodeByRuntimeNode,
+      spaceGroupByRuntimeRoot: { [sceneId]: BLOCKBENCH_RUNTIME_SCENE_ID },
+    },
+  };
 }
 
 function blockbenchChannelFrames(

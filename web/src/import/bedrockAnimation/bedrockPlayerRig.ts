@@ -78,6 +78,7 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
       type: "item_display",
       defaultMatrix: matrix4ToRowMajor(world, `Bedrock player slice ${slice.id}`),
       visible: true,
+      spaceAssignmentGroup: BEDROCK_RUNTIME_SCENE_ID,
       itemDisplay: "none",
       itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: bedrockPlayerHeadConversionMatrix(slice.bone, slice.from, slice.to) },
@@ -86,6 +87,8 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
   }
   return nodes;
 }
+
+export const BEDROCK_RUNTIME_SCENE_ID = "bedrock_scene";
 
 export function bedrockPlayerHeadConversionMatrix(
   bone: BedrockPlayerBone,

@@ -22,7 +22,7 @@ import type {
   AjProjectOutlinerEntry,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
-import { createAjProjectRuntime } from "./animatedJavaAnimationOutput";
+import { ajRuntimeRootId, createAjProjectRuntime } from "./animatedJavaAnimationOutput";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
 interface ProjectTransformGraph {
@@ -46,7 +46,10 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
-  for (const element of displayElements) addProjectNode(nodes, element.uuid, importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
+  for (const element of displayElements) addProjectNode(nodes, element.uuid, {
+    ...importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)),
+    spaceAssignmentGroup: ajRuntimeRootId(element.uuid),
+  });
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
@@ -199,6 +202,10 @@ function mergeProjectRuntime(
     ...((initialize || tick) ? { molang: { ...(initialize ? { initialize } : {}), ...(tick ? { tick } : {}) } } : {}),
     nodes: { ...base.nodes, ...display.nodes },
     tracks: { ...base.tracks, ...display.tracks },
+    bindings: {
+      editorNodeByRuntimeNode: { ...base.bindings.editorNodeByRuntimeNode, ...display.bindings.editorNodeByRuntimeNode },
+      spaceGroupByRuntimeRoot: { ...base.bindings.spaceGroupByRuntimeRoot, ...display.bindings.spaceGroupByRuntimeRoot },
+    },
   };
 }
 

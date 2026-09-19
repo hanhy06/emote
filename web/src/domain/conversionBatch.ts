@@ -30,7 +30,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const source = remapImportedAnimation(animation.source, { nodeId });
+      const source = remapImportedAnimation(animation.source, { nodeId, spaceGroupId: groupId });
       source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
       return { ...animation, nodeIds: animation.nodeIds.map(nodeId), source };
     }));

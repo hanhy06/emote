@@ -86,7 +86,13 @@ export type ImportedAnimationRuntime =
     molang?: EmoteAnimation["molang"];
     nodes: Record<string, RuntimeNode>;
     tracks: Record<string, RuntimeNodeTracks>;
+    bindings: NativeRuntimeBindings;
   };
+
+export interface NativeRuntimeBindings {
+  editorNodeByRuntimeNode: Record<string, string>;
+  spaceGroupByRuntimeRoot: Record<string, string>;
+}
 
 export interface ImportedAnimationAvailability {
   preview: "full" | "create_pose" | "unavailable";

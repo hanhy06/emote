@@ -24,7 +24,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import { animationAvailability, type ImportedAnimation, type ImportedNodeTrack } from "../domain/conversionSeed";
+import { animationAvailability, type ImportedAnimation, type ImportedNodeTrack, type NativeRuntimeBindings } from "../domain/conversionSeed";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
 
@@ -73,7 +73,7 @@ export function compileConversionAnimation(
     },
     ...(runtime.kind === "native" && runtime.molang ? { molang: runtime.molang } : {}),
     nodes: runtime.kind === "native"
-      ? compileRuntimeNodes(document, runtime.nodes, profile)
+      ? compileRuntimeNodes(document, runtime.nodes, runtime.bindings, profile)
       : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile),
     timeline: runtime.kind === "native"
       ? compileRuntimeTimeline(document, animation, runtime.tracks, profile)
@@ -81,13 +81,23 @@ export function compileConversionAnimation(
   };
 }
 
-function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<string, RuntimeNode>, profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+function compileRuntimeNodes(
+  document: ConversionDocument,
+  sourceNodes: Record<string, RuntimeNode>,
+  bindings: NativeRuntimeBindings,
+  profile: MinecraftVersionProfile,
+): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
   return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
-    const editorNode = document.nodes[id];
+    const editorNodeId = bindings.editorNodeByRuntimeNode[id];
+    const editorNode = editorNodeId ? document.nodes[editorNodeId] : undefined;
+    if (sourceNode.type !== "anchor" && !editorNode) {
+      throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
+    }
+    const spaceGroupId = bindings.spaceGroupByRuntimeRoot[id];
     const node = {
       ...sourceNode,
-      ...(!sourceNode.parent && editorNode ? { space: editorNode.space } : {}),
+      ...(!sourceNode.parent && spaceGroupId ? { space: documentSpaceGroup(document, spaceGroupId) } : {}),
     };
     if (node.type === "block_display") {
       const { blockState, ...output } = node;
@@ -95,7 +105,7 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
     }
     if (node.type !== "item_display") return [id, node];
     const { itemStack, ...itemOutput } = node;
-    const assignment = assignments[id];
+    const assignment = editorNodeId ? assignments[editorNodeId] : undefined;
     const outputItem = assignment ? PLAYER_HEAD : itemStack;
     const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
       ? matrixToLocalTransform(
@@ -110,6 +120,16 @@ function compileRuntimeNodes(document: ConversionDocument, sourceNodes: Record<s
       skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
   }));
+}
+
+function documentSpaceGroup(document: ConversionDocument, groupId: string): EmoteNode["space"] {
+  const spaces = new Set(Object.entries(document.nodes)
+    .filter(([nodeId, node]) => (node.spaceAssignmentGroup ?? nodeId) === groupId)
+    .map(([, node]) => node.space));
+  if (spaces.size !== 1) {
+    throw new ConversionError("invalid_runtime_space_binding", `Runtime space group ${groupId} must resolve to exactly one editor space.`, groupId);
+  }
+  return spaces.values().next().value!;
 }
 
 function validateAnimationIds(document: ConversionDocument): void {

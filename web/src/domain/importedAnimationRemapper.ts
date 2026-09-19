@@ -4,12 +4,14 @@ import type { ImportedAnimation, ImportedNodeTrack, ImportedTimelineEvent } from
 
 export interface ImportedAnimationIdRemapper {
   nodeId(id: string): string;
+  spaceGroupId?(id: string): string;
 }
 
 export function remapImportedAnimation(
   animation: ImportedAnimation,
   ids: ImportedAnimationIdRemapper,
 ): ImportedAnimation {
+  const spaceGroupId = ids.spaceGroupId ?? ids.nodeId;
   return {
     ...animation,
     events: {
@@ -25,6 +27,12 @@ export function remapImportedAnimation(
           ...animation.runtime,
           nodes: remapRuntimeNodes(animation.runtime.nodes, ids.nodeId),
           tracks: remapRuntimeTracks(animation.runtime.tracks, ids.nodeId),
+          bindings: {
+            editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.runtime.bindings.editorNodeByRuntimeNode)
+              .map(([runtimeNodeId, editorNodeId]) => [ids.nodeId(runtimeNodeId), ids.nodeId(editorNodeId)])),
+            spaceGroupByRuntimeRoot: Object.fromEntries(Object.entries(animation.runtime.bindings.spaceGroupByRuntimeRoot)
+              .map(([runtimeRootId, editorGroupId]) => [ids.nodeId(runtimeRootId), spaceGroupId(editorGroupId)])),
+          },
         },
   };
 }

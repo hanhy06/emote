@@ -15,10 +15,13 @@ export function createAjProjectRuntime(
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const nodes: Record<string, RuntimeNode> = {};
   const tracks: Record<string, RuntimeNodeTracks> = {};
+  const editorNodeByRuntimeNode: Record<string, string> = {};
+  const spaceGroupByRuntimeRoot: Record<string, string> = {};
   for (const element of elements) {
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
     const ids = ajAnchorIds(element.uuid);
+    const spaceGroup = sourceNode.spaceAssignmentGroup ?? ajRuntimeRootId(element.uuid);
     const basePosition = [element.position[0] * sceneScale / 16, element.position[1] * sceneScale / 16, element.position[2] * sceneScale / 16] as [number, number, number];
     const baseRotation = element.rotation;
     nodes[ids.x] = { type: "anchor", space: sourceNode.space ?? "initiator", transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR } };
@@ -29,6 +32,8 @@ export function createAjProjectRuntime(
       ? { ...IDENTITY_TRANSFORM, rotation: [0, 180, 0] as const }
       : IDENTITY_TRANSFORM;
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
+    editorNodeByRuntimeNode[element.uuid] = element.uuid;
+    spaceGroupByRuntimeRoot[ids.x] = spaceGroup;
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     const position = ajProjectFrames(keyframes, "position", basePosition, startDelayTicks, (value, axis) => affineMolang(value, axis === 0 ? -sceneScale / 16 : sceneScale / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, startDelayTicks, (value, axis) => axis === 2 ? value : affineMolang(value, -1, 0));
@@ -41,7 +46,7 @@ export function createAjProjectRuntime(
     }
     if (scale) tracks[ids.z] = { ...tracks[ids.z], scale };
   }
-  return { nodes, tracks };
+  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, spaceGroupByRuntimeRoot } };
 }
 
 function ajProjectFrames(
@@ -71,6 +76,10 @@ function ajProjectFrames(
 
 function ajAnchorIds(id: string) {
   return { y: `aj_${id}_y`, x: `aj_${id}_x`, z: `aj_${id}_z` };
+}
+
+export function ajRuntimeRootId(id: string): string {
+  return ajAnchorIds(id).x;
 }
 
 function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {

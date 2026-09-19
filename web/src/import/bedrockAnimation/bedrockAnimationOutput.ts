@@ -5,7 +5,7 @@ import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
-import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -17,12 +17,13 @@ export function createBedrockRuntime(
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
-    bedrock_scene: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
+    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
+  const editorNodeByRuntimeNode: Record<string, string> = {};
   for (const bone of BEDROCK_PLAYER_BONES) {
     const source = Object.entries(animation.bones ?? {}).find(([name]) => resolveBedrockPlayerBone(name)?.id === bone.id)?.[1];
-    const parent = bone.parent ? `${bone.parent}_x` : "bedrock_scene";
+    const parent = bone.parent ? `${bone.parent}_x` : BEDROCK_RUNTIME_SCENE_ID;
     const parentPivot = BEDROCK_PLAYER_BONES.find((candidate) => candidate.id === bone.parent)?.pivot ?? ZERO;
     const basePosition = bedrockPositionToCanonical(
       bone.pivot.map((value, axis) => value - parentPivot[axis]),
@@ -39,6 +40,7 @@ export function createBedrockRuntime(
         itemStack: { id: "minecraft:player_head", count: 1 },
         item_display: "none",
       };
+      editorNodeByRuntimeNode[slice.id] = slice.id;
     }
     if (!source) continue;
     const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, startDelayTicks, (values) =>
@@ -61,7 +63,15 @@ export function createBedrockRuntime(
           : `v.bedrock_anim_time = q.anim_time < ${startDelayTicks / 20} ? 0 : (${rewriteProgramExpression(animation.anim_time_update)});`,
       }
     : undefined;
-  return { ...(molang ? { molang } : {}), nodes, tracks };
+  return {
+    ...(molang ? { molang } : {}),
+    nodes,
+    tracks,
+    bindings: {
+      editorNodeByRuntimeNode,
+      spaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
+    },
+  };
 }
 
 function convertChannel(

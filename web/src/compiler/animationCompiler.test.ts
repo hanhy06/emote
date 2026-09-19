@@ -4,7 +4,9 @@ import { createDefaultPlayerBehavior, type EmoteAnimation, type Matrix16 } from 
 import { localTransformToMatrix } from "../format/localTransform";
 import { serializeEmoteAnimation } from "../format/serializer";
 import type { ImportedProject } from "../domain/conversionSeed";
+import { assignDocumentNodeSpace, createConversionDocument } from "../domain/conversionDocument";
 import { compileImportedAnimation, compileImportedProject } from "../test/compileImportedFixture";
+import { compileConversionAnimation } from "./animationCompiler";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
@@ -116,6 +118,7 @@ describe("compileImportedProject time handling", () => {
       kind: "native",
       nodes: { anchor: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } } },
       tracks: { anchor: { position: [{ time: "0t", value: ["q.anim_time", 0, 0] }] } },
+      bindings: { editorNodeByRuntimeNode: {}, spaceGroupByRuntimeRoot: { anchor: "anchor" } },
     };
     project.animations[0].preview.tracks.anchor.transforms[0].matrix = [1, 0, 0, 999, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
@@ -123,6 +126,45 @@ describe("compileImportedProject time handling", () => {
 
     expect(animation.timeline.duration).toBe("12000t");
     expect(animation.timeline.tracks.anchor.position?.[0].value?.[0]).toBe("q.anim_time");
+  });
+
+  it("applies editor space changes through explicit native runtime bindings", () => {
+    const project = importedProject();
+    project.nodes = {
+      display: {
+        id: "display",
+        type: "item_display",
+        defaultMatrix: IDENTITY,
+        visible: true,
+        itemStack: { id: "minecraft:stone" },
+        itemDisplay: "none",
+        spaceAssignmentGroup: "rig",
+      },
+    };
+    project.animations[0].preview.tracks = {};
+    project.animations[0].runtime = {
+      kind: "native",
+      nodes: {
+        runtime_root: { type: "anchor", space: "initiator", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+        runtime_display: {
+          type: "item_display",
+          parent: "runtime_root",
+          transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] },
+          itemStack: { id: "minecraft:stone" },
+          item_display: "none",
+        },
+      },
+      tracks: {},
+      bindings: {
+        editorNodeByRuntimeNode: { runtime_display: "display" },
+        spaceGroupByRuntimeRoot: { runtime_root: "rig" },
+      },
+    };
+    const document = assignDocumentNodeSpace(createConversionDocument(project, "test"), new Set(["display"]), "partner");
+
+    const animation = compileConversionAnimation(document, 0);
+
+    expect(animation.nodes.runtime_root.space).toBe("partner");
   });
 
   it("does not let item NBT replace an assigned player-head skin", () => {
