@@ -345,13 +345,15 @@ describe("geckoLibBbmodelAdapter", () => {
     expect(transforms[4].matrix[3]).toBeCloseTo(1.171875);
   });
 
-  it("bakes GeckoLib easing into transform tracks", async () => {
+  it("keeps preview linear while baking GeckoLib easing into runtime tracks", async () => {
     const value = project();
     Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "easeOutCirc" });
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].preview.tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
+    expect(imported.animations[0].preview.tracks.root.transforms[1].matrix[3]).toBeCloseTo(0.5 * 0.9375);
+    const runtime = imported.animations[0].runtime;
+    expect(runtime.kind === "baked" && runtime.tracks.root.transforms[1].matrix[3]).toBeCloseTo(Math.sqrt(0.75) * 0.9375);
   });
 
   it("preserves an easing key pose that falls between Minecraft ticks", async () => {
@@ -366,7 +368,8 @@ describe("geckoLibBbmodelAdapter", () => {
     Object.assign(value.animations[0].animators.root.keyframes[2], { easing: "easeOutQuart" });
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
-    const translations = imported.animations[0].preview.tracks.root.transforms.map((frame) => frame.matrix[3]);
+    const runtime = imported.animations[0].runtime;
+    const translations = runtime.kind === "baked" ? runtime.tracks.root.transforms.map((frame) => frame.matrix[3]) : [];
 
     expect(translations).toContainEqual(expect.closeTo(0.9375));
   });
@@ -393,7 +396,7 @@ describe("geckoLibBbmodelAdapter", () => {
     await expect(geckoLibBbmodelAdapter.import(input(value))).rejects.toThrow("unsupported easing customEasing");
   });
 
-  it("keeps unknown GeckoLib Molang as a warned Create pose", async () => {
+  it("keeps unknown GeckoLib Molang in runtime and freezes only its preview channel", async () => {
     const value = project();
     Object.assign(value.animations[0].animators.root.keyframes[1].data_points[0], { x: "v.runtime_speed * 16" });
     Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "easeOutCirc" });
@@ -401,11 +404,12 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(imported.animations[0]).toMatchObject({
-      preview: { tracks: {}, availability: { preview: "create_pose", exportable: true } },
+      preview: { availability: { preview: "full", exportable: true } },
       runtime: { kind: "native" },
     });
+    expect(imported.animations[0].preview.tracks.root.transforms.every((frame) => frame.matrix[3] === 0)).toBe(true);
     expect(imported.diagnostics).toContainEqual(expect.objectContaining({
-      code: "geckolib_animation_molang_unavailable",
+      code: "approximate_preview_molang",
       sourcePath: "animations[0].animators.root",
     }));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });

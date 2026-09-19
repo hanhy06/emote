@@ -18,7 +18,8 @@ import {
   type BbOutlinerGroup,
   type BbmodelProject,
 } from "./blockbenchCubeSchema";
-import { evaluateBlockbenchChannel } from "./blockbenchKeyframeEvaluator";
+import { evaluateApproximateBlockbenchChannel, evaluateBlockbenchChannel } from "./blockbenchKeyframeEvaluator";
+import { blockbenchIntervalIsStep } from "./animationEasing";
 import {
   uniqueCubeNodeId,
   writeCubeResources,
@@ -286,19 +287,35 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     `${animation.name}.length`,
   );
   const boneAnimators = resolveBoneAnimators(animation, index, bones);
-  const snapshots = new Map<string, Matrix4[]>();
-  const snapshotAt = (time: number) => {
-    const key = time.toFixed(9);
-    const cached = snapshots.get(key);
-    if (cached) return cached;
-    const cache = new Map<string, Matrix4>();
-    const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, index, 1, convention).clone());
-    snapshots.set(key, result);
-    return result;
-  };
-  const samplePlan = planAnimationSamples(animation, index, durationTicks, bones.length, snapshotAt);
-  const tracks: ImportedAnimation["preview"]["tracks"] = {};
-  for (const bone of bones) {
+  let nativeRuntime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation);
+  let samplePlan: AnimationSamplePlan | undefined;
+  if (!blockbenchAnimationUsesRuntimeState(animation)) {
+    const snapshots = new Map<string, Matrix4[]>();
+    const snapshotAt = (time: number) => {
+      const key = time.toFixed(9);
+      const cached = snapshots.get(key);
+      if (cached) return cached;
+      const cache = new Map<string, Matrix4>();
+      const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, index, 1, convention, evaluateBlockbenchChannel).clone());
+      snapshots.set(key, result);
+      return result;
+    };
+    try {
+      samplePlan = planAnimationSamples(animation, index, durationTicks, bones.length, snapshotAt);
+    } catch (reason) {
+      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
+      nativeRuntime = true;
+      diagnostics.push({
+        severity: "warning",
+        code: "approximate_preview_molang",
+        message: `${animation.name}: runtime Molang is preserved; preview uses supported math/time expressions only.`,
+        sourcePath: reason.sourcePath ?? `animations[${index}]`,
+      });
+    }
+  }
+
+  const runtimeTracks: ImportedAnimation["preview"]["tracks"] = {};
+  if (!nativeRuntime && samplePlan) for (const bone of bones) {
     validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
@@ -306,25 +323,33 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       const sourceTime = startDelaySeconds > 0 ? tick / TICKS_PER_SECOND - startDelaySeconds : samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, evaluateBlockbenchChannel), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    for (const node of bone.nodes) {
-      tracks[node.id] = {
-        transforms: transforms.map((transform) => ({
-          ...transform,
-          matrix: matrix4ToRowMajor(
-            (node.ignoreInheritedScale ? matrixWithoutScale(new Matrix4().set(...transform.matrix)) : new Matrix4().set(...transform.matrix)).multiply(node.localMatrix),
-            `${animation.name}/${node.id}/${transform.tick}`,
-          ),
-        })),
-        visibility: [],
-        nbt: [],
-      };
-    }
+    assignBoneTracks(runtimeTracks, bone, transforms, animation.name);
   }
-  const runtime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation)
+
+  const previewTracks: ImportedAnimation["preview"]["tracks"] = {};
+  const previewTicks = approximatePreviewTicks(animation, durationTicks, Math.round(startDelaySeconds * TICKS_PER_SECOND));
+  for (const bone of bones) {
+    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
+    const transforms: ImportedTransformKeyframe[] = [];
+    for (const [tickIndex, tick] of previewTicks.entries()) {
+      const cache = new Map<string, Matrix4>();
+      const sourceTime = tick / TICKS_PER_SECOND - startDelaySeconds;
+      const previousTick = previewTicks[tickIndex - 1];
+      transforms.push({
+        tick,
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, evaluateApproximateBlockbenchChannel), `${animation.name}/${bone.id}/${tick}`),
+        interpolation: tick === 0 || approximatePreviewStepAt(boneAnimators, previousTick / TICKS_PER_SECOND - startDelaySeconds, sourceTime)
+          ? { type: "step" }
+          : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
+      });
+    }
+    assignBoneTracks(previewTracks, bone, transforms, animation.name);
+  }
+  const runtime = nativeRuntime
     ? { kind: "native" as const, ...createNativeRuntime({
       animation,
       animationIndex: index,
@@ -336,7 +361,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       blendWeight,
       samplePlan,
     }) }
-    : { kind: "baked" as const, tracks };
+    : { kind: "baked" as const, tracks: runtimeTracks };
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
@@ -346,9 +371,58 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,
     events: { start: [], timeline: effectEvents, loop: [], stop: [] },
-    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks, tracks: previewTracks, availability: { preview: "full", exportable: true } },
     runtime,
   };
+}
+
+function assignBoneTracks(
+  tracks: ImportedAnimation["preview"]["tracks"],
+  bone: BoneEntry,
+  transforms: ImportedTransformKeyframe[],
+  animationName: string,
+): void {
+  for (const node of bone.nodes) {
+    tracks[node.id] = {
+      transforms: transforms.map((transform) => ({
+        ...transform,
+        matrix: matrix4ToRowMajor(
+          (node.ignoreInheritedScale ? matrixWithoutScale(new Matrix4().set(...transform.matrix)) : new Matrix4().set(...transform.matrix)).multiply(node.localMatrix),
+          `${animationName}/${node.id}/${transform.tick}`,
+        ),
+      })),
+      visibility: [],
+      nbt: [],
+    };
+  }
+}
+
+function approximatePreviewTicks(animation: BbAnimation, durationTicks: number, startDelayTicks: number): number[] {
+  const ticks = new Set<number>([0, durationTicks]);
+  const stride = Math.max(1, Math.ceil(durationTicks / 199));
+  for (let tick = 0; tick <= durationTicks; tick += stride) ticks.add(tick);
+  for (const animator of Object.values(animation.animators)) {
+    for (const frame of animator.keyframes ?? []) {
+      if (!["position", "rotation", "scale"].includes(frame.channel)) continue;
+      ticks.add(Math.max(0, Math.min(durationTicks, startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND))));
+    }
+  }
+  return [...ticks].sort((first, second) => first - second);
+}
+
+function approximatePreviewStepAt(
+  animators: ReadonlyMap<string, BbAnimator>,
+  fromTime: number,
+  toTime: number,
+): boolean {
+  if (toTime <= 0) return true;
+  for (const animator of animators.values()) {
+    for (const channel of ["position", "rotation", "scale"]) {
+      const frames = (animator.keyframes ?? []).filter((frame) => frame.channel === channel);
+      if (blockbenchIntervalIsStep(frames, fromTime, toTime)) return true;
+    }
+  }
+  return false;
 }
 
 function blockbenchAnimationUsesRuntimeState(animation: BbAnimation): boolean {
@@ -470,17 +544,18 @@ function animatedWorldMatrix(
   animationIndex: number,
   blendWeight = 1,
   convention: CubeProjectTransformConvention,
+  evaluateChannel: typeof evaluateBlockbenchChannel,
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
   const animator = boneAnimators.get(bone.uuid);
   const animationPath = `animations[${animationIndex}].animators.${bone.uuid}`;
   const position = convention.position(
-    evaluateBlockbenchChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
+    evaluateChannel(animator?.keyframes ?? [], "position", time, [0, 0, 0], animationPath),
     (value) => -value,
   ).map((value) => value * blendWeight / 16);
-  const rotationDelta = evaluateBlockbenchChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
-  const scale = evaluateBlockbenchChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
+  const rotationDelta = evaluateChannel(animator?.keyframes ?? [], "rotation", time, [0, 0, 0], animationPath).map((value) => value * blendWeight);
+  const scale = evaluateChannel(animator?.keyframes ?? [], "scale", time, [1, 1, 1], animationPath).map((value) => 1 + (value - 1) * blendWeight);
   const parentOrigin = bone.parent?.group.origin ?? [0, 0, 0];
   const basePosition = convention.position(bone.group.origin.map((value, index) => value - parentOrigin[index]), (value) => -value).map((value) => value / 16);
   const baseRotation = convention.rotation(
@@ -489,7 +564,7 @@ function animatedWorldMatrix(
   );
   const local = composeDegreesTransform(basePosition.map((value, index) => value + position[index]), baseRotation, scale);
   const world = bone.parent
-    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight, convention).clone().multiply(local)
+    ? animatedWorldMatrix(bone.parent, animation, boneAnimators, time, cache, animationIndex, blendWeight, convention, evaluateChannel).clone().multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
   cache.set(bone.uuid, world);
   return world;
