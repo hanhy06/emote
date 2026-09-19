@@ -77,18 +77,19 @@ function ajProjectFrames(
 ): EmoteVectorKeyframe[] | undefined {
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
   if (source.length === 0) return undefined;
-  const frames = source.map((frame): EmoteVectorKeyframe => {
+  const frames = [...new Map(source.map((frame): [string, EmoteVectorKeyframe] => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new Error("Animated Java transform keyframes must contain one value or a pre/post pair.");
     const vectors = points.map((point) => {
       if (point.x === undefined || point.y === undefined || point.z === undefined) throw new Error("Animated Java transform keyframe is missing an axis value.");
       return [point.x, point.y, point.z].map((value, axis) => transform(molangScalar(value), axis)) as MolangVector;
     });
-    const interpolation = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
-    return vectors.length === 1
+    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
+    const result = vectors.length === 1
       ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), value: vectors[0], interpolation }
       : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation };
-  });
+    return [result.time, result];
+  })).values()];
   if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...fallback] as MolangVector, interpolation: "step" });
   return withoutLastInterpolation(frames);
 }

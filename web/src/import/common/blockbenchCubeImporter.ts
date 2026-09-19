@@ -244,15 +244,16 @@ function blockbenchChannelFrames(
 ): EmoteVectorKeyframe[] | undefined {
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (source.length === 0) return undefined;
-  const result = source.map((frame): EmoteVectorKeyframe => {
+  const result = [...new Map(source.map((frame): [string, EmoteVectorKeyframe] => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new ConversionError("unsupported_geckolib_keyframe", "GeckoLib transform keyframes must contain one value or a pre/post pair.");
     const vectors = points.map((point) => transform(blockbenchPointVector(point, transforms)));
-    const interpolation = frame.interpolation === "step" ? "step" : "linear";
-    return vectors.length === 1
+    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
+    const result = vectors.length === 1
       ? { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation }
       : { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), pre: vectors[0], post: vectors[1], interpolation };
-  });
+    return [result.time, result];
+  })).values()];
   if (result[0].time !== "0t") result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
   return result.map((frame, index) => index + 1 < result.length ? frame : (({ interpolation: _, ...last }) => last)(frame));
 }

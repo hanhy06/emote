@@ -10,6 +10,25 @@ const encoder = new TextEncoder();
 const displayTypes = ["animated_java:vanilla_block_display", "animated_java:text_display", "animated_java:vanilla_text_display", "animated_java:vanilla_item_display"];
 
 describe("animatedJavaBlueprintAdapter", () => {
+  it("keeps the last native keyframe when sub-tick times round to the same tick", async () => {
+    const input = nativeProject({
+      elements: [{ uuid: "display", name: "Display", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" }],
+      outliner: [{ uuid: "root", name: "Root", origin: [0, 0, 0], children: ["display"] }],
+      animations: [{
+        name: "sub_tick", loop: "once", length: 0.05,
+        animators: {
+          root: { name: "Root", type: "bone", keyframes: [projectFrame("rotation", 0.01, ["10", "0", "0"]), projectFrame("rotation", 0.02, ["20", "0", "0"])] },
+          display: { name: "Display", type: "animated_java:vanilla_item_display", keyframes: [projectFrame("rotation", 0.01, ["10", "0", "0"]), projectFrame("rotation", 0.02, ["20", "0", "0"])] },
+        },
+      }],
+    });
+
+    const [animation] = compileImportedProject(await animatedJavaBlueprintAdapter.import(input), { namespace: "sub_tick" });
+
+    expect(animation.timeline.tracks.root_x.rotation?.map((frame) => frame.time)).toEqual(["0t"]);
+    expect(animation.timeline.tracks.aj_display_x.rotation?.map((frame) => frame.time)).toEqual(["0t"]);
+  });
+
   it.each(displayTypes)("uses the display mesh XYZ order for baked and Molang rotations in %s", async (type) => {
     for (const runtime of [false, true]) {
       const input = nativeProject({
