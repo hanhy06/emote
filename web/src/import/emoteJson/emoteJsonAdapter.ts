@@ -191,7 +191,8 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     events: importEvents(animation),
-    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks, tracks, availability: { preview: "full" } },
+    exportAvailability: { exportable: true },
     runtime: { kind: "baked", tracks },
   };
 }
@@ -214,14 +215,15 @@ function importRuntimeTimeline(
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
     events: importEvents(animation),
     ...(previewTracks
-      ? { preview: { durationTicks, tracks: previewTracks, availability: { preview: "full" as const, exportable: true } } }
+      ? { preview: { durationTicks, tracks: previewTracks, availability: { preview: "full" as const } } }
       : {
           preview: {
             durationTicks,
             tracks: {},
-            availability: { preview: "create_pose" as const, exportable: true, reason },
+            availability: { preview: "create_pose" as const, reason },
           },
         }),
+    exportAvailability: { exportable: true },
     runtime: {
       kind: "native",
       ...(animation.molang ? { molang: animation.molang } : {}),

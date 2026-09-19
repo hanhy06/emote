@@ -404,7 +404,8 @@ describe("geckoLibBbmodelAdapter", () => {
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
     expect(imported.animations[0]).toMatchObject({
-      preview: { availability: { preview: "full", exportable: true } },
+      preview: { availability: { preview: "full" } },
+      exportAvailability: { exportable: true },
       runtime: { kind: "native" },
     });
     expect(imported.animations[0].preview.tracks.root.transforms.every((frame) => frame.matrix[3] === 0)).toBe(true);
@@ -483,7 +484,8 @@ describe("geckoLibBbmodelAdapter", () => {
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
-    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full" });
+    expect(imported.animations[0].exportAvailability).toMatchObject({ exportable: true });
   });
 
   it("moves arbitrary multi-axis cube rotation into the display transform", async () => {

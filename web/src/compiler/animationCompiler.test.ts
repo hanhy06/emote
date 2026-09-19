@@ -96,10 +96,9 @@ describe("compileImportedProject time handling", () => {
     expect(() => compileImportedProject(project, { minecraftVersion: "26.2", namespace: "test" })).toThrow("normalize to the same id");
   });
 
-  it("rejects export only when neither preview nor fallback output is available", () => {
+  it("rejects export from the export contract independently of preview availability", () => {
     const project = importedProject();
-    project.animations[0].preview.availability = {
-      preview: "unavailable",
+    project.animations[0].exportAvailability = {
       exportable: false,
       reason: "Runtime Molang cannot be evaluated.",
     };
@@ -112,7 +111,7 @@ describe("compileImportedProject time handling", () => {
     const project = importedProject();
     const runtime = project.animations[0].runtime;
     if (runtime.kind !== "baked") throw new Error("Expected baked test runtime.");
-    project.animations[0].preview = { durationTicks: 20, tracks: runtime.tracks, availability: { preview: "full", exportable: true } };
+    project.animations[0].preview = { durationTicks: 20, tracks: runtime.tracks, availability: { preview: "full" } };
     project.animations[0].durationTicks = 12_000;
     project.animations[0].runtime = {
       kind: "native",
@@ -266,7 +265,8 @@ function importedProject(): ImportedProject {
         playbackMode: "once",
         loopDelayTicks: 0,
         events: { start: [], timeline: [], loop: [], stop: [] },
-        preview: { durationTicks: 10, tracks, availability: { preview: "full", exportable: true } },
+        preview: { durationTicks: 10, tracks, availability: { preview: "full" } },
+        exportAvailability: { exportable: true },
         runtime: { kind: "baked", tracks },
       }],
       diagnostics: [],

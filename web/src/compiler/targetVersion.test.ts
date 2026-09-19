@@ -39,7 +39,8 @@ describe("Minecraft target output", () => {
       animations: [{
         id: "block", name: "Block", durationTicks: 2, playbackMode: "once", loopDelayTicks: 0,
         events: { start: [], timeline: [], loop: [], stop: [] },
-        preview: { durationTicks: 2, tracks: {}, availability: { preview: "full", exportable: true } },
+        preview: { durationTicks: 2, tracks: {}, availability: { preview: "full" } },
+        exportAvailability: { exportable: true },
         runtime: { kind: "baked", tracks: { block: { transforms: [], visibility: [], nbt: [{ tick: 0, value: readDisplayNbt('{block_state:{Properties:{axis:"x"}}}') }] } } },
       }],
     };

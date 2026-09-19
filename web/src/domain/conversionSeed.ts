@@ -71,8 +71,9 @@ export interface ImportedAnimation {
   preview: {
     durationTicks: number;
     tracks: Record<string, ImportedNodeTrack>;
-    availability: ImportedAnimationAvailability;
+    availability: ImportedPreviewAvailability;
   };
+  exportAvailability: ImportedExportAvailability;
   runtime: ImportedAnimationRuntime;
 }
 
@@ -94,19 +95,30 @@ export interface NativeRuntimeBindings {
   spaceGroupByRuntimeRoot: Record<string, string>;
 }
 
-export interface ImportedAnimationAvailability {
+export interface ImportedPreviewAvailability {
   preview: "full" | "create_pose" | "unavailable";
+  reason?: string;
+}
+
+export interface ImportedExportAvailability {
   exportable: boolean;
   reason?: string;
 }
 
-export const DEFAULT_ANIMATION_AVAILABILITY: ImportedAnimationAvailability = {
+export const DEFAULT_PREVIEW_AVAILABILITY: ImportedPreviewAvailability = {
   preview: "full",
+};
+
+export const DEFAULT_EXPORT_AVAILABILITY: ImportedExportAvailability = {
   exportable: true,
 };
 
-export function animationAvailability(animation: ImportedAnimation): ImportedAnimationAvailability {
+export function animationPreviewAvailability(animation: ImportedAnimation): ImportedPreviewAvailability {
   return animation.preview.availability;
+}
+
+export function animationExportAvailability(animation: ImportedAnimation): ImportedExportAvailability {
+  return animation.exportAvailability;
 }
 
 export interface ImportedNodeTrack {

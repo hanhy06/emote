@@ -148,7 +148,8 @@ describe("emoteJsonAdapter", () => {
     const input = { name: "emote.dynamic.json", bytes: encoder.encode(JSON.stringify(source)) };
 
     const project = await emoteJsonAdapter.import(input);
-    expect(project.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(project.animations[0].preview.availability).toMatchObject({ preview: "full" });
+    expect(project.animations[0].exportAvailability).toMatchObject({ exportable: true });
     expect(project.diagnostics).toEqual([]);
     expect(project.animations[0].preview.tracks.root.transforms[0].matrix[3]).toBeCloseTo(3.5);
     expect(project.animations[0].preview.tracks.root.transforms[1].matrix[3]).toBeCloseTo(4.55);
@@ -212,7 +213,8 @@ describe("emoteJsonAdapter", () => {
 
     const project = await emoteJsonAdapter.import({ name: "emote.random.json", bytes: encoder.encode(JSON.stringify(source)) });
 
-    expect(project.animations[0].preview.availability).toMatchObject({ preview: "create_pose", exportable: true });
+    expect(project.animations[0].preview.availability).toMatchObject({ preview: "create_pose" });
+    expect(project.animations[0].exportAvailability).toMatchObject({ exportable: true });
     expect(project.diagnostics).toContainEqual(expect.objectContaining({
       code: "schema_4_preview_limited",
       sourcePath: "timeline.tracks.item.position[0].value[0]",

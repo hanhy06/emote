@@ -45,8 +45,9 @@ function project(preview: "full" | "unavailable"): ImportedProject {
       loopDelayTicks: 0,
       events: { start: [], timeline: [], loop: [], stop: [] },
       preview: { durationTicks: 20, tracks: {}, availability: preview === "full"
-        ? { preview: "full", exportable: true }
-        : { preview, exportable: false, reason: "No preview" } },
+        ? { preview: "full" }
+        : { preview, reason: "No preview" } },
+      exportAvailability: { exportable: true },
       runtime: { kind: "baked", tracks: {} },
     }],
     diagnostics: [],

@@ -9,7 +9,7 @@ import {
   type AnimationOutputSettings,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import { animationAvailability, type ImportedAnimation, type ImportedProject, type ImportedTimelineEvent } from "./domain/conversionSeed";
+import { animationPreviewAvailability, type ImportedAnimation, type ImportedProject, type ImportedTimelineEvent } from "./domain/conversionSeed";
 import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
@@ -89,7 +89,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
     case "animation_selected":
       return updateSession(state, (session) => selectSessionAnimation(session, action.index), (session) => {
         const animation = session.document.animations[session.animationIndex]?.source;
-        return animation && animationAvailability(animation).preview === "unavailable" ? 1 : state.page;
+        return animation && animationPreviewAvailability(animation).preview === "unavailable" ? 1 : state.page;
       });
     case "preview_frame_selected":
       return updateSession(state, (session) => ({ ...session, previewFrameIndex: action.index, selectedNodeIds: new Set() }));
@@ -161,7 +161,7 @@ function createConversionSessionFromDocument(document: ConversionDocument): Conv
 
 function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
   const animation = session.document.animations[session.animationIndex]?.source;
-  const page = animation && animationAvailability(animation).preview === "unavailable" ? 1 : 0;
+  const page = animation && animationPreviewAvailability(animation).preview === "unavailable" ? 1 : 0;
   return { ...state, session, page, operation: { type: "idle" } };
 }
 

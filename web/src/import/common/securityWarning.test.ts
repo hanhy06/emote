@@ -19,7 +19,8 @@ function projectWithCommands(...commands: string[][]): ImportedProject {
       playbackMode: "once" as const,
       loopDelayTicks: 0,
       events,
-      preview: { durationTicks: 1, tracks: {}, availability: { preview: "full" as const, exportable: true } },
+      preview: { durationTicks: 1, tracks: {}, availability: { preview: "full" as const } },
+      exportAvailability: { exportable: true },
       runtime: { kind: "baked" as const, tracks: {} },
     };
   });

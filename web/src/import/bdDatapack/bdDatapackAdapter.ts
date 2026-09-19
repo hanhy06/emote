@@ -238,7 +238,8 @@ function importAnimations(
       playbackMode: "loop" as const,
       loopDelayTicks: 0,
       events: { start: [], timeline: [], loop: [], stop: [] },
-      preview: { durationTicks, tracks, availability: { preview: "full" as const, exportable: true } },
+      preview: { durationTicks, tracks, availability: { preview: "full" as const } },
+      exportAvailability: { exportable: true },
       runtime: { kind: "baked" as const, tracks },
     };
   });

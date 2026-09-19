@@ -194,7 +194,8 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations.map((animation) => animation.name)).toEqual(["supported", "random"]);
-    expect(imported.animations[1].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(imported.animations[1].preview.availability).toMatchObject({ preview: "full" });
+    expect(imported.animations[1].exportAvailability).toMatchObject({ exportable: true });
     expect(imported.animations[1].preview.tracks.body_0.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
     expect(imported.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "bedrock_animation_bone_ignored" }),
@@ -218,7 +219,8 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations).toHaveLength(1);
-    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full" });
+    expect(imported.animations[0].exportAvailability).toMatchObject({ exportable: true });
     expect(imported.diagnostics).toEqual([]);
     expect(imported.animations[0].preview.tracks.body_0.transforms[0].matrix).toEqual(expect.any(Array));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
@@ -238,7 +240,8 @@ describe("bedrockAnimationAdapter", () => {
       },
     })));
 
-    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "create_pose", exportable: true });
+    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "create_pose" });
+    expect(imported.animations[0].exportAvailability).toMatchObject({ exportable: true });
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "dynamic_clock" });
     expect(compiled.molang).toEqual({
       initialize: "v.bedrock_anim_time = 0;",
@@ -263,7 +266,8 @@ describe("bedrockAnimationAdapter", () => {
       },
     })));
 
-    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(imported.animations[0].preview.availability).toMatchObject({ preview: "full" });
+    expect(imported.animations[0].exportAvailability).toMatchObject({ exportable: true });
     expect(imported.diagnostics).toEqual([]);
     expect(Object.keys(imported.nodes)).toEqual([
       "body_0", "body_1", "head", "left_arm_0", "left_arm_1", "right_arm_0", "right_arm_1",

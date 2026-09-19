@@ -18,7 +18,8 @@ const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
 function bakedAnimationData(durationTicks: number, tracks: Record<string, ImportedNodeTrack>) {
   return {
-    preview: { durationTicks, tracks, availability: { preview: "full" as const, exportable: true } },
+    preview: { durationTicks, tracks, availability: { preview: "full" as const } },
+    exportAvailability: { exportable: true },
     runtime: { kind: "baked" as const, tracks },
   };
 }

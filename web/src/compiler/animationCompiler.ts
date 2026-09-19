@@ -24,7 +24,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import { animationAvailability, type ImportedAnimation, type ImportedNodeTrack, type NativeRuntimeBindings } from "../domain/conversionSeed";
+import { animationExportAvailability, type ImportedAnimation, type ImportedNodeTrack, type NativeRuntimeBindings } from "../domain/conversionSeed";
 import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
@@ -43,7 +43,7 @@ export function compileConversionAnimation(
   const output = { ...entry.output, ...outputOverride };
   const namespace = sanitizeNamespace(output.namespace || output.displayName);
   const animation = entry.source;
-  const availability = animationAvailability(animation);
+  const availability = animationExportAvailability(animation);
   if (!availability.exportable) {
     throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
   }

@@ -13,7 +13,7 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
-import { animationAvailability } from "./domain/conversionSeed";
+import { animationExportAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,
   EMPTY_SELECTION,
@@ -69,6 +69,7 @@ export function App() {
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
   const animation = project?.animations[animationIndex]?.source;
   const availability = preview?.availability ?? null;
+  const exportAvailability = animation ? animationExportAvailability(animation) : null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
@@ -341,7 +342,7 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            {availability?.exportable && <CommandPanel
+            {exportAvailability?.exportable && <CommandPanel
               animation={animation}
               tick={previewTick}
               disabled={busy}
@@ -362,7 +363,7 @@ export function App() {
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => {
-              const itemAvailability = animationAvailability(item.source);
+              const itemAvailability = animationExportAvailability(item.source);
               return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
             error={exportError}

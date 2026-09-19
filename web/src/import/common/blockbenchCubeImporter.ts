@@ -326,7 +326,8 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
       : 0,
     events: { start: [], timeline: effectEvents, loop: [], stop: [] },
-    preview: { durationTicks, tracks: previewTracks, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks, tracks: previewTracks, availability: { preview: "full" } },
+    exportAvailability: { exportable: true },
     runtime,
   };
 }

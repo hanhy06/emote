@@ -5,7 +5,7 @@ import {
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
-import { animationAvailability, type ImportedAnimation, type ImportedAnimationAvailability, type ImportedNodeTrack } from "../domain/conversionSeed";
+import { animationPreviewAvailability, type ImportedAnimation, type ImportedNodeTrack, type ImportedPreviewAvailability } from "../domain/conversionSeed";
 import type { NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 
 type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
@@ -26,7 +26,7 @@ export interface PreviewPart {
 export interface PreviewModel {
   tick: number | null;
   durationTicks: number;
-  availability: ImportedAnimationAvailability | null;
+  availability: ImportedPreviewAvailability | null;
   parts: PreviewPart[];
   assignments: Record<string, PlayerSkinPart | null>;
   orders: Record<string, number | null>;
@@ -36,7 +36,7 @@ export interface PreviewModel {
 
 export function createPreviewModel(document: ConversionDocument, animationIndex: number, previewFrameIndex: number): PreviewModel {
   const animation = document.animations[animationIndex]?.source;
-  const availability = animation ? animationAvailability(animation) : null;
+  const availability = animation ? animationPreviewAvailability(animation) : null;
   const durationTicks = animation?.preview.durationTicks ?? 0;
   const tick = availability?.preview !== "full" || previewFrameIndex === 0
     ? null

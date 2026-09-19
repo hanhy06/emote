@@ -66,7 +66,8 @@ function animation(): ImportedAnimation {
     durationTicks: 20,
     playbackMode: "once",
     loopDelayTicks: 0,
-    preview: { durationTicks: 20, tracks: {}, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks: 20, tracks: {}, availability: { preview: "full" } },
+    exportAvailability: { exportable: true },
     runtime: { kind: "baked", tracks: {} },
     events: {
       start: [],

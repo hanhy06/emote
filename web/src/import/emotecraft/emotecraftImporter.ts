@@ -88,7 +88,8 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     loopStartTicks,
     loopDelayTicks: 0,
     events: { start: [], timeline: song.events, loop: [], stop: [] },
-    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks, tracks, availability: { preview: "full" } },
+    exportAvailability: { exportable: true },
     runtime: { kind: "baked", tracks },
   };
   return {

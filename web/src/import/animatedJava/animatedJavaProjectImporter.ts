@@ -196,6 +196,7 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
       tracks: { ...base.preview.tracks, ...display.preview.tracks },
       availability: base.preview.availability.preview === "full" ? display.preview.availability : base.preview.availability,
     },
+    exportAvailability: !base.exportAvailability.exportable ? base.exportAvailability : display.exportAvailability,
     events: {
       start: [...base.events.start, ...display.events.start],
       timeline: [...base.events.timeline, ...display.events.timeline].sort((first, second) => first.tick - second.tick),
@@ -522,8 +523,9 @@ function createPreviewOnlyProjectAnimation(
     preview: {
       durationTicks: 20,
       tracks: {},
-      availability: { preview: "create_pose", exportable: true, reason },
+      availability: { preview: "create_pose", reason },
     },
+    exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
   };
 }
@@ -628,7 +630,8 @@ function importProjectAnimation(
       ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
+    preview: { durationTicks, tracks, availability: { preview: "full" } },
+    exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
   }, stateFrames);
 }
