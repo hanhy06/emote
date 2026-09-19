@@ -153,7 +153,7 @@ class AnimationPlayerTest {
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, player.currentTick());
 
-        assertTrue(player.beginOutro());
+        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
         assertEquals(6, player.currentTick());
         for (int tick = 7; tick < 10; tick++) {
             assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
@@ -176,7 +176,7 @@ class AnimationPlayerTest {
         for (int tick = 0; tick < 6; tick++) player.advance(false);
         assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
 
-        assertTrue(player.beginOutro());
+        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
         assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
         assertEquals(7, player.currentTick());
     }

@@ -30,10 +30,7 @@ public final class AnimationPlayer {
     private int loopCount;
     private int activePlaybackSegment = -1;
     private Map<String, String> mirroredNodes = Map.of();
-    private boolean started;
-    private boolean finished;
-    private boolean awaitingLoopContinuation;
-    private boolean ending;
+    private PlaybackPhase phase = PlaybackPhase.NOT_STARTED;
     private boolean initialVisibilityDeferred;
     private EventExecutor eventExecutor;
     private boolean eventsStarted;
@@ -54,15 +51,15 @@ public final class AnimationPlayer {
     }
 
     public void start() {
-        if (this.started) {
+        if (this.phase != PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline already started");
         }
-        this.started = true;
+        this.phase = PlaybackPhase.RUNNING;
         resetToTick(0);
     }
 
     public void startSynchronized(long serverTick) {
-        if (this.started) {
+        if (this.phase != PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline already started");
         }
         if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.SERVER_SYNC) {
@@ -73,14 +70,14 @@ public final class AnimationPlayer {
     }
 
     public void startAtCyclePhase(long cycleTick) {
-        if (this.started) {
+        if (this.phase != PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline already started");
         }
         startAtCyclePhaseUnchecked(cycleTick);
     }
 
     private void startAtCyclePhaseUnchecked(long cycleTick) {
-        this.started = true;
+        this.phase = PlaybackPhase.RUNNING;
         clearState();
         int duration = this.animation.timeline().durationTicks();
         EmoteAnimation.PlaybackSettings playback = this.animation.settings().playback();
@@ -94,11 +91,12 @@ public final class AnimationPlayer {
         applySynchronizedSnapshot(timelineTick);
         if (phase >= cycleEnd - cycleStart) {
             this.remainingLoopDelay = (int) (cycleLength - phase);
+            this.phase = PlaybackPhase.LOOP_DELAY;
         }
     }
 
     public void deferInitialVisibility() {
-        if (!this.started) {
+        if (this.phase == PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline has not started");
         }
         this.animation.nodes().keySet().forEach(nodeId -> this.target.setVisible(nodeId, false));
@@ -158,8 +156,10 @@ public final class AnimationPlayer {
                 this.animation.settings().playback().loopEndTicks(),
                 EmoteCallbackPhase.LOOP
             );
-            if (continueAfterLoopBoundary) {
+            if (continueAfterLoopBoundary && this.phase == PlaybackPhase.LOOP_BOUNDARY) {
                 result = continueAfterLoopEvent();
+            } else if (this.phase != PlaybackPhase.LOOP_BOUNDARY) {
+                result = AdvanceResult.CONTINUE;
             }
         }
         if (result == AdvanceResult.RESTARTED) {
@@ -169,87 +169,90 @@ public final class AnimationPlayer {
     }
 
     private AdvanceResult advanceTimeline() {
-        if (!this.started) {
+        if (this.phase == PlaybackPhase.NOT_STARTED) {
             throw new IllegalStateException("Timeline has not started");
         }
-        if (this.finished) {
+        if (this.phase == PlaybackPhase.FINISHED) {
             return AdvanceResult.FINISHED;
         }
-        if (this.awaitingLoopContinuation) {
+        if (this.phase == PlaybackPhase.LOOP_BOUNDARY) {
             throw new IllegalStateException("Loop boundary must be continued before advancing");
         }
 
-        if (this.remainingLoopDelay > 0) {
+        if (this.phase == PlaybackPhase.LOOP_DELAY) {
             this.remainingLoopDelay--;
             if (this.remainingLoopDelay == 0) {
                 this.loopCount++;
+                this.phase = PlaybackPhase.RUNNING;
                 resetToLoopStart();
                 return AdvanceResult.RESTARTED;
             }
             return AdvanceResult.CONTINUE;
         }
 
-        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD
-            && this.currentTick >= this.animation.timeline().durationTicks()) {
+        if (this.phase == PlaybackPhase.HOLDING) {
             return AdvanceResult.CONTINUE;
         }
 
         this.currentTick++;
         applyTick(this.currentTick);
-        if (!this.ending
+        if (this.phase != PlaybackPhase.OUTRO
             && this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
             && this.currentTick >= this.animation.settings().playback().loopEndTicks()) {
-            this.awaitingLoopContinuation = true;
+            this.phase = PlaybackPhase.LOOP_BOUNDARY;
             return AdvanceResult.LOOP_BOUNDARY;
         }
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
         }
-        if (this.ending || this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
-            this.finished = true;
+        if (this.phase == PlaybackPhase.OUTRO || this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
+            this.phase = PlaybackPhase.FINISHED;
             return AdvanceResult.FINISHED;
         }
         if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.HOLD) {
+            this.phase = PlaybackPhase.HOLDING;
             return AdvanceResult.CONTINUE;
         }
-        this.awaitingLoopContinuation = true;
+        this.phase = PlaybackPhase.LOOP_BOUNDARY;
         return AdvanceResult.LOOP_BOUNDARY;
     }
 
     public AdvanceResult continueAfterLoopEvent() {
-        if (!this.awaitingLoopContinuation) {
+        if (this.phase != PlaybackPhase.LOOP_BOUNDARY) {
             throw new IllegalStateException("Timeline is not at a loop boundary");
         }
-        this.awaitingLoopContinuation = false;
         int loopDelay = this.animation.settings().playback().loopDelayTicks();
         if (loopDelay == 0) {
             this.loopCount++;
+            this.phase = PlaybackPhase.RUNNING;
             resetToLoopStart();
             return AdvanceResult.RESTARTED;
         }
         this.remainingLoopDelay = loopDelay;
+        this.phase = PlaybackPhase.LOOP_DELAY;
         return AdvanceResult.CONTINUE;
     }
 
-    public boolean beginOutro() {
+    public OutroRequestResult requestOutro() {
         int loopEnd = this.animation.settings().playback().loopEndTicks();
         if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.LOOP
             || loopEnd >= this.animation.timeline().durationTicks()
-            || this.finished) {
-            return false;
+            || this.phase == PlaybackPhase.NOT_STARTED
+            || this.phase == PlaybackPhase.FINISHED) {
+            return OutroRequestResult.UNSUPPORTED;
         }
-        if (this.ending) {
-            return true;
+        if (this.phase == PlaybackPhase.OUTRO) {
+            return OutroRequestResult.ALREADY_RUNNING;
         }
 
-        this.ending = true;
-        this.awaitingLoopContinuation = false;
+        this.phase = PlaybackPhase.OUTRO;
         this.remainingLoopDelay = 0;
         if (this.currentTick < loopEnd) {
             this.currentTick = loopEnd;
             applyTick(loopEnd);
+            if (this.eventsStarted) execute(this.emote.timelineEvents(loopEnd));
         }
-        return true;
+        return OutroRequestResult.STARTED;
     }
 
     public int currentTick() {
@@ -470,6 +473,22 @@ public final class AnimationPlayer {
         CONTINUE,
         LOOP_BOUNDARY,
         RESTARTED,
+        FINISHED
+    }
+
+    public enum OutroRequestResult {
+        STARTED,
+        ALREADY_RUNNING,
+        UNSUPPORTED
+    }
+
+    private enum PlaybackPhase {
+        NOT_STARTED,
+        RUNNING,
+        LOOP_BOUNDARY,
+        LOOP_DELAY,
+        OUTRO,
+        HOLDING,
         FINISHED
     }
 

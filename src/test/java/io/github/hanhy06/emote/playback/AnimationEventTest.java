@@ -66,6 +66,65 @@ class AnimationEventTest {
     }
 
     @Test
+    void loopCallbackCanStartOutroWithoutRepeatingBoundaryEvents() {
+        EmoteAnimation original = animation(4, EmoteAnimation.LoopMode.LOOP, 0);
+        EmoteAnimation.Settings settings = new EmoteAnimation.Settings(
+            original.settings().standalone(),
+            original.settings().cooldownTicks(),
+            original.settings().rotationDeadzone(),
+            original.settings().displayInterpolationTicks(),
+            original.settings().player(),
+            new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.LOOP, 0, 2, 0)
+        );
+        EmoteAnimation.TimelineEvent outroStart = new EmoteAnimation.TimelineEvent(
+            2,
+            tickZeroEvent().source(),
+            tickZeroEvent().origin(),
+            List.of("outro-start"),
+            List.of()
+        );
+        EmoteAnimation animation = new EmoteAnimation(
+            original.id(),
+            original.metadata(),
+            settings,
+            original.molang(),
+            original.nodes(),
+            new EmoteAnimation.Timeline(
+                4,
+                original.timeline().tracks(),
+                new EmoteAnimation.Events(
+                    original.timeline().events().start(),
+                    List.of(tickZeroEvent(), outroStart),
+                    original.timeline().events().loop(),
+                    original.timeline().events().stop()
+                )
+            )
+        );
+        AnimationPlayer player = new AnimationPlayer(
+            PreparedAnimation.from(new LoadedAnimation(Path.of("outro-event-test.json"), "test", animation)),
+            new EmptyTimelineTarget()
+        );
+        List<String> executed = new ArrayList<>();
+        List<AnimationPlayer.OutroRequestResult> requests = new ArrayList<>();
+        player.bindEvents(event -> {
+            executed.addAll(event.event().commands());
+            if (event.event().commands().contains("loop")) requests.add(player.requestOutro());
+        });
+
+        player.start();
+        player.startEvents();
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+
+        assertEquals(List.of(AnimationPlayer.OutroRequestResult.STARTED), requests);
+        assertEquals(List.of("start", "tick-0", "outro-start", "loop"), executed);
+        assertEquals(AnimationPlayer.OutroRequestResult.ALREADY_RUNNING, player.requestOutro());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(List.of("start", "tick-0", "outro-start", "loop"), executed);
+    }
+
+    @Test
     void runsStopEventsOnlyOnce() {
         AnimationFixture fixture = fixture(4, EmoteAnimation.LoopMode.LOOP, 0);
         fixture.player().start();

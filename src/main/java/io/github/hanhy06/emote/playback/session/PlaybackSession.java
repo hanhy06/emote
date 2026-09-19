@@ -154,7 +154,7 @@ public final class PlaybackSession {
         if (this.pendingStopReason != null) {
             return true;
         }
-        if (!this.animation.beginOutro()) {
+        if (this.animation.requestOutro() == AnimationPlayer.OutroRequestResult.UNSUPPORTED) {
             return false;
         }
         this.pendingStopReason = Objects.requireNonNull(reason, "reason");
