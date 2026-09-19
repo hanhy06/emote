@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.client;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
 import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
@@ -22,8 +23,8 @@ import java.util.List;
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
     private static final int EDIT_BUTTON_WIDTH = 50;
-    private static final int LEFT_MOUSE_BUTTON = 0;
-    private static final int RIGHT_MOUSE_BUTTON = 1;
+    private static final int LEFT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_LEFT;
+    private static final int RIGHT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_RIGHT;
     private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
     private static final int BACKGROUND_BOTTOM_COLOR = 0xAD091117;
     private static final int SLOT_BORDER_COLOR = 0xFFA9C7D8;
