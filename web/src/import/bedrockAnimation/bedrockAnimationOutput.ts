@@ -1,12 +1,13 @@
 import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
 import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { formatMinecraftTime } from "../../format/time";
+import { formatMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
 import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
+import { bedrockChannelHasExpressions, evaluateBedrockChannel, type BedrockSamplePlan } from "./bedrockAnimationBaker";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -15,6 +16,8 @@ export function createBedrockRuntime(
   animation: BedrockAnimation,
   playbackRate: number | null,
   startDelayTicks: number,
+  durationTicks: number,
+  samplePlan?: BedrockSamplePlan,
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
@@ -44,10 +47,10 @@ export function createBedrockRuntime(
       editorNodeByRuntimeNode[slice.id] = slice.id;
     }
     if (!source) continue;
-    const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, startDelayTicks, (values) =>
+    const position = convertChannel(source.position, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) =>
       bedrockPositionToCanonical(values, negateMolang).map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = convertChannel(source.rotation, ZERO, timelineRate, playbackRate, startDelayTicks, (values) => bedrockRotationToCanonical(values, negateMolang));
-    const scale = convertChannel(source.scale, ONE, timelineRate, playbackRate, startDelayTicks, (values) => values);
+    const rotation = convertChannel(source.rotation, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => bedrockRotationToCanonical(values, negateMolang));
+    const scale = convertChannel(source.scale, ONE, ONE, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2) };
@@ -77,16 +80,33 @@ export function createBedrockRuntime(
 
 function convertChannel(
   channel: BedrockChannel | undefined,
-  fallback: readonly [number, number, number],
+  sourceFallback: readonly [number, number, number],
+  runtimeFallback: readonly [number, number, number],
   timelineRate: number,
   expressionRate: number | null,
   startDelayTicks: number,
+  durationTicks: number,
+  samplePlan: BedrockSamplePlan | undefined,
   transform: (values: MolangVector) => MolangVector,
 ): EmoteVectorKeyframe[] | undefined {
   if (channel === undefined) return undefined;
+  if (!bedrockChannelHasExpressions(channel)) {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+      const animationTick = tick - startDelayTicks;
+      const sourceTime = animationTick < 0 ? animationTick / TICKS_PER_SECOND * timelineRate : samplePlan?.sourceTimes.get(animationTick) ?? animationTick / TICKS_PER_SECOND * timelineRate;
+      return {
+        time: formatMinecraftTime(tick),
+        value: transform((animationTick < 0 ? [...sourceFallback] : evaluateBedrockChannel(channel, sourceTime, [...sourceFallback], "runtime")) as MolangVector),
+        ...(tick < durationTicks ? { interpolation: tick < startDelayTicks || samplePlan?.stepTicks.has(animationTick + 1) ? "step" : "linear" } : {}),
+      };
+    });
+    if (startDelayTicks > 1) baked.splice(1, startDelayTicks - 1);
+    while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
+    return withoutLastInterpolation(baked);
+  }
   if (!isKeyframed(channel)) {
     const result: EmoteVectorKeyframe[] = [{ time: formatMinecraftTime(startDelayTicks), value: transform(vector(channel, expressionRate, startDelayTicks)) }];
-    if (startDelayTicks > 0) result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
+    if (startDelayTicks > 0) result.unshift({ time: "0t", value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
     return result;
   }
   const result: EmoteVectorKeyframe[] = Object.entries(channel).sort(([first], [second]) => Number(first) - Number(second)).map(([time, keyframe]) => {
@@ -97,8 +117,16 @@ function convertChannel(
     return { time: formatMinecraftTime(tick), pre: transform(vector(pre!, expressionRate, startDelayTicks)), post: transform(vector(post!, expressionRate, startDelayTicks)) };
   });
   const unique: EmoteVectorKeyframe[] = [...new Map(result.map((frame) => [frame.time, frame])).values()];
-  if (unique[0]?.time !== "0t") unique.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
-  return unique.map((frame, index) => index + 1 < unique.length ? { ...frame, interpolation: frame.interpolation ?? "linear" } : frame);
+  if (unique[0]?.time !== "0t") unique.unshift({ time: "0t", value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
+  return withoutLastInterpolation(unique.map((frame) => ({ ...frame, interpolation: frame.interpolation ?? "linear" })));
+}
+
+function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {
+  return frames.map((frame, index) => index + 1 < frames.length ? frame : (({ interpolation: _, easing: __, ...last }) => last)(frame));
+}
+
+function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+  return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }
 
 function vector(value: BedrockVector, playbackRate: number | null, startDelayTicks: number): MolangVector {

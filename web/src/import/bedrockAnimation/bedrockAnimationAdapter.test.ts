@@ -133,6 +133,8 @@ describe("bedrockAnimationAdapter", () => {
     expect([1, 2]).toContain(preserved?.tick);
     expect(preserved?.matrix[7]).toBeCloseTo(1.640625);
     expect(animation.preview.tracks.right_arm_0.transforms[3].matrix.every(Number.isFinite)).toBe(true);
+    const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "catmull" });
+    expect(compiled.timeline.tracks.body_z.position?.find((frame) => frame.time === "3t")?.value?.[1]).toBeCloseTo(0.75 + 1.696 / 16);
   });
 
   it("bakes deterministic Molang time expressions and constant anim_time_update rates", async () => {

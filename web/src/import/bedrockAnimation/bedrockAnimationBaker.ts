@@ -141,6 +141,10 @@ export function bedrockAnimationUsesTime(animation: BedrockAnimation): boolean {
     .some((channel) => channelExpressions(channel).some((expression) => typeof expression === "string" && /(?:q|query)\.anim_time\b/i.test(expression))));
 }
 
+export function bedrockChannelHasExpressions(channel: BedrockChannel | undefined): boolean {
+  return channelExpressions(channel).some((expression) => typeof expression === "string" && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(expression.trim()));
+}
+
 export function evaluateBedrockExpression(expression: BedrockExpression, animationTime: number, keyframeLerpTime: number, path: string): number {
   return MOLANG_EVALUATOR.evaluate(expression, { animationTime, keyframeLerpTime }, path);
 }
