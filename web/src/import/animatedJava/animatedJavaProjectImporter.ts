@@ -1,4 +1,4 @@
-import type { BlockStateData, ItemStackData } from "../../domain/minecraftData";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData } from "../../domain/minecraftData";
 import { readDisplayNbt } from "../../format/minecraftData";
 import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
@@ -29,6 +29,13 @@ interface ProjectTransformGraph {
   groups: ReadonlyMap<string, AjProjectGroup>;
   groupParents: ReadonlyMap<string, string | undefined>;
   elementParents: ReadonlyMap<string, string | undefined>;
+}
+
+interface ProjectNodeStateFrame {
+  nodeId: string;
+  tick: number;
+  visible?: boolean;
+  nbt?: DisplayNbtPatch;
 }
 
 export function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
@@ -223,6 +230,7 @@ function enrichProjectAnimation(
     .sort((first, second) => first.tick - second.tick);
   const start = [...imported.events.start, ...nativeStartEvents(project, nodes, graph)];
   const variants = nativeVariants(project);
+  const stateFrames: ProjectNodeStateFrame[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
     for (const [keyframeIndex, frame] of (animator.keyframes ?? []).entries()) {
       if (frame.channel !== "variant") continue;
@@ -241,25 +249,14 @@ function enrichProjectAnimation(
           message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
           sourcePath: `variants.${variantId}.texture_map`,
         });
-        applyVariantFrame(imported, project, nodes, graph, variantId, variant, tick);
+        collectVariantFrames(stateFrames, project, nodes, graph, variantId, variant, tick);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
         if (onApply) timeline.push({ tick, source: { type: "player" }, origin: { type: "root" }, commands: functionCommands(onApply) });
       }
     }
   }
   const enriched = { ...imported, events: { ...imported.events, start, timeline: timeline.sort((first, second) => first.tick - second.tick) } };
-  synchronizeNativeRuntime(enriched);
-  return enriched;
-}
-
-function synchronizeNativeRuntime(animation: ImportedAnimation): void {
-  if (animation.runtime.kind !== "native") return;
-  for (const [nodeId, track] of Object.entries(animation.preview.tracks)) {
-    if (track.visibility.length === 0 && track.nbt.length === 0) continue;
-    const runtimeTrack = animation.runtime.tracks[nodeId] ??= {};
-    if (track.visibility.length > 0) runtimeTrack.visible = track.visibility.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.visible }));
-    if (track.nbt.length > 0) runtimeTrack.nbt = track.nbt.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.value }));
-  }
+  return applyProjectStateFrames(enriched, stateFrames);
 }
 
 function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph): ImportedAnimation["events"]["start"] {
@@ -365,8 +362,8 @@ function nativeVariants(project: AjProject): Map<string, Record<string, unknown>
   return variants;
 }
 
-function applyVariantFrame(
-  animation: ImportedAnimation,
+function collectVariantFrames(
+  frames: ProjectNodeStateFrame[],
   project: AjProject,
   nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
@@ -376,30 +373,61 @@ function applyVariantFrame(
 ): void {
   const excluded = new Set(Array.isArray(variant.excluded_nodes) ? variant.excluded_nodes.filter((value): value is string => typeof value === "string") : []);
   for (const sourceId of excluded) {
-    for (const nodeId of projectOutputNodeIds(sourceId, nodes, graph)) projectTrack(animation, nodeId).visibility.push({ tick, visible: false });
+    for (const nodeId of projectOutputNodeIds(sourceId, nodes, graph)) frames.push({ nodeId, tick, visible: false });
   }
   for (const element of project.elements) {
     if (!isDirectDisplay(element.type)) continue;
     const display = element as AjProjectDisplayElement;
     const config = display.configs?.variants?.[variantId];
-    if (isRecord(config)) applyVariantConfig(animation, display.uuid, config, tick);
+    if (isRecord(config)) collectVariantConfigFrame(frames, display.uuid, config, tick);
   }
   for (const group of project.groups) {
     const config = group.configs?.variants?.[variantId];
     if (!isRecord(config)) continue;
-    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) applyVariantConfig(animation, nodeId, config, tick);
+    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) collectVariantConfigFrame(frames, nodeId, config, tick);
   }
 }
 
-function applyVariantConfig(animation: ImportedAnimation, nodeId: string, config: Record<string, unknown>, tick: number): void {
-  const track = projectTrack(animation, nodeId);
-  if (typeof config.invisible === "boolean") track.visibility.push({ tick, visible: !config.invisible });
+function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], nodeId: string, config: Record<string, unknown>, tick: number): void {
+  const visible = typeof config.invisible === "boolean" ? !config.invisible : undefined;
   const nbt = nativeDisplayConfigNbt(config);
-  if (nbt) track.nbt.push({ tick, value: readDisplayNbt(nbt) });
+  if (visible !== undefined || nbt) frames.push({ nodeId, tick, ...(visible === undefined ? {} : { visible }), ...(nbt ? { nbt: readDisplayNbt(nbt) } : {}) });
 }
 
-function projectTrack(animation: ImportedAnimation, nodeId: string) {
-  return animation.preview.tracks[nodeId] ??= { transforms: [], visibility: [], nbt: [] };
+function applyProjectStateFrames(animation: ImportedAnimation, frames: ProjectNodeStateFrame[]): ImportedAnimation {
+  if (frames.length === 0) return animation;
+  if (animation.runtime.kind !== "native") throw new Error("Animated Java state frames require native animation output.");
+  const previewTracks = { ...animation.preview.tracks };
+  const runtimeTracks = { ...animation.runtime.tracks };
+  const framesByNode = new Map<string, ProjectNodeStateFrame[]>();
+  for (const frame of frames) {
+    const nodeFrames = framesByNode.get(frame.nodeId) ?? [];
+    nodeFrames.push(frame);
+    framesByNode.set(frame.nodeId, nodeFrames);
+  }
+  for (const [nodeId, nodeFrames] of framesByNode) {
+    const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [], nbt: [] };
+    previewTracks[nodeId] = {
+      ...preview,
+      visibility: [...preview.visibility, ...nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ tick: frame.tick, visible: frame.visible }])]
+        .sort((first, second) => first.tick - second.tick),
+      nbt: [...preview.nbt, ...nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : [])]
+        .sort((first, second) => first.tick - second.tick),
+    };
+    const runtime = runtimeTracks[nodeId] ?? {};
+    const visible = nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ time: formatMinecraftTime(frame.tick), value: frame.visible }]);
+    const nbt = nodeFrames.flatMap((frame) => frame.nbt ? [{ time: formatMinecraftTime(frame.tick), value: frame.nbt }] : []);
+    runtimeTracks[nodeId] = {
+      ...runtime,
+      ...(visible.length ? { visible: [...(runtime.visible ?? []), ...visible] } : {}),
+      ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt] } : {}),
+    };
+  }
+  return {
+    ...animation,
+    preview: { ...animation.preview, tracks: previewTracks },
+    runtime: { ...animation.runtime, tracks: runtimeTracks },
+  };
 }
 
 function projectOutputNodeIds(sourceId: string, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, includeDescendants = true): string[] {
@@ -559,6 +587,7 @@ function importProjectAnimation(
     `${animation.name}.length`,
   );
   const tracks: ImportedAnimation["preview"]["tracks"] = {};
+  const stateFrames: ProjectNodeStateFrame[] = [];
   for (const element of elements) {
     validateProjectKeyframes(animation.animators[element.uuid]?.keyframes ?? [], animationIndex, element.uuid);
     const transforms: ImportedTransformKeyframe[] = [];
@@ -570,9 +599,11 @@ function importProjectAnimation(
         interpolation: tick === 0 || projectStepAt(animation, element.uuid, sourceTime) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    tracks[element.uuid] = { transforms, visibility: projectVisibilityFrames(animation, element, startDelayTicks), nbt: [] };
+    const visibility = projectVisibilityFrames(animation, element, startDelayTicks);
+    stateFrames.push(...visibility.map((frame) => ({ nodeId: element.uuid, ...frame })));
+    tracks[element.uuid] = { transforms, visibility: [], nbt: [] };
   }
-  return {
+  return applyProjectStateFrames({
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
     name: prettify(animation.name),
     durationTicks,
@@ -583,7 +614,7 @@ function importProjectAnimation(
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
     runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, sceneScale, startDelayTicks) },
-  };
+  }, stateFrames);
 }
 
 function validateProjectKeyframes(keyframes: AjProjectKeyframe[], animationIndex: number, animatorId: string): void {
