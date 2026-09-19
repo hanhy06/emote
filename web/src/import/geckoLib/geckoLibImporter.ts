@@ -15,7 +15,6 @@ export function importGeckoLibProject(project: BbmodelProject, sourceName: strin
   const imported = importBlockbenchCubeContent(project, sourceName, {
     transforms: GECKOLIB_BBMODEL_TRANSFORMS,
     formatLabel: "GeckoLib",
-    molangDiagnosticCode: "geckolib_animation_molang_unavailable",
     createNativeRuntime: createGeckoLibRuntime,
   });
   return {

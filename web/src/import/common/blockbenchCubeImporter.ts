@@ -61,7 +61,6 @@ export type BlockbenchNativeRuntimeFactory = (
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
   formatLabel: string;
-  molangDiagnosticCode: string;
   runtimeOutput?: "auto" | "native";
   createNativeRuntime: BlockbenchNativeRuntimeFactory;
 }
@@ -146,21 +145,8 @@ export function importBlockbenchCubeContent(
   }
 
   if (project.animations.length === 0) throw new Error(`${formatLabel} cube project does not contain animations.`);
-  const animations = project.animations.map((animation, index) => {
-    try {
-      return importAnimation(animation, index, bones, nodes, diagnostics, transforms, options.runtimeOutput === "native", options.createNativeRuntime);
-    } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
-      const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
-      diagnostics.push({
-        severity: "warning",
-        code: options.molangDiagnosticCode,
-        message,
-        sourcePath: reason.sourcePath ?? `animations[${index}]`,
-      });
-      return createPreviewOnlyAnimation(animation, index, message, bones, nodes, options.createNativeRuntime);
-    }
-  });
+  const animations = project.animations.map((animation, index) =>
+    importAnimation(animation, index, bones, nodes, diagnostics, transforms, options.runtimeOutput === "native", options.createNativeRuntime));
   return {
     sourceStem,
     namespace,
@@ -170,37 +156,6 @@ export function importBlockbenchCubeContent(
     resources,
     runtimeSceneId: BLOCKBENCH_RUNTIME_SCENE_ID,
     runtimeParentByGroupUuid: Object.fromEntries(bones.map((bone) => [bone.uuid, `${bone.id}_x`])),
-  };
-}
-
-function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reason: string, bones: BoneEntry[], nodes: Record<string, ImportedNode>, createNativeRuntime: BlockbenchNativeRuntimeFactory): ImportedAnimation {
-  const loop = animation.loop ?? "once";
-  const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
-  const durationTicks = Number.isFinite(animation.length) && animation.length > 0
-    ? Math.max(1, Math.round(animation.length * TICKS_PER_SECOND))
-    : TICKS_PER_SECOND;
-  return {
-    id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
-    name: animation.name,
-    durationTicks,
-    playbackMode: playbackMode === "loop" || playbackMode === "hold" ? playbackMode : "once",
-    loopDelayTicks: 0,
-    events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: {
-      durationTicks: TICKS_PER_SECOND,
-      tracks: {},
-      availability: { preview: "create_pose", exportable: true, reason },
-    },
-    runtime: { kind: "native", ...createNativeRuntime({
-      animation,
-      animationIndex: index,
-      bones,
-      importedNodes: nodes,
-      animators: resolveBoneAnimators(animation, index, bones),
-      durationTicks,
-      startDelayTicks: 0,
-      blendWeight: 1,
-    }) },
   };
 }
 

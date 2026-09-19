@@ -173,7 +173,6 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
   return importBlockbenchCubeContent(cubeProject, `${sourceStem}.bbmodel`, {
     transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
     formatLabel: "Animated Java",
-    molangDiagnosticCode: "animated_java_animation_molang_unavailable",
     runtimeOutput: "native",
     createNativeRuntime: createAnimatedJavaCubeRuntime,
   });
