@@ -3,6 +3,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { MolangBakeEvaluator } from "./molangBakeEvaluator";
 import type { BbDataPoint, BbKeyframe } from "./blockbenchCubeSchema";
 import { animationEasingProgress } from "./animationEasing";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
 type Vector3Tuple = [number, number, number];
 
@@ -69,6 +70,39 @@ export function canBakeBlockbenchChannel(keyframes: BbKeyframe[], channel: strin
     return true;
   } catch (error) {
     if (error instanceof ConversionError && error.code === "unsupported_geckolib_molang") return false;
+    throw error;
+  }
+}
+
+export function evaluateApproximateBlockbenchChannel(
+  keyframes: BbKeyframe[],
+  channel: string,
+  time: number,
+  fallback: number[],
+  path: string,
+): number[] {
+  const frames = keyframes.filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
+  if (frames.length === 0 || frames.some((frame) => frame.data_points.some((point) =>
+    usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
+  ))) return [...fallback];
+
+  const evaluator = createApproximateMolangEvaluator();
+  try {
+    const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
+    if (exact) return evaluatePoint(postPoint(exact), evaluator, { animationTime: time, keyframeLerpTime: 1 }, path);
+    const afterIndex = frames.findIndex((frame) => frame.time > time);
+    if (afterIndex === 0) return [...fallback];
+    if (afterIndex < 0) return evaluatePoint(postPoint(frames.at(-1)!), evaluator, { animationTime: time, keyframeLerpTime: 1 }, path);
+    const before = frames[afterIndex - 1];
+    const after = frames[afterIndex];
+    const alpha = (time - before.time) / (after.time - before.time);
+    const context = { animationTime: time, keyframeLerpTime: alpha };
+    const start = evaluatePoint(postPoint(before), evaluator, context, path);
+    if ((before.interpolation ?? "linear") === "step") return start;
+    const end = evaluatePoint(prePoint(after), evaluator, context, path);
+    return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * alpha);
+  } catch (error) {
+    if (error instanceof ConversionError && error.code === "unsupported_preview_molang") return [...fallback];
     throw error;
   }
 }
@@ -147,6 +181,16 @@ function createMolangEvaluator(): MolangBakeEvaluator {
     error: {
       code: "unsupported_geckolib_molang",
       message: (expression) => `GeckoLib expression ${expression} cannot be baked.`,
+    },
+  });
+}
+
+function createApproximateMolangEvaluator(): MolangBakeEvaluator {
+  return new MolangBakeEvaluator({
+    rejectNondeterministic: true,
+    error: {
+      code: "unsupported_preview_molang",
+      message: (expression) => `Expression ${expression} is not available in the approximate preview.`,
     },
   });
 }
