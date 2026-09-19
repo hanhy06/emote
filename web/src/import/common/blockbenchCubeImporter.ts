@@ -164,14 +164,13 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, transforms) },
+    runtime: { kind: "native", ...createBlockbenchRuntime(animation, index, bones, nodes, transforms) },
   };
 }
 
 function createBlockbenchRuntime(
   animation: BbAnimation,
   animationIndex: number,
-  durationTicks: number,
   bones: BoneEntry[],
   importedNodes: Record<string, ImportedNode>,
   transforms: CubeProjectTransformConvention,
@@ -211,7 +210,7 @@ function createBlockbenchRuntime(
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
-  return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
+  return { nodes, tracks };
 }
 
 function blockbenchChannelFrames(
@@ -366,11 +365,8 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     }
   }
   const runtime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation)
-    ? { kind: "native" as const, ...createBlockbenchRuntime(animation, index, durationTicks, bones, nodes, convention) }
+    ? { kind: "native" as const, ...createBlockbenchRuntime(animation, index, bones, nodes, convention) }
     : { kind: "baked" as const, tracks };
-  if (runtime.kind === "native" && effectEvents.length > 0) runtime.timeline.events = {
-    timeline: effectEvents.map(({ tick, ...event }) => ({ ...event, time: formatMinecraftTime(tick) })),
-  };
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,

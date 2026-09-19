@@ -8,7 +8,6 @@ import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } f
 
 export function createAjProjectRuntime(
   animation: AjProjectAnimation,
-  durationTicks: number,
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
   sceneScale: number,
@@ -42,7 +41,7 @@ export function createAjProjectRuntime(
     }
     if (scale) tracks[ids.z] = { ...tracks[ids.z], scale };
   }
-  return { nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
+  return { nodes, tracks };
 }
 
 function ajProjectFrames(

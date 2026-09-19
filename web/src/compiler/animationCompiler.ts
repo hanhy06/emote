@@ -21,7 +21,7 @@ import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeTimeline } from "../domain/minecraftData";
+import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { animationAvailability, type ImportedAnimation, type ImportedNodeTrack } from "../domain/conversionSeed";
@@ -76,7 +76,7 @@ export function compileConversionAnimation(
       ? compileRuntimeNodes(document, runtime.nodes, profile)
       : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile),
     timeline: runtime.kind === "native"
-      ? compileRuntimeTimeline(document, animation, runtime.timeline, profile)
+      ? compileRuntimeTimeline(document, animation, runtime.tracks, profile)
       : compileTimeline(document, animation, runtime.tracks, profile),
   };
 }
@@ -212,10 +212,10 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
 function compileRuntimeTimeline(
   document: ConversionDocument,
   animation: ImportedAnimation,
-  timeline: RuntimeTimeline,
+  sourceTracks: Record<string, RuntimeNodeTracks>,
   profile: MinecraftVersionProfile,
 ): EmoteAnimation["timeline"] {
-  const tracks = Object.fromEntries(Object.entries(timeline.tracks).map(([nodeId, track]) => {
+  const tracks = Object.fromEntries(Object.entries(sourceTracks).map(([nodeId, track]) => {
     if (!track.nbt?.length) return [nodeId, track];
     const nbt = track.nbt.flatMap((frame) => {
       const value = compileRuntimeNbtValue(document, nodeId, frame.value, profile);
@@ -225,7 +225,6 @@ function compileRuntimeTimeline(
     return [nodeId, nbt.length > 0 ? { ...remaining, nbt } : remaining];
   }));
   return {
-    ...timeline,
     duration: formatMinecraftTime(requireTick(animation.durationTicks, `${animation.id} duration`)),
     tracks,
     events: compileEvents(animation),

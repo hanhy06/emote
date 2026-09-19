@@ -115,10 +115,7 @@ describe("compileImportedProject time handling", () => {
     project.animations[0].runtime = {
       kind: "native",
       nodes: { anchor: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } } },
-      timeline: {
-        duration: "12000t",
-        tracks: { anchor: { position: [{ time: "0t", value: ["q.anim_time", 0, 0] }] } },
-      },
+      tracks: { anchor: { position: [{ time: "0t", value: ["q.anim_time", 0, 0] }] } },
     };
     project.animations[0].preview.tracks.anchor.transforms[0].matrix = [1, 0, 0, 999, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 

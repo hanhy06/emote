@@ -192,23 +192,13 @@ function mergeProjectRuntime(
   display: ImportedAnimation["runtime"],
 ): ImportedAnimation["runtime"] {
   if (base.kind !== "native" || display.kind !== "native") throw new Error("Animated Java runtime merge requires native animation output.");
-  const events = {
-    start: [...(base.timeline.events?.start ?? []), ...(display.timeline.events?.start ?? [])],
-    timeline: [...(base.timeline.events?.timeline ?? []), ...(display.timeline.events?.timeline ?? [])],
-    loop: [...(base.timeline.events?.loop ?? []), ...(display.timeline.events?.loop ?? [])],
-    stop: [...(base.timeline.events?.stop ?? []), ...(display.timeline.events?.stop ?? [])],
-  };
   const initialize = [base.molang?.initialize, display.molang?.initialize].filter((value): value is string => Boolean(value)).join("\n");
   const tick = [base.molang?.tick, display.molang?.tick].filter((value): value is string => Boolean(value)).join("\n");
   return {
     kind: "native",
     ...((initialize || tick) ? { molang: { ...(initialize ? { initialize } : {}), ...(tick ? { tick } : {}) } } : {}),
     nodes: { ...base.nodes, ...display.nodes },
-    timeline: {
-      duration: base.timeline.duration,
-      tracks: { ...base.timeline.tracks, ...display.timeline.tracks },
-      ...(Object.values(events).some((entries) => entries.length > 0) ? { events } : {}),
-    },
+    tracks: { ...base.tracks, ...display.tracks },
   };
 }
 
@@ -259,7 +249,7 @@ function synchronizeNativeRuntime(animation: ImportedAnimation): void {
   if (animation.runtime.kind !== "native") return;
   for (const [nodeId, track] of Object.entries(animation.preview.tracks)) {
     if (track.visibility.length === 0 && track.nbt.length === 0) continue;
-    const runtimeTrack = animation.runtime.timeline.tracks[nodeId] ??= {};
+    const runtimeTrack = animation.runtime.tracks[nodeId] ??= {};
     if (track.visibility.length > 0) runtimeTrack.visible = track.visibility.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.visible }));
     if (track.nbt.length > 0) runtimeTrack.nbt = track.nbt.map((frame) => ({ time: formatMinecraftTime(frame.tick), value: frame.value }));
   }
@@ -488,7 +478,7 @@ function createPreviewOnlyProjectAnimation(
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, sceneScale) },
   };
 }
 
@@ -585,7 +575,7 @@ function importProjectAnimation(
       : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, durationTicks, elements, nodes, sceneScale, startDelayTicks) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, sceneScale, startDelayTicks) },
   };
 }
 

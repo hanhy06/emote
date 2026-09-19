@@ -1,4 +1,4 @@
-import type { EmoteNode, EmoteNodeTracks, EmoteTimeline } from "../format/emoteAnimation";
+import type { EmoteNode, EmoteNodeTracks } from "../format/emoteAnimation";
 
 export interface RawNbtField {
   name: string;
@@ -32,4 +32,3 @@ export type RuntimeNode =
   | (Omit<Extract<EmoteNode, { type: "item_display" }>, "item_stack_snbt"> & { itemStack: ItemStackData });
 
 export type RuntimeNodeTracks = Omit<EmoteNodeTracks, "nbt"> & { nbt?: { time: string; value: DisplayNbtValue }[] };
-export type RuntimeTimeline = Omit<EmoteTimeline, "tracks"> & { tracks: Record<string, RuntimeNodeTracks> };

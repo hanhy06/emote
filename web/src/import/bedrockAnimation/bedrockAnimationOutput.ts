@@ -12,7 +12,6 @@ const ONE: readonly [number, number, number] = [1, 1, 1];
 
 export function createBedrockRuntime(
   animation: BedrockAnimation,
-  durationTicks: number,
   playbackRate: number | null,
   startDelayTicks: number,
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
@@ -62,7 +61,7 @@ export function createBedrockRuntime(
           : `v.bedrock_anim_time = q.anim_time < ${startDelayTicks / 20} ? 0 : (${rewriteProgramExpression(animation.anim_time_update)});`,
       }
     : undefined;
-  return { ...(molang ? { molang } : {}), nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
+  return { ...(molang ? { molang } : {}), nodes, tracks };
 }
 
 function convertChannel(

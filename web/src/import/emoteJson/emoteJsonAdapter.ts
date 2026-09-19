@@ -1,5 +1,5 @@
 import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
-import { readRuntimeNodes, readRuntimeTimeline } from "../common/runtimeOutput";
+import { readRuntimeNodes, readRuntimeTracks } from "../common/runtimeOutput";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -226,7 +226,7 @@ function importRuntimeTimeline(
       kind: "native",
       ...(animation.molang ? { molang: animation.molang } : {}),
       nodes: readRuntimeNodes(animation.nodes),
-      timeline: readRuntimeTimeline(animation.timeline),
+      tracks: readRuntimeTracks(animation.timeline),
     },
   };
 }

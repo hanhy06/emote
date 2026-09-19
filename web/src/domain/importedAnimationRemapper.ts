@@ -1,5 +1,5 @@
-import type { EmoteEvent, EmoteEvents } from "../format/emoteAnimation";
-import type { RuntimeNode, RuntimeTimeline } from "./minecraftData";
+import type { EmoteEvent } from "../format/emoteAnimation";
+import type { RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedTimelineEvent } from "./conversionSeed";
 
 export interface ImportedAnimationIdRemapper {
@@ -24,7 +24,7 @@ export function remapImportedAnimation(
       : {
           ...animation.runtime,
           nodes: remapRuntimeNodes(animation.runtime.nodes, ids.nodeId),
-          timeline: remapRuntimeTimeline(animation.runtime.timeline, ids.nodeId),
+          tracks: remapRuntimeTracks(animation.runtime.tracks, ids.nodeId),
         },
   };
 }
@@ -46,21 +46,11 @@ function remapRuntimeNodes(
   ]));
 }
 
-function remapRuntimeTimeline(timeline: RuntimeTimeline, nodeId: (id: string) => string): RuntimeTimeline {
-  return {
-    ...timeline,
-    tracks: Object.fromEntries(Object.entries(timeline.tracks).map(([id, track]) => [nodeId(id), track])),
-    ...(timeline.events ? { events: remapRuntimeEvents(timeline.events, nodeId) } : {}),
-  };
-}
-
-function remapRuntimeEvents(events: EmoteEvents, nodeId: (id: string) => string): EmoteEvents {
-  return {
-    ...(events.start ? { start: events.start.map((event) => remapEvent(event, nodeId)) } : {}),
-    ...(events.timeline ? { timeline: events.timeline.map((event) => remapEvent(event, nodeId)) } : {}),
-    ...(events.loop ? { loop: events.loop.map((event) => remapEvent(event, nodeId)) } : {}),
-    ...(events.stop ? { stop: events.stop.map((event) => remapEvent(event, nodeId)) } : {}),
-  };
+function remapRuntimeTracks(
+  tracks: Record<string, RuntimeNodeTracks>,
+  nodeId: (id: string) => string,
+): Record<string, RuntimeNodeTracks> {
+  return Object.fromEntries(Object.entries(tracks).map(([id, track]) => [nodeId(id), track]));
 }
 
 function remapTimelineEvent(event: ImportedTimelineEvent, nodeId: (id: string) => string): ImportedTimelineEvent {

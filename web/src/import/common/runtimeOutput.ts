@@ -1,6 +1,6 @@
 import type { EmoteNode, EmoteTimeline, LocalTransform } from "../../format/emoteAnimation";
 import type { ImportedNode } from "../../domain/conversionSeed";
-import type { RuntimeNode, RuntimeTimeline } from "../../domain/minecraftData";
+import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
 import { readBlockState, readDisplayNbtValue, readItemStack } from "../../format/minecraftData";
 
 export const ZERO_VECTOR = [0, 0, 0] as const;
@@ -34,12 +34,9 @@ export function readRuntimeNodes(nodes: Record<string, EmoteNode>): Record<strin
   }));
 }
 
-export function readRuntimeTimeline(timeline: EmoteTimeline): RuntimeTimeline {
-  return {
-    ...timeline,
-    tracks: Object.fromEntries(Object.entries(timeline.tracks).map(([id, track]) => {
-      const { nbt, ...channels } = track;
-      return [id, { ...channels, ...(nbt ? { nbt: nbt.map((frame) => ({ ...frame, value: readDisplayNbtValue(frame.value) })) } : {}) }];
-    })),
-  };
+export function readRuntimeTracks(timeline: EmoteTimeline): Record<string, RuntimeNodeTracks> {
+  return Object.fromEntries(Object.entries(timeline.tracks).map(([id, track]) => {
+    const { nbt, ...channels } = track;
+    return [id, { ...channels, ...(nbt ? { nbt: nbt.map((frame) => ({ ...frame, value: readDisplayNbtValue(frame.value) })) } : {}) }];
+  }));
 }

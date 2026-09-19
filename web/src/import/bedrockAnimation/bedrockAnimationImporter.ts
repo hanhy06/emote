@@ -96,7 +96,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createBedrockRuntime(animation, durationTicks, null, startDelayTicks) },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks) },
   };
 }
 
@@ -162,7 +162,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks: previewDurationTicks, tracks, availability: { preview: "full", exportable: true } },
-    runtime: { kind: "native", ...createBedrockRuntime(animation, durationTicks, playbackRate, startDelayTicks) },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks) },
   };
 }
 
