@@ -1,9 +1,12 @@
 import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
 import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { formatMinecraftTime } from "../../format/time";
+import { formatMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
+import { canBakeBlockbenchChannel, evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
+import { blockbenchEasingToEmote, blockbenchIntervalIsStep } from "../common/animationEasing";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
 
 export interface AjRuntimeHierarchy {
@@ -20,6 +23,7 @@ export function createAjProjectRuntime(
   hierarchy: AjRuntimeHierarchy,
   blendWeight: number,
   startDelayTicks = 0,
+  durationTicks = startDelayTicks + Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
   const nodes: Record<string, RuntimeNode> = {};
   const tracks: Record<string, RuntimeNodeTracks> = {};
@@ -51,9 +55,9 @@ export function createAjProjectRuntime(
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
     if (!parentId) spaceGroupByRuntimeRoot[ids.x] = spaceGroup;
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
-    const position = ajProjectFrames(keyframes, "position", basePosition, startDelayTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
-    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, startDelayTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
-    const scale = ajProjectFrames(keyframes, "scale", baseScale, startDelayTicks, (value, axis) => {
+    const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, basePosition, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
+    const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
+    const scale = ajProjectFrames(keyframes, "scale", ONE_VECTOR, baseScale, startDelayTicks, durationTicks, (value, axis) => {
       const blended = affineMolang(value, blendWeight, 1 - blendWeight);
       return element.type === "animated_java:vanilla_item_display" ? blended : multiply(blended, baseScale[axis]);
     });
@@ -71,26 +75,45 @@ export function createAjProjectRuntime(
 function ajProjectFrames(
   keyframes: AjProjectKeyframe[],
   channel: "position" | "rotation" | "scale",
-  fallback: readonly number[],
+  sourceFallback: readonly number[],
+  runtimeFallback: readonly number[],
   startDelayTicks: number,
+  durationTicks: number,
   transform: (value: MolangScalar, axis: number) => MolangScalar,
 ): EmoteVectorKeyframe[] | undefined {
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
   if (source.length === 0) return undefined;
-  const frames = [...new Map(source.map((frame): [string, EmoteVectorKeyframe] => {
+  const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
+  if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...sourceFallback], `runtime.${channel}`)) {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+      const animationTick = tick - startDelayTicks;
+      const roundedAnchors = source.filter((frame) => Math.round(frame.time * TICKS_PER_SECOND) === animationTick);
+      const sourceTime = roundedAnchors.at(-1)?.time ?? animationTick / TICKS_PER_SECOND;
+      return {
+        time: formatMinecraftTime(tick),
+        value: evaluateBlockbenchChannel(source, channel, sourceTime, [...sourceFallback], `runtime.${channel}`)
+          .map((value, axis) => transform(value, axis)) as MolangVector,
+        ...(tick < durationTicks ? { interpolation: blockbenchIntervalIsStep(source, sourceTime, sourceTime + 1 / TICKS_PER_SECOND) ? "step" : "linear" } : {}),
+      };
+    });
+    while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
+    return withoutLastInterpolation(baked);
+  }
+  const frames = [...new Map(source.map((frame, frameIndex): [string, EmoteVectorKeyframe] => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new Error("Animated Java transform keyframes must contain one value or a pre/post pair.");
     const vectors = points.map((point) => {
       if (point.x === undefined || point.y === undefined || point.z === undefined) throw new Error("Animated Java transform keyframe is missing an axis value.");
       return [point.x, point.y, point.z].map((value, axis) => transform(molangScalar(value), axis)) as MolangVector;
     });
-    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" || frame.easing === "step" ? "step" : "linear";
+    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
+    const easing = blockbenchEasingToEmote(source[frameIndex + 1]?.easing);
     const result = vectors.length === 1
-      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), value: vectors[0], interpolation }
-      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation };
+      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
+      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
     return [result.time, result];
   })).values()];
-  if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...fallback] as MolangVector, interpolation: "step" });
+  if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...runtimeFallback] as MolangVector, interpolation: "step" });
   return withoutLastInterpolation(frames);
 }
 
@@ -113,4 +136,8 @@ function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKey
 function multiply(first: MolangScalar, second: MolangScalar): MolangScalar {
   if (typeof first === "number" && typeof second === "number") return first * second;
   return `((${first}) * (${second}))`;
+}
+
+function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+  return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }

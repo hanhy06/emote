@@ -524,7 +524,7 @@ function createPreviewOnlyProjectAnimation(
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
   };
 }
 
@@ -625,7 +625,7 @@ function importProjectAnimation(
       : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { preview: "full", exportable: true } },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks) },
+    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
   }, stateFrames);
 }
 

@@ -10,7 +10,7 @@ const encoder = new TextEncoder();
 const displayTypes = ["animated_java:vanilla_block_display", "animated_java:text_display", "animated_java:vanilla_text_display", "animated_java:vanilla_item_display"];
 
 describe("animatedJavaBlueprintAdapter", () => {
-  it("keeps the last native keyframe when sub-tick times round to the same tick", async () => {
+  it("preserves cube sub-tick poses while direct displays keep the last rounded keyframe", async () => {
     const input = nativeProject({
       elements: [{ uuid: "display", name: "Display", type: "animated_java:vanilla_item_display", position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], visibility: true, item: "minecraft:stick" }],
       outliner: [{ uuid: "root", name: "Root", origin: [0, 0, 0], children: ["display"] }],
@@ -25,7 +25,8 @@ describe("animatedJavaBlueprintAdapter", () => {
 
     const [animation] = compileImportedProject(await animatedJavaBlueprintAdapter.import(input), { namespace: "sub_tick" });
 
-    expect(animation.timeline.tracks.root_x.rotation?.map((frame) => frame.time)).toEqual(["0t"]);
+    expect(animation.timeline.tracks.root_x.rotation?.map((frame) => frame.time)).toEqual(["0t", "1t"]);
+    expect(animation.timeline.tracks.root_x.rotation?.map((frame) => frame.value?.[0])).toEqual([10, 20]);
     expect(animation.timeline.tracks.aj_display_x.rotation?.map((frame) => frame.time)).toEqual(["0t"]);
   });
 
@@ -690,6 +691,30 @@ describe("animatedJavaBlueprintAdapter", () => {
     expect(animation.preview.tracks.item.visibility).toEqual([{ tick: 2, visible: false }]);
     expect(finalMatrix[3]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
     expect(finalMatrix[7]).toBeCloseTo(Math.SQRT1_2 * 0.9375);
+    expect(animation.runtime.kind === "native" && animation.runtime.tracks.root_z.rotation?.map((frame) => frame.value?.[2])).toEqual([0, 0, 11.25, 45]);
+  });
+
+  it("bakes Animated Java step easing into authoritative display runtime tracks", async () => {
+    const project = await animatedJavaBlueprintAdapter.import(nativeProject({
+      elements: [{
+        uuid: "item", name: "Item", type: "animated_java:vanilla_item_display",
+        position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1], item: "minecraft:stick",
+      }],
+      outliner: ["item"],
+      animations: [{
+        name: "steps", loop: "once", length: 0.2,
+        animators: { item: { keyframes: [
+          projectFrame("position", 0, ["0", "0", "0"]),
+          { ...projectFrame("position", 0.2, ["16", "0", "0"]), easing: "step", easingArgs: [4] },
+        ] } },
+      }],
+    }));
+
+    const runtime = project.animations[0].runtime;
+    expect(runtime.kind).toBe("native");
+    if (runtime.kind !== "native") return;
+    expect(runtime.tracks.aj_item_x.position?.map((frame) => frame.value?.[0])).toEqual([0, -0.25, -0.5, -0.75, -1]);
+    expect(runtime.tracks.aj_item_x.position?.slice(0, -1).every((frame) => frame.interpolation === "step")).toBe(true);
   });
 
   it("converts native functions and display variants to events and NBT tracks", async () => {

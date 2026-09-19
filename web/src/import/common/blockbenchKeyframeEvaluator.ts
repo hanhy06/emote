@@ -58,6 +58,21 @@ export function evaluateBlockbenchChannel(
   return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * eased);
 }
 
+export function canBakeBlockbenchChannel(keyframes: BbKeyframe[], channel: string, fallback: number[], path: string): boolean {
+  const frames = keyframes.filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
+  const times = frames.flatMap((frame, index) => {
+    const previous = frames[index - 1];
+    return previous ? [frame.time, (previous.time + frame.time) / 2, Math.max(previous.time, frame.time - 1e-7)] : [frame.time];
+  });
+  try {
+    times.forEach((time) => evaluateBlockbenchChannel(frames, channel, time, fallback, path));
+    return true;
+  } catch (error) {
+    if (error instanceof ConversionError && error.code === "unsupported_geckolib_molang") return false;
+    throw error;
+  }
+}
+
 function catmullRom(
   frames: TimedKeyframe[],
   afterIndex: number,

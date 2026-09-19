@@ -11,11 +11,14 @@ import {
   type BlockbenchNativeRuntimeFactory,
 } from "../common/blockbenchCubeImporter";
 import type { BbAnimator, BbKeyframe } from "../common/blockbenchCubeSchema";
+import { blockbenchEasingToEmote } from "../common/animationEasing";
+import { canBakeBlockbenchChannel, evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
-export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ bones, importedNodes, animators }: BlockbenchNativeRuntimeContext) => {
+export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ bones, importedNodes, animators, durationTicks, startDelayTicks, blendWeight, samplePlan }: BlockbenchNativeRuntimeContext) => {
   const sceneId = BLOCKBENCH_RUNTIME_SCENE_ID;
   const nodes: Record<string, RuntimeNode> = {
     [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
@@ -41,10 +44,12 @@ export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ 
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = animatedJavaChannelFrames(animator, "position", ZERO_VECTOR, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.position(values, negateMolang)
-      .map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = animatedJavaChannelFrames(animator, "rotation", ZERO_VECTOR, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.rotation(values, negateMolang));
-    const scale = animatedJavaChannelFrames(animator, "scale", ONE_VECTOR, (values) => values);
+    const position = animatedJavaChannelFrames(animator, "position", ZERO_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.position(values, negateMolang)
+      .map((value, axis) => affineMolang(value, blendWeight / 16, basePosition[axis])) as MolangVector);
+    const rotation = animatedJavaChannelFrames(animator, "rotation", ZERO_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.rotation(values, negateMolang)
+      .map((value) => affineMolang(value, blendWeight, 0)) as MolangVector);
+    const scale = animatedJavaChannelFrames(animator, "scale", ONE_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => values
+      .map((value) => affineMolang(value, blendWeight, 1 - blendWeight)) as MolangVector);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2, (value) => affineMolang(value, 1, baseRotation[2])) };
@@ -60,21 +65,40 @@ function animatedJavaChannelFrames(
   animator: BbAnimator,
   channel: "position" | "rotation" | "scale",
   fallback: readonly [number, number, number],
+  durationTicks: number,
+  startDelayTicks: number,
+  sourceTimes: ReadonlyMap<number, number> | undefined,
+  stepTicks: ReadonlySet<number> | undefined,
   transform: (value: MolangVector) => MolangVector,
 ): EmoteVectorKeyframe[] | undefined {
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (source.length === 0) return undefined;
-  const result = [...new Map(source.map((frame): [string, EmoteVectorKeyframe] => {
+  const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
+  if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...fallback], `runtime.${channel}`)) {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+      const sourceTime = startDelayTicks > 0 ? (tick - startDelayTicks) / TICKS_PER_SECOND : sourceTimes?.get(tick) ?? tick / TICKS_PER_SECOND;
+      const value = transform(evaluateBlockbenchChannel(source, channel, sourceTime, [...fallback], `runtime.${channel}`) as MolangVector);
+      return {
+        time: formatMinecraftTime(tick),
+        value,
+        ...(tick < durationTicks ? { interpolation: stepTicks?.has(tick + 1) ? "step" : "linear" } : {}),
+      };
+    });
+    while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
+    return withoutLastInterpolation(baked);
+  }
+  const result = [...new Map(source.map((frame, frameIndex): [string, EmoteVectorKeyframe] => {
     if (frame.data_points.length < 1 || frame.data_points.length > 2) throw new ConversionError("unsupported_animated_java_keyframe", "Animated Java transform keyframes must contain one value or a pre/post pair.");
     const vectors = frame.data_points.map((point) => transform(animatedJavaPointVector(point)));
     const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
+    const easing = blockbenchEasingToEmote(source[frameIndex + 1]?.easing);
     const converted = vectors.length === 1
-      ? { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation }
-      : { time: formatMinecraftTime(Math.round(frame.time * TICKS_PER_SECOND)), pre: vectors[0], post: vectors[1], interpolation };
+      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
+      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND)), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
     return [converted.time, converted];
   })).values()];
   if (result[0].time !== "0t") result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
-  return result.map((frame, index) => index + 1 < result.length ? frame : (({ interpolation: _, ...last }) => last)(frame));
+  return withoutLastInterpolation(result);
 }
 
 function animatedJavaPointVector(point: BbKeyframe["data_points"][number]): MolangVector {
@@ -83,4 +107,12 @@ function animatedJavaPointVector(point: BbKeyframe["data_points"][number]): Mola
     const scalar = molangScalar(value);
     return typeof scalar === "string" ? ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.runtimeMolang(scalar) : scalar;
   }) as MolangVector;
+}
+
+function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {
+  return frames.map((frame, index) => index + 1 < frames.length ? frame : (({ interpolation: _, easing: __, ...last }) => last)(frame));
+}
+
+function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+  return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }

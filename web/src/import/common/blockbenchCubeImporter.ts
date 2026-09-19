@@ -34,6 +34,7 @@ import {
 import { ZERO_VECTOR } from "./runtimeOutput";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import { planAnimationSamples } from "./blockbenchAnimationSampling";
+import type { AnimationSamplePlan } from "./animationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
@@ -46,6 +47,10 @@ export interface BlockbenchNativeRuntimeContext {
   bones: BoneEntry[];
   importedNodes: Record<string, ImportedNode>;
   animators: ReadonlyMap<string, BbAnimator>;
+  durationTicks: number;
+  startDelayTicks: number;
+  blendWeight: number;
+  samplePlan?: AnimationSamplePlan;
 }
 
 export type BlockbenchNativeRuntimeFactory = (
@@ -185,7 +190,16 @@ function createPreviewOnlyAnimation(animation: BbAnimation, index: number, reaso
       tracks: {},
       availability: { preview: "create_pose", exportable: true, reason },
     },
-    runtime: { kind: "native", ...createNativeRuntime({ animation, animationIndex: index, bones, importedNodes: nodes, animators: resolveBoneAnimators(animation, index, bones) }) },
+    runtime: { kind: "native", ...createNativeRuntime({
+      animation,
+      animationIndex: index,
+      bones,
+      importedNodes: nodes,
+      animators: resolveBoneAnimators(animation, index, bones),
+      durationTicks,
+      startDelayTicks: 0,
+      blendWeight: 1,
+    }) },
   };
 }
 
@@ -311,7 +325,17 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     }
   }
   const runtime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation)
-    ? { kind: "native" as const, ...createNativeRuntime({ animation, animationIndex: index, bones, importedNodes: nodes, animators: boneAnimators }) }
+    ? { kind: "native" as const, ...createNativeRuntime({
+      animation,
+      animationIndex: index,
+      bones,
+      importedNodes: nodes,
+      animators: boneAnimators,
+      durationTicks,
+      startDelayTicks: Math.round(startDelaySeconds * TICKS_PER_SECOND),
+      blendWeight,
+      samplePlan,
+    }) }
     : { kind: "baked" as const, tracks };
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),

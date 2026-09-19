@@ -396,6 +396,7 @@ describe("geckoLibBbmodelAdapter", () => {
   it("keeps unknown GeckoLib Molang as a warned Create pose", async () => {
     const value = project();
     Object.assign(value.animations[0].animators.root.keyframes[1].data_points[0], { x: "v.runtime_speed * 16" });
+    Object.assign(value.animations[0].animators.root.keyframes[1], { easing: "easeOutCirc" });
 
     const imported = await geckoLibBbmodelAdapter.import(input(value));
 
@@ -408,6 +409,7 @@ describe("geckoLibBbmodelAdapter", () => {
       sourcePath: "animations[0].animators.root",
     }));
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "runtime" });
+    expect(compiled.timeline.tracks.root_z.position?.[0].easing).toBe("ease_out_circ");
     expect(compiled.timeline.tracks.root_z.position?.[1].value?.[0]).toBe("((v.runtime_speed * 16) * 0.0625)");
     expect(compiled.nodes.root.type).toBe("item_display");
     expect(() => serializeEmoteAnimation(compiled)).not.toThrow();
