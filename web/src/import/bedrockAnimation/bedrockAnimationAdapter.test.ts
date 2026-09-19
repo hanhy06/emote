@@ -106,7 +106,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(compiled.timeline.tracks.body_y.rotation?.[1].value?.[1]).toBe("-((math.max(0, q.anim_time - 0.1)) * 90)");
   });
 
-  it("bakes linear, Catmull-Rom, pre/post, and off-grid keyframes at 20 TPS", async () => {
+  it("keeps Bedrock preview linear while baking Catmull-Rom into runtime", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
@@ -131,7 +131,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(animation.preview.tracks.body_0.transforms.map((frame) => frame.tick)).toEqual([0, 1, 2, 3, 4]);
     const preserved = animation.preview.tracks.body_0.transforms.find((frame) => frame.interpolation.type === "step" && frame.tick > 0);
     expect([1, 2]).toContain(preserved?.tick);
-    expect(preserved?.matrix[7]).toBeCloseTo(1.640625);
+    expect(preserved?.matrix[7]).toBeCloseTo(1.59375);
     expect(animation.preview.tracks.right_arm_0.transforms[3].matrix.every(Number.isFinite)).toBe(true);
     const [compiled] = compileImportedProject(imported, { minecraftVersion: "26.2", namespace: "catmull" });
     expect(compiled.timeline.tracks.body_z.position?.find((frame) => frame.time === "3t")?.value?.[1]).toBeCloseTo(0.75 + 1.696 / 16);
@@ -184,7 +184,7 @@ describe("bedrockAnimationAdapter", () => {
     expect(looped.settings.playback.mode).toBe("loop");
   });
 
-  it("keeps supported animations and retains unsupported Molang as a Create pose", async () => {
+  it("keeps supported animations and freezes unsupported preview Molang", async () => {
     const imported = await bedrockAnimationAdapter.import(input(JSON.stringify({
       format_version: "1.8.0",
       animations: {
@@ -194,10 +194,10 @@ describe("bedrockAnimationAdapter", () => {
     })));
 
     expect(imported.animations.map((animation) => animation.name)).toEqual(["supported", "random"]);
-    expect(imported.animations[1].preview.availability).toMatchObject({ preview: "create_pose", exportable: true });
+    expect(imported.animations[1].preview.availability).toMatchObject({ preview: "full", exportable: true });
+    expect(imported.animations[1].preview.tracks.body_0.transforms.every((frame) => frame.matrix.every(Number.isFinite))).toBe(true);
     expect(imported.diagnostics).toEqual(expect.arrayContaining([
       expect.objectContaining({ code: "bedrock_animation_bone_ignored" }),
-      expect.objectContaining({ code: "bedrock_animation_molang_unavailable" }),
     ]));
   });
 

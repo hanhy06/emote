@@ -9,6 +9,7 @@ import type {
 import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
 interface ResolvedKeyframe {
   time: number;
@@ -118,6 +119,28 @@ export function evaluateBedrockChannel(channel: BedrockChannel | undefined, time
     return start.map((value, axis) => catmullRom(p0[axis], value, end[axis], p3[axis], alpha));
   }
   return start.map((value, axis) => value + (end[axis] - value) * alpha);
+}
+
+export function evaluateApproximateBedrockChannel(channel: BedrockChannel | undefined, time: number, fallback: number[], path: string): number[] {
+  if (channel === undefined || channelExpressions(channel).some(usesRuntimeMolangState)) return [...fallback];
+  try {
+    if (!isKeyframedChannel(channel)) return evaluateVector(channel, path, time, 1);
+    const frames = resolveKeyframes(channel);
+    const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
+    if (exact) return evaluateVector(exact.post, `${path}.${exact.time}.post`, time, 1);
+    const afterIndex = frames.findIndex((frame) => frame.time > time);
+    if (afterIndex === 0) return [...fallback];
+    if (afterIndex < 0) return evaluateVector(frames.at(-1)!.post, `${path}.${frames.at(-1)!.time}.post`, time, 1);
+    const before = frames[afterIndex - 1];
+    const after = frames[afterIndex];
+    const alpha = (time - before.time) / (after.time - before.time);
+    const start = evaluateVector(before.post, `${path}.${before.time}.post`, time, alpha);
+    const end = evaluateVector(after.pre, `${path}.${after.time}.pre`, time, alpha);
+    return start.map((value, axis) => value + (end[axis] - value) * alpha);
+  } catch (error) {
+    if (error instanceof ConversionError && error.code === "unsupported_bedrock_molang") return [...fallback];
+    throw error;
+  }
 }
 
 export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: string): number {

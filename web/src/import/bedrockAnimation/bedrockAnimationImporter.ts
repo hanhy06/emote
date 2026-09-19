@@ -11,7 +11,7 @@ import {
   bedrockAnimationDurationSeconds,
   bedrockAnimationPlaybackRate,
   bedrockAnimationUsesTime,
-  evaluateBedrockChannel,
+  evaluateApproximateBedrockChannel,
   evaluateBedrockExpression,
   planBedrockAnimationSamples,
 } from "./bedrockAnimationBaker";
@@ -124,7 +124,9 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   );
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
   const previewDurationTicks = previewAnimationDurationTicks + startDelayTicks;
-  const samplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
+  const runtimeSamplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
+  const previewTicks = approximateBedrockPreviewTicks(animation, previewAnimationDurationTicks, playbackRate);
+  const previewStepTicks = approximateBedrockStepTicks(animation, playbackRate);
   const tracks: ImportedAnimation["preview"]["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
     transforms: [],
     visibility: [],
@@ -140,17 +142,20 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
       });
     }
   }
-  for (let tick = 0; tick <= previewAnimationDurationTicks; tick++) {
-    const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
+  for (const [tickIndex, tick] of previewTicks.entries()) {
+    const sourceTime = tick / TICKS_PER_SECOND * playbackRate;
     const outputTick = tick + startDelayTicks;
-    const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
+    const worldMatrices = buildWorldMatrices(collectApproximateTransforms(name, animation, sourceTime));
+    const previousTick = previewTicks[tickIndex - 1];
     for (const slice of BEDROCK_PLAYER_SLICES) {
       const matrix = worldMatrices.get(slice.bone.id);
       if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${slice.bone.id}.`);
       tracks[slice.id].transforms.push({
         tick: outputTick,
         matrix: matrix4ToRowMajor(matrix, `${name}/${slice.id}/${outputTick}`),
-        interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
+        interpolation: tick === 0 || previewStepTicks.has(tick)
+          ? { type: "step" }
+          : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
       });
     }
   }
@@ -162,22 +167,49 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks: previewDurationTicks, tracks, availability: { preview: "full", exportable: true } },
-    runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, samplePlan) },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan) },
   };
 }
 
-function collectTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, Transform> {
+function collectApproximateTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, Transform> {
   const transforms = new Map<string, Transform>();
   for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
     const bone = resolveBedrockPlayerBone(sourceBoneName);
     if (!bone) continue;
     transforms.set(bone.id, {
-      position: evaluateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
-      rotation: evaluateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
-      scale: evaluateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
+      position: evaluateApproximateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
+      rotation: evaluateApproximateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
+      scale: evaluateApproximateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
     });
   }
   return transforms;
+}
+
+function approximateBedrockPreviewTicks(animation: BedrockAnimation, durationTicks: number, playbackRate: number): number[] {
+  const ticks = new Set<number>([0, durationTicks]);
+  const stride = Math.max(1, Math.ceil(durationTicks / 199));
+  for (let tick = 0; tick <= durationTicks; tick += stride) ticks.add(tick);
+  for (const bone of Object.values(animation.bones ?? {})) {
+    for (const channel of [bone.position, bone.rotation, bone.scale]) {
+      if (typeof channel !== "object" || channel === null || Array.isArray(channel)) continue;
+      for (const time of Object.keys(channel)) ticks.add(Math.max(0, Math.min(durationTicks, Math.round(Number(time) / playbackRate * TICKS_PER_SECOND))));
+    }
+  }
+  return [...ticks].sort((first, second) => first - second);
+}
+
+function approximateBedrockStepTicks(animation: BedrockAnimation, playbackRate: number): Set<number> {
+  const ticks = new Set<number>();
+  for (const bone of Object.values(animation.bones ?? {})) {
+    for (const channel of [bone.position, bone.rotation, bone.scale]) {
+      if (typeof channel !== "object" || channel === null || Array.isArray(channel)) continue;
+      for (const [time, frame] of Object.entries(channel)) {
+        if (typeof frame !== "object" || frame === null || Array.isArray(frame) || !("pre" in frame) || !("post" in frame)) continue;
+        if (JSON.stringify(frame.pre) !== JSON.stringify(frame.post)) ticks.add(Math.round(Number(time) / playbackRate * TICKS_PER_SECOND));
+      }
+    }
+  }
+  return ticks;
 }
 
 function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<string, Matrix4> {
