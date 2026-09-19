@@ -1,9 +1,8 @@
 import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { GeneratedResource } from "./generatedResource";
-import type { RuntimeNode, RuntimeTimeline } from "./minecraftData";
 import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
-import type { ImportedAnimation, ImportedNodeTrack } from "./conversionSeed";
+import { remapImportedAnimation } from "./importedAnimationRemapper";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[]): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
@@ -31,7 +30,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const source = remapAnimation(animation.source, nodeId);
+      const source = remapImportedAnimation(animation.source, { nodeId });
       source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
       return { ...animation, nodeIds: animation.nodeIds.map(nodeId), source };
     }));
@@ -61,35 +60,6 @@ function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<str
   while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
   usedIds.add(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`);
   return id;
-}
-
-function remapAnimation(animation: ImportedAnimation, nodeId: (id: string) => string): ImportedAnimation {
-  return {
-    ...animation,
-    preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, nodeId) },
-    runtime: animation.runtime.kind === "baked"
-      ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, nodeId) }
-      : {
-          ...animation.runtime,
-          nodes: remapRuntimeNodes(animation.runtime.nodes, nodeId),
-          timeline: remapRuntimeTimeline(animation.runtime.timeline, nodeId),
-        },
-  };
-}
-
-function remapTracks(tracks: Record<string, ImportedNodeTrack>, nodeId: (id: string) => string): Record<string, ImportedNodeTrack> {
-  return Object.fromEntries(Object.entries(tracks).map(([id, track]) => [nodeId(id), track]));
-}
-
-function remapRuntimeNodes(nodes: Record<string, RuntimeNode>, nodeId: (id: string) => string): Record<string, RuntimeNode> {
-  return Object.fromEntries(Object.entries(nodes).map(([id, node]) => [
-    nodeId(id),
-    node.parent ? { ...node, parent: nodeId(node.parent) } : node,
-  ]));
-}
-
-function remapRuntimeTimeline(timeline: RuntimeTimeline, nodeId: (id: string) => string): RuntimeTimeline {
-  return { ...timeline, tracks: Object.fromEntries(Object.entries(timeline.tracks).map(([id, track]) => [nodeId(id), track])) };
 }
 
 function mergeResources(target: Map<string, GeneratedResource>, source: ReadonlyMap<string, GeneratedResource>): void {

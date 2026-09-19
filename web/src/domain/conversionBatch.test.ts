@@ -20,6 +20,21 @@ describe("combineConversionDocuments", () => {
     expect(createPreviewModel(combined, 0, 0).parts.map((part) => part.nodeId)).toEqual(["input_1__first_node"]);
   });
 
+  it("remaps event node references with their input", () => {
+    const combined = combineConversionDocuments([
+      createConversionDocument(project("first.json", "first", "first_node"), "First format"),
+      createConversionDocument(project("second.json", "second", "second_node"), "Second format"),
+    ]);
+
+    const first = compileConversionAnimation(combined, 0);
+    const second = compileConversionAnimation(combined, 1);
+
+    expect(first.timeline.events?.start?.[0].source).toEqual({ type: "node", node: "input_1__first_node" });
+    expect(first.timeline.events?.timeline?.[0].origin).toEqual({ type: "node", node: "input_1__first_node" });
+    expect(second.timeline.events?.start?.[0].source).toEqual({ type: "node", node: "input_2__second_node" });
+    expect(second.timeline.events?.timeline?.[0].origin).toEqual({ type: "node", node: "input_2__second_node" });
+  });
+
   it("uses emote as the default namespace", () => {
     const document = createConversionDocument(project("dance.json", "dance", "node"), "Test format");
 
@@ -53,7 +68,12 @@ function project(sourceName: string, animationId: string, nodeId: string): Impor
       durationTicks: 1,
       playbackMode: "once",
       loopDelayTicks: 0,
-      events: { start: [], timeline: [], loop: [], stop: [] },
+      events: {
+        start: [{ source: { type: "node", node: nodeId }, origin: { type: "root" }, commands: [] }],
+        timeline: [{ tick: 0, source: { type: "player" }, origin: { type: "node", node: nodeId }, commands: [] }],
+        loop: [],
+        stop: [],
+      },
       preview: { durationTicks: 1, tracks: {}, availability: { preview: "full", exportable: true } },
       runtime: { kind: "baked", tracks: {} },
     }],
