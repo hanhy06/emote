@@ -16,7 +16,7 @@ import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedNodeTrack } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../common/runtimeMolangQueries";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 const QUERY_ASSIGNMENT = /\b(?:q|query)\s*\.[a-z_][a-z0-9_]*\s*=(?!=)/i;

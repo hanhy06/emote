@@ -25,6 +25,7 @@ import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, Runt
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
 import { animationAvailability, type ImportedAnimation, type ImportedNodeTrack, type NativeRuntimeBindings } from "../domain/conversionSeed";
+import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
 
@@ -280,38 +281,14 @@ function compileMolangNbtLiterals(
   source: string,
   profile: MinecraftVersionProfile,
 ): string {
-  return source.replace(/(["'])((?:\\[\s\S]|(?!\1)[^\\])*)\1/g, (literal, quote: string, encoded: string) => {
-    const decoded = decodeMolangString(encoded);
-    if (!decoded.trimStart().startsWith("{")) return literal;
-
+  return rewriteMolangStringLiterals(source, (value) => {
+    if (!value.trimStart().startsWith("{")) return undefined;
     try {
-      const compiled = compileNodeNbt(document, nodeId, readDisplayNbt(decoded), profile) ?? "{}";
-      return quoteMolangString(compiled, quote);
+      return compileNodeNbt(document, nodeId, readDisplayNbt(value), profile) ?? "{}";
     } catch {
-      return literal;
+      return undefined;
     }
   });
-}
-
-function decodeMolangString(value: string): string {
-  return value.replace(/\\([\\'"nrtbf])/g, (_escape, character: string) => {
-    if (character === "n") return "\n";
-    if (character === "r") return "\r";
-    if (character === "t") return "\t";
-    if (character === "b") return "\b";
-    if (character === "f") return "\f";
-    return character;
-  });
-}
-
-function quoteMolangString(value: string, quote: string): string {
-  const escaped = value
-    .replaceAll("\\", "\\\\")
-    .replaceAll(quote, `\\${quote}`)
-    .replaceAll("\n", "\\n")
-    .replaceAll("\r", "\\r")
-    .replaceAll("\t", "\\t");
-  return `${quote}${escaped}${quote}`;
 }
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {

@@ -6,6 +6,7 @@ import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordi
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
 import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
@@ -108,15 +109,22 @@ function vector(value: BedrockVector, playbackRate: number | null, startDelayTic
 
 function rewriteExpression(value: BedrockExpression, playbackRate: number | null, startDelayTicks: number): MolangScalar {
   if (typeof value !== "string") return value;
-  if (playbackRate === null) return value.trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
+  if (playbackRate === null) return rewriteMolangIdentifiers(value.trim(), (identifier) => isQuery(identifier, "anim_time") ? "v.bedrock_anim_time" : undefined);
   const animationTime = startDelayTicks === 0 ? "q.anim_time" : `(math.max(0, q.anim_time - ${startDelayTicks / 20}))`;
-  return value.trim()
-    .replace(/(?:q|query)\.anim_time\b/gi, playbackRate === 1 ? animationTime : `(${animationTime} * ${playbackRate})`)
-    .replace(/(?:q|query)\.delta_time\b/gi, playbackRate === 1 ? "q.delta_time" : `(q.delta_time * ${playbackRate})`);
+  return rewriteMolangIdentifiers(value.trim(), (identifier) => {
+    if (isQuery(identifier, "anim_time")) return playbackRate === 1 ? animationTime : `(${animationTime} * ${playbackRate})`;
+    if (isQuery(identifier, "delta_time")) return playbackRate === 1 ? "q.delta_time" : `(q.delta_time * ${playbackRate})`;
+    return undefined;
+  });
 }
 
 function rewriteProgramExpression(value: BedrockExpression): string {
-  return String(value).trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
+  return rewriteMolangIdentifiers(String(value).trim(), (identifier) => isQuery(identifier, "anim_time") ? "v.bedrock_anim_time" : undefined);
+}
+
+function isQuery(identifier: string, name: string): boolean {
+  const normalized = identifier.toLowerCase();
+  return normalized === `q.${name}` || normalized === `query.${name}`;
 }
 
 function isKeyframed(channel: BedrockChannel): channel is Record<string, BedrockKeyframe> {

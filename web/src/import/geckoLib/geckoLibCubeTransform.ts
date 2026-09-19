@@ -1,5 +1,5 @@
 import type { CubeProjectTransformConvention } from "../common/blockbenchCubeTransform";
-import { negatePlayerRotationQueries } from "../common/runtimeMolangQueries";
+import { negatePlayerRotationQueries } from "../../format/molang/runtimeAnalysis";
 
 function projectPosition<T>(values: readonly T[]): [T, T, T] {
   return [values[0], values[1], values[2]];

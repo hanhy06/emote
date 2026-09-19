@@ -7,7 +7,7 @@ import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagn
 import { animationEasingProgress } from "../common/animationEasing";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
-import { usesRuntimeMolangState } from "../common/runtimeMolangQueries";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { EmotecraftFile, PalAnimation, PalAxisChannels, PalExpression, PalKeyframe } from "./emotecraftBinary";
 import { convertEmotecraftSong } from "./emotecraftNbs";

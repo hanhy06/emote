@@ -38,7 +38,7 @@ import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type Molan
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 import { planAnimationSamples } from "./blockbenchAnimationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
-import { usesRuntimeMolangState } from "./runtimeMolangQueries";
+import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 
 export const PLAYER_RENDER_SCALE = 0.9375;
 const BLOCKBENCH_RUNTIME_SCENE_ID = "geckolib_scene";
