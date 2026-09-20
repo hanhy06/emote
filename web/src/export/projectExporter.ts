@@ -4,6 +4,7 @@ import type { EmoteAnimation } from "../format/emoteAnimation";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
+import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import { animationUsesGeneratedResources } from "./generatedResources";
 import type { ExportResult } from "./types";
 
@@ -43,7 +44,7 @@ interface CompiledAnimationFiles {
 }
 
 function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
-  const animation = compileConversionAnimation(document, animationIndex);
+  const animation = removeRedundantKeyframes(compileConversionAnimation(document, animationIndex));
   const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
   return {
     animation,
@@ -56,11 +57,11 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
 
 function compileAnimationFiles(document: ConversionDocument, includeSequence: boolean): CompiledAnimationFiles {
   if (document.animations.length === 0) throw new Error("The project does not contain animations.");
-  const animations = document.animations.map((_, index) => compileConversionAnimation(
+  const animations = document.animations.map((_, index) => removeRedundantKeyframes(compileConversionAnimation(
     document,
     index,
     includeSequence ? { standalone: false } : undefined,
-  ));
+  )));
   const usedFileNames = new Set<string>();
   const files: ExportResult[] = animations.map((animation, index) => {
     const baseName = sanitizeAnimationFileName(document.animations[index].output.displayName);

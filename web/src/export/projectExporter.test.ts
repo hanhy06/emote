@@ -15,6 +15,7 @@ import {
 import { exportDocumentResourceBundle } from "./resourceBundleExporter";
 
 const IDENTITY: Matrix16 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
+const TINY: Matrix16 = [0.0009, 0, 0, 0, 0, 0.0009, 0, 0, 0, 0, 0.0009, 0, 0, 0, 0, 1];
 
 function bakedAnimationData(durationTicks: number, tracks: Record<string, ImportedNodeTrack>) {
   return {
@@ -529,6 +530,46 @@ describe("exportAnimation", () => {
       "textures/test]textures]item]mixed]custom.png",
     ]);
     expect(files["textures/test]textures]item]mixed]custom.png"]).toEqual(customTexture);
+  });
+
+  it("does not export resources referenced only by a pruned tiny display", async () => {
+    const project: ImportedProject = {
+      source: "geckolib_bbmodel",
+      sourceName: "tiny.bbmodel",
+      suggestedMetadata: { name: "Tiny", description: "" },
+      suggestedPlayer: createDefaultPlayerBehavior(),
+      nodes: {
+        visible: {
+          id: "visible", type: "item_display", defaultMatrix: IDENTITY, visible: true,
+          itemDisplay: "none", itemStack: readItemStack('{id:"minecraft:stone"}'),
+        },
+        tiny: {
+          id: "tiny", type: "item_display", defaultMatrix: TINY, visible: true,
+          itemDisplay: "none", itemStack: readItemStack('{id:"minecraft:paper",components:{"minecraft:item_model":"test:tiny/prop"}}'),
+        },
+      },
+      animations: [{
+        id: "tiny",
+        name: "Tiny",
+        durationTicks: 1,
+        playbackMode: "once",
+        loopDelayTicks: 0,
+        ...bakedAnimationData(1, {}),
+        events: { start: [], timeline: [], loop: [], stop: [] },
+      }],
+      diagnostics: [],
+      resources: new Map<string, GeneratedResource>([
+        ["assets/test/items/tiny/prop.json", { kind: "item_model", model: "test:item/tiny/prop" }],
+        ["assets/test/models/item/tiny/prop.json", { kind: "cuboid_model", textures: { layer0: "test:item/tiny/prop" }, elements: [] }],
+        ["assets/test/textures/item/tiny/prop.png", new Uint8Array([1])],
+      ]),
+    };
+    const document = createConversionDocument(project, "test");
+
+    const downloads = await createDocumentAnimationDownload(document, 0);
+    expect(downloads.map((file) => file.fileName)).toEqual(["emote.tiny.json"]);
+    const animation = JSON.parse(await downloads[0].blob.text());
+    expect(Object.keys(animation.nodes)).toEqual(["visible"]);
   });
 
   it.each([
