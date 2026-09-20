@@ -10,16 +10,19 @@ import {
   requireString,
 } from "../../format/runtimeValue";
 
-export interface BbmodelProject {
-  meta: { format_version: string; model_format: string };
+export interface BlockbenchCubeProject {
   name?: string;
-  geckolib_modid?: string;
   resolution: { width: number; height: number };
   elements: BbElement[];
   groups: BbGroup[];
   outliner: BbOutlinerEntry[];
   textures: BbTexture[];
   animations: BbAnimation[];
+}
+
+export interface BbmodelProject extends BlockbenchCubeProject {
+  meta: { format_version: string; model_format: string };
+  geckolib_modid?: string;
 }
 
 export interface BbGroup {

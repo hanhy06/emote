@@ -15,7 +15,7 @@ export interface AjRuntimeHierarchy {
   groupOrigins: ReadonlyMap<string, readonly number[]>;
 }
 
-export function createAjProjectRuntime(
+export function createAnimatedJavaRuntime(
   animation: AjProjectAnimation,
   elements: AjProjectDisplayElement[],
   importedNodes: Record<string, ImportedNode>,
@@ -23,11 +23,17 @@ export function createAjProjectRuntime(
   blendWeight: number,
   startDelayTicks = 0,
   durationTicks = startDelayTicks + Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
+  cubeRuntime?: ImportedAnimation["runtime"],
 ): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
-  const nodes: Record<string, RuntimeNode> = {};
-  const tracks: Record<string, RuntimeNodeTracks> = {};
-  const editorNodeByRuntimeNode: Record<string, string> = {};
-  const editorSpaceGroupByRuntimeRoot: Record<string, string> = {};
+  if (cubeRuntime && cubeRuntime.kind !== "native") throw new Error("Animated Java cube runtime must use native animation output.");
+  const nodes: Record<string, RuntimeNode> = { ...(cubeRuntime?.nodes ?? {}) };
+  const tracks: Record<string, RuntimeNodeTracks> = { ...(cubeRuntime?.tracks ?? {}) };
+  const editorNodeByRuntimeNode: Record<string, string> = { ...(cubeRuntime?.bindings.editorNodeByRuntimeNode ?? {}) };
+  const editorSpaceGroupByRuntimeRoot: Record<string, string> = { ...(cubeRuntime?.bindings.editorSpaceGroupByRuntimeRoot ?? {}) };
+  const addNode = (id: string, node: RuntimeNode) => {
+    if (nodes[id]) throw new Error(`Animated Java runtime produces more than one node named ${id}.`);
+    nodes[id] = node;
+  };
   for (const element of elements) {
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
@@ -39,18 +45,18 @@ export function createAjProjectRuntime(
     const spaceGroup = sourceNode.binding.spaceGroupId ?? ajRuntimeRootId(element.uuid);
     const basePosition = element.position.map((value, axis) => (value - (parentOrigin?.[axis] ?? 0)) / 16) as [number, number, number];
     const baseRotation = element.rotation;
-    nodes[ids.x] = {
+    addNode(ids.x, {
       type: "anchor",
       ...(parentId ? { parent: parentId } : { space: sourceNode.space ?? "initiator" }),
       transform: { position: basePosition, rotation: [baseRotation[0], 0, 0], scale: ONE_VECTOR },
-    };
-    nodes[ids.y] = { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } };
+    });
+    addNode(ids.y, { type: "anchor", parent: ids.x, transform: { position: ZERO_VECTOR, rotation: [0, baseRotation[1], 0], scale: ONE_VECTOR } });
     const baseScale = [...element.scale] as [number, number, number];
-    nodes[ids.z] = { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [0, 0, baseRotation[2]], scale: baseScale } };
+    addNode(ids.z, { type: "anchor", parent: ids.y, transform: { position: ZERO_VECTOR, rotation: [0, 0, baseRotation[2]], scale: baseScale } });
     const nodeTransform = element.type === "animated_java:vanilla_text_display" || element.type === "animated_java:text_display"
       ? { ...IDENTITY_TRANSFORM, rotation: [0, 180, 0] as const }
       : IDENTITY_TRANSFORM;
-    nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
+    addNode(element.uuid, importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z));
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
     if (!parentId) editorSpaceGroupByRuntimeRoot[ids.x] = spaceGroup;
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
@@ -68,7 +74,12 @@ export function createAjProjectRuntime(
     }
     if (scale) tracks[ids.z] = { ...tracks[ids.z], scale };
   }
-  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot } };
+  return {
+    ...(cubeRuntime?.molang ? { molang: cubeRuntime.molang } : {}),
+    nodes,
+    tracks,
+    bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot },
+  };
 }
 
 function ajProjectFrames(

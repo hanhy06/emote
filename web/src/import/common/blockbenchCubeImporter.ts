@@ -16,7 +16,7 @@ import {
   type BbLocator,
   type BbOutlinerEntry,
   type BbOutlinerGroup,
-  type BbmodelProject,
+  type BlockbenchCubeProject,
 } from "./blockbenchCubeSchema";
 import type { BlockbenchChannelEvaluator } from "./blockbenchKeyframeEvaluator";
 import { blockbenchIntervalIsStep } from "./animationEasing";
@@ -60,6 +60,7 @@ export interface CubeProjectImportOptions {
   channels: BlockbenchChannelEvaluator;
   runtimeOutput?: "auto" | "native";
   createNativeRuntime: BlockbenchNativeRuntimeFactory;
+  namespace?: string;
 }
 
 export interface ImportedCubeProjectContent {
@@ -71,17 +72,18 @@ export interface ImportedCubeProjectContent {
   resources: Map<string, GeneratedResource>;
   runtimeSceneId: string;
   runtimeParentByGroupUuid: Readonly<Record<string, string>>;
+  editorNodeIdsBySourceUuid: Readonly<Record<string, readonly string[]>>;
 }
 
 export function importBlockbenchCubeContent(
-  project: BbmodelProject,
+  project: BlockbenchCubeProject,
   sourceName: string,
   options: CubeProjectImportOptions,
 ): ImportedCubeProjectContent {
   const formatLabel = options.formatLabel;
-  const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || `${formatLabel} Model`;
-  const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
-  const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
+  const sourceStem = sourceName.replace(/\.[^.]+$/i, "").trim() || project.name?.trim() || `${formatLabel} Model`;
+  const namespace = validNamespace(options.namespace) ?? sanitizeNamespace(sourceStem);
+  const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "model");
   const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms;
   const bones = buildBoneEntries(project, formatLabel);
@@ -90,6 +92,8 @@ export function importBlockbenchCubeContent(
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
   const diagnostics: ImportDiagnostic[] = [];
   const nodes: Record<string, ImportedNode> = {};
+  const editorNodeIdsBySourceUuid = new Map<string, string[]>();
+  const bindEditorNode = (sourceId: string, nodeId: string) => editorNodeIdsBySourceUuid.set(sourceId, [...(editorNodeIdsBySourceUuid.get(sourceId) ?? []), nodeId]);
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
     const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map(), transforms, formatLabel));
@@ -102,6 +106,7 @@ export function importBlockbenchCubeContent(
         space: "initiator",
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
+      bindEditorNode(bone.uuid, bone.id);
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
       const hiddenAccessory = isHiddenAccessoryBone(bone);
@@ -127,6 +132,8 @@ export function importBlockbenchCubeContent(
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };
+      bindEditorNode(bone.uuid, nodeId);
+      bindEditorNode(cube.uuid, nodeId);
     }
     for (const [locatorIndex, locator] of bone.locators.entries()) {
       const nodeId = uniqueLocatorNodeId(bone, locator, locatorIndex, nodeIds);
@@ -139,6 +146,8 @@ export function importBlockbenchCubeContent(
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
         space: "initiator",
       };
+      bindEditorNode(bone.uuid, nodeId);
+      bindEditorNode(locator.uuid, nodeId);
     }
   }
 
@@ -154,10 +163,11 @@ export function importBlockbenchCubeContent(
     resources,
     runtimeSceneId: BLOCKBENCH_RUNTIME_SCENE_ID,
     runtimeParentByGroupUuid: Object.fromEntries(bones.map((bone) => [bone.uuid, `${bone.id}_x`])),
+    editorNodeIdsBySourceUuid: Object.fromEntries(editorNodeIdsBySourceUuid),
   };
 }
 
-function buildBoneEntries(project: BbmodelProject, formatLabel: string): BoneEntry[] {
+function buildBoneEntries(project: BlockbenchCubeProject, formatLabel: string): BoneEntry[] {
   const groups = new Map(project.groups.map((group) => [group.uuid, group]));
   const elements = new Map(project.elements.map((element) => [element.uuid, element]));
   const entries: BoneEntry[] = [];
@@ -185,7 +195,7 @@ function buildBoneEntries(project: BbmodelProject, formatLabel: string): BoneEnt
   return entries;
 }
 
-function isLocator(element: BbmodelProject["elements"][number]): element is BbLocator {
+function isLocator(element: BlockbenchCubeProject["elements"][number]): element is BbLocator {
   return element.type === "locator";
 }
 

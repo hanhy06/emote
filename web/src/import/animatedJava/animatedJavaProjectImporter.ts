@@ -11,19 +11,20 @@ import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
 import { blockbenchIntervalIsStep } from "../common/animationEasing";
-import { requireBlockbenchCubeProject, type BbKeyframe } from "../common/blockbenchCubeSchema";
+import type { BbKeyframe, BbTexture, BlockbenchCubeProject } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type {
   AjProject,
   AjProjectAnimation,
+  AjProjectCube,
   AjProjectDisplayElement,
   AjProjectGroup,
   AjProjectLocator,
   AjProjectOutlinerEntry,
   AjProjectKeyframe,
 } from "./animatedJavaProjectSchema";
-import { ajRuntimeRootId, createAjProjectRuntime, type AjRuntimeHierarchy } from "./animatedJavaAnimationOutput";
-import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeAnimationOutput";
+import { ajRuntimeRootId, createAnimatedJavaRuntime, type AjRuntimeHierarchy } from "./animatedJavaRuntime";
+import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeRuntime";
 import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
@@ -40,6 +41,16 @@ interface ProjectNodeStateFrame {
   nbt?: DisplayNbtPatch;
 }
 
+interface ProjectNodeBindings {
+  outputNodeIdsBySourceUuid: ReadonlyMap<string, readonly string[]>;
+}
+
+interface AnimatedJavaAnimationState {
+  startEvents: ImportedAnimation["events"]["start"];
+  timelineEvents: ImportedAnimation["events"]["timeline"];
+  nodeFrames: ProjectNodeStateFrame[];
+}
+
 export function importAnimatedJavaProject(input: ImportInput, project: AjProject): ImportedProject {
   if (!["animated-java:format/blueprint", "animated_java_blueprint"].includes(project.meta.format)) {
     throw new Error(`Unsupported Animated Java project format: ${project.meta.format}`);
@@ -50,7 +61,7 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
-  const cubeContent = importAnimatedJavaCubeGraph(project, sourceAnimations, sourceStem);
+  const cubeContent = importAnimatedJavaCubeContent(project, sourceAnimations, sourceStem);
   const sceneScale = cubeContent ? PLAYER_RENDER_SCALE : 1;
   const runtimeHierarchy: AjRuntimeHierarchy = {
     sceneId: cubeContent?.runtimeSceneId,
@@ -61,6 +72,8 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
+  const outputNodeIdsBySourceUuid = new Map<string, readonly string[]>(Object.entries(cubeContent?.editorNodeIdsBySourceUuid ?? {}));
+  const bindOutputNode = (sourceId: string, nodeId: string) => outputNodeIdsBySourceUuid.set(sourceId, [...(outputNodeIdsBySourceUuid.get(sourceId) ?? []), nodeId]);
   for (const element of displayElements) {
     const node = importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale));
     addProjectNode(nodes, element.uuid, {
@@ -68,16 +81,21 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
       binding: { ...node.binding, spaceGroupId: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid) },
       ...(cubeContent ? { space: "initiator" as const } : {}),
     });
+    bindOutputNode(element.uuid, element.uuid);
   }
-  for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
-  applyGroupDefaultConfigs(nodes, project, transformGraph);
+  for (const element of locatorElements) {
+    addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
+    bindOutputNode(element.uuid, element.uuid);
+  }
+  const nodeBindings: ProjectNodeBindings = { outputNodeIdsBySourceUuid };
+  applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
   const diagnostics: ImportDiagnostic[] = [...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
   const displayAnimations = sourceAnimations.map((animation, index) => {
     try {
-      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy);
+      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy, cubeContent?.animations[index]);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
       const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
@@ -87,15 +105,16 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
         message,
         sourcePath: reason.sourcePath ?? `animations[${index}]`,
       });
-      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, runtimeHierarchy);
+      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, runtimeHierarchy, cubeContent?.animations[index]);
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
-    mergeProjectAnimation(cubeContent?.animations[index], animation),
+    assembleAnimatedJavaAnimation(cubeContent?.animations[index], animation),
     sourceAnimations[index],
     project,
     nodes,
     transformGraph,
+    nodeBindings,
     diagnostics,
     index,
   ));
@@ -145,7 +164,7 @@ function addProjectNode(nodes: Record<string, ImportedNode>, id: string, node: I
   nodes[id] = node;
 }
 
-function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedCubeProjectContent | undefined {
+function importAnimatedJavaCubeContent(project: AjProject, animations: AjProjectAnimation[], sourceStem: string): ImportedCubeProjectContent | undefined {
   const supportedIds = new Set(project.elements
     .filter((element) => element.type === "cube" || element.type === "locator")
     .map((element) => element.uuid));
@@ -157,13 +176,13 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
     entry.children.forEach(collectGroupIds);
   };
   project.outliner.forEach(collectGroupIds);
-  const cubeProject = requireBlockbenchCubeProject({
-    ...project,
-    meta: { format_version: project.meta.format_version, model_format: "geckolib_model" },
+  const cubeProject: BlockbenchCubeProject = {
     name: project.name?.trim() || sourceStem,
-    geckolib_modid: sanitizeNamespace(sourceStem, "animated_java"),
-    elements: project.elements.filter((element) => supportedIds.has(element.uuid)),
+    resolution: project.resolution,
+    elements: project.elements.filter((element): element is AjProjectCube | (AjProjectLocator & { type: "locator" }) => supportedIds.has(element.uuid) && (element.type === "cube" || element.type === "locator")),
+    groups: project.groups,
     outliner: project.outliner.flatMap((entry) => filterCubeOutlinerEntry(entry, supportedIds)),
+    textures: project.textures.map(animatedJavaCubeTexture),
     animations: animations.map((animation) => ({
       ...animation,
       animators: Object.fromEntries(Object.entries(animation.animators).flatMap(([id, animator]) => {
@@ -172,15 +191,23 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
         return [];
       })),
     })),
-  });
-  return importBlockbenchCubeContent(cubeProject, `${sourceStem}.bbmodel`, {
+  };
+  return importBlockbenchCubeContent(cubeProject, sourceStem, {
     transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
     formatLabel: "Animated Java",
     diagnosticPrefix: "animated_java",
     channels: ANIMATED_JAVA_CHANNELS,
     runtimeOutput: "native",
     createNativeRuntime: createAnimatedJavaCubeRuntime,
+    namespace: sanitizeNamespace(sourceStem, "animated_java"),
   });
+}
+
+function animatedJavaCubeTexture(texture: AjProject["textures"][number]): BbTexture {
+  const frameOrderType = ["loop", "backwards", "back_and_forth", "custom"].includes(texture.frame_order_type ?? "")
+    ? texture.frame_order_type as BbTexture["frame_order_type"]
+    : undefined;
+  return { ...texture, ...(frameOrderType ? { frame_order_type: frameOrderType } : { frame_order_type: undefined }) };
 }
 
 function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: ReadonlySet<string>): AjProjectOutlinerEntry[] {
@@ -188,9 +215,8 @@ function filterCubeOutlinerEntry(entry: AjProjectOutlinerEntry, supportedIds: Re
   return [{ ...entry, children: entry.children.flatMap((child) => filterCubeOutlinerEntry(child, supportedIds)) }];
 }
 
-function mergeProjectAnimation(base: ImportedAnimation | undefined, display: ImportedAnimation): ImportedAnimation {
+function assembleAnimatedJavaAnimation(base: ImportedAnimation | undefined, display: ImportedAnimation): ImportedAnimation {
   if (!base) return display;
-  const runtime = mergeProjectRuntime(base.runtime, display.runtime);
   return {
     ...base,
     durationTicks: Math.max(base.durationTicks, display.durationTicks),
@@ -208,26 +234,7 @@ function mergeProjectAnimation(base: ImportedAnimation | undefined, display: Imp
       loop: [...base.events.loop, ...display.events.loop],
       stop: [...base.events.stop, ...display.events.stop],
     },
-    runtime,
-  };
-}
-
-function mergeProjectRuntime(
-  base: ImportedAnimation["runtime"],
-  display: ImportedAnimation["runtime"],
-): ImportedAnimation["runtime"] {
-  if (base.kind !== "native" || display.kind !== "native") throw new Error("Animated Java runtime merge requires native animation output.");
-  const initialize = [base.molang?.initialize, display.molang?.initialize].filter((value): value is string => Boolean(value)).join("\n");
-  const tick = [base.molang?.tick, display.molang?.tick].filter((value): value is string => Boolean(value)).join("\n");
-  return {
-    kind: "native",
-    ...((initialize || tick) ? { molang: { ...(initialize ? { initialize } : {}), ...(tick ? { tick } : {}) } } : {}),
-    nodes: { ...base.nodes, ...display.nodes },
-    tracks: { ...base.tracks, ...display.tracks },
-    bindings: {
-      editorNodeByRuntimeNode: { ...base.bindings.editorNodeByRuntimeNode, ...display.bindings.editorNodeByRuntimeNode },
-      editorSpaceGroupByRuntimeRoot: { ...base.bindings.editorSpaceGroupByRuntimeRoot, ...display.bindings.editorSpaceGroupByRuntimeRoot },
-    },
+    runtime: display.runtime,
   };
 }
 
@@ -237,13 +244,29 @@ function enrichProjectAnimation(
   project: AjProject,
   nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
+  bindings: ProjectNodeBindings,
   diagnostics: ImportDiagnostic[],
   animationIndex: number,
 ): ImportedAnimation {
+  const state = resolveAnimatedJavaAnimationState(imported, source, project, nodes, graph, bindings, diagnostics, animationIndex);
+  const enriched = { ...imported, events: { ...imported.events, start: state.startEvents, timeline: state.timelineEvents } };
+  return projectAnimatedJavaState(enriched, state.nodeFrames);
+}
+
+function resolveAnimatedJavaAnimationState(
+  imported: ImportedAnimation,
+  source: AjProjectAnimation,
+  project: AjProject,
+  nodes: Record<string, ImportedNode>,
+  graph: ProjectTransformGraph,
+  bindings: ProjectNodeBindings,
+  diagnostics: ImportDiagnostic[],
+  animationIndex: number,
+): AnimatedJavaAnimationState {
   const startDelayTicks = secondsToTicks(projectOptionalNumeric(source.start_delay, 0, `animations[${animationIndex}].start_delay`), `${source.name}.start_delay`);
   const timeline = [...imported.events.timeline, ...nativeFunctionEvents(source, startDelayTicks, diagnostics, animationIndex)]
     .sort((first, second) => first.tick - second.tick);
-  const start = [...imported.events.start, ...nativeStartEvents(project, nodes, graph)];
+  const start = [...imported.events.start, ...nativeStartEvents(project, nodes, graph, bindings)];
   const variants = nativeVariants(project);
   const stateFrames: ProjectNodeStateFrame[] = [];
   for (const [animatorId, animator] of Object.entries(source.animators)) {
@@ -264,17 +287,16 @@ function enrichProjectAnimation(
           message: `Variant ${variantId} changes cube textures, which cannot yet be represented by the native importer.`,
           sourcePath: `variants.${variantId}.texture_map`,
         });
-        collectVariantFrames(stateFrames, project, nodes, graph, variantId, variant, tick);
+        collectVariantFrames(stateFrames, project, graph, bindings, variantId, variant, tick);
         const onApply = stringField(variant, "on_apply_function") ?? stringField(variant, "onApplyFunction");
         if (onApply) timeline.push({ tick, source: { type: "player" }, origin: { type: "root" }, commands: functionCommands(onApply) });
       }
     }
   }
-  const enriched = { ...imported, events: { ...imported.events, start, timeline: timeline.sort((first, second) => first.tick - second.tick) } };
-  return applyProjectStateFrames(enriched, stateFrames);
+  return { startEvents: start, timelineEvents: timeline.sort((first, second) => first.tick - second.tick), nodeFrames: stateFrames };
 }
 
-function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph): ImportedAnimation["events"]["start"] {
+function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, bindings: ProjectNodeBindings): ImportedAnimation["events"]["start"] {
   const events: ImportedAnimation["events"]["start"] = [];
   const settings = project.blueprint_settings;
   const rootFunction = settings ? stringField(settings, "custom_summon_commands") ?? stringField(settings, "on_summon_function") : undefined;
@@ -286,7 +308,7 @@ function nativeStartEvents(project: AjProject, nodes: Record<string, ImportedNod
   for (const group of project.groups) {
     const value = group.onSummonFunction?.trim();
     if (!value) continue;
-    const nodeId = projectOutputNodeIds(group.uuid, nodes, graph, false)[0];
+    const nodeId = projectOutputNodeIds(group.uuid, graph, bindings, false)[0];
     events.push({ source: { type: "player" }, origin: nodeId ? { type: "node", node: nodeId } : { type: "root" }, commands: functionCommands(value) });
   }
   return events;
@@ -380,15 +402,15 @@ function nativeVariants(project: AjProject): Map<string, Record<string, unknown>
 function collectVariantFrames(
   frames: ProjectNodeStateFrame[],
   project: AjProject,
-  nodes: Record<string, ImportedNode>,
   graph: ProjectTransformGraph,
+  bindings: ProjectNodeBindings,
   variantId: string,
   variant: Record<string, unknown>,
   tick: number,
 ): void {
   const excluded = new Set(Array.isArray(variant.excluded_nodes) ? variant.excluded_nodes.filter((value): value is string => typeof value === "string") : []);
   for (const sourceId of excluded) {
-    for (const nodeId of projectOutputNodeIds(sourceId, nodes, graph)) frames.push({ nodeId, tick, visible: false });
+    for (const nodeId of projectOutputNodeIds(sourceId, graph, bindings)) frames.push({ nodeId, tick, visible: false });
   }
   for (const element of project.elements) {
     if (!isDirectDisplay(element.type)) continue;
@@ -399,7 +421,7 @@ function collectVariantFrames(
   for (const group of project.groups) {
     const config = group.configs?.variants?.[variantId];
     if (!isRecord(config)) continue;
-    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) collectVariantConfigFrame(frames, nodeId, config, tick);
+    for (const nodeId of projectOutputNodeIds(group.uuid, graph, bindings, false)) collectVariantConfigFrame(frames, nodeId, config, tick);
   }
 }
 
@@ -409,17 +431,29 @@ function collectVariantConfigFrame(frames: ProjectNodeStateFrame[], nodeId: stri
   if (visible !== undefined || nbt) frames.push({ nodeId, tick, ...(visible === undefined ? {} : { visible }), ...(nbt ? { nbt: readDisplayNbt(nbt) } : {}) });
 }
 
-function applyProjectStateFrames(animation: ImportedAnimation, frames: ProjectNodeStateFrame[]): ImportedAnimation {
+function projectAnimatedJavaState(animation: ImportedAnimation, frames: ProjectNodeStateFrame[]): ImportedAnimation {
   if (frames.length === 0) return animation;
   if (animation.runtime.kind !== "native") throw new Error("Animated Java state frames require native animation output.");
-  const previewTracks = { ...animation.preview.tracks };
-  const runtimeTracks = { ...animation.runtime.tracks };
   const framesByNode = new Map<string, ProjectNodeStateFrame[]>();
   for (const frame of frames) {
     const nodeFrames = framesByNode.get(frame.nodeId) ?? [];
     nodeFrames.push(frame);
     framesByNode.set(frame.nodeId, nodeFrames);
   }
+  const previewTracks = projectAnimatedJavaPreviewState(animation.preview.tracks, framesByNode);
+  const runtimeTracks = projectAnimatedJavaRuntimeState(animation.runtime.tracks, framesByNode);
+  return {
+    ...animation,
+    preview: { ...animation.preview, tracks: previewTracks },
+    runtime: { ...animation.runtime, tracks: runtimeTracks },
+  };
+}
+
+function projectAnimatedJavaPreviewState(
+  sourceTracks: ImportedAnimation["preview"]["tracks"],
+  framesByNode: ReadonlyMap<string, readonly ProjectNodeStateFrame[]>,
+): ImportedAnimation["preview"]["tracks"] {
+  const previewTracks = { ...sourceTracks };
   for (const [nodeId, nodeFrames] of framesByNode) {
     const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [], nbt: [] };
     previewTracks[nodeId] = {
@@ -429,6 +463,16 @@ function applyProjectStateFrames(animation: ImportedAnimation, frames: ProjectNo
       nbt: [...preview.nbt, ...nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : [])]
         .sort((first, second) => first.tick - second.tick),
     };
+  }
+  return previewTracks;
+}
+
+function projectAnimatedJavaRuntimeState(
+  sourceTracks: Extract<ImportedAnimation["runtime"], { kind: "native" }>["tracks"],
+  framesByNode: ReadonlyMap<string, readonly ProjectNodeStateFrame[]>,
+): Extract<ImportedAnimation["runtime"], { kind: "native" }>["tracks"] {
+  const runtimeTracks = { ...sourceTracks };
+  for (const [nodeId, nodeFrames] of framesByNode) {
     const runtime = runtimeTracks[nodeId] ?? {};
     const visible = nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ tick: frame.tick, value: frame.visible }]);
     const nbt = nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : []);
@@ -438,23 +482,19 @@ function applyProjectStateFrames(animation: ImportedAnimation, frames: ProjectNo
       ...(nbt.length ? { nbt: [...(runtime.nbt ?? []), ...nbt].sort((first, second) => first.tick - second.tick) } : {}),
     };
   }
-  return {
-    ...animation,
-    preview: { ...animation.preview, tracks: previewTracks },
-    runtime: { ...animation.runtime, tracks: runtimeTracks },
-  };
+  return runtimeTracks;
 }
 
-function projectOutputNodeIds(sourceId: string, nodes: Record<string, ImportedNode>, graph: ProjectTransformGraph, includeDescendants = true): string[] {
+function projectOutputNodeIds(sourceId: string, graph: ProjectTransformGraph, bindings: ProjectNodeBindings, includeDescendants = true): string[] {
   const result = new Set<string>();
-  if (nodes[sourceId]) result.add(sourceId);
+  for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(sourceId) ?? []) result.add(nodeId);
   const groupIds = [sourceId, ...(includeDescendants ? [...graph.groups.keys()].filter((id) => projectGroupDescendsFrom(id, sourceId, graph)) : [])];
   for (const groupId of groupIds) {
-    const group = graph.groups.get(groupId);
-    if (!group) continue;
-    const boneId = sanitizeResourcePath(group.name, "bone").replaceAll("/", "_");
-    for (const nodeId of Object.keys(nodes)) if (nodeId === boneId || nodeId.startsWith(`${boneId}_`)) result.add(nodeId);
-    for (const [elementId, parentId] of graph.elementParents) if (parentId === groupId && nodes[elementId]) result.add(elementId);
+    for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(groupId) ?? []) result.add(nodeId);
+    for (const [elementId, parentId] of graph.elementParents) {
+      if (parentId !== groupId) continue;
+      for (const nodeId of bindings.outputNodeIdsBySourceUuid.get(elementId) ?? []) result.add(nodeId);
+    }
   }
   return [...result];
 }
@@ -464,12 +504,12 @@ function projectGroupDescendsFrom(id: string, ancestorId: string, graph: Project
   return false;
 }
 
-function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, project: AjProject, graph: ProjectTransformGraph): void {
+function applyGroupDefaultConfigs(nodes: Record<string, ImportedNode>, project: AjProject, graph: ProjectTransformGraph, bindings: ProjectNodeBindings): void {
   for (const group of project.groups) {
     const config = group.configs?.default;
     if (!isRecord(config)) continue;
     const nbt = nativeDisplayConfigNbt(config);
-    for (const nodeId of projectOutputNodeIds(group.uuid, nodes, graph, false)) {
+    for (const nodeId of projectOutputNodeIds(group.uuid, graph, bindings, false)) {
       const node = nodes[nodeId];
       if (!node || node.type === "anchor") continue;
       if (config.invisible === true) node.visible = false;
@@ -514,6 +554,7 @@ function createPreviewOnlyProjectAnimation(
   elements: AjProjectDisplayElement[],
   nodes: Record<string, ImportedNode>,
   runtimeHierarchy: AjRuntimeHierarchy,
+  cubeAnimation?: ImportedAnimation,
 ): ImportedAnimation {
   const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
   const startDelayTicks = secondsToTicks(projectOptionalNumeric(animation.start_delay, 0, `animations[${index}].start_delay`), `${animation.name}.start_delay`);
@@ -531,7 +572,7 @@ function createPreviewOnlyProjectAnimation(
       availability: { preview: "create_pose", reason },
     },
     exportAvailability: { exportable: true },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
+    runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
   };
 }
 
@@ -595,6 +636,7 @@ function importProjectAnimation(
   graph: ProjectTransformGraph,
   sceneScale: number,
   runtimeHierarchy: AjRuntimeHierarchy,
+  cubeAnimation?: ImportedAnimation,
 ): ImportedAnimation {
   const playbackMode = animation.loop === "hold_on_last_frame" ? "hold" : animation.loop;
   if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`Animated Java animation ${animation.name} has unsupported loop mode ${animation.loop}.`);
@@ -626,7 +668,7 @@ function importProjectAnimation(
     stateFrames.push(...visibility.map((frame) => ({ nodeId: element.uuid, ...frame })));
     tracks[element.uuid] = { transforms, visibility: [], nbt: [] };
   }
-  return applyProjectStateFrames({
+  return projectAnimatedJavaState({
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
     name: prettify(animation.name),
     durationTicks,
@@ -637,7 +679,7 @@ function importProjectAnimation(
     events: { start: [], timeline: [], loop: [], stop: [] },
     preview: { durationTicks, tracks, availability: { preview: "full" } },
     exportAvailability: { exportable: true },
-    runtime: { kind: "native", ...createAjProjectRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks) },
+    runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
   }, stateFrames);
 }
 

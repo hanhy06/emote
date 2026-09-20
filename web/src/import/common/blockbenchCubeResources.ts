@@ -1,7 +1,7 @@
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
 import type { GeneratedResource } from "../../domain/generatedResource";
-import type { BbCube, BbTexture, BbmodelProject } from "./blockbenchCubeSchema";
+import type { BbCube, BbTexture, BlockbenchCubeProject } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
 
@@ -9,7 +9,7 @@ const SUPPORTED_FACES = new Set(["north", "south", "east", "west", "up", "down"]
 const TEXTURELESS_MODEL_TEXTURE = "minecraft:block/white_concrete";
 
 export function writeSourceCubeResources(
-  project: BbmodelProject,
+  project: BlockbenchCubeProject,
   bones: BoneEntry[],
   namespace: string,
   projectPath: string,
@@ -37,7 +37,7 @@ export function uniqueCubeNodeId(bone: BoneEntry, cube: BbCube, cubeIndex: numbe
 }
 
 export function writeCubeResources(
-  project: BbmodelProject,
+  project: BlockbenchCubeProject,
   bone: BoneEntry,
   cube: BbCube,
   namespace: string,

@@ -19,6 +19,7 @@ export function importGeckoLibProject(project: BbmodelProject, sourceName: strin
     diagnosticPrefix: "geckolib",
     channels: GECKOLIB_CHANNELS,
     createNativeRuntime: createGeckoLibRuntime,
+    namespace: project.geckolib_modid,
   });
   return {
     source: "geckolib_bbmodel",
