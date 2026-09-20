@@ -1,5 +1,4 @@
 import type { ImportedProject, ImportSource } from "../domain/conversionSeed";
-import type { EmoteSequence } from "./emoteJson/sequenceJsonConverter";
 
 export interface ImportInput {
   name: string;
@@ -11,25 +10,13 @@ export interface ProbeResult {
   reason: string;
 }
 
-export interface ImportAdapter<T extends ImportedSource = ImportedSource> {
+export interface ImportAdapter<T extends ImportedProject = ImportedProject> {
   readonly id: ImportSource;
   readonly label: string;
   readonly extensions: readonly string[];
 
   probe(input: ImportInput): Promise<ProbeResult> | ProbeResult;
   import(input: ImportInput): Promise<T>;
-}
-
-export interface ImportedSequenceSource {
-  kind: "sequence";
-  sequence: EmoteSequence;
-  fileName: string;
-}
-
-export type ImportedSource = ImportedProject | ImportedSequenceSource;
-
-export function isImportedSequence(source: ImportedSource): source is Extract<ImportedSource, { kind: "sequence" }> {
-  return "kind" in source && source.kind === "sequence";
 }
 
 export interface ImportAdapterLoader extends Pick<ImportAdapter, "id" | "label" | "extensions"> {

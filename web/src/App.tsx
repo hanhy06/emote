@@ -5,12 +5,11 @@ import { AssignmentPanel } from "./components/AssignmentPanel";
 import { EventPanel } from "./components/EventPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { downloadExport, downloadExports } from "./export/download";
+import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
-import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
 import { animationExportAvailability } from "./domain/conversionSeed";
@@ -94,20 +93,12 @@ export function App() {
       const imported = await Promise.all(files.map(async (file) => {
         const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
         const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
+        return { project: await importDetected(detected, input), adapterLabel: detected.adapter.label };
       }));
-      for (const item of imported) {
-        if (!isImportedSequence(item.source)) continue;
-        downloadExport({ blob: new Blob([JSON.stringify(item.source.sequence)], { type: "application/json" }), fileName: item.source.fileName });
-      }
-      const documents = imported.flatMap((item) => isImportedSequence(item.source)
-        ? []
-        : [createConversionDocument(item.source, item.adapterLabel)]);
-      if (documents.length > 0) {
-        setEventJsonValid(true);
-        setEventEditorRevision((revision) => revision + 1);
-        dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
-      }
+      const documents = imported.map((item) => createConversionDocument(item.project, item.adapterLabel));
+      setEventJsonValid(true);
+      setEventEditorRevision((revision) => revision + 1);
+      dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
