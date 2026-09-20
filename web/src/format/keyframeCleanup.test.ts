@@ -57,6 +57,68 @@ describe("final keyframe cleanup", () => {
     expect(validateEmoteAnimation(output)).toEqual([]);
   });
 
+  it("removes a tiny display and its dedicated transform chain", () => {
+    const source = animation({});
+    source.nodes = {
+      scene: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop_x: { type: "anchor", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop_y: { type: "anchor", parent: "prop_x", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop_z: { type: "anchor", parent: "prop_y", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [0.0009, 0.0008, 0.0007] } },
+      prop: { type: "text_display", text: "Tiny", parent: "prop_z", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      visible: { type: "text_display", text: "Visible", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+    };
+    source.timeline.tracks = { prop_z: { position: frames([0, 0]) } };
+
+    const output = JSON.parse(serializeEmoteAnimation(source)) as EmoteAnimation;
+    expect(Object.keys(output.nodes)).toEqual(["scene", "visible"]);
+    expect(output.timeline.tracks).toEqual({});
+    expect(validateEmoteAnimation(output)).toEqual([]);
+  });
+
+  it("removes a subtree hidden by a constant zero scale track", () => {
+    const source = animation({});
+    source.nodes = {
+      scene: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      hidden: { type: "anchor", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop: { type: "text_display", text: "Hidden", parent: "hidden", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      visible: { type: "text_display", text: "Visible", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+    };
+    source.timeline.tracks = { hidden: { scale: [{ time: "0t", value: [0, 0, 0] }] } };
+
+    const output = JSON.parse(serializeEmoteAnimation(source)) as EmoteAnimation;
+    expect(Object.keys(output.nodes)).toEqual(["scene", "visible"]);
+    expect(output.timeline.tracks).toEqual({});
+    expect(validateEmoteAnimation(output)).toEqual([]);
+  });
+
+  it("keeps a display whose parent scale becomes visible", () => {
+    const source = animation({});
+    source.nodes = {
+      scene: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop_z: { type: "anchor", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [0, 0, 0] } },
+      prop: { type: "text_display", text: "Animated", parent: "prop_z", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+    };
+    source.timeline.tracks = { prop_z: { scale: [{ time: "0t", value: [0, 0, 0] }, { time: "2t", value: [1, 1, 1] }] } };
+
+    expect(exportAndCompare(source).nodes.prop).toBeDefined();
+  });
+
+  it("keeps a tiny display and its chain when a node event references it", () => {
+    const source = animation({});
+    source.nodes = {
+      scene: { type: "anchor", space: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      prop_z: { type: "anchor", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [0.0001, 0.0001, 0.0001] } },
+      prop: { type: "text_display", text: "Origin", parent: "prop_z", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+      visible: { type: "text_display", text: "Visible", parent: "scene", transform: { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] } },
+    };
+    source.timeline.tracks = {};
+    source.timeline.events = { timeline: [{ time: "0t", source: { type: "server" }, origin: { type: "node", node: "prop" }, commands: ["say test"] }] };
+
+    const output = exportAndCompare(source);
+    expect(output.nodes.prop).toBeDefined();
+    expect(output.nodes.prop_z).toBeDefined();
+  });
+
   it.each([
     { name: "a node on the 0.001 boundary", scale: [0.001, 0, 0] as const, tracks: { position: frames([0, 0]) } },
     { name: "a moving tiny node", scale: [0, 0, 0] as const, tracks: { position: frames([0, 1, 2]) } },

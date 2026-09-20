@@ -1,4 +1,6 @@
 import type { EmoteAnimation, EmoteNodeTracks, EmoteVectorKeyframe, Vec3 } from "./emoteAnimation";
+import { localTransformToMatrix } from "./localTransform";
+import { multiplyMatrix16 } from "./matrix";
 import { parseMinecraftTime } from "./time";
 
 const TINY_STATIC_NODE_SCALE = 0.001;
@@ -42,33 +44,80 @@ export function removeRedundantKeyframes(animation: EmoteAnimation): EmoteAnimat
 }
 
 function removeTinyStaticNodes(animation: EmoteAnimation): EmoteAnimation {
-  const candidates = new Set(Object.entries(animation.nodes).flatMap(([id, node]) => {
+  const worldMatrices = new Map<string, ReturnType<typeof localTransformToMatrix> | null>();
+  const visiting = new Set<string>();
+  const staticWorldMatrix = (id: string): ReturnType<typeof localTransformToMatrix> | undefined => {
+    const cached = worldMatrices.get(id);
+    if (cached !== undefined) return cached ?? undefined;
+    if (visiting.has(id)) return undefined;
+    visiting.add(id);
+    const node = animation.nodes[id];
     const track = animation.timeline.tracks[id];
-    const moves = Boolean(track?.position || track?.rotation || track?.scale);
-    const tiny = node.transform.scale.every((value) => Math.abs(value) < TINY_STATIC_NODE_SCALE);
-    return node.type !== "anchor" && tiny && !moves ? [id] : [];
+    const position = staticChannelValue(track?.position, node.transform.position);
+    const rotation = staticChannelValue(track?.rotation, node.transform.rotation);
+    const scale = staticChannelValue(track?.scale, node.transform.scale);
+    let result: ReturnType<typeof localTransformToMatrix> | undefined;
+    if (position && rotation && scale) {
+      const local = localTransformToMatrix({ position, rotation, scale }, `${id} static transform`);
+      const parent = node.parent ? staticWorldMatrix(node.parent) : undefined;
+      if (!node.parent || parent) result = parent ? multiplyMatrix16(parent, local, `${id} static world transform`) : local;
+    }
+    visiting.delete(id);
+    worldMatrices.set(id, result ?? null);
+    return result;
+  };
+  const candidates = new Set(Object.entries(animation.nodes).flatMap(([id, node]) => {
+    if (node.type === "anchor") return [];
+    const matrix = staticWorldMatrix(id);
+    return matrix && matrixScaleIsTiny(matrix) ? [id] : [];
   }));
   if (candidates.size === 0 || candidates.size === Object.keys(animation.nodes).length) return animation;
 
-  for (const [id, node] of Object.entries(animation.nodes)) {
-    if (candidates.has(id)) continue;
-    let parentId = node.parent;
-    while (parentId) {
-      candidates.delete(parentId);
-      parentId = animation.nodes[parentId]?.parent;
+  const protectedNodes = new Set<string>();
+  const protectWithAncestors = (id: string): void => {
+    for (let current: string | undefined = id; current && !protectedNodes.has(current); current = animation.nodes[current]?.parent) {
+      protectedNodes.add(current);
     }
-  }
+  };
+  for (const [id, node] of Object.entries(animation.nodes)) if (node.type !== "anchor" && !candidates.has(id)) protectWithAncestors(id);
   for (const events of Object.values(animation.timeline.events ?? {})) {
     for (const event of events ?? []) {
-      if (event.source.type === "node") candidates.delete(event.source.node);
-      if (event.origin.type === "node") candidates.delete(event.origin.node);
+      if (event.source.type === "node") protectWithAncestors(event.source.node);
+      if (event.origin.type === "node") protectWithAncestors(event.origin.node);
     }
   }
+  for (const id of protectedNodes) candidates.delete(id);
   if (candidates.size === 0) return animation;
 
-  const nodes = Object.fromEntries(Object.entries(animation.nodes).filter(([id]) => !candidates.has(id)));
-  const tracks = Object.fromEntries(Object.entries(animation.timeline.tracks).filter(([id]) => !candidates.has(id)));
+  const removable = new Set(candidates);
+  for (const id of candidates) {
+    for (let parent = animation.nodes[id]?.parent; parent && !protectedNodes.has(parent); parent = animation.nodes[parent]?.parent) {
+      removable.add(parent);
+    }
+  }
+  if (removable.size === Object.keys(animation.nodes).length) return animation;
+
+  const nodes = Object.fromEntries(Object.entries(animation.nodes).filter(([id]) => !removable.has(id)));
+  const tracks = Object.fromEntries(Object.entries(animation.timeline.tracks).filter(([id]) => !removable.has(id)));
   return { ...animation, nodes, timeline: { ...animation.timeline, tracks } };
+}
+
+function staticChannelValue(frames: EmoteVectorKeyframe[] | undefined, fallback: Vec3): Vec3 | undefined {
+  if (!frames?.length) return fallback;
+  const values = frames.flatMap((frame) => [frame.value, frame.pre, frame.post].filter((value): value is NonNullable<typeof value> => value !== undefined));
+  if (values.length === 0 || values.some((value) => value.some((axis) => typeof axis !== "number"))) return undefined;
+  const constant = values[0] as Vec3;
+  if (values.some((value) => value.some((axis, index) => axis !== constant[index]))) return undefined;
+  if (parseMinecraftTime(frames[0].time) > 0 && fallback.some((axis, index) => axis !== constant[index])) return undefined;
+  return constant;
+}
+
+function matrixScaleIsTiny(matrix: readonly number[]): boolean {
+  return [
+    Math.hypot(matrix[0], matrix[4], matrix[8]),
+    Math.hypot(matrix[1], matrix[5], matrix[9]),
+    Math.hypot(matrix[2], matrix[6], matrix[10]),
+  ].every((value) => value < TINY_STATIC_NODE_SCALE);
 }
 
 function cleanVectorFrames(frames: EmoteVectorKeyframe[], defaults: Vec3, allowLinearReduction: boolean): EmoteVectorKeyframe[] {
