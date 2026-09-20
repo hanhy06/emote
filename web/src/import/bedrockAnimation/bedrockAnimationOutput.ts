@@ -72,7 +72,7 @@ export function createBedrockRuntime(
     tracks,
     bindings: {
       editorNodeByRuntimeNode,
-      spaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
+      editorSpaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
     },
   };
 }

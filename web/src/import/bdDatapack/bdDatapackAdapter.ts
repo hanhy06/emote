@@ -132,9 +132,9 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
     if (tags.has(display.tag)) throw new Error(`BD Engine datapack contains duplicate display tag ${display.tag}.`);
     tags.add(display.tag);
   }
-  const nodes = Object.fromEntries(found.map((display) => [display.node.id, display.node]));
-  const nodeIdsByTag = new Map(found.map((display) => [display.tag, display.node.id]));
-  const payloadByNodeId = new Map(found.map((display) => [display.node.id, display.payload]));
+  const nodes = Object.fromEntries(found.map((display) => [display.node.binding.sourceNodeId, display.node]));
+  const nodeIdsByTag = new Map(found.map((display) => [display.tag, display.node.binding.sourceNodeId]));
+  const payloadByNodeId = new Map(found.map((display) => [display.node.binding.sourceNodeId, display.payload]));
   return {
     nodes,
     nodeIdsByTag,
@@ -145,7 +145,7 @@ function importDisplays(createFunction: string, namespace: string): ImportedDisp
 function importDisplay(id: string, type: string, compound: string): ImportedNode {
   const defaultMatrix = readMatrix(readSnbtRawField(compound, "transformation"), `${id} create transformation`);
   const entityNbt = omitSnbtFields(compound, OWNED_DISPLAY_FIELDS);
-  const common = { id, defaultMatrix, visible: true, skinAssignmentGroup: id, ...(entityNbt ? { entityNbt } : {}) };
+  const common = { binding: { sourceNodeId: id, skinGroupId: id }, defaultMatrix, visible: true, ...(entityNbt ? { entityNbt } : {}) };
   if (type === "item_display") {
     const item = readSnbtRawField(compound, "item");
     if (!item) throw new Error(`BD Engine datapack node ${id} does not contain an item.`);
@@ -285,7 +285,7 @@ function displayPayloadNbt(node: ImportedNode, payload: string): string {
   if (node.type === "item_display") return serializeSnbtCompound([["item", payload]]);
   if (node.type === "block_display") return serializeSnbtCompound([["block_state", payload]]);
   if (node.type === "text_display") return serializeSnbtCompound([["text", payload]]);
-  throw new Error(`Node ${node.id} is not a display.`);
+  throw new Error(`Node ${node.binding.sourceNodeId} is not a display.`);
 }
 
 function mergeSnbtValue(current: string, update: string): string {

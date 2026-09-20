@@ -57,7 +57,7 @@ export const createGeckoLibRuntime: BlockbenchNativeRuntimeFactory = ({ bones, i
     }
     if (scale) tracks[`${bone.id}_x`] = { ...tracks[`${bone.id}_x`], scale };
   }
-  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, spaceGroupByRuntimeRoot: { [sceneId]: sceneId } } };
+  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot: { [sceneId]: sceneId } } };
 };
 
 function geckoLibChannelFrames(

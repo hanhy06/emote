@@ -61,11 +61,14 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   const displayElements = project.elements.filter((element): element is AjProjectDisplayElement => isDirectDisplay(element.type));
   const locatorElements = project.elements.filter((element): element is AjProjectLocator => element.type === "camera");
   const nodes: Record<string, ImportedNode> = { ...(cubeContent?.nodes ?? {}) };
-  for (const element of displayElements) addProjectNode(nodes, element.uuid, {
-    ...importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)),
-    spaceAssignmentGroup: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid),
-    ...(cubeContent ? { space: "initiator" as const } : {}),
-  });
+  for (const element of displayElements) {
+    const node = importProjectElement(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale));
+    addProjectNode(nodes, element.uuid, {
+      ...node,
+      binding: { ...node.binding, spaceGroupId: cubeContent?.runtimeSceneId ?? ajRuntimeRootId(element.uuid) },
+      ...(cubeContent ? { space: "initiator" as const } : {}),
+    });
+  }
   for (const element of locatorElements) addProjectNode(nodes, element.uuid, importProjectAnchor(element, projectElementMatrix(element, undefined, 0, transformGraph, 1, sceneScale)));
   applyGroupDefaultConfigs(nodes, project, transformGraph);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
@@ -221,7 +224,7 @@ function mergeProjectRuntime(
     tracks: { ...base.tracks, ...display.tracks },
     bindings: {
       editorNodeByRuntimeNode: { ...base.bindings.editorNodeByRuntimeNode, ...display.bindings.editorNodeByRuntimeNode },
-      spaceGroupByRuntimeRoot: { ...base.bindings.spaceGroupByRuntimeRoot, ...display.bindings.spaceGroupByRuntimeRoot },
+      editorSpaceGroupByRuntimeRoot: { ...base.bindings.editorSpaceGroupByRuntimeRoot, ...display.bindings.editorSpaceGroupByRuntimeRoot },
     },
   };
 }
@@ -541,7 +544,7 @@ function isDirectDisplay(type: string): type is AjProjectDisplayElement["type"] 
 
 function importProjectAnchor(element: AjProjectLocator, defaultMatrix: Matrix16): ImportedNode {
   return {
-    id: element.uuid,
+    binding: { sourceNodeId: element.uuid },
     type: "anchor",
     defaultMatrix,
   };
@@ -553,7 +556,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
   const visible = element.visibility !== false && config?.invisible !== true;
   if (element.type === "animated_java:vanilla_block_display") {
     return {
-      id: element.uuid,
+      binding: { sourceNodeId: element.uuid },
       type: "block_display",
       defaultMatrix,
       visible,
@@ -563,7 +566,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
   }
   if (element.type === "animated_java:vanilla_item_display") {
     return {
-      id: element.uuid,
+      binding: { sourceNodeId: element.uuid },
       type: "item_display",
       defaultMatrix,
       visible,
@@ -573,7 +576,7 @@ function importProjectElement(element: AjProjectDisplayElement, defaultMatrix: M
     };
   }
   return {
-    id: element.uuid,
+    binding: { sourceNodeId: element.uuid },
     type: "text_display",
     defaultMatrix,
     visible,

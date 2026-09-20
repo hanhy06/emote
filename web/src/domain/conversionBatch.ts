@@ -3,6 +3,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
 import { remapImportedAnimation } from "./importedAnimationRemapper";
+import { remapEditorNodeBinding } from "./nodeBindings";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[]): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
@@ -22,15 +23,14 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     for (const [id, node] of Object.entries(document.nodes)) {
       nodes[nodeId(id)] = {
         ...node,
-        ...(node.type === "item_display" && node.skinGroupId ? { skinGroupId: groupId(node.skinGroupId) } : {}),
-        ...(node.spaceAssignmentGroup ? { spaceAssignmentGroup: groupId(node.spaceAssignmentGroup) } : {}),
+        binding: remapEditorNodeBinding(node.binding, { editorNodeId: nodeId, editorGroupId: groupId }),
       };
     }
     for (const [id, group] of Object.entries(document.skinGroups)) {
       skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const source = remapImportedAnimation(animation.source, { nodeId, spaceGroupId: groupId });
+      const source = remapImportedAnimation(animation.source, { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId });
       source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
       return { ...animation, nodeIds: animation.nodeIds.map(nodeId), source };
     }));

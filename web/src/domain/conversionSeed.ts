@@ -2,6 +2,7 @@ import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpac
 import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeMolangPrograms, RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
+import type { NativeRuntimeBindings, SourceNodeBinding } from "./nodeBindings";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
 
@@ -25,12 +26,10 @@ export interface ImportedProject {
 }
 
 export interface ImportedNodeBase {
-  id: string;
+  binding: SourceNodeBinding;
   defaultMatrix: Matrix16;
   visible: boolean;
   entityNbt?: string;
-  skinAssignmentGroup?: string;
-  spaceAssignmentGroup?: string;
   space?: NodeSpace;
 }
 
@@ -89,11 +88,6 @@ export type ImportedAnimationRuntime =
     tracks: Record<string, RuntimeNodeTracks>;
     bindings: NativeRuntimeBindings;
   };
-
-export interface NativeRuntimeBindings {
-  editorNodeByRuntimeNode: Record<string, string>;
-  spaceGroupByRuntimeRoot: Record<string, string>;
-}
 
 export interface ImportedPreviewAvailability {
   preview: "full" | "create_pose" | "unavailable";

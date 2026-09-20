@@ -99,11 +99,10 @@ export function importBlockbenchCubeContent(
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
-        id: bone.id,
+        binding: { sourceNodeId: bone.id, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`),
         space: "initiator",
-        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
     } else for (const [cubeIndex, cube] of playableCubes.entries()) {
@@ -117,16 +116,19 @@ export function importBlockbenchCubeContent(
       const modelPath = `${projectPath}/${nodeId}`;
       writeCubeResources(project, bone, cube, namespace, modelPath, resources, transforms);
       nodes[nodeId] = {
-        id: nodeId,
+        binding: {
+          sourceNodeId: nodeId,
+          spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID,
+          ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
+        },
         type: "item_display",
         defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
         visible: true,
         space: "initiator",
-        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
         itemDisplay: "none",
         itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
-        ...(skin ? { suggestedSkin: skin, skinAssignmentGroup: `${skin.part}_${skin.order}` } : {}),
+        ...(skin ? { suggestedSkin: skin } : {}),
       };
     }
     for (const [locatorIndex, locator] of bone.locators.entries()) {
@@ -135,11 +137,10 @@ export function importBlockbenchCubeContent(
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
-        id: nodeId,
+        binding: { sourceNodeId: nodeId, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
         space: "initiator",
-        spaceAssignmentGroup: BLOCKBENCH_RUNTIME_SCENE_ID,
       };
     }
   }

@@ -62,12 +62,12 @@ function pickNodeValues<T>(values: Record<string, T>, nodeIds: ReadonlySet<strin
 }
 
 function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): SkinCandidate[] {
-  const candidates = Object.entries(nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.skinGroupId
+  const candidates = Object.entries(nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
     ? [{ nodeId, partIndex: 0, node }]
     : []);
   const partIndexByGroup = new Map<string, number>();
   return candidates.map((candidate) => {
-    const group = candidate.node.skinGroupId!;
+    const group = candidate.node.binding.skinGroupId!;
     if (!partIndexByGroup.has(group)) partIndexByGroup.set(group, partIndexByGroup.size);
     return { ...candidate, partIndex: partIndexByGroup.get(group)! };
   });

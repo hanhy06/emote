@@ -27,7 +27,7 @@ export function createAjProjectRuntime(
   const nodes: Record<string, RuntimeNode> = {};
   const tracks: Record<string, RuntimeNodeTracks> = {};
   const editorNodeByRuntimeNode: Record<string, string> = {};
-  const spaceGroupByRuntimeRoot: Record<string, string> = {};
+  const editorSpaceGroupByRuntimeRoot: Record<string, string> = {};
   for (const element of elements) {
     const sourceNode = importedNodes[element.uuid];
     if (!sourceNode) continue;
@@ -36,7 +36,7 @@ export function createAjProjectRuntime(
     const parentId = parentGroupUuid ? hierarchy.runtimeParentByGroupUuid[parentGroupUuid] : hierarchy.sceneId;
     if (parentGroupUuid && !parentId) throw new Error(`Animated Java display ${element.name} references an unavailable runtime group ${parentGroupUuid}.`);
     const parentOrigin = parentGroupUuid ? hierarchy.groupOrigins.get(parentGroupUuid) : undefined;
-    const spaceGroup = sourceNode.spaceAssignmentGroup ?? ajRuntimeRootId(element.uuid);
+    const spaceGroup = sourceNode.binding.spaceGroupId ?? ajRuntimeRootId(element.uuid);
     const basePosition = element.position.map((value, axis) => (value - (parentOrigin?.[axis] ?? 0)) / 16) as [number, number, number];
     const baseRotation = element.rotation;
     nodes[ids.x] = {
@@ -52,7 +52,7 @@ export function createAjProjectRuntime(
       : IDENTITY_TRANSFORM;
     nodes[element.uuid] = importedNodeToRuntimeNode(sourceNode, nodeTransform, ids.z);
     editorNodeByRuntimeNode[element.uuid] = element.uuid;
-    if (!parentId) spaceGroupByRuntimeRoot[ids.x] = spaceGroup;
+    if (!parentId) editorSpaceGroupByRuntimeRoot[ids.x] = spaceGroup;
     const keyframes = animation.animators[element.uuid]?.keyframes ?? [];
     const position = ajProjectFrames(keyframes, "position", ZERO_VECTOR, basePosition, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 0 ? -1 : 1) * blendWeight / 16, basePosition[axis]));
     const rotation = ajProjectFrames(keyframes, "rotation", ZERO_VECTOR, ZERO_VECTOR, startDelayTicks, durationTicks, (value, axis) => affineMolang(value, (axis === 2 ? 1 : -1) * blendWeight, 0));
@@ -68,7 +68,7 @@ export function createAjProjectRuntime(
     }
     if (scale) tracks[ids.z] = { ...tracks[ids.z], scale };
   }
-  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, spaceGroupByRuntimeRoot } };
+  return { nodes, tracks, bindings: { editorNodeByRuntimeNode, editorSpaceGroupByRuntimeRoot } };
 }
 
 function ajProjectFrames(

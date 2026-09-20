@@ -1,38 +1,39 @@
 import type { EmoteEvent } from "../format/emoteAnimation";
 import type { RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedTimelineEvent } from "./conversionSeed";
+import { remapNativeRuntimeBindings } from "./nodeBindings";
 
 export interface ImportedAnimationIdRemapper {
-  nodeId(id: string): string;
-  spaceGroupId?(id: string): string;
+  editorNodeId(id: string): string;
+  runtimeNodeId(id: string): string;
+  editorGroupId?(id: string): string;
 }
 
 export function remapImportedAnimation(
   animation: ImportedAnimation,
   ids: ImportedAnimationIdRemapper,
 ): ImportedAnimation {
-  const spaceGroupId = ids.spaceGroupId ?? ids.nodeId;
+  const editorGroupId = ids.editorGroupId ?? ids.editorNodeId;
   return {
     ...animation,
     events: {
-      start: animation.events.start.map((event) => remapEvent(event, ids.nodeId)),
-      timeline: animation.events.timeline.map((event) => remapTimelineEvent(event, ids.nodeId)),
-      loop: animation.events.loop.map((event) => remapEvent(event, ids.nodeId)),
-      stop: animation.events.stop.map((event) => remapEvent(event, ids.nodeId)),
+      start: animation.events.start.map((event) => remapEvent(event, ids.editorNodeId)),
+      timeline: animation.events.timeline.map((event) => remapTimelineEvent(event, ids.editorNodeId)),
+      loop: animation.events.loop.map((event) => remapEvent(event, ids.editorNodeId)),
+      stop: animation.events.stop.map((event) => remapEvent(event, ids.editorNodeId)),
     },
-    preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, ids.nodeId) },
+    preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, ids.editorNodeId) },
     runtime: animation.runtime.kind === "baked"
-      ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, ids.nodeId) }
+      ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, ids.editorNodeId) }
       : {
           ...animation.runtime,
-          nodes: remapRuntimeNodes(animation.runtime.nodes, ids.nodeId),
-          tracks: remapRuntimeTracks(animation.runtime.tracks, ids.nodeId),
-          bindings: {
-            editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.runtime.bindings.editorNodeByRuntimeNode)
-              .map(([runtimeNodeId, editorNodeId]) => [ids.nodeId(runtimeNodeId), ids.nodeId(editorNodeId)])),
-            spaceGroupByRuntimeRoot: Object.fromEntries(Object.entries(animation.runtime.bindings.spaceGroupByRuntimeRoot)
-              .map(([runtimeRootId, editorGroupId]) => [ids.nodeId(runtimeRootId), spaceGroupId(editorGroupId)])),
-          },
+          nodes: remapRuntimeNodes(animation.runtime.nodes, ids.runtimeNodeId),
+          tracks: remapRuntimeTracks(animation.runtime.tracks, ids.runtimeNodeId),
+          bindings: remapNativeRuntimeBindings(animation.runtime.bindings, {
+            editorNodeId: ids.editorNodeId,
+            editorGroupId,
+            runtimeNodeId: ids.runtimeNodeId,
+          }),
         },
   };
 }

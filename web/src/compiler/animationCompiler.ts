@@ -24,7 +24,8 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import { animationExportAvailability, type ImportedAnimation, type ImportedNodeTrack, type NativeRuntimeBindings } from "../domain/conversionSeed";
+import { animationExportAvailability, type ImportedAnimation, type ImportedNodeTrack } from "../domain/conversionSeed";
+import type { NativeRuntimeBindings } from "../domain/nodeBindings";
 import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
@@ -95,7 +96,7 @@ function compileRuntimeNodes(
     if (sourceNode.type !== "anchor" && !editorNode) {
       throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
     }
-    const spaceGroupId = bindings.spaceGroupByRuntimeRoot[id];
+    const spaceGroupId = bindings.editorSpaceGroupByRuntimeRoot[id];
     const space = !sourceNode.parent && spaceGroupId ? documentSpaceGroup(document, spaceGroupId) : sourceNode.space;
     const common = {
       ...(sourceNode.parent ? { parent: sourceNode.parent } : {}),
@@ -133,7 +134,7 @@ function compileRuntimeNodes(
 
 function documentSpaceGroup(document: ConversionDocument, groupId: string): EmoteNode["space"] {
   const spaces = new Set(Object.entries(document.nodes)
-    .filter(([nodeId, node]) => (node.spaceAssignmentGroup ?? nodeId) === groupId)
+    .filter(([nodeId, node]) => (node.binding.spaceGroupId ?? nodeId) === groupId)
     .map(([, node]) => node.space));
   if (spaces.size !== 1) {
     throw new ConversionError("invalid_runtime_space_binding", `Runtime space group ${groupId} must resolve to exactly one editor space.`, groupId);
@@ -162,7 +163,7 @@ function compileNodes(document: ConversionDocument, animation: ImportedAnimation
       ...(node.entityNbt ? { entity_nbt: node.entityNbt } : {}),
     };
     if (node.type === "item_display") {
-      const assignment = node.skinGroupId ? document.skinGroups[node.skinGroupId]?.assignment : null;
+      const assignment = node.binding.skinGroupId ? document.skinGroups[node.binding.skinGroupId]?.assignment : null;
       return [id, {
         ...common,
         type: "item_display",
@@ -188,8 +189,8 @@ function compileNodeMatrix(
   node: ConversionNode,
   matrix: Matrix16,
 ): Matrix16 {
-  if (node.type !== "item_display" || !node.skinGroupId || !node.playerHeadConversion) return matrix;
-  if (!document.skinGroups[node.skinGroupId]?.assignment) return matrix;
+  if (node.type !== "item_display" || !node.binding.skinGroupId || !node.playerHeadConversion) return matrix;
+  if (!document.skinGroups[node.binding.skinGroupId]?.assignment) return matrix;
   return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
 }
 
@@ -261,7 +262,11 @@ function compileRuntimeTimeline(
     };
     if (!track.nbt) return [nodeId, output];
     const nbt = track.nbt.flatMap((frame) => {
-      const value = compileRuntimeNbtValue(document, bindings.editorNodeByRuntimeNode[nodeId] ?? nodeId, frame.value, profile);
+      const editorNodeId = bindings.editorNodeByRuntimeNode[nodeId];
+      if (!editorNodeId) {
+        throw new ConversionError("missing_runtime_node_binding", `Runtime NBT track ${nodeId} is not bound to an editor node.`, nodeId);
+      }
+      const value = compileRuntimeNbtValue(document, editorNodeId, frame.value, profile);
       return value === undefined ? [] : [{
         time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
         value,
@@ -317,8 +322,8 @@ function compileMolangNbtLiterals(
 
 function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {
   const node = document.nodes[nodeId];
-  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.skinGroupId
-    || !document.skinGroups[node.skinGroupId]?.assignment) return writeDisplayNbt(value, profile);
+  if (node?.type !== "item_display" || !node.playerHeadConversion || !node.binding.skinGroupId
+    || !document.skinGroups[node.binding.skinGroupId]?.assignment) return writeDisplayNbt(value, profile);
   const { itemStack: _item, ...remaining } = value;
   if (!remaining.blockState && remaining.rawFields.length === 0) return undefined;
   return writeDisplayNbt(remaining, profile);
