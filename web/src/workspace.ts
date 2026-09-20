@@ -9,8 +9,8 @@ import {
   type AnimationOutputSettings,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import { animationPreviewAvailability, type ImportedAnimation, type ImportedProject, type ImportedTimelineEvent } from "./domain/conversionSeed";
-import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import { animationPreviewAvailability, type ImportedAnimation, type ImportedProject } from "./domain/conversionSeed";
+import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -50,9 +50,8 @@ export type WorkspaceAction =
   | { type: "skin_order_assigned"; order: number }
   | { type: "animation_output_changed"; output: AnimationOutputSettings }
   | { type: "minecraft_version_changed"; version: string }
-  | { type: "frame_command_added"; tick: number }
-  | { type: "frame_command_changed"; eventIndex: number; commandIndex: number; command: string }
-  | { type: "frame_command_removed"; eventIndex: number; commandIndex: number };
+  | { type: "lifecycle_events_changed"; events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
+  | { type: "timeline_events_changed"; tick: number; events: EmoteEvent[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -128,12 +127,13 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...session,
         document: { ...session.document, targetMinecraftVersion: action.version },
       }));
-    case "frame_command_added":
-      return editCurrentAnimation(state, (animation) => addFrameCommand(animation, action.tick));
-    case "frame_command_changed":
-      return editCurrentAnimation(state, (animation) => updateFrameCommand(animation, action.eventIndex, action.commandIndex, action.command));
-    case "frame_command_removed":
-      return editCurrentAnimation(state, (animation) => removeFrameCommand(animation, action.eventIndex, action.commandIndex));
+    case "lifecycle_events_changed":
+      return editCurrentAnimation(state, (animation) => ({
+        ...animation,
+        events: { ...animation.events, ...action.events },
+      }));
+    case "timeline_events_changed":
+      return editCurrentAnimation(state, (animation) => replaceTimelineEvents(animation, action.tick, action.events));
   }
 }
 
@@ -187,38 +187,10 @@ function editCurrentAnimation(state: WorkspaceState, edit: (animation: ImportedA
   }));
 }
 
-function addFrameCommand(animation: ImportedAnimation, tick: number): ImportedAnimation {
-  const event: ImportedTimelineEvent = {
-    tick,
-    source: { type: "server" },
-    origin: { type: "root" },
-    commands: [""],
-  };
-  return withTimelineEvents(animation, [...animation.events.timeline, event]
-    .sort((first, second) => first.tick - second.tick));
-}
-
-function updateFrameCommand(
-  animation: ImportedAnimation,
-  eventIndex: number,
-  commandIndex: number,
-  command: string,
-): ImportedAnimation {
-  const timeline = animation.events.timeline.map((event, index) => index === eventIndex
-    ? { ...event, commands: event.commands.map((current, currentIndex) => currentIndex === commandIndex ? command : current) }
-    : event);
-  return withTimelineEvents(animation, timeline);
-}
-
-function removeFrameCommand(animation: ImportedAnimation, eventIndex: number, commandIndex: number): ImportedAnimation {
-  const timeline = animation.events.timeline.flatMap((event, index) => {
-    if (index !== eventIndex) return [event];
-    const commands = event.commands.filter((_, currentIndex) => currentIndex !== commandIndex);
-    return commands.length === 0 ? [] : [{ ...event, commands }];
-  });
-  return withTimelineEvents(animation, timeline);
-}
-
-function withTimelineEvents(animation: ImportedAnimation, timeline: ImportedTimelineEvent[]): ImportedAnimation {
+function replaceTimelineEvents(animation: ImportedAnimation, tick: number, events: EmoteEvent[]): ImportedAnimation {
+  const timeline = [
+    ...animation.events.timeline.filter((event) => event.tick !== tick),
+    ...events.map((event) => ({ ...event, tick })),
+  ].sort((first, second) => first.tick - second.tick);
   return { ...animation, events: { ...animation.events, timeline } };
 }

@@ -1,13 +1,13 @@
 import type { TargetedEvent } from "preact";
 import { lazy, Suspense } from "preact/compat";
-import { useCallback, useMemo, useReducer } from "preact/hooks";
+import { useCallback, useMemo, useReducer, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
-import { CommandPanel } from "./components/CommandPanel";
+import { EventPanel } from "./components/EventPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExport, downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
@@ -53,6 +53,8 @@ const IMPORT_FORMATS = [
 
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
+  const [eventJsonValid, setEventJsonValid] = useState(true);
+  const [eventEditorRevision, setEventEditorRevision] = useState(0);
   const { session, page, openError, exportError, operation } = workspace;
   const busy = operation.type !== "idle";
   const busyMessage = operation.type === "idle" ? null : operation.message;
@@ -101,7 +103,11 @@ export function App() {
       const documents = imported.flatMap((item) => isImportedSequence(item.source)
         ? []
         : [createConversionDocument(item.source, item.adapterLabel)]);
-      if (documents.length > 0) dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
+      if (documents.length > 0) {
+        setEventJsonValid(true);
+        setEventEditorRevision((revision) => revision + 1);
+        dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
+      }
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
@@ -163,23 +169,19 @@ export function App() {
     dispatch({ type: "skin_order_assigned", order });
   }
 
-  function addCommandAtPreviewTick() {
-    if (previewTick !== null) dispatch({ type: "frame_command_added", tick: previewTick });
+  function changeLifecycleEvents(events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
+    dispatch({ type: "lifecycle_events_changed", events });
   }
 
-  function changeFrameCommand(eventIndex: number, commandIndex: number, command: string) {
-    dispatch({ type: "frame_command_changed", eventIndex, commandIndex, command });
-  }
-
-  function deleteFrameCommand(eventIndex: number, commandIndex: number) {
-    dispatch({ type: "frame_command_removed", eventIndex, commandIndex });
+  function changeTimelineEvents(tick: number, events: EmoteEvent[]) {
+    dispatch({ type: "timeline_events_changed", tick, events });
   }
 
   const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
-    <label className={`file-input${busy ? " disabled" : ""}`}>
+    <label className={`file-input${busy || !eventJsonValid ? " disabled" : ""}`}>
       <span>{session ? "Open other files" : "Choose animation files"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy} />
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy || !eventJsonValid} />
     </label>
   );
 
@@ -244,7 +246,7 @@ export function App() {
             </div>
             <label className="project-animation">
               <span>Animation</span>
-              <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
+              <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid} onChange={(event) => {
                 const nextIndex = Number(event.currentTarget.value);
                 dispatch({ type: "animation_selected", index: nextIndex });
               }}>
@@ -260,7 +262,7 @@ export function App() {
 
           <nav className="workflow-pages" aria-label="Conversion pages">
             {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
+              <button className={page === index ? "active" : ""} type="button" disabled={!eventJsonValid && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -301,10 +303,10 @@ export function App() {
                   : "This file does not contain assignable model parts."}</p>
               </div>
               <div className="preview-controls">
-                {hasReviewNodes && availability?.preview === "full" && (
+                {availability?.preview === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
-                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} disabled={!eventJsonValid} onChange={(event) => {
                       dispatch({ type: "preview_frame_selected", index: Number(event.currentTarget.value) });
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
@@ -342,13 +344,14 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            {exportAvailability?.exportable && <CommandPanel
+            {exportAvailability?.exportable && <EventPanel
+              key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
               animation={animation}
               tick={previewTick}
               disabled={busy}
-              onAdd={addCommandAtPreviewTick}
-              onChange={changeFrameCommand}
-              onRemove={deleteFrameCommand}
+              onLifecycleChange={changeLifecycleEvents}
+              onTimelineChange={changeTimelineEvents}
+              onValidityChange={setEventJsonValid}
             />}
           </section>}
 
