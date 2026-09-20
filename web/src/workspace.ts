@@ -66,7 +66,7 @@ export const INITIAL_WORKSPACE: WorkspaceState = {
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "open_started":
-      return { ...state, session: null, page: 0, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
+      return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "open_succeeded": {
       const session = createConversionSession(action.project, action.adapterLabel);
       return openedSession(state, session);
