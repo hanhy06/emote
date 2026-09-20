@@ -5,6 +5,7 @@ import { importBlockbenchCubeContent } from "../common/blockbenchCubeImporter";
 import type { BbmodelProject } from "../common/blockbenchCubeSchema";
 import { createGeckoLibRuntime } from "./geckoLibAnimationOutput";
 import { GECKOLIB_BBMODEL_TRANSFORMS } from "./geckoLibCubeTransform";
+import { GECKOLIB_CHANNELS } from "./geckoLibAnimationPolicy";
 
 export function importGeckoLibProject(project: BbmodelProject, sourceName: string): ImportedProject {
   if (project.meta.model_format !== "geckolib_model") throw new Error(`Unsupported Blockbench model format: ${project.meta.model_format}`);
@@ -15,6 +16,8 @@ export function importGeckoLibProject(project: BbmodelProject, sourceName: strin
   const imported = importBlockbenchCubeContent(project, sourceName, {
     transforms: GECKOLIB_BBMODEL_TRANSFORMS,
     formatLabel: "GeckoLib",
+    diagnosticPrefix: "geckolib",
+    channels: GECKOLIB_CHANNELS,
     createNativeRuntime: createGeckoLibRuntime,
   });
   return {

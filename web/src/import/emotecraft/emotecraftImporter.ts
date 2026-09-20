@@ -4,7 +4,7 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { animationEasingProgress } from "../common/animationEasing";
+import { easingProgress } from "../common/curveMath";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
@@ -193,7 +193,7 @@ function interpolateFrame(frame: PalKeyframe, start: number, end: number, progre
     return 0.5 * (2 * start + (end - p0) * progress + (2 * p0 - 5 * start + 4 * end - p3) * progress ** 2 + (3 * start - p0 - 3 * end + p3) * progress ** 3);
   }
   if (frame.easing === "bezier" && args.length >= 2) return bezierValue(start, end, progress, args, frame.endTick - frame.startTick);
-  const eased = animationEasingProgress(frame.easing, progress, args.map((entry) => entry[0] ?? 0)) ?? progress;
+  const eased = easingProgress(frame.easing, progress, args.map((entry) => entry[0] ?? 0)) ?? progress;
   return start + (end - start) * eased;
 }
 

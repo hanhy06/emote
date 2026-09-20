@@ -18,7 +18,7 @@ import {
   type BbOutlinerGroup,
   type BbmodelProject,
 } from "./blockbenchCubeSchema";
-import { evaluateApproximateBlockbenchChannel, evaluateBlockbenchChannel } from "./blockbenchKeyframeEvaluator";
+import type { BlockbenchChannelEvaluator } from "./blockbenchKeyframeEvaluator";
 import { blockbenchIntervalIsStep } from "./animationEasing";
 import {
   uniqueCubeNodeId,
@@ -61,6 +61,8 @@ export type BlockbenchNativeRuntimeFactory = (
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
   formatLabel: string;
+  diagnosticPrefix: string;
+  channels: BlockbenchChannelEvaluator;
   runtimeOutput?: "auto" | "native";
   createNativeRuntime: BlockbenchNativeRuntimeFactory;
 }
@@ -81,13 +83,13 @@ export function importBlockbenchCubeContent(
   sourceName: string,
   options: CubeProjectImportOptions,
 ): ImportedCubeProjectContent {
-  const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || "GeckoLib Model";
+  const formatLabel = options.formatLabel;
+  const sourceStem = sourceName.replace(/\.bbmodel$/i, "").trim() || project.name?.trim() || `${formatLabel} Model`;
   const namespace = validNamespace(project.geckolib_modid) ?? sanitizeNamespace(sourceStem);
   const projectPath = sanitizeResourcePath(project.name?.trim() || sourceStem, "geckolib_model");
   const resources = new Map<string, GeneratedResource>();
   const transforms = options.transforms;
-  const formatLabel = options.formatLabel;
-  const bones = buildBoneEntries(project);
+  const bones = buildBoneEntries(project, formatLabel);
   if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
   writeSourceCubeResources(project, bones, namespace, projectPath, resources, transforms);
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
@@ -95,13 +97,13 @@ export function importBlockbenchCubeContent(
   const nodes: Record<string, ImportedNode> = {};
   const nodeIds = new Set(bones.map((bone) => bone.id));
   for (const bone of bones) {
-    const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map(), transforms));
+    const boneMatrix = new Matrix4().set(...boneWorldMatrix(bone, new Map(), transforms, formatLabel));
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
         binding: { sourceNodeId: bone.id, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
         type: "anchor",
-        defaultMatrix: matrix4ToRowMajor(boneMatrix, `GeckoLib bone ${bone.id}`),
+        defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
         space: "initiator",
       };
       bone.nodes.push({ id: bone.id, localMatrix: new Matrix4() });
@@ -109,7 +111,7 @@ export function importBlockbenchCubeContent(
       const nodeId = cubeIndex === 0 ? bone.id : uniqueCubeNodeId(bone, cube, cubeIndex, nodeIds);
       const hiddenAccessory = isHiddenAccessoryBone(bone);
       const conversionMatrix = hiddenAccessory ? undefined : cubePlayerHeadMatrix(cube, bone, transforms);
-      if (!hiddenAccessory && !conversionMatrix) throw new ConversionError("invalid_geckolib_cube", `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
+      if (!hiddenAccessory && !conversionMatrix) throw new ConversionError(`invalid_${options.diagnosticPrefix}_cube`, `Cube ${cube.name ?? cube.uuid} cannot be fitted to a player head.`, cube.uuid);
       const skin = hiddenAccessory ? undefined : skinAssignments.get(cube.uuid);
       const localMatrix = cubeLocalMatrix(cube, bone, transforms);
       bone.nodes.push({ id: nodeId, localMatrix });
@@ -122,7 +124,7 @@ export function importBlockbenchCubeContent(
           ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",
-        defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `GeckoLib cube ${nodeId}`),
+        defaultMatrix: matrix4ToRowMajor(boneMatrix.clone().multiply(localMatrix), `${formatLabel} cube ${nodeId}`),
         visible: true,
         space: "initiator",
         itemDisplay: "none",
@@ -139,7 +141,7 @@ export function importBlockbenchCubeContent(
       nodes[nodeId] = {
         binding: { sourceNodeId: nodeId, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
         type: "anchor",
-        defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `GeckoLib locator ${nodeId}`),
+        defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
         space: "initiator",
       };
     }
@@ -147,7 +149,7 @@ export function importBlockbenchCubeContent(
 
   if (project.animations.length === 0) throw new Error(`${formatLabel} cube project does not contain animations.`);
   const animations = project.animations.map((animation, index) =>
-    importAnimation(animation, index, bones, nodes, diagnostics, transforms, options.runtimeOutput === "native", options.createNativeRuntime));
+    importAnimation(animation, index, bones, nodes, diagnostics, options));
   return {
     sourceStem,
     namespace,
@@ -160,22 +162,22 @@ export function importBlockbenchCubeContent(
   };
 }
 
-function buildBoneEntries(project: BbmodelProject): BoneEntry[] {
+function buildBoneEntries(project: BbmodelProject, formatLabel: string): BoneEntry[] {
   const groups = new Map(project.groups.map((group) => [group.uuid, group]));
   const elements = new Map(project.elements.map((element) => [element.uuid, element]));
   const entries: BoneEntry[] = [];
   const ids = new Set<string>();
   const visit = (entry: BbOutlinerEntry, parent?: BoneEntry) => {
     if (typeof entry === "string") {
-      if (!parent) throw new Error(`GeckoLib cube ${entry} is not parented to a bone.`);
+      if (!parent) throw new Error(`${formatLabel} cube ${entry} is not parented to a bone.`);
       const element = elements.get(entry);
-      if (!element) throw new Error(`GeckoLib outliner references unknown element ${entry}.`);
+      if (!element) throw new Error(`${formatLabel} outliner references unknown element ${entry}.`);
       if (isLocator(element)) parent.locators.push(element);
       else parent.cubes.push(element);
       return;
     }
     const saved = groups.get(entry.uuid);
-    const group = mergeGroup(saved, entry);
+    const group = mergeGroup(saved, entry, formatLabel);
     let id = sanitizeResourcePath(group.name, "bone").replaceAll("/", "_");
     const base = id;
     for (let suffix = 2; ids.has(id); suffix++) id = `${base}_${suffix}`;
@@ -192,11 +194,11 @@ function isLocator(element: BbmodelProject["elements"][number]): element is BbLo
   return element.type === "locator";
 }
 
-function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup): BbGroup {
+function mergeGroup(saved: BbGroup | undefined, outliner: BbOutlinerGroup, formatLabel: string): BbGroup {
   const name = outliner.name ?? saved?.name;
   const origin = outliner.origin ?? saved?.origin;
   const rotation = outliner.rotation ?? saved?.rotation ?? [0, 0, 0];
-  if (!name || !origin) throw new Error(`GeckoLib bone ${outliner.uuid} is missing its saved group data.`);
+  if (!name || !origin) throw new Error(`${formatLabel} bone ${outliner.uuid} is missing its saved group data.`);
   return { uuid: outliner.uuid, name, origin, rotation };
 }
 
@@ -209,14 +211,14 @@ function uniqueLocatorNodeId(bone: BoneEntry, locator: BbLocator, locatorIndex: 
   return id;
 }
 
-function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>, convention: CubeProjectTransformConvention): Matrix16 {
+function boneWorldMatrix(bone: BoneEntry, cache: Map<string, Matrix16>, convention: CubeProjectTransformConvention, formatLabel: string): Matrix16 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
   const local = bindLocalMatrix(bone, convention);
   const world = bone.parent
-    ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache, convention)).multiply(local)
+    ? new Matrix4().set(...boneWorldMatrix(bone.parent, cache, convention, formatLabel)).multiply(local)
     : new Matrix4().makeScale(PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE).multiply(local);
-  const result = matrix4ToRowMajor(world, `GeckoLib bone ${bone.id}`);
+  const result = matrix4ToRowMajor(world, `${formatLabel} bone ${bone.id}`);
   cache.set(bone.uuid, result);
   return result;
 }
@@ -230,20 +232,28 @@ function bindLocalMatrix(bone: BoneEntry, convention: CubeProjectTransformConven
   );
 }
 
-function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry[], nodes: Record<string, ImportedNode>, diagnostics: ImportDiagnostic[], convention: CubeProjectTransformConvention, forceNativeRuntime: boolean, createNativeRuntime: BlockbenchNativeRuntimeFactory): ImportedAnimation {
+function importAnimation(
+  animation: BbAnimation,
+  index: number,
+  bones: BoneEntry[],
+  nodes: Record<string, ImportedNode>,
+  diagnostics: ImportDiagnostic[],
+  options: CubeProjectImportOptions,
+): ImportedAnimation {
+  const { channels, createNativeRuntime, diagnosticPrefix, formatLabel, transforms: convention } = options;
   const loop = animation.loop ?? "once";
   const playbackMode = loop === "hold_on_last_frame" ? "hold" : loop;
-  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`GeckoLib animation ${animation.name} has unsupported loop mode ${loop}.`);
-  if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`GeckoLib animation ${animation.name} has an invalid length.`);
-  const startDelaySeconds = optionalNumericValue(animation.start_delay, 0, `animations[${index}].start_delay`);
-  const blendWeight = optionalNumericValue(animation.blend_weight, 1, `animations[${index}].blend_weight`);
-  const effectEvents = importEffectEvents(animation, index, bones, diagnostics);
+  if (playbackMode !== "once" && playbackMode !== "hold" && playbackMode !== "loop") throw new Error(`${formatLabel} animation ${animation.name} has unsupported loop mode ${loop}.`);
+  if (!Number.isFinite(animation.length) || animation.length < 0) throw new Error(`${formatLabel} animation ${animation.name} has an invalid length.`);
+  const startDelaySeconds = optionalNumericValue(animation.start_delay, 0, `animations[${index}].start_delay`, formatLabel, diagnosticPrefix);
+  const blendWeight = optionalNumericValue(animation.blend_weight, 1, `animations[${index}].blend_weight`, formatLabel, diagnosticPrefix);
+  const effectEvents = importEffectEvents(animation, index, bones, diagnostics, formatLabel, diagnosticPrefix);
   const durationTicks = requireAnimationDurationTicks(
     Math.max(1, Math.round((animation.length + startDelaySeconds) * TICKS_PER_SECOND), ...effectEvents.map((event) => event.tick + 1)),
     `${animation.name}.length`,
   );
-  const boneAnimators = resolveBoneAnimators(animation, index, bones);
-  let nativeRuntime = forceNativeRuntime || blockbenchAnimationUsesRuntimeState(animation);
+  const boneAnimators = resolveBoneAnimators(animation, index, bones, formatLabel, diagnosticPrefix);
+  let nativeRuntime = options.runtimeOutput === "native" || blockbenchAnimationUsesRuntimeState(animation);
   let samplePlan: AnimationSamplePlan | undefined;
   if (!blockbenchAnimationUsesRuntimeState(animation)) {
     const snapshots = new Map<string, Matrix4[]>();
@@ -252,34 +262,34 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       const cached = snapshots.get(key);
       if (cached) return cached;
       const cache = new Map<string, Matrix4>();
-      const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, index, 1, convention, evaluateBlockbenchChannel).clone());
+      const result = bones.map((bone) => animatedWorldMatrix(bone, animation, boneAnimators, time, cache, index, 1, convention, channels.evaluate).clone());
       snapshots.set(key, result);
       return result;
     };
     try {
-      samplePlan = planAnimationSamples(animation, index, durationTicks, bones.length, snapshotAt);
+      samplePlan = planAnimationSamples(animation, index, durationTicks, bones.length, snapshotAt, channels);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_geckolib_molang") throw reason;
+      if (!channels.isBakeFallbackError(reason)) throw reason;
       nativeRuntime = true;
       diagnostics.push({
         severity: "warning",
         code: "approximate_preview_molang",
         message: `${animation.name}: runtime Molang is preserved; preview uses supported math/time expressions only.`,
-        sourcePath: reason.sourcePath ?? `animations[${index}]`,
+        sourcePath: reason instanceof ConversionError ? reason.sourcePath ?? `animations[${index}]` : `animations[${index}]`,
       });
     }
   }
 
   const runtimeTracks: ImportedAnimation["preview"]["tracks"] = {};
   if (!nativeRuntime && samplePlan) for (const bone of bones) {
-    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
+    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const transforms: ImportedTransformKeyframe[] = [];
     for (let tick = 0; tick <= durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
       const sourceTime = startDelaySeconds > 0 ? tick / TICKS_PER_SECOND - startDelaySeconds : samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND;
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, evaluateBlockbenchChannel), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, channels.evaluate), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
@@ -289,7 +299,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
   const previewTracks: ImportedAnimation["preview"]["tracks"] = {};
   const previewTicks = approximatePreviewTicks(animation, durationTicks, Math.round(startDelaySeconds * TICKS_PER_SECOND));
   for (const bone of bones) {
-    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid));
+    validateBoneAnimator(animation, index, bone, boneAnimators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const transforms: ImportedTransformKeyframe[] = [];
     for (const [tickIndex, tick] of previewTicks.entries()) {
       const cache = new Map<string, Matrix4>();
@@ -297,7 +307,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
       const previousTick = previewTicks[tickIndex - 1];
       transforms.push({
         tick,
-        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, evaluateApproximateBlockbenchChannel), `${animation.name}/${bone.id}/${tick}`),
+        matrix: matrix4ToRowMajor(animatedWorldMatrix(bone, animation, boneAnimators, sourceTime, cache, index, blendWeight, convention, channels.evaluateApproximate), `${animation.name}/${bone.id}/${tick}`),
         interpolation: tick === 0 || approximatePreviewStepAt(boneAnimators, previousTick / TICKS_PER_SECOND - startDelaySeconds, sourceTime)
           ? { type: "step" }
           : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
@@ -324,7 +334,7 @@ function importAnimation(animation: BbAnimation, index: number, bones: BoneEntry
     durationTicks,
     playbackMode,
     loopDelayTicks: playbackMode === "loop"
-      ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`) * TICKS_PER_SECOND)
+      ? Math.round(numericValue(animation.loop_delay ?? 0, `animations[${index}].loop_delay`, formatLabel, diagnosticPrefix) * TICKS_PER_SECOND)
       : 0,
     events: { start: [], timeline: effectEvents, loop: [], stop: [] },
     preview: { durationTicks, tracks: previewTracks, availability: { preview: "full" } },
@@ -388,7 +398,7 @@ function blockbenchAnimationUsesRuntimeState(animation: BbAnimation): boolean {
   )));
 }
 
-function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[]): Map<string, BbAnimator> {
+function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bones: BoneEntry[], formatLabel: string, diagnosticPrefix: string): Map<string, BbAnimator> {
   const result = new Map<string, BbAnimator>();
   const boneByUuid = new Map(bones.map((bone) => [bone.uuid, bone]));
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
@@ -406,8 +416,8 @@ function resolveBoneAnimators(animation: BbAnimation, animationIndex: number, bo
       continue;
     }
     throw new ConversionError(
-      "unsupported_geckolib_animator",
-      `GeckoLib animation ${animation.name} contains a non-bone animator (${animator.name ?? animatorId}).`,
+      `unsupported_${diagnosticPrefix}_animator`,
+      `${formatLabel} animation ${animation.name} contains a non-bone animator (${animator.name ?? animatorId}).`,
       `animations[${animationIndex}].animators.${animatorId}`,
     );
   }
@@ -423,6 +433,8 @@ function importEffectEvents(
   animationIndex: number,
   bones: BoneEntry[],
   diagnostics: ImportDiagnostic[],
+  formatLabel: string,
+  diagnosticPrefix: string,
 ): ImportedTimelineEvent[] {
   const events: ImportedTimelineEvent[] = [];
   for (const [animatorId, animator] of Object.entries(animation.animators)) {
@@ -430,7 +442,7 @@ function importEffectEvents(
     for (const [keyframeIndex, keyframe] of (animator.keyframes ?? []).entries()) {
       const tick = Math.round(keyframe.time * TICKS_PER_SECOND);
       const sourcePath = `animations[${animationIndex}].animators.${animatorId}.keyframes[${keyframeIndex}]`;
-      if (tick < 0) throw new ConversionError("invalid_geckolib_event", "GeckoLib effect keyframe time must not be negative.", sourcePath);
+      if (tick < 0) throw new ConversionError(`invalid_${diagnosticPrefix}_event`, `${formatLabel} effect keyframe time must not be negative.`, sourcePath);
       for (const point of keyframe.data_points) {
         const origin = effectOrigin(point.locator, bones);
         if (keyframe.channel === "sound" && point.effect?.trim()) {
@@ -439,7 +451,7 @@ function importEffectEvents(
           appendTimelineEvent(events, tick, { source: { type: "server" }, origin, commands: [`particle ${point.effect.trim()} ~ ~ ~`] });
           if (point.script?.trim()) diagnostics.push({
             severity: "warning",
-            code: "geckolib_particle_script_ignored",
+            code: `${diagnosticPrefix}_particle_script_ignored`,
             message: `Particle pre-effect script was not converted: ${point.script.trim()}`,
             sourcePath,
           });
@@ -450,7 +462,7 @@ function importEffectEvents(
           const ignored = lines.filter((line) => !line.startsWith("/"));
           if (ignored.length) diagnostics.push({
             severity: "warning",
-            code: "geckolib_custom_instruction_ignored",
+            code: `${diagnosticPrefix}_custom_instruction_ignored`,
             message: `Custom instruction was not converted because it is not a slash command: ${ignored.join("; ")}`,
             sourcePath,
           });
@@ -480,12 +492,12 @@ function appendTimelineEvent(events: ImportedTimelineEvent[], tick: number, even
   else events.push({ ...event, tick });
 }
 
-function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined): void {
+function validateBoneAnimator(animation: BbAnimation, animationIndex: number, bone: BoneEntry, animator: BbAnimator | undefined, formatLabel: string, diagnosticPrefix: string): void {
   for (const [keyframeIndex, keyframe] of (animator?.keyframes ?? []).entries()) {
     if (!["position", "rotation", "scale"].includes(keyframe.channel)) {
       throw new ConversionError(
-        "unsupported_geckolib_channel",
-        `GeckoLib bone ${bone.group.name} uses unsupported channel ${keyframe.channel}.`,
+        `unsupported_${diagnosticPrefix}_channel`,
+        `${formatLabel} bone ${bone.group.name} uses unsupported channel ${keyframe.channel}.`,
         `animations[${animationIndex}].animators.${bone.uuid}.keyframes[${keyframeIndex}].channel`,
       );
     }
@@ -501,7 +513,7 @@ function animatedWorldMatrix(
   animationIndex: number,
   blendWeight = 1,
   convention: CubeProjectTransformConvention,
-  evaluateChannel: typeof evaluateBlockbenchChannel,
+  evaluateChannel: BlockbenchChannelEvaluator["evaluate"],
 ): Matrix4 {
   const cached = cache.get(bone.uuid);
   if (cached) return cached;
@@ -553,15 +565,15 @@ function matrixWithoutScale(matrix: Matrix4): Matrix4 {
   return new Matrix4().compose(position, rotation, new Vector3(1, 1, 1));
 }
 
-function numericValue(value: string | number, path: string): number {
+function numericValue(value: string | number, path: string, formatLabel: string, diagnosticPrefix: string): number {
   const number = typeof value === "number" ? value : Number(value.trim());
-  if (!Number.isFinite(number)) throw new ConversionError("unsupported_geckolib_molang", `GeckoLib expression ${String(value)} is not a numeric constant.`, path);
+  if (!Number.isFinite(number)) throw new ConversionError(`unsupported_${diagnosticPrefix}_molang`, `${formatLabel} expression ${String(value)} is not a numeric constant.`, path);
   return number;
 }
 
-function optionalNumericValue(value: string | number | undefined, fallback: number, path: string): number {
+function optionalNumericValue(value: string | number | undefined, fallback: number, path: string, formatLabel: string, diagnosticPrefix: string): number {
   if (value === undefined || (typeof value === "string" && value.trim() === "")) return fallback;
-  return numericValue(value, path);
+  return numericValue(value, path, formatLabel, diagnosticPrefix);
 }
 
 function validNamespace(value: string | undefined): string | undefined {

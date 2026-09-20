@@ -10,7 +10,6 @@ import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
-import { evaluateApproximateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
 import { blockbenchIntervalIsStep } from "../common/animationEasing";
 import { requireBlockbenchCubeProject, type BbKeyframe } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -25,6 +24,7 @@ import type {
 } from "./animatedJavaProjectSchema";
 import { ajRuntimeRootId, createAjProjectRuntime, type AjRuntimeHierarchy } from "./animatedJavaAnimationOutput";
 import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeAnimationOutput";
+import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 
 interface ProjectTransformGraph {
@@ -176,6 +176,8 @@ function importAnimatedJavaCubeGraph(project: AjProject, animations: AjProjectAn
   return importBlockbenchCubeContent(cubeProject, `${sourceStem}.bbmodel`, {
     transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
     formatLabel: "Animated Java",
+    diagnosticPrefix: "animated_java",
+    channels: ANIMATED_JAVA_CHANNELS,
     runtimeOutput: "native",
     createNativeRuntime: createAnimatedJavaCubeRuntime,
   });
@@ -728,7 +730,7 @@ function projectGroupMatrix(
 
 function evaluateProjectTransformChannel(keyframes: AjProjectKeyframe[], channel: string, sourceTime: number, fallback: number[], path: string): number[] {
   if (sourceTime < 0) return [...fallback];
-  return evaluateApproximateBlockbenchChannel(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
+  return ANIMATED_JAVA_CHANNELS.evaluateApproximate(keyframes as unknown as BbKeyframe[], channel, sourceTime, fallback, path);
 }
 
 function approximateProjectPreviewTicks(animation: AjProjectAnimation, durationTicks: number, startDelayTicks: number): number[] {

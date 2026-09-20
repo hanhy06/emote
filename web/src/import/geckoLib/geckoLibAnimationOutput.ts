@@ -11,11 +11,11 @@ import {
 } from "../common/blockbenchCubeImporter";
 import type { BbAnimator, BbKeyframe } from "../common/blockbenchCubeSchema";
 import { blockbenchEasingToEmote } from "../common/animationEasing";
-import { canBakeBlockbenchChannel, evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
 import { affineMolang, isolateMolangAxis, molangScalar, negateMolang, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import { GECKOLIB_BBMODEL_TRANSFORMS } from "./geckoLibCubeTransform";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
+import { GECKOLIB_CHANNELS } from "./geckoLibAnimationPolicy";
 
 export const createGeckoLibRuntime: BlockbenchNativeRuntimeFactory = ({ bones, importedNodes, animators, durationTicks, startDelayTicks, blendWeight, samplePlan }: BlockbenchNativeRuntimeContext) => {
   const sceneId = BLOCKBENCH_RUNTIME_SCENE_ID;
@@ -73,10 +73,10 @@ function geckoLibChannelFrames(
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (source.length === 0) return undefined;
   const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
-  if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...fallback], `runtime.${channel}`)) {
+  if (!usesRuntimeState && GECKOLIB_CHANNELS.canBake(source, channel, [...fallback], `runtime.${channel}`)) {
     const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const sourceTime = startDelayTicks > 0 ? (tick - startDelayTicks) / TICKS_PER_SECOND : sourceTimes?.get(tick) ?? tick / TICKS_PER_SECOND;
-      const value = transform(evaluateBlockbenchChannel(source, channel, sourceTime, [...fallback], `runtime.${channel}`) as MolangVector);
+      const value = transform(GECKOLIB_CHANNELS.evaluate(source, channel, sourceTime, [...fallback], `runtime.${channel}`) as MolangVector);
       return {
         tick,
         value,

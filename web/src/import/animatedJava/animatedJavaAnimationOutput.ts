@@ -3,10 +3,10 @@ import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
-import { canBakeBlockbenchChannel, evaluateBlockbenchChannel } from "../common/blockbenchKeyframeEvaluator";
 import { blockbenchEasingToEmote, blockbenchIntervalIsStep } from "../common/animationEasing";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import type { AjProjectAnimation, AjProjectDisplayElement, AjProjectKeyframe } from "./animatedJavaProjectSchema";
+import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 
 export interface AjRuntimeHierarchy {
   sceneId?: string;
@@ -83,14 +83,14 @@ function ajProjectFrames(
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
   if (source.length === 0) return undefined;
   const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
-  if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...sourceFallback], `runtime.${channel}`)) {
+  if (!usesRuntimeState && ANIMATED_JAVA_CHANNELS.canBake(source, channel, [...sourceFallback], `runtime.${channel}`)) {
     const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const animationTick = tick - startDelayTicks;
       const roundedAnchors = source.filter((frame) => Math.round(frame.time * TICKS_PER_SECOND) === animationTick);
       const sourceTime = roundedAnchors.at(-1)?.time ?? animationTick / TICKS_PER_SECOND;
       return {
         tick,
-        value: evaluateBlockbenchChannel(source, channel, sourceTime, [...sourceFallback], `runtime.${channel}`)
+        value: ANIMATED_JAVA_CHANNELS.evaluate(source, channel, sourceTime, [...sourceFallback], `runtime.${channel}`)
           .map((value, axis) => transform(value, axis)) as MolangVector,
         ...(tick < durationTicks ? { interpolation: blockbenchIntervalIsStep(source, sourceTime, sourceTime + 1 / TICKS_PER_SECOND) ? "step" : "linear" } : {}),
       };
