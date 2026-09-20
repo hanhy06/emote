@@ -6,7 +6,6 @@ import type { EmoteAnimation } from "../format/emoteAnimation";
 import type { ImportedProject } from "../domain/conversionSeed";
 import { animatedJavaBlueprintAdapter } from "../import/animatedJava/animatedJavaBlueprintAdapter";
 import type { ImportAdapter } from "../import/adapter";
-import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
 import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapter";
 import { compileImportedProject } from "./compileImportedFixture";
 
@@ -38,28 +37,18 @@ describe("documentation sample conversion", () => {
     sitAnimations = new Map(compileImportedProject(sitProject, { standalone: false }).map((animation) => [animation.metadata.name, animation]));
   });
 
-  it.each(DIRECT_SAMPLES)("converts the %s sample with compatible nodes and finite preview transforms", async (name) => {
+  it.each(DIRECT_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(directAnimations, name);
     const expected = await readJson(`docs/sample/emote.${name}.json`) as EmoteAnimation;
 
-    if (name === "anvil") {
-      expect(Object.values(actual.nodes).some((node) => node.type === "block_display"), "anvil must exercise Animated Java block-display conversion").toBe(true);
-    }
-    await expectAnimationStructureCompatible(actual, expected);
+    expect(actual).toEqual(expected);
   });
 
-  it.each(Object.entries(SIT_MATRIX_SAMPLES))("converts the %s sample with compatible nodes and finite preview transforms", async (name, fileName) => {
-    const generated = requireAnimation(sitAnimations, name);
+  it.each(Object.entries(SIT_MATRIX_SAMPLES))("matches the existing %s sample", async (name, fileName) => {
+    const actual = requireAnimation(sitAnimations, name);
     const expected = await readJson(`docs/sample/sit/${fileName}`) as EmoteAnimation;
 
-    if (name === "idle_flower") {
-      const actualPoppy = findPoppyDisplay(generated);
-      const expectedPoppy = findPoppyDisplay(expected);
-      expect(actualPoppy, "idle_flower must exercise Animated Java item-display conversion").toBeDefined();
-      expect(expectedPoppy, "idle_flower sample must retain its poppy item display").toBeDefined();
-      expect(actualPoppy?.item_display).toBe(expectedPoppy?.item_display);
-    }
-    await expectAnimationStructureCompatible(generated, expected);
+    expect(actual).toEqual(expected);
   });
 });
 
@@ -67,11 +56,6 @@ function requireAnimation(animations: ReadonlyMap<string, EmoteAnimation>, name:
   const animation = animations.get(name);
   if (!animation) throw new Error(`${name} must exist in a reference project`);
   return animation;
-}
-
-function findPoppyDisplay(animation: EmoteAnimation): Extract<EmoteAnimation["nodes"][string], { type: "item_display" }> | undefined {
-  return Object.values(animation.nodes).find((node): node is Extract<typeof node, { type: "item_display" }> =>
-    node.type === "item_display" && node.item_stack_snbt?.includes("minecraft:poppy") === true);
 }
 
 async function importFixture(path: string, adapter: ImportAdapter<ImportedProject>) {
@@ -84,32 +68,4 @@ async function readJson(path: string): Promise<unknown> {
 
 async function readBytes(path: string): Promise<Uint8Array> {
   return readFile(resolve(REPOSITORY_ROOT, path));
-}
-
-async function expectAnimationStructureCompatible(actual: EmoteAnimation, expected: EmoteAnimation): Promise<void> {
-  const [actualProject, expectedProject] = await Promise.all([
-    importEmote(actual, "actual.json"),
-    importEmote(expected, "expected.json"),
-  ]);
-  const actualAnimation = actualProject.animations[0];
-  const expectedAnimation = expectedProject.animations[0];
-
-  for (const [nodeId, expectedNode] of Object.entries(expectedProject.nodes)) {
-    const actualNode = actualProject.nodes[nodeId];
-    expect(actualNode, `nodes.${nodeId} must exist`).toBeDefined();
-    expect(actualNode.type, `nodes.${nodeId} type`).toBe(expectedNode.type);
-    expect(actualNode.defaultMatrix.every(Number.isFinite), `nodes.${nodeId} matrix`).toBe(true);
-  }
-
-  for (const nodeId of Object.keys(expectedAnimation.preview.tracks)) {
-    const actualTrack = actualAnimation.preview.tracks[nodeId];
-    expect(actualTrack, `tracks.${nodeId} must exist`).toBeDefined();
-    expect(actualTrack.transforms.length, `${nodeId} transform count`).toBeGreaterThan(0);
-    expect(actualTrack.transforms.every((frame) => frame.matrix.every(Number.isFinite)), `${nodeId} finite transforms`).toBe(true);
-    expect(actualTrack.transforms.every((frame, index, frames) => index === 0 || frame.tick > frames[index - 1].tick), `${nodeId} ordered transforms`).toBe(true);
-  }
-}
-
-async function importEmote(animation: EmoteAnimation, name: string) {
-  return emoteJsonAdapter.import({ name, bytes: new TextEncoder().encode(JSON.stringify(animation)) });
 }
