@@ -1,5 +1,5 @@
-import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
-import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeMolangPrograms, RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
 
@@ -84,7 +84,7 @@ export type ImportedAnimationRuntime =
   }
   | {
     kind: "native";
-    molang?: EmoteAnimation["molang"];
+    molang?: RuntimeMolangPrograms;
     nodes: Record<string, RuntimeNode>;
     tracks: Record<string, RuntimeNodeTracks>;
     bindings: NativeRuntimeBindings;

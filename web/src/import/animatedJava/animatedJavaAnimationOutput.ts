@@ -1,6 +1,5 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
-import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { formatMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
+import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
@@ -79,18 +78,18 @@ function ajProjectFrames(
   runtimeFallback: readonly number[],
   startDelayTicks: number,
   durationTicks: number,
-  transform: (value: MolangScalar, axis: number) => MolangScalar,
-): EmoteVectorKeyframe[] | undefined {
+  transform: (value: RuntimeScalar, axis: number) => RuntimeScalar,
+): RuntimeVectorKeyframe[] | undefined {
   const source = keyframes.filter((frame) => frame.channel === channel).sort((a, b) => a.time - b.time);
   if (source.length === 0) return undefined;
   const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
   if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...sourceFallback], `runtime.${channel}`)) {
-    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const animationTick = tick - startDelayTicks;
       const roundedAnchors = source.filter((frame) => Math.round(frame.time * TICKS_PER_SECOND) === animationTick);
       const sourceTime = roundedAnchors.at(-1)?.time ?? animationTick / TICKS_PER_SECOND;
       return {
-        time: formatMinecraftTime(tick),
+        tick,
         value: evaluateBlockbenchChannel(source, channel, sourceTime, [...sourceFallback], `runtime.${channel}`)
           .map((value, axis) => transform(value, axis)) as MolangVector,
         ...(tick < durationTicks ? { interpolation: blockbenchIntervalIsStep(source, sourceTime, sourceTime + 1 / TICKS_PER_SECOND) ? "step" : "linear" } : {}),
@@ -99,21 +98,21 @@ function ajProjectFrames(
     while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
     return withoutLastInterpolation(baked);
   }
-  const frames = [...new Map(source.map((frame, frameIndex): [string, EmoteVectorKeyframe] => {
+  const frames = [...new Map(source.map((frame, frameIndex): [number, RuntimeVectorKeyframe] => {
     const points = frame.data_points;
     if (points.length < 1 || points.length > 2) throw new Error("Animated Java transform keyframes must contain one value or a pre/post pair.");
     const vectors = points.map((point) => {
       if (point.x === undefined || point.y === undefined || point.z === undefined) throw new Error("Animated Java transform keyframe is missing an axis value.");
       return [point.x, point.y, point.z].map((value, axis) => transform(molangScalar(value), axis)) as MolangVector;
     });
-    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
+    const interpolation: RuntimeVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
     const easing = blockbenchEasingToEmote(source[frameIndex + 1]?.easing);
     const result = vectors.length === 1
-      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
-      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * 20)), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
-    return [result.time, result];
+      ? { tick: startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
+      : { tick: startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
+    return [result.tick, result];
   })).values()];
-  if (frames[0].time !== "0t") frames.unshift({ time: "0t", value: [...runtimeFallback] as MolangVector, interpolation: "step" });
+  if (frames[0].tick !== 0) frames.unshift({ tick: 0, value: [...runtimeFallback] as MolangVector, interpolation: "step" });
   return withoutLastInterpolation(frames);
 }
 
@@ -125,7 +124,7 @@ export function ajRuntimeRootId(id: string): string {
   return ajAnchorIds(id).x;
 }
 
-function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {
+function withoutLastInterpolation(frames: RuntimeVectorKeyframe[]): RuntimeVectorKeyframe[] {
   return frames.map((frame, index) => {
     if (index + 1 < frames.length) return frame;
     const { interpolation: _, easing: __, ...last } = frame;
@@ -133,11 +132,11 @@ function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKey
   });
 }
 
-function multiply(first: MolangScalar, second: MolangScalar): MolangScalar {
+function multiply(first: RuntimeScalar, second: RuntimeScalar): RuntimeScalar {
   if (typeof first === "number" && typeof second === "number") return first * second;
   return `((${first}) * (${second}))`;
 }
 
-function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+function sameVectorValue(first: RuntimeVectorKeyframe, second: RuntimeVectorKeyframe): boolean {
   return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }

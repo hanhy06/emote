@@ -1,6 +1,5 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
-import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { formatMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
+import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import { TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
@@ -42,7 +41,7 @@ export function createBedrockRuntime(
         parent: `${bone.id}_x`,
         transform: { position: ZERO, rotation: ZERO, scale: ONE },
         itemStack: { id: "minecraft:player_head", count: 1 },
-        item_display: "none",
+        itemDisplay: "none",
       };
       editorNodeByRuntimeNode[slice.id] = slice.id;
     }
@@ -88,14 +87,14 @@ function convertChannel(
   durationTicks: number,
   samplePlan: BedrockSamplePlan | undefined,
   transform: (values: MolangVector) => MolangVector,
-): EmoteVectorKeyframe[] | undefined {
+): RuntimeVectorKeyframe[] | undefined {
   if (channel === undefined) return undefined;
   if (!bedrockChannelHasExpressions(channel)) {
-    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const animationTick = tick - startDelayTicks;
       const sourceTime = animationTick < 0 ? animationTick / TICKS_PER_SECOND * timelineRate : samplePlan?.sourceTimes.get(animationTick) ?? animationTick / TICKS_PER_SECOND * timelineRate;
       return {
-        time: formatMinecraftTime(tick),
+        tick,
         value: transform((animationTick < 0 ? [...sourceFallback] : evaluateBedrockChannel(channel, sourceTime, [...sourceFallback], "runtime")) as MolangVector),
         ...(tick < durationTicks ? { interpolation: tick < startDelayTicks || samplePlan?.stepTicks.has(animationTick + 1) ? "step" : "linear" } : {}),
       };
@@ -105,27 +104,27 @@ function convertChannel(
     return withoutLastInterpolation(baked);
   }
   if (!isKeyframed(channel)) {
-    const result: EmoteVectorKeyframe[] = [{ time: formatMinecraftTime(startDelayTicks), value: transform(vector(channel, expressionRate, startDelayTicks)) }];
-    if (startDelayTicks > 0) result.unshift({ time: "0t", value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
+    const result: RuntimeVectorKeyframe[] = [{ tick: startDelayTicks, value: transform(vector(channel, expressionRate, startDelayTicks)) }];
+    if (startDelayTicks > 0) result.unshift({ tick: 0, value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
     return result;
   }
-  const result: EmoteVectorKeyframe[] = Object.entries(channel).sort(([first], [second]) => Number(first) - Number(second)).map(([time, keyframe]) => {
+  const result: RuntimeVectorKeyframe[] = Object.entries(channel).sort(([first], [second]) => Number(first) - Number(second)).map(([time, keyframe]) => {
     const tick = startDelayTicks + Math.max(0, Math.round(Number(time) / timelineRate * 20));
-    if (!isKeyframeValue(keyframe)) return { time: formatMinecraftTime(tick), value: transform(vector(keyframe, expressionRate, startDelayTicks)) };
+    if (!isKeyframeValue(keyframe)) return { tick, value: transform(vector(keyframe, expressionRate, startDelayTicks)) };
     const pre = keyframe.pre ?? keyframe.post;
     const post = keyframe.post ?? keyframe.pre;
-    return { time: formatMinecraftTime(tick), pre: transform(vector(pre!, expressionRate, startDelayTicks)), post: transform(vector(post!, expressionRate, startDelayTicks)) };
+    return { tick, pre: transform(vector(pre!, expressionRate, startDelayTicks)), post: transform(vector(post!, expressionRate, startDelayTicks)) };
   });
-  const unique: EmoteVectorKeyframe[] = [...new Map(result.map((frame) => [frame.time, frame])).values()];
-  if (unique[0]?.time !== "0t") unique.unshift({ time: "0t", value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
+  const unique: RuntimeVectorKeyframe[] = [...new Map(result.map((frame) => [frame.tick, frame])).values()];
+  if (unique[0]?.tick !== 0) unique.unshift({ tick: 0, value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
   return withoutLastInterpolation(unique.map((frame) => ({ ...frame, interpolation: frame.interpolation ?? "linear" })));
 }
 
-function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {
+function withoutLastInterpolation(frames: RuntimeVectorKeyframe[]): RuntimeVectorKeyframe[] {
   return frames.map((frame, index) => index + 1 < frames.length ? frame : (({ interpolation: _, easing: __, ...last }) => last)(frame));
 }
 
-function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+function sameVectorValue(first: RuntimeVectorKeyframe, second: RuntimeVectorKeyframe): boolean {
   return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }
 
@@ -135,7 +134,7 @@ function vector(value: BedrockVector, playbackRate: number | null, startDelayTic
   return expanded.map((entry) => rewriteExpression(entry, playbackRate, startDelayTicks)) as MolangVector;
 }
 
-function rewriteExpression(value: BedrockExpression, playbackRate: number | null, startDelayTicks: number): MolangScalar {
+function rewriteExpression(value: BedrockExpression, playbackRate: number | null, startDelayTicks: number): RuntimeScalar {
   if (typeof value !== "string") return value;
   if (playbackRate === null) return rewriteMolangIdentifiers(value.trim(), (identifier) => isQuery(identifier, "anim_time") ? "v.bedrock_anim_time" : undefined);
   const animationTime = startDelayTicks === 0 ? "q.anim_time" : `(math.max(0, q.anim_time - ${startDelayTicks / 20}))`;

@@ -1,8 +1,7 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
-import type { EmoteVectorKeyframe } from "../../format/emoteAnimation";
+import type { RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
 import { matrixToLocalTransform } from "../../format/localTransform";
 import { matrix4ToRowMajor } from "../../format/matrix";
-import { formatMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
+import { TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
 import {
   BLOCKBENCH_RUNTIME_SCENE_ID,
@@ -70,16 +69,16 @@ function geckoLibChannelFrames(
   sourceTimes: ReadonlyMap<number, number> | undefined,
   stepTicks: ReadonlySet<number> | undefined,
   transform: (value: MolangVector) => MolangVector,
-): EmoteVectorKeyframe[] | undefined {
+): RuntimeVectorKeyframe[] | undefined {
   const source = (animator.keyframes ?? []).filter((frame) => frame.channel === channel).sort((first, second) => first.time - second.time);
   if (source.length === 0) return undefined;
   const usesRuntimeState = source.some((frame) => frame.data_points.some((point) => usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z)));
   if (!usesRuntimeState && canBakeBlockbenchChannel(source, channel, [...fallback], `runtime.${channel}`)) {
-    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): EmoteVectorKeyframe => {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
       const sourceTime = startDelayTicks > 0 ? (tick - startDelayTicks) / TICKS_PER_SECOND : sourceTimes?.get(tick) ?? tick / TICKS_PER_SECOND;
       const value = transform(evaluateBlockbenchChannel(source, channel, sourceTime, [...fallback], `runtime.${channel}`) as MolangVector);
       return {
-        time: formatMinecraftTime(tick),
+        tick,
         value,
         ...(tick < durationTicks ? { interpolation: stepTicks?.has(tick + 1) ? "step" : "linear" } : {}),
       };
@@ -87,17 +86,17 @@ function geckoLibChannelFrames(
     while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
     return withoutLastInterpolation(baked);
   }
-  const result = [...new Map(source.map((frame, frameIndex): [string, EmoteVectorKeyframe] => {
+  const result = [...new Map(source.map((frame, frameIndex): [number, RuntimeVectorKeyframe] => {
     if (frame.data_points.length < 1 || frame.data_points.length > 2) throw new ConversionError("unsupported_geckolib_keyframe", "GeckoLib transform keyframes must contain one value or a pre/post pair.");
     const vectors = frame.data_points.map((point) => transform(geckoLibPointVector(point)));
-    const interpolation: EmoteVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
+    const interpolation: RuntimeVectorKeyframe["interpolation"] = frame.interpolation === "step" ? "step" : "linear";
     const easing = blockbenchEasingToEmote(source[frameIndex + 1]?.easing);
     const converted = vectors.length === 1
-      ? { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND)), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
-      : { time: formatMinecraftTime(startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND)), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
-    return [converted.time, converted];
+      ? { tick: startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND), value: vectors[0], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) }
+      : { tick: startDelayTicks + Math.round(frame.time * TICKS_PER_SECOND), pre: vectors[0], post: vectors[1], interpolation, ...(easing && interpolation !== "step" ? { easing } : {}) };
+    return [converted.tick, converted];
   })).values()];
-  if (result[0].time !== "0t") result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
+  if (result[0].tick !== 0) result.unshift({ tick: 0, value: transform([...fallback] as MolangVector), interpolation: "step" });
   return withoutLastInterpolation(result);
 }
 
@@ -109,10 +108,10 @@ function geckoLibPointVector(point: BbKeyframe["data_points"][number]): MolangVe
   }) as MolangVector;
 }
 
-function withoutLastInterpolation(frames: EmoteVectorKeyframe[]): EmoteVectorKeyframe[] {
+function withoutLastInterpolation(frames: RuntimeVectorKeyframe[]): RuntimeVectorKeyframe[] {
   return frames.map((frame, index) => index + 1 < frames.length ? frame : (({ interpolation: _, easing: __, ...last }) => last)(frame));
 }
 
-function sameVectorValue(first: EmoteVectorKeyframe, second: EmoteVectorKeyframe): boolean {
+function sameVectorValue(first: RuntimeVectorKeyframe, second: RuntimeVectorKeyframe): boolean {
   return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }

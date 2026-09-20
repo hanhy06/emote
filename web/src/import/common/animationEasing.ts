@@ -1,4 +1,4 @@
-import type { EmoteEasing } from "../../format/emoteAnimation";
+import type { RuntimeEasing } from "../../domain/minecraftData";
 import type { BbKeyframe } from "./blockbenchCubeSchema";
 
 type EasingFunction = (progress: number) => number;
@@ -71,11 +71,11 @@ export function animationEasingProgress(name: string, progress: number, args?: n
 
 export const SUPPORTED_BLOCKBENCH_EASINGS = Object.freeze([...Object.keys(EASINGS), "step"]);
 
-export function blockbenchEasingToEmote(name: string | undefined): EmoteEasing | undefined {
+export function blockbenchEasingToEmote(name: string | undefined): RuntimeEasing | undefined {
   const normalized = (name ?? "linear").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   if (normalized === "none") return "linear";
   return SUPPORTED_BLOCKBENCH_EASINGS.includes(normalized.replaceAll("_", "")) && normalized !== "step"
-    ? normalized as EmoteEasing
+    ? normalized as RuntimeEasing
     : undefined;
 }
 

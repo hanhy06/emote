@@ -96,28 +96,36 @@ function compileRuntimeNodes(
       throw new ConversionError("missing_runtime_node_binding", `Runtime display ${id} is not bound to an editor node.`, id);
     }
     const spaceGroupId = bindings.spaceGroupByRuntimeRoot[id];
-    const node = {
-      ...sourceNode,
-      ...(!sourceNode.parent && spaceGroupId ? { space: documentSpaceGroup(document, spaceGroupId) } : {}),
+    const space = !sourceNode.parent && spaceGroupId ? documentSpaceGroup(document, spaceGroupId) : sourceNode.space;
+    const common = {
+      ...(sourceNode.parent ? { parent: sourceNode.parent } : {}),
+      ...(space ? { space } : {}),
+      transform: sourceNode.transform,
     };
-    if (node.type === "block_display") {
-      const { blockState, ...output } = node;
-      return [id, { ...output, block_state_snbt: writeBlockState(blockState, profile) }];
+    if (sourceNode.type === "anchor") return [id, { type: "anchor", ...common }];
+    const displayCommon = {
+      ...common,
+      ...(sourceNode.visible === undefined ? {} : { visible: sourceNode.visible }),
+      ...(sourceNode.entityNbt ? { entity_nbt: sourceNode.entityNbt } : {}),
+    };
+    if (sourceNode.type === "block_display") {
+      return [id, { type: "block_display", ...displayCommon, block_state_snbt: writeBlockState(sourceNode.blockState, profile) }];
     }
-    if (node.type !== "item_display") return [id, node];
-    const { itemStack, ...itemOutput } = node;
+    if (sourceNode.type === "text_display") return [id, { type: "text_display", ...displayCommon, text: sourceNode.text }];
     const assignment = editorNodeId ? assignments[editorNodeId] : undefined;
-    const outputItem = assignment ? PLAYER_HEAD : itemStack;
+    const outputItem = assignment ? PLAYER_HEAD : sourceNode.itemStack;
     const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
       ? matrixToLocalTransform(
-          multiplyMatrix16(localTransformToMatrix(node.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
+          multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
           `Runtime player head node ${id}`,
         )
-      : node.transform;
+      : sourceNode.transform;
     return [id, {
-      ...itemOutput,
+      type: "item_display",
+      ...displayCommon,
       transform,
       item_stack_snbt: writeItemStack(outputItem, profile),
+      item_display: sourceNode.itemDisplay,
       skin: assignment ? { participant: assignment.participant ?? "initiator", part: assignment.part, order: assignment.order } : undefined,
     }];
   }));
@@ -237,14 +245,29 @@ function compileRuntimeTimeline(
   bindings: NativeRuntimeBindings,
   profile: MinecraftVersionProfile,
 ): EmoteAnimation["timeline"] {
-  const tracks = Object.fromEntries(Object.entries(sourceTracks).map(([nodeId, track]) => {
-    if (!track.nbt?.length) return [nodeId, track];
+  const tracks: Record<string, EmoteNodeTracks> = Object.fromEntries(Object.entries(sourceTracks).map(([nodeId, track]): [string, EmoteNodeTracks] => {
+    const compileVectorFrames = (frames: NonNullable<typeof track.position>, channel: string): EmoteVectorKeyframe[] => frames.map(({ tick, ...frame }) => ({
+      ...frame,
+      time: formatMinecraftTime(requireTick(tick, `${animation.id}/${nodeId} ${channel}`)),
+    }));
+    const output: EmoteNodeTracks = {
+      ...(track.position ? { position: compileVectorFrames(track.position, "position") } : {}),
+      ...(track.rotation ? { rotation: compileVectorFrames(track.rotation, "rotation") } : {}),
+      ...(track.scale ? { scale: compileVectorFrames(track.scale, "scale") } : {}),
+      ...(track.visible ? { visible: track.visible.map(({ tick, value }) => ({
+        time: formatMinecraftTime(requireTick(tick, `${animation.id}/${nodeId} visibility`)),
+        value,
+      })) } : {}),
+    };
+    if (!track.nbt) return [nodeId, output];
     const nbt = track.nbt.flatMap((frame) => {
       const value = compileRuntimeNbtValue(document, bindings.editorNodeByRuntimeNode[nodeId] ?? nodeId, frame.value, profile);
-      return value === undefined ? [] : [{ ...frame, value }];
+      return value === undefined ? [] : [{
+        time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
+        value,
+      }];
     });
-    const { nbt: _nbt, ...remaining } = track;
-    return [nodeId, nbt.length > 0 ? { ...remaining, nbt } : remaining];
+    return [nodeId, nbt.length > 0 ? { ...output, nbt } : output];
   }));
   return {
     duration: formatMinecraftTime(requireTick(animation.durationTicks, `${animation.id} duration`)),
