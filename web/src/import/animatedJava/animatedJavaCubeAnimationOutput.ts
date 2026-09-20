@@ -16,8 +16,10 @@ import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR 
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
+import { blockbenchChannelSampling } from "../common/blockbenchAnimationSource";
 
-export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ bones, importedNodes, animators, durationTicks, startDelayTicks, blendWeight, samplePlan }: BlockbenchNativeRuntimeContext) => {
+export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ source, bones, importedNodes }: BlockbenchNativeRuntimeContext) => {
+  const { animators, blendWeight, durationTicks, startDelayTicks } = source;
   const sceneId = BLOCKBENCH_RUNTIME_SCENE_ID;
   const nodes: Record<string, RuntimeNode> = {
     [sceneId]: { type: "anchor", space: "initiator", transform: { ...IDENTITY_TRANSFORM, scale: [PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE, PLAYER_RENDER_SCALE] } },
@@ -43,11 +45,14 @@ export const createAnimatedJavaCubeRuntime: BlockbenchNativeRuntimeFactory = ({ 
     }
     const animator = animators.get(bone.uuid);
     if (!animator) continue;
-    const position = animatedJavaChannelFrames(animator, "position", ZERO_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.position(values, negateMolang)
+    const positionSampling = blockbenchChannelSampling(source, bone.uuid, "position");
+    const rotationSampling = blockbenchChannelSampling(source, bone.uuid, "rotation");
+    const scaleSampling = blockbenchChannelSampling(source, bone.uuid, "scale");
+    const position = animatedJavaChannelFrames(animator, "position", ZERO_VECTOR, durationTicks, startDelayTicks, positionSampling?.sourceTimes, positionSampling?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.position(values, negateMolang)
       .map((value, axis) => affineMolang(value, blendWeight / 16, basePosition[axis])) as MolangVector);
-    const rotation = animatedJavaChannelFrames(animator, "rotation", ZERO_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.rotation(values, negateMolang)
+    const rotation = animatedJavaChannelFrames(animator, "rotation", ZERO_VECTOR, durationTicks, startDelayTicks, rotationSampling?.sourceTimes, rotationSampling?.stepTicks, (values) => ANIMATED_JAVA_BLUEPRINT_TRANSFORMS.rotation(values, negateMolang)
       .map((value) => affineMolang(value, blendWeight, 0)) as MolangVector);
-    const scale = animatedJavaChannelFrames(animator, "scale", ONE_VECTOR, durationTicks, startDelayTicks, samplePlan?.sourceTimes, samplePlan?.stepTicks, (values) => values
+    const scale = animatedJavaChannelFrames(animator, "scale", ONE_VECTOR, durationTicks, startDelayTicks, scaleSampling?.sourceTimes, scaleSampling?.stepTicks, (values) => values
       .map((value) => affineMolang(value, blendWeight, 1 - blendWeight)) as MolangVector);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {

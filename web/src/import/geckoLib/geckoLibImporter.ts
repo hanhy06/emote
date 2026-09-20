@@ -3,7 +3,7 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { ConversionError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent } from "../common/blockbenchCubeImporter";
 import type { BbmodelProject } from "../common/blockbenchCubeSchema";
-import { createGeckoLibRuntime } from "./geckoLibAnimationOutput";
+import { createGeckoLibRuntime } from "./geckoLibRuntime";
 import { GECKOLIB_BBMODEL_TRANSFORMS } from "./geckoLibCubeTransform";
 import { GECKOLIB_CHANNELS } from "./geckoLibAnimationPolicy";
 
