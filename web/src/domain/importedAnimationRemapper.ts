@@ -16,12 +16,7 @@ export function remapImportedAnimation(
   const editorGroupId = ids.editorGroupId ?? ids.editorNodeId;
   return {
     ...animation,
-    events: {
-      start: animation.events.start.map((event) => remapEvent(event, ids.editorNodeId)),
-      timeline: animation.events.timeline.map((event) => remapTimelineEvent(event, ids.editorNodeId)),
-      loop: animation.events.loop.map((event) => remapEvent(event, ids.editorNodeId)),
-      stop: animation.events.stop.map((event) => remapEvent(event, ids.editorNodeId)),
-    },
+    events: remapImportedAnimationEvents(animation.events, ids.editorNodeId),
     preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, ids.editorNodeId) },
     runtime: animation.runtime.kind === "baked"
       ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, ids.editorNodeId) }
@@ -35,6 +30,18 @@ export function remapImportedAnimation(
             runtimeNodeId: ids.runtimeNodeId,
           }),
         },
+  };
+}
+
+export function remapImportedAnimationEvents(
+  events: ImportedAnimation["events"],
+  nodeId: (id: string) => string,
+): ImportedAnimation["events"] {
+  return {
+    start: events.start.map((event) => remapEvent(event, nodeId)),
+    timeline: events.timeline.map((event) => remapTimelineEvent(event, nodeId)),
+    loop: events.loop.map((event) => remapEvent(event, nodeId)),
+    stop: events.stop.map((event) => remapEvent(event, nodeId)),
   };
 }
 

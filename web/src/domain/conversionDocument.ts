@@ -1,5 +1,5 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
@@ -9,6 +9,7 @@ import type {
   ImportedNode,
   ImportedProject,
   ImportedSkinPart,
+  ImportedTimelineEvent,
   ImportSource,
 } from "./conversionSeed";
 
@@ -54,8 +55,16 @@ export interface AnimationOutputSettings {
 
 export interface ConversionAnimation {
   source: ImportedAnimation;
+  events: ConversionAnimationEvents;
   output: AnimationOutputSettings;
   nodeIds: string[];
+}
+
+export interface ConversionAnimationEvents {
+  start: EmoteEvent[];
+  timeline: ImportedTimelineEvent[];
+  loop: EmoteEvent[];
+  stop: EmoteEvent[];
 }
 
 export interface SequenceOutputSettings {
@@ -128,6 +137,12 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         : additionalMetadata;
       return {
         source: animation,
+        events: {
+          start: [...animation.events.start],
+          timeline: [...animation.events.timeline],
+          loop: [...animation.events.loop],
+          stop: [...animation.events.stop],
+        },
         nodeIds: Object.keys(nodes),
         output: {
           namespace,
@@ -254,16 +269,40 @@ export function assignDocumentNodeSpace(
   return { ...document, nodes, skinGroups };
 }
 
-export function editDocumentAnimation(
+export function updateDocumentAnimationLifecycleEvents(
   document: ConversionDocument,
   animationIndex: number,
-  edit: (animation: ImportedAnimation) => ImportedAnimation,
+  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop">,
 ): ConversionDocument {
   if (!document.animations[animationIndex]) return document;
   return {
     ...document,
     animations: document.animations.map((animation, index) => index === animationIndex
-      ? { ...animation, source: edit(animation.source) }
+      ? { ...animation, events: { ...animation.events, ...events } }
+      : animation),
+  };
+}
+
+export function replaceDocumentAnimationTimelineEvents(
+  document: ConversionDocument,
+  animationIndex: number,
+  tick: number,
+  events: EmoteEvent[],
+): ConversionDocument {
+  if (!document.animations[animationIndex]) return document;
+  return {
+    ...document,
+    animations: document.animations.map((animation, index) => index === animationIndex
+      ? {
+          ...animation,
+          events: {
+            ...animation.events,
+            timeline: [
+              ...animation.events.timeline.filter((event) => event.tick !== tick),
+              ...events.map((event) => ({ ...event, tick })),
+            ].sort((first, second) => first.tick - second.tick),
+          },
+        }
       : animation),
   };
 }

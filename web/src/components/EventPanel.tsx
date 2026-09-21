@@ -1,6 +1,6 @@
 import { useState } from "preact/hooks";
 import type { EmoteEvent } from "../format/emoteAnimation";
-import type { ImportedAnimation } from "../domain/conversionSeed";
+import type { ConversionAnimationEvents } from "../domain/conversionDocument";
 
 interface LifecycleEvents {
   start: EmoteEvent[];
@@ -9,7 +9,7 @@ interface LifecycleEvents {
 }
 
 interface EventPanelProps {
-  animation: ImportedAnimation;
+  events: ConversionAnimationEvents;
   tick: number | null;
   disabled: boolean;
   onLifecycleChange: (events: LifecycleEvents) => void;
@@ -17,15 +17,15 @@ interface EventPanelProps {
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ animation, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
+export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
   const [error, setError] = useState("");
   const initialValue = tick === null
     ? JSON.stringify({
-      start: animation.events.start,
-      loop: animation.events.loop,
-      stop: animation.events.stop,
+      start: events.start,
+      loop: events.loop,
+      stop: events.stop,
     }, null, 2)
-    : JSON.stringify(animation.events.timeline.flatMap((event) => {
+    : JSON.stringify(events.timeline.flatMap((event) => {
       if (event.tick !== tick) return [];
       const { tick: _tick, ...body } = event;
       return [body];

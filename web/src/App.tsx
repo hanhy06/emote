@@ -70,7 +70,8 @@ export function App() {
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
-  const animation = project?.animations[animationIndex]?.source;
+  const selectedAnimation = project?.animations[animationIndex];
+  const animation = selectedAnimation?.source;
   const availability = preview?.availability ?? null;
   const exportAvailability = animation ? animationExportAvailability(animation) : null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
@@ -230,7 +231,7 @@ export function App() {
         </section>
       )}
 
-      {session && animation && (
+      {session && project && selectedAnimation && animation && (
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
@@ -339,7 +340,7 @@ export function App() {
             )}
             {exportAvailability?.exportable && <EventPanel
               key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
-              animation={animation}
+              events={selectedAnimation.events}
               tick={previewTick}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}

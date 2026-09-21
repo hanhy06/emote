@@ -2,7 +2,7 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
-import { remapImportedAnimation } from "./importedAnimationRemapper";
+import { remapImportedAnimation, remapImportedAnimationEvents } from "./importedAnimationRemapper";
 import { remapEditorNodeBinding } from "./nodeBindings";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[]): ConversionDocument {
@@ -32,7 +32,12 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     animations.push(...document.animations.map((animation) => {
       const source = remapImportedAnimation(animation.source, { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId });
       source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
-      return { ...animation, nodeIds: animation.nodeIds.map(nodeId), source };
+      return {
+        ...animation,
+        nodeIds: animation.nodeIds.map(nodeId),
+        source,
+        events: remapImportedAnimationEvents(animation.events, nodeId),
+      };
     }));
     if (index > 0) mergeResources(resources, document.resources);
   });

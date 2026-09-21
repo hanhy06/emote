@@ -4,12 +4,13 @@ import {
   assignDocumentSkinPart,
   createConversionDocument,
   documentPartAssignments,
-  editDocumentAnimation,
+  replaceDocumentAnimationTimelineEvents,
+  updateDocumentAnimationLifecycleEvents,
   updateDocumentAnimationOutput,
   type AnimationOutputSettings,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import type { ImportedAnimation, ImportedProject } from "./domain/conversionSeed";
+import type { ImportedProject } from "./domain/conversionSeed";
 import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
@@ -128,12 +129,15 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         document: { ...session.document, targetMinecraftVersion: action.version },
       }));
     case "lifecycle_events_changed":
-      return editCurrentAnimation(state, (animation) => ({
-        ...animation,
-        events: { ...animation.events, ...action.events },
+      return updateSession(state, (session) => ({
+        ...session,
+        document: updateDocumentAnimationLifecycleEvents(session.document, session.animationIndex, action.events),
       }));
     case "timeline_events_changed":
-      return editCurrentAnimation(state, (animation) => replaceTimelineEvents(animation, action.tick, action.events));
+      return updateSession(state, (session) => ({
+        ...session,
+        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
+      }));
   }
 }
 
@@ -178,19 +182,4 @@ function updateSession(
   if (!state.session) return state;
   const session = edit(state.session);
   return { ...state, session, page: page(session) };
-}
-
-function editCurrentAnimation(state: WorkspaceState, edit: (animation: ImportedAnimation) => ImportedAnimation): WorkspaceState {
-  return updateSession(state, (session) => ({
-    ...session,
-    document: editDocumentAnimation(session.document, session.animationIndex, edit),
-  }));
-}
-
-function replaceTimelineEvents(animation: ImportedAnimation, tick: number, events: EmoteEvent[]): ImportedAnimation {
-  const timeline = [
-    ...animation.events.timeline.filter((event) => event.tick !== tick),
-    ...events.map((event) => ({ ...event, tick })),
-  ].sort((first, second) => first.tick - second.tick);
-  return { ...animation, events: { ...animation.events, timeline } };
 }

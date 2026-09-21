@@ -14,6 +14,7 @@ import {
   documentMetadata,
   documentSkinAssignments,
   type AnimationOutputSettings,
+  type ConversionAnimationEvents,
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
@@ -78,8 +79,8 @@ export function compileConversionAnimation(
       ? compileRuntimeNodes(document, runtime.nodes, runtime.bindings, profile)
       : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile),
     timeline: runtime.kind === "native"
-      ? compileRuntimeTimeline(document, animation, runtime.tracks, runtime.bindings, profile)
-      : compileTimeline(document, animation, runtime.tracks, profile),
+      ? compileRuntimeTimeline(document, animation, entry.events, runtime.tracks, runtime.bindings, profile)
+      : compileTimeline(document, animation, entry.events, runtime.tracks, profile),
   };
 }
 
@@ -194,7 +195,7 @@ function compileNodeMatrix(
   return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
 }
 
-function compileTimeline(document: ConversionDocument, animation: ImportedAnimation, sourceTracks: Record<string, ImportedNodeTrack>, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
+function compileTimeline(document: ConversionDocument, animation: ImportedAnimation, events: ConversionAnimationEvents, sourceTracks: Record<string, ImportedNodeTrack>, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const tracks: Record<string, EmoteNodeTracks> = {};
   for (const [nodeId, track] of Object.entries(sourceTracks)) {
@@ -235,13 +236,14 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
   return {
     duration: formatMinecraftTime(durationTicks),
     tracks,
-    events: compileEvents(animation),
+    events: compileEvents(animation.id, events),
   };
 }
 
 function compileRuntimeTimeline(
   document: ConversionDocument,
   animation: ImportedAnimation,
+  events: ConversionAnimationEvents,
   sourceTracks: Record<string, RuntimeNodeTracks>,
   bindings: NativeRuntimeBindings,
   profile: MinecraftVersionProfile,
@@ -277,20 +279,20 @@ function compileRuntimeTimeline(
   return {
     duration: formatMinecraftTime(requireTick(animation.durationTicks, `${animation.id} duration`)),
     tracks,
-    events: compileEvents(animation),
+    events: compileEvents(animation.id, events),
   };
 }
 
-function compileEvents(animation: ImportedAnimation): NonNullable<EmoteAnimation["timeline"]["events"]> {
-  const timeline: EmoteTimelineEvent[] = animation.events.timeline.map(({ tick, ...event }) => ({
+function compileEvents(animationId: string, events: ConversionAnimationEvents): NonNullable<EmoteAnimation["timeline"]["events"]> {
+  const timeline: EmoteTimelineEvent[] = events.timeline.map(({ tick, ...event }) => ({
     ...event,
-    time: formatMinecraftTime(requireTick(tick, `${animation.id} event`)),
+    time: formatMinecraftTime(requireTick(tick, `${animationId} event`)),
   }));
   return {
-    ...(animation.events.start.length ? { start: animation.events.start } : {}),
+    ...(events.start.length ? { start: events.start } : {}),
     ...(timeline.length ? { timeline } : {}),
-    ...(animation.events.loop.length ? { loop: animation.events.loop } : {}),
-    ...(animation.events.stop.length ? { stop: animation.events.stop } : {}),
+    ...(events.loop.length ? { loop: events.loop } : {}),
+    ...(events.stop.length ? { stop: events.stop } : {}),
   };
 }
 
