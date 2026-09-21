@@ -95,6 +95,13 @@ function removeTinyStaticNodes(animation: EmoteAnimation): EmoteAnimation {
       removable.add(parent);
     }
   }
+  let removableCount: number;
+  do {
+    removableCount = removable.size;
+    for (const [id, node] of Object.entries(animation.nodes)) {
+      if (node.parent && removable.has(node.parent)) removable.add(id);
+    }
+  } while (removable.size !== removableCount);
   if (removable.size === Object.keys(animation.nodes).length) return animation;
 
   const nodes = Object.fromEntries(Object.entries(animation.nodes).filter(([id]) => !removable.has(id)));
