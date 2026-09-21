@@ -1,6 +1,6 @@
 import { sanitizeResourcePath } from "../../format/resourceLocation";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { GeneratedResource } from "../../domain/generatedResource";
+import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
 import type { BbCube, BbTexture, BlockbenchCubeProject } from "./blockbenchCubeSchema";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import type { CubeProjectTransformConvention } from "./blockbenchCubeTransform";
@@ -59,7 +59,7 @@ export function writeCubeResources(
     elements: [cubeModelElement(cube, bone.group.origin, project.resolution, sourceTextures, transforms)],
   };
   resources.set(`assets/${namespace}/models/item/${modelPath}.json`, model);
-  resources.set(`assets/${namespace}/items/${modelPath}.json`, { kind: "item_model", model: `${namespace}:item/${modelPath}` });
+  resources.set(itemModelResourcePath(namespace, modelPath), { kind: "item_model", model: `${namespace}:item/${modelPath}` });
 }
 
 function referencedTextureIndexes(cube: BbCube, textures: BbTexture[]): Set<number> {

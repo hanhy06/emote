@@ -1,4 +1,4 @@
-import type { GeneratedResource } from "../../domain/generatedResource";
+import { itemModelResourcePath, type GeneratedResource } from "../../domain/generatedResource";
 import { Matrix4, Quaternion, Vector3 } from "three";
 import type { EmoteEvent, Matrix16, MolangScalar } from "../../format/emoteAnimation";
 import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
@@ -130,7 +130,12 @@ export function importBlockbenchCubeContent(
         visible: true,
         space: "initiator",
         itemDisplay: "none",
-        itemStack: { id: "minecraft:paper", count: 1, components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }] },
+        itemStack: {
+          id: "minecraft:paper",
+          count: 1,
+          components: [{ name: "minecraft:item_model", value: serializeSnbtString(`${namespace}:${modelPath}`) }],
+          generatedResourceReferences: [itemModelResourcePath(namespace, modelPath)],
+        },
         ...(conversionMatrix ? { playerHeadConversion: { matrix: conversionMatrix } } : {}),
         ...(skin ? { suggestedSkin: skin } : {}),
       };

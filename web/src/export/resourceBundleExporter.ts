@@ -1,12 +1,11 @@
 import { zipSync } from "fflate";
 import type { ConversionDocument } from "../domain/conversionDocument";
-import type { EmoteAnimation } from "../format/emoteAnimation";
 import { generatedResourceFiles } from "./generatedResources";
 import { sanitizeAnimationFileName } from "./projectExporter";
 import type { ExportResult } from "./types";
 
-export function exportDocumentResourceBundle(document: ConversionDocument, animations?: readonly EmoteAnimation[]): ExportResult {
-  const generatedResources = generatedResourceFiles(document, document.targetMinecraftVersion, animations);
+export function exportDocumentResourceBundle(document: ConversionDocument, resourceReferences?: ReadonlySet<string>): ExportResult {
+  const generatedResources = generatedResourceFiles(document, document.targetMinecraftVersion, resourceReferences);
   const files: Record<string, Uint8Array> = {};
   for (const [path, data] of generatedResources) files[flatResourcePath(path)] = data;
 

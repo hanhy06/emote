@@ -36,6 +36,19 @@ export function compileConversionAnimation(
   animationIndex: number,
   outputOverride?: Partial<AnimationOutputSettings>,
 ): EmoteAnimation {
+  return compileConversionAnimationArtifact(document, animationIndex, outputOverride).animation;
+}
+
+export interface CompiledConversionAnimation {
+  animation: EmoteAnimation;
+  generatedResourceReferences: ReadonlySet<string>;
+}
+
+export function compileConversionAnimationArtifact(
+  document: ConversionDocument,
+  animationIndex: number,
+  outputOverride?: Partial<AnimationOutputSettings>,
+): CompiledConversionAnimation {
   const entry = document.animations[animationIndex];
   if (!entry) throw new ConversionError("unknown_animation", `Animation ${animationIndex + 1} does not exist.`);
   const importError = document.diagnostics.find((diagnostic) => diagnostic.severity === "error");
@@ -55,7 +68,8 @@ export function compileConversionAnimation(
   const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
   const runtime = animation.data;
-  return {
+  const generatedResourceReferences = new Set<string>();
+  const compiled: EmoteAnimation = {
     type: "animation",
     schema_version: 4,
     target_minecraft_version: document.targetMinecraftVersion,
@@ -76,12 +90,13 @@ export function compileConversionAnimation(
     },
     ...(runtime.kind === "native" && runtime.molang ? { molang: runtime.molang } : {}),
     nodes: runtime.kind === "native"
-      ? compileRuntimeNodes(document, runtime.nodes, runtime.bindings, profile)
-      : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile),
+      ? compileRuntimeNodes(document, runtime.nodes, runtime.bindings, profile, generatedResourceReferences)
+      : compileNodes(document, animation, runtime.tracks, entry.nodeIds, profile, generatedResourceReferences),
     timeline: runtime.kind === "native"
-      ? compileRuntimeTimeline(document, animation, entry.events, runtime.tracks, runtime.bindings, profile)
-      : compileTimeline(document, animation, entry.events, runtime.tracks, profile),
+      ? compileRuntimeTimeline(document, animation, entry.events, runtime.tracks, runtime.bindings, profile, generatedResourceReferences)
+      : compileTimeline(document, animation, entry.events, runtime.tracks, profile, generatedResourceReferences),
   };
+  return { animation: compiled, generatedResourceReferences };
 }
 
 function compileRuntimeNodes(
@@ -89,6 +104,7 @@ function compileRuntimeNodes(
   sourceNodes: Record<string, RuntimeNode>,
   bindings: NativeRuntimeBindings,
   profile: MinecraftVersionProfile,
+  generatedResourceReferences: Set<string>,
 ): Record<string, EmoteNode> {
   const assignments = documentSkinAssignments(document);
   return Object.fromEntries(Object.entries(sourceNodes).map(([id, sourceNode]): [string, EmoteNode] => {
@@ -116,6 +132,7 @@ function compileRuntimeNodes(
     if (sourceNode.type === "text_display") return [id, { type: "text_display", ...displayCommon, text: sourceNode.text }];
     const assignment = editorNodeId ? assignments[editorNodeId] : undefined;
     const outputItem = assignment ? PLAYER_HEAD : sourceNode.itemStack;
+    includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
     const transform = assignment && editorNode?.type === "item_display" && editorNode.playerHeadConversion
       ? matrixToLocalTransform(
           multiplyMatrix16(localTransformToMatrix(sourceNode.transform, `Runtime node ${id}`), editorNode.playerHeadConversion.matrix, `Runtime player head node ${id}`),
@@ -152,7 +169,7 @@ function validateAnimationIds(document: ConversionDocument): void {
   }
 }
 
-function compileNodes(document: ConversionDocument, animation: AnimationRuntimeProjection, tracks: Record<string, BakedRuntimeNodeTracks>, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+function compileNodes(document: ConversionDocument, animation: AnimationRuntimeProjection, tracks: Record<string, BakedRuntimeNodeTracks>, nodeIds: readonly string[], profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): Record<string, EmoteNode> {
   return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
@@ -165,10 +182,12 @@ function compileNodes(document: ConversionDocument, animation: AnimationRuntimeP
     };
     if (node.type === "item_display") {
       const assignment = node.binding.skinGroupId ? document.skinGroups[node.binding.skinGroupId]?.assignment : null;
+      const outputItem = assignment && node.playerHeadConversion ? PLAYER_HEAD : node.itemStack;
+      includeGeneratedResourceReferences(generatedResourceReferences, outputItem.generatedResourceReferences);
       return [id, {
         ...common,
         type: "item_display",
-        item_stack_snbt: writeItemStack(assignment && node.playerHeadConversion ? PLAYER_HEAD : node.itemStack, profile),
+        item_stack_snbt: writeItemStack(outputItem, profile),
         item_display: node.itemDisplay,
         ...(assignment ? {
           skin: {
@@ -195,7 +214,7 @@ function compileNodeMatrix(
   return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
 }
 
-function compileTimeline(document: ConversionDocument, animation: AnimationRuntimeProjection, events: ConversionAnimationEvents, sourceTracks: Record<string, BakedRuntimeNodeTracks>, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
+function compileTimeline(document: ConversionDocument, animation: AnimationRuntimeProjection, events: ConversionAnimationEvents, sourceTracks: Record<string, BakedRuntimeNodeTracks>, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const tracks: Record<string, EmoteNodeTracks> = {};
   for (const [nodeId, track] of Object.entries(sourceTracks)) {
@@ -222,7 +241,7 @@ function compileTimeline(document: ConversionDocument, animation: AnimationRunti
     }
     if (track.nbt.length > 0) {
       const nbt = track.nbt.flatMap((frame) => {
-        const value = compileNodeNbt(document, nodeId, frame.value, profile);
+        const value = compileNodeNbt(document, nodeId, frame.value, profile, generatedResourceReferences);
         return value === undefined ? [] : [{
           time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
           value,
@@ -247,6 +266,7 @@ function compileRuntimeTimeline(
   sourceTracks: Record<string, RuntimeNodeTracks>,
   bindings: NativeRuntimeBindings,
   profile: MinecraftVersionProfile,
+  generatedResourceReferences: Set<string>,
 ): EmoteAnimation["timeline"] {
   const tracks: Record<string, EmoteNodeTracks> = Object.fromEntries(Object.entries(sourceTracks).map(([nodeId, track]): [string, EmoteNodeTracks] => {
     const compileVectorFrames = (frames: NonNullable<typeof track.position>, channel: string): EmoteVectorKeyframe[] => frames.map(({ tick, ...frame }) => ({
@@ -268,7 +288,7 @@ function compileRuntimeTimeline(
       if (!editorNodeId) {
         throw new ConversionError("missing_runtime_node_binding", `Runtime NBT track ${nodeId} is not bound to an editor node.`, nodeId);
       }
-      const value = compileRuntimeNbtValue(document, editorNodeId, frame.value, profile);
+      const value = compileRuntimeNbtValue(document, editorNodeId, frame.value, profile, generatedResourceReferences);
       return value === undefined ? [] : [{
         time: formatMinecraftTime(requireTick(frame.tick, `${animation.id}/${nodeId} nbt`)),
         value,
@@ -301,9 +321,13 @@ function compileRuntimeNbtValue(
   nodeId: string,
   value: DisplayNbtValue,
   profile: MinecraftVersionProfile,
+  generatedResourceReferences: Set<string>,
 ): EmoteNbtValue | undefined {
-  if ("molang" in value) return { molang: compileMolangNbtLiterals(document, nodeId, value.molang, profile) };
-  return compileNodeNbt(document, nodeId, value, profile);
+  if ("molang" in value) {
+    includeGeneratedResourceReferences(generatedResourceReferences, value.generatedResourceReferences);
+    return { molang: compileMolangNbtLiterals(document, nodeId, value.molang, profile, generatedResourceReferences) };
+  }
+  return compileNodeNbt(document, nodeId, value, profile, generatedResourceReferences);
 }
 
 function compileMolangNbtLiterals(
@@ -311,24 +335,32 @@ function compileMolangNbtLiterals(
   nodeId: string,
   source: string,
   profile: MinecraftVersionProfile,
+  generatedResourceReferences: Set<string>,
 ): string {
   return rewriteMolangStringLiterals(source, (value) => {
     if (!value.trimStart().startsWith("{")) return undefined;
     try {
-      return compileNodeNbt(document, nodeId, readDisplayNbt(value), profile) ?? "{}";
+      return compileNodeNbt(document, nodeId, readDisplayNbt(value), profile, generatedResourceReferences) ?? "{}";
     } catch {
       return undefined;
     }
   });
 }
 
-function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile): string | undefined {
+function compileNodeNbt(document: ConversionDocument, nodeId: string, value: DisplayNbtPatch, profile: MinecraftVersionProfile, generatedResourceReferences: Set<string>): string | undefined {
   const node = document.nodes[nodeId];
   if (node?.type !== "item_display" || !node.playerHeadConversion || !node.binding.skinGroupId
-    || !document.skinGroups[node.binding.skinGroupId]?.assignment) return writeDisplayNbt(value, profile);
+    || !document.skinGroups[node.binding.skinGroupId]?.assignment) {
+    includeGeneratedResourceReferences(generatedResourceReferences, value.itemStack?.generatedResourceReferences);
+    return writeDisplayNbt(value, profile);
+  }
   const { itemStack: _item, ...remaining } = value;
   if (!remaining.blockState && remaining.rawFields.length === 0) return undefined;
   return writeDisplayNbt(remaining, profile);
+}
+
+function includeGeneratedResourceReferences(target: Set<string>, references: readonly string[] | undefined): void {
+  for (const reference of references ?? []) target.add(reference);
 }
 
 interface TransformFrame {

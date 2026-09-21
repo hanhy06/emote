@@ -16,6 +16,7 @@ export interface ItemStackData {
   count?: number;
   components?: RawNbtField[];
   extraFields?: RawNbtField[];
+  generatedResourceReferences?: string[];
 }
 
 export interface DisplayNbtPatch {
@@ -46,7 +47,7 @@ export interface BakedRuntimeNodeTracks {
   nbt: BakedRuntimeNbtKeyframe[];
 }
 
-export type DisplayNbtValue = DisplayNbtPatch | { molang: string };
+export type DisplayNbtValue = DisplayNbtPatch | { molang: string; generatedResourceReferences?: string[] };
 
 export type RuntimeScalar = number | string;
 export type RuntimeVector = readonly [RuntimeScalar, RuntimeScalar, RuntimeScalar];

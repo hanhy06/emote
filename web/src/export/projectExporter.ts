@@ -1,11 +1,9 @@
-import { compileConversionAnimation } from "../compiler/animationCompiler";
+import { compileConversionAnimationArtifact } from "../compiler/animationCompiler";
 import type { ConversionDocument } from "../domain/conversionDocument";
-import type { EmoteAnimation } from "../format/emoteAnimation";
 import { formatMinecraftTime, parseMinecraftTime } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { serializeEmoteAnimation } from "../format/serializer";
 import { removeRedundantKeyframes } from "../format/keyframeCleanup";
-import { animationUsesGeneratedResources } from "./generatedResources";
 import type { ExportResult } from "./types";
 
 export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
@@ -19,35 +17,36 @@ export function exportDocumentAnimationFiles(document: ConversionDocument, inclu
 export async function createDocumentAnimationDownload(document: ConversionDocument, animationIndex: number): Promise<ExportResult[]> {
   const compiled = compileAnimationFile(document, animationIndex);
   const files = [compiled.file];
-  if (animationUsesGeneratedResources(compiled.animation, document.resources)) {
+  if (compiled.generatedResourceReferences.size > 0) {
     const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-    files.push(exportDocumentResourceBundle(document, [compiled.animation]));
+    files.push(exportDocumentResourceBundle(document, compiled.generatedResourceReferences));
   }
   return files;
 }
 
 export async function createDocumentAnimationBundleDownload(document: ConversionDocument, includeSequence: boolean): Promise<ExportResult[]> {
   const compiled = compileAnimationFiles(document, includeSequence);
-  if (!compiled.animations.some((animation) => animationUsesGeneratedResources(animation, document.resources))) return compiled.files;
+  if (compiled.generatedResourceReferences.size === 0) return compiled.files;
   const { exportDocumentResourceBundle } = await import("./resourceBundleExporter");
-  return [...compiled.files, exportDocumentResourceBundle(document, compiled.animations)];
+  return [...compiled.files, exportDocumentResourceBundle(document, compiled.generatedResourceReferences)];
 }
 
 interface CompiledAnimationFile {
-  animation: EmoteAnimation;
+  generatedResourceReferences: ReadonlySet<string>;
   file: ExportResult;
 }
 
 interface CompiledAnimationFiles {
-  animations: EmoteAnimation[];
+  generatedResourceReferences: ReadonlySet<string>;
   files: ExportResult[];
 }
 
 function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
-  const animation = removeRedundantKeyframes(compileConversionAnimation(document, animationIndex));
+  const compiled = compileConversionAnimationArtifact(document, animationIndex);
+  const animation = removeRedundantKeyframes(compiled.animation);
   const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
   return {
-    animation,
+    generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
       fileName: `emote.${sanitizeAnimationFileName(displayName)}.json`,
@@ -57,11 +56,13 @@ function compileAnimationFile(document: ConversionDocument, animationIndex: numb
 
 function compileAnimationFiles(document: ConversionDocument, includeSequence: boolean): CompiledAnimationFiles {
   if (document.animations.length === 0) throw new Error("The project does not contain animations.");
-  const animations = document.animations.map((_, index) => removeRedundantKeyframes(compileConversionAnimation(
+  const compiled = document.animations.map((_, index) => compileConversionAnimationArtifact(
     document,
     index,
     includeSequence ? { standalone: false } : undefined,
-  )));
+  ));
+  const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
+  const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
   const usedFileNames = new Set<string>();
   const files: ExportResult[] = animations.map((animation, index) => {
     const baseName = sanitizeAnimationFileName(document.animations[index].output.displayName);
@@ -89,7 +90,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
       fileName: `emote.${sanitizeAnimationFileName(sequenceOutput.displayName)}.sequence.json`,
     });
   }
-  return { animations, files };
+  return { generatedResourceReferences, files };
 }
 
 export function sanitizeAnimationFileName(value: string): string {
