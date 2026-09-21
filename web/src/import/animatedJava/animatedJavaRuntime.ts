@@ -1,6 +1,7 @@
 import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
 import { TICKS_PER_SECOND } from "../../format/time";
-import type { ImportedAnimation, ImportedNode } from "../../domain/conversionSeed";
+import type { ImportedNode } from "../../domain/conversionSeed";
+import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import { affineMolang, isolateMolangAxis, molangScalar, type MolangVector } from "../common/molangVector";
 import { IDENTITY_TRANSFORM, importedNodeToRuntimeNode, ONE_VECTOR, ZERO_VECTOR } from "../common/runtimeOutput";
 import { blockbenchEasingToEmote, blockbenchIntervalIsStep } from "../common/animationEasing";
@@ -23,8 +24,8 @@ export function createAnimatedJavaRuntime(
   blendWeight: number,
   startDelayTicks = 0,
   durationTicks = startDelayTicks + Math.max(1, Math.round(animation.length * TICKS_PER_SECOND)),
-  cubeRuntime?: ImportedAnimation["runtime"],
-): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
+  cubeRuntime?: AnimationRuntimeData,
+): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   if (cubeRuntime && cubeRuntime.kind !== "native") throw new Error("Animated Java cube runtime must use native animation output.");
   const nodes: Record<string, RuntimeNode> = { ...(cubeRuntime?.nodes ?? {}) };
   const tracks: Record<string, RuntimeNodeTracks> = { ...(cubeRuntime?.tracks ?? {}) };

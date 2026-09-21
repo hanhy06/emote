@@ -2,8 +2,8 @@ import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import { createAnimationRuntimeProjection, type ConversionAnimation, type ConversionDocument, type ConversionNode, type SkinGroup } from "./conversionDocument";
-import { remapImportedAnimation, remapImportedAnimationEvents } from "./importedAnimationRemapper";
+import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
+import { remapAnimationRuntimeData, remapImportedAnimationEvents, remapPreviewProjection } from "./importedAnimationRemapper";
 import { remapEditorNodeBinding } from "./nodeBindings";
 import type { ImportedSequence, SequenceAnimationStep, SequenceStep } from "./emoteDefinition";
 
@@ -33,13 +33,14 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
       skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const source = remapImportedAnimation(animation.source, { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId });
-      source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
+      const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
+      const source = { ...animation.source, id: uniqueAnimationId(animation.output.namespace, animation.source.id, animationIds) };
       return {
         ...animation,
         nodeIds: animation.nodeIds.map(nodeId),
         source,
-        runtime: createAnimationRuntimeProjection(source),
+        preview: remapPreviewProjection(animation.preview, ids),
+        runtime: { ...animation.runtime, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
         events: remapImportedAnimationEvents(animation.events, nodeId),
       };
     }));

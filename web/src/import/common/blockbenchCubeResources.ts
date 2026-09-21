@@ -100,7 +100,7 @@ function writeEmbeddedTextures(textures: BbTexture[], namespace: string, project
   if (textures.length === 0) return;
   for (const [index, texture] of textures.entries()) {
     if (!texture.source?.startsWith("data:image/png;base64,")) {
-      throw new ConversionError("geckolib_external_texture", "GeckoLib textures must be embedded in the bbmodel as PNG data.", `textures[${index}].source`);
+      throw new ConversionError("blockbench_external_texture", "Blockbench textures must be embedded as PNG data.", `textures[${index}].source`);
     }
     const texturePath = `assets/${namespace}/textures/item/${projectPath}/${textureFileStem(textures.length, index)}.png`;
     const textureBytes = decodeTexture(texture, index);
@@ -119,7 +119,7 @@ function resolveFaceTextureIndex(reference: number | string | null | undefined, 
   const numeric = typeof reference === "number" ? reference : typeof reference === "string" && /^#?\d+$/.test(reference) ? Number(reference.replace(/^#/, "")) : undefined;
   const index = numeric ?? textures.findIndex((texture) => reference === texture.uuid || reference === texture.id || reference === texture.name);
   if (!Number.isInteger(index) || index < 0 || index >= textures.length) {
-    throw new ConversionError("invalid_geckolib_face_texture", `Cube face references unknown texture ${String(reference)}.`, "elements.faces.texture");
+    throw new ConversionError("invalid_blockbench_face_texture", `Cube face references unknown texture ${String(reference)}.`, "elements.faces.texture");
   }
   return index;
 }
@@ -129,7 +129,7 @@ function decodeTexture(texture: BbTexture, index: number): Uint8Array {
   try {
     return Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
   } catch (error) {
-    throw new ConversionError("invalid_geckolib_texture", "GeckoLib embedded texture is not valid base64.", `textures[${index}].source`, { cause: error });
+    throw new ConversionError("invalid_blockbench_texture", "Blockbench embedded texture is not valid base64.", `textures[${index}].source`, { cause: error });
   }
 }
 
@@ -140,7 +140,7 @@ function animatedTextureMetadata(texture: BbTexture, bytes: Uint8Array): Record<
     || texture.frame_order !== undefined;
   if (!configured) return undefined;
   const frameTime = texture.frame_time ?? 1;
-  if (!Number.isInteger(frameTime) || frameTime < 1) throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib texture frame time must be a positive integer.");
+  if (!Number.isInteger(frameTime) || frameTime < 1) throw new ConversionError("invalid_blockbench_texture_animation", "Blockbench texture frame time must be a positive integer.");
   const orderType = texture.frame_order_type ?? "loop";
   const frames = textureFrames(orderType, texture.frame_order, pngFrameCount(bytes));
   return {
@@ -157,12 +157,12 @@ function textureFrames(orderType: NonNullable<BbTexture["frame_order_type"]>, fr
   if (orderType === "custom") {
     const frames = (frameOrder ?? "").trim().split(/\s+/).filter(Boolean).map(Number);
     if (frames.length === 0 || frames.some((frame) => !Number.isInteger(frame) || frame < 0)) {
-      throw new ConversionError("invalid_geckolib_texture_animation", "GeckoLib custom texture frame order must contain non-negative frame numbers.");
+      throw new ConversionError("invalid_blockbench_texture_animation", "Blockbench custom texture frame order must contain non-negative frame numbers.");
     }
     return frames;
   }
   if (frameCount === undefined || frameCount < 2) {
-    throw new ConversionError("invalid_geckolib_texture_animation", `GeckoLib ${orderType} texture animation requires a vertical PNG sprite sheet.`);
+    throw new ConversionError("invalid_blockbench_texture_animation", `Blockbench ${orderType} texture animation requires a vertical PNG sprite sheet.`);
   }
   const forward = Array.from({ length: frameCount }, (_, index) => index);
   if (orderType === "backwards") return forward.reverse();

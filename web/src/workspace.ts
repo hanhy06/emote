@@ -88,7 +88,7 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, page: action.page };
     case "animation_selected":
       return updateSession(state, (session) => selectSessionAnimation(session, action.index), (session) => {
-        const animation = session.document.animations[session.animationIndex]?.source;
+        const animation = session.document.animations[session.animationIndex];
         return animation?.preview.availability.status === "unavailable" ? 1 : state.page;
       });
     case "preview_frame_selected":
@@ -164,7 +164,7 @@ function createConversionSessionFromDocument(document: ConversionDocument): Conv
 }
 
 function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
-  const animation = session.document.animations[session.animationIndex]?.source;
+  const animation = session.document.animations[session.animationIndex];
   const page = animation?.preview.availability.status === "unavailable" ? 1 : 0;
   return { ...state, session, page, operation: { type: "idle" } };
 }

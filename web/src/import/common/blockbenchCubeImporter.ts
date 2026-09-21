@@ -8,7 +8,8 @@ import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } 
 import { ConversionError } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
-import type { PreviewNodeTrack } from "../../domain/previewProjection";
+import type { PreviewNodeTrack, PreviewProjection } from "../../domain/previewProjection";
+import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -41,24 +42,16 @@ import type { AnimationSamplePlan } from "./animationSampling";
 import type { BoneEntry } from "./blockbenchCubeModel";
 import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import type { BlockbenchAnimationSource, BlockbenchTransformChannel } from "./blockbenchAnimationSource";
-
-export const PLAYER_RENDER_SCALE = 0.9375;
-export const BLOCKBENCH_RUNTIME_SCENE_ID = "geckolib_scene";
-
-export interface BlockbenchNativeRuntimeContext {
-  source: BlockbenchAnimationSource;
-  bones: BoneEntry[];
-  importedNodes: Record<string, ImportedNode>;
-}
-
-export type BlockbenchNativeRuntimeFactory = (
-  context: BlockbenchNativeRuntimeContext,
-) => Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind">;
+import {
+  PLAYER_RENDER_SCALE,
+  type BlockbenchNativeRuntimeFactory,
+} from "./blockbenchNativeRuntime";
 
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
   formatLabel: string;
   diagnosticPrefix: string;
+  runtimeSceneId: string;
   channels: BlockbenchChannelEvaluator;
   runtimeOutput?: "auto" | "native";
   createNativeRuntime: BlockbenchNativeRuntimeFactory;
@@ -102,7 +95,7 @@ export function importBlockbenchCubeContent(
     const playableCubes = playableCubesByBone.get(bone.uuid) ?? [];
     if (playableCubes.length === 0) {
       nodes[bone.id] = {
-        binding: { sourceNodeId: bone.id, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
+        binding: { sourceNodeId: bone.id, spaceGroupId: options.runtimeSceneId },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(boneMatrix, `${formatLabel} bone ${bone.id}`),
         space: "initiator",
@@ -122,7 +115,7 @@ export function importBlockbenchCubeContent(
       nodes[nodeId] = {
         binding: {
           sourceNodeId: nodeId,
-          spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID,
+          spaceGroupId: options.runtimeSceneId,
           ...(skin ? { skinGroupId: `${skin.part}_${skin.order}` } : {}),
         },
         type: "item_display",
@@ -148,7 +141,7 @@ export function importBlockbenchCubeContent(
       const locatorBoneMatrix = locator.ignore_inherited_scale ? matrixWithoutScale(boneMatrix) : boneMatrix;
       bone.nodes.push({ id: nodeId, localMatrix, ignoreInheritedScale: locator.ignore_inherited_scale, locatorName: locator.name });
       nodes[nodeId] = {
-        binding: { sourceNodeId: nodeId, spaceGroupId: BLOCKBENCH_RUNTIME_SCENE_ID },
+        binding: { sourceNodeId: nodeId, spaceGroupId: options.runtimeSceneId },
         type: "anchor",
         defaultMatrix: matrix4ToRowMajor(locatorBoneMatrix.clone().multiply(localMatrix), `${formatLabel} locator ${nodeId}`),
         space: "initiator",
@@ -168,7 +161,7 @@ export function importBlockbenchCubeContent(
     animations,
     diagnostics,
     resources,
-    runtimeSceneId: BLOCKBENCH_RUNTIME_SCENE_ID,
+    runtimeSceneId: options.runtimeSceneId,
     runtimeParentByGroupUuid: Object.fromEntries(bones.map((bone) => [bone.uuid, `${bone.id}_x`])),
     editorNodeIdsBySourceUuid: Object.fromEntries(editorNodeIdsBySourceUuid),
   };
@@ -358,8 +351,8 @@ function projectBlockbenchPreview(
   channels: BlockbenchChannelEvaluator,
   formatLabel: string,
   diagnosticPrefix: string,
-): ImportedAnimation["preview"] {
-  const tracks: ImportedAnimation["preview"]["tracks"] = {};
+): PreviewProjection {
+  const tracks: PreviewProjection["tracks"] = {};
   const ticks = approximatePreviewTicks(source.animation, source.durationTicks, source.startDelayTicks);
   for (const bone of bones) {
     const animator = source.animators.get(bone.uuid);
@@ -391,7 +384,7 @@ function projectBlockbenchRuntime(
   createNativeRuntime: BlockbenchNativeRuntimeFactory,
   formatLabel: string,
   diagnosticPrefix: string,
-): ImportedAnimation["runtime"] {
+): AnimationRuntimeData {
   if (source.requiresNativeRuntime) return { kind: "native", ...createNativeRuntime({ source, bones, importedNodes: nodes }) };
   const tracks: Record<string, BakedRuntimeNodeTracks> = {};
   for (const bone of bones) {

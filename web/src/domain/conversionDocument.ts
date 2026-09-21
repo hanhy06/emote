@@ -6,6 +6,7 @@ import type { GeneratedResource } from "./generatedResource";
 import type { EditorNodeBinding } from "./nodeBindings";
 import type { AnimationRuntimeProjection } from "./runtimeProjection";
 import type { SequenceStep } from "./emoteDefinition";
+import type { PreviewProjection } from "./previewProjection";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -56,11 +57,18 @@ export interface AnimationOutputSettings {
 }
 
 export interface ConversionAnimation {
-  source: ImportedAnimation;
+  source: ConversionAnimationSource;
+  preview: PreviewProjection;
   runtime: AnimationRuntimeProjection;
   events: ConversionAnimationEvents;
   output: AnimationOutputSettings;
   nodeIds: string[];
+}
+
+export interface ConversionAnimationSource {
+  id: string;
+  name: string;
+  sourceReferenceId?: string;
 }
 
 export interface ConversionAnimationEvents {
@@ -142,7 +150,12 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         ? Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "name" && key !== "description"))
         : additionalMetadata;
       return {
-        source: animation,
+        source: {
+          id: animation.id,
+          name: animation.name,
+          ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
+        },
+        preview: animation.preview,
         runtime: createAnimationRuntimeProjection(animation),
         events: {
           start: [...animation.events.start],

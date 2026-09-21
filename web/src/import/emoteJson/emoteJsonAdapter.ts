@@ -12,6 +12,7 @@ import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
 import type { BakedRuntimeNodeTracks, RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
 import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
@@ -164,7 +165,7 @@ function importTimeline(animation: EmoteAnimation, id: string, sourceReferenceId
     throw unsupportedSchema4("molang", "animation-level Molang cannot be represented by the web editor");
   }
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
-  const previewTracks: ImportedAnimation["preview"]["tracks"] = {};
+  const previewTracks: PreviewProjection["tracks"] = {};
   const runtimeTracks: Record<string, BakedRuntimeNodeTracks> = {};
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
@@ -174,7 +175,7 @@ function importTimeline(animation: EmoteAnimation, id: string, sourceReferenceId
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
       visibility: [],
-    } as ImportedAnimation["preview"]["tracks"][string];
+    } as PreviewNodeTrack;
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
       track.visibility.push({ tick: parseMinecraftTime(frame.time), visible: frame.value });
@@ -206,7 +207,7 @@ function importRuntimeTimeline(
   animation: EmoteAnimation,
   id: string,
   sourceReferenceId: string,
-  previewTracks?: Record<string, ImportedAnimation["preview"]["tracks"][string]>,
+  previewTracks?: Record<string, PreviewNodeTrack>,
   reason?: string,
 ): ImportedAnimation {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
@@ -301,7 +302,7 @@ function importEvents(animation: EmoteAnimation): ImportedAnimation["events"] {
   };
 }
 
-function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): ImportedAnimation["preview"]["tracks"][string]["transforms"] {
+function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): PreviewTransformKeyframe[] {
   const channels = [source.position, source.rotation, source.scale].filter((channel): channel is EmoteVectorKeyframe[] => channel !== undefined);
   if (channels.length === 0) return [];
   const reference = channels[0];

@@ -73,19 +73,8 @@ export interface ImportedAnimation {
     stop: EmoteEvent[];
   };
   preview: PreviewProjection;
-  exportAvailability: ImportedExportAvailability;
-  runtime: ImportedAnimationRuntime;
-}
-
-export type ImportedAnimationRuntime = AnimationRuntimeData;
-export type ImportedExportAvailability = RuntimeExportAvailability;
-
-export const DEFAULT_EXPORT_AVAILABILITY: ImportedExportAvailability = {
-  exportable: true,
-};
-
-export function animationExportAvailability(animation: ImportedAnimation): ImportedExportAvailability {
-  return animation.exportAvailability;
+  exportAvailability: RuntimeExportAvailability;
+  runtime: AnimationRuntimeData;
 }
 
 export type ImportedTransformKeyframe = PreviewTransformKeyframe;

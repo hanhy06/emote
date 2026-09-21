@@ -13,7 +13,6 @@ import { detectAdapter, importDetected } from "./import/adapterRegistry";
 import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
-import { animationExportAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,
   EMPTY_SELECTION,
@@ -70,7 +69,7 @@ export function App() {
   const preview = useMemo(() => {
     if (!session) return null;
     const selectedAnimation = session.document.animations[session.animationIndex];
-    return createPreviewModel(session.document, selectedAnimation?.nodeIds ?? [], selectedAnimation?.source.preview, session.previewFrameIndex);
+    return createPreviewModel(session.document, selectedAnimation?.nodeIds ?? [], selectedAnimation?.preview, session.previewFrameIndex);
   }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
@@ -79,7 +78,7 @@ export function App() {
   const selectedAnimation = project?.animations[animationIndex];
   const animation = selectedAnimation?.source;
   const availability = preview?.availability ?? null;
-  const exportAvailability = animation ? animationExportAvailability(animation) : null;
+  const exportAvailability = selectedAnimation?.runtime.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
@@ -368,7 +367,7 @@ export function App() {
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => {
-              const itemAvailability = animationExportAvailability(item.source);
+              const itemAvailability = item.runtime.availability;
               return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
             error={exportError}

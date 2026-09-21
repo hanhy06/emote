@@ -2,6 +2,8 @@ import type { EmoteEvent } from "../format/emoteAnimation";
 import type { RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
 import type { ImportedAnimation, ImportedTimelineEvent } from "./conversionSeed";
 import { remapNativeRuntimeBindings } from "./nodeBindings";
+import type { PreviewProjection } from "./previewProjection";
+import type { AnimationRuntimeData } from "./runtimeProjection";
 
 export interface ImportedAnimationIdRemapper {
   editorNodeId(id: string): string;
@@ -9,27 +11,24 @@ export interface ImportedAnimationIdRemapper {
   editorGroupId?(id: string): string;
 }
 
-export function remapImportedAnimation(
-  animation: ImportedAnimation,
+export function remapPreviewProjection(
+  preview: PreviewProjection,
   ids: ImportedAnimationIdRemapper,
-): ImportedAnimation {
-  const editorGroupId = ids.editorGroupId ?? ids.editorNodeId;
+): PreviewProjection {
+  return { ...preview, tracks: remapTracks(preview.tracks, ids.editorNodeId) };
+}
+
+export function remapAnimationRuntimeData(runtime: AnimationRuntimeData, ids: ImportedAnimationIdRemapper): AnimationRuntimeData {
+  if (runtime.kind === "baked") return { kind: "baked", tracks: remapTracks(runtime.tracks, ids.editorNodeId) };
   return {
-    ...animation,
-    events: remapImportedAnimationEvents(animation.events, ids.editorNodeId),
-    preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, ids.editorNodeId) },
-    runtime: animation.runtime.kind === "baked"
-      ? { kind: "baked", tracks: remapTracks(animation.runtime.tracks, ids.editorNodeId) }
-      : {
-          ...animation.runtime,
-          nodes: remapRuntimeNodes(animation.runtime.nodes, ids.runtimeNodeId),
-          tracks: remapRuntimeTracks(animation.runtime.tracks, ids.runtimeNodeId),
-          bindings: remapNativeRuntimeBindings(animation.runtime.bindings, {
-            editorNodeId: ids.editorNodeId,
-            editorGroupId,
-            runtimeNodeId: ids.runtimeNodeId,
-          }),
-        },
+    ...runtime,
+    nodes: remapRuntimeNodes(runtime.nodes, ids.runtimeNodeId),
+    tracks: remapRuntimeTracks(runtime.tracks, ids.runtimeNodeId),
+    bindings: remapNativeRuntimeBindings(runtime.bindings, {
+      editorNodeId: ids.editorNodeId,
+      editorGroupId: ids.editorGroupId ?? ids.editorNodeId,
+      runtimeNodeId: ids.runtimeNodeId,
+    }),
   };
 }
 

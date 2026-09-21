@@ -1,4 +1,5 @@
-import type { BlockStateData, DisplayNbtPatch, ItemStackData } from "../../domain/minecraftData";
+import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNodeTracks } from "../../domain/minecraftData";
+import type { PreviewProjection, PreviewVisibilityKeyframe } from "../../domain/previewProjection";
 import { readDisplayNbt } from "../../format/minecraftData";
 import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior, type Matrix16 } from "../../format/emoteAnimation";
@@ -9,7 +10,8 @@ import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnb
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
 import { ConversionError } from "../../foundation/diagnostics";
-import { importBlockbenchCubeContent, PLAYER_RENDER_SCALE, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
+import { importBlockbenchCubeContent, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
+import { PLAYER_RENDER_SCALE } from "../common/blockbenchNativeRuntime";
 import { blockbenchIntervalIsStep } from "../common/animationEasing";
 import type { BbKeyframe, BbTexture, BlockbenchCubeProject } from "../common/blockbenchCubeSchema";
 import type { ImportedAnimation, ImportedNode, ImportedProject, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
@@ -196,6 +198,7 @@ function importAnimatedJavaCubeContent(project: AjProject, animations: AjProject
     transforms: ANIMATED_JAVA_BLUEPRINT_TRANSFORMS,
     formatLabel: "Animated Java",
     diagnosticPrefix: "animated_java",
+    runtimeSceneId: "animated_java_scene",
     channels: ANIMATED_JAVA_CHANNELS,
     runtimeOutput: "native",
     createNativeRuntime: createAnimatedJavaCubeRuntime,
@@ -450,9 +453,9 @@ function projectAnimatedJavaState(animation: ImportedAnimation, frames: ProjectN
 }
 
 function projectAnimatedJavaPreviewState(
-  sourceTracks: ImportedAnimation["preview"]["tracks"],
+  sourceTracks: PreviewProjection["tracks"],
   framesByNode: ReadonlyMap<string, readonly ProjectNodeStateFrame[]>,
-): ImportedAnimation["preview"]["tracks"] {
+): PreviewProjection["tracks"] {
   const previewTracks = { ...sourceTracks };
   for (const [nodeId, nodeFrames] of framesByNode) {
     const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [] };
@@ -466,9 +469,9 @@ function projectAnimatedJavaPreviewState(
 }
 
 function projectAnimatedJavaRuntimeState(
-  sourceTracks: Extract<ImportedAnimation["runtime"], { kind: "native" }>["tracks"],
+  sourceTracks: Record<string, RuntimeNodeTracks>,
   framesByNode: ReadonlyMap<string, readonly ProjectNodeStateFrame[]>,
-): Extract<ImportedAnimation["runtime"], { kind: "native" }>["tracks"] {
+): Record<string, RuntimeNodeTracks> {
   const runtimeTracks = { ...sourceTracks };
   for (const [nodeId, nodeFrames] of framesByNode) {
     const runtime = runtimeTracks[nodeId] ?? {};
@@ -645,7 +648,7 @@ function importProjectAnimation(
     secondsToTicks(animation.length, `${animation.name}.length`) + startDelayTicks,
     `${animation.name}.length`,
   );
-  const tracks: ImportedAnimation["preview"]["tracks"] = {};
+  const tracks: PreviewProjection["tracks"] = {};
   const stateFrames: ProjectNodeStateFrame[] = [];
   const previewTicks = approximateProjectPreviewTicks(animation, durationTicks, startDelayTicks);
   for (const element of elements) {
@@ -797,7 +800,7 @@ function projectStepBetween(animation: AjProjectAnimation, fromTime: number, toT
   return false;
 }
 
-function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): ImportedAnimation["preview"]["tracks"][string]["visibility"] {
+function projectVisibilityFrames(animation: AjProjectAnimation, element: AjProjectDisplayElement, startDelayTicks: number): PreviewVisibilityKeyframe[] {
   const frames = (animation.animators[element.uuid]?.keyframes ?? [])
     .filter((frame) => frame.channel === "visibility")
     .map((frame) => ({ tick: startDelayTicks + Math.round(frame.time * 20), visible: projectVisibility(frame, element) }))
