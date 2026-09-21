@@ -13,7 +13,9 @@ describe("GeckoLib animation pipeline", () => {
     const animation = project.animations.find((candidate) => candidate.name === "indicate");
 
     expect(animation).toBeDefined();
+    expect(animation!.preview.availability).toEqual({ status: "full" });
     expect(Object.keys(animation!.preview.tracks).length).toBeGreaterThan(0);
+    expect(Object.values(animation!.preview.tracks).every((track) => !("nbt" in track))).toBe(true);
     expect(JSON.stringify(animation!.preview.tracks)).not.toMatch(/q\.(?:loop_count|target_[xy]_rotation)/);
     expect(animation!.runtime.kind).toBe("native");
     if (animation!.runtime.kind !== "native") return;

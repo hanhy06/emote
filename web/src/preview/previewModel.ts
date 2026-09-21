@@ -5,8 +5,8 @@ import {
   type ConversionDocument,
   type ConversionNode,
 } from "../domain/conversionDocument";
-import { animationPreviewAvailability, type ImportedAnimation, type ImportedNodeTrack, type ImportedPreviewAvailability } from "../domain/conversionSeed";
-import type { NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
+import type { PreviewAvailability, PreviewNodeTrack, PreviewProjection } from "../domain/previewProjection";
+import type { NodeSpace, PlayerSkinPart } from "../domain/player";
 
 type ConversionItemNode = Extract<ConversionNode, { type: "item_display" }>;
 
@@ -26,7 +26,7 @@ export interface PreviewPart {
 export interface PreviewModel {
   tick: number | null;
   durationTicks: number;
-  availability: ImportedPreviewAvailability | null;
+  availability: PreviewAvailability | null;
   parts: PreviewPart[];
   assignments: Record<string, PlayerSkinPart | null>;
   orders: Record<string, number | null>;
@@ -34,25 +34,29 @@ export interface PreviewModel {
   hasReviewNodes: boolean;
 }
 
-export function createPreviewModel(document: ConversionDocument, animationIndex: number, previewFrameIndex: number): PreviewModel {
-  const animation = document.animations[animationIndex]?.source;
-  const availability = animation ? animationPreviewAvailability(animation) : null;
-  const durationTicks = animation?.preview.durationTicks ?? 0;
-  const tick = availability?.preview !== "full" || previewFrameIndex === 0
+export function createPreviewModel(
+  document: ConversionDocument,
+  nodeIds: readonly string[],
+  projection: PreviewProjection | undefined,
+  previewFrameIndex: number,
+): PreviewModel {
+  const availability = projection?.availability ?? null;
+  const durationTicks = projection?.durationTicks ?? 0;
+  const tick = availability?.status !== "full" || previewFrameIndex === 0
     ? null
     : Math.min(previewFrameIndex - 1, Math.max(0, durationTicks));
-  const nodeIds = new Set(document.animations[animationIndex]?.nodeIds ?? []);
-  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => nodeIds.has(nodeId)));
+  const scopedNodeIds = new Set(nodeIds);
+  const scopedNodes = Object.fromEntries(Object.entries(document.nodes).filter(([nodeId]) => scopedNodeIds.has(nodeId)));
   const candidates = findSkinCandidates(scopedNodes);
 
   return {
     tick,
     durationTicks,
     availability,
-    parts: createPreviewParts(candidates, animation, tick),
-    assignments: pickNodeValues(documentPartAssignments(document), nodeIds),
-    orders: pickNodeValues(documentPartOrders(document), nodeIds),
-    spaces: pickNodeValues(documentNodeSpaces(document), nodeIds),
+    parts: createPreviewParts(candidates, projection, tick),
+    assignments: pickNodeValues(documentPartAssignments(document), scopedNodeIds),
+    orders: pickNodeValues(documentPartOrders(document), scopedNodeIds),
+    spaces: pickNodeValues(documentNodeSpaces(document), scopedNodeIds),
     hasReviewNodes: candidates.length > 0,
   };
 }
@@ -75,10 +79,10 @@ function findSkinCandidates(nodes: Readonly<Record<string, ConversionNode>>): Sk
 
 function createPreviewParts(
   candidates: SkinCandidate[],
-  animation: ImportedAnimation | undefined,
+  projection: PreviewProjection | undefined,
   tick: number | null,
 ): PreviewPart[] {
-  const previewTracks = animation?.preview.tracks;
+  const previewTracks = projection?.tracks;
   return candidates.filter((candidate) => isVisibleAtTick(
     candidate.node.visible,
     previewTracks?.[candidate.nodeId],
@@ -103,7 +107,7 @@ function createPreviewParts(
   });
 }
 
-function isVisibleAtTick(defaultVisible: boolean, track: ImportedNodeTrack | undefined, tick: number | null): boolean {
+function isVisibleAtTick(defaultVisible: boolean, track: PreviewNodeTrack | undefined, tick: number | null): boolean {
   if (tick === null) return defaultVisible;
   return track?.visibility.filter((keyframe) => keyframe.tick <= tick).at(-1)?.visible ?? defaultVisible;
 }

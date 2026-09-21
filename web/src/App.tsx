@@ -61,9 +61,11 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const preview = useMemo(() => session
-    ? createPreviewModel(session.document, session.animationIndex, session.previewFrameIndex)
-    : null, [session]);
+  const preview = useMemo(() => {
+    if (!session) return null;
+    const selectedAnimation = session.document.animations[session.animationIndex];
+    return createPreviewModel(session.document, selectedAnimation?.nodeIds ?? [], selectedAnimation?.source.preview, session.previewFrameIndex);
+  }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
@@ -294,7 +296,7 @@ export function App() {
                   : "This file does not contain assignable model parts."}</p>
               </div>
               <div className="preview-controls">
-                {availability?.preview === "full" && (
+                {availability?.status === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
                     <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} disabled={!eventJsonValid} onChange={(event) => {
@@ -305,8 +307,8 @@ export function App() {
                 )}
               </div>
             </div>
-            {availability?.preview === "unavailable" ? (
-              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>Edit the animation metadata on Page 2. See the warning above for the source expression that must be changed.</span></div>
+            {availability?.status === "unavailable" ? (
+              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
             ) : hasReviewNodes ? (
               <div className="editor">
                 <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>

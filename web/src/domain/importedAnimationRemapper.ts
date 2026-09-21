@@ -1,6 +1,6 @@
 import type { EmoteEvent } from "../format/emoteAnimation";
 import type { RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
-import type { ImportedAnimation, ImportedNodeTrack, ImportedTimelineEvent } from "./conversionSeed";
+import type { ImportedAnimation, ImportedTimelineEvent } from "./conversionSeed";
 import { remapNativeRuntimeBindings } from "./nodeBindings";
 
 export interface ImportedAnimationIdRemapper {
@@ -38,10 +38,10 @@ export function remapImportedAnimation(
   };
 }
 
-function remapTracks(
-  tracks: Record<string, ImportedNodeTrack>,
+function remapTracks<T>(
+  tracks: Record<string, T>,
   nodeId: (id: string) => string,
-): Record<string, ImportedNodeTrack> {
+): Record<string, T> {
   return Object.fromEntries(Object.entries(tracks).map(([id, track]) => [nodeId(id), track]));
 }
 

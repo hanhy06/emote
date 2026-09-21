@@ -6,7 +6,8 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { PreviewNodeTrack } from "../../domain/previewProjection";
 import {
   type BbAnimation,
   type BbAnimator,
@@ -370,9 +371,9 @@ function projectBlockbenchPreview(
           : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
       });
     }
-    assignBoneTracks(tracks, bone, transforms, source.animation.name);
+    Object.assign(tracks, createBonePreviewTracks(bone, transforms, source.animation.name));
   }
-  return { durationTicks: source.durationTicks, tracks, availability: { preview: "full" } };
+  return { durationTicks: source.durationTicks, tracks, availability: { status: "full" } };
 }
 
 function projectBlockbenchRuntime(
@@ -386,7 +387,7 @@ function projectBlockbenchRuntime(
   diagnosticPrefix: string,
 ): ImportedAnimation["runtime"] {
   if (source.requiresNativeRuntime) return { kind: "native", ...createNativeRuntime({ source, bones, importedNodes: nodes }) };
-  const tracks: ImportedAnimation["preview"]["tracks"] = {};
+  const tracks: Record<string, ImportedNodeTrack> = {};
   for (const bone of bones) {
     validateBoneAnimator(source.animation, source.animationIndex, bone, source.animators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const boneSampling = Object.values(source.channelSampling.get(bone.uuid) ?? {}).filter((sampling) => sampling !== undefined);
@@ -404,17 +405,19 @@ function projectBlockbenchRuntime(
         interpolation: tick === 0 || step ? { type: "step" } : { type: "linear", durationTicks: 1 },
       });
     }
-    assignBoneTracks(tracks, bone, transforms, source.animation.name);
+    for (const [nodeId, track] of Object.entries(createBonePreviewTracks(bone, transforms, source.animation.name))) {
+      tracks[nodeId] = { ...track, nbt: [] };
+    }
   }
   return { kind: "baked", tracks };
 }
 
-function assignBoneTracks(
-  tracks: ImportedAnimation["preview"]["tracks"],
+function createBonePreviewTracks(
   bone: BoneEntry,
   transforms: ImportedTransformKeyframe[],
   animationName: string,
-): void {
+): Record<string, PreviewNodeTrack> {
+  const tracks: Record<string, PreviewNodeTrack> = {};
   for (const node of bone.nodes) {
     tracks[node.id] = {
       transforms: transforms.map((transform) => ({
@@ -425,9 +428,9 @@ function assignBoneTracks(
         ),
       })),
       visibility: [],
-      nbt: [],
     };
   }
+  return tracks;
 }
 
 function approximatePreviewTicks(animation: BbAnimation, durationTicks: number, startDelayTicks: number): number[] {

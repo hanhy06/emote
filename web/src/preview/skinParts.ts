@@ -1,4 +1,4 @@
-import type { PlayerSkinPart } from "../format/emoteAnimation";
+import type { PlayerSkinPart } from "../domain/player";
 
 export const SKIN_PARTS = [
   { id: "head", label: "Head", color: "#f0b65f" },

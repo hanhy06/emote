@@ -225,7 +225,7 @@ function assembleAnimatedJavaAnimation(base: ImportedAnimation | undefined, disp
     preview: {
       durationTicks: Math.max(base.preview.durationTicks, display.preview.durationTicks),
       tracks: { ...base.preview.tracks, ...display.preview.tracks },
-      availability: base.preview.availability.preview === "full" ? display.preview.availability : base.preview.availability,
+      availability: base.preview.availability.status === "full" ? display.preview.availability : base.preview.availability,
     },
     exportAvailability: !base.exportAvailability.exportable ? base.exportAvailability : display.exportAvailability,
     events: {
@@ -455,12 +455,10 @@ function projectAnimatedJavaPreviewState(
 ): ImportedAnimation["preview"]["tracks"] {
   const previewTracks = { ...sourceTracks };
   for (const [nodeId, nodeFrames] of framesByNode) {
-    const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [], nbt: [] };
+    const preview = previewTracks[nodeId] ?? { transforms: [], visibility: [] };
     previewTracks[nodeId] = {
       ...preview,
       visibility: [...preview.visibility, ...nodeFrames.flatMap((frame) => frame.visible === undefined ? [] : [{ tick: frame.tick, visible: frame.visible }])]
-        .sort((first, second) => first.tick - second.tick),
-      nbt: [...preview.nbt, ...nodeFrames.flatMap((frame) => frame.nbt ? [{ tick: frame.tick, value: frame.nbt }] : [])]
         .sort((first, second) => first.tick - second.tick),
     };
   }
@@ -569,7 +567,7 @@ function createPreviewOnlyProjectAnimation(
     preview: {
       durationTicks: 20,
       tracks: {},
-      availability: { preview: "create_pose", reason },
+      availability: { status: "create_pose", reason },
     },
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
@@ -666,7 +664,7 @@ function importProjectAnimation(
     }
     const visibility = projectVisibilityFrames(animation, element, startDelayTicks);
     stateFrames.push(...visibility.map((frame) => ({ nodeId: element.uuid, ...frame })));
-    tracks[element.uuid] = { transforms, visibility: [], nbt: [] };
+    tracks[element.uuid] = { transforms, visibility: [] };
   }
   return projectAnimatedJavaState({
     id: sanitizeResourcePath(animation.name, `animation_${animationIndex + 1}`),
@@ -677,7 +675,7 @@ function importProjectAnimation(
       ? secondsToTicks(projectOptionalNumeric(animation.loop_delay, 0, `animations[${animationIndex}].loop_delay`), `${animation.name}.loop_delay`)
       : 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks, tracks, availability: { preview: "full" } },
+    preview: { durationTicks, tracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
   }, stateFrames);

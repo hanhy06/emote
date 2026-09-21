@@ -231,6 +231,10 @@ function importAnimations(
         });
       }
     }
+    const previewTracks = Object.fromEntries(Object.entries(tracks).map(([nodeId, track]) => [nodeId, {
+      transforms: track.transforms,
+      visibility: track.visibility,
+    }]));
     return {
       id: sanitizeResourcePath(animationName, "default"),
       name: prettify(animationName),
@@ -238,7 +242,7 @@ function importAnimations(
       playbackMode: "loop" as const,
       loopDelayTicks: 0,
       events: { start: [], timeline: [], loop: [], stop: [] },
-      preview: { durationTicks, tracks, availability: { preview: "full" as const } },
+      preview: { durationTicks, tracks: previewTracks, availability: { status: "full" as const } },
       exportAvailability: { exportable: true },
       runtime: { kind: "baked" as const, tracks },
     };

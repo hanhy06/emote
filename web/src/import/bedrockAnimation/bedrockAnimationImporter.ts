@@ -94,7 +94,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     preview: {
       durationTicks: TICKS_PER_SECOND,
       tracks: {},
-      availability: { preview: "create_pose", reason },
+      availability: { status: "create_pose", reason },
     },
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks, durationTicks) },
@@ -131,7 +131,6 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
   const tracks: ImportedAnimation["preview"]["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
     transforms: [],
     visibility: [],
-    nbt: [],
   }]));
   if (startDelayTicks > 0) {
     const bindMatrices = buildWorldMatrices(new Map());
@@ -167,7 +166,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks: previewDurationTicks, tracks, availability: { preview: "full" } },
+    preview: { durationTicks: previewDurationTicks, tracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan) },
   };

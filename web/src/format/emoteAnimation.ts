@@ -1,9 +1,8 @@
-export type Matrix16 = readonly [
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-];
+import type { Matrix16 } from "../domain/matrix";
+import type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+
+export type { Matrix16 } from "../domain/matrix";
+export type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
 
 export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
@@ -68,10 +67,6 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
     },
   };
 }
-
-export type NodeSpace = "scene" | "initiator" | "partner";
-export type Participant = "initiator" | "partner";
-export type PlayerSkinPart = "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg";
 
 export interface LocalTransform {
   position: Vec3;

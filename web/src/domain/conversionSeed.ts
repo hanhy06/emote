@@ -3,6 +3,9 @@ import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeMolangProgr
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
 import type { NativeRuntimeBindings, SourceNodeBinding } from "./nodeBindings";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
+
+export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
 
@@ -67,11 +70,7 @@ export interface ImportedAnimation {
     loop: EmoteEvent[];
     stop: EmoteEvent[];
   };
-  preview: {
-    durationTicks: number;
-    tracks: Record<string, ImportedNodeTrack>;
-    availability: ImportedPreviewAvailability;
-  };
+  preview: PreviewProjection;
   exportAvailability: ImportedExportAvailability;
   runtime: ImportedAnimationRuntime;
 }
@@ -89,52 +88,25 @@ export type ImportedAnimationRuntime =
     bindings: NativeRuntimeBindings;
   };
 
-export interface ImportedPreviewAvailability {
-  preview: "full" | "create_pose" | "unavailable";
-  reason?: string;
-}
-
 export interface ImportedExportAvailability {
   exportable: boolean;
   reason?: string;
 }
 
-export const DEFAULT_PREVIEW_AVAILABILITY: ImportedPreviewAvailability = {
-  preview: "full",
-};
-
 export const DEFAULT_EXPORT_AVAILABILITY: ImportedExportAvailability = {
   exportable: true,
 };
-
-export function animationPreviewAvailability(animation: ImportedAnimation): ImportedPreviewAvailability {
-  return animation.preview.availability;
-}
 
 export function animationExportAvailability(animation: ImportedAnimation): ImportedExportAvailability {
   return animation.exportAvailability;
 }
 
-export interface ImportedNodeTrack {
-  transforms: ImportedTransformKeyframe[];
-  visibility: ImportedVisibilityKeyframe[];
+export interface ImportedNodeTrack extends PreviewNodeTrack {
   nbt: ImportedNbtKeyframe[];
 }
 
-export interface ImportedTransformKeyframe {
-  tick: number;
-  matrix: Matrix16;
-  interpolation: ImportedInterpolation;
-}
-
-export type ImportedInterpolation =
-  | { type: "step" }
-  | { type: "linear"; durationTicks?: number };
-
-export interface ImportedVisibilityKeyframe {
-  tick: number;
-  visible: boolean;
-}
+export type ImportedTransformKeyframe = PreviewTransformKeyframe;
+export type ImportedVisibilityKeyframe = PreviewVisibilityKeyframe;
 
 export interface ImportedNbtKeyframe {
   tick: number;

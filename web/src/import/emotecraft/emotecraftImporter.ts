@@ -4,6 +4,7 @@ import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
 import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { PreviewNodeTrack } from "../../domain/previewProjection";
 import { easingProgress } from "../common/curveMath";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
@@ -52,7 +53,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
   const diagnostics = [...collectDiagnostics(file), ...song.diagnostics];
   const bentBones = new Set(EMOTECRAFT_PLAYER_PARTS.filter((part) => animation.bones[part.bone]?.bend.length).map((part) => part.bone));
   const slices = createEmotecraftSlices(bentBones);
-  const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyTrack()])) as ImportedAnimation["preview"]["tracks"];
+  const tracks = Object.fromEntries(slices.map((slice) => [slice.id, emptyPreviewTrack()])) as ImportedAnimation["preview"]["tracks"];
   const snapshotAt = (time: number) => {
     const poses = evaluatePoses(animation, time * 20);
     const matrices = buildSliceMatrices(animation, slices, poses);
@@ -88,9 +89,12 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     loopStartTicks,
     loopDelayTicks: 0,
     events: { start: [], timeline: song.events, loop: [], stop: [] },
-    preview: { durationTicks, tracks, availability: { preview: "full" } },
+    preview: { durationTicks, tracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
-    runtime: { kind: "baked", tracks },
+    runtime: {
+      kind: "baked",
+      tracks: Object.fromEntries(Object.entries(tracks).map(([nodeId, track]): [string, ImportedNodeTrack] => [nodeId, { ...track, nbt: [] }])),
+    },
   };
   return {
     source: "emotecraft_binary",
@@ -136,8 +140,8 @@ function collectAnimationAnchors(animation: PalAnimation): AnimationAnchor[] {
   return [...anchors.values()].sort((first, second) => first.time - second.time);
 }
 
-function emptyTrack(): ImportedNodeTrack {
-  return { transforms: [], visibility: [], nbt: [] };
+function emptyPreviewTrack(): PreviewNodeTrack {
+  return { transforms: [], visibility: [] };
 }
 
 function evaluatePoses(animation: PalAnimation, tick: number): Map<string, BonePose> {
