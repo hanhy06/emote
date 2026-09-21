@@ -1,13 +1,16 @@
 import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import { createAnimationRuntimeProjection, type ConversionAnimation, type ConversionDocument, type ConversionNode, type SkinGroup } from "./conversionDocument";
 import { remapImportedAnimation, remapImportedAnimationEvents } from "./importedAnimationRemapper";
 import { remapEditorNodeBinding } from "./nodeBindings";
+import type { ImportedSequence, SequenceAnimationStep, SequenceStep } from "./emoteDefinition";
 
-export function combineConversionDocuments(documents: readonly ConversionDocument[]): ConversionDocument {
+export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
-  if (documents.length === 1) return documents[0];
+  if (importedSequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
+  if (documents.length === 1) return applyImportedSequence(documents[0], importedSequences[0]);
 
   const nodes: Record<string, ConversionNode> = {};
   const skinGroups: Record<string, SkinGroup> = {};
@@ -44,7 +47,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
   });
 
   const first = documents[0];
-  return {
+  return applyImportedSequence({
     ...first,
     origin: {
       ...first.origin,
@@ -57,7 +60,49 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     sequence: { ...first.sequence, namespace: "emote" },
     diagnostics: documents.flatMap((document) => document.diagnostics),
     resources,
+  }, importedSequences[0]);
+}
+
+function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
+  if (!sequence) return document;
+  const animationIds = new Set<string>();
+  for (const animation of document.animations) {
+    const id = animation.source.sourceReferenceId;
+    if (!id) continue;
+    if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
+    animationIds.add(id);
+  }
+  if (animationIds.has(sequence.id)) {
+    throw new ConversionError("duplicate_emote_id", `Animation and sequence use the same id: ${sequence.id}`, sequence.id);
+  }
+  for (const id of sequenceAnimationReferences(sequence.steps)) {
+    if (!animationIds.has(id)) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that was not opened: ${id}`, id);
+  }
+  const separator = sequence.id.indexOf(":");
+  return {
+    ...document,
+    targetMinecraftVersion: sequence.targetMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, sequence.targetMinecraftVersion)
+      ? sequence.targetMinecraftVersion : document.targetMinecraftVersion,
+    sequence: {
+      namespace: sequence.id.slice(0, separator),
+      idPath: sequence.id.slice(separator + 1),
+      displayName: sequence.metadata.name,
+      description: sequence.metadata.description,
+      additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
+      cooldown: sequence.cooldown,
+      player: sequence.player,
+      sourceReferenceId: sequence.id,
+      steps: sequence.steps,
+    },
   };
+}
+
+function sequenceAnimationReferences(steps: readonly SequenceStep[]): string[] {
+  return steps.flatMap((step) => "wait" in step ? [] : animationStepReferences(step));
+}
+
+function animationStepReferences(step: SequenceAnimationStep): string[] {
+  return typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
 }
 
 function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>): string {

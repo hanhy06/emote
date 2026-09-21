@@ -1,16 +1,16 @@
 import type { ImportedProject, ImportSource } from "../domain/conversionSeed";
+import type { ImportedSequence } from "../domain/emoteDefinition";
+import type { ImportInput, ProbeResult } from "./input";
 
-export interface ImportInput {
-  name: string;
-  bytes: Uint8Array;
+export type { ImportInput, ProbeResult } from "./input";
+
+export type ImportedSource = ImportedProject | ImportedSequence;
+
+export function isImportedSequence(source: ImportedSource): source is ImportedSequence {
+  return "kind" in source && source.kind === "sequence";
 }
 
-export interface ProbeResult {
-  confidence: number;
-  reason: string;
-}
-
-export interface ImportAdapter<T extends ImportedProject = ImportedProject> {
+export interface ImportAdapter<T extends ImportedSource = ImportedSource> {
   readonly id: ImportSource;
   readonly label: string;
   readonly extensions: readonly string[];

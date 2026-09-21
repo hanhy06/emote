@@ -10,6 +10,7 @@ import type { ExportResult } from "./export/types";
 import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { detectAdapter, importDetected } from "./import/adapterRegistry";
+import { isImportedSequence } from "./import/adapter";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
 import { animationExportAvailability } from "./domain/conversionSeed";
@@ -47,6 +48,11 @@ const IMPORT_FORMATS = [
     label: "Bedrock & Emotecraft",
     extensions: ".json .emotecraft",
     description: "These formats are experimental and may not be fully supported.",
+  },
+  {
+    label: "Emote JSON",
+    extensions: ".json",
+    description: "Open schema 1, 3, or 4 animations. Open a sequence together with every animation it references.",
   },
 ] as const;
 
@@ -96,12 +102,14 @@ export function App() {
       const imported = await Promise.all(files.map(async (file) => {
         const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
         const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-        return { project: await importDetected(detected, input), adapterLabel: detected.adapter.label };
+        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
       }));
-      const documents = imported.map((item) => createConversionDocument(item.project, item.adapterLabel));
+      const documents = imported.flatMap((item) => isImportedSequence(item.source)
+        ? [] : [createConversionDocument(item.source, item.adapterLabel)]);
+      const sequences = imported.flatMap((item) => isImportedSequence(item.source) ? [item.source] : []);
       setEventJsonValid(true);
       setEventEditorRevision((revision) => revision + 1);
-      dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
+      dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents, sequences) });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {

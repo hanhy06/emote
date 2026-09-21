@@ -10,7 +10,7 @@ export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, Previ
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
 
-export type ImportSource = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary";
+export type ImportSource = "bd_datapack" | "animated_java_blueprint" | "geckolib_bbmodel" | "bedrock_animation_json" | "emotecraft_binary" | "emote_json" | "emote_sequence";
 
 export interface ImportedProject {
   source: ImportSource;
@@ -58,6 +58,7 @@ export interface ImportedSkinPart {
 
 export interface ImportedAnimation {
   id: string;
+  sourceReferenceId?: string;
   name: string;
   suggestedMetadata?: EmoteMetadata;
   durationTicks: number;

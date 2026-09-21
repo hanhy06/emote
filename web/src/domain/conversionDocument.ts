@@ -5,6 +5,7 @@ import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import type { EditorNodeBinding } from "./nodeBindings";
 import type { AnimationRuntimeProjection } from "./runtimeProjection";
+import type { SequenceStep } from "./emoteDefinition";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -71,11 +72,14 @@ export interface ConversionAnimationEvents {
 
 export interface SequenceOutputSettings {
   namespace: string;
+  idPath?: string;
   displayName: string;
   description: string;
   additionalMetadata: Record<string, unknown>;
   cooldown: string;
   player: EmotePlayerBehavior;
+  sourceReferenceId?: string;
+  steps?: SequenceStep[];
 }
 
 export interface ConversionDocument {
@@ -125,7 +129,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
     .filter(([key]) => key !== "name" && key !== "description"));
-  const namespace = "emote";
+  const namespace = project.suggestedNamespace ?? "emote";
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)

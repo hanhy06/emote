@@ -1,5 +1,5 @@
 import { parse, printParseErrorCode, type ParseError } from "jsonc-parser";
-import type { ImportInput, ProbeResult } from "../adapter";
+import type { ImportInput, ProbeResult } from "../input";
 
 const inputCaches = new WeakMap<ImportInput, Map<string, unknown>>();
 
