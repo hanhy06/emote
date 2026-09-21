@@ -22,11 +22,11 @@ import { multiplyMatrix16 } from "../format/matrix";
 import { localTransformToMatrix, matrixToContinuousLocalTransform, matrixToLocalTransform } from "../format/localTransform";
 import { formatMinecraftTime, parseMinecraftTime, requireTick } from "../format/time";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
-import type { DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
+import type { BakedRuntimeNodeTracks, DisplayNbtPatch, DisplayNbtValue, ItemStackData, RuntimeNode, RuntimeNodeTracks } from "../domain/minecraftData";
 import { readDisplayNbt, writeBlockState, writeDisplayNbt, writeItemStack } from "../format/minecraftData";
 import { minecraftVersionProfile, type MinecraftVersionProfile } from "../format/minecraftVersionProfiles";
-import { animationExportAvailability, type ImportedAnimation, type ImportedNodeTrack } from "../domain/conversionSeed";
 import type { NativeRuntimeBindings } from "../domain/nodeBindings";
+import type { AnimationRuntimeProjection } from "../domain/runtimeProjection";
 import { rewriteMolangStringLiterals } from "../format/molang/sourceTransformer";
 
 const PLAYER_HEAD: ItemStackData = { id: "minecraft:player_head", count: 1 };
@@ -44,17 +44,17 @@ export function compileConversionAnimation(
 
   const output = { ...entry.output, ...outputOverride };
   const namespace = sanitizeNamespace(output.namespace || output.displayName);
-  const animation = entry.source;
-  const availability = animationExportAvailability(animation);
+  const animation = entry.runtime;
+  const availability = animation.availability;
   if (!availability.exportable) {
-    throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.name} cannot be exported.`);
+    throw new ConversionError("animation_export_unavailable", availability.reason ?? `${animation.sourceName} cannot be exported.`);
   }
-  const mode = output.playbackMode === "source" ? animation.playbackMode : output.playbackMode;
+  const mode = output.playbackMode === "source" ? animation.sourcePlaybackMode : output.playbackMode;
   const loopStartTicks = mode === "loop" ? parseMinecraftTime(output.loopStart) : 0;
   const loopEndTicks = mode === "loop" ? parseMinecraftTime(output.loopEnd) : 0;
   const loopDelayTicks = mode === "once" || mode === "hold" ? 0 : parseMinecraftTime(output.loopDelay);
   const profile = minecraftVersionProfile(document.targetMinecraftVersion);
-  const runtime = animation.runtime;
+  const runtime = animation.data;
   return {
     type: "animation",
     schema_version: 4,
@@ -146,13 +146,13 @@ function documentSpaceGroup(document: ConversionDocument, groupId: string): Emot
 function validateAnimationIds(document: ConversionDocument): void {
   const ids = new Set<string>();
   for (const animation of document.animations) {
-    const id = `${sanitizeNamespace(animation.output.namespace || animation.output.displayName)}:${sanitizeResourcePath(animation.source.id)}`;
+    const id = `${sanitizeNamespace(animation.output.namespace || animation.output.displayName)}:${sanitizeResourcePath(animation.runtime.id)}`;
     if (ids.has(id)) throw new ConversionError("duplicate_animation_id", `Multiple animations normalize to the same id: ${id}`);
     ids.add(id);
   }
 }
 
-function compileNodes(document: ConversionDocument, animation: ImportedAnimation, tracks: Record<string, ImportedNodeTrack>, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
+function compileNodes(document: ConversionDocument, animation: AnimationRuntimeProjection, tracks: Record<string, BakedRuntimeNodeTracks>, nodeIds: readonly string[], profile: MinecraftVersionProfile): Record<string, EmoteNode> {
   return Object.fromEntries(nodeIds.map((id) => [id, document.nodes[id]] as const).filter((entry): entry is readonly [string, ConversionNode] => Boolean(entry[1])).map(([id, node]) => {
     const sourceMatrix = tracks[id]?.transforms.find((transform) => transform.tick === 0)?.matrix ?? node.defaultMatrix;
     const transform = matrixToLocalTransform(compileNodeMatrix(document, id, node, sourceMatrix), `${animation.id}/${id} default transform`);
@@ -195,7 +195,7 @@ function compileNodeMatrix(
   return multiplyMatrix16(matrix, node.playerHeadConversion.matrix, `Player head node ${nodeId}`);
 }
 
-function compileTimeline(document: ConversionDocument, animation: ImportedAnimation, events: ConversionAnimationEvents, sourceTracks: Record<string, ImportedNodeTrack>, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
+function compileTimeline(document: ConversionDocument, animation: AnimationRuntimeProjection, events: ConversionAnimationEvents, sourceTracks: Record<string, BakedRuntimeNodeTracks>, profile: MinecraftVersionProfile): EmoteAnimation["timeline"] {
   const durationTicks = requireTick(animation.durationTicks, `${animation.id} duration`);
   const tracks: Record<string, EmoteNodeTracks> = {};
   for (const [nodeId, track] of Object.entries(sourceTracks)) {
@@ -242,7 +242,7 @@ function compileTimeline(document: ConversionDocument, animation: ImportedAnimat
 
 function compileRuntimeTimeline(
   document: ConversionDocument,
-  animation: ImportedAnimation,
+  animation: AnimationRuntimeProjection,
   events: ConversionAnimationEvents,
   sourceTracks: Record<string, RuntimeNodeTracks>,
   bindings: NativeRuntimeBindings,
@@ -339,8 +339,8 @@ interface TransformFrame {
 
 function compileTransformFrames(
   document: ConversionDocument,
-  animation: ImportedAnimation,
-  tracks: Record<string, ImportedNodeTrack>,
+  animation: AnimationRuntimeProjection,
+  tracks: Record<string, BakedRuntimeNodeTracks>,
   nodeId: string,
   initial: LocalTransform,
 ): TransformFrame[] {

@@ -3,7 +3,8 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { requireAnimationDurationTicks } from "../../format/time";
-import type { ImportedAnimation, ImportedNodeTrack, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
 import type { PreviewNodeTrack } from "../../domain/previewProjection";
 import { easingProgress } from "../common/curveMath";
 import { planAnimationAnchorSamples, type AnimationAnchor } from "../common/animationSampling";
@@ -93,7 +94,7 @@ export function importEmotecraftFile(file: EmotecraftFile, sourceName: string): 
     exportAvailability: { exportable: true },
     runtime: {
       kind: "baked",
-      tracks: Object.fromEntries(Object.entries(tracks).map(([nodeId, track]): [string, ImportedNodeTrack] => [nodeId, { ...track, nbt: [] }])),
+      tracks: Object.fromEntries(Object.entries(tracks).map(([nodeId, track]): [string, BakedRuntimeNodeTracks] => [nodeId, { ...track, nbt: [] }])),
     },
   };
   return {

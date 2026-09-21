@@ -1,7 +1,7 @@
 import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
 import type { GeneratedResource } from "./generatedResource";
-import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
+import { createAnimationRuntimeProjection, type ConversionAnimation, type ConversionDocument, type ConversionNode, type SkinGroup } from "./conversionDocument";
 import { remapImportedAnimation, remapImportedAnimationEvents } from "./importedAnimationRemapper";
 import { remapEditorNodeBinding } from "./nodeBindings";
 
@@ -36,6 +36,7 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
         ...animation,
         nodeIds: animation.nodeIds.map(nodeId),
         source,
+        runtime: createAnimationRuntimeProjection(source),
         events: remapImportedAnimationEvents(animation.events, nodeId),
       };
     }));

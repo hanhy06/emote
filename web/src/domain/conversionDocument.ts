@@ -4,6 +4,7 @@ import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
 import type { EditorNodeBinding } from "./nodeBindings";
+import type { AnimationRuntimeProjection } from "./runtimeProjection";
 import type {
   ImportedAnimation,
   ImportedNode,
@@ -55,6 +56,7 @@ export interface AnimationOutputSettings {
 
 export interface ConversionAnimation {
   source: ImportedAnimation;
+  runtime: AnimationRuntimeProjection;
   events: ConversionAnimationEvents;
   output: AnimationOutputSettings;
   nodeIds: string[];
@@ -137,6 +139,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         : additionalMetadata;
       return {
         source: animation,
+        runtime: createAnimationRuntimeProjection(animation),
         events: {
           start: [...animation.events.start],
           timeline: [...animation.events.timeline],
@@ -171,6 +174,17 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
     },
     diagnostics: project.diagnostics,
     resources: project.resources,
+  };
+}
+
+export function createAnimationRuntimeProjection(animation: ImportedAnimation): AnimationRuntimeProjection {
+  return {
+    id: animation.id,
+    sourceName: animation.name,
+    durationTicks: animation.durationTicks,
+    sourcePlaybackMode: animation.playbackMode,
+    availability: animation.exportAvailability,
+    data: animation.runtime,
   };
 }
 

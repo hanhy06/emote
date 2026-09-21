@@ -15,7 +15,8 @@ import {
 } from "../../format/snbt";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
 import { cachedInputValue } from "../common/inputCache";
-import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedProject } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedProject } from "../../domain/conversionSeed";
+import type { BakedRuntimeNodeTracks } from "../../domain/minecraftData";
 
 const decoder = new TextDecoder();
 const TICKS_PER_BD_FRAME = 2;
@@ -185,7 +186,7 @@ function importAnimations(
       if (frame.index !== expected) throw new Error(`BD Engine animation ${animationName} is missing keyframe_${expected}.mcfunction.`);
     });
     const durationTicks = requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${animationName} duration`);
-    const tracks: Record<string, ImportedNodeTrack> = Object.fromEntries(
+    const tracks: Record<string, BakedRuntimeNodeTracks> = Object.fromEntries(
       Object.keys(displays.nodes).map((id) => [id, { transforms: [], visibility: [], nbt: [] }]),
     );
     const currentPayloadByTag = new Map([...displays.nodeIdsByTag].map(([tag, nodeId]) => [tag, displays.payloadByNodeId.get(nodeId)!]));
@@ -273,7 +274,7 @@ function readDisplayPayloadUpdate(node: ImportedNode, compound: string): string 
 }
 
 function setNbtFrame(
-  track: ImportedNodeTrack,
+  track: BakedRuntimeNodeTracks,
   tick: number,
   node: ImportedNode,
   initialPayload: string,

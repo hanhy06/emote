@@ -6,7 +6,8 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLo
 import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import { ConversionError } from "../../foundation/diagnostics";
-import type { ImportedAnimation, ImportedNode, ImportedNodeTrack, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
+import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack } from "../../domain/previewProjection";
 import {
   type BbAnimation,
@@ -387,12 +388,12 @@ function projectBlockbenchRuntime(
   diagnosticPrefix: string,
 ): ImportedAnimation["runtime"] {
   if (source.requiresNativeRuntime) return { kind: "native", ...createNativeRuntime({ source, bones, importedNodes: nodes }) };
-  const tracks: Record<string, ImportedNodeTrack> = {};
+  const tracks: Record<string, BakedRuntimeNodeTracks> = {};
   for (const bone of bones) {
     validateBoneAnimator(source.animation, source.animationIndex, bone, source.animators.get(bone.uuid), formatLabel, diagnosticPrefix);
     const boneSampling = Object.values(source.channelSampling.get(bone.uuid) ?? {}).filter((sampling) => sampling !== undefined);
     const sourceTimes = boneSampling[0]?.sourceTimes;
-    const transforms: ImportedTransformKeyframe[] = [];
+    const transforms: BakedRuntimeTransformKeyframe[] = [];
     for (let tick = 0; tick <= source.durationTicks; tick++) {
       const cache = new Map<string, Matrix4>();
       const sourceTime = source.startDelaySeconds > 0

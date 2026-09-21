@@ -1,9 +1,10 @@
 import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
-import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeMolangPrograms, RuntimeNode, RuntimeNodeTracks } from "./minecraftData";
+import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { NativeRuntimeBindings, SourceNodeBinding } from "./nodeBindings";
+import type { SourceNodeBinding } from "./nodeBindings";
 import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
+import type { AnimationRuntimeData, RuntimeExportAvailability } from "./runtimeProjection";
 
 export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
 
@@ -75,23 +76,8 @@ export interface ImportedAnimation {
   runtime: ImportedAnimationRuntime;
 }
 
-export type ImportedAnimationRuntime =
-  | {
-    kind: "baked";
-    tracks: Record<string, ImportedNodeTrack>;
-  }
-  | {
-    kind: "native";
-    molang?: RuntimeMolangPrograms;
-    nodes: Record<string, RuntimeNode>;
-    tracks: Record<string, RuntimeNodeTracks>;
-    bindings: NativeRuntimeBindings;
-  };
-
-export interface ImportedExportAvailability {
-  exportable: boolean;
-  reason?: string;
-}
+export type ImportedAnimationRuntime = AnimationRuntimeData;
+export type ImportedExportAvailability = RuntimeExportAvailability;
 
 export const DEFAULT_EXPORT_AVAILABILITY: ImportedExportAvailability = {
   exportable: true,
@@ -101,17 +87,8 @@ export function animationExportAvailability(animation: ImportedAnimation): Impor
   return animation.exportAvailability;
 }
 
-export interface ImportedNodeTrack extends PreviewNodeTrack {
-  nbt: ImportedNbtKeyframe[];
-}
-
 export type ImportedTransformKeyframe = PreviewTransformKeyframe;
 export type ImportedVisibilityKeyframe = PreviewVisibilityKeyframe;
-
-export interface ImportedNbtKeyframe {
-  tick: number;
-  value: DisplayNbtPatch;
-}
 
 export interface ImportedTimelineEvent extends EmoteEvent {
   tick: number;

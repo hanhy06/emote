@@ -1,3 +1,5 @@
+import type { Matrix16 } from "./matrix";
+
 export interface RawNbtField {
   name: string;
   value: string;
@@ -20,6 +22,28 @@ export interface DisplayNbtPatch {
   blockState?: Partial<BlockStateData>;
   itemStack?: Partial<ItemStackData>;
   rawFields: RawNbtField[];
+}
+
+export interface BakedRuntimeTransformKeyframe {
+  tick: number;
+  matrix: Matrix16;
+  interpolation: { type: "step" } | { type: "linear"; durationTicks?: number };
+}
+
+export interface BakedRuntimeVisibilityKeyframe {
+  tick: number;
+  visible: boolean;
+}
+
+export interface BakedRuntimeNbtKeyframe {
+  tick: number;
+  value: DisplayNbtPatch;
+}
+
+export interface BakedRuntimeNodeTracks {
+  transforms: BakedRuntimeTransformKeyframe[];
+  visibility: BakedRuntimeVisibilityKeyframe[];
+  nbt: BakedRuntimeNbtKeyframe[];
 }
 
 export type DisplayNbtValue = DisplayNbtPatch | { molang: string };
