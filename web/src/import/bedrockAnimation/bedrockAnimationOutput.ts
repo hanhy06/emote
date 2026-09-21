@@ -1,6 +1,6 @@
 import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
 import { TICKS_PER_SECOND } from "../../format/time";
-import type { ImportedAnimation } from "../../domain/conversionSeed";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
@@ -17,7 +17,7 @@ export function createBedrockRuntime(
   startDelayTicks: number,
   durationTicks: number,
   samplePlan?: BedrockSamplePlan,
-): Omit<Extract<ImportedAnimation["runtime"], { kind: "native" }>, "kind"> {
+): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
     [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },

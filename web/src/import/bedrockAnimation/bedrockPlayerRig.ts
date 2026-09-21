@@ -1,7 +1,7 @@
 import { Matrix4, Vector3 } from "three";
-import { matrix4ToRowMajor } from "../../format/matrix";
+import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import type { ImportedNode, ImportedSkinPart } from "../../domain/conversionSeed";
-import { bedrockBoundsToCanonical } from "./coordinateSpace";
+import { bedrockBoundsToCanonical, bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { humanoidSkinPartHeight, humanoidSkinSlices } from "../common/humanoidPlayerRig";
 
 export const BEDROCK_PLAYER_RENDER_SCALE = 0.9375;
@@ -41,6 +41,12 @@ export interface BedrockPlayerSlice {
   to: readonly [number, number, number];
 }
 
+export interface BedrockPlayerTransform {
+  position: number[];
+  rotation: number[];
+  scale: number[];
+}
+
 export const BEDROCK_PLAYER_SLICES: readonly BedrockPlayerSlice[] = BEDROCK_PLAYER_BONES.flatMap((bone) => {
   if (!bone.cube) return [];
   const height = bone.cube.to[1] - bone.cube.from[1];
@@ -68,7 +74,7 @@ export function isHiddenBedrockAccessoryBone(name: string): boolean {
   return HIDDEN_ACCESSORY_BONES.has(normalizeBedrockBoneName(name));
 }
 
-export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matrix4>): Record<string, ImportedNode> {
+export function createBedrockPlayerNodes(worldMatrices = buildBedrockPlayerWorldMatrices(new Map())): Record<string, ImportedNode> {
   const nodes: Record<string, ImportedNode> = {};
   for (const slice of BEDROCK_PLAYER_SLICES) {
     const world = worldMatrices.get(slice.bone.id);
@@ -85,6 +91,30 @@ export function createBedrockPlayerNodes(worldMatrices: ReadonlyMap<string, Matr
     };
   }
   return nodes;
+}
+
+export function buildBedrockPlayerWorldMatrices(transforms: ReadonlyMap<string, BedrockPlayerTransform>): Map<string, Matrix4> {
+  const result = new Map<string, Matrix4>();
+  const visit = (id: string): Matrix4 => {
+    const cached = result.get(id);
+    if (cached) return cached;
+    const bone = bedrockPlayerBoneById(id);
+    const parent = bone.parent ? bedrockPlayerBoneById(bone.parent) : undefined;
+    const transform = transforms.get(id) ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
+    const sourcePosition = bone.pivot.map((value, axis) => (value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]);
+    const local = composeDegreesTransform(
+      bedrockPositionToCanonical(sourcePosition, (value) => -value).map((value) => value / 16),
+      bedrockRotationToCanonical(transform.rotation, (value) => -value),
+      transform.scale,
+    );
+    const world = parent
+      ? visit(parent.id).clone().multiply(local)
+      : new Matrix4().makeScale(BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE).multiply(local);
+    result.set(id, world);
+    return world;
+  };
+  BEDROCK_PLAYER_BONES.forEach((bone) => visit(bone.id));
+  return result;
 }
 
 export const BEDROCK_RUNTIME_SCENE_ID = "bedrock_scene";

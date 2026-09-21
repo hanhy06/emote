@@ -1,36 +1,26 @@
-import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
-import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
 import { ConversionError } from "../../foundation/diagnostics";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
-import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
+import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
   bedrockAnimationPlaybackRate,
   bedrockAnimationUsesTime,
-  evaluateApproximateBedrockChannel,
   evaluateBedrockExpression,
   planBedrockAnimationSamples,
 } from "./bedrockAnimationBaker";
 import {
-  BEDROCK_PLAYER_BONES,
-  BEDROCK_PLAYER_SLICES,
-  BEDROCK_PLAYER_RENDER_SCALE,
-  bedrockPlayerBoneById,
   createBedrockPlayerNodes,
   isHiddenBedrockAccessoryBone,
   resolveBedrockPlayerBone,
 } from "./bedrockPlayerRig";
 import { createBedrockRuntime } from "./bedrockAnimationOutput";
-
-type Transform = { position: number[]; rotation: number[]; scale: number[] };
+import { createBedrockAnimationPreview, createBedrockCreatePosePreview } from "./bedrockAnimationPreview";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
-  const bindMatrices = buildWorldMatrices(new Map());
   const diagnostics: ImportDiagnostic[] = [];
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
     try {
@@ -67,7 +57,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: sanitizeNamespace(sourceStem),
     suggestedRotationDeadzone: 0,
-    nodes: createBedrockPlayerNodes(bindMatrices),
+    nodes: createBedrockPlayerNodes(),
     animations,
     diagnostics,
     resources: new Map(),
@@ -91,11 +81,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: {
-      durationTicks: TICKS_PER_SECOND,
-      tracks: {},
-      availability: { status: "create_pose", reason },
-    },
+    preview: createBedrockCreatePosePreview(reason),
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks, durationTicks) },
   };
@@ -124,41 +110,7 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     `${name}.animation_length`,
   );
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
-  const previewDurationTicks = previewAnimationDurationTicks + startDelayTicks;
   const runtimeSamplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
-  const previewTicks = approximateBedrockPreviewTicks(animation, previewAnimationDurationTicks, playbackRate);
-  const previewStepTicks = approximateBedrockStepTicks(animation, playbackRate);
-  const tracks: ImportedAnimation["preview"]["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
-    transforms: [],
-    visibility: [],
-  }]));
-  if (startDelayTicks > 0) {
-    const bindMatrices = buildWorldMatrices(new Map());
-    for (const slice of BEDROCK_PLAYER_SLICES) {
-      tracks[slice.id].transforms.push({
-        tick: 0,
-        matrix: matrix4ToRowMajor(bindMatrices.get(slice.bone.id)!, `${name}/${slice.id}/0`),
-        interpolation: { type: "step" },
-      });
-    }
-  }
-  for (const [tickIndex, tick] of previewTicks.entries()) {
-    const sourceTime = tick / TICKS_PER_SECOND * playbackRate;
-    const outputTick = tick + startDelayTicks;
-    const worldMatrices = buildWorldMatrices(collectApproximateTransforms(name, animation, sourceTime));
-    const previousTick = previewTicks[tickIndex - 1];
-    for (const slice of BEDROCK_PLAYER_SLICES) {
-      const matrix = worldMatrices.get(slice.bone.id);
-      if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${slice.bone.id}.`);
-      tracks[slice.id].transforms.push({
-        tick: outputTick,
-        matrix: matrix4ToRowMajor(matrix, `${name}/${slice.id}/${outputTick}`),
-        interpolation: tick === 0 || previewStepTicks.has(tick)
-          ? { type: "step" }
-          : { type: "linear", durationTicks: Math.max(1, tick - previousTick) },
-      });
-    }
-  }
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
@@ -166,75 +118,10 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks: previewDurationTicks, tracks, availability: { status: "full" } },
+    preview: createBedrockAnimationPreview(name, animation, previewAnimationDurationTicks, playbackRate, startDelayTicks),
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan) },
   };
-}
-
-function collectApproximateTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, Transform> {
-  const transforms = new Map<string, Transform>();
-  for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
-    const bone = resolveBedrockPlayerBone(sourceBoneName);
-    if (!bone) continue;
-    transforms.set(bone.id, {
-      position: evaluateApproximateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
-      rotation: evaluateApproximateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
-      scale: evaluateApproximateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
-    });
-  }
-  return transforms;
-}
-
-function approximateBedrockPreviewTicks(animation: BedrockAnimation, durationTicks: number, playbackRate: number): number[] {
-  const ticks = new Set<number>([0, durationTicks]);
-  const stride = Math.max(1, Math.ceil(durationTicks / 199));
-  for (let tick = 0; tick <= durationTicks; tick += stride) ticks.add(tick);
-  for (const bone of Object.values(animation.bones ?? {})) {
-    for (const channel of [bone.position, bone.rotation, bone.scale]) {
-      if (typeof channel !== "object" || channel === null || Array.isArray(channel)) continue;
-      for (const time of Object.keys(channel)) ticks.add(Math.max(0, Math.min(durationTicks, Math.round(Number(time) / playbackRate * TICKS_PER_SECOND))));
-    }
-  }
-  return [...ticks].sort((first, second) => first - second);
-}
-
-function approximateBedrockStepTicks(animation: BedrockAnimation, playbackRate: number): Set<number> {
-  const ticks = new Set<number>();
-  for (const bone of Object.values(animation.bones ?? {})) {
-    for (const channel of [bone.position, bone.rotation, bone.scale]) {
-      if (typeof channel !== "object" || channel === null || Array.isArray(channel)) continue;
-      for (const [time, frame] of Object.entries(channel)) {
-        if (typeof frame !== "object" || frame === null || Array.isArray(frame) || !("pre" in frame) || !("post" in frame)) continue;
-        if (JSON.stringify(frame.pre) !== JSON.stringify(frame.post)) ticks.add(Math.round(Number(time) / playbackRate * TICKS_PER_SECOND));
-      }
-    }
-  }
-  return ticks;
-}
-
-function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<string, Matrix4> {
-  const result = new Map<string, Matrix4>();
-  const visit = (id: string): Matrix4 => {
-    const cached = result.get(id);
-    if (cached) return cached;
-    const bone = bedrockPlayerBoneById(id);
-    const parent = bone.parent ? bedrockPlayerBoneById(bone.parent) : undefined;
-    const transform = transforms.get(id) ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
-    const sourcePosition = bone.pivot.map((value, axis) => (value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]);
-    const local = composeDegreesTransform(
-      bedrockPositionToCanonical(sourcePosition, (value) => -value).map((value) => value / 16),
-      bedrockRotationToCanonical(transform.rotation, (value) => -value),
-      transform.scale,
-    );
-    const world = parent
-      ? visit(parent.id).clone().multiply(local)
-      : new Matrix4().makeScale(BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE).multiply(local);
-    result.set(id, world);
-    return world;
-  };
-  BEDROCK_PLAYER_BONES.forEach((bone) => visit(bone.id));
-  return result;
 }
 
 function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ImportDiagnostic[]): void {
