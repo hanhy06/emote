@@ -125,7 +125,7 @@ config/emote/emote/sit/
 └── emote.sit.json
 ```
 
-`emote.sit.json`:
+`sit.sit.json`:
 
 ```json
 {

@@ -1,0 +1,38 @@
+{
+  "type": "sequence",
+  "schema_version": 4,
+  "id": "sit:idle.sit",
+  "metadata": {
+    "name": "Sit",
+    "description": "Sit down and relax.",
+    "author": "@soji2318"
+  },
+  "settings": {
+    "cooldown": "0t",
+    "player": {
+      "hidden": true,
+      "stop_conditions": {
+        "movement_distance": 0.1,
+        "jump": true,
+        "submerge": true,
+        "ride": true,
+        "damage": true,
+        "attack": true,
+        "game_mode_change": true
+      }
+    }
+  },
+  "steps": [
+    {
+      "emote": "sit:sit_down"
+    },
+    {
+      "emote": ["sit:idle_sky",40,"sit:idle_butterfly",35,"sit:idle_flower",25],
+      "transition": "2t",
+      "repeat": 2
+    },
+    {
+      "emote": ["sit:stand_up1",60,"sit:stand_up2",40]
+    }
+  ]
+}
