@@ -48,11 +48,6 @@ const IMPORT_FORMATS = [
     extensions: ".json .emotecraft",
     description: "These formats are experimental and may not be fully supported.",
   },
-  {
-    label: "Emote JSON",
-    extensions: ".json",
-    description: "Open schema 1, 3, or 4 animations. Open a sequence together with every animation it references.",
-  },
 ] as const;
 
 export function App() {
