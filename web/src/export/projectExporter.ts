@@ -46,12 +46,11 @@ interface CompiledAnimationFiles {
 function compileAnimationFile(document: ConversionDocument, animationIndex: number): CompiledAnimationFile {
   const compiled = compileConversionAnimationArtifact(document, animationIndex);
   const animation = removeRedundantKeyframes(compiled.animation);
-  const displayName = document.animations[animationIndex]?.output.displayName ?? "emote";
   return {
     generatedResourceReferences: compiled.generatedResourceReferences,
     file: {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: `emote.${sanitizeAnimationFileName(displayName)}.json`,
+      fileName: emoteFileName(animation.id),
     },
   };
 }
@@ -65,15 +64,10 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
   ));
   const animations = compiled.map((entry) => removeRedundantKeyframes(entry.animation));
   const generatedResourceReferences = new Set(compiled.flatMap((entry) => [...entry.generatedResourceReferences]));
-  const usedFileNames = new Set<string>();
-  const files: ExportResult[] = animations.map((animation, index) => {
-    const baseName = sanitizeAnimationFileName(document.animations[index].output.displayName);
-    let uniqueName = baseName;
-    for (let suffix = 2; usedFileNames.has(uniqueName); suffix++) uniqueName = `${baseName}_${suffix}`;
-    usedFileNames.add(uniqueName);
+  const files: ExportResult[] = animations.map((animation) => {
     return {
       blob: new Blob([serializeEmoteAnimation(animation)], { type: "application/json" }),
-      fileName: `emote.${uniqueName}.json`,
+      fileName: emoteFileName(animation.id),
     };
   });
   if (includeSequence) {
@@ -97,7 +91,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
     };
     files.push({
       blob: new Blob([`${JSON.stringify(sequence, null, 2)}\n`], { type: "application/json" }),
-      fileName: `emote.${sanitizeAnimationFileName(sequenceOutput.displayName)}.sequence.json`,
+      fileName: emoteFileName(sequence.id),
     });
   }
   return { generatedResourceReferences, files };
@@ -131,4 +125,8 @@ function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: Readon
 
 export function sanitizeAnimationFileName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "") || "emote";
+}
+
+export function emoteFileName(id: string): string {
+  return `${id.replaceAll(/[:/]/g, ".")}.json`;
 }
