@@ -69,7 +69,7 @@ class ExampleCallbacksTest {
 
     @Test
     void canCanSampleLoadsAndParticlesFollowPlayableNotes() throws Exception {
-        var animation = new AnimationJsonParser().parse(Path.of("docs/sample/music/emote.trumpet_can_can.json")).animation();
+        var animation = new AnimationJsonParser().parse(Path.of("docs/sample/music/music.trumpet_can_can.json")).animation();
         var melody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
         var noteTicks = new ArrayList<Integer>();
         var noteEndTicks = new ArrayList<Integer>();
@@ -79,7 +79,7 @@ class ExampleCallbacksTest {
             .map(EmoteAnimation.TimelineEvent::tick)
             .toList();
 
-        assertEquals("emote:trumpet_can_can", animation.id().toString());
+        assertEquals("music:trumpet_can_can", animation.id().toString());
         assertEquals(435, animation.timeline().durationTicks());
         assertEquals(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID, animation.timeline().events().start().getFirst().callbacks().getFirst().name());
         for (int tick = 0; tick <= animation.timeline().durationTicks(); tick++) {
@@ -103,6 +103,33 @@ class ExampleCallbacksTest {
         assertTrue(particleTicks.isEmpty(), "Note particles are sent with sound packets, not timeline commands");
         assertEquals(406, noteEndTicks.getLast());
         assertEquals(noteTicks.subList(1, noteTicks.size()), noteEndTicks.subList(0, noteEndTicks.size() - 1), "Each note sustains until the next one without a forced rest");
+    }
+
+    @Test
+    void newBatAndIdleButterflySamplesKeepTheirExampleCallbacks() throws Exception {
+        var parser = new AnimationJsonParser();
+        var bat = parser.parse(Path.of("docs/sample/emote.bat.json")).animation();
+        var butterfly = parser.parse(Path.of("docs/sample/sit/sit.idle_butterfly.json")).animation();
+
+        var batCallbacks = bat.timeline().events().timeline().stream()
+            .flatMap(event -> event.callbacks().stream().map(callback -> Map.entry(event, callback)))
+            .toList();
+        assertEquals(186, batCallbacks.size());
+        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, batCallbacks.getFirst().getValue().name());
+        assertEquals("spawn", batCallbacks.getFirst().getValue().payload());
+        assertEquals("bat", batCallbacks.getFirst().getKey().origin().node());
+        assertEquals("remove", batCallbacks.getLast().getValue().payload());
+        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, bat.timeline().events().stop().getFirst().callbacks().getFirst().name());
+
+        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().start().getFirst().callbacks().getFirst().name());
+        assertEquals("butterfly", butterfly.timeline().events().start().getFirst().origin().node());
+        var butterflyAnchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
+        assertEquals("butterfly_x", butterflyAnchor.parentId());
+        assertEquals(79, butterfly.timeline().events().timeline().size());
+        assertTrue(butterfly.timeline().events().timeline().stream()
+            .allMatch(event -> event.callbacks().getFirst().name().equals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID)));
+        assertTrue(butterfly.timeline().events().loop().isEmpty());
+        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().stop().getFirst().callbacks().getFirst().name());
     }
 
     @Test
