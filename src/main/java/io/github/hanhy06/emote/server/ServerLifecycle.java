@@ -14,6 +14,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.player.AttackEntityCallback;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
@@ -21,6 +23,7 @@ import net.minecraft.world.InteractionResult;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 
 public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
@@ -30,6 +33,7 @@ public class ServerLifecycle {
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
     private final IdlePlaybackService idlePlaybackService;
+    private final BooleanSupplier missingSkinUploadProvider;
 
     public ServerLifecycle(
         PlayerSkinManager playerSkinManager,
@@ -38,7 +42,8 @@ public class ServerLifecycle {
         PlaybackEngine playbackEngine,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
-        IdlePlaybackService idlePlaybackService
+        IdlePlaybackService idlePlaybackService,
+        BooleanSupplier missingSkinUploadProvider
     ) {
         this.playerSkinManager = playerSkinManager;
         this.cooldowns = cooldowns;
@@ -47,6 +52,7 @@ public class ServerLifecycle {
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
         this.idlePlaybackService = idlePlaybackService;
+        this.missingSkinUploadProvider = missingSkinUploadProvider;
     }
 
     public void register() {
@@ -73,6 +79,12 @@ public class ServerLifecycle {
             (handler, ignoredSender, ignoredServer) -> {
                 this.wheelSyncService.syncPlayer(handler.player);
                 this.playerSkinManager.checkPlayerSkin(handler.player);
+                if (this.missingSkinUploadProvider.getAsBoolean()) {
+                    handler.player.sendSystemMessage(Component.literal(
+                        "[Emote] No bake accounts or MineSkin API key configured; only cached skin textures are available"
+                    )
+                        .withStyle(ChatFormatting.RED));
+                }
             }
         );
         ServerPlayConnectionEvents.DISCONNECT.register(
