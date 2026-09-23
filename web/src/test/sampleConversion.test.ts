@@ -7,17 +7,12 @@ import type { ImportedProject } from "../domain/conversionSeed";
 import { animatedJavaBlueprintAdapter } from "../import/animatedJava/animatedJavaBlueprintAdapter";
 import type { ImportAdapter } from "../import/adapter";
 import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapter";
+import { emoteFileName } from "../export/projectExporter";
 import { compileImportedProject } from "./compileImportedFixture";
 
 const REPOSITORY_ROOT = fileURLToPath(new URL("../../../", import.meta.url));
 const DIRECT_SAMPLES = ["anvil", "clap", "cry", "indicate", "no", "yes"];
-const SIT_MATRIX_SAMPLES = {
-  sit_down: "emote.sit_down.json",
-  idle_sky: "emote.idle_sky.json",
-  idle_flower: "emote.idle_flower.json",
-  stand_up1: "emote.stand_up1.json",
-  stand_up2: "emote.stand_up2.json",
-} as const;
+const SIT_MATRIX_SAMPLES = ["sit_down", "idle_sky", "idle_flower", "stand_up1", "stand_up2"];
 let directAnimations: Map<string, EmoteAnimation>;
 let sitAnimations: Map<string, EmoteAnimation>;
 
@@ -39,14 +34,14 @@ describe("documentation sample conversion", () => {
 
   it.each(DIRECT_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(directAnimations, name);
-    const expected = await readJson(`docs/sample/emote.${name}.json`) as EmoteAnimation;
+    const expected = await readJson(`docs/sample/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
     expect(actual).toEqual(expected);
   });
 
-  it.each(Object.entries(SIT_MATRIX_SAMPLES))("matches the existing %s sample", async (name, fileName) => {
+  it.each(SIT_MATRIX_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(sitAnimations, name);
-    const expected = await readJson(`docs/sample/sit/${fileName}`) as EmoteAnimation;
+    const expected = await readJson(`docs/sample/sit/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
     expect(actual).toEqual(expected);
   });
