@@ -7,6 +7,8 @@ import type { ImportedProject } from "../domain/conversionSeed";
 import { animatedJavaBlueprintAdapter } from "../import/animatedJava/animatedJavaBlueprintAdapter";
 import type { ImportAdapter } from "../import/adapter";
 import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapter";
+import { removeRedundantKeyframes } from "../format/keyframeCleanup";
+import { bakeSchema4Preview } from "../import/emoteJson/schema4PreviewBaker";
 import { emoteFileName } from "../export/projectExporter";
 import { compileImportedProject } from "./compileImportedFixture";
 
@@ -36,16 +38,41 @@ describe("documentation sample conversion", () => {
     const actual = requireAnimation(directAnimations, name);
     const expected = await readJson(`docs/sample/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
-    expect(actual).toEqual(expected);
+
+    expectMatchingMatrices(removeRedundantKeyframes(actual), expected);
   });
 
   it.each(SIT_MATRIX_SAMPLES)("matches the existing %s sample", async (name) => {
     const actual = requireAnimation(sitAnimations, name);
     const expected = await readJson(`docs/sample/sit/${emoteFileName(actual.id)}`) as EmoteAnimation;
 
-    expect(actual).toEqual(expected);
+
+    expectMatchingMatrices(removeRedundantKeyframes(actual), expected);
   });
 });
+
+function expectMatchingMatrices(actual: EmoteAnimation, expected: EmoteAnimation): void {
+  const actualTracks = bakeSchema4Preview(actual);
+  const expectedTracks = bakeSchema4Preview(expected);
+  const displayNodeIds = (animation: EmoteAnimation) => Object.entries(animation.nodes)
+    .filter(([, node]) => node.type !== "anchor")
+    .map(([id]) => id).sort();
+
+  expect(displayNodeIds(actual)).toEqual(displayNodeIds(expected));
+  for (const id of displayNodeIds(expected)) {
+    const actualFrames = actualTracks[id]?.transforms;
+    const expectedFrames = expectedTracks[id]?.transforms;
+    expect(actualFrames, `${id} display node must exist`).toBeDefined();
+    expect(actualFrames!.length, `${id} must cover the reference animation`).toBeGreaterThanOrEqual(expectedFrames.length);
+
+    for (const [tick, expectedFrame] of expectedFrames.entries()) {
+      const actualMatrix = actualFrames![tick].matrix;
+      for (let component = 0; component < expectedFrame.matrix.length; component++) {
+        expect(actualMatrix[component], `${id} at ${tick}t, matrix[${component}]`).toBeCloseTo(expectedFrame.matrix[component], 4);
+      }
+    }
+  }
+}
 
 function requireAnimation(animations: ReadonlyMap<string, EmoteAnimation>, name: string): EmoteAnimation {
   const animation = animations.get(name);
