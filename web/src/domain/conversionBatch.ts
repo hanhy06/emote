@@ -34,13 +34,13 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     }
     animations.push(...document.animations.map((animation) => {
       const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
-      const source = { ...animation.source, id: uniqueAnimationId(animation.output.namespace, animation.source.id, animationIds) };
+      const id = uniqueAnimationId(animation.output.namespace, animation.source.id, animationIds);
       return {
         ...animation,
         nodeIds: animation.nodeIds.map(nodeId),
-        source,
+        source: { ...animation.source, id },
         preview: remapPreviewProjection(animation.preview, ids),
-        runtime: { ...animation.runtime, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
+        runtime: { ...animation.runtime, id, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
         events: remapImportedAnimationEvents(animation.events, nodeId),
       };
     }));
