@@ -9,8 +9,7 @@ import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
 import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
-import { detectAdapter, importDetected } from "./import/adapterRegistry";
-import { isImportedSequence } from "./import/adapter";
+import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
 import {
@@ -21,8 +20,6 @@ import {
   type WorkspacePage,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
-import { createConversionDocument } from "./domain/conversionDocument";
-import { combineConversionDocuments } from "./domain/conversionBatch";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -93,17 +90,10 @@ export function App() {
     dispatch({ type: "open_started", message: files.length === 1 ? "Opening animation project" : `Opening ${files.length} animation projects` });
     try {
       await showLoadingScreen();
-      const imported = await Promise.all(files.map(async (file) => {
-        const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-        const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
-      }));
-      const documents = imported.flatMap((item) => isImportedSequence(item.source)
-        ? [] : [createConversionDocument(item.source, item.adapterLabel)]);
-      const sequences = imported.flatMap((item) => isImportedSequence(item.source) ? [item.source] : []);
+      const document = await importFileBatch(files, IMPORT_ADAPTERS);
       setEventJsonValid(true);
       setEventEditorRevision((revision) => revision + 1);
-      dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents, sequences) });
+      dispatch({ type: "documents_open_succeeded", document });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
