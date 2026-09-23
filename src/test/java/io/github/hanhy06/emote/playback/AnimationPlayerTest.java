@@ -92,7 +92,7 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void resetsPersistentVariablesAtLoopBoundary() throws Exception {
+    void preservesPersistentVariablesAtLoopBoundary() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
         root.getAsJsonObject("timeline").addProperty("duration", "1t");
@@ -110,8 +110,9 @@ class AnimationPlayerTest {
         assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
 
         assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(3.0F, target.matrix("display").m30(), 1.0E-5F);
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
-        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
@@ -319,17 +320,23 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void rejectsPersistentVariableAssignmentInsideTrackValue() throws Exception {
+    void allowsPersistentVariableAssignmentInsideTrackValueExceptDuringServerSync() throws Exception {
         JsonObject root = base();
         positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
             .set(0, JsonParser.parseString("\"v.count = v.count + 1; return v.count;\""));
 
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> PreparedAnimation.from(load(root))
         );
 
-        assertTrue(exception.getMessage().contains("must not assign persistent variables"));
+        assertTrue(exception.getMessage().contains("must not assign persistent variables during server_sync playback"));
     }
 
     @Test
