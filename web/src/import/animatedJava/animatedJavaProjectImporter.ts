@@ -9,7 +9,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
-import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchNativeRuntime";
 import { blockbenchIntervalIsStep } from "../common/animationEasing";
@@ -62,6 +62,9 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     throw new Error(`Unsupported Animated Java project version: ${project.meta.format_version}`);
   }
   const sourceStem = input.name.replace(/\.ajblueprint$/i, "").trim() || project.name?.trim() || "Animated Java";
+  if (project.animations.length === 0 && project.animationDiagnostics?.length) {
+    throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported. ${project.animationDiagnostics.map((issue) => issue.message).join(" ")}`);
+  }
   const sourceAnimations = project.animations.length > 0 ? project.animations : [staticProjectAnimation()];
   const transformGraph = buildProjectTransformGraph(project);
   const cubeContent = importAnimatedJavaCubeContent(project, sourceAnimations, sourceStem);
@@ -94,29 +97,39 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
   applyGroupDefaultConfigs(nodes, project, transformGraph, nodeBindings);
   if (Object.keys(nodes).length === 0) throw new Error("Animated Java project does not contain importable nodes.");
 
-  const diagnostics: ImportDiagnostic[] = [...(cubeContent?.diagnostics ?? [])];
+  const diagnostics: ImportDiagnostic[] = [...(project.animationDiagnostics ?? []), ...(cubeContent?.diagnostics ?? [])];
   appendProjectCapabilityDiagnostics(project, diagnostics);
-  const displayAnimations = sourceAnimations.map((animation, index) => {
+  const animations = sourceAnimations.flatMap((animation, index) => {
+    const sourceIndex = project.animationSourceIndices?.[index] ?? index;
+    const cubeAnimation = cubeContent?.animationBySourceIndex.get(sourceIndex);
+    if (cubeContent && !cubeAnimation) return [];
+    const animationDiagnostics: ImportDiagnostic[] = [];
     try {
-      return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy, cubeContent?.animations[index]);
+      let display: ImportedAnimation;
+      try {
+        display = importProjectAnimation(animation, sourceIndex, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy, cubeAnimation);
+      } catch (reason) {
+        if (!(reason instanceof PreviewUnavailableError)) throw reason;
+        const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
+        const fallback = createMolangPreviewFallback(animation.name, durationTicks, reason);
+        animationDiagnostics.push(fallback.diagnostic);
+        display = createPreviewOnlyProjectAnimation(animation, sourceIndex, fallback.preview, displayElements, nodes, runtimeHierarchy, cubeAnimation);
+      }
+      const imported = enrichProjectAnimation(
+        assembleAnimatedJavaAnimation(cubeAnimation, display), animation, project, nodes, transformGraph,
+        nodeBindings, animationDiagnostics, sourceIndex,
+      );
+      diagnostics.push(...animationDiagnostics);
+      return [imported];
     } catch (reason) {
-      if (!(reason instanceof PreviewUnavailableError)) throw reason;
-      const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
-      const fallback = createMolangPreviewFallback(animation.name, durationTicks, reason);
-      diagnostics.push(fallback.diagnostic);
-      return createPreviewOnlyProjectAnimation(animation, index, fallback.preview, displayElements, nodes, runtimeHierarchy, cubeContent?.animations[index]);
+      diagnostics.push(skippedAnimationIssue(animation.name, `animations[${sourceIndex}]`, reason));
+      return [];
     }
   });
-  const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
-    assembleAnimatedJavaAnimation(cubeContent?.animations[index], animation),
-    sourceAnimations[index],
-    project,
-    nodes,
-    transformGraph,
-    nodeBindings,
-    diagnostics,
-    index,
-  ));
+  if (animations.length === 0) {
+    const reasons = diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.message).join(" ");
+    throw new ConversionError("no_importable_animations", `No Animated Java animations could be imported.${reasons ? ` ${reasons}` : ""}`);
+  }
   const name = prettify(sourceStem);
   return {
     source: "animated_java_blueprint",
@@ -182,6 +195,7 @@ function importAnimatedJavaCubeContent(project: AjProject, animations: AjProject
     groups: project.groups,
     outliner: project.outliner.flatMap((entry) => filterCubeOutlinerEntry(entry, supportedIds)),
     textures: project.textures.map(animatedJavaCubeTexture),
+    animationSourceIndices: project.animationSourceIndices,
     animations: animations.map((animation) => ({
       ...animation,
       animators: Object.fromEntries(Object.entries(animation.animators).flatMap(([id, animator]) => {

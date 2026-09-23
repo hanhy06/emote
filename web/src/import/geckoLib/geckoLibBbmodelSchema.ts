@@ -9,6 +9,7 @@ import {
   requireString,
 } from "../../format/runtimeValue";
 import type { BlockbenchCubeProject } from "../common/blockbenchCubeSchema";
+import { validateSourceAnimations } from "../common/animationValidation";
 
 export interface GeckoLibBbmodelProject extends BlockbenchCubeProject {
   meta: { format_version: string; model_format: string };
@@ -44,8 +45,8 @@ export function requireGeckoLibBbmodelProject(value: unknown): GeckoLibBbmodelPr
     }
     optionalString(texture.frame_order, `textures[${index}].frame_order`);
   });
-  (optionalArray(root.animations, "animations") ?? []).forEach((entry, index) => requireAnimation(entry, `animations[${index}]`));
-  return value as GeckoLibBbmodelProject;
+  const validated = validateSourceAnimations<BlockbenchCubeProject["animations"][number]>(optionalArray(root.animations, "animations") ?? [], requireAnimation);
+  return { ...value as GeckoLibBbmodelProject, animations: validated.animations, animationSourceIndices: validated.sourceIndices, animationDiagnostics: validated.diagnostics };
 }
 
 function requireGroup(value: unknown, path: string): void {

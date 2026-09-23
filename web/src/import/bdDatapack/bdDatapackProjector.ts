@@ -36,12 +36,12 @@ export function projectBdDatapack(source: BdDatapackSource, sourceName: string):
         runtime: { kind: "baked", tracks: runtimeTracks },
       };
     }),
-    diagnostics: source.droppedCamera ? [{
+    diagnostics: [...source.diagnostics, ...(source.droppedCamera ? [{
       severity: "warning",
       code: "bd_datapack_camera_ignored",
       message: "BD Engine camera movement is not part of the emote format and was ignored.",
       sourcePath: "data/*/function/k/*/keyframe_*.mcfunction",
-    }] : [],
+    } as const] : [])],
     resources: new Map(),
   };
 }

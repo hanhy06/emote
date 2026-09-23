@@ -1,3 +1,5 @@
+import type { ImportDiagnostic } from "../../domain/conversionSeed";
+
 export interface BlockbenchCubeProject {
   name?: string;
   resolution: { width: number; height: number };
@@ -6,6 +8,8 @@ export interface BlockbenchCubeProject {
   outliner: BbOutlinerEntry[];
   textures: BbTexture[];
   animations: BbAnimation[];
+  animationSourceIndices?: number[];
+  animationDiagnostics?: ImportDiagnostic[];
 }
 
 

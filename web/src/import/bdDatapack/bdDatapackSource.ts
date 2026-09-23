@@ -15,6 +15,8 @@ import {
 } from "../../format/snbt";
 import type { ImportInput } from "../adapter";
 import { cachedInputValue } from "../common/inputCache";
+import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import { skippedAnimationIssue } from "../../foundation/diagnostics";
 
 const decoder = new TextDecoder();
 const TICKS_PER_BD_FRAME = 2;
@@ -68,6 +70,7 @@ export interface BdDatapackSource {
   displays: BdSourceDisplay[];
   animations: BdSourceAnimation[];
   droppedCamera: boolean;
+  diagnostics: ImportDiagnostic[];
 }
 
 export function readBdDatapackSource(input: ImportInput): BdDatapackSource {
@@ -75,7 +78,10 @@ export function readBdDatapackSource(input: ImportInput): BdDatapackSource {
     const archive = readArchive(input);
     const displays = readDisplays(archive.files.get(archive.createPath)!, archive.namespace);
     const projected = readAnimations(archive, displays);
-    if (projected.animations.length === 0) throw new Error("BD Engine datapack does not contain animation keyframes.");
+    if (projected.animations.length === 0) {
+      const reasons = projected.diagnostics.map((issue) => issue.message).join(" ");
+      throw new Error(`BD Engine datapack does not contain importable animations.${reasons ? ` ${reasons}` : ""}`);
+    }
     return { namespace: archive.namespace, displays, ...projected };
   });
 }
@@ -166,7 +172,7 @@ function readDisplay(id: string, tag: string, type: string, compound: string): B
 function readAnimations(
   archive: BdDatapackArchive,
   displays: readonly BdSourceDisplay[],
-): Pick<BdDatapackSource, "animations" | "droppedCamera"> {
+): Pick<BdDatapackSource, "animations" | "droppedCamera" | "diagnostics"> {
   const grouped = new Map<string, { index: number; path: string; content: string }[]>();
   for (const [path, content] of archive.files) {
     const match = KEYFRAME_PATH.exec(path);
@@ -177,58 +183,67 @@ function readAnimations(
   }
   const displayByTag = new Map(displays.map((display) => [display.tag, display]));
   let droppedCamera = false;
-  const animations = [...grouped.entries()].sort(([first], [second]) => first.localeCompare(second)).map(([name, frames]) => {
-    frames.sort((first, second) => first.index - second.index);
-    frames.forEach((frame, expected) => {
-      if (frame.index !== expected) throw new Error(`BD Engine animation ${name} is missing keyframe_${expected}.mcfunction.`);
-    });
-    const transforms = Object.fromEntries(displays.map((display) => [display.id, [] as BdSourceTransformFrame[]]));
-    const nbt = Object.fromEntries(displays.map((display) => [display.id, [] as BdSourceNbtFrame[]]));
-    const currentPayloadByTag = new Map(displays.map((display) => [display.tag, display.initialPayload]));
-    for (const frame of frames) {
-      const lines = frame.content.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
-      for (const line of lines) {
-        if (line.startsWith("#") || line.startsWith("schedule function ")) continue;
-        if (line.includes(`tag=${archive.namespace}_camera`)) {
-          droppedCamera = true;
-          continue;
+  const diagnostics: ImportDiagnostic[] = [];
+  const animations = [...grouped.entries()].sort(([first], [second]) => first.localeCompare(second)).flatMap(([name, frames]) => {
+    try {
+      let animationDroppedCamera = false;
+      frames.sort((first, second) => first.index - second.index);
+      frames.forEach((frame, expected) => {
+        if (frame.index !== expected) throw new Error(`BD Engine animation ${name} is missing keyframe_${expected}.mcfunction.`);
+      });
+      const transforms = Object.fromEntries(displays.map((display) => [display.id, [] as BdSourceTransformFrame[]]));
+      const nbt = Object.fromEntries(displays.map((display) => [display.id, [] as BdSourceNbtFrame[]]));
+      const currentPayloadByTag = new Map(displays.map((display) => [display.tag, display.initialPayload]));
+      for (const frame of frames) {
+        const lines = frame.content.split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+        for (const line of lines) {
+          if (line.startsWith("#") || line.startsWith("schedule function ")) continue;
+          if (line.includes(`tag=${archive.namespace}_camera`)) {
+            animationDroppedCamera = true;
+            continue;
+          }
+          const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line);
+          if (!merge) throw new Error(`Unsupported command in ${frame.path}: ${line}`);
+          const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
+          const display = tag ? displayByTag.get(tag) : undefined;
+          if (!tag || !display) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
+          validateDisplayMerge(display, merge[2], frame.path);
+          const payloadUpdate = readDisplayPayloadUpdate(display, merge[2]);
+          if (!payloadUpdate) continue;
+          const mergedPayload = mergeSnbtValue(currentPayloadByTag.get(tag)!, payloadUpdate);
+          setNbtFrame(nbt[display.id], frame.index * TICKS_PER_BD_FRAME, display, display.initialPayload, mergedPayload);
+          currentPayloadByTag.set(tag, mergedPayload);
         }
-        const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line);
-        if (!merge) throw new Error(`Unsupported command in ${frame.path}: ${line}`);
-        const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
-        const display = tag ? displayByTag.get(tag) : undefined;
-        if (!tag || !display) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
-        validateDisplayMerge(display, merge[2], frame.path);
-        const payloadUpdate = readDisplayPayloadUpdate(display, merge[2]);
-        if (!payloadUpdate) continue;
-        const mergedPayload = mergeSnbtValue(currentPayloadByTag.get(tag)!, payloadUpdate);
-        setNbtFrame(nbt[display.id], frame.index * TICKS_PER_BD_FRAME, display, display.initialPayload, mergedPayload);
-        currentPayloadByTag.set(tag, mergedPayload);
+        for (const line of lines) {
+          if (line.startsWith("#") || line.startsWith("schedule function ") || line.includes(`tag=${archive.namespace}_camera`)) continue;
+          const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line)!;
+          const matrix = readSnbtRawField(merge[2], "transformation");
+          if (!matrix) continue;
+          const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
+          const display = tag ? displayByTag.get(tag) : undefined;
+          if (!display) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
+          const duration = readIntegerField(merge[2], "interpolation_duration", 0);
+          transforms[display.id].push({
+            tick: frame.index * TICKS_PER_BD_FRAME,
+            matrix: readMatrix(matrix, `${frame.path} ${display.id} transformation`),
+            interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
+          });
+        }
       }
-      for (const line of lines) {
-        if (line.startsWith("#") || line.startsWith("schedule function ") || line.includes(`tag=${archive.namespace}_camera`)) continue;
-        const merge = /^data merge entity @e\[([^\]]+)]\s+(\{.*})$/.exec(line)!;
-        const matrix = readSnbtRawField(merge[2], "transformation");
-        if (!matrix) continue;
-        const tag = /(?:^|,)tag=([^,\]]+)/.exec(merge[1])?.[1];
-        const display = tag ? displayByTag.get(tag) : undefined;
-        if (!display) throw new Error(`Keyframe ${frame.path} targets an unknown display tag: ${tag ?? "<missing>"}`);
-        const duration = readIntegerField(merge[2], "interpolation_duration", 0);
-        transforms[display.id].push({
-          tick: frame.index * TICKS_PER_BD_FRAME,
-          matrix: readMatrix(matrix, `${frame.path} ${display.id} transformation`),
-          interpolation: duration === 0 ? { type: "step" } : { type: "linear", durationTicks: duration },
-        });
-      }
+      const durationTicks = requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${name} duration`);
+      droppedCamera ||= animationDroppedCamera;
+      return [{
+        name,
+        durationTicks,
+        transforms,
+        nbt,
+      }];
+    } catch (reason) {
+      diagnostics.push(skippedAnimationIssue(name, `data/${archive.namespace}/function/k/${name}`, reason));
+      return [];
     }
-    return {
-      name,
-      durationTicks: requireAnimationDurationTicks(frames.length * TICKS_PER_BD_FRAME, `${name} duration`),
-      transforms,
-      nbt,
-    };
   });
-  return { animations, droppedCamera };
+  return { animations, droppedCamera, diagnostics };
 }
 
 function validateDisplayMerge(display: BdSourceDisplay, compound: string, path: string): void {

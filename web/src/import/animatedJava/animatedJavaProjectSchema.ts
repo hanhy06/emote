@@ -10,6 +10,8 @@ import {
   requireRecord,
   requireString,
 } from "../../format/runtimeValue";
+import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import { validateSourceAnimations } from "../common/animationValidation";
 
 export type AjProjectExpression = string | number;
 
@@ -25,6 +27,8 @@ export interface AjProject {
   variants?: Record<string, unknown>;
   collections?: unknown[];
   animations: AjProjectAnimation[];
+  animationSourceIndices?: number[];
+  animationDiagnostics?: ImportDiagnostic[];
   animation_controllers?: unknown[];
 }
 
@@ -175,7 +179,7 @@ export function requireAnimatedJavaProject(value: unknown): AjProject {
   (optionalArray(root.groups, "groups") ?? []).forEach((entry, index) => requireGroup(entry, `groups[${index}]`));
   requireArray(root.outliner, "outliner").forEach((entry, index) => requireOutlinerEntry(entry, `outliner[${index}]`));
   requireArray(root.textures, "textures").forEach((entry, index) => requireTexture(entry, `textures[${index}]`));
-  (optionalArray(root.animations, "animations") ?? []).forEach((entry, index) => requireAnimation(entry, `animations[${index}]`));
+  const validated = validateSourceAnimations<AjProjectAnimation>(optionalArray(root.animations, "animations") ?? [], requireAnimation);
   const project = value as AjProject;
   return {
     ...project,
@@ -185,7 +189,9 @@ export function requireAnimatedJavaProject(value: unknown): AjProject {
       return { ...element, visibility: visibility === "true" };
     }),
     groups: project.groups ?? [],
-    animations: project.animations ?? [],
+    animations: validated.animations,
+    animationSourceIndices: validated.sourceIndices,
+    animationDiagnostics: validated.diagnostics,
   };
 }
 

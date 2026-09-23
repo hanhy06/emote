@@ -61,3 +61,12 @@ export function conversionErrorMessage(reason: unknown, fallbackMessage: string)
   if (reason instanceof ConversionError && reason.sourcePath) return `${reason.message} (${reason.sourcePath})`;
   return reason.message;
 }
+
+export function skippedAnimationIssue(name: string, sourcePath: string, reason: unknown): ConversionIssue {
+  return {
+    severity: "warning",
+    code: "animation_skipped",
+    message: `${name} was skipped: ${conversionErrorMessage(reason, "Could not import this animation.")}`,
+    sourcePath: reason instanceof ConversionError ? reason.sourcePath ?? sourcePath : sourcePath,
+  };
+}

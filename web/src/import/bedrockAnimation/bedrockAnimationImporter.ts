@@ -2,7 +2,7 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { PreviewUnavailableError } from "../../foundation/diagnostics";
+import { PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
@@ -22,27 +22,26 @@ import { createMolangPreviewFallback } from "../common/previewFallback";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ImportDiagnostic[] = [...(document.animationDiagnostics ?? [])];
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
+    const animationDiagnostics: ImportDiagnostic[] = [];
     try {
-      collectAnimationDiagnostics(name, animation, diagnostics);
-      return [importAnimation(name, animation, index, diagnostics)];
+      collectAnimationDiagnostics(name, animation, animationDiagnostics);
+      const imported = importAnimation(name, animation, index, animationDiagnostics);
+      diagnostics.push(...animationDiagnostics);
+      return [imported];
     } catch (reason) {
       if (reason instanceof PreviewUnavailableError) {
+        diagnostics.push(...animationDiagnostics);
         return [createPreviewOnlyAnimation(name, animation, index, reason, diagnostics)];
       }
-      diagnostics.push({
-        severity: "warning",
-        code: "bedrock_animation_skipped",
-        message: `${name} was skipped: ${reason instanceof Error ? reason.message : "unsupported animation"}`,
-        sourcePath: `animations.${name}`,
-      });
+      diagnostics.push(skippedAnimationIssue(name, `animations.${name}`, reason));
       return [];
     }
   });
   if (animations.length === 0) {
-    const reasons = diagnostics.filter((issue) => issue.code === "bedrock_animation_skipped").map((issue) => issue.message).join(" ");
-    throw new Error(`No Bedrock animations in this file can be baked.${reasons ? ` ${reasons}` : ""}`);
+    const reasons = diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.message).join(" ");
+    throw new Error(`No Bedrock animations in this file can be imported.${reasons ? ` ${reasons}` : ""}`);
   }
   return {
     source: "bedrock_animation_json",

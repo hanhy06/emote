@@ -5,7 +5,7 @@ import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix"
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
-import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack, PreviewProjection } from "../../domain/previewProjection";
@@ -64,6 +64,7 @@ export interface ImportedCubeProjectContent {
   namespace: string;
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
+  animationBySourceIndex: ReadonlyMap<number, ImportedAnimation>;
   diagnostics: ImportDiagnostic[];
   resources: Map<string, GeneratedResource>;
   runtimeSceneId: string;
@@ -86,7 +87,7 @@ export function importBlockbenchCubeContent(
   if (bones.length === 0) throw new Error(`${formatLabel} cube project does not contain bones.`);
   writeSourceCubeResources(project, bones, namespace, projectPath, resources, transforms);
   const { playableCubesByBone, skinAssignments } = prepareCubeModels(bones);
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ImportDiagnostic[] = [...(project.animationDiagnostics ?? [])];
   const nodes: Record<string, ImportedNode> = {};
   const editorNodeIdsBySourceUuid = new Map<string, string[]>();
   const bindEditorNode = (sourceId: string, nodeId: string) => editorNodeIdsBySourceUuid.set(sourceId, [...(editorNodeIdsBySourceUuid.get(sourceId) ?? []), nodeId]);
@@ -152,14 +153,30 @@ export function importBlockbenchCubeContent(
     }
   }
 
-  if (project.animations.length === 0) throw new Error(`${formatLabel} cube project does not contain animations.`);
-  const animations = project.animations.map((animation, index) =>
-    importAnimation(animation, index, bones, nodes, diagnostics, options));
+  const animations: ImportedAnimation[] = [];
+  const animationBySourceIndex = new Map<number, ImportedAnimation>();
+  for (const [index, animation] of project.animations.entries()) {
+    const sourceIndex = project.animationSourceIndices?.[index] ?? index;
+    const animationDiagnostics: ImportDiagnostic[] = [];
+    try {
+      const imported = importAnimation(animation, sourceIndex, bones, nodes, animationDiagnostics, options);
+      animations.push(imported);
+      animationBySourceIndex.set(sourceIndex, imported);
+      diagnostics.push(...animationDiagnostics);
+    } catch (reason) {
+      diagnostics.push(skippedAnimationIssue(animation.name, `animations[${sourceIndex}]`, reason));
+    }
+  }
+  if (animations.length === 0) {
+    const reasons = diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.message).join(" ");
+    throw new ConversionError("no_importable_animations", `No ${formatLabel} animations could be imported.${reasons ? ` ${reasons}` : ""}`);
+  }
   return {
     sourceStem,
     namespace,
     nodes,
     animations,
+    animationBySourceIndex,
     diagnostics,
     resources,
     runtimeSceneId: options.runtimeSceneId,
