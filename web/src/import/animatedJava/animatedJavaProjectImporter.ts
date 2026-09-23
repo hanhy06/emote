@@ -9,7 +9,7 @@ import { isRecord } from "../../format/runtimeValue";
 import { parseSnbtCompound, serializeSnbtCompound, serializeSnbtString, splitSnbtPair, splitSnbtTopLevel } from "../../format/snbt";
 import { requireAnimationDurationTicks, secondsToTicks } from "../../format/time";
 import type { ImportInput } from "../adapter";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { importBlockbenchCubeContent, type ImportedCubeProjectContent } from "../common/blockbenchCubeImporter";
 import { PLAYER_RENDER_SCALE } from "../common/blockbenchNativeRuntime";
 import { blockbenchIntervalIsStep } from "../common/animationEasing";
@@ -29,6 +29,7 @@ import { ajRuntimeRootId, createAnimatedJavaRuntime, type AjRuntimeHierarchy } f
 import { createAnimatedJavaCubeRuntime } from "./animatedJavaCubeRuntime";
 import { ANIMATED_JAVA_CHANNELS } from "./animatedJavaAnimationPolicy";
 import { ANIMATED_JAVA_BLUEPRINT_TRANSFORMS } from "./animatedJavaCubeTransform";
+import { createMolangPreviewFallback } from "../common/previewFallback";
 
 interface ProjectTransformGraph {
   groups: ReadonlyMap<string, AjProjectGroup>;
@@ -99,15 +100,11 @@ export function importAnimatedJavaProject(input: ImportInput, project: AjProject
     try {
       return importProjectAnimation(animation, index, displayElements, nodes, transformGraph, sceneScale, runtimeHierarchy, cubeContent?.animations[index]);
     } catch (reason) {
-      if (!(reason instanceof ConversionError) || reason.code !== "unsupported_animated_java_molang") throw reason;
-      const message = `${animation.name}: preview uses the Create pose; runtime Molang is preserved.`;
-      diagnostics.push({
-        severity: "warning",
-        code: "animated_java_animation_molang_unavailable",
-        message,
-        sourcePath: reason.sourcePath ?? `animations[${index}]`,
-      });
-      return createPreviewOnlyProjectAnimation(animation, index, message, displayElements, nodes, runtimeHierarchy, cubeContent?.animations[index]);
+      if (!(reason instanceof PreviewUnavailableError)) throw reason;
+      const durationTicks = Number.isFinite(animation.length) && animation.length > 0 ? Math.max(1, Math.round(animation.length * 20)) : 20;
+      const fallback = createMolangPreviewFallback(animation.name, durationTicks, reason);
+      diagnostics.push(fallback.diagnostic);
+      return createPreviewOnlyProjectAnimation(animation, index, fallback.preview, displayElements, nodes, runtimeHierarchy, cubeContent?.animations[index]);
     }
   });
   const animations = displayAnimations.map((animation, index) => enrichProjectAnimation(
@@ -551,7 +548,7 @@ function mergeSnbt(first: string | undefined, second: string): string {
 function createPreviewOnlyProjectAnimation(
   animation: AjProjectAnimation,
   index: number,
-  reason: string,
+  preview: PreviewProjection,
   elements: AjProjectDisplayElement[],
   nodes: Record<string, ImportedNode>,
   runtimeHierarchy: AjRuntimeHierarchy,
@@ -567,11 +564,7 @@ function createPreviewOnlyProjectAnimation(
     playbackMode: animation.loop === "loop" ? "loop" : "once",
     loopDelayTicks: 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: {
-      durationTicks: 20,
-      tracks: {},
-      availability: { status: "create_pose", reason },
-    },
+    preview,
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createAnimatedJavaRuntime(animation, elements, nodes, runtimeHierarchy, blendWeight, startDelayTicks, durationTicks, cubeAnimation?.runtime) },
   };
@@ -820,7 +813,7 @@ function projectVisibility(frame: AjProjectKeyframe, element: AjProjectDisplayEl
 function projectNumeric(value: string | number, path: string): number {
   const parsed = typeof value === "number" ? value : Number(value.trim());
   if (!Number.isFinite(parsed)) {
-    throw new ConversionError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);
+    throw new PreviewUnavailableError("unsupported_animated_java_molang", `Animated Java expression ${String(value)} is not a numeric constant.`, path);
   }
   return parsed;
 }

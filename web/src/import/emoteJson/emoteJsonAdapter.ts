@@ -7,7 +7,7 @@ import { parseMinecraftTime } from "../../format/time";
 import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
 import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
@@ -18,6 +18,7 @@ import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migr
 import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
 import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
 import { bakeSchema4Preview } from "./schema4PreviewBaker";
+import { createMolangPreviewFallback } from "../common/previewFallback";
 
 export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "emote_json",
@@ -61,14 +62,10 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       try {
         importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, bakeSchema4Preview(animation));
       } catch (previewReason) {
-        const message = "Advanced schema 4 data is preserved for export; preview uses the Create pose because its runtime values cannot be evaluated safely.";
-        importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, undefined, message);
-        diagnostics.push({
-          severity: "warning",
-          code: "schema_4_preview_limited",
-          message,
-          sourcePath: previewReason instanceof ConversionError ? previewReason.sourcePath : reason.sourcePath,
-        });
+        if (!(previewReason instanceof PreviewUnavailableError)) throw previewReason;
+        const fallback = createMolangPreviewFallback(animation.metadata.name, parseMinecraftTime(animation.timeline.duration, 1), previewReason);
+        importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, undefined, fallback.diagnostic.message);
+        diagnostics.push(fallback.diagnostic);
       }
     }
     return {

@@ -13,7 +13,7 @@ import type {
 import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
 import type { PreviewNodeTrack } from "../../domain/previewProjection";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
@@ -134,7 +134,7 @@ class PreviewMolangSession {
       return requireFinite(this.parser.parse(source, this.queries), path);
     } catch (reason) {
       if (reason instanceof ConversionError) throw reason;
-      throw new ConversionError("schema_4_preview_molang_unavailable", `${path} cannot be evaluated for preview.`, path, { cause: reason });
+      throw new PreviewUnavailableError("schema_4_preview_molang_unavailable", `${path} cannot be evaluated for preview.`, path, { cause: reason });
     }
   }
 
@@ -299,5 +299,5 @@ function requireFinite(value: number, path: string): number {
 }
 
 function previewError(path: string, message: string): ConversionError {
-  return new ConversionError("schema_4_preview_molang_unavailable", `${path} ${message}.`, path);
+  return new PreviewUnavailableError("schema_4_preview_molang_unavailable", `${path} ${message}.`, path);
 }

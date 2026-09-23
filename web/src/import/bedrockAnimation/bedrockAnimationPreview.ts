@@ -54,10 +54,6 @@ export function createBedrockAnimationPreview(
   return { durationTicks, tracks, availability: { status: "full" } };
 }
 
-export function createBedrockCreatePosePreview(reason: string): PreviewProjection {
-  return { durationTicks: TICKS_PER_SECOND, tracks: {}, availability: { status: "create_pose", reason } };
-}
-
 function collectApproximateTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, BedrockPlayerTransform> {
   const transforms = new Map<string, BedrockPlayerTransform>();
   for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {

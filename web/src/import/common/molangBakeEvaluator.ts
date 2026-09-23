@@ -1,6 +1,6 @@
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { TICKS_PER_SECOND } from "../../format/time";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
 
 export interface MolangBakeContext {
@@ -12,6 +12,7 @@ export interface MolangBakeContext {
 
 export interface MolangBakeError {
   code: string;
+  previewUnavailable?: boolean;
   message(expression: string, path: string): string;
   nondeterministicMessage?(expression: string, path: string): string;
 }
@@ -43,7 +44,7 @@ export class MolangBakeEvaluator {
     if (this.options.rejectNondeterministic && NONDETERMINISTIC_FUNCTION.test(expression)) {
       const message = this.options.error.nondeterministicMessage?.(expression, path)
         ?? this.options.error.message(expression, path);
-      throw new ConversionError(this.options.error.code, message, path);
+      throw this.error(message, path);
     }
 
     try {
@@ -64,17 +65,17 @@ export class MolangBakeEvaluator {
       return this.requireFinite(this.parser.parse(expression, variables), expression, path);
     } catch (error) {
       if (error instanceof ConversionError) throw error;
-      throw new ConversionError(this.options.error.code, this.options.error.message(expression, path), path, { cause: error });
+      throw this.error(this.options.error.message(expression, path), path, error);
     }
   }
 
   private requireFinite(value: number, expression: string | number, path: string): number {
     if (Number.isFinite(value)) return value;
-    throw new ConversionError(
-      this.options.error.code,
-      this.options.error.message(String(expression), path),
-      path,
-      { cause: new Error("result is not finite") },
-    );
+    throw this.error(this.options.error.message(String(expression), path), path, new Error("result is not finite"));
+  }
+
+  private error(message: string, path: string, cause?: unknown): ConversionError {
+    const ErrorType = this.options.error.previewUnavailable ? PreviewUnavailableError : ConversionError;
+    return new ErrorType(this.options.error.code, message, path, cause === undefined ? undefined : { cause });
   }
 }

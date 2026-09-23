@@ -5,7 +5,7 @@ import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix"
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { serializeSnbtString } from "../../format/snbt";
 import { formatMinecraftTime, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import type { ImportedAnimation, ImportedNode, ImportedTimelineEvent, ImportedTransformKeyframe, ImportDiagnostic } from "../../domain/conversionSeed";
 import type { BakedRuntimeNodeTracks, BakedRuntimeTransformKeyframe } from "../../domain/minecraftData";
 import type { PreviewNodeTrack, PreviewProjection } from "../../domain/previewProjection";
@@ -46,6 +46,7 @@ import {
   PLAYER_RENDER_SCALE,
   type BlockbenchNativeRuntimeFactory,
 } from "./blockbenchNativeRuntime";
+import { createMolangPreviewFallback } from "./previewFallback";
 
 export interface CubeProjectImportOptions {
   transforms: CubeProjectTransformConvention;
@@ -247,8 +248,16 @@ function importAnimation(
 ): ImportedAnimation {
   const { channels, createNativeRuntime, diagnosticPrefix, formatLabel, transforms: convention } = options;
   const source = resolveBlockbenchAnimationSource(animation, index, bones, diagnostics, options);
-  const preview = projectBlockbenchPreview(source, bones, convention, channels, formatLabel, diagnosticPrefix);
   const runtime = projectBlockbenchRuntime(source, bones, nodes, convention, channels, createNativeRuntime, formatLabel, diagnosticPrefix);
+  let preview: PreviewProjection;
+  try {
+    preview = projectBlockbenchPreview(source, bones, convention, channels, formatLabel, diagnosticPrefix);
+  } catch (reason) {
+    if (!(reason instanceof PreviewUnavailableError)) throw reason;
+    const fallback = createMolangPreviewFallback(animation.name, source.durationTicks, reason);
+    preview = fallback.preview;
+    diagnostics.push(fallback.diagnostic);
+  }
   return {
     id: sanitizeResourcePath(animation.name, `animation_${index + 1}`),
     name: animation.name,
@@ -300,12 +309,6 @@ function resolveBlockbenchAnimationSource(
     } catch (reason) {
       if (!channels.isBakeFallbackError(reason)) throw reason;
       nativeRuntime = true;
-      diagnostics.push({
-        severity: "warning",
-        code: "approximate_preview_molang",
-        message: `${animation.name}: runtime Molang is preserved; preview uses supported math/time expressions only.`,
-        sourcePath: reason instanceof ConversionError ? reason.sourcePath ?? `animations[${index}]` : `animations[${index}]`,
-      });
     }
   }
   const startDelayTicks = Math.round(startDelaySeconds * TICKS_PER_SECOND);

@@ -2,7 +2,7 @@ import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { ConversionError } from "../../foundation/diagnostics";
+import { PreviewUnavailableError } from "../../foundation/diagnostics";
 import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
@@ -17,7 +17,8 @@ import {
   resolveBedrockPlayerBone,
 } from "./bedrockPlayerRig";
 import { createBedrockRuntime } from "./bedrockAnimationOutput";
-import { createBedrockAnimationPreview, createBedrockCreatePosePreview } from "./bedrockAnimationPreview";
+import { createBedrockAnimationPreview } from "./bedrockAnimationPreview";
+import { createMolangPreviewFallback } from "../common/previewFallback";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
@@ -27,15 +28,8 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
       collectAnimationDiagnostics(name, animation, diagnostics);
       return [importAnimation(name, animation, index, diagnostics)];
     } catch (reason) {
-      if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
-        const message = `${name}: preview uses the Create pose; runtime Molang is preserved.`;
-        diagnostics.push({
-          severity: "warning",
-          code: "bedrock_animation_molang_unavailable",
-          message,
-          sourcePath: reason.sourcePath ?? `animations.${name}`,
-        });
-        return [createPreviewOnlyAnimation(name, animation, index, message)];
+      if (reason instanceof PreviewUnavailableError) {
+        return [createPreviewOnlyAnimation(name, animation, index, reason, diagnostics)];
       }
       diagnostics.push({
         severity: "warning",
@@ -64,7 +58,7 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
   };
 }
 
-function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: string): ImportedAnimation {
+function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: PreviewUnavailableError, diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
   const animationDurationTicks = sourceDuration === 0 && bedrockAnimationUsesTime(animation)
     ? MAX_ANIMATION_DURATION_TICKS
@@ -74,6 +68,8 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     animationDurationTicks === MAX_ANIMATION_DURATION_TICKS ? animationDurationTicks : animationDurationTicks + startDelayTicks,
     `${name} duration`,
   );
+  const fallback = createMolangPreviewFallback(name, durationTicks, reason);
+  diagnostics.push(fallback.diagnostic);
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
@@ -81,7 +77,7 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: createBedrockCreatePosePreview(reason),
+    preview: fallback.preview,
     exportAvailability: { exportable: true },
     runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks, durationTicks) },
   };

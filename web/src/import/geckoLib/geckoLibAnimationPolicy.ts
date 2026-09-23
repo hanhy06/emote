@@ -11,12 +11,11 @@ export const GECKOLIB_CHANNELS = createBlockbenchChannelEvaluator({
   }),
   previewEvaluator: new MolangBakeEvaluator({
     rejectNondeterministic: true,
-    error: { code: PREVIEW_ERROR, message: (expression) => `GeckoLib expression ${expression} is not available in the approximate preview.` },
+    error: { code: PREVIEW_ERROR, previewUnavailable: true, message: (expression) => `GeckoLib expression ${expression} is not available in preview.` },
   }),
   invalidPointCount: (path) => new ConversionError("unsupported_geckolib_keyframe", "GeckoLib transform keyframes must contain one value or a pre/post pair.", path),
   missingAxis: (path) => new ConversionError("invalid_geckolib_keyframe", "GeckoLib transform keyframe is missing an axis value.", path),
   unsupportedInterpolation: (channel, interpolation, path) => new ConversionError("unsupported_geckolib_interpolation", `GeckoLib ${channel} keyframe uses unsupported ${interpolation} interpolation.`, path),
   unsupportedEasing: (channel, easing, path) => new ConversionError("unsupported_geckolib_easing", `GeckoLib ${channel} keyframe uses unsupported easing ${easing}.`, path),
   canFallbackFromBake: (error) => error instanceof ConversionError && error.code === BAKE_ERROR,
-  canFallbackFromPreview: (error) => error instanceof ConversionError && error.code === PREVIEW_ERROR,
 });

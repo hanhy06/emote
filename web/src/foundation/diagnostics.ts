@@ -49,6 +49,13 @@ export class ConversionError extends Error {
   }
 }
 
+export class PreviewUnavailableError extends ConversionError {
+  constructor(code: string, message: string, sourcePath?: string, options?: ErrorOptions) {
+    super(code, message, sourcePath, options);
+    this.name = "PreviewUnavailableError";
+  }
+}
+
 export function conversionErrorMessage(reason: unknown, fallbackMessage: string): string {
   if (!(reason instanceof Error)) return fallbackMessage;
   if (reason instanceof ConversionError && reason.sourcePath) return `${reason.message} (${reason.sourcePath})`;

@@ -1,5 +1,4 @@
 import type { ConversionError } from "../../foundation/diagnostics";
-import { usesRuntimeMolangState } from "../../format/molang/runtimeAnalysis";
 import type { BbDataPoint, BbKeyframe } from "./blockbenchCubeSchema";
 import { easingProgress, sampleBezierAtX, sampleSpline } from "./curveMath";
 import type { MolangBakeEvaluator } from "./molangBakeEvaluator";
@@ -24,7 +23,6 @@ export interface BlockbenchChannelPolicy {
   unsupportedInterpolation(channel: string, interpolation: string, path: string): ConversionError;
   unsupportedEasing(channel: string, easing: string, path: string): ConversionError;
   canFallbackFromBake(error: unknown): boolean;
-  canFallbackFromPreview(error: unknown): boolean;
 }
 
 export interface BlockbenchChannelEvaluator {
@@ -82,28 +80,20 @@ export function createBlockbenchChannelEvaluator(policy: BlockbenchChannelPolicy
 
   const evaluateApproximate = (keyframes: BbKeyframe[], channel: string, time: number, fallback: number[], path: string): number[] => {
     const frames = channelFrames(keyframes, channel).map(({ keyframe }) => keyframe);
-    if (frames.length === 0 || frames.some((frame) => frame.data_points.some((point) =>
-      usesRuntimeMolangState(point.x) || usesRuntimeMolangState(point.y) || usesRuntimeMolangState(point.z),
-    ))) return [...fallback];
-
-    try {
-      const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
-      if (exact) return evaluatePoint(postPoint(exact, policy, path), policy.previewEvaluator, { animationTime: time, keyframeLerpTime: 1 }, policy, path);
-      const afterIndex = frames.findIndex((frame) => frame.time > time);
-      if (afterIndex === 0) return [...fallback];
-      if (afterIndex < 0) return evaluatePoint(postPoint(frames.at(-1)!, policy, path), policy.previewEvaluator, { animationTime: time, keyframeLerpTime: 1 }, policy, path);
-      const before = frames[afterIndex - 1];
-      const after = frames[afterIndex];
-      const alpha = (time - before.time) / (after.time - before.time);
-      const context = { animationTime: time, keyframeLerpTime: alpha };
-      const start = evaluatePoint(postPoint(before, policy, path), policy.previewEvaluator, context, policy, path);
-      if ((before.interpolation ?? "linear") === "step") return start;
-      const end = evaluatePoint(prePoint(after, policy, path), policy.previewEvaluator, context, policy, path);
-      return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * alpha);
-    } catch (error) {
-      if (policy.canFallbackFromPreview(error)) return [...fallback];
-      throw error;
-    }
+    if (frames.length === 0) return [...fallback];
+    const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
+    if (exact) return evaluatePoint(postPoint(exact, policy, path), policy.previewEvaluator, { animationTime: time, keyframeLerpTime: 1 }, policy, path);
+    const afterIndex = frames.findIndex((frame) => frame.time > time);
+    if (afterIndex === 0) return [...fallback];
+    if (afterIndex < 0) return evaluatePoint(postPoint(frames.at(-1)!, policy, path), policy.previewEvaluator, { animationTime: time, keyframeLerpTime: 1 }, policy, path);
+    const before = frames[afterIndex - 1];
+    const after = frames[afterIndex];
+    const alpha = (time - before.time) / (after.time - before.time);
+    const context = { animationTime: time, keyframeLerpTime: alpha };
+    const start = evaluatePoint(postPoint(before, policy, path), policy.previewEvaluator, context, policy, path);
+    if ((before.interpolation ?? "linear") === "step") return start;
+    const end = evaluatePoint(prePoint(after, policy, path), policy.previewEvaluator, context, policy, path);
+    return mapAxes((axis) => start[axis] + (end[axis] - start[axis]) * alpha);
   };
 
   return { evaluate, canBake, evaluateApproximate, isBakeFallbackError: policy.canFallbackFromBake };
