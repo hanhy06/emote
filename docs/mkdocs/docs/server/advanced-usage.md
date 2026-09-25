@@ -56,7 +56,7 @@ Idle emotes play automatically after a specified time since the player's last ac
   "emotes": ["emote:hello", "emote:backflip"],
   "idle": {
     "delay": "300s",
-    "emote": ["emote:idle.sit"]
+    "emote": ["sit:idle.sit"]
   }
 }
 ```
@@ -64,13 +64,13 @@ Idle emotes play automatically after a specified time since the player's last ac
 To choose evenly among several emotes, list only their IDs:
 
 ```json
-"emote": ["emote:idle.sit", "emote:idle.handstand"]
+"emote": ["sit:idle.sit", "handstand:idle.handstand"]
 ```
 
 An entry that is a valid emote ID matches literally. Any other entry is a full Java regular expression, so an idle rule can select every currently available emote with a matching ID:
 
 ```json
-"emote": ["emote:idle\\..*"]
+"emote": [".*:idle\\..*"]
 ```
 
 Regular-expression entries can be used only with equal selection. They cannot be combined with explicit weights.
@@ -78,7 +78,7 @@ Regular-expression entries can be used only with equal selection. They cannot be
 For weighted selection, alternate IDs and integer weights whose total must equal `100`:
 
 ```json
-"emote": ["emote:idle.sit", 70, "emote:idle.handstand", 30]
+"emote": ["sit:idle.sit", 70, "handstand:idle.handstand", 30]
 ```
 
 If a player has multiple permissions, entries are checked from top to bottom in `emotes.json`, and the first allowed entry with `idle` is used. Place higher-priority groups first.
@@ -90,7 +90,7 @@ If a player has multiple permissions, entries are checked from top to bottom in 
     "emotes": ["emote:(dance|cheer|clap)"],
     "idle": {
       "delay": "120s",
-      "emote": ["emote:idle.handstand"]
+      "emote": ["handstand:idle.handstand"]
     }
   },
   {
@@ -98,7 +98,7 @@ If a player has multiple permissions, entries are checked from top to bottom in 
     "emotes": ["emote:hello", "emote:backflip"],
     "idle": {
       "delay": "300s",
-      "emote": ["emote:idle.sit"]
+      "emote": ["sit:idle.sit"]
     }
   }
 ]
@@ -116,13 +116,13 @@ A Sequence connects multiple Animations in order and presents them to the player
 
 ```text
 config/emote/emote/sit/
-├── emote.idle_butterfly.json
-├── emote.idle_flower.json
-├── emote.idle_sky.json
-├── emote.sit_down.json
-├── emote.stand_up1.json
-├── emote.stand_up2.json
-└── emote.sit.json
+├── sit.idle_butterfly.json
+├── sit.idle_flower.json
+├── sit.idle_sky.json
+├── sit.sit_down.json
+├── sit.stand_up1.json
+├── sit.stand_up2.json
+└── sit.sit.json
 ```
 
 `sit.sit.json`:
@@ -131,7 +131,7 @@ config/emote/emote/sit/
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:idle.sit",
+  "id": "sit:idle.sit",
   "metadata": {
     "name": "Sit",
     "description": "Sit down and relax."
@@ -152,13 +152,13 @@ config/emote/emote/sit/
     }
   },
   "steps": [
-    {"emote": "emote:sit_down"},
+    {"emote": "sit:sit_down"},
     {
-      "emote": ["emote:idle_sky", 40, "emote:idle_butterfly", 35, "emote:idle_flower", 25],
+      "emote": ["sit:idle_sky", 40, "sit:idle_butterfly", 35, "sit:idle_flower", 25],
       "transition": "2t",
       "repeat": 2
     },
-    {"emote": ["emote:stand_up1", 60, "emote:stand_up2", 40]}
+    {"emote": ["sit:stand_up1", 60, "sit:stand_up2", 40]}
   ]
 }
 ```
@@ -177,7 +177,7 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 1. Place all JSON files under `emote/` on the same server.
 2. After reloading the files, use `/emote list` to confirm that the Sequence and every referenced Animation loaded.
-3. Run `/emote play emote:idle.sit` with normal player permissions.
+3. Run `/emote play sit:idle.sit` with normal player permissions.
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 

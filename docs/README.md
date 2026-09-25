@@ -94,7 +94,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
     {
       "permission": "emote.vip",
       "emotes": ["emote:vip\\..*"],
-      "idle": {"delay": "300s", "emote": ["emote:idle.sit", 70, "emote:idle.piano", 30]},
+      "idle": {"delay": "300s", "emote": ["sit:idle.sit", 70, "music:idle.piano", 30]},
       "cooldown": "x0.8"
     },
     {
@@ -137,19 +137,19 @@ Connect short animation clips in order and combine waits, weighted random choice
 {
   "type": "sequence",
   "schema_version": 4,
-  "id": "emote:idle.sit",
+  "id": "sit:idle.sit",
   "steps": [
-    {"emote": "emote:sit_down"},
+    {"emote": "sit:sit_down"},
     {"wait": "10t"},
     {
       "emote": [
-        "emote:idle_sky", 45,
-        "emote:idle_butterfly", 45,
+        "sit:idle_sky", 45,
+        "sit:idle_butterfly", 45,
         "emote:break", 10
       ],
       "repeat": 3
     },
-    {"emote": "emote:stand_up1"}
+    {"emote": "sit:stand_up1"}
   ]
 }
 ```
