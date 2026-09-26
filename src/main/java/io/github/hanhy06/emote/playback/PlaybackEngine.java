@@ -341,6 +341,10 @@ public class PlaybackEngine implements ConfigListener {
                     stopReason = PlaybackStopReason.PLAYER_UNAVAILABLE;
                     break;
                 }
+                if (session.playerBehavior().stopConditions().shift() && participantPlayer.isShiftKeyDown()) {
+                    stopReason = PlaybackStopReason.SHIFTED;
+                    break;
+                }
                 if (session.playerBehavior().stopConditions().submerge() && participantPlayer.isUnderWater()) {
                     stopReason = PlaybackStopReason.SUBMERGED;
                     break;

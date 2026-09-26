@@ -27,7 +27,7 @@ export const sequenceJsonAdapter: ImportAdapter<ImportedSequence> = {
       ...(sequence.target_minecraft_version ? { targetMinecraftVersion: sequence.target_minecraft_version } : {}),
       metadata: { ...sequence.metadata } as EmoteMetadata,
       cooldown: sequence.settings.cooldown,
-      player: { ...sequence.settings.player, stop_conditions: { ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
+      player: { ...sequence.settings.player, stop_conditions: { shift: false, ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
       steps: sequence.steps.map(importStep),
     };
   },

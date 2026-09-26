@@ -83,6 +83,7 @@ function requirePlayer(player: RuntimeRecord): void {
   const stopConditions = requireRecord(player.stop_conditions, "settings.player.stop_conditions");
   const movementDistance = requireNumber(stopConditions.movement_distance, "settings.player.stop_conditions.movement_distance");
   if (movementDistance < 0) throw invalid("settings.player.stop_conditions.movement_distance", "must not be negative");
+  if (stopConditions.shift !== undefined) requireBoolean(stopConditions.shift, "settings.player.stop_conditions.shift");
   for (const key of ["jump", "submerge", "ride", "damage", "attack", "game_mode_change"] as const) {
     requireBoolean(stopConditions[key], `settings.player.stop_conditions.${key}`);
   }

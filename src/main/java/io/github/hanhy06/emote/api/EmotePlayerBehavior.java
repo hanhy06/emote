@@ -13,6 +13,7 @@ public record EmotePlayerBehavior(boolean hidden, StopConditions stopConditions)
 
     public record StopConditions(
         double movementDistance,
+        boolean shift,
         boolean jump,
         boolean submerge,
         boolean ride,
@@ -27,7 +28,7 @@ public record EmotePlayerBehavior(boolean hidden, StopConditions stopConditions)
         }
 
         public static StopConditions createDefault() {
-            return new StopConditions(0.1D, true, true, true, true, true, true);
+            return new StopConditions(0.1D, false, true, true, true, true, true, true);
         }
     }
 }

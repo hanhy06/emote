@@ -27,6 +27,7 @@ class SequenceJsonParserTest {
         assertEquals(new JsonPrimitive("author"), sequence.metadata().additional().get("credit"));
         assertEquals(100, sequence.settings().cooldownTicks());
         assertEquals(0.1D, sequence.settings().player().stopConditions().movementDistance());
+        assertFalse(sequence.settings().player().stopConditions().shift());
         assertEquals(1, ((EmoteSequence.EmoteStep) sequence.steps().get(0)).repeat());
         assertEquals(10, ((EmoteSequence.WaitStep) sequence.steps().get(1)).ticks());
         assertEquals(3, ((EmoteSequence.EmoteStep) sequence.steps().get(2)).repeat());

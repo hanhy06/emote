@@ -20,6 +20,7 @@ class PlaybackDisplayLimitTest {
     void appliesOnlyEnabledEventDrivenStopConditions() {
         EmotePlayerBehavior.StopConditions conditions = new EmotePlayerBehavior.StopConditions(
             0.1D,
+            false,
             true,
             false,
             true,

@@ -53,6 +53,7 @@ function requireSettings(value: unknown): void {
   requireBoolean(player.hidden, "settings.player.hidden");
   const stopConditions = requireRecord(player.stop_conditions, "settings.player.stop_conditions");
   requireNumber(stopConditions.movement_distance, "settings.player.stop_conditions.movement_distance");
+  if (stopConditions.shift !== undefined) requireBoolean(stopConditions.shift, "settings.player.stop_conditions.shift");
   requireBoolean(stopConditions.jump, "settings.player.stop_conditions.jump");
   requireBoolean(stopConditions.submerge, "settings.player.stop_conditions.submerge");
   requireBoolean(stopConditions.ride, "settings.player.stop_conditions.ride");

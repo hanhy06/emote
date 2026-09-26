@@ -3,6 +3,7 @@ import { AdditionalMetadataEditor } from "./AdditionalMetadataEditor";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 
 const STOP_CONDITION_OPTIONS = [
+  ["shift", "Stop on Shift"],
   ["jump", "Stop on jump"],
   ["submerge", "Stop when submerged"],
   ["ride", "Stop on mount"],

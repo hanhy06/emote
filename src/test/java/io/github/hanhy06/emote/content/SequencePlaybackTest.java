@@ -240,7 +240,7 @@ class SequencePlaybackTest {
 
     private EmotePlayerBehavior playerBehavior() {
         return new EmotePlayerBehavior(true, new EmotePlayerBehavior.StopConditions(
-            0.0D, true, true, true, true, true, true
+            0.0D, false, true, true, true, true, true, true
         ));
     }
 

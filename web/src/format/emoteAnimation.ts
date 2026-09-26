@@ -44,6 +44,7 @@ export interface EmotePlayerBehavior {
   hidden: boolean;
   stop_conditions: {
     movement_distance: number;
+    shift: boolean;
     jump: boolean;
     submerge: boolean;
     ride: boolean;
@@ -58,6 +59,7 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
     hidden: true,
     stop_conditions: {
       movement_distance: 0.3,
+      shift: false,
       jump: true,
       submerge: true,
       ride: true,

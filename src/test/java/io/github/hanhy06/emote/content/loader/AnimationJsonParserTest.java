@@ -35,6 +35,7 @@ class AnimationJsonParserTest {
         assertEquals(50.0F, loaded.animation().settings().rotationDeadzone());
         assertTrue(loaded.animation().settings().player().hidden());
         assertEquals(0.1D, loaded.animation().settings().player().stopConditions().movementDistance());
+        assertFalse(loaded.animation().settings().player().stopConditions().shift());
         assertTrue(loaded.animation().settings().player().stopConditions().jump());
         assertNotNull(loaded.animation().molang().initialize());
         assertNotNull(loaded.animation().molang().tick());
@@ -283,6 +284,16 @@ class AnimationJsonParserTest {
         );
 
         assertEquals("$.settings.player.stop_conditions.movement_distance", exception.fieldPath());
+    }
+
+    @Test
+    void loadsShiftStopConditionWhenEnabled() throws Exception {
+        JsonObject root = readReference();
+        root.getAsJsonObject("settings").getAsJsonObject("player")
+            .getAsJsonObject("stop_conditions")
+            .addProperty("shift", true);
+
+        assertTrue(parse(root).animation().settings().player().stopConditions().shift());
     }
 
     @Test

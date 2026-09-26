@@ -72,7 +72,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       source: "emote_json",
       sourceName: input.name,
       suggestedMetadata: { ...animation.metadata },
-      suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions } },
+      suggestedPlayer: { ...animation.settings.player, stop_conditions: { ...animation.settings.player.stop_conditions, shift: animation.settings.player.stop_conditions.shift ?? false } },
       ...(typeof animation.target_minecraft_version === "string"
         ? { suggestedMinecraftVersion: animation.target_minecraft_version }
         : schema1 ? { suggestedMinecraftVersion: schema1.minecraftVersion } : {}),
