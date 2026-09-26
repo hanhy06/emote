@@ -57,7 +57,7 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
   return {
     hidden: true,
     stop_conditions: {
-      movement_distance: 0.1,
+      movement_distance: 0.3,
       jump: true,
       submerge: true,
       ride: true,
