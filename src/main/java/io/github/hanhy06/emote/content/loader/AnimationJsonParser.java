@@ -203,7 +203,6 @@ public final class AnimationJsonParser {
         }
         return new EmotePlayerBehavior(hidden, new EmotePlayerBehavior.StopConditions(
             movementDistance,
-            stopObject.has("shift") ? document.requireBoolean(stopObject, "shift", stopPath) : false,
             document.requireBoolean(stopObject, "jump", stopPath),
             document.requireBoolean(stopObject, "submerge", stopPath),
             document.requireBoolean(stopObject, "ride", stopPath),

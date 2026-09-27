@@ -5,7 +5,6 @@ public enum PlaybackStopReason {
     REPLACED,
     FINISHED,
     MOVED,
-    SHIFTED,
     JUMPED,
     SUBMERGED,
     MOUNTED,

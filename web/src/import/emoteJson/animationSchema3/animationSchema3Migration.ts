@@ -26,7 +26,7 @@ export function migrateSchema3Animation(animation: Schema3EmoteAnimation): Emote
       rotation_deadzone: 50,
       player: {
         ...animation.settings.player,
-        stop_conditions: { ...animation.settings.player.stop_conditions, shift: animation.settings.player.stop_conditions.shift ?? false },
+        stop_conditions: { ...animation.settings.player.stop_conditions },
       },
       playback: { ...animation.settings.playback },
     },
