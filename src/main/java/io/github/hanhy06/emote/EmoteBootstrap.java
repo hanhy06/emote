@@ -90,7 +90,10 @@ final class EmoteBootstrap {
             new AdminCommand(catalog, playback, permissions, reload, configManager, skins),
             new AccountCommand(accounts)
         );
-        ServerLifecycle lifecycle = new ServerLifecycle(skins, cooldowns, catalog, playback, reload, wheelSync, idlePlayback);
+        ServerLifecycle lifecycle = new ServerLifecycle(
+            skins, cooldowns, catalog, playback, reload, wheelSync, idlePlayback,
+            () -> !accounts.hasAccounts() && !mineSkin.available()
+        );
 
         configManager.addAccessConfigListener(playbackPolicy);
         configManager.addAccessConfigListener(idlePlayback);

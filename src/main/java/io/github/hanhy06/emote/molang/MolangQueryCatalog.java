@@ -1,85 +1,46 @@
 package io.github.hanhy06.emote.molang;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
 public final class MolangQueryCatalog {
-    private static final Set<String> SUPPORTED_VALUES = Set.of(
-        "anim_time",
-        "anim_time_ticks",
-        "anim_length",
-        "delta_time",
-        "loop_count",
-        "key_frame_lerp_time",
-        "life_time",
-        "target_x_rotation",
-        "target_y_rotation",
-        "body_x_rotation",
-        "body_y_rotation",
-        "head_x_rotation",
-        "head_y_rotation",
-        "eye_target_x_rotation",
-        "eye_target_y_rotation",
-        "ground_speed",
-        "vertical_speed",
-        "modified_distance_moved",
-        "walk_distance",
-        "is_moving",
-        "is_on_ground",
-        "is_sneaking",
-        "is_sprinting",
-        "is_swimming",
-        "is_gliding",
-        "is_riding",
-        "is_using_item",
-        "is_sleeping",
-        "is_emoting",
-        "item_is_charged",
-        "sleep_rotation",
-        "is_on_fire",
-        "is_in_water",
-        "health",
-        "max_health",
-        "is_alive",
-        "is_spectator",
-        "head_is_in_water",
-        "is_in_lava",
-        "is_in_water_or_rain",
-        "hurt_time",
-        "death_ticks",
-        "invulnerable_ticks",
-        "player_level",
-        "item_in_use_duration",
-        "item_remaining_use_duration",
-        "item_max_use_duration",
-        "is_item_equipped",
-        "blocking",
-        "is_eating",
-        "is_jumping",
-        "is_crawling",
-        "is_invisible",
-        "is_levitating",
-        "yaw_speed",
-        "on_fire_time"
-    );
-    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = Map.ofEntries(
-        Map.entry("all", QuerySignature.atLeast(2)),
-        Map.entry("any", QuerySignature.atLeast(2)),
-        Map.entry("approx_eq", QuerySignature.atLeast(2)),
-        Map.entry("in_range", QuerySignature.exact(3)),
-        Map.entry("is_item_equipped", QuerySignature.range(0, 1)),
-        Map.entry("is_item_name_any", QuerySignature.atLeast(2)),
-        Map.entry("item_is_charged", QuerySignature.range(0, 1)),
-        Map.entry("position", QuerySignature.exact(1)),
-        Map.entry("position_delta", QuerySignature.exact(1)),
-        Map.entry("movement_direction", QuerySignature.exact(1)),
-        Map.entry("scoreboard", QuerySignature.exact(1))
-    );
+    private static final Catalog CATALOG = loadCatalog();
+    private static final Set<String> SUPPORTED_VALUES = CATALOG.values();
+    private static final Map<String, QuerySignature> SUPPORTED_FUNCTIONS = CATALOG.functions();
     public static final Set<String> SUPPORTED_NAMES = Stream.concat(SUPPORTED_VALUES.stream(), SUPPORTED_FUNCTIONS.keySet().stream())
         .collect(java.util.stream.Collectors.toUnmodifiableSet());
 
     private MolangQueryCatalog() {
+    }
+
+    private static Catalog loadCatalog() {
+        try (var reader = new InputStreamReader(
+            Objects.requireNonNull(MolangQueryCatalog.class.getResourceAsStream("/emote/molang-queries.json"), "missing Molang query catalog"),
+            StandardCharsets.UTF_8
+        )) {
+            JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
+            var values = new LinkedHashSet<String>();
+            root.getAsJsonArray("values").forEach(element -> values.add(element.getAsString()));
+            var functions = new LinkedHashMap<String, QuerySignature>();
+            for (var entry : root.getAsJsonObject("functions").entrySet()) {
+                JsonObject signature = entry.getValue().getAsJsonObject();
+                int minimum = signature.get("minimumArguments").getAsInt();
+                int maximum = signature.has("maximumArguments") ? signature.get("maximumArguments").getAsInt() : Integer.MAX_VALUE;
+                functions.put(entry.getKey(), new QuerySignature(minimum, maximum));
+            }
+            return new Catalog(Set.copyOf(values), Map.copyOf(functions));
+        } catch (Exception exception) {
+            throw new ExceptionInInitializerError(exception);
+        }
     }
 
     public static void validate(MolangEngine.CompiledExpression expression, String path) {
@@ -118,18 +79,6 @@ public final class MolangQueryCatalog {
             }
         }
 
-        private static QuerySignature exact(int arguments) {
-            return new QuerySignature(arguments, arguments);
-        }
-
-        private static QuerySignature atLeast(int minimumArguments) {
-            return new QuerySignature(minimumArguments, Integer.MAX_VALUE);
-        }
-
-        private static QuerySignature range(int minimumArguments, int maximumArguments) {
-            return new QuerySignature(minimumArguments, maximumArguments);
-        }
-
         boolean accepts(int argumentCount) {
             return argumentCount >= this.minimumArguments && argumentCount <= this.maximumArguments;
         }
@@ -142,5 +91,8 @@ public final class MolangQueryCatalog {
                 ? Integer.toString(this.minimumArguments)
                 : this.minimumArguments + ".." + this.maximumArguments;
         }
+    }
+
+    private record Catalog(Set<String> values, Map<String, QuerySignature> functions) {
     }
 }

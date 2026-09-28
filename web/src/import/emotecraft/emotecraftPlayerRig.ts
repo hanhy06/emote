@@ -67,14 +67,13 @@ export function createEmotecraftNodes(slices: readonly EmotecraftSlice[], matric
     if (!matrix) throw new Error(`Missing Emotecraft bind matrix for ${slice.id}.`);
     const group = `${slice.source.part}_${slice.order}`;
     return [slice.id, {
-      id: slice.id,
+      binding: { sourceNodeId: slice.id, skinGroupId: group },
       type: "item_display",
       defaultMatrix: matrix4ToRowMajor(matrix, `Emotecraft ${slice.id} bind matrix`),
       visible: true,
       itemDisplay: "none",
       itemStack: { id: "minecraft:player_head", count: 1 },
       playerHeadConversion: { matrix: slicePlayerHeadConversion(slice) },
-      skinAssignmentGroup: group,
       suggestedSkin: { part: slice.source.part, order: slice.order },
       space: "initiator",
     } satisfies ImportedNode];

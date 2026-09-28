@@ -1,9 +1,8 @@
-export type Matrix16 = readonly [
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-  number, number, number, number,
-];
+import type { Matrix16 } from "../domain/matrix";
+import type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
+
+export type { Matrix16 } from "../domain/matrix";
+export type { NodeSpace, Participant, PlayerSkinPart } from "../domain/player";
 
 export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
@@ -31,10 +30,12 @@ export interface EmoteAnimationSettings {
   standalone: boolean;
   cooldown: MinecraftTime;
   rotation_deadzone: number;
+  display_interpolation?: MinecraftTime;
   player: EmotePlayerBehavior;
   playback: {
     mode: "once" | "hold" | "loop" | "server_sync";
     loop_start?: MinecraftTime;
+    loop_end?: MinecraftTime;
     loop_delay?: MinecraftTime;
   };
 }
@@ -56,7 +57,7 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
   return {
     hidden: true,
     stop_conditions: {
-      movement_distance: 0.1,
+      movement_distance: 0.3,
       jump: true,
       submerge: true,
       ride: true,
@@ -66,10 +67,6 @@ export function createDefaultPlayerBehavior(): EmotePlayerBehavior {
     },
   };
 }
-
-export type NodeSpace = "scene" | "initiator" | "partner";
-export type Participant = "initiator" | "partner";
-export type PlayerSkinPart = "head" | "body" | "left_arm" | "right_arm" | "left_leg" | "right_leg";
 
 export interface LocalTransform {
   position: Vec3;

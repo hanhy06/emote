@@ -1,10 +1,8 @@
-import { readDisplayNbt } from "../../format/minecraftData";
 import MolangParser from "molangjs/dist/molang.esm.js";
 import { Euler, Matrix4, Quaternion, Vector3 } from "three";
 import type {
   EmoteAnimation,
   EmoteEasing,
-  EmoteNbtValue,
   EmoteNode,
   EmoteVectorKeyframe,
   LocalTransform,
@@ -14,9 +12,9 @@ import type {
 } from "../../format/emoteAnimation";
 import { matrix4ToRowMajor, multiplyMatrix16 } from "../../format/matrix";
 import { parseMinecraftTime, TICKS_PER_SECOND } from "../../format/time";
-import type { ImportedNodeTrack } from "../../domain/conversionSeed";
-import { ConversionError } from "../../foundation/diagnostics";
-import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../common/runtimeMolangQueries";
+import type { PreviewNodeTrack } from "../../domain/previewProjection";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
+import { PREVIEW_RUNTIME_QUERY_VALUES, previewRuntimeQueryFunction } from "../../format/molang/runtimeAnalysis";
 
 const NONDETERMINISTIC_FUNCTION = /math\.(?:random|random_integer|die_roll|die_roll_integer)\b/i;
 const QUERY_ASSIGNMENT = /\b(?:q|query)\s*\.[a-z_][a-z0-9_]*\s*=(?!=)/i;
@@ -48,18 +46,14 @@ interface NodeState {
   isVisible: boolean;
 }
 
-export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, ImportedNodeTrack> {
+export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, PreviewNodeTrack> {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
   const session = new PreviewMolangSession(durationTicks);
   const states = prepareNodeStates(animation);
   const result = Object.fromEntries(states.map((state) => [state.id, {
     transforms: [],
     visibility: [],
-    nbt: (animation.timeline.tracks[state.id]?.nbt ?? []).map((frame, index) => ({
-      tick: parseMinecraftTime(frame.time),
-      value: readDisplayNbt(requireFixedNbt(frame.value, `timeline.tracks.${state.id}.nbt[${index}].value`)),
-    })),
-  }])) as Record<string, ImportedNodeTrack>;
+  }])) as Record<string, PreviewNodeTrack>;
 
   session.setTick(0, 0);
   if (animation.molang?.initialize) session.evaluate(animation.molang.initialize, "molang.initialize", true);
@@ -95,11 +89,6 @@ export function bakeSchema4Preview(animation: EmoteAnimation): Record<string, Im
     }
   }
   return result;
-}
-
-function requireFixedNbt(value: EmoteNbtValue, path: string): string {
-  if (typeof value === "string") return value;
-  throw previewError(path, "uses Molang NBT");
 }
 
 class PreviewMolangSession {
@@ -145,7 +134,7 @@ class PreviewMolangSession {
       return requireFinite(this.parser.parse(source, this.queries), path);
     } catch (reason) {
       if (reason instanceof ConversionError) throw reason;
-      throw new ConversionError("schema_4_preview_molang_unavailable", `${path} cannot be evaluated for preview.`, path, { cause: reason });
+      throw new PreviewUnavailableError("schema_4_preview_molang_unavailable", `${path} cannot be evaluated for preview.`, path, { cause: reason });
     }
   }
 
@@ -310,5 +299,5 @@ function requireFinite(value: number, path: string): number {
 }
 
 function previewError(path: string, message: string): ConversionError {
-  return new ConversionError("schema_4_preview_molang_unavailable", `${path} ${message}.`, path);
+  return new PreviewUnavailableError("schema_4_preview_molang_unavailable", `${path} ${message}.`, path);
 }

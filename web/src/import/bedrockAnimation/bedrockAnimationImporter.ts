@@ -1,64 +1,47 @@
-import { Matrix4 } from "three";
 import { createDefaultPlayerBehavior } from "../../format/emoteAnimation";
-import { composeDegreesTransform, matrix4ToRowMajor } from "../../format/matrix";
 import { sanitizeNamespace, sanitizeResourcePath } from "../../format/resourceLocation";
 import { MAX_ANIMATION_DURATION_TICKS, requireAnimationDurationTicks, TICKS_PER_SECOND } from "../../format/time";
 import type { ImportedAnimation, ImportedProject, ImportDiagnostic } from "../../domain/conversionSeed";
-import { ConversionError } from "../../foundation/diagnostics";
-import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
-import type { BedrockAnimation, BedrockAnimationDocument, BedrockExpression } from "./bedrockAnimationSchema";
+import { PreviewUnavailableError, skippedAnimationIssue } from "../../foundation/diagnostics";
+import type { BedrockAnimation, BedrockAnimationDocument } from "./bedrockAnimationSchema";
 import {
   bedrockAnimationDurationSeconds,
   bedrockAnimationPlaybackRate,
   bedrockAnimationUsesTime,
-  evaluateBedrockChannel,
   evaluateBedrockExpression,
   planBedrockAnimationSamples,
 } from "./bedrockAnimationBaker";
 import {
-  BEDROCK_PLAYER_BONES,
-  BEDROCK_PLAYER_SLICES,
-  BEDROCK_PLAYER_RENDER_SCALE,
-  bedrockPlayerBoneById,
   createBedrockPlayerNodes,
   isHiddenBedrockAccessoryBone,
   resolveBedrockPlayerBone,
 } from "./bedrockPlayerRig";
 import { createBedrockRuntime } from "./bedrockAnimationOutput";
-
-type Transform = { position: number[]; rotation: number[]; scale: number[] };
+import { createBedrockAnimationPreview } from "./bedrockAnimationPreview";
+import { createMolangPreviewFallback } from "../common/previewFallback";
 
 export function importBedrockAnimationDocument(document: BedrockAnimationDocument, sourceName: string): ImportedProject {
   const sourceStem = sourceName.replace(/\.json$/i, "").trim() || "Bedrock Animation";
-  const bindMatrices = buildWorldMatrices(new Map());
-  const diagnostics: ImportDiagnostic[] = [];
+  const diagnostics: ImportDiagnostic[] = [...(document.animationDiagnostics ?? [])];
   const animations = Object.entries(document.animations).flatMap(([name, animation], index) => {
+    const animationDiagnostics: ImportDiagnostic[] = [];
     try {
-      collectAnimationDiagnostics(name, animation, diagnostics);
-      return [importAnimation(name, animation, index, diagnostics)];
+      collectAnimationDiagnostics(name, animation, animationDiagnostics);
+      const imported = importAnimation(name, animation, index, animationDiagnostics);
+      diagnostics.push(...animationDiagnostics);
+      return [imported];
     } catch (reason) {
-      if (reason instanceof ConversionError && reason.code === "unsupported_bedrock_molang") {
-        const message = `${name}: preview uses the Create pose; runtime Molang is preserved.`;
-        diagnostics.push({
-          severity: "warning",
-          code: "bedrock_animation_molang_unavailable",
-          message,
-          sourcePath: reason.sourcePath ?? `animations.${name}`,
-        });
-        return [createPreviewOnlyAnimation(name, animation, index, message)];
+      if (reason instanceof PreviewUnavailableError) {
+        diagnostics.push(...animationDiagnostics);
+        return [createPreviewOnlyAnimation(name, animation, index, reason, diagnostics)];
       }
-      diagnostics.push({
-        severity: "warning",
-        code: "bedrock_animation_skipped",
-        message: `${name} was skipped: ${reason instanceof Error ? reason.message : "unsupported animation"}`,
-        sourcePath: `animations.${name}`,
-      });
+      diagnostics.push(skippedAnimationIssue(name, `animations.${name}`, reason));
       return [];
     }
   });
   if (animations.length === 0) {
-    const reasons = diagnostics.filter((issue) => issue.code === "bedrock_animation_skipped").map((issue) => issue.message).join(" ");
-    throw new Error(`No Bedrock animations in this file can be baked.${reasons ? ` ${reasons}` : ""}`);
+    const reasons = diagnostics.filter((issue) => issue.code === "animation_skipped").map((issue) => issue.message).join(" ");
+    throw new Error(`No Bedrock animations in this file can be imported.${reasons ? ` ${reasons}` : ""}`);
   }
   return {
     source: "bedrock_animation_json",
@@ -67,14 +50,14 @@ export function importBedrockAnimationDocument(document: BedrockAnimationDocumen
     suggestedPlayer: createDefaultPlayerBehavior(),
     suggestedNamespace: sanitizeNamespace(sourceStem),
     suggestedRotationDeadzone: 0,
-    nodes: createBedrockPlayerNodes(bindMatrices),
+    nodes: createBedrockPlayerNodes(),
     animations,
     diagnostics,
     resources: new Map(),
   };
 }
 
-function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: string): ImportedAnimation {
+function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, index: number, reason: PreviewUnavailableError, diagnostics: ImportDiagnostic[]): ImportedAnimation {
   const sourceDuration = bedrockAnimationDurationSeconds(animation);
   const animationDurationTicks = sourceDuration === 0 && bedrockAnimationUsesTime(animation)
     ? MAX_ANIMATION_DURATION_TICKS
@@ -84,17 +67,18 @@ function createPreviewOnlyAnimation(name: string, animation: BedrockAnimation, i
     animationDurationTicks === MAX_ANIMATION_DURATION_TICKS ? animationDurationTicks : animationDurationTicks + startDelayTicks,
     `${name} duration`,
   );
+  const fallback = createMolangPreviewFallback(name, durationTicks, reason);
+  diagnostics.push(fallback.diagnostic);
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
     durationTicks,
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: 0,
-    tracks: {},
     events: { start: [], timeline: [], loop: [], stop: [] },
-    availability: { preview: "create_pose", exportable: true, reason },
-    preview: { durationTicks: TICKS_PER_SECOND, tracks: {} },
-    runtime: createBedrockRuntime(animation, durationTicks, null, startDelayTicks),
+    preview: fallback.preview,
+    exportAvailability: { exportable: true },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, null, startDelayTicks, durationTicks) },
   };
 }
 
@@ -121,86 +105,18 @@ function importAnimation(name: string, animation: BedrockAnimation, index: numbe
     `${name}.animation_length`,
   );
   const previewAnimationDurationTicks = assumedDuration ? TICKS_PER_SECOND : animationDurationTicks;
-  const previewDurationTicks = previewAnimationDurationTicks + startDelayTicks;
-  const samplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
-  const tracks: ImportedAnimation["tracks"] = Object.fromEntries(BEDROCK_PLAYER_SLICES.map((slice) => [slice.id, {
-    transforms: [],
-    visibility: [],
-    nbt: [],
-  }]));
-  if (startDelayTicks > 0) {
-    const bindMatrices = buildWorldMatrices(new Map());
-    for (const slice of BEDROCK_PLAYER_SLICES) {
-      tracks[slice.id].transforms.push({
-        tick: 0,
-        matrix: matrix4ToRowMajor(bindMatrices.get(slice.bone.id)!, `${name}/${slice.id}/0`),
-        interpolation: { type: "step" },
-      });
-    }
-  }
-  for (let tick = 0; tick <= previewAnimationDurationTicks; tick++) {
-    const sourceTime = samplePlan.sourceTimes.get(tick) ?? tick / TICKS_PER_SECOND * playbackRate;
-    const outputTick = tick + startDelayTicks;
-    const worldMatrices = buildWorldMatrices(collectTransforms(name, animation, sourceTime));
-    for (const slice of BEDROCK_PLAYER_SLICES) {
-      const matrix = worldMatrices.get(slice.bone.id);
-      if (!matrix) throw new Error(`Missing animated matrix for Bedrock player bone ${slice.bone.id}.`);
-      tracks[slice.id].transforms.push({
-        tick: outputTick,
-        matrix: matrix4ToRowMajor(matrix, `${name}/${slice.id}/${outputTick}`),
-        interpolation: tick === 0 || samplePlan.stepTicks.has(tick) ? { type: "step" } : { type: "linear", durationTicks: 1 },
-      });
-    }
-  }
+  const runtimeSamplePlan = planBedrockAnimationSamples(animation, previewAnimationDurationTicks, playbackRate);
   return {
     id: sanitizeResourcePath(name, `animation_${index + 1}`),
     name,
     durationTicks,
     playbackMode: animation.loop === true ? "loop" : animation.loop === "hold_on_last_frame" ? "hold" : "once",
     loopDelayTicks: Math.max(0, Math.round(evaluateBedrockExpression(animation.loop_delay ?? 0, 0, 1, `${name}.loop_delay`) * TICKS_PER_SECOND)),
-    tracks,
     events: { start: [], timeline: [], loop: [], stop: [] },
-    preview: { durationTicks: previewDurationTicks, tracks },
-    runtime: createBedrockRuntime(animation, durationTicks, playbackRate, startDelayTicks),
+    preview: createBedrockAnimationPreview(name, animation, previewAnimationDurationTicks, playbackRate, startDelayTicks),
+    exportAvailability: { exportable: true },
+    runtime: { kind: "native", ...createBedrockRuntime(animation, playbackRate, startDelayTicks, durationTicks, runtimeSamplePlan) },
   };
-}
-
-function collectTransforms(name: string, animation: BedrockAnimation, time: number): Map<string, Transform> {
-  const transforms = new Map<string, Transform>();
-  for (const [sourceBoneName, sourceBone] of Object.entries(animation.bones ?? {})) {
-    const bone = resolveBedrockPlayerBone(sourceBoneName);
-    if (!bone) continue;
-    transforms.set(bone.id, {
-      position: evaluateBedrockChannel(sourceBone.position, time, [0, 0, 0], `${name}.${sourceBoneName}.position`),
-      rotation: evaluateBedrockChannel(sourceBone.rotation, time, [0, 0, 0], `${name}.${sourceBoneName}.rotation`),
-      scale: evaluateBedrockChannel(sourceBone.scale, time, [1, 1, 1], `${name}.${sourceBoneName}.scale`),
-    });
-  }
-  return transforms;
-}
-
-function buildWorldMatrices(transforms: ReadonlyMap<string, Transform>): Map<string, Matrix4> {
-  const result = new Map<string, Matrix4>();
-  const visit = (id: string): Matrix4 => {
-    const cached = result.get(id);
-    if (cached) return cached;
-    const bone = bedrockPlayerBoneById(id);
-    const parent = bone.parent ? bedrockPlayerBoneById(bone.parent) : undefined;
-    const transform = transforms.get(id) ?? { position: [0, 0, 0], rotation: [0, 0, 0], scale: [1, 1, 1] };
-    const sourcePosition = bone.pivot.map((value, axis) => (value - (parent?.pivot[axis] ?? 0)) + transform.position[axis]);
-    const local = composeDegreesTransform(
-      bedrockPositionToCanonical(sourcePosition, (value) => -value).map((value) => value / 16),
-      bedrockRotationToCanonical(transform.rotation, (value) => -value),
-      transform.scale,
-    );
-    const world = parent
-      ? visit(parent.id).clone().multiply(local)
-      : new Matrix4().makeScale(BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE).multiply(local);
-    result.set(id, world);
-    return world;
-  };
-  BEDROCK_PLAYER_BONES.forEach((bone) => visit(bone.id));
-  return result;
 }
 
 function collectAnimationDiagnostics(name: string, animation: BedrockAnimation, diagnostics: ImportDiagnostic[]): void {

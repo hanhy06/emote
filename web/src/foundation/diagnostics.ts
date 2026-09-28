@@ -49,8 +49,24 @@ export class ConversionError extends Error {
   }
 }
 
+export class PreviewUnavailableError extends ConversionError {
+  constructor(code: string, message: string, sourcePath?: string, options?: ErrorOptions) {
+    super(code, message, sourcePath, options);
+    this.name = "PreviewUnavailableError";
+  }
+}
+
 export function conversionErrorMessage(reason: unknown, fallbackMessage: string): string {
   if (!(reason instanceof Error)) return fallbackMessage;
   if (reason instanceof ConversionError && reason.sourcePath) return `${reason.message} (${reason.sourcePath})`;
   return reason.message;
+}
+
+export function skippedAnimationIssue(name: string, sourcePath: string, reason: unknown): ConversionIssue {
+  return {
+    severity: "warning",
+    code: "animation_skipped",
+    message: `${name} was skipped: ${conversionErrorMessage(reason, "Could not import this animation.")}`,
+    sourcePath: reason instanceof ConversionError ? reason.sourcePath ?? sourcePath : sourcePath,
+  };
 }

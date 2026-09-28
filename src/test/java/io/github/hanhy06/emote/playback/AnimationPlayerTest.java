@@ -92,7 +92,7 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void resetsPersistentVariablesAtLoopBoundary() throws Exception {
+    void preservesPersistentVariablesAtLoopBoundary() throws Exception {
         JsonObject root = base();
         root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
         root.getAsJsonObject("timeline").addProperty("duration", "1t");
@@ -110,8 +110,9 @@ class AnimationPlayerTest {
         assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
 
         assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance());
+        assertEquals(3.0F, target.matrix("display").m30(), 1.0E-5F);
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
-        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(4.0F, target.matrix("display").m30(), 1.0E-5F);
     }
 
     @Test
@@ -131,6 +132,54 @@ class AnimationPlayerTest {
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(4, player.currentTick());
         assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void loopsBetweenConfiguredBoundsThenPlaysOutro() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "2t");
+        playback.addProperty("loop_end", "6t");
+
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+
+        for (int tick = 0; tick < 5; tick++) {
+            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        }
+        assertEquals(AnimationPlayer.AdvanceResult.LOOP_BOUNDARY, player.advance(false));
+        assertEquals(6, player.currentTick());
+        assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
+        assertEquals(2, player.currentTick());
+
+        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
+        assertEquals(6, player.currentTick());
+        for (int tick = 7; tick < 10; tick++) {
+            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        }
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(10, player.currentTick());
+        assertEquals(11.0F, target.matrix("display").m30(), 1.0E-5F);
+    }
+
+    @Test
+    void stoppingDuringLoopDelayStartsOutroImmediately() throws Exception {
+        JsonObject root = base();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_end", "6t");
+        playback.addProperty("loop_delay", "5t");
+
+        AnimationPlayer player = player(root, new FakeTarget());
+        player.start();
+        for (int tick = 0; tick < 6; tick++) player.advance(false);
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
+
+        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
+        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
+        assertEquals(7, player.currentTick());
     }
 
     @Test
@@ -271,17 +320,23 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void rejectsPersistentVariableAssignmentInsideTrackValue() throws Exception {
+    void allowsPersistentVariableAssignmentInsideTrackValueExceptDuringServerSync() throws Exception {
         JsonObject root = base();
         positionTrack(root).get(0).getAsJsonObject().getAsJsonArray("value")
             .set(0, JsonParser.parseString("\"v.count = v.count + 1; return v.count;\""));
 
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        player.start();
+        assertEquals(2.0F, target.matrix("display").m30(), 1.0E-5F);
+
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "server_sync");
         IllegalArgumentException exception = assertThrows(
             IllegalArgumentException.class,
             () -> PreparedAnimation.from(load(root))
         );
 
-        assertTrue(exception.getMessage().contains("must not assign persistent variables"));
+        assertTrue(exception.getMessage().contains("must not assign persistent variables during server_sync playback"));
     }
 
     @Test

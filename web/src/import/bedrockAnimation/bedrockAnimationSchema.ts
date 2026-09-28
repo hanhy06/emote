@@ -1,4 +1,6 @@
 import { requireRecord, requireString } from "../../format/runtimeValue";
+import type { ImportDiagnostic } from "../../domain/conversionSeed";
+import { skippedAnimationIssue } from "../../foundation/diagnostics";
 
 export type BedrockExpression = number | string;
 export type BedrockVector = BedrockExpression | BedrockExpression[];
@@ -7,6 +9,7 @@ export type BedrockLoop = boolean | "hold_on_last_frame";
 export interface BedrockAnimationDocument {
   format_version: "1.8.0";
   animations: Record<string, BedrockAnimation>;
+  animationDiagnostics?: ImportDiagnostic[];
 }
 
 export interface BedrockAnimation {
@@ -51,8 +54,17 @@ export function requireBedrockAnimationDocument(value: unknown): BedrockAnimatio
 
   const animations = requireRecord(root.animations, "animations");
   if (Object.keys(animations).length === 0) throw new Error("animations must contain at least one animation.");
-  for (const [name, animationValue] of Object.entries(animations)) requireAnimation(animationValue, `animations.${name}`);
-  return value as BedrockAnimationDocument;
+  const validAnimations: Record<string, BedrockAnimation> = {};
+  const animationDiagnostics: ImportDiagnostic[] = [];
+  for (const [name, animationValue] of Object.entries(animations)) {
+    try {
+      requireAnimation(animationValue, `animations.${name}`);
+      validAnimations[name] = animationValue as BedrockAnimation;
+    } catch (reason) {
+      animationDiagnostics.push(skippedAnimationIssue(name, `animations.${name}`, reason));
+    }
+  }
+  return { ...value as BedrockAnimationDocument, animations: validAnimations, animationDiagnostics };
 }
 
 function requireAnimation(value: unknown, path: string): void {

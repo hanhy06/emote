@@ -7,7 +7,7 @@ import type {
   BedrockVector,
 } from "./bedrockAnimationSchema";
 import { TICKS_PER_SECOND } from "../../format/time";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { MolangBakeEvaluator } from "../common/molangBakeEvaluator";
 
 interface ResolvedKeyframe {
@@ -23,6 +23,7 @@ const MOLANG_EVALUATOR = new MolangBakeEvaluator({
   rejectNondeterministic: true,
   error: {
     code: "unsupported_bedrock_molang",
+    previewUnavailable: true,
     message: (_, path) => `${path} contains Molang that cannot be baked.`,
     nondeterministicMessage: (_, path) => `${path} uses nondeterministic Molang and cannot be baked.`,
   },
@@ -120,6 +121,23 @@ export function evaluateBedrockChannel(channel: BedrockChannel | undefined, time
   return start.map((value, axis) => value + (end[axis] - value) * alpha);
 }
 
+export function evaluateApproximateBedrockChannel(channel: BedrockChannel | undefined, time: number, fallback: number[], path: string): number[] {
+  if (channel === undefined) return [...fallback];
+  if (!isKeyframedChannel(channel)) return evaluateVector(channel, path, time, 1);
+  const frames = resolveKeyframes(channel);
+  const exact = frames.find((frame) => Math.abs(frame.time - time) < 1e-9);
+  if (exact) return evaluateVector(exact.post, `${path}.${exact.time}.post`, time, 1);
+  const afterIndex = frames.findIndex((frame) => frame.time > time);
+  if (afterIndex === 0) return [...fallback];
+  if (afterIndex < 0) return evaluateVector(frames.at(-1)!.post, `${path}.${frames.at(-1)!.time}.post`, time, 1);
+  const before = frames[afterIndex - 1];
+  const after = frames[afterIndex];
+  const alpha = (time - before.time) / (after.time - before.time);
+  const start = evaluateVector(before.post, `${path}.${before.time}.post`, time, alpha);
+  const end = evaluateVector(after.pre, `${path}.${after.time}.pre`, time, alpha);
+  return start.map((value, axis) => value + (end[axis] - value) * alpha);
+}
+
 export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: string): number {
   if (animation.anim_time_update === undefined) return 1;
   const delta = 1 / TICKS_PER_SECOND;
@@ -127,7 +145,7 @@ export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: 
   const fromOne = evaluateBedrockExpression(animation.anim_time_update, 1, 1, `${path}.anim_time_update`);
   const rate = fromZero / delta;
   if (!Number.isFinite(rate) || rate <= 0 || Math.abs((fromOne - 1) - fromZero) > 1e-7) {
-    throw new ConversionError(
+    throw new PreviewUnavailableError(
       "unsupported_bedrock_molang",
       `${path}.anim_time_update must advance q.anim_time at a constant positive rate.`,
       `${path}.anim_time_update`,
@@ -139,6 +157,10 @@ export function bedrockAnimationPlaybackRate(animation: BedrockAnimation, path: 
 export function bedrockAnimationUsesTime(animation: BedrockAnimation): boolean {
   return Object.values(animation.bones ?? {}).some((bone) => [bone.position, bone.rotation, bone.scale]
     .some((channel) => channelExpressions(channel).some((expression) => typeof expression === "string" && /(?:q|query)\.anim_time\b/i.test(expression))));
+}
+
+export function bedrockChannelHasExpressions(channel: BedrockChannel | undefined): boolean {
+  return channelExpressions(channel).some((expression) => typeof expression === "string" && !/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(expression.trim()));
 }
 
 export function evaluateBedrockExpression(expression: BedrockExpression, animationTime: number, keyframeLerpTime: number, path: string): number {

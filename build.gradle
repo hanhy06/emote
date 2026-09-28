@@ -76,6 +76,10 @@ processResources {
         include "**/*.json"
         into "default-emotes"
     }
+
+    from("shared/molang-queries.json") {
+        into "emote"
+    }
 }
 
 tasks.register("prodClient", ClientProductionRunTask)

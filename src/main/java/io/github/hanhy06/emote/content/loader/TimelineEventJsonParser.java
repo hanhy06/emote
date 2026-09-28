@@ -84,8 +84,8 @@ final class TimelineEventJsonParser {
             String path = "$.timeline.events.timeline[" + index + "]";
             JsonObject object = document.requireObject(array.get(index), path);
             int tick = document.requireTime(object, "time", path, 0);
-            if (tick < 0 || tick >= durationTicks) {
-                throw document.error(path + ".time", "must be before timeline duration");
+            if (tick < 0 || tick > durationTicks) {
+                throw document.error(path + ".time", "must be within 0..duration");
             }
             if (tick < previousTick) {
                 throw document.error(path + ".time", "timeline events must be ordered by time");

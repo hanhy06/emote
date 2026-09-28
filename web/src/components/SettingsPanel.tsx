@@ -30,7 +30,14 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
   return (
     <section className="export settings-page">
       <div className="section-heading export-heading">
-        <div><span className="step-label">Page 2</span><h2>Metadata, settings &amp; other</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
+        <div><span className="step-label">Page 2</span><h2>Metadata &amp; settings</h2><p>Edit the JSON-facing metadata and playback behavior.</p></div>
+      </div>
+      <div className="minecraft-version-field">
+        <label>Target Minecraft version
+          <select value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)}>
+            {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
+          </select>
+        </label>
       </div>
       <section className="settings-section" aria-labelledby="metadata-heading">
         <h3 id="metadata-heading">Metadata</h3>
@@ -52,17 +59,20 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
                 ...metadata,
                 playbackMode,
                 loopStart: playbackMode === "loop" || playbackMode === "source" ? metadata.loopStart : "0t",
+                loopEnd: playbackMode === "loop" || playbackMode === "source" ? metadata.loopEnd : "0t",
                 loopDelay: playbackMode === "once" || playbackMode === "hold" ? "0t" : metadata.loopDelay,
               });
             }}>
               <option value="source">Source setting</option><option value="once">Play once</option><option value="hold">Hold last frame</option><option value="loop">Loop</option><option value="server_sync">Server-synchronized loop</option>
             </select></label>
             <label>Loop start<input value={metadata.loopStart ?? "0t"} disabled={disabled || metadata.playbackMode === "once" || metadata.playbackMode === "hold" || metadata.playbackMode === "server_sync"} onChange={(event) => onMetadataChange({ ...metadata, loopStart: event.currentTarget.value })} /></label>
+            <label>Loop end<input value={metadata.loopEnd ?? "0t"} disabled={disabled || metadata.playbackMode === "once" || metadata.playbackMode === "hold" || metadata.playbackMode === "server_sync"} onChange={(event) => onMetadataChange({ ...metadata, loopEnd: event.currentTarget.value })} /></label>
             <label>Loop delay<input value={metadata.loopDelay ?? "0t"} disabled={disabled || metadata.playbackMode === "once" || metadata.playbackMode === "hold"} onChange={(event) => onMetadataChange({ ...metadata, loopDelay: event.currentTarget.value })} /></label>
           </div>
           <label>Cooldown<input value={metadata.cooldown ?? "0t"} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, cooldown: event.currentTarget.value })} /></label>
           <label>Movement distance<input type="number" min="0" step="0.05" value={metadata.player.stop_conditions.movement_distance} disabled={disabled} onChange={(event) => updatePlayerStopCondition("movement_distance", Number(event.currentTarget.value))} /></label>
           <label>Rotation deadzone<input type="number" min="0" max="180" step="1" value={metadata.rotationDeadzone} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, rotationDeadzone: Number(event.currentTarget.value) })} /></label>
+          <label>Display interpolation<input value={metadata.displayInterpolation} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, displayInterpolation: event.currentTarget.value })} /></label>
         </div>
         <div className="fields settings-toggles">
           <label className="checkbox"><input type="checkbox" checked={metadata.standalone ?? true} disabled={disabled} onChange={(event) => onMetadataChange({ ...metadata, standalone: event.currentTarget.checked })} />Standalone animation</label>
@@ -70,13 +80,6 @@ export function SettingsPanel({ metadata, minecraftVersion, disabled, onMetadata
           {STOP_CONDITION_OPTIONS.map(([condition, label]) => <label className="checkbox" key={condition}><input type="checkbox" checked={metadata.player.stop_conditions[condition]} disabled={disabled} onChange={(event) => updatePlayerStopCondition(condition, event.currentTarget.checked)} />{label}</label>)}
         </div>
       </section>
-      <section className="playback-behavior"><h3>Other</h3><div className="fields">
-        <label>Target Minecraft version <small>Choose the server version for animation and resource output.</small>
-          <select value={minecraftVersion} disabled={disabled} onChange={(event) => onMinecraftVersionChange(event.currentTarget.value)}>
-            {Object.keys(MINECRAFT_VERSION_PROFILES).map((version) => <option key={version} value={version}>{version}</option>)}
-          </select>
-        </label>
-      </div></section>
     </section>
   );
 }

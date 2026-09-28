@@ -1,7 +1,12 @@
-import type { EmoteAnimation, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
-import type { BlockStateData, DisplayNbtPatch, ItemStackData, RuntimeNode, RuntimeTimeline } from "./minecraftData";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
+import type { SourceNodeBinding } from "./nodeBindings";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
+import type { AnimationRuntimeData, RuntimeExportAvailability } from "./runtimeProjection";
+
+export type { PreviewAvailability, PreviewInterpolation, PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe, PreviewVisibilityKeyframe } from "./previewProjection";
 
 // Source adapters produce this neutral seed; the editable document consumes it once.
 
@@ -17,6 +22,7 @@ export interface ImportedProject {
   suggestedStandalone?: boolean;
   suggestedCooldown?: string;
   suggestedRotationDeadzone?: number;
+  suggestedDisplayInterpolation?: string;
   nodes: Record<string, ImportedNode>;
   animations: ImportedAnimation[];
   diagnostics: ImportDiagnostic[];
@@ -24,12 +30,10 @@ export interface ImportedProject {
 }
 
 export interface ImportedNodeBase {
-  id: string;
+  binding: SourceNodeBinding;
   defaultMatrix: Matrix16;
   visible: boolean;
   entityNbt?: string;
-  skinAssignmentGroup?: string;
-  spaceAssignmentGroup?: string;
   space?: NodeSpace;
 }
 
@@ -54,71 +58,27 @@ export interface ImportedSkinPart {
 
 export interface ImportedAnimation {
   id: string;
+  sourceReferenceId?: string;
   name: string;
   suggestedMetadata?: EmoteMetadata;
   durationTicks: number;
   playbackMode: "once" | "hold" | "loop" | "server_sync";
   loopStartTicks?: number;
+  loopEndTicks?: number;
   loopDelayTicks: number;
-  tracks: Record<string, ImportedNodeTrack>;
   events: {
     start: EmoteEvent[];
     timeline: ImportedTimelineEvent[];
     loop: EmoteEvent[];
     stop: EmoteEvent[];
   };
-  availability?: ImportedAnimationAvailability;
-  preview?: {
-    durationTicks: number;
-    tracks: Record<string, ImportedNodeTrack>;
-  };
-  runtime?: {
-    molang?: EmoteAnimation["molang"];
-    nodes: Record<string, RuntimeNode>;
-    timeline: RuntimeTimeline;
-  };
+  preview: PreviewProjection;
+  exportAvailability: RuntimeExportAvailability;
+  runtime: AnimationRuntimeData;
 }
 
-export interface ImportedAnimationAvailability {
-  preview: "full" | "create_pose" | "unavailable";
-  exportable: boolean;
-  reason?: string;
-}
-
-export const DEFAULT_ANIMATION_AVAILABILITY: ImportedAnimationAvailability = {
-  preview: "full",
-  exportable: true,
-};
-
-export function animationAvailability(animation: ImportedAnimation): ImportedAnimationAvailability {
-  return animation.availability ?? DEFAULT_ANIMATION_AVAILABILITY;
-}
-
-export interface ImportedNodeTrack {
-  transforms: ImportedTransformKeyframe[];
-  visibility: ImportedVisibilityKeyframe[];
-  nbt: ImportedNbtKeyframe[];
-}
-
-export interface ImportedTransformKeyframe {
-  tick: number;
-  matrix: Matrix16;
-  interpolation: ImportedInterpolation;
-}
-
-export type ImportedInterpolation =
-  | { type: "step" }
-  | { type: "linear"; durationTicks?: number };
-
-export interface ImportedVisibilityKeyframe {
-  tick: number;
-  visible: boolean;
-}
-
-export interface ImportedNbtKeyframe {
-  tick: number;
-  value: DisplayNbtPatch;
-}
+export type ImportedTransformKeyframe = PreviewTransformKeyframe;
+export type ImportedVisibilityKeyframe = PreviewVisibilityKeyframe;
 
 export interface ImportedTimelineEvent extends EmoteEvent {
   tick: number;

@@ -48,6 +48,7 @@ function requireSettings(value: unknown): void {
   requireBoolean(settings.standalone, "settings.standalone");
   requireString(settings.cooldown, "settings.cooldown");
   requireNumber(settings.rotation_deadzone, "settings.rotation_deadzone");
+  optionalString(settings.display_interpolation, "settings.display_interpolation");
   const player = requireRecord(settings.player, "settings.player");
   requireBoolean(player.hidden, "settings.player.hidden");
   const stopConditions = requireRecord(player.stop_conditions, "settings.player.stop_conditions");
@@ -61,6 +62,7 @@ function requireSettings(value: unknown): void {
   const playback = requireRecord(settings.playback, "settings.playback");
   requireStringValue(playback.mode, LOOP_TYPES, "settings.playback.mode");
   optionalString(playback.loop_start, "settings.playback.loop_start");
+  optionalString(playback.loop_end, "settings.playback.loop_end");
   optionalString(playback.loop_delay, "settings.playback.loop_delay");
 }
 

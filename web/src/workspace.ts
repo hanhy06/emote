@@ -4,13 +4,14 @@ import {
   assignDocumentSkinPart,
   createConversionDocument,
   documentPartAssignments,
-  editDocumentAnimation,
+  replaceDocumentAnimationTimelineEvents,
+  updateDocumentAnimationLifecycleEvents,
   updateDocumentAnimationOutput,
   type AnimationOutputSettings,
   type ConversionDocument,
 } from "./domain/conversionDocument";
-import { animationAvailability, type ImportedAnimation, type ImportedProject, type ImportedTimelineEvent } from "./domain/conversionSeed";
-import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { ImportedProject } from "./domain/conversionSeed";
+import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -50,9 +51,8 @@ export type WorkspaceAction =
   | { type: "skin_order_assigned"; order: number }
   | { type: "animation_output_changed"; output: AnimationOutputSettings }
   | { type: "minecraft_version_changed"; version: string }
-  | { type: "frame_command_added"; tick: number }
-  | { type: "frame_command_changed"; eventIndex: number; commandIndex: number; command: string }
-  | { type: "frame_command_removed"; eventIndex: number; commandIndex: number };
+  | { type: "lifecycle_events_changed"; events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
+  | { type: "timeline_events_changed"; tick: number; events: EmoteEvent[] };
 
 export const EMPTY_SELECTION = new Set<string>();
 
@@ -67,7 +67,7 @@ export const INITIAL_WORKSPACE: WorkspaceState = {
 export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction): WorkspaceState {
   switch (action.type) {
     case "open_started":
-      return { ...state, session: null, page: 0, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
+      return { ...state, openError: "", exportError: "", operation: { type: "opening", message: action.message } };
     case "open_succeeded": {
       const session = createConversionSession(action.project, action.adapterLabel);
       return openedSession(state, session);
@@ -88,8 +88,8 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
       return { ...state, page: action.page };
     case "animation_selected":
       return updateSession(state, (session) => selectSessionAnimation(session, action.index), (session) => {
-        const animation = session.document.animations[session.animationIndex]?.source;
-        return animation && animationAvailability(animation).preview === "unavailable" ? 1 : state.page;
+        const animation = session.document.animations[session.animationIndex];
+        return animation?.preview.availability.status === "unavailable" ? 1 : state.page;
       });
     case "preview_frame_selected":
       return updateSession(state, (session) => ({ ...session, previewFrameIndex: action.index, selectedNodeIds: new Set() }));
@@ -128,12 +128,16 @@ export function workspaceReducer(state: WorkspaceState, action: WorkspaceAction)
         ...session,
         document: { ...session.document, targetMinecraftVersion: action.version },
       }));
-    case "frame_command_added":
-      return editCurrentAnimation(state, (animation) => addFrameCommand(animation, action.tick));
-    case "frame_command_changed":
-      return editCurrentAnimation(state, (animation) => updateFrameCommand(animation, action.eventIndex, action.commandIndex, action.command));
-    case "frame_command_removed":
-      return editCurrentAnimation(state, (animation) => removeFrameCommand(animation, action.eventIndex, action.commandIndex));
+    case "lifecycle_events_changed":
+      return updateSession(state, (session) => ({
+        ...session,
+        document: updateDocumentAnimationLifecycleEvents(session.document, session.animationIndex, action.events),
+      }));
+    case "timeline_events_changed":
+      return updateSession(state, (session) => ({
+        ...session,
+        document: replaceDocumentAnimationTimelineEvents(session.document, session.animationIndex, action.tick, action.events),
+      }));
   }
 }
 
@@ -160,8 +164,8 @@ function createConversionSessionFromDocument(document: ConversionDocument): Conv
 }
 
 function openedSession(state: WorkspaceState, session: ConversionSession): WorkspaceState {
-  const animation = session.document.animations[session.animationIndex]?.source;
-  const page = animation && animationAvailability(animation).preview === "unavailable" ? 1 : 0;
+  const animation = session.document.animations[session.animationIndex];
+  const page = animation?.preview.availability.status === "unavailable" ? 1 : 0;
   return { ...state, session, page, operation: { type: "idle" } };
 }
 
@@ -178,47 +182,4 @@ function updateSession(
   if (!state.session) return state;
   const session = edit(state.session);
   return { ...state, session, page: page(session) };
-}
-
-function editCurrentAnimation(state: WorkspaceState, edit: (animation: ImportedAnimation) => ImportedAnimation): WorkspaceState {
-  return updateSession(state, (session) => ({
-    ...session,
-    document: editDocumentAnimation(session.document, session.animationIndex, edit),
-  }));
-}
-
-function addFrameCommand(animation: ImportedAnimation, tick: number): ImportedAnimation {
-  const event: ImportedTimelineEvent = {
-    tick,
-    source: { type: "server" },
-    origin: { type: "root" },
-    commands: [""],
-  };
-  return withTimelineEvents(animation, [...animation.events.timeline, event]
-    .sort((first, second) => first.tick - second.tick));
-}
-
-function updateFrameCommand(
-  animation: ImportedAnimation,
-  eventIndex: number,
-  commandIndex: number,
-  command: string,
-): ImportedAnimation {
-  const timeline = animation.events.timeline.map((event, index) => index === eventIndex
-    ? { ...event, commands: event.commands.map((current, currentIndex) => currentIndex === commandIndex ? command : current) }
-    : event);
-  return withTimelineEvents(animation, timeline);
-}
-
-function removeFrameCommand(animation: ImportedAnimation, eventIndex: number, commandIndex: number): ImportedAnimation {
-  const timeline = animation.events.timeline.flatMap((event, index) => {
-    if (index !== eventIndex) return [event];
-    const commands = event.commands.filter((_, currentIndex) => currentIndex !== commandIndex);
-    return commands.length === 0 ? [] : [{ ...event, commands }];
-  });
-  return withTimelineEvents(animation, timeline);
-}
-
-function withTimelineEvents(animation: ImportedAnimation, timeline: ImportedTimelineEvent[]): ImportedAnimation {
-  return { ...animation, events: { ...animation.events, timeline } };
 }

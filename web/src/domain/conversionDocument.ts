@@ -1,13 +1,18 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
+import type { EditorNodeBinding } from "./nodeBindings";
+import type { AnimationRuntimeProjection } from "./runtimeProjection";
+import type { SequenceStep } from "./emoteDefinition";
+import type { PreviewProjection } from "./previewProjection";
 import type {
   ImportedAnimation,
   ImportedNode,
   ImportedProject,
   ImportedSkinPart,
+  ImportedTimelineEvent,
   ImportSource,
 } from "./conversionSeed";
 
@@ -16,16 +21,16 @@ type ImportedBlockNode = Extract<ImportedNode, { type: "block_display" }>;
 type ImportedTextNode = Extract<ImportedNode, { type: "text_display" }>;
 type ImportedAnchorNode = Extract<ImportedNode, { type: "anchor" }>;
 
-export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.2";
+export const DEFAULT_TARGET_MINECRAFT_VERSION = "26.3";
 
 export type ConversionNode =
-  | (Omit<ImportedItemNode, "id" | "skin" | "suggestedSkin" | "skinAssignmentGroup" | "space"> & {
+  | (Omit<ImportedItemNode, "binding" | "skin" | "suggestedSkin" | "space"> & {
+    binding: EditorNodeBinding;
     space: NodeSpace;
-    skinGroupId?: string;
   })
-  | (Omit<ImportedBlockNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace })
-  | (Omit<ImportedTextNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace })
-  | (Omit<ImportedAnchorNode, "id" | "skinAssignmentGroup" | "space"> & { space: NodeSpace });
+  | (Omit<ImportedBlockNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace })
+  | (Omit<ImportedTextNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace })
+  | (Omit<ImportedAnchorNode, "binding" | "space"> & { binding: EditorNodeBinding; space: NodeSpace });
 
 export interface SkinGroup {
   nodeIds: string[];
@@ -45,23 +50,44 @@ export interface AnimationOutputSettings {
   standalone: boolean;
   cooldown: string;
   rotationDeadzone: number;
+  displayInterpolation: string;
   loopStart: string;
+  loopEnd: string;
   loopDelay: string;
 }
 
 export interface ConversionAnimation {
-  source: ImportedAnimation;
+  source: ConversionAnimationSource;
+  preview: PreviewProjection;
+  runtime: AnimationRuntimeProjection;
+  events: ConversionAnimationEvents;
   output: AnimationOutputSettings;
   nodeIds: string[];
 }
 
+export interface ConversionAnimationSource {
+  id: string;
+  name: string;
+  sourceReferenceId?: string;
+}
+
+export interface ConversionAnimationEvents {
+  start: EmoteEvent[];
+  timeline: ImportedTimelineEvent[];
+  loop: EmoteEvent[];
+  stop: EmoteEvent[];
+}
+
 export interface SequenceOutputSettings {
   namespace: string;
+  idPath?: string;
   displayName: string;
   description: string;
   additionalMetadata: Record<string, unknown>;
   cooldown: string;
   player: EmotePlayerBehavior;
+  sourceReferenceId?: string;
+  steps?: SequenceStep[];
 }
 
 export interface ConversionDocument {
@@ -83,35 +109,35 @@ export interface ConversionDocument {
 export function createConversionDocument(project: ImportedProject, adapterLabel: string): ConversionDocument {
   const skinGroups: Record<string, SkinGroup> = {};
   const nodes = Object.fromEntries(Object.entries(project.nodes).map(([nodeId, importedNode]) => {
+    const binding: EditorNodeBinding = { ...importedNode.binding, editorNodeId: nodeId };
     const suggestedSkin = importedNode.type === "item_display" ? importedNode.suggestedSkin ?? importedNode.skin : undefined;
     const space = importedNode.space ?? suggestedSkin?.participant ?? (suggestedSkin ? "initiator" : "scene");
     if (importedNode.type !== "item_display") {
-      const { id: _id, skinAssignmentGroup: _skinAssignmentGroup, space: _space, ...node } = importedNode;
-      return [nodeId, { ...node, space }];
+      const { binding: _binding, space: _space, ...node } = importedNode;
+      return [nodeId, { ...node, binding, space }];
     }
 
     const {
-      id: _id,
+      binding: _binding,
       skin: _skin,
       suggestedSkin: _suggestedSkin,
-      skinAssignmentGroup: _skinAssignmentGroup,
       space: _space,
       ...itemNode
     } = importedNode;
-    if (!isSkinCandidate(importedNode)) return [nodeId, { ...itemNode, space }];
-    const skinGroupId = importedNode.skinAssignmentGroup ?? nodeId;
+    if (!isSkinCandidate(importedNode)) return [nodeId, { ...itemNode, binding, space }];
+    const skinGroupId = importedNode.binding.skinGroupId ?? nodeId;
     const group = skinGroups[skinGroupId] ?? { nodeIds: [], assignment: null };
     group.nodeIds.push(nodeId);
     if (!group.assignment && suggestedSkin) {
       group.assignment = { part: suggestedSkin.part, order: suggestedSkin.order };
     }
     skinGroups[skinGroupId] = group;
-    return [nodeId, { ...itemNode, space, skinGroupId }];
+    return [nodeId, { ...itemNode, binding: { ...binding, skinGroupId }, space }];
   })) as Record<string, ConversionNode>;
 
   const additionalMetadata = Object.fromEntries(Object.entries(project.suggestedMetadata)
     .filter(([key]) => key !== "name" && key !== "description"));
-  const namespace = "emote";
+  const namespace = project.suggestedNamespace ?? "emote";
   return {
     origin: { source: project.source, sourceName: project.sourceName, adapterLabel, ...(project.suggestedMinecraftVersion ? { minecraftVersion: project.suggestedMinecraftVersion } : {}) },
     targetMinecraftVersion: project.suggestedMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, project.suggestedMinecraftVersion)
@@ -124,7 +150,19 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
         ? Object.fromEntries(Object.entries(metadata).filter(([key]) => key !== "name" && key !== "description"))
         : additionalMetadata;
       return {
-        source: animation,
+        source: {
+          id: animation.id,
+          name: animation.name,
+          ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
+        },
+        preview: animation.preview,
+        runtime: createAnimationRuntimeProjection(animation),
+        events: {
+          start: [...animation.events.start],
+          timeline: [...animation.events.timeline],
+          loop: [...animation.events.loop],
+          stop: [...animation.events.stop],
+        },
         nodeIds: Object.keys(nodes),
         output: {
           namespace,
@@ -136,7 +174,9 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           standalone: project.suggestedStandalone ?? true,
           cooldown: project.suggestedCooldown ?? "0t",
           rotationDeadzone: project.suggestedRotationDeadzone ?? 50,
+          displayInterpolation: project.suggestedDisplayInterpolation ?? "1t",
           loopStart: `${animation.loopStartTicks ?? 0}t`,
+          loopEnd: `${animation.loopEndTicks ?? 0}t`,
           loopDelay: `${animation.loopDelayTicks}t`,
         },
       };
@@ -154,6 +194,17 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
   };
 }
 
+export function createAnimationRuntimeProjection(animation: ImportedAnimation): AnimationRuntimeProjection {
+  return {
+    id: animation.id,
+    sourceName: animation.name,
+    durationTicks: animation.durationTicks,
+    sourcePlaybackMode: animation.playbackMode,
+    availability: animation.exportAvailability,
+    data: animation.runtime,
+  };
+}
+
 export function documentMetadata(settings: AnimationOutputSettings): EmoteMetadata {
   return { ...settings.additionalMetadata, name: settings.displayName, description: settings.description };
 }
@@ -161,8 +212,8 @@ export function documentMetadata(settings: AnimationOutputSettings): EmoteMetada
 export function documentSkinAssignments(document: ConversionDocument): Record<string, ImportedSkinPart | null> {
   const entries: Array<[string, ImportedSkinPart | null]> = [];
   for (const [nodeId, node] of Object.entries(document.nodes)) {
-    if (node.type !== "item_display" || !node.skinGroupId) continue;
-    const assignment = document.skinGroups[node.skinGroupId]?.assignment;
+    if (node.type !== "item_display" || !node.binding.skinGroupId) continue;
+    const assignment = document.skinGroups[node.binding.skinGroupId]?.assignment;
     entries.push([nodeId, assignment ? {
       participant: node.space === "partner" ? "partner" : "initiator",
       part: assignment.part,
@@ -177,14 +228,14 @@ export function documentNodeSpaces(document: ConversionDocument): Record<string,
 }
 
 export function documentPartAssignments(document: ConversionDocument): Record<string, PlayerSkinPart | null> {
-  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.skinGroupId
-    ? [[nodeId, document.skinGroups[node.skinGroupId]?.assignment?.part ?? null]]
+  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
+    ? [[nodeId, document.skinGroups[node.binding.skinGroupId]?.assignment?.part ?? null]]
     : []));
 }
 
 export function documentPartOrders(document: ConversionDocument): Record<string, number | null> {
-  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.skinGroupId
-    ? [[nodeId, document.skinGroups[node.skinGroupId]?.assignment?.order ?? null]]
+  return Object.fromEntries(Object.entries(document.nodes).flatMap(([nodeId, node]) => node.type === "item_display" && node.binding.skinGroupId
+    ? [[nodeId, document.skinGroups[node.binding.skinGroupId]?.assignment?.order ?? null]]
     : []));
 }
 
@@ -211,7 +262,7 @@ export function assignDocumentSkinPart(
   const selectedSpaceGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
-    part !== null && node.space === "scene" && selectedSpaceGroups.has(node.spaceAssignmentGroup ?? nodeId)
+    part !== null && node.space === "scene" && selectedSpaceGroups.has(node.binding.spaceGroupId ?? nodeId)
       ? { ...node, space: "initiator" as const }
       : node,
   ])) as ConversionDocument["nodes"];
@@ -240,7 +291,7 @@ export function assignDocumentNodeSpace(
   const selectedGroups = selectedSpaceAssignmentGroups(document, selectedNodeIds);
   const nodes = Object.fromEntries(Object.entries(document.nodes).map(([nodeId, node]) => [
     nodeId,
-    selectedGroups.has(node.spaceAssignmentGroup ?? nodeId) ? { ...node, space } : node,
+    selectedGroups.has(node.binding.spaceGroupId ?? nodeId) ? { ...node, space } : node,
   ])) as ConversionDocument["nodes"];
   if (space !== "scene") return { ...document, nodes };
   const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
@@ -249,16 +300,40 @@ export function assignDocumentNodeSpace(
   return { ...document, nodes, skinGroups };
 }
 
-export function editDocumentAnimation(
+export function updateDocumentAnimationLifecycleEvents(
   document: ConversionDocument,
   animationIndex: number,
-  edit: (animation: ImportedAnimation) => ImportedAnimation,
+  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop">,
 ): ConversionDocument {
   if (!document.animations[animationIndex]) return document;
   return {
     ...document,
     animations: document.animations.map((animation, index) => index === animationIndex
-      ? { ...animation, source: edit(animation.source) }
+      ? { ...animation, events: { ...animation.events, ...events } }
+      : animation),
+  };
+}
+
+export function replaceDocumentAnimationTimelineEvents(
+  document: ConversionDocument,
+  animationIndex: number,
+  tick: number,
+  events: EmoteEvent[],
+): ConversionDocument {
+  if (!document.animations[animationIndex]) return document;
+  return {
+    ...document,
+    animations: document.animations.map((animation, index) => index === animationIndex
+      ? {
+          ...animation,
+          events: {
+            ...animation.events,
+            timeline: [
+              ...animation.events.timeline.filter((event) => event.tick !== tick),
+              ...events.map((event) => ({ ...event, tick })),
+            ].sort((first, second) => first.tick - second.tick),
+          },
+        }
       : animation),
   };
 }
@@ -282,13 +357,13 @@ function isSkinCandidate(node: ImportedItemNode): boolean {
 function selectedSkinGroupIds(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
   return new Set([...selectedNodeIds].flatMap((nodeId) => {
     const node = document.nodes[nodeId];
-    return node?.type === "item_display" && node.skinGroupId ? [node.skinGroupId] : [];
+    return node?.type === "item_display" && node.binding.skinGroupId ? [node.binding.skinGroupId] : [];
   }));
 }
 
 function selectedSpaceAssignmentGroups(document: ConversionDocument, selectedNodeIds: ReadonlySet<string>): Set<string> {
   return new Set([...selectedNodeIds].flatMap((nodeId) => {
     const node = document.nodes[nodeId];
-    return node ? [node.spaceAssignmentGroup ?? nodeId] : [];
+    return node ? [node.binding.spaceGroupId ?? nodeId] : [];
   }));
 }

@@ -1,19 +1,17 @@
 import type { TargetedEvent } from "preact";
 import { lazy, Suspense } from "preact/compat";
-import { useCallback, useMemo, useReducer } from "preact/hooks";
+import { useCallback, useMemo, useReducer, useState } from "preact/hooks";
 import { AssignmentPanel } from "./components/AssignmentPanel";
-import { CommandPanel } from "./components/CommandPanel";
+import { EventPanel } from "./components/EventPanel";
 import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
-import { downloadExport, downloadExports } from "./export/download";
+import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
-import { detectAdapter, importDetected } from "./import/adapterRegistry";
-import { isImportedSequence } from "./import/adapter";
+import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
 import { countImportedCommands } from "./import/common/securityWarning";
-import { animationAvailability } from "./domain/conversionSeed";
 import {
   assignmentSummary,
   EMPTY_SELECTION,
@@ -22,8 +20,6 @@ import {
   type WorkspacePage,
 } from "./workspace";
 import { createPreviewModel } from "./preview/previewModel";
-import { createConversionDocument } from "./domain/conversionDocument";
-import { combineConversionDocuments } from "./domain/conversionBatch";
 const PartPreview = lazy(() => import("./components/PartPreview"));
 const ACCEPTED_EXTENSIONS = [...new Set(IMPORT_ADAPTERS.flatMap((adapter) => adapter.extensions))]
   .map((extension) => `.${extension}`)
@@ -53,6 +49,8 @@ const IMPORT_FORMATS = [
 
 export function App() {
   const [workspace, dispatch] = useReducer(workspaceReducer, INITIAL_WORKSPACE);
+  const [eventJsonValid, setEventJsonValid] = useState(true);
+  const [eventEditorRevision, setEventEditorRevision] = useState(0);
   const { session, page, openError, exportError, operation } = workspace;
   const busy = operation.type !== "idle";
   const busyMessage = operation.type === "idle" ? null : operation.message;
@@ -60,15 +58,19 @@ export function App() {
   const project = session?.document ?? null;
   const animationIndex = session?.animationIndex ?? 0;
   const previewFrameIndex = session?.previewFrameIndex ?? 0;
-  const preview = useMemo(() => session
-    ? createPreviewModel(session.document, session.animationIndex, session.previewFrameIndex)
-    : null, [session]);
+  const preview = useMemo(() => {
+    if (!session) return null;
+    const selectedAnimation = session.document.animations[session.animationIndex];
+    return createPreviewModel(session.document, selectedAnimation?.nodeIds ?? [], selectedAnimation?.preview, session.previewFrameIndex);
+  }, [session]);
   const assignments = preview?.assignments ?? {};
   const orders = preview?.orders ?? {};
   const spaces = preview?.spaces ?? {};
   const selectedNodeIds = session?.selectedNodeIds ?? EMPTY_SELECTION;
-  const animation = project?.animations[animationIndex]?.source;
+  const selectedAnimation = project?.animations[animationIndex];
+  const animation = selectedAnimation?.source;
   const availability = preview?.availability ?? null;
+  const exportAvailability = selectedAnimation?.runtime.availability ?? null;
   const previewDurationTicks = preview?.durationTicks ?? 0;
   const animationOptions = project?.animations[animationIndex]?.output;
   const importedCommandCount = useMemo(() => countImportedCommands(project), [project]);
@@ -88,19 +90,10 @@ export function App() {
     dispatch({ type: "open_started", message: files.length === 1 ? "Opening animation project" : `Opening ${files.length} animation projects` });
     try {
       await showLoadingScreen();
-      const imported = await Promise.all(files.map(async (file) => {
-        const input = { name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) };
-        const detected = await detectAdapter(IMPORT_ADAPTERS, input);
-        return { source: await importDetected(detected, input), adapterLabel: detected.adapter.label };
-      }));
-      for (const item of imported) {
-        if (!isImportedSequence(item.source)) continue;
-        downloadExport({ blob: new Blob([JSON.stringify(item.source.sequence)], { type: "application/json" }), fileName: item.source.fileName });
-      }
-      const documents = imported.flatMap((item) => isImportedSequence(item.source)
-        ? []
-        : [createConversionDocument(item.source, item.adapterLabel)]);
-      if (documents.length > 0) dispatch({ type: "documents_open_succeeded", document: combineConversionDocuments(documents) });
+      const document = await importFileBatch(files, IMPORT_ADAPTERS);
+      setEventJsonValid(true);
+      setEventEditorRevision((revision) => revision + 1);
+      dispatch({ type: "documents_open_succeeded", document });
     } catch (reason) {
       dispatch({ type: "open_failed", message: conversionErrorMessage(reason, "Could not import the file.") });
     } finally {
@@ -162,23 +155,19 @@ export function App() {
     dispatch({ type: "skin_order_assigned", order });
   }
 
-  function addCommandAtPreviewTick() {
-    if (previewTick !== null) dispatch({ type: "frame_command_added", tick: previewTick });
+  function changeLifecycleEvents(events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
+    dispatch({ type: "lifecycle_events_changed", events });
   }
 
-  function changeFrameCommand(eventIndex: number, commandIndex: number, command: string) {
-    dispatch({ type: "frame_command_changed", eventIndex, commandIndex, command });
-  }
-
-  function deleteFrameCommand(eventIndex: number, commandIndex: number) {
-    dispatch({ type: "frame_command_removed", eventIndex, commandIndex });
+  function changeTimelineEvents(tick: number, events: EmoteEvent[]) {
+    dispatch({ type: "timeline_events_changed", tick, events });
   }
 
   const hasSelectedAssignment = [...selectedNodeIds].some((nodeId) => assignments[nodeId] != null);
   const filePicker = (
-    <label className={`file-input${busy ? " disabled" : ""}`}>
+    <label className={`file-input${busy || !eventJsonValid ? " disabled" : ""}`}>
       <span>{session ? "Open other files" : "Choose animation files"}</span>
-      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy} />
+      <input type="file" accept={ACCEPTED_EXTENSIONS} multiple onChange={handleFileChange} disabled={busy || !eventJsonValid} />
     </label>
   );
 
@@ -234,7 +223,7 @@ export function App() {
         </section>
       )}
 
-      {session && animation && (
+      {session && project && selectedAnimation && animation && (
         <>
           <section className="project-summary" aria-label="Imported project">
             <div className="project-file">
@@ -243,7 +232,7 @@ export function App() {
             </div>
             <label className="project-animation">
               <span>Animation</span>
-              <select value={animationIndex} disabled={project.animations.length === 1} onChange={(event) => {
+              <select value={animationIndex} disabled={project.animations.length === 1 || !eventJsonValid} onChange={(event) => {
                 const nextIndex = Number(event.currentTarget.value);
                 dispatch({ type: "animation_selected", index: nextIndex });
               }}>
@@ -259,7 +248,7 @@ export function App() {
 
           <nav className="workflow-pages" aria-label="Conversion pages">
             {(["Review", "Settings", "Export"] as const).map((label, index) => (
-              <button className={page === index ? "active" : ""} type="button" onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
+              <button className={page === index ? "active" : ""} type="button" disabled={!eventJsonValid && page !== index} onClick={() => dispatch({ type: "page_selected", page: index as WorkspacePage })} key={label}>
                 <span>{index + 1}</span>{label}
               </button>
             ))}
@@ -300,10 +289,10 @@ export function App() {
                   : "This file does not contain assignable model parts."}</p>
               </div>
               <div className="preview-controls">
-                {hasReviewNodes && availability?.preview === "full" && (
+                {availability?.status === "full" && (
                   <label className="frame-slider">
                     <span>Preview frame</span>
-                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} onChange={(event) => {
+                    <input type="range" min="0" max={previewDurationTicks + 1} step="1" value={previewFrameIndex} disabled={!eventJsonValid} onChange={(event) => {
                       dispatch({ type: "preview_frame_selected", index: Number(event.currentTarget.value) });
                     }} />
                     <output>{previewTick === null ? "Create pose" : `${previewTick} tick`}</output>
@@ -311,8 +300,8 @@ export function App() {
                 )}
               </div>
             </div>
-            {availability?.preview === "unavailable" ? (
-              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>Edit the animation metadata on Page 2. See the warning above for the source expression that must be changed.</span></div>
+            {availability?.status === "unavailable" ? (
+              <div className="no-skin-parts"><strong>3D preview unavailable</strong><span>{availability.reason}</span></div>
             ) : hasReviewNodes ? (
               <div className="editor">
                 <Suspense fallback={<div className="preview-loading" role="status">Loading 3D preview…</div>}>
@@ -341,13 +330,14 @@ export function App() {
             ) : (
               <div className="no-skin-parts"><strong>Ready to export</strong><span>No player skin assignments are required.</span></div>
             )}
-            {availability?.exportable && <CommandPanel
-              animation={animation}
+            {exportAvailability?.exportable && <EventPanel
+              key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
+              events={selectedAnimation.events}
               tick={previewTick}
               disabled={busy}
-              onAdd={addCommandAtPreviewTick}
-              onChange={changeFrameCommand}
-              onRemove={deleteFrameCommand}
+              onLifecycleChange={changeLifecycleEvents}
+              onTimelineChange={changeTimelineEvents}
+              onValidityChange={setEventJsonValid}
             />}
           </section>}
 
@@ -362,7 +352,7 @@ export function App() {
           {page === 2 && <ExportPanel
             assignmentSummary={assignmentSummary(project)}
             animations={project.animations.map((item) => {
-              const itemAvailability = animationAvailability(item.source);
+              const itemAvailability = item.runtime.availability;
               return { label: item.output.displayName, detail: item.source.id, exportable: itemAvailability.exportable, reason: itemAvailability.reason };
             })}
             error={exportError}

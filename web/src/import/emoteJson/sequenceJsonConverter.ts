@@ -9,7 +9,7 @@ import {
   requireString,
   type RuntimeRecord,
 } from "../../format/runtimeValue";
-import type { ImportInput } from "../adapter";
+import type { ImportInput } from "../input";
 import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../common/inputCache";
 
