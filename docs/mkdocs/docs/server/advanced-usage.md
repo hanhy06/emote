@@ -166,8 +166,10 @@ config/emote/emote/sit/
 Intermediate Animations referenced by a Sequence are usually hidden from direct selection:
 
 ```json
-"settings": {
-  "standalone": false,
+{
+  "settings": {
+    "standalone": false
+  }
 }
 ```
 
