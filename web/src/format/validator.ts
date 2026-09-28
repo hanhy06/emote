@@ -292,7 +292,7 @@ function validateEvents(
   events?.timeline?.forEach((event, index) => {
     const path = `timeline.events.timeline[${index}]`;
     const tick = validateTime(event.time, 0, `${path}.time`, issues);
-    if (tick !== null && durationTicks !== null && tick >= durationTicks) add(issues, `${path}.time`, "must be within 0..duration - 1 tick");
+    if (tick !== null && durationTicks !== null && tick > durationTicks) add(issues, `${path}.time`, "must be within 0..duration");
     if (tick !== null && tick < previousEventTick) add(issues, `${path}.time`, "timeline events must be ordered by time");
     if (tick !== null) previousEventTick = tick;
     validateEvent(event, path, animation, issues);
