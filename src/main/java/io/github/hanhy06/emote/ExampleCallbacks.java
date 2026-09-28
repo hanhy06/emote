@@ -206,11 +206,14 @@ public final class ExampleCallbacks {
     }
 
     private void handleTrumpetCanCan(EmoteCallbackEvent event) {
-        if (event.phase() == EmoteCallbackPhase.STOP) {
-            stopTrumpetCanCan(event.player().getUUID());
-            return;
+        switch (event.phase()) {
+            case START -> startTrumpetCanCan(event);
+            case STOP -> stopTrumpetCanCan(event.player().getUUID());
+            case TIMELINE, LOOP -> {}
         }
-        if (event.phase() != EmoteCallbackPhase.START) return;
+    }
+
+    private void startTrumpetCanCan(EmoteCallbackEvent event) {
         UUID performer = event.player().getUUID();
         stopTrumpetCanCan(performer);
         List<HornListener> listeners = event.player().level().players().stream()
@@ -272,12 +275,14 @@ public final class ExampleCallbacks {
     }
 
     private void handleIdleBat(EmoteCallbackEvent event) {
-        if (event.phase() == EmoteCallbackPhase.STOP) {
-            removeEntity(event.player().getUUID(), false);
-            return;
+        switch (event.phase()) {
+            case TIMELINE -> handleIdleBatTimeline(event);
+            case STOP -> removeEntity(event.player().getUUID(), false);
+            case START, LOOP -> {}
         }
-        if (event.phase() != EmoteCallbackPhase.TIMELINE) return;
+    }
 
+    private void handleIdleBatTimeline(EmoteCallbackEvent event) {
         switch (event.payload()) {
             case "spawn" -> spawnBat(event);
             case "move" -> moveBat(event);

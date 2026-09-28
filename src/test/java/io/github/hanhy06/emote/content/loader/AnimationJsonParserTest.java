@@ -90,14 +90,16 @@ class AnimationJsonParserTest {
     }
 
     @Test
-    void defaultsOmittedLoopStartAndDelayToZero() throws Exception {
+    void defaultsOmittedLoopBoundsAndDelay() throws Exception {
         JsonObject playback = readReference().getAsJsonObject("settings").getAsJsonObject("playback");
         playback.remove("loop_start");
+        playback.remove("loop_end");
         playback.remove("loop_delay");
 
         EmoteAnimation.PlaybackSettings settings = parse(readReferenceWithPlayback(playback)).animation().settings().playback();
 
         assertEquals(0, settings.loopStartTicks());
+        assertEquals(80, settings.loopEndTicks());
         assertEquals(0, settings.loopDelayTicks());
     }
 
@@ -133,6 +135,45 @@ class AnimationJsonParserTest {
         EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
 
         assertEquals("$.settings.playback.loop_start", exception.fieldPath());
+    }
+
+    @Test
+    void loadsLoopEndBetweenStartAndTimelineEnd() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "20t");
+        playback.addProperty("loop_end", "60t");
+
+        EmoteAnimation.PlaybackSettings settings = parse(root).animation().settings().playback();
+
+        assertEquals(20, settings.loopStartTicks());
+        assertEquals(60, settings.loopEndTicks());
+    }
+
+    @Test
+    void rejectsLoopEndAtOrBeforeLoopStart() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_start", "20t");
+        playback.addProperty("loop_end", "20t");
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.settings.playback.loop_end", exception.fieldPath());
+    }
+
+    @Test
+    void rejectsLoopEndAfterTimelineEnd() throws Exception {
+        JsonObject root = readReference();
+        JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
+        playback.addProperty("mode", "loop");
+        playback.addProperty("loop_end", "81t");
+
+        EmoteAnimationLoadException exception = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+
+        assertEquals("$.settings.playback.loop_end", exception.fieldPath());
     }
 
     @Test

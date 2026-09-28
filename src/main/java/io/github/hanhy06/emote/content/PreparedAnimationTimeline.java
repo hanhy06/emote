@@ -32,7 +32,9 @@ public final class PreparedAnimationTimeline {
         Objects.requireNonNull(animation, "animation");
         List<String> order = topologicalOrder(animation.nodes());
         Map<String, CompiledNodeTracks> tracks = new LinkedHashMap<>();
-        animation.timeline().tracks().forEach((nodeId, nodeTracks) -> tracks.put(nodeId, compile(nodeTracks)));
+        boolean allowPersistentTrackVariables = animation.settings().playback().mode() != LoopMode.SERVER_SYNC;
+        animation.timeline().tracks().forEach((nodeId, nodeTracks) ->
+            tracks.put(nodeId, compile(nodeTracks, allowPersistentTrackVariables)));
         return new PreparedAnimationTimeline(
             order,
             Map.copyOf(tracks),
@@ -57,11 +59,11 @@ public final class PreparedAnimationTimeline {
         return this.tick;
     }
 
-    private static CompiledNodeTracks compile(NodeTracks tracks) {
+    private static CompiledNodeTracks compile(NodeTracks tracks, boolean allowPersistentTrackVariables) {
         return new CompiledNodeTracks(
-            compileVectors(tracks.position()),
-            compileVectors(tracks.rotation()),
-            compileVectors(tracks.scale()),
+            compileVectors(tracks.position(), allowPersistentTrackVariables),
+            compileVectors(tracks.rotation(), allowPersistentTrackVariables),
+            compileVectors(tracks.scale(), allowPersistentTrackVariables),
             tracks.visible().stream()
                 .map(frame -> new CompiledVisibilityKeyframe(frame.tick(), compile(frame.value())))
                 .toList(),
@@ -80,32 +82,36 @@ public final class PreparedAnimationTimeline {
             case MolangNbtValue molang -> new CompiledNbtKeyframe(
                 frame.tick(),
                 null,
-                compileValueProgram(molang.expression().source(), molang.expression().path()),
+                compileReadOnlyValueProgram(molang.expression().source(), molang.expression().path()),
                 molang.expression().path()
             );
         }).toList();
     }
 
-    private static List<CompiledVectorKeyframe> compileVectors(List<VectorKeyframe> frames) {
+    private static List<CompiledVectorKeyframe> compileVectors(List<VectorKeyframe> frames, boolean allowPersistentTrackVariables) {
         return frames.stream().map(frame -> new CompiledVectorKeyframe(
             frame.tick(),
-            compile(frame.pre()),
-            compile(frame.post()),
+            compile(frame.pre(), allowPersistentTrackVariables),
+            compile(frame.post(), allowPersistentTrackVariables),
             frame.interpolation(),
             frame.easing()
         )).toList();
     }
 
-    private static CompiledVector compile(VectorValue value) {
-        return new CompiledVector(compile(value.x()), compile(value.y()), compile(value.z()));
+    private static CompiledVector compile(VectorValue value, boolean allowPersistentTrackVariables) {
+        return new CompiledVector(
+            compile(value.x(), allowPersistentTrackVariables),
+            compile(value.y(), allowPersistentTrackVariables),
+            compile(value.z(), allowPersistentTrackVariables)
+        );
     }
 
-    private static CompiledScalar compile(ScalarValue value) {
+    private static CompiledScalar compile(ScalarValue value, boolean allowPersistentTrackVariables) {
         return switch (value) {
             case ConstantValue constant -> new CompiledScalar(constant.value(), null, null);
             case MolangValue molang -> new CompiledScalar(
                 0.0D,
-                compileValueProgram(molang.source(), molang.path()),
+                compileVectorValueProgram(molang.source(), molang.path(), allowPersistentTrackVariables),
                 molang.path()
             );
         };
@@ -116,13 +122,25 @@ public final class PreparedAnimationTimeline {
             case ConstantVisibility constant -> new CompiledScalar(constant.value() ? 1.0D : 0.0D, null, null);
             case MolangVisibility molang -> new CompiledScalar(
                 0.0D,
-                compileValueProgram(molang.source(), molang.path()),
+                compileReadOnlyValueProgram(molang.source(), molang.path()),
                 molang.path()
             );
         };
     }
 
-    private static MolangEngine.CompiledExpression compileValueProgram(String source, String path) {
+    private static MolangEngine.CompiledExpression compileVectorValueProgram(
+        String source,
+        String path,
+        boolean allowPersistentTrackVariables
+    ) {
+        MolangEngine.CompiledExpression expression = compileProgram(source, path);
+        if (!allowPersistentTrackVariables && expression.assignsPersistentVariables()) {
+            throw new IllegalArgumentException(path + " must not assign persistent variables during server_sync playback");
+        }
+        return expression;
+    }
+
+    private static MolangEngine.CompiledExpression compileReadOnlyValueProgram(String source, String path) {
         MolangEngine.CompiledExpression expression = compileProgram(source, path);
         if (expression.assignsPersistentVariables()) {
             throw new IllegalArgumentException(path + " must not assign persistent variables");

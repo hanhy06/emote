@@ -128,10 +128,10 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 |---|---|
 | `once` | Plays the timeline once. |
 | `hold` | Plays once, then holds the last frame until stopped; unavailable in Sequences. |
-| `loop` | Plays from tick `0` once, then repeats from `loop_start` after `loop_delay`. |
+| `loop` | Plays from tick `0` to `loop_end`, then repeats from `loop_start` to `loop_end` after each `loop_delay`. |
 | `server_sync` | Selects the current timeline position from server time so independently started playbacks remain synchronized; unavailable in Sequences. |
 
-`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. `loop_start` may be nonzero only in `loop` mode and must be earlier than the timeline duration. `loop_delay` may be nonzero in `loop` and `server_sync` modes. Omitting either field preserves the behavior of existing compiled Animation files.
+`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. `loop_end` is optional and defaults to the timeline duration in `loop` mode. In `loop` mode, `loop_start` must be earlier than `loop_end`, and `loop_end` cannot exceed the timeline duration. Outside `loop` mode, `loop_start` and `loop_end` must be `0t`. `loop_delay` may be nonzero in `loop` and `server_sync` modes.
 
 ## Nodes
 

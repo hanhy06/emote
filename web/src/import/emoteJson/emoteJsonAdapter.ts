@@ -1,5 +1,4 @@
-import { readBlockState, readDisplayNbt, readItemStack } from "../../format/minecraftData";
-import { readRuntimeNodes, readRuntimeTimeline } from "../common/runtimeOutput";
+import { readBlockState, readDisplayNbt, readDisplayNbtValue, readItemStack } from "../../format/minecraftData";
 import type { EmoteAnimation, EmoteEvent, EmoteVectorKeyframe, LocalTransform, Matrix16, Vec3 } from "../../format/emoteAnimation";
 import { requireEmoteAnimation } from "../../format/emoteAnimationRuntime";
 import { localTransformToMatrix } from "../../format/localTransform";
@@ -8,14 +7,18 @@ import { parseMinecraftTime } from "../../format/time";
 import { isRecord } from "../../format/runtimeValue";
 import { validateEmoteAnimation } from "../../format/validator";
 import type { ImportAdapter, ImportInput, ProbeResult } from "../adapter";
-import { ConversionError } from "../../foundation/diagnostics";
+import { ConversionError, PreviewUnavailableError } from "../../foundation/diagnostics";
 import { parseInputJson, probeParsedInput } from "../common/inputCache";
 import type { ImportedAnimation, ImportedNode, ImportedNodeBase, ImportedProject } from "../../domain/conversionSeed";
+import type { NativeRuntimeBindings } from "../../domain/nodeBindings";
+import type { BakedRuntimeNodeTracks, RuntimeNode, RuntimeNodeTracks, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import type { PreviewNodeTrack, PreviewProjection, PreviewTransformKeyframe } from "../../domain/previewProjection";
 import { migrateSchema1Animation } from "./schema1Migration";
 import { migrateSchema3Animation } from "./animationSchema3/animationSchema3Migration";
 import { requireSchema3Animation } from "./animationSchema3/animationSchema3Runtime";
 import { validateSchema3Animation } from "./animationSchema3/animationSchema3Validator";
 import { bakeSchema4Preview } from "./schema4PreviewBaker";
+import { createMolangPreviewFallback } from "../common/previewFallback";
 
 export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
   id: "emote_json",
@@ -52,21 +55,17 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
     const diagnostics: ImportedProject["diagnostics"] = [];
     try {
       nodes = importNodes(animation);
-      importedAnimation = importTimeline(animation, animationId);
+      importedAnimation = importTimeline(animation, animationId, animation.id);
     } catch (reason) {
       if (!(reason instanceof ConversionError) || reason.code !== "unsupported_schema_4_import" || schema3) throw reason;
       nodes = importRuntimeNodes(animation);
       try {
-        importedAnimation = importRuntimeTimeline(animation, animationId, bakeSchema4Preview(animation));
+        importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, bakeSchema4Preview(animation));
       } catch (previewReason) {
-        const message = "Advanced schema 4 data is preserved for export; preview uses the Create pose because its runtime values cannot be evaluated safely.";
-        importedAnimation = importRuntimeTimeline(animation, animationId, undefined, message);
-        diagnostics.push({
-          severity: "warning",
-          code: "schema_4_preview_limited",
-          message,
-          sourcePath: previewReason instanceof ConversionError ? previewReason.sourcePath : reason.sourcePath,
-        });
+        if (!(previewReason instanceof PreviewUnavailableError)) throw previewReason;
+        const fallback = createMolangPreviewFallback(animation.metadata.name, parseMinecraftTime(animation.timeline.duration, 1), previewReason);
+        importedAnimation = importRuntimeTimeline(animation, animationId, animation.id, undefined, fallback.diagnostic.message);
+        diagnostics.push(fallback.diagnostic);
       }
     }
     return {
@@ -81,6 +80,7 @@ export const emoteJsonAdapter: ImportAdapter<ImportedProject> = {
       suggestedStandalone: animation.settings.standalone,
       suggestedCooldown: animation.settings.cooldown,
       suggestedRotationDeadzone: animation.settings.rotation_deadzone,
+      suggestedDisplayInterpolation: animation.settings.display_interpolation ?? "1t",
       nodes,
       animations: [importedAnimation],
       diagnostics,
@@ -123,7 +123,7 @@ function importRuntimeNodes(animation: EmoteAnimation): Record<string, ImportedN
     const root = rootId(id);
     const space = animation.nodes[root].space!;
     const defaultMatrix = worldMatrix(id);
-    return [id, importNode(id, node, { defaultMatrix, space, spaceAssignmentGroup: root })];
+    return [id, importNode(id, node, { defaultMatrix, space, binding: { sourceNodeId: id, spaceGroupId: root } })];
   }));
 }
 
@@ -131,18 +131,17 @@ function importNodes(animation: EmoteAnimation): Record<string, ImportedNode> {
   return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]) => {
     if (node.parent) throw unsupportedSchema4(`${id}.parent`, "parented schema 4 nodes cannot be represented by the web editor");
     const defaultMatrix = localTransformToMatrix(node.transform, `${id}.transform`);
-    return [id, importNode(id, node, { defaultMatrix, space: node.space })];
+    return [id, importNode(id, node, { defaultMatrix, space: node.space, binding: { sourceNodeId: id, spaceGroupId: id } })];
   }));
 }
 
 function importNode(
   id: string,
   node: EmoteAnimation["nodes"][string],
-  placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "spaceAssignmentGroup">,
+  placement: Pick<ImportedNodeBase, "defaultMatrix" | "space" | "binding">,
 ): ImportedNode {
-  if (node.type === "anchor") return { id, type: "anchor", ...placement };
+  if (node.type === "anchor") return { type: "anchor", ...placement };
   const common = {
-    id,
     ...placement,
     visible: node.visible ?? true,
     ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
@@ -158,11 +157,13 @@ function importNode(
   return { ...common, type: "text_display", text: node.text };
 }
 
-function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimation {
+function importTimeline(animation: EmoteAnimation, id: string, sourceReferenceId: string): ImportedAnimation {
   if (animation.molang?.initialize || animation.molang?.tick) {
     throw unsupportedSchema4("molang", "animation-level Molang cannot be represented by the web editor");
   }
-  const tracks: ImportedAnimation["tracks"] = {};
+  const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
+  const previewTracks: PreviewProjection["tracks"] = {};
+  const runtimeTracks: Record<string, BakedRuntimeNodeTracks> = {};
   for (const [nodeId, source] of Object.entries(animation.timeline.tracks)) {
     const node = animation.nodes[nodeId];
     if (source.nbt?.some((frame) => typeof frame.value !== "string")) {
@@ -171,55 +172,120 @@ function importTimeline(animation: EmoteAnimation, id: string): ImportedAnimatio
     const track = {
       transforms: importTransformTrack(source, node.transform, `${id}/${nodeId}`),
       visibility: [],
-      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbt(frame.value as string) })),
-    } as ImportedAnimation["tracks"][string];
+    } as PreviewNodeTrack;
     for (const frame of source.visible ?? []) {
       if (typeof frame.value !== "boolean") throw unsupportedSchema4(`${id}/${nodeId}/${frame.time}.visible`, "Molang visibility cannot be represented by the web editor");
       track.visibility.push({ tick: parseMinecraftTime(frame.time), visible: frame.value });
     }
-    tracks[nodeId] = track;
+    previewTracks[nodeId] = track;
+    runtimeTracks[nodeId] = {
+      ...track,
+      nbt: (source.nbt ?? []).map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbt(frame.value as string) })),
+    };
   }
   return {
     id,
+    sourceReferenceId,
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
-    durationTicks: parseMinecraftTime(animation.timeline.duration, 1),
+    durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
-    tracks,
     events: importEvents(animation),
+    preview: { durationTicks, tracks: previewTracks, availability: { status: "full" } },
+    exportAvailability: { exportable: true },
+    runtime: { kind: "baked", tracks: runtimeTracks },
   };
 }
 
 function importRuntimeTimeline(
   animation: EmoteAnimation,
   id: string,
-  previewTracks?: Record<string, ImportedAnimation["tracks"][string]>,
+  sourceReferenceId: string,
+  previewTracks?: Record<string, PreviewNodeTrack>,
   reason?: string,
 ): ImportedAnimation {
   const durationTicks = parseMinecraftTime(animation.timeline.duration, 1);
   return {
     id,
+    sourceReferenceId,
     name: animation.metadata.name,
     suggestedMetadata: { ...animation.metadata },
     durationTicks,
     playbackMode: animation.settings.playback.mode,
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
+    loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
-    tracks: {},
     events: importEvents(animation),
     ...(previewTracks
-      ? { preview: { durationTicks, tracks: previewTracks } }
+      ? { preview: { durationTicks, tracks: previewTracks, availability: { status: "full" as const } } }
       : {
-          availability: { preview: "create_pose", exportable: true, reason },
-          preview: { durationTicks, tracks: {} },
+          preview: {
+            durationTicks,
+            tracks: {},
+            availability: { status: "create_pose" as const, reason: reason ?? "Runtime expressions cannot be previewed safely." },
+          },
         }),
+    exportAvailability: { exportable: true },
     runtime: {
+      kind: "native",
       ...(animation.molang ? { molang: animation.molang } : {}),
-      nodes: readRuntimeNodes(animation.nodes),
-      timeline: readRuntimeTimeline(animation.timeline),
+      nodes: readRuntimeNodes(animation),
+      tracks: readRuntimeTracks(animation),
+      bindings: runtimeBindings(animation),
     },
+  };
+}
+
+function runtimeBindings(animation: EmoteAnimation): NativeRuntimeBindings {
+  return {
+    editorNodeByRuntimeNode: Object.fromEntries(Object.entries(animation.nodes)
+      .filter(([, node]) => node.type !== "anchor")
+      .map(([nodeId]) => [nodeId, nodeId])),
+    editorSpaceGroupByRuntimeRoot: Object.fromEntries(Object.entries(animation.nodes)
+      .filter(([, node]) => !node.parent)
+      .map(([nodeId]) => [nodeId, nodeId])),
+  };
+}
+
+function readRuntimeNodes(animation: EmoteAnimation): Record<string, RuntimeNode> {
+  return Object.fromEntries(Object.entries(animation.nodes).map(([id, node]): [string, RuntimeNode] => {
+    const common = {
+      ...(node.parent ? { parent: node.parent } : { space: node.space! }),
+      transform: node.transform,
+    };
+    if (node.type === "anchor") return [id, { type: "anchor", ...common }];
+    const display = {
+      ...common,
+      ...(node.visible === undefined ? {} : { visible: node.visible }),
+      ...(node.entity_nbt ? { entityNbt: node.entity_nbt } : {}),
+    };
+    if (node.type === "item_display") return [id, { type: "item_display", ...display, itemStack: readItemStack(node.item_stack_snbt), itemDisplay: node.item_display }];
+    if (node.type === "block_display") return [id, { type: "block_display", ...display, blockState: readBlockState(node.block_state_snbt) }];
+    return [id, { type: "text_display", ...display, text: node.text }];
+  }));
+}
+
+function readRuntimeTracks(animation: EmoteAnimation): Record<string, RuntimeNodeTracks> {
+  return Object.fromEntries(Object.entries(animation.timeline.tracks).map(([nodeId, track]) => [nodeId, {
+    ...(track.position ? { position: track.position.map(readRuntimeVectorFrame) } : {}),
+    ...(track.rotation ? { rotation: track.rotation.map(readRuntimeVectorFrame) } : {}),
+    ...(track.scale ? { scale: track.scale.map(readRuntimeVectorFrame) } : {}),
+    ...(track.visible ? { visible: track.visible.map((frame) => ({ tick: parseMinecraftTime(frame.time), value: frame.value })) } : {}),
+    ...(track.nbt ? { nbt: track.nbt.map((frame) => ({ tick: parseMinecraftTime(frame.time), value: readDisplayNbtValue(frame.value) })) } : {}),
+  }]));
+}
+
+function readRuntimeVectorFrame(frame: EmoteVectorKeyframe): RuntimeVectorKeyframe {
+  return {
+    tick: parseMinecraftTime(frame.time),
+    ...(frame.value ? { value: frame.value } : {}),
+    ...(frame.pre ? { pre: frame.pre } : {}),
+    ...(frame.post ? { post: frame.post } : {}),
+    ...(frame.interpolation ? { interpolation: frame.interpolation } : {}),
+    ...(frame.easing ? { easing: frame.easing } : {}),
   };
 }
 
@@ -233,7 +299,7 @@ function importEvents(animation: EmoteAnimation): ImportedAnimation["events"] {
   };
 }
 
-function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): ImportedAnimation["tracks"][string]["transforms"] {
+function importTransformTrack(source: EmoteAnimation["timeline"]["tracks"][string], defaults: LocalTransform, path: string): PreviewTransformKeyframe[] {
   const channels = [source.position, source.rotation, source.scale].filter((channel): channel is EmoteVectorKeyframe[] => channel !== undefined);
   if (channels.length === 0) return [];
   const reference = channels[0];

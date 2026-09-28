@@ -1,4 +1,4 @@
-import type { ImportAdapter, ImportAdapterLoader, ImportInput, ImportedSource, ProbeResult } from "./adapter";
+import type { ImportAdapter, ImportAdapterLoader, ImportedSource, ImportInput, ProbeResult } from "./adapter";
 import { ConversionError } from "../foundation/diagnostics";
 
 export interface DetectedAdapter {

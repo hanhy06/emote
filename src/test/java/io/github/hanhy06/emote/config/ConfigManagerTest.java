@@ -14,14 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void createsMissingAccessConfigDuringPreparation(@TempDir Path tempDir) {
-        ConfigManager manager = new ConfigManager(tempDir);
-
-        assertNotNull(manager.prepare());
-        assertTrue(Files.isRegularFile(tempDir.resolve("emote/emotes.json")));
-    }
-
-    @Test
     void rejectsPreparationWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         ConfigManager manager = new ConfigManager(tempDir);
@@ -38,24 +30,6 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
 
         assertNull(manager.prepare());
-    }
-
-    @Test
-    void installsBundledEmotesWhenConfigDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
-        Path bundledDirectory = tempDir.resolve("bundled");
-        Files.createDirectories(bundledDirectory.resolve("nested"));
-        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
-        Files.writeString(bundledDirectory.resolve("nested").resolve("bow.json"), "bow");
-
-        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
-        manager.configure();
-
-        assertEquals(tempDir.resolve("emote/emote"), manager.getEmoteDirectory());
-        assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
-        assertEquals(
-            "bow",
-            Files.readString(manager.getEmoteDirectory().resolve("nested").resolve("bow.json"))
-        );
     }
 
     @Test
@@ -115,9 +89,9 @@ class ConfigManagerTest {
         assertTrue(accessJson.contains("\"emote.default\""));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:idle\\..*"), idle.emote());
+        assertEquals(List.of(".*:idle\\..*"), idle.emote());
         assertTrue(accessJson.contains("\"delay\": \"3600t\""));
-        assertTrue(accessJson.contains("\"emote:idle\\\\..*\""));
+        assertTrue(accessJson.contains("\".*:idle\\\\..*\""));
         assertEquals(1, manager.getConfig().schemaVersion());
         assertEquals(30, manager.getConfig().mineSkinCacheRetentionDays());
         assertEquals(256, manager.getConfig().mineSkinCacheMaxMiB());
@@ -270,7 +244,7 @@ class ConfigManagerTest {
         assertFalse(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:idle\\..*"), idle.emote());
+        assertEquals(List.of(".*:idle\\..*"), idle.emote());
     }
 
     @Test
@@ -314,7 +288,7 @@ class ConfigManagerTest {
             """);
 
         assertFalse(prepareAndApply(manager));
-        assertEquals(List.of("emote:idle\\..*"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
+        assertEquals(List.of(".*:idle\\..*"), manager.getAccessConfig().permissions().getFirst().idle().orElseThrow().emote());
     }
 
     @Test
@@ -533,7 +507,7 @@ class ConfigManagerTest {
         assertFalse(prepareAndApply(manager));
         AccessConfig.IdleSettings idle = manager.getAccessConfig().permissions().getFirst().idle().orElseThrow();
         assertEquals(3 * 60 * 20, idle.delayTicks());
-        assertEquals(List.of("emote:idle\\..*"), idle.emote());
+        assertEquals(List.of(".*:idle\\..*"), idle.emote());
     }
 
     private static boolean prepareAndApply(ConfigManager manager) {

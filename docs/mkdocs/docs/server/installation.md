@@ -17,14 +17,14 @@ Place Emote JSON exported by the web converter under `emote/`.
 
 ```text
 emote/
-├── default/
-│   ├── wave.json
-│   └── dance.json
-└── idle/
-    ├── emote.idle_butterfly.json
-    ├── emote.idle_flower.json
-    ├── emote.idle_sky.json
-    └── emote.sit.json
+└── sit/
+    ├── sit.idle_butterfly.json
+    ├── sit.idle_flower.json
+    ├── sit.idle_sky.json
+    ├── sit.sit_down.json
+    ├── sit.stand_up1.json
+    ├── sit.stand_up2.json
+    └── sit.sit.json
 ```
 
 The directory is scanned recursively, so file location within it does not matter.<br>

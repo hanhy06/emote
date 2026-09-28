@@ -1,29 +1,32 @@
-import type { RuntimeNode, RuntimeNodeTracks } from "../../domain/minecraftData";
-import type { EmoteVectorKeyframe, MolangScalar } from "../../format/emoteAnimation";
-import { formatMinecraftTime } from "../../format/time";
-import type { ImportedAnimation } from "../../domain/conversionSeed";
+import type { RuntimeNode, RuntimeNodeTracks, RuntimeScalar, RuntimeVectorKeyframe } from "../../domain/minecraftData";
+import type { AnimationRuntimeData } from "../../domain/runtimeProjection";
+import { TICKS_PER_SECOND } from "../../format/time";
 import { bedrockPositionToCanonical, bedrockRotationToCanonical } from "./coordinateSpace";
 import { affineMolang, isolateMolangAxis, negateMolang, type MolangVector } from "../common/molangVector";
 import type { BedrockAnimation, BedrockChannel, BedrockExpression, BedrockKeyframe, BedrockKeyframeValue, BedrockVector } from "./bedrockAnimationSchema";
-import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { BEDROCK_PLAYER_BONES, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_SLICES, BEDROCK_RUNTIME_SCENE_ID, resolveBedrockPlayerBone } from "./bedrockPlayerRig";
+import { rewriteMolangIdentifiers } from "../../format/molang/sourceTransformer";
+import { bedrockChannelHasExpressions, evaluateBedrockChannel, type BedrockSamplePlan } from "./bedrockAnimationBaker";
 
 const ZERO: readonly [number, number, number] = [0, 0, 0];
 const ONE: readonly [number, number, number] = [1, 1, 1];
 
 export function createBedrockRuntime(
   animation: BedrockAnimation,
-  durationTicks: number,
   playbackRate: number | null,
   startDelayTicks: number,
-): NonNullable<ImportedAnimation["runtime"]> {
+  durationTicks: number,
+  samplePlan?: BedrockSamplePlan,
+): Omit<Extract<AnimationRuntimeData, { kind: "native" }>, "kind"> {
   const timelineRate = playbackRate ?? 1;
   const nodes: Record<string, RuntimeNode> = {
-    bedrock_scene: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
+    [BEDROCK_RUNTIME_SCENE_ID]: { type: "anchor", space: "initiator", transform: { position: ZERO, rotation: ZERO, scale: [BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE, BEDROCK_PLAYER_RENDER_SCALE] } },
   };
   const tracks: Record<string, RuntimeNodeTracks> = {};
+  const editorNodeByRuntimeNode: Record<string, string> = {};
   for (const bone of BEDROCK_PLAYER_BONES) {
     const source = Object.entries(animation.bones ?? {}).find(([name]) => resolveBedrockPlayerBone(name)?.id === bone.id)?.[1];
-    const parent = bone.parent ? `${bone.parent}_x` : "bedrock_scene";
+    const parent = bone.parent ? `${bone.parent}_x` : BEDROCK_RUNTIME_SCENE_ID;
     const parentPivot = BEDROCK_PLAYER_BONES.find((candidate) => candidate.id === bone.parent)?.pivot ?? ZERO;
     const basePosition = bedrockPositionToCanonical(
       bone.pivot.map((value, axis) => value - parentPivot[axis]),
@@ -38,14 +41,15 @@ export function createBedrockRuntime(
         parent: `${bone.id}_x`,
         transform: { position: ZERO, rotation: ZERO, scale: ONE },
         itemStack: { id: "minecraft:player_head", count: 1 },
-        item_display: "none",
+        itemDisplay: "none",
       };
+      editorNodeByRuntimeNode[slice.id] = slice.id;
     }
     if (!source) continue;
-    const position = convertChannel(source.position, basePosition, timelineRate, playbackRate, startDelayTicks, (values) =>
+    const position = convertChannel(source.position, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) =>
       bedrockPositionToCanonical(values, negateMolang).map((value, axis) => affineMolang(value, 1 / 16, basePosition[axis])) as MolangVector);
-    const rotation = convertChannel(source.rotation, ZERO, timelineRate, playbackRate, startDelayTicks, (values) => bedrockRotationToCanonical(values, negateMolang));
-    const scale = convertChannel(source.scale, ONE, timelineRate, playbackRate, startDelayTicks, (values) => values);
+    const rotation = convertChannel(source.rotation, ZERO, ZERO, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => bedrockRotationToCanonical(values, negateMolang));
+    const scale = convertChannel(source.scale, ONE, ONE, timelineRate, playbackRate, startDelayTicks, durationTicks, samplePlan, (values) => values);
     if (position) tracks[`${bone.id}_z`] = { position };
     if (rotation) {
       tracks[`${bone.id}_z`] = { ...tracks[`${bone.id}_z`], rotation: isolateMolangAxis(rotation, 2) };
@@ -62,33 +66,66 @@ export function createBedrockRuntime(
           : `v.bedrock_anim_time = q.anim_time < ${startDelayTicks / 20} ? 0 : (${rewriteProgramExpression(animation.anim_time_update)});`,
       }
     : undefined;
-  return { ...(molang ? { molang } : {}), nodes, timeline: { duration: formatMinecraftTime(durationTicks), tracks } };
+  return {
+    ...(molang ? { molang } : {}),
+    nodes,
+    tracks,
+    bindings: {
+      editorNodeByRuntimeNode,
+      editorSpaceGroupByRuntimeRoot: { [BEDROCK_RUNTIME_SCENE_ID]: BEDROCK_RUNTIME_SCENE_ID },
+    },
+  };
 }
 
 function convertChannel(
   channel: BedrockChannel | undefined,
-  fallback: readonly [number, number, number],
+  sourceFallback: readonly [number, number, number],
+  runtimeFallback: readonly [number, number, number],
   timelineRate: number,
   expressionRate: number | null,
   startDelayTicks: number,
+  durationTicks: number,
+  samplePlan: BedrockSamplePlan | undefined,
   transform: (values: MolangVector) => MolangVector,
-): EmoteVectorKeyframe[] | undefined {
+): RuntimeVectorKeyframe[] | undefined {
   if (channel === undefined) return undefined;
+  if (!bedrockChannelHasExpressions(channel)) {
+    const baked = Array.from({ length: durationTicks + 1 }, (_, tick): RuntimeVectorKeyframe => {
+      const animationTick = tick - startDelayTicks;
+      const sourceTime = animationTick < 0 ? animationTick / TICKS_PER_SECOND * timelineRate : samplePlan?.sourceTimes.get(animationTick) ?? animationTick / TICKS_PER_SECOND * timelineRate;
+      return {
+        tick,
+        value: transform((animationTick < 0 ? [...sourceFallback] : evaluateBedrockChannel(channel, sourceTime, [...sourceFallback], "runtime")) as MolangVector),
+        ...(tick < durationTicks ? { interpolation: tick < startDelayTicks || samplePlan?.stepTicks.has(animationTick + 1) ? "step" : "linear" } : {}),
+      };
+    });
+    if (startDelayTicks > 1) baked.splice(1, startDelayTicks - 1);
+    while (baked.length > 1 && sameVectorValue(baked.at(-2)!, baked.at(-1)!)) baked.pop();
+    return withoutLastInterpolation(baked);
+  }
   if (!isKeyframed(channel)) {
-    const result: EmoteVectorKeyframe[] = [{ time: formatMinecraftTime(startDelayTicks), value: transform(vector(channel, expressionRate, startDelayTicks)) }];
-    if (startDelayTicks > 0) result.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
+    const result: RuntimeVectorKeyframe[] = [{ tick: startDelayTicks, value: transform(vector(channel, expressionRate, startDelayTicks)) }];
+    if (startDelayTicks > 0) result.unshift({ tick: 0, value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
     return result;
   }
-  const result: EmoteVectorKeyframe[] = Object.entries(channel).sort(([first], [second]) => Number(first) - Number(second)).map(([time, keyframe]) => {
+  const result: RuntimeVectorKeyframe[] = Object.entries(channel).sort(([first], [second]) => Number(first) - Number(second)).map(([time, keyframe]) => {
     const tick = startDelayTicks + Math.max(0, Math.round(Number(time) / timelineRate * 20));
-    if (!isKeyframeValue(keyframe)) return { time: formatMinecraftTime(tick), value: transform(vector(keyframe, expressionRate, startDelayTicks)) };
+    if (!isKeyframeValue(keyframe)) return { tick, value: transform(vector(keyframe, expressionRate, startDelayTicks)) };
     const pre = keyframe.pre ?? keyframe.post;
     const post = keyframe.post ?? keyframe.pre;
-    return { time: formatMinecraftTime(tick), pre: transform(vector(pre!, expressionRate, startDelayTicks)), post: transform(vector(post!, expressionRate, startDelayTicks)) };
+    return { tick, pre: transform(vector(pre!, expressionRate, startDelayTicks)), post: transform(vector(post!, expressionRate, startDelayTicks)) };
   });
-  const unique: EmoteVectorKeyframe[] = [...new Map(result.map((frame) => [frame.time, frame])).values()];
-  if (unique[0]?.time !== "0t") unique.unshift({ time: "0t", value: transform([...fallback] as MolangVector), interpolation: "step" });
-  return unique.map((frame, index) => index + 1 < unique.length ? { ...frame, interpolation: frame.interpolation ?? "linear" } : frame);
+  const unique: RuntimeVectorKeyframe[] = [...new Map(result.map((frame) => [frame.tick, frame])).values()];
+  if (unique[0]?.tick !== 0) unique.unshift({ tick: 0, value: transform([...runtimeFallback] as MolangVector), interpolation: "step" });
+  return withoutLastInterpolation(unique.map((frame) => ({ ...frame, interpolation: frame.interpolation ?? "linear" })));
+}
+
+function withoutLastInterpolation(frames: RuntimeVectorKeyframe[]): RuntimeVectorKeyframe[] {
+  return frames.map((frame, index) => index + 1 < frames.length ? frame : (({ interpolation: _, easing: __, ...last }) => last)(frame));
+}
+
+function sameVectorValue(first: RuntimeVectorKeyframe, second: RuntimeVectorKeyframe): boolean {
+  return first.value !== undefined && second.value !== undefined && first.value.every((value, axis) => value === second.value![axis]);
 }
 
 function vector(value: BedrockVector, playbackRate: number | null, startDelayTicks: number): MolangVector {
@@ -97,17 +134,24 @@ function vector(value: BedrockVector, playbackRate: number | null, startDelayTic
   return expanded.map((entry) => rewriteExpression(entry, playbackRate, startDelayTicks)) as MolangVector;
 }
 
-function rewriteExpression(value: BedrockExpression, playbackRate: number | null, startDelayTicks: number): MolangScalar {
+function rewriteExpression(value: BedrockExpression, playbackRate: number | null, startDelayTicks: number): RuntimeScalar {
   if (typeof value !== "string") return value;
-  if (playbackRate === null) return value.trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
+  if (playbackRate === null) return rewriteMolangIdentifiers(value.trim(), (identifier) => isQuery(identifier, "anim_time") ? "v.bedrock_anim_time" : undefined);
   const animationTime = startDelayTicks === 0 ? "q.anim_time" : `(math.max(0, q.anim_time - ${startDelayTicks / 20}))`;
-  return value.trim()
-    .replace(/(?:q|query)\.anim_time\b/gi, playbackRate === 1 ? animationTime : `(${animationTime} * ${playbackRate})`)
-    .replace(/(?:q|query)\.delta_time\b/gi, playbackRate === 1 ? "q.delta_time" : `(q.delta_time * ${playbackRate})`);
+  return rewriteMolangIdentifiers(value.trim(), (identifier) => {
+    if (isQuery(identifier, "anim_time")) return playbackRate === 1 ? animationTime : `(${animationTime} * ${playbackRate})`;
+    if (isQuery(identifier, "delta_time")) return playbackRate === 1 ? "q.delta_time" : `(q.delta_time * ${playbackRate})`;
+    return undefined;
+  });
 }
 
 function rewriteProgramExpression(value: BedrockExpression): string {
-  return String(value).trim().replace(/(?:q|query)\.anim_time\b/gi, "v.bedrock_anim_time");
+  return rewriteMolangIdentifiers(String(value).trim(), (identifier) => isQuery(identifier, "anim_time") ? "v.bedrock_anim_time" : undefined);
+}
+
+function isQuery(identifier: string, name: string): boolean {
+  const normalized = identifier.toLowerCase();
+  return normalized === `q.${name}` || normalized === `query.${name}`;
 }
 
 function isKeyframed(channel: BedrockChannel): channel is Record<string, BedrockKeyframe> {

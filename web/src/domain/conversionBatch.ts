@@ -1,13 +1,16 @@
 import { ConversionError } from "../foundation/diagnostics";
 import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocation";
+import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
-import type { RuntimeNode, RuntimeTimeline } from "./minecraftData";
 import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
-import type { ImportedAnimation, ImportedNodeTrack } from "./conversionSeed";
+import { remapAnimationRuntimeData, remapImportedAnimationEvents, remapPreviewProjection } from "./importedAnimationRemapper";
+import { remapEditorNodeBinding } from "./nodeBindings";
+import type { ImportedSequence, SequenceAnimationStep, SequenceStep } from "./emoteDefinition";
 
-export function combineConversionDocuments(documents: readonly ConversionDocument[]): ConversionDocument {
+export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
-  if (documents.length === 1) return documents[0];
+  if (importedSequences.length > 1) throw new ConversionError("multiple_sequences", "Open at most one sequence at a time.");
+  if (documents.length === 1) return applyImportedSequence(documents[0], importedSequences[0]);
 
   const nodes: Record<string, ConversionNode> = {};
   const skinGroups: Record<string, SkinGroup> = {};
@@ -23,23 +26,29 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     for (const [id, node] of Object.entries(document.nodes)) {
       nodes[nodeId(id)] = {
         ...node,
-        ...(node.type === "item_display" && node.skinGroupId ? { skinGroupId: groupId(node.skinGroupId) } : {}),
-        ...(node.spaceAssignmentGroup ? { spaceAssignmentGroup: groupId(node.spaceAssignmentGroup) } : {}),
+        binding: remapEditorNodeBinding(node.binding, { editorNodeId: nodeId, editorGroupId: groupId }),
       };
     }
     for (const [id, group] of Object.entries(document.skinGroups)) {
       skinGroups[groupId(id)] = { ...group, nodeIds: group.nodeIds.map(nodeId) };
     }
     animations.push(...document.animations.map((animation) => {
-      const source = remapAnimation(animation.source, nodeId);
-      source.id = uniqueAnimationId(animation.output.namespace, source.id, animationIds);
-      return { ...animation, nodeIds: animation.nodeIds.map(nodeId), source };
+      const ids = { editorNodeId: nodeId, runtimeNodeId: nodeId, editorGroupId: groupId };
+      const id = uniqueAnimationId(animation.output.namespace, animation.source.id, animationIds);
+      return {
+        ...animation,
+        nodeIds: animation.nodeIds.map(nodeId),
+        source: { ...animation.source, id },
+        preview: remapPreviewProjection(animation.preview, ids),
+        runtime: { ...animation.runtime, id, data: remapAnimationRuntimeData(animation.runtime.data, ids) },
+        events: remapImportedAnimationEvents(animation.events, nodeId),
+      };
     }));
     if (index > 0) mergeResources(resources, document.resources);
   });
 
   const first = documents[0];
-  return {
+  return applyImportedSequence({
     ...first,
     origin: {
       ...first.origin,
@@ -52,7 +61,49 @@ export function combineConversionDocuments(documents: readonly ConversionDocumen
     sequence: { ...first.sequence, namespace: "emote" },
     diagnostics: documents.flatMap((document) => document.diagnostics),
     resources,
+  }, importedSequences[0]);
+}
+
+function applyImportedSequence(document: ConversionDocument, sequence: ImportedSequence | undefined): ConversionDocument {
+  if (!sequence) return document;
+  const animationIds = new Set<string>();
+  for (const animation of document.animations) {
+    const id = animation.source.sourceReferenceId;
+    if (!id) continue;
+    if (animationIds.has(id)) throw new ConversionError("duplicate_source_animation_id", `Multiple imported animations use the same id: ${id}`, id);
+    animationIds.add(id);
+  }
+  if (animationIds.has(sequence.id)) {
+    throw new ConversionError("duplicate_emote_id", `Animation and sequence use the same id: ${sequence.id}`, sequence.id);
+  }
+  for (const id of sequenceAnimationReferences(sequence.steps)) {
+    if (!animationIds.has(id)) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that was not opened: ${id}`, id);
+  }
+  const separator = sequence.id.indexOf(":");
+  return {
+    ...document,
+    targetMinecraftVersion: sequence.targetMinecraftVersion && Object.hasOwn(MINECRAFT_VERSION_PROFILES, sequence.targetMinecraftVersion)
+      ? sequence.targetMinecraftVersion : document.targetMinecraftVersion,
+    sequence: {
+      namespace: sequence.id.slice(0, separator),
+      idPath: sequence.id.slice(separator + 1),
+      displayName: sequence.metadata.name,
+      description: sequence.metadata.description,
+      additionalMetadata: Object.fromEntries(Object.entries(sequence.metadata).filter(([key]) => key !== "name" && key !== "description")),
+      cooldown: sequence.cooldown,
+      player: sequence.player,
+      sourceReferenceId: sequence.id,
+      steps: sequence.steps,
+    },
   };
+}
+
+function sequenceAnimationReferences(steps: readonly SequenceStep[]): string[] {
+  return steps.flatMap((step) => "wait" in step ? [] : animationStepReferences(step));
+}
+
+function animationStepReferences(step: SequenceAnimationStep): string[] {
+  return typeof step.emote === "string" ? [step.emote] : step.emote.map((choice) => choice.id);
 }
 
 function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<string>): string {
@@ -61,38 +112,6 @@ function uniqueAnimationId(namespace: string, sourceId: string, usedIds: Set<str
   while (usedIds.has(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`)) id = `${sourceId}_${suffix++}`;
   usedIds.add(`${sanitizeNamespace(namespace)}:${sanitizeResourcePath(id)}`);
   return id;
-}
-
-function remapAnimation(animation: ImportedAnimation, nodeId: (id: string) => string): ImportedAnimation {
-  return {
-    ...animation,
-    tracks: remapTracks(animation.tracks, nodeId),
-    ...(animation.preview ? {
-      preview: { ...animation.preview, tracks: remapTracks(animation.preview.tracks, nodeId) },
-    } : {}),
-    ...(animation.runtime ? {
-      runtime: {
-        ...animation.runtime,
-        nodes: remapRuntimeNodes(animation.runtime.nodes, nodeId),
-        timeline: remapRuntimeTimeline(animation.runtime.timeline, nodeId),
-      },
-    } : {}),
-  };
-}
-
-function remapTracks(tracks: Record<string, ImportedNodeTrack>, nodeId: (id: string) => string): Record<string, ImportedNodeTrack> {
-  return Object.fromEntries(Object.entries(tracks).map(([id, track]) => [nodeId(id), track]));
-}
-
-function remapRuntimeNodes(nodes: Record<string, RuntimeNode>, nodeId: (id: string) => string): Record<string, RuntimeNode> {
-  return Object.fromEntries(Object.entries(nodes).map(([id, node]) => [
-    nodeId(id),
-    node.parent ? { ...node, parent: nodeId(node.parent) } : node,
-  ]));
-}
-
-function remapRuntimeTimeline(timeline: RuntimeTimeline, nodeId: (id: string) => string): RuntimeTimeline {
-  return { ...timeline, tracks: Object.fromEntries(Object.entries(timeline.tracks).map(([id, track]) => [nodeId(id), track])) };
 }
 
 function mergeResources(target: Map<string, GeneratedResource>, source: ReadonlyMap<string, GeneratedResource>): void {

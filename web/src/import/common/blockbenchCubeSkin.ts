@@ -74,7 +74,7 @@ export function cubePlayerHeadMatrix(cube: BbCube, bone: BoneEntry, transforms: 
   const jointSide = parseSplitSkinCube(cube.uuid)?.jointSide;
   const part = jointSide ? inferSkinPart(bone) : undefined;
   const conversion = jointSide && part ? humanoidJointFillMatrix(fit, part, jointSide) : fit;
-  return matrix4ToRowMajor(conversion, `GeckoLib cube ${cube.name ?? cube.uuid} player head conversion`);
+  return matrix4ToRowMajor(conversion, `Blockbench cube ${cube.name ?? cube.uuid} player head conversion`);
 }
 
 function removeDuplicateSkinLayers(cubes: BbCube[]): BbCube[] {
