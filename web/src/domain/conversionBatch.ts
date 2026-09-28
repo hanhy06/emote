@@ -5,7 +5,7 @@ import type { GeneratedResource } from "./generatedResource";
 import type { ConversionAnimation, ConversionDocument, ConversionNode, SkinGroup } from "./conversionDocument";
 import { remapAnimationRuntimeData, remapImportedAnimationEvents, remapPreviewProjection } from "./importedAnimationRemapper";
 import { remapEditorNodeBinding } from "./nodeBindings";
-import type { ImportedSequence, SequenceAnimationStep, SequenceStep } from "./emoteDefinition";
+import { isSequenceControlId, type ImportedSequence, type SequenceAnimationStep, type SequenceStep } from "./emoteDefinition";
 
 export function combineConversionDocuments(documents: readonly ConversionDocument[], importedSequences: readonly ImportedSequence[] = []): ConversionDocument {
   if (documents.length === 0) throw new ConversionError("empty_import", "No animation projects were imported.");
@@ -77,6 +77,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
     throw new ConversionError("duplicate_emote_id", `Animation and sequence use the same id: ${sequence.id}`, sequence.id);
   }
   for (const id of sequenceAnimationReferences(sequence.steps)) {
+    if (isSequenceControlId(id)) continue;
     if (!animationIds.has(id)) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that was not opened: ${id}`, id);
   }
   const separator = sequence.id.indexOf(":");
