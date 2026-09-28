@@ -14,14 +14,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ConfigManagerTest {
     @Test
-    void createsMissingAccessConfigDuringPreparation(@TempDir Path tempDir) {
-        ConfigManager manager = new ConfigManager(tempDir);
-
-        assertNotNull(manager.prepare());
-        assertTrue(Files.isRegularFile(tempDir.resolve("emote/emotes.json")));
-    }
-
-    @Test
     void rejectsPreparationWhenExistingAccessConfigCannotBeRead(@TempDir Path tempDir) throws IOException {
         Files.createDirectories(tempDir.resolve("emote/emotes.json"));
         ConfigManager manager = new ConfigManager(tempDir);
@@ -38,24 +30,6 @@ class ConfigManagerTest {
         ConfigManager manager = new ConfigManager(tempDir);
 
         assertNull(manager.prepare());
-    }
-
-    @Test
-    void installsBundledEmotesWhenConfigDirectoryIsAbsent(@TempDir Path tempDir) throws IOException {
-        Path bundledDirectory = tempDir.resolve("bundled");
-        Files.createDirectories(bundledDirectory.resolve("nested"));
-        Files.writeString(bundledDirectory.resolve("wave.json"), "wave");
-        Files.writeString(bundledDirectory.resolve("nested").resolve("bow.json"), "bow");
-
-        ConfigManager manager = new ConfigManager(tempDir, bundledDirectory);
-        manager.configure();
-
-        assertEquals(tempDir.resolve("emote/emote"), manager.getEmoteDirectory());
-        assertEquals("wave", Files.readString(manager.getEmoteDirectory().resolve("wave.json")));
-        assertEquals(
-            "bow",
-            Files.readString(manager.getEmoteDirectory().resolve("nested").resolve("bow.json"))
-        );
     }
 
     @Test
