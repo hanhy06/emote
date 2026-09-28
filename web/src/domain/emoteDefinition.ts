@@ -31,3 +31,7 @@ export interface SequenceWeightedChoice {
 export interface SequenceWaitStep {
   wait: string;
 }
+
+export function isSequenceControlId(id: string): boolean {
+  return id === "emote:break" || id === "emote:continue";
+}
