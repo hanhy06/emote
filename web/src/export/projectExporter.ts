@@ -5,7 +5,7 @@ import { sanitizeNamespace, sanitizeResourcePath } from "../format/resourceLocat
 import { serializeEmoteAnimation } from "../format/serializer";
 import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import type { ExportResult } from "./types";
-import type { SequenceAnimationStep, SequenceStep } from "../domain/emoteDefinition";
+import { isSequenceControlId, type SequenceAnimationStep, type SequenceStep } from "../domain/emoteDefinition";
 import { ConversionError } from "../foundation/diagnostics";
 
 export function exportDocumentAnimation(document: ConversionDocument, animationIndex: number): ExportResult {
@@ -118,6 +118,7 @@ function flattenSequenceChoices(step: SequenceAnimationStep, outputIdBySourceId:
 }
 
 function requireRemappedAnimationId(sourceId: string, outputIdBySourceId: ReadonlyMap<string, string>): string {
+  if (isSequenceControlId(sourceId)) return sourceId;
   const outputId = outputIdBySourceId.get(sourceId);
   if (!outputId) throw new ConversionError("missing_sequence_animation", `Sequence references an animation that is not in the document: ${sourceId}`, sourceId);
   return outputId;
