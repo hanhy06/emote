@@ -10,6 +10,8 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
 import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
@@ -320,6 +322,70 @@ class PlaybackSessionTest {
         assertEquals(definitions, prepared.compiledAnimation().animation().callbacks());
         assertEquals(definitions, prepared.compileMatch(new java.util.Random(0)).animation().callbacks());
         assertEquals(definitions, prepared.compileTimeout(new java.util.Random(0)).animation().callbacks());
+    }
+
+    @Test
+    void repeatedAnimationsKeepIndependentStateAndCloseBeforeTheNextStart() {
+        PreparedAnimation template = PreparedAnimationFixture.create("test:repeated", "Repeated");
+        EmoteAnimation source = template.animation();
+        var event = new EmoteAnimation.Event(
+            new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
+        var stop = new EmoteAnimation.Event(event.source(), event.origin(), List.of("stop-command"));
+        var animation = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
+            new EmoteAnimation.Timeline(2, Map.of(), new EmoteAnimation.Events(List.of(event), List.of(), List.of(), List.of(stop))),
+            List.of(new EmoteAnimation.Callback(Identifier.parse("test:animation"), "node")));
+        PreparedAnimation repeated = PreparedAnimation.from(new LoadedAnimation(Path.of("repeated.json"), "test", animation));
+        EmoteSequence sequence = new EmoteSequence(Path.of("sequence.json"), Identifier.parse("test:sequence"), source.metadata(),
+            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()), null,
+            List.of(new EmoteSequence.EmoteStep(source.id(), 2)), List.of());
+        PreparedAnimation compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledAnimation();
+        List<String> calls = new ArrayList<>();
+        List<PlaybackContext> contexts = new ArrayList<>();
+        AnimationPlayer player = new AnimationPlayer(compiled, new EmptyTimelineTarget());
+        player.bindEvents(command -> calls.addAll(command.event().commands()));
+        player.start();
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, compiled.id(), compiled.id(),
+            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
+            sequence.settings().player(), participant(ParticipantRole.INITIATOR), null);
+        var callbacks = new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                contexts.add(context);
+                context.setUserState(new Object());
+                calls.add("start:" + context.animationTick() + ":" + context.elapsedTicks());
+            }
+            public void onTick(PlaybackContext context) {
+                assertNotNull(context.userState());
+                calls.add("tick:" + context.animationTick() + ":" + context.elapsedTicks());
+            }
+            public void onClose(PlaybackContext context) {
+                assertNotNull(context.userState());
+                calls.add("close:" + context.animationTick() + ":" + context.stopReason().orElseThrow());
+            }
+        };
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) { context.setUserState("root"); }
+            public void onTick(PlaybackContext context) { assertEquals("root", context.userState()); }
+            public void onClose(PlaybackContext context) { calls.add("root-close"); }
+        }, "")), 100);
+        session.bindAnimationCallbacks(Map.of(repeated, List.of(new CallbackRegistry.Binding(callbacks, "node"))));
+        session.startCallbacks();
+        player.startEvents();
+        for (int tick = 1; tick <= 4; tick++) {
+            assertTrue(session.tick(100 + tick));
+            player.advance();
+            session.tickCallbacks();
+        }
+        assertTrue(session.beginClose(PlaybackStopReason.FINISHED));
+        player.stop(PlaybackStopReason.FINISHED);
+        session.closeCallbacks();
+        session.completeClose();
+        assertEquals(List.of("start-command", "start:0:0", "tick:1:1", "tick:2:2", "stop-command", "close:2:FINISHED",
+            "start-command", "start:0:0", "tick:1:1", "tick:2:2", "stop-command", "close:2:FINISHED", "root-close"), calls);
+        assertEquals(2, contexts.size());
+        assertNotSame(contexts.get(0), contexts.get(1));
+        assertNull(contexts.get(0).userState());
+        assertNull(contexts.get(1).userState());
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {

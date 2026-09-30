@@ -8,6 +8,7 @@ import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -27,6 +28,8 @@ import java.util.function.Consumer;
 public final class PlaybackSession {
     private final UUID sessionId;
     private List<Context> callbackContexts = List.of();
+    private List<Context> animationCallbackContexts = List.of();
+    private Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = Map.of();
     private PlaybackState playbackState = PlaybackState.RUNNING;
     private @Nullable PlaybackStopReason stopReason;
     private long elapsedTicks;
@@ -35,6 +38,38 @@ public final class PlaybackSession {
     private boolean invokingCallback;
     private boolean callbacksClosed;
     private @Nullable Runnable deferredCleanup;
+    private final AnimationPlayer.LifecycleListener animationLifecycle = new AnimationPlayer.LifecycleListener() {
+        public void onStart(PreparedAnimation animation) {
+            animationCallbackContexts = animationBindings.getOrDefault(animation, List.of()).stream()
+                .map(binding -> new Context(binding, true)).toList();
+            if (callbacksStarted) startAnimationCallbacks();
+        }
+
+        public void onTick(int animationTick) {
+            for (Context context : animationCallbackContexts) {
+                context.localTick = animationTick;
+                if (playbackState != PlaybackState.RUNNING) break;
+                invokeCallback(context, context.binding.callbacks()::onTick);
+            }
+        }
+
+        public void onLoop() {
+            for (Context context : animationCallbackContexts) {
+                if (playbackState != PlaybackState.RUNNING) break;
+                invokeCallback(context, context.binding.callbacks()::onLoop);
+            }
+        }
+
+        public void onClose(PlaybackStopReason reason) {
+            List<Context> contexts = animationCallbackContexts;
+            animationCallbackContexts = List.of();
+            for (Context context : contexts) {
+                context.closeReason = reason;
+                closeCallback(context);
+                context.userState = null;
+            }
+        }
+    };
     private final ResourceKey<Level> levelKey;
     private final String id;
     private final String animationId;
@@ -99,9 +134,14 @@ public final class PlaybackSession {
     }
 
     public void bindCallbacks(List<CallbackRegistry.Binding> bindings, long serverTick) {
-        this.callbackContexts = bindings.stream().map(Context::new).toList();
+        this.callbackContexts = bindings.stream().map(binding -> new Context(binding, false)).toList();
         this.lastServerTick = serverTick;
         this.animation.bindLoopListener(this::loopCallbacks);
+        this.animation.bindLifecycleListener(this.animationLifecycle);
+    }
+
+    public void bindAnimationCallbacks(Map<PreparedAnimation, List<CallbackRegistry.Binding>> bindings) {
+        this.animationBindings = Map.copyOf(bindings);
     }
 
     public void startCallbacks() {
@@ -111,6 +151,15 @@ public final class PlaybackSession {
             context.started = true;
             invokeCallback(context, context.binding.callbacks()::onStart);
             if (this.playbackState != PlaybackState.RUNNING) break;
+        }
+        startAnimationCallbacks();
+    }
+
+    private void startAnimationCallbacks() {
+        for (Context context : this.animationCallbackContexts) {
+            if (this.playbackState != PlaybackState.RUNNING) break;
+            context.started = true;
+            invokeCallback(context, context.binding.callbacks()::onStart);
         }
     }
 
@@ -169,13 +218,18 @@ public final class PlaybackSession {
     public void closeCallbacks() {
         if (this.playbackState != PlaybackState.CLOSING || this.callbacksClosed) return;
         this.callbacksClosed = true;
+        this.animationLifecycle.onClose(this.stopReason);
         for (Context context : this.callbackContexts) {
-            if (!context.started) continue;
-            try {
-                context.binding.callbacks().onClose(context);
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
-            }
+            closeCallback(context);
+        }
+    }
+
+    private void closeCallback(Context context) {
+        if (!context.started) return;
+        try {
+            invokeCallback(context, context.binding.callbacks()::onClose);
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
         }
     }
 
@@ -186,19 +240,27 @@ public final class PlaybackSession {
 
     private final class Context implements PlaybackContext {
         private final CallbackRegistry.Binding binding;
+        private final boolean animationScoped;
+        private final long startTick;
+        private int localTick;
+        private @Nullable PlaybackStopReason closeReason;
         private boolean started;
         private @Nullable Object userState;
 
-        private Context(CallbackRegistry.Binding binding) { this.binding = binding; }
+        private Context(CallbackRegistry.Binding binding, boolean animationScoped) {
+            this.binding = binding;
+            this.animationScoped = animationScoped;
+            this.startTick = PlaybackSession.this.elapsedTicks;
+        }
         public String payload() { return this.binding.payload(); }
 
         public UUID sessionId() { return PlaybackSession.this.sessionId; }
         public MinecraftServer server() { return EmoteMod.SERVER; }
         public ServerLevel level() { return Objects.requireNonNull(server().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
-        public long elapsedTicks() { return PlaybackSession.this.elapsedTicks; }
-        public int animationTick() { return PlaybackSession.this.animation.currentTick(); }
+        public long elapsedTicks() { return PlaybackSession.this.elapsedTicks - this.startTick; }
+        public int animationTick() { return this.animationScoped ? this.localTick : PlaybackSession.this.animation.currentTick(); }
         public Vec3 rootPosition() { return PlaybackSession.this.nodes.root().position(); }
-        public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(PlaybackSession.this.stopReason); }
+        public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(this.closeReason != null ? this.closeReason : PlaybackSession.this.stopReason); }
         public @Nullable Object userState() { return this.userState; }
         public void setUserState(@Nullable Object state) { this.userState = state; }
 
@@ -354,8 +416,10 @@ public final class PlaybackSession {
     }
 
     private void replaceAnimation(AnimationPlayer animation, State state) {
+        this.animation.stop(PlaybackStopReason.FINISHED);
         this.animation = Objects.requireNonNull(animation, "animation");
         this.animation.bindLoopListener(this::loopCallbacks);
+        this.animation.bindLifecycleListener(this.animationLifecycle);
         this.state = Objects.requireNonNull(state, "state");
     }
 

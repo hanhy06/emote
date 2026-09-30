@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -36,6 +37,8 @@ public final class AnimationPlayer {
     private boolean eventsStarted;
     private boolean eventsStopped;
     private Runnable loopListener = () -> {};
+    private LifecycleListener lifecycleListener = new LifecycleListener() {};
+    private int lifecycleSegment = -1;
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
         this(emote, target, PlayerMolangQueries.EMPTY);
@@ -126,11 +129,19 @@ public final class AnimationPlayer {
         this.loopListener = Objects.requireNonNull(listener, "listener");
     }
 
+    public void bindLifecycleListener(LifecycleListener listener) {
+        this.lifecycleListener = Objects.requireNonNull(listener, "listener");
+    }
+
     public void startEvents() {
         if (this.eventsStarted) {
             throw new IllegalStateException("Events already started");
         }
         this.eventsStarted = true;
+        if (!this.emote.playbackSegments().isEmpty()) {
+            startSegmentEvents();
+            return;
+        }
         if (this.emote.playbackSegments().isEmpty()) {
             execute(
                 this.animation.timeline().events().start(),
@@ -149,6 +160,7 @@ public final class AnimationPlayer {
     }
 
     public AdvanceResult advance(boolean continueAfterLoopBoundary) {
+        if (!this.emote.playbackSegments().isEmpty()) return advanceSequence();
         int previousTick = this.currentTick;
         AdvanceResult result = advanceTimeline();
         if (result != AdvanceResult.RESTARTED && this.currentTick != previousTick) {
@@ -173,6 +185,70 @@ public final class AnimationPlayer {
             execute(this.emote.timelineEvents(this.currentTick));
         }
         return result;
+    }
+
+    private AdvanceResult advanceSequence() {
+        if (this.phase == PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline has not started");
+        if (this.phase == PlaybackPhase.FINISHED || this.eventsStopped) return AdvanceResult.FINISHED;
+        this.currentTick++;
+        if (this.lifecycleSegment >= 0) {
+            PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
+            int localTick = this.currentTick - segment.startTick();
+            applySegment(this.lifecycleSegment, this.currentTick);
+            applyHiddenNodes(this.currentTick);
+            execute(segment.animation().timelineEvents(localTick));
+            if (this.eventsStopped) return AdvanceResult.FINISHED;
+            this.lifecycleListener.onTick(localTick);
+            if (this.eventsStopped) return AdvanceResult.FINISHED;
+            if (this.currentTick >= segment.endTick()) {
+                EmoteAnimation source = segment.animation().animation();
+                if (source.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
+                    || source.settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
+                    execute(source.timeline().events().loop(), source.id(), localTick, AnimationEventPhase.LOOP);
+                    if (this.eventsStopped) return AdvanceResult.FINISHED;
+                    this.lifecycleListener.onLoop();
+                    if (this.eventsStopped) return AdvanceResult.FINISHED;
+                }
+                closeSegment(PlaybackStopReason.FINISHED);
+                if (this.eventsStopped) return AdvanceResult.FINISHED;
+            }
+        }
+        if (this.lifecycleSegment < 0) {
+            applyTick(this.currentTick);
+            if (this.eventsStarted) startSegmentEvents();
+        }
+        if (this.currentTick >= this.animation.timeline().durationTicks()) {
+            this.phase = PlaybackPhase.FINISHED;
+            return AdvanceResult.FINISHED;
+        }
+        return this.eventsStopped ? AdvanceResult.FINISHED : AdvanceResult.CONTINUE;
+    }
+
+    private void startSegmentEvents() {
+        if (this.lifecycleSegment >= 0 || this.eventsStopped) return;
+        for (int index = 0; index < this.emote.playbackSegments().size(); index++) {
+            PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(index);
+            if (segment.startTick() != this.currentTick) continue;
+            this.lifecycleSegment = index;
+            EmoteAnimation source = segment.animation().animation();
+            execute(source.timeline().events().start(), source.id(), 0, AnimationEventPhase.START);
+            if (this.eventsStopped) return;
+            execute(segment.animation().timelineEvents(0));
+            if (!this.eventsStopped) this.lifecycleListener.onStart(segment.animation());
+            return;
+        }
+    }
+
+    private void closeSegment(PlaybackStopReason reason) {
+        if (this.lifecycleSegment < 0) return;
+        PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
+        this.lifecycleSegment = -1;
+        EmoteAnimation source = segment.animation().animation();
+        try {
+            execute(source.timeline().events().stop(), source.id(), this.currentTick - segment.startTick(), AnimationEventPhase.STOP);
+        } finally {
+            this.lifecycleListener.onClose(reason);
+        }
     }
 
     private AdvanceResult advanceTimeline() {
@@ -279,6 +355,10 @@ public final class AnimationPlayer {
     }
 
     public void stop() {
+        stop(PlaybackStopReason.MANUAL);
+    }
+
+    public void stop(PlaybackStopReason reason) {
         if (!this.eventsStarted || this.eventsStopped) {
             return;
         }
@@ -292,15 +372,7 @@ public final class AnimationPlayer {
             );
             return;
         }
-        PreparedAnimation.PlaybackSegment segment = activeLifecycleSegment();
-        if (segment != null) {
-            execute(
-                segment.animation().animation().timeline().events().stop(),
-                segment.animation().animation().id(),
-                this.currentTick - segment.startTick(),
-                AnimationEventPhase.STOP
-            );
-        }
+        closeSegment(reason);
     }
 
     public Transformation currentTransformation(String nodeId) {
@@ -374,7 +446,11 @@ public final class AnimationPlayer {
         if (selected < 0) {
             return;
         }
-        PreparedAnimation.PlaybackSegment segment = segments.get(selected);
+        applySegment(selected, tick);
+    }
+
+    private void applySegment(int selected, int tick) {
+        PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(selected);
         int localTick = tick - segment.startTick();
         boolean segmentChanged = selected != this.activePlaybackSegment;
         if (segmentChanged) {
@@ -499,15 +575,6 @@ public final class AnimationPlayer {
         FINISHED
     }
 
-    private PreparedAnimation.PlaybackSegment activeLifecycleSegment() {
-        for (PreparedAnimation.PlaybackSegment segment : this.emote.playbackSegments()) {
-            if (this.currentTick >= segment.startTick() && this.currentTick < segment.endTick()) {
-                return segment;
-            }
-        }
-        return null;
-    }
-
     private void execute(
         List<EmoteAnimation.Event> events,
         Identifier animationId,
@@ -529,6 +596,13 @@ public final class AnimationPlayer {
     @FunctionalInterface
     public interface EventExecutor {
         void execute(PreparedAnimation.PreparedEvent event);
+    }
+
+    public interface LifecycleListener {
+        default void onStart(PreparedAnimation animation) {}
+        default void onTick(int animationTick) {}
+        default void onLoop() {}
+        default void onClose(PlaybackStopReason reason) {}
     }
 
     public interface TimelineTarget {

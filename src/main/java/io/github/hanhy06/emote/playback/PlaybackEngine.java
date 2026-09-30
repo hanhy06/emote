@@ -186,8 +186,22 @@ public class PlaybackEngine implements ConfigListener {
         }
 
         List<CallbackRegistry.Binding> callbackBindings;
+        Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings = new HashMap<>();
         try {
             callbackBindings = this.callbackRegistry.resolve(emote.animation().callbacks());
+            for (PreparedAnimation.PlaybackSegment segment : emote.playbackSegments()) {
+                animationBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
+            }
+            if (partnerSequence != null) {
+                for (PreparedSequence.Step step : partnerSequence.playback().validationSteps()) {
+                    if (!(step instanceof PreparedSequence.EmoteStep animationStep)) continue;
+                    for (PreparedSequence.Choice choice : animationStep.candidates()) {
+                        if (choice instanceof PreparedSequence.AnimationChoice animationChoice) {
+                            animationBindings.computeIfAbsent(animationChoice.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
+                        }
+                    }
+                }
+            }
         } catch (IllegalArgumentException exception) {
             return PlayResult.failure(exception.getMessage());
         }
@@ -207,7 +221,8 @@ public class PlaybackEngine implements ConfigListener {
             roots,
             skinPreparation.preparedPlayerSkin(),
             partnerSequence,
-            callbackBindings
+            callbackBindings,
+            animationBindings
         );
     }
 
@@ -219,7 +234,8 @@ public class PlaybackEngine implements ConfigListener {
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
         @Nullable PreparedSequence partnerSequence,
-        List<CallbackRegistry.Binding> callbackBindings
+        List<CallbackRegistry.Binding> callbackBindings,
+        Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
@@ -263,6 +279,7 @@ public class PlaybackEngine implements ConfigListener {
                 partnerSequence
             );
             session.bindCallbacks(callbackBindings, EmoteMod.SERVER.getTickCount());
+            session.bindAnimationCallbacks(animationBindings);
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
             if (!notifyStarted(player, session, initiator)) {
