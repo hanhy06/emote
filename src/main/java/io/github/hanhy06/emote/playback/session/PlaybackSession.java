@@ -33,6 +33,7 @@ public final class PlaybackSession {
     private long lastServerTick;
     private boolean callbacksStarted;
     private boolean invokingCallback;
+    private boolean callbacksClosed;
     private @Nullable Runnable deferredCleanup;
     private final ResourceKey<Level> levelKey;
     private final String id;
@@ -154,10 +155,20 @@ public final class PlaybackSession {
         return true;
     }
 
+    public boolean isInvokingCallback() {
+        return this.invokingCallback;
+    }
+
     public boolean beginClose(PlaybackStopReason reason) {
         if (this.playbackState != PlaybackState.RUNNING) return false;
         this.playbackState = PlaybackState.CLOSING;
         this.stopReason = Objects.requireNonNull(reason, "reason");
+        return true;
+    }
+
+    public void closeCallbacks() {
+        if (this.playbackState != PlaybackState.CLOSING || this.callbacksClosed) return;
+        this.callbacksClosed = true;
         for (Context context : this.callbackContexts) {
             if (!context.started) continue;
             try {
@@ -166,7 +177,6 @@ public final class PlaybackSession {
                 EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
             }
         }
-        return true;
     }
 
     public void completeClose() {

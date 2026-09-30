@@ -141,6 +141,7 @@ class PlaybackSessionTest {
         assertFalse(first.tick(101));
         first.tickCallbacks();
         assertTrue(first.beginClose(PlaybackStopReason.MANUAL));
+        first.closeCallbacks();
         first.completeClose();
         assertFalse(first.beginClose(PlaybackStopReason.FINISHED));
         assertFalse(first.tick(102));
@@ -156,8 +157,13 @@ class PlaybackSessionTest {
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 calls.add("start");
+                assertTrue(session.isInvokingCallback());
+                assertTrue(session.beginClose(PlaybackStopReason.MANUAL));
+                assertEquals(PlaybackState.CLOSING, session.playbackState());
+                assertFalse(session.tick(101));
+                session.tickCallbacks();
                 assertTrue(session.deferCleanup(() -> {
-                    session.beginClose(PlaybackStopReason.MANUAL);
+                    session.closeCallbacks();
                     session.completeClose();
                 }));
                 calls.add("returned");
@@ -166,6 +172,7 @@ class PlaybackSessionTest {
         }, "")), 100);
         session.startCallbacks();
         assertEquals(List.of("start", "returned", "close"), calls);
+        assertFalse(session.isInvokingCallback());
         assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
     }
 
@@ -182,6 +189,7 @@ class PlaybackSessionTest {
             }, "")), 100);
             session.startCallbacks();
             assertTrue(session.beginClose(reason));
+            session.closeCallbacks();
             session.completeClose();
             assertFalse(session.beginClose(reason));
             assertEquals(List.of(reason), closed);
@@ -202,6 +210,7 @@ class PlaybackSessionTest {
         assertThrows(IllegalStateException.class, session::tickCallbacks);
         assertFalse(session.deferCleanup(() -> fail("Not in callback")));
         session.beginClose(PlaybackStopReason.ERROR);
+        session.closeCallbacks();
         session.completeClose();
         assertEquals(List.of(PlaybackStopReason.ERROR), closed);
     }
@@ -269,6 +278,7 @@ class PlaybackSessionTest {
         first.tick(101);
         first.tickCallbacks();
         first.beginClose(PlaybackStopReason.MANUAL);
+        first.closeCallbacks();
         first.completeClose();
         assertNull(contexts.get(0).userState());
         assertNull(contexts.get(1).userState());
@@ -285,7 +295,7 @@ class PlaybackSessionTest {
         var first = new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 calls.add("first-start");
-                session.deferCleanup(() -> { session.beginClose(PlaybackStopReason.MANUAL); session.completeClose(); });
+                session.beginClose(PlaybackStopReason.MANUAL); session.deferCleanup(() -> { session.closeCallbacks(); session.completeClose(); });
             }
             public void onClose(PlaybackContext context) { calls.add("first-close"); }
         };

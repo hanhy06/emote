@@ -4,7 +4,6 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
@@ -174,6 +173,9 @@ public class PlaybackEngine implements ConfigListener {
             return PlayResult.failure("Your previous emote is still closing.");
         }
         PlaybackSession currentSession = findActive(player.getUUID());
+        if (currentSession != null && currentSession.isInvokingCallback()) {
+            return PlayResult.failure("Cannot replace an emote from its own callback.");
+        }
         int projectedDisplayEntities = projectedDisplayEntityCount(
             activeDisplayEntityCount(),
             displayEntityCount(currentSession),
@@ -648,13 +650,22 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
-        if (session.deferCleanup(() -> cleanupSession(session, notifyListeners, reason, knownPlayer))) return;
-        if (session.playbackState() != PlaybackState.RUNNING) return;
+        if (!session.beginClose(reason)) return;
         for (PlaybackParticipant participant : session.participants()) {
             this.closingPlayers.add(participant.playerUuid());
         }
+        if (session.deferCleanup(() -> finishCleanupSession(session, notifyListeners, reason, knownPlayer))) return;
+        finishCleanupSession(session, notifyListeners, reason, knownPlayer);
+    }
+
+    private void finishCleanupSession(
+        PlaybackSession session,
+        boolean notifyListeners,
+        PlaybackStopReason reason,
+        @Nullable ServerPlayer knownPlayer
+    ) {
         try {
-            session.beginClose(reason);
+            session.closeCallbacks();
             releaseReservedPartner(session);
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
