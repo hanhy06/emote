@@ -109,7 +109,7 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     }
 
     public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlaybackParticipant participant) {
-        return session.execution().info(participant.playerUuid());
+        return session.playbackInfo(participant.playerUuid());
     }
 
     private static <T> ListenerRegistration register(CopyOnWriteArrayList<T> listeners, T listener) {

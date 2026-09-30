@@ -148,9 +148,8 @@ class ExampleCallbacksTest {
                 public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
-                public Optional<PlaybackHandle> getPlayback(UUID sessionId) { return Optional.empty(); }
-                public RuntimeRegistration registerAction(Identifier id, EmoteAction action) { throw new UnsupportedOperationException(); }
-                public TaskHandle invokeAction(UUID sessionId, Identifier id, com.google.gson.JsonObject parameters) { throw new UnsupportedOperationException(); }
+                public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
+                public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) { throw new UnsupportedOperationException(); }
                 public ListenerRegistration addPlayListener(EmotePlayListener listener) { return () -> true; }
                 public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) { return () -> true; }
                 public ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener) { return () -> true; }

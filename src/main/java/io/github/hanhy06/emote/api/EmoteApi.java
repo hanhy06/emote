@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.api;
 
-import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.resources.Identifier;
@@ -42,11 +41,9 @@ public abstract class EmoteApi {
 
     public abstract Optional<PlaybackInfo> getPlayback(ServerPlayer player);
 
-    public abstract Optional<PlaybackHandle> getPlayback(UUID sessionId);
+    public abstract Optional<PlaybackInfo> getPlayback(UUID sessionId);
 
-    public abstract RuntimeRegistration registerAction(Identifier id, EmoteAction action);
-
-    public abstract TaskHandle invokeAction(UUID sessionId, Identifier id, JsonObject parameters);
+    public abstract CallbackRegistration registerCallbacks(Identifier emoteId, EmoteCallbacks callbacks);
 
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);
 

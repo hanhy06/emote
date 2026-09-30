@@ -6,9 +6,9 @@ import org.jspecify.annotations.Nullable;
 import java.util.Objects;
 
 public sealed interface PlayResult {
-    record Success(PlaybackHandle handle) implements PlayResult {
+    record Success(PlaybackInfo playback) implements PlayResult {
         public Success {
-            Objects.requireNonNull(handle, "handle");
+            Objects.requireNonNull(playback, "playback");
         }
     }
 

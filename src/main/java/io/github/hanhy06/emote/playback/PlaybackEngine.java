@@ -48,35 +48,11 @@ public class PlaybackEngine implements ConfigListener {
     private final SceneRootResolver sceneRootResolver = new SceneRootResolver();
     private final PartnerMatcher partnerMatcher = new PartnerMatcher();
     private final RandomGenerator random = RandomGenerator.getDefault();
-    private final PlaybackExecution.Control playbackControl = new PlaybackExecution.Control() {
-        @Override
-        public void requireServerThread() {
-            if (!EmoteMod.SERVER.isSameThread()) {
-                throw new IllegalStateException("Playback mutations must run on the server thread.");
-            }
-        }
-
-        @Override
-        public void finish(PlaybackSession session) {
-            if (playbackChanged(session)) return;
-            if (!requestOutro(session, PlaybackStopReason.FINISHED)) {
-                stopIfCurrent(session, PlaybackStopReason.FINISHED);
-            }
-        }
-
-        @Override
-        public void stop(PlaybackSession session) {
-            stopIfCurrent(session, PlaybackStopReason.MANUAL);
-        }
-    };
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
-    private final RuntimeRegistry runtimeRegistry = new RuntimeRegistry(this.playbackControl::requireServerThread, execution -> {
-        PlaybackSession session = findSession(execution.sessionId());
-        if (session != null) stopIfCurrent(session, PlaybackStopReason.EMOTE_REMOVED);
-    });
+    private final CallbackRegistry callbackRegistry = new CallbackRegistry();
 
-    public RuntimeRegistry runtimeRegistry() {
-        return this.runtimeRegistry;
+    public CallbackRegistry callbackRegistry() {
+        return this.callbackRegistry;
     }
 
     public PlaybackEngine(PlayerSkinManager playerSkinManager, NamedCallbackDispatcher callbacks) {
@@ -185,7 +161,7 @@ public class PlaybackEngine implements ConfigListener {
         if (session.state() == PlaybackSession.State.WAITING) {
             activateMatched(session);
         }
-        return new PlayResult.Success(session.execution());
+        return new PlayResult.Success(session.playbackInfo(player.getUUID()));
     }
 
     private PlayResult startResolved(
@@ -278,15 +254,17 @@ public class PlaybackEngine implements ConfigListener {
                 initiator,
                 partnerSequence
             );
-            session.execution().bind(this.playbackControl, EmoteMod.SERVER.getTickCount());
+            session.bindCallbacks(this.callbackRegistry.find(net.minecraft.resources.Identifier.parse(playbackId)), EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
             if (!notifyStarted(player, session, initiator)) {
-                return new PlayResult.Success(session.execution());
+                return new PlayResult.Success(session.playbackInfo(player.getUUID()));
             }
             startedNotified = true;
+            session.startCallbacks();
+            if (playbackChanged(session)) return new PlayResult.Success(session.playbackInfo(player.getUUID()));
             session.animation().startEvents();
-            return new PlayResult.Success(session.execution());
+            return new PlayResult.Success(session.playbackInfo(player.getUUID()));
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
             if (session != null && this.sessionRegistry.remove(session)) {
@@ -402,10 +380,9 @@ public class PlaybackEngine implements ConfigListener {
             }
             if (stopReason == null) {
                 try {
-                    if (!session.execution().tick(EmoteMod.SERVER.getTickCount())) {
+                    if (!session.tick(EmoteMod.SERVER.getTickCount())) {
                         continue;
                     }
-                    session.execution().scheduler().beginTick(session.execution().info().elapsedTicks());
                     if (session.playerBehavior().stopConditions().movementDistance() == 0.0D) {
                         this.entityController.moveSceneTo(session.nodes(), player.position());
                     }
@@ -435,7 +412,7 @@ public class PlaybackEngine implements ConfigListener {
                     }
 
                     if (stopReason == null && !playbackChanged(session)) {
-                        session.execution().scheduler().tick(session.execution().info().elapsedTicks());
+                        session.tickCallbacks();
                         if (playbackChanged(session)) continue;
                         for (PlaybackParticipant participant : session.participants()) {
                             ServerPlayer participantPlayer = participant == initiator
@@ -665,13 +642,13 @@ public class PlaybackEngine implements ConfigListener {
         PlaybackStopReason reason,
         @Nullable ServerPlayer knownPlayer
     ) {
-        if (session.execution().state() == io.github.hanhy06.emote.api.PlaybackState.CLOSING
-            || session.execution().state() == io.github.hanhy06.emote.api.PlaybackState.CLOSED) return;
+        if (session.deferCleanup(() -> cleanupSession(session, notifyListeners, reason, knownPlayer))) return;
+        if (session.playbackInfo(session.initiator().playerUuid()).state() != io.github.hanhy06.emote.api.PlaybackState.RUNNING) return;
         for (PlaybackParticipant participant : session.participants()) {
             this.closingPlayers.add(participant.playerUuid());
         }
         try {
-            session.execution().beginClose(reason);
+            session.beginClose(reason);
             releaseReservedPartner(session);
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
@@ -699,7 +676,7 @@ public class PlaybackEngine implements ConfigListener {
                         this.entityController.remove(level, session.nodes());
                     }
                 } finally {
-                    session.execution().completeClose();
+                    session.completeClose();
                     for (PlaybackParticipant participant : session.participants()) {
                         this.closingPlayers.remove(participant.playerUuid());
                     }

@@ -35,6 +35,7 @@ public final class AnimationPlayer {
     private EventExecutor eventExecutor;
     private boolean eventsStarted;
     private boolean eventsStopped;
+    private Runnable loopListener = () -> {};
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
         this(emote, target, PlayerMolangQueries.EMPTY);
@@ -121,6 +122,10 @@ public final class AnimationPlayer {
         this.eventExecutor = Objects.requireNonNull(eventExecutor, "eventExecutor");
     }
 
+    public void bindLoopListener(Runnable listener) {
+        this.loopListener = Objects.requireNonNull(listener, "listener");
+    }
+
     public void startEvents() {
         if (this.eventsStarted) {
             throw new IllegalStateException("Events already started");
@@ -150,6 +155,8 @@ public final class AnimationPlayer {
             execute(this.emote.timelineEvents(this.currentTick));
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
+            this.loopListener.run();
+            if (this.eventsStopped) return AdvanceResult.FINISHED;
             execute(
                 this.animation.timeline().events().loop(),
                 this.animation.id(),

@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.server;
 
 import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.PlaybackHandleFixture;
+import io.github.hanhy06.emote.api.PlayResultFixture;
 import io.github.hanhy06.emote.config.AccessConfig;
 import org.junit.jupiter.api.Test;
 
@@ -38,7 +38,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(IDLE),
             (ignoredPlayer, ignoredId) -> {
                 playCount.incrementAndGet();
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,
@@ -83,7 +83,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(IDLE),
             (ignoredPlayer, ignoredId) -> {
                 int attempt = playCount.incrementAndGet();
-                return attempt == 1 ? PlayResult.failure("Preparing player skin.") : PlaybackHandleFixture.SUCCESS;
+                return attempt == 1 ? PlayResult.failure("Preparing player skin.") : PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,
@@ -111,7 +111,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(randomIdle),
             (ignoredPlayer, id) -> {
                 playedIds.add(id);
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,
@@ -150,7 +150,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(weightedIdle),
             (ignoredPlayer, id) -> {
                 playedIds.add(id);
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,
@@ -178,7 +178,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(patternIdle),
             (ignoredPlayer, id) -> {
                 playedIds.add(id);
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             () -> List.of("demo:wave", "demo:idle_sky"),
@@ -202,7 +202,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> resolver[0].find(ignoredPlayer),
             (ignoredPlayer, ignoredId) -> {
                 playCount.incrementAndGet();
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,
@@ -229,7 +229,7 @@ class IdlePlaybackServiceTest {
                 resolveCount.incrementAndGet();
                 return Optional.of(IDLE);
             },
-            (ignoredPlayer, ignoredId) -> PlaybackHandleFixture.SUCCESS,
+            (ignoredPlayer, ignoredId) -> PlayResultFixture.SUCCESS,
             ignoredPlayer -> false,
             clock::get,
             RandomGenerator.getDefault()
@@ -249,7 +249,7 @@ class IdlePlaybackServiceTest {
             ignoredPlayer -> Optional.of(IDLE),
             (ignoredPlayer, ignoredId) -> {
                 playCount.incrementAndGet();
-                return PlaybackHandleFixture.SUCCESS;
+                return PlayResultFixture.SUCCESS;
             },
             ignoredPlayer -> false,
             clock::get,

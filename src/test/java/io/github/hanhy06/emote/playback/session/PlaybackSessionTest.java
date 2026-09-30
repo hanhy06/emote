@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.playback.session;
 
-import com.google.gson.JsonObject;
+import io.github.hanhy06.emote.api.EmoteCallbacks;
+import io.github.hanhy06.emote.api.PlaybackContext;
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -14,8 +15,7 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
-import io.github.hanhy06.emote.playback.PlaybackExecution;
-import io.github.hanhy06.emote.playback.RuntimeRegistry;
+import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
@@ -113,122 +113,131 @@ class PlaybackSessionTest {
     }
 
     @Test
-    void handleCountsServerTicksAndFreezesWhilePaused() throws Exception {
-        PlaybackSession session = fixture(20).session();
-        PlaybackExecution execution = session.execution();
-        bindExecution(session, new PlaybackSessionRegistry());
-        assertFalse(execution.tick(100));
-        assertTrue(execution.tick(101));
-        assertFalse(execution.tick(101));
-        assertEquals(1, execution.info().elapsedTicks());
-        assertTrue(execution.pause());
-        assertEquals(PlaybackState.PAUSED, execution.state());
-        assertFalse(execution.tick(102));
-        assertTrue(execution.resume());
-        assertTrue(execution.tick(103));
-        assertEquals(2, execution.info().elapsedTicks());
-        assertEquals(session.sessionId(), new PlayResult.Success(execution).handle().sessionId());
-    }
-
-    @Test
-    void cleanupRunsOnceInReverseOrderDespiteExceptions() throws Exception {
-        PlaybackSession session = fixture(20).session();
-        bindExecution(session, new PlaybackSessionRegistry());
-        PlaybackExecution execution = session.execution();
-        List<Integer> calls = new ArrayList<>();
-        execution.onClose(() -> calls.add(1));
-        execution.onClose(() -> {
-            calls.add(2);
-            assertEquals(PlaybackState.CLOSING, execution.state());
-            assertThrows(IllegalStateException.class, () -> execution.onClose(() -> calls.add(99)));
-            assertFalse(execution.stop());
-            throw new IllegalStateException("expected cleanup failure");
-        });
-        execution.onClose(() -> calls.add(3));
-        assertTrue(execution.beginClose(PlaybackStopReason.RELOAD));
-        execution.completeClose();
-        assertFalse(execution.beginClose(PlaybackStopReason.MANUAL));
-        assertEquals(List.of(3, 2, 1), calls);
-        assertEquals(PlaybackState.CLOSED, execution.state());
-        assertEquals(PlaybackStopReason.RELOAD, execution.stopReason().orElseThrow());
-        assertFalse(execution.tick(101));
-    }
-
-    @Test
-    void oldHandleCannotStopReplacementSessionWithTheSamePlayer() throws Exception {
-        PlaybackSession original = fixture(20).session();
-        PlaybackSession replacement = new PlaybackSession(UUID.randomUUID(), original.levelKey(), original.id(),
-            original.animationId(), original.nodes(), original.animation(), original.playerBehavior(), original.initiator(), null);
-        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
-        registry.register(original);
-        bindExecution(original, registry);
-        registry.remove(original);
-        original.execution().beginClose(PlaybackStopReason.REPLACED);
-        original.execution().completeClose();
-        registry.register(replacement);
-        bindExecution(replacement, registry);
-        assertFalse(original.execution().stop());
-        assertFalse(original.execution().finish());
-        assertFalse(original.execution().pause());
-        assertSame(replacement, registry.findParticipant(original.initiator().playerUuid()));
-        assertSame(replacement, registry.findSession(replacement.sessionId()));
-        assertTrue(replacement.execution().stop());
-        assertNull(registry.findParticipant(original.initiator().playerUuid()));
-    }
-
-    @Test
-    void pausedHandleCanFinishAndRetainsItsReason() throws Exception {
-        PlaybackSession session = fixture(20).session();
-        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
-        registry.register(session);
-        bindExecution(session, registry);
-        assertTrue(session.execution().pause());
-        assertTrue(session.execution().finish());
-        assertEquals(PlaybackState.CLOSED, session.execution().state());
-        assertEquals(PlaybackStopReason.FINISHED, session.execution().stopReason().orElseThrow());
-        assertFalse(session.execution().finish());
-    }
-
-    private static void bindExecution(PlaybackSession session, PlaybackSessionRegistry registry) {
-        session.execution().bind(new PlaybackExecution.Control() {
-            public void requireServerThread() {}
-            public void finish(PlaybackSession target) { close(target, PlaybackStopReason.FINISHED); }
-            public void stop(PlaybackSession target) { close(target, PlaybackStopReason.MANUAL); }
-            private void close(PlaybackSession target, PlaybackStopReason reason) {
-                if (registry.remove(target)) {
-                    target.execution().beginClose(reason);
-                    target.execution().completeClose();
-                }
-            }
-        }, 100);
-    }
-
-    @Test
-    void actionRegistrationUsesScopedStateAndCannotRemoveItsReplacement() throws Exception {
-        PlaybackSession session = fixture(20).session();
-        PlaybackSessionRegistry sessions = new PlaybackSessionRegistry();
-        sessions.register(session);
-        bindExecution(session, sessions);
-        RuntimeRegistry registry = new RuntimeRegistry(() -> {}, execution -> execution.stop());
-        Identifier name = Identifier.parse("test:action");
+    void callbacksKeepStatePerSessionAndUnregisterOnlyAffectsFuturePlayback() throws Exception {
+        CallbackRegistry registry = new CallbackRegistry();
+        Identifier id = Identifier.parse("test:partner");
+        List<PlaybackContext> contexts = new ArrayList<>();
         List<String> calls = new ArrayList<>();
-        var registration = registry.registerAction(name, (context, arguments) -> {
-            assertEquals(session.sessionId(), context.playback().sessionId());
-            context.onClose(() -> calls.add("cleanup"));
-            context.everyTick(() -> calls.add(arguments.get("value").getAsString()));
+        var registration = registry.register(id, new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) { contexts.add(context); context.setUserState(new Object()); calls.add("start"); }
+            public void onTick(PlaybackContext context) { calls.add("tick:" + context.elapsedTicks()); }
+            public void onClose(PlaybackContext context) { calls.add("close:" + context.stopReason().orElseThrow()); }
         });
-        JsonObject arguments = new JsonObject();
-        arguments.addProperty("value", "original");
-        registry.invokeAction(session.execution(), name, arguments, Vec3.ZERO);
-        arguments.addProperty("value", "changed");
-        session.execution().scheduler().tick(1);
-        assertEquals(List.of("original"), calls);
+        assertThrows(IllegalArgumentException.class, () -> registry.register(id, new EmoteCallbacks() {}));
+        PlaybackSession first = fixture(20).session();
+        PlaybackSession second = fixture(20).session();
+        first.bindCallbacks(registry.find(id), 100);
+        second.bindCallbacks(registry.find(id), 100);
+        first.startCallbacks();
+        second.startCallbacks();
+        assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
         assertTrue(registration.unregister());
-        assertEquals(List.of("original", "cleanup"), calls);
-        assertEquals(PlaybackState.CLOSED, session.execution().state());
-        var replacement = registry.registerAction(name, (context, parameters) -> {});
         assertFalse(registration.unregister());
+        var replacement = registry.register(id, new EmoteCallbacks() {});
+        assertFalse(registration.isRegistered());
         assertTrue(replacement.isRegistered());
+        assertFalse(first.tick(100));
+        assertTrue(first.tick(101));
+        assertFalse(first.tick(101));
+        first.tickCallbacks();
+        assertTrue(first.beginClose(PlaybackStopReason.MANUAL));
+        first.completeClose();
+        assertFalse(first.beginClose(PlaybackStopReason.FINISHED));
+        assertFalse(first.tick(102));
+        assertNull(contexts.get(0).userState());
+        assertNotNull(contexts.get(1).userState());
+        assertEquals(List.of("start", "start", "tick:1", "close:MANUAL"), calls);
+    }
+
+    @Test
+    void callbackStopDefersCleanupUntilTheFunctionReturns() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        List<String> calls = new ArrayList<>();
+        session.bindCallbacks(new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                calls.add("start");
+                assertTrue(session.deferCleanup(() -> {
+                    session.beginClose(PlaybackStopReason.MANUAL);
+                    session.completeClose();
+                }));
+                calls.add("returned");
+            }
+            public void onClose(PlaybackContext context) { calls.add("close"); }
+        }, 100);
+        session.startCallbacks();
+        assertEquals(List.of("start", "returned", "close"), calls);
+        assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
+    }
+
+    @Test
+    void closeRunsOnceForEveryReasonAndCleanupSurvivesCloseFailure() throws Exception {
+        for (PlaybackStopReason reason : PlaybackStopReason.values()) {
+            PlaybackSession session = fixture(20).session();
+            List<PlaybackStopReason> closed = new ArrayList<>();
+            session.bindCallbacks(new EmoteCallbacks() {
+                public void onClose(PlaybackContext context) {
+                    closed.add(context.stopReason().orElseThrow());
+                    throw new IllegalStateException("expected close failure");
+                }
+            }, 100);
+            session.startCallbacks();
+            assertTrue(session.beginClose(reason));
+            session.completeClose();
+            assertFalse(session.beginClose(reason));
+            assertEquals(List.of(reason), closed);
+            assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
+        }
+    }
+
+    @Test
+    void callbackFailurePropagatesToEngineAndStillAllowsErrorCleanup() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        List<PlaybackStopReason> closed = new ArrayList<>();
+        session.bindCallbacks(new EmoteCallbacks() {
+            public void onTick(PlaybackContext context) { throw new IllegalStateException("expected tick failure"); }
+            public void onClose(PlaybackContext context) { closed.add(context.stopReason().orElseThrow()); }
+        }, 100);
+        session.startCallbacks();
+        session.tick(101);
+        assertThrows(IllegalStateException.class, session::tickCallbacks);
+        assertFalse(session.deferCleanup(() -> fail("Not in callback")));
+        session.beginClose(PlaybackStopReason.ERROR);
+        session.completeClose();
+        assertEquals(List.of(PlaybackStopReason.ERROR), closed);
+    }
+
+    @Test
+    void matchedAndTimeoutBranchesKeepTheSessionLoopCallback() throws Exception {
+        for (boolean matched : List.of(true, false)) {
+            SessionFixture fixture = fixture(20);
+            PlaybackSession session = fixture.session();
+            List<String> calls = new ArrayList<>();
+            session.bindCallbacks(new EmoteCallbacks() {
+                public void onStart(PlaybackContext context) { calls.add("start"); }
+                public void onLoop(PlaybackContext context) { calls.add("loop"); }
+            }, 100);
+            session.startCallbacks();
+            var source = fixture.offer().animation();
+            var settings = source.settings();
+            var loop = new io.github.hanhy06.emote.api.animation.EmoteAnimation(source.id(), source.metadata(),
+                new io.github.hanhy06.emote.api.animation.EmoteAnimation.Settings(settings.standalone(), settings.cooldownTicks(),
+                    settings.rotationDeadzone(), settings.displayInterpolationTicks(), settings.player(),
+                    new io.github.hanhy06.emote.api.animation.EmoteAnimation.PlaybackSettings(
+                        io.github.hanhy06.emote.api.animation.EmoteAnimation.LoopMode.LOOP, 0, 1, 0)),
+                source.molang(), source.nodes(), source.timeline());
+            AnimationPlayer branch = timeline(PreparedAnimation.from(new io.github.hanhy06.emote.content.LoadedAnimation(Path.of("loop.json"), "test", loop)));
+            branch.start();
+            if (matched) {
+                session.reservePartner(participant(ParticipantRole.PARTNER));
+                session.activateReservedPartner(branch);
+            } else {
+                session.enterWaiting();
+                session.beginTimeout(branch);
+            }
+            branch.startEvents();
+            branch.advance();
+            assertEquals(List.of("start", "loop"), calls);
+        }
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
@@ -288,22 +297,21 @@ class PlaybackSessionTest {
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
         @Override
         public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
-            throw new UnsupportedOperationException();
+            return new Transformation(new org.joml.Matrix4f());
         }
 
         @Override
         public void applyTransform(String nodeId, PreparedAnimation.PreparedTransform transform, int interpolationDurationTicks) {
-            throw new UnsupportedOperationException();
         }
 
         @Override
         public void setVisible(String nodeId, boolean visible) {
-            throw new UnsupportedOperationException();
+            
         }
 
         @Override
         public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
-            throw new UnsupportedOperationException();
+            
         }
 
         @Override

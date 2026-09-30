@@ -116,6 +116,26 @@ class AnimationPlayerTest {
     }
 
     @Test
+    void lifecycleLoopListenerRunsOnceAtEachBoundary() throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").getAsJsonObject("playback").addProperty("mode", "loop");
+        root.getAsJsonObject("timeline").addProperty("duration", "1t");
+        positionTrack(root).remove(1);
+        positionTrack(root).get(0).getAsJsonObject().remove("interpolation");
+        AnimationPlayer player = player(root, new FakeTarget());
+        int[] loops = {0};
+        player.bindEvents(event -> {});
+        player.bindLoopListener(() -> loops[0]++);
+        player.start();
+        player.startEvents();
+        assertEquals(0, loops[0]);
+        player.advance();
+        assertEquals(1, loops[0]);
+        player.advance();
+        assertEquals(2, loops[0]);
+    }
+
+    @Test
     void firstCycleStartsAtZeroAndLaterCyclesRestartFromConfiguredTick() throws Exception {
         JsonObject root = base();
         JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");

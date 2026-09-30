@@ -1,6 +1,5 @@
 package io.github.hanhy06.emote.application;
 
-import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -111,23 +110,15 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public Optional<PlaybackHandle> getPlayback(UUID sessionId) {
+    public Optional<PlaybackInfo> getPlayback(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return Optional.ofNullable(this.playbackEngine.findSession(sessionId)).map(PlaybackSession::execution);
+        return Optional.ofNullable(this.playbackEngine.findSession(sessionId)).map(session -> session.playbackInfo(session.initiator().playerUuid()));
     }
 
     @Override
-    public RuntimeRegistration registerAction(Identifier id, EmoteAction action) {
-        requireServerThread();
-        return this.playbackEngine.runtimeRegistry().registerAction(id, action);
-    }
-
-    @Override
-    public TaskHandle invokeAction(UUID sessionId, Identifier id, JsonObject parameters) {
-        requireServerThread();
-        PlaybackSession session = Objects.requireNonNull(this.playbackEngine.findSession(sessionId), "Playback is not active.");
-        return this.playbackEngine.runtimeRegistry().invokeAction(session.execution(), id, parameters, session.nodes().root().position());
+    public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
+        return this.playbackEngine.callbackRegistry().register(id, callbacks);
     }
 
     @Override

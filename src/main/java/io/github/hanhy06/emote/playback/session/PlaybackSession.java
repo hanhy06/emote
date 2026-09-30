@@ -5,7 +5,18 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
-import io.github.hanhy06.emote.playback.PlaybackExecution;
+import io.github.hanhy06.emote.EmoteMod;
+import io.github.hanhy06.emote.api.EmoteCallbacks;
+import io.github.hanhy06.emote.api.PlaybackContext;
+import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackState;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Vector3f;
+import java.util.function.Consumer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -15,7 +26,15 @@ import java.util.*;
 
 public final class PlaybackSession {
     private final UUID sessionId;
-    private final PlaybackExecution execution;
+    private final Context context = new Context();
+    private @Nullable EmoteCallbacks callbacks;
+    private PlaybackState playbackState = PlaybackState.RUNNING;
+    private @Nullable PlaybackStopReason stopReason;
+    private long elapsedTicks;
+    private long lastServerTick;
+    private boolean callbacksStarted;
+    private boolean invokingCallback;
+    private @Nullable Runnable deferredCleanup;
     private final ResourceKey<Level> levelKey;
     private final String id;
     private final String animationId;
@@ -57,7 +76,7 @@ public final class PlaybackSession {
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
         }
-        this.execution = new PlaybackExecution(this);
+
     }
 
     void addParticipant(PlaybackParticipant participant) {
@@ -71,8 +90,116 @@ public final class PlaybackSession {
         return this.sessionId;
     }
 
-    public PlaybackExecution execution() {
-        return this.execution;
+    public PlaybackInfo playbackInfo(UUID playerUuid) {
+        return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.id), this.playbackState,
+            this.elapsedTicks, this.animation.emoteId(), this.animation.currentTick());
+    }
+
+    public void bindCallbacks(@Nullable EmoteCallbacks callbacks, long serverTick) {
+        this.callbacks = callbacks;
+        this.lastServerTick = serverTick;
+        this.animation.bindLoopListener(this::loopCallbacks);
+    }
+
+    public void startCallbacks() {
+        if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
+        this.callbacksStarted = true;
+        if (this.callbacks != null) invokeCallback(this.callbacks::onStart);
+    }
+
+    public boolean tick(long serverTick) {
+        if (this.playbackState != PlaybackState.RUNNING || this.lastServerTick == serverTick) return false;
+        this.lastServerTick = serverTick;
+        this.elapsedTicks++;
+        return true;
+    }
+
+    public void tickCallbacks() {
+        if (this.callbacks != null && this.callbacksStarted && this.playbackState == PlaybackState.RUNNING) {
+            invokeCallback(this.callbacks::onTick);
+        }
+    }
+
+    private void loopCallbacks() {
+        if (this.callbacks != null && this.callbacksStarted && this.playbackState == PlaybackState.RUNNING) {
+            invokeCallback(this.callbacks::onLoop);
+        }
+    }
+
+    private void invokeCallback(Consumer<PlaybackContext> callback) {
+        this.invokingCallback = true;
+        try {
+            callback.accept(this.context);
+        } finally {
+            this.invokingCallback = false;
+            Runnable cleanup = this.deferredCleanup;
+            this.deferredCleanup = null;
+            if (cleanup != null) cleanup.run();
+        }
+    }
+
+    public boolean deferCleanup(Runnable cleanup) {
+        if (!this.invokingCallback) return false;
+        if (this.deferredCleanup == null) this.deferredCleanup = cleanup;
+        return true;
+    }
+
+    public boolean beginClose(PlaybackStopReason reason) {
+        if (this.playbackState != PlaybackState.RUNNING) return false;
+        this.playbackState = PlaybackState.CLOSING;
+        this.stopReason = Objects.requireNonNull(reason, "reason");
+        if (this.callbacks != null && this.callbacksStarted) {
+            try {
+                this.callbacks.onClose(this.context);
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
+            }
+        }
+        return true;
+    }
+
+    public void completeClose() {
+        this.playbackState = PlaybackState.CLOSED;
+        this.context.userState = null;
+    }
+
+    private final class Context implements PlaybackContext {
+        private @Nullable Object userState;
+
+        public UUID sessionId() { return PlaybackSession.this.sessionId; }
+        public MinecraftServer server() { return EmoteMod.SERVER; }
+        public ServerLevel level() { return Objects.requireNonNull(server().getLevel(PlaybackSession.this.levelKey), "Playback level unavailable."); }
+        public long elapsedTicks() { return PlaybackSession.this.elapsedTicks; }
+        public int animationTick() { return PlaybackSession.this.animation.currentTick(); }
+        public Vec3 rootPosition() { return PlaybackSession.this.nodes.root().position(); }
+        public Optional<PlaybackStopReason> stopReason() { return Optional.ofNullable(PlaybackSession.this.stopReason); }
+        public @Nullable Object userState() { return this.userState; }
+        public void setUserState(@Nullable Object state) { this.userState = state; }
+
+        public Optional<Entity> actor(String name) {
+            Objects.requireNonNull(name, "name");
+            for (PlaybackParticipant participant : PlaybackSession.this.participants()) {
+                if (participant.role().name().equalsIgnoreCase(name)) {
+                    return Optional.ofNullable(server().getPlayerList().getPlayer(participant.playerUuid()));
+                }
+            }
+            return Optional.empty();
+        }
+
+        public Optional<Entity> nodeEntity(String nodeId) {
+            var node = Objects.requireNonNull(PlaybackSession.this.nodes.nodes().get(nodeId), "Unknown node " + nodeId);
+            return Optional.<Entity>ofNullable(node.entity()).filter(entity -> !entity.isRemoved());
+        }
+
+        public Vec3 nodeWorldPosition(String nodeId) {
+            var nodes = PlaybackSession.this.nodes;
+            var node = Objects.requireNonNull(nodes.nodes().get(nodeId), "Unknown node " + nodeId);
+            var space = node.node().space();
+            var root = nodes.root(space);
+            var transform = PlaybackSession.this.animation.currentTransformation(nodeId).getMatrix();
+            Vector3f point = root.worldMatrix(nodes.orientationYaw(space), transform).transformPosition(new Vector3f());
+            return root.position().add(point.x, point.y, point.z);
+        }
     }
 
     public ResourceKey<Level> levelKey() {
@@ -202,6 +329,7 @@ public final class PlaybackSession {
 
     private void replaceAnimation(AnimationPlayer animation, State state) {
         this.animation = Objects.requireNonNull(animation, "animation");
+        this.animation.bindLoopListener(this::loopCallbacks);
         this.state = Objects.requireNonNull(state, "state");
     }
 
