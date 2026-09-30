@@ -311,11 +311,6 @@ function validateEvent(event: EmoteEvent, path: string, animation: EmoteAnimatio
   if (event.origin.offset && (event.origin.offset.length !== 3 || event.origin.offset.some((value) => !Number.isFinite(value)))) {
     add(issues, `${path}.origin.offset`, "must contain three finite numbers");
   }
-  event.callbacks?.forEach((callback, index) => {
-    const callbackPath = `${path}.callbacks[${index}]`;
-    if (!isResourceLocation(callback.name)) add(issues, `${callbackPath}.name`, "must be a namespaced identifier");
-    if (callback.payload !== undefined && typeof callback.payload !== "string") add(issues, `${callbackPath}.payload`, "must be a string");
-  });
 }
 
 function isNonNegativeInt32(value: number): boolean {

@@ -159,12 +159,6 @@ export interface EmoteEvent {
   origin: { type: "root"; offset?: readonly [number, number, number] }
     | { type: "node"; node: string; offset?: readonly [number, number, number] };
   commands: string[];
-  callbacks?: EmoteCallback[];
-}
-
-export interface EmoteCallback {
-  name: string;
-  payload?: string;
 }
 
 export interface EmoteTimelineEvent extends EmoteEvent {

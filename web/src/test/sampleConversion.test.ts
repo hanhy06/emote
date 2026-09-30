@@ -9,6 +9,7 @@ import type { ImportAdapter } from "../import/adapter";
 import { geckoLibBbmodelAdapter } from "../import/geckoLib/geckoLibBbmodelAdapter";
 import { removeRedundantKeyframes } from "../format/keyframeCleanup";
 import { bakeSchema4Preview } from "../import/emoteJson/schema4PreviewBaker";
+import { emoteJsonAdapter } from "../import/emoteJson/emoteJsonAdapter";
 import { emoteFileName } from "../export/projectExporter";
 import { compileImportedProject } from "./compileImportedFixture";
 
@@ -48,6 +49,22 @@ describe("documentation sample conversion", () => {
 
 
     expectMatchingMatrices(removeRedundantKeyframes(actual), expected);
+  });
+});
+
+describe("lifecycle callback sample JSON round trips", () => {
+  it.each([
+    "docs/sample/emote.bat.json",
+    "docs/sample/sit/sit.idle_butterfly.json",
+    "docs/sample/music/music.trumpet_can_can.json",
+  ])("preserves command events in %s", async (path) => {
+    const expected = await readJson(path) as EmoteAnimation;
+    const imported = await importFixture(path, emoteJsonAdapter);
+    const [actual] = compileImportedProject(imported, {});
+    expect(actual.id).toBe(expected.id);
+    for (const phase of ["start", "timeline", "loop", "stop"] as const) {
+      expect(actual.timeline.events?.[phase] ?? []).toEqual(expected.timeline.events?.[phase] ?? []);
+    }
   });
 });
 

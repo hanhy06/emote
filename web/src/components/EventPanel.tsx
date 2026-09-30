@@ -93,7 +93,7 @@ function parseEvent(value: unknown, path: string, timeline: boolean): EmoteEvent
   if (!Array.isArray(value.commands) || value.commands.some((command) => typeof command !== "string")) {
     throw new Error(`${path}.commands must be an array of strings.`);
   }
-  if (value.callbacks !== undefined) requireCallbacks(value.callbacks, `${path}.callbacks`);
+  if ("callbacks" in value) throw new Error(`${path}.callbacks is no longer supported.`);
   return value as unknown as EmoteEvent;
 }
 
@@ -112,15 +112,6 @@ function requireOrigin(value: unknown, path: string): void {
   if (value.offset !== undefined && (!Array.isArray(value.offset) || value.offset.length !== 3 || value.offset.some((item) => typeof item !== "number"))) {
     throw new Error(`${path}.offset must be an array of three numbers.`);
   }
-}
-
-function requireCallbacks(value: unknown, path: string): void {
-  if (!Array.isArray(value)) throw new Error(`${path} must be a JSON array.`);
-  value.forEach((callback, index) => {
-    const callbackPath = `${path}[${index}]`;
-    if (!isRecord(callback) || typeof callback.name !== "string") throw new Error(`${callbackPath}.name must be a string.`);
-    if (callback.payload !== undefined && typeof callback.payload !== "string") throw new Error(`${callbackPath}.payload must be a string.`);
-  });
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

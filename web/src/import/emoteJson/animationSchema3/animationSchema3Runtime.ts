@@ -137,6 +137,7 @@ function requireEvents(value: unknown, path: string, timeline: boolean): void {
     requireEventSource(event.source, `${eventPath}.source`);
     requireEventOrigin(event.origin, `${eventPath}.origin`);
     requireStringArray(event.commands, `${eventPath}.commands`);
+    if ("callbacks" in event) throw new Error(`${eventPath}.callbacks is no longer supported.`);
   });
 }
 
