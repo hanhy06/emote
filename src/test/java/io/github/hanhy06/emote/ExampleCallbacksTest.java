@@ -148,6 +148,7 @@ class ExampleCallbacksTest {
                 public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
+                public Optional<PlaybackHandle> getPlayback(UUID sessionId) { return Optional.empty(); }
                 public ListenerRegistration addPlayListener(EmotePlayListener listener) { return () -> true; }
                 public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) { return () -> true; }
                 public ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener) { return () -> true; }

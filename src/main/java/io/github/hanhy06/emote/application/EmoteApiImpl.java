@@ -110,6 +110,13 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
+    public Optional<PlaybackHandle> getPlayback(UUID sessionId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        return Optional.ofNullable(this.playbackEngine.findSession(sessionId)).map(PlaybackSession::execution);
+    }
+
+    @Override
     public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) {
         return this.events.addPlaybackListener(listener);
     }

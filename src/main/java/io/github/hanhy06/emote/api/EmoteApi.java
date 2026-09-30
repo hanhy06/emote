@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 public abstract class EmoteApi {
     public static volatile EmoteApi INSTANCE;
@@ -39,6 +40,8 @@ public abstract class EmoteApi {
     public abstract List<EmoteInfo> getAll();
 
     public abstract Optional<PlaybackInfo> getPlayback(ServerPlayer player);
+
+    public abstract Optional<PlaybackHandle> getPlayback(UUID sessionId);
 
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);
 

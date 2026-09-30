@@ -5,6 +5,7 @@ import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlaybackExecution;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.level.Level;
@@ -14,6 +15,7 @@ import java.util.*;
 
 public final class PlaybackSession {
     private final UUID sessionId;
+    private final PlaybackExecution execution;
     private final ResourceKey<Level> levelKey;
     private final String id;
     private final String animationId;
@@ -55,6 +57,7 @@ public final class PlaybackSession {
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
         }
+        this.execution = new PlaybackExecution(this);
     }
 
     void addParticipant(PlaybackParticipant participant) {
@@ -66,6 +69,10 @@ public final class PlaybackSession {
 
     public UUID sessionId() {
         return this.sessionId;
+    }
+
+    public PlaybackExecution execution() {
+        return this.execution;
     }
 
     public ResourceKey<Level> levelKey() {

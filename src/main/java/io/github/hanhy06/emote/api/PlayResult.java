@@ -1,13 +1,24 @@
 package io.github.hanhy06.emote.api;
 
 import net.minecraft.network.chat.Component;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 
-public record PlayResult(Component errorMessage) {
-    public static final PlayResult SUCCESS = new PlayResult(null);
+public sealed interface PlayResult {
+    record Success(PlaybackHandle handle) implements PlayResult {
+        public Success {
+            Objects.requireNonNull(handle, "handle");
+        }
+    }
 
-    public static PlayResult failure(String errorMessage) {
+    record Failure(Component errorMessage) implements PlayResult {
+        public Failure {
+            Objects.requireNonNull(errorMessage, "errorMessage");
+        }
+    }
+
+    static PlayResult failure(String errorMessage) {
         String normalizedMessage = Objects.requireNonNull(errorMessage, "errorMessage").trim();
         if (normalizedMessage.isEmpty()) {
             throw new IllegalArgumentException("errorMessage must not be blank");
@@ -15,11 +26,15 @@ public record PlayResult(Component errorMessage) {
         return failure(Component.literal(normalizedMessage));
     }
 
-    public static PlayResult failure(Component errorMessage) {
-        return new PlayResult(Objects.requireNonNull(errorMessage, "errorMessage"));
+    static PlayResult failure(Component errorMessage) {
+        return new Failure(errorMessage);
     }
 
-    public boolean isSuccess() {
-        return this.errorMessage == null;
+    default boolean isSuccess() {
+        return this instanceof Success;
+    }
+
+    default @Nullable Component errorMessage() {
+        return this instanceof Failure failure ? failure.errorMessage() : null;
     }
 }

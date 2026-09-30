@@ -5,9 +5,20 @@ import net.minecraft.resources.Identifier;
 import java.util.Objects;
 import java.util.UUID;
 
-public record PlaybackInfo(UUID playerUuid, Identifier emoteId, int currentTick) {
+public record PlaybackInfo(
+    UUID sessionId,
+    UUID playerUuid,
+    Identifier emoteId,
+    PlaybackState state,
+    long elapsedTicks,
+    Identifier animationId,
+    int currentTick
+) {
     public PlaybackInfo {
+        Objects.requireNonNull(sessionId, "sessionId");
         Objects.requireNonNull(playerUuid, "playerUuid");
         Objects.requireNonNull(emoteId, "emoteId");
+        Objects.requireNonNull(state, "state");
+        Objects.requireNonNull(animationId, "animationId");
     }
 }

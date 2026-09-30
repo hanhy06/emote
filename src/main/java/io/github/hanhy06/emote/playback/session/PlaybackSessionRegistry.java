@@ -48,6 +48,10 @@ public final class PlaybackSessionRegistry {
         return find(this.participantSessions, playerUuid);
     }
 
+    public @Nullable PlaybackSession findSession(UUID sessionId) {
+        return this.sessions.get(sessionId);
+    }
+
     public @Nullable PlaybackSession findReservation(UUID playerUuid) {
         return find(this.partnerReservations, playerUuid);
     }

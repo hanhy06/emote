@@ -5,11 +5,15 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
+import io.github.hanhy06.emote.api.PlayResult;
+import io.github.hanhy06.emote.api.PlaybackState;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.PlaybackExecution;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
@@ -25,6 +29,7 @@ import org.junit.jupiter.api.Test;
 
 import java.nio.file.Path;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.UUID;
 
@@ -103,6 +108,97 @@ class PlaybackSessionTest {
 
         session.enterWaiting();
         assertTrue(session.acceptsPartner());
+    }
+
+    @Test
+    void handleCountsServerTicksAndFreezesWhilePaused() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        PlaybackExecution execution = session.execution();
+        bindExecution(session, new PlaybackSessionRegistry());
+        assertFalse(execution.tick(100));
+        assertTrue(execution.tick(101));
+        assertFalse(execution.tick(101));
+        assertEquals(1, execution.info().elapsedTicks());
+        assertTrue(execution.pause());
+        assertEquals(PlaybackState.PAUSED, execution.state());
+        assertFalse(execution.tick(102));
+        assertTrue(execution.resume());
+        assertTrue(execution.tick(103));
+        assertEquals(2, execution.info().elapsedTicks());
+        assertEquals(session.sessionId(), new PlayResult.Success(execution).handle().sessionId());
+    }
+
+    @Test
+    void cleanupRunsOnceInReverseOrderDespiteExceptions() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        bindExecution(session, new PlaybackSessionRegistry());
+        PlaybackExecution execution = session.execution();
+        List<Integer> calls = new ArrayList<>();
+        execution.onClose(() -> calls.add(1));
+        execution.onClose(() -> {
+            calls.add(2);
+            assertEquals(PlaybackState.CLOSING, execution.state());
+            assertThrows(IllegalStateException.class, () -> execution.onClose(() -> calls.add(99)));
+            assertFalse(execution.stop());
+            throw new IllegalStateException("expected cleanup failure");
+        });
+        execution.onClose(() -> calls.add(3));
+        assertTrue(execution.beginClose(PlaybackStopReason.RELOAD));
+        execution.completeClose();
+        assertFalse(execution.beginClose(PlaybackStopReason.MANUAL));
+        assertEquals(List.of(3, 2, 1), calls);
+        assertEquals(PlaybackState.CLOSED, execution.state());
+        assertEquals(PlaybackStopReason.RELOAD, execution.stopReason().orElseThrow());
+        assertFalse(execution.tick(101));
+    }
+
+    @Test
+    void oldHandleCannotStopReplacementSessionWithTheSamePlayer() throws Exception {
+        PlaybackSession original = fixture(20).session();
+        PlaybackSession replacement = new PlaybackSession(UUID.randomUUID(), original.levelKey(), original.id(),
+            original.animationId(), original.nodes(), original.animation(), original.playerBehavior(), original.initiator(), null);
+        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
+        registry.register(original);
+        bindExecution(original, registry);
+        registry.remove(original);
+        original.execution().beginClose(PlaybackStopReason.REPLACED);
+        original.execution().completeClose();
+        registry.register(replacement);
+        bindExecution(replacement, registry);
+        assertFalse(original.execution().stop());
+        assertFalse(original.execution().finish());
+        assertFalse(original.execution().pause());
+        assertSame(replacement, registry.findParticipant(original.initiator().playerUuid()));
+        assertSame(replacement, registry.findSession(replacement.sessionId()));
+        assertTrue(replacement.execution().stop());
+        assertNull(registry.findParticipant(original.initiator().playerUuid()));
+    }
+
+    @Test
+    void pausedHandleCanFinishAndRetainsItsReason() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
+        registry.register(session);
+        bindExecution(session, registry);
+        assertTrue(session.execution().pause());
+        assertTrue(session.execution().finish());
+        assertEquals(PlaybackState.CLOSED, session.execution().state());
+        assertEquals(PlaybackStopReason.FINISHED, session.execution().stopReason().orElseThrow());
+        assertFalse(session.execution().finish());
+    }
+
+    private static void bindExecution(PlaybackSession session, PlaybackSessionRegistry registry) {
+        session.execution().bind(new PlaybackExecution.Control() {
+            public void requireServerThread() {}
+            public void finish(PlaybackSession target) { close(target, PlaybackStopReason.FINISHED); }
+            public void stop(PlaybackSession target) { close(target, PlaybackStopReason.MANUAL); }
+            private void close(PlaybackSession target, PlaybackStopReason reason) {
+                if (registry.remove(target)) {
+                    target.execution().beginClose(reason);
+                    target.execution().completeClose();
+                }
+            }
+        }, 100);
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
