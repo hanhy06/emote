@@ -30,6 +30,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -130,8 +132,8 @@ class PlaybackSessionTest {
         PlaybackSession second = fixture(20).session();
         first.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
         second.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
-        first.startCallbacks();
-        second.startCallbacks();
+        first.startPlayback();
+        second.startPlayback();
         assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
         assertTrue(registration.unregister());
         assertFalse(registration.unregister());
@@ -172,7 +174,7 @@ class PlaybackSessionTest {
             }
             public void onClose(PlaybackContext context) { calls.add("close"); }
         }, "")), 100);
-        session.startCallbacks();
+        session.startPlayback();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertFalse(session.isInvokingCallback());
         assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
@@ -189,7 +191,7 @@ class PlaybackSessionTest {
                     throw new IllegalStateException("expected close failure");
                 }
             }, "")), 100);
-            session.startCallbacks();
+            session.startPlayback();
             assertTrue(session.beginClose(reason));
             session.closeCallbacks();
             session.completeClose();
@@ -207,7 +209,7 @@ class PlaybackSessionTest {
             public void onTick(PlaybackContext context) { throw new IllegalStateException("expected tick failure"); }
             public void onClose(PlaybackContext context) { closed.add(context.stopReason().orElseThrow()); }
         }, "")), 100);
-        session.startCallbacks();
+        session.startPlayback();
         session.tick(101);
         assertThrows(IllegalStateException.class, session::tickCallbacks);
         assertFalse(session.deferCleanup(() -> fail("Not in callback")));
@@ -227,7 +229,7 @@ class PlaybackSessionTest {
                 public void onStart(PlaybackContext context) { calls.add("start"); }
                 public void onLoop(PlaybackContext context) { calls.add("loop"); }
             }, "")), 100);
-            session.startCallbacks();
+            session.startPlayback();
             var source = fixture.offer().animation();
             var settings = source.settings();
             var loop = new io.github.hanhy06.emote.api.animation.EmoteAnimation(source.id(), source.metadata(),
@@ -272,8 +274,8 @@ class PlaybackSessionTest {
         PlaybackSession second = fixture(20).session();
         first.bindCallbacks(registry.resolve(definitions), 100);
         second.bindCallbacks(registry.resolve(definitions), 100);
-        first.startCallbacks();
-        second.startCallbacks();
+        first.startPlayback();
+        second.startPlayback();
         assertEquals(4, contexts.size());
         assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
         assertNotSame(contexts.get(0).userState(), contexts.get(2).userState());
@@ -306,7 +308,7 @@ class PlaybackSessionTest {
             public void onClose(PlaybackContext context) { calls.add("second-close"); }
         };
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(first, "a"), new CallbackRegistry.Binding(second, "b")), 100);
-        session.startCallbacks();
+        session.startPlayback();
         assertEquals(List.of("first-start", "first-close"), calls);
     }
 
@@ -324,8 +326,9 @@ class PlaybackSessionTest {
         assertEquals(definitions, prepared.compileTimeout(new java.util.Random(0)).animation().callbacks());
     }
 
-    @Test
-    void repeatedAnimationsKeepIndependentStateAndCloseBeforeTheNextStart() {
+    @ParameterizedTest
+    @CsvSource({"0,0", "1,0", "0,2", "1,2"})
+    void repeatedAnimationsKeepIndependentStateAndCloseBeforeTheNextStart(int transitionTicks, int waitTicks) {
         PreparedAnimation template = PreparedAnimationFixture.create("test:repeated", "Repeated");
         EmoteAnimation source = template.animation();
         var event = new EmoteAnimation.Event(
@@ -336,9 +339,13 @@ class PlaybackSessionTest {
             new EmoteAnimation.Timeline(2, Map.of(), new EmoteAnimation.Events(List.of(event), List.of(), List.of(), List.of(stop))),
             List.of(new EmoteAnimation.Callback(Identifier.parse("test:animation"), "node")));
         PreparedAnimation repeated = PreparedAnimation.from(new LoadedAnimation(Path.of("repeated.json"), "test", animation));
+        List<EmoteSequence.Step> steps = new ArrayList<>();
+        steps.add(new EmoteSequence.EmoteStep(source.id(), 1));
+        if (waitTicks > 0) steps.add(new EmoteSequence.WaitStep(waitTicks));
+        steps.add(new EmoteSequence.EmoteStep(source.id(), 1, transitionTicks));
         EmoteSequence sequence = new EmoteSequence(Path.of("sequence.json"), Identifier.parse("test:sequence"), source.metadata(),
             new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()), null,
-            List.of(new EmoteSequence.EmoteStep(source.id(), 2)), List.of());
+            steps, List.of());
         PreparedAnimation compiled = PreparedSequence.resolve(sequence, Map.of(repeated.id(), repeated)).compiledAnimation();
         List<String> calls = new ArrayList<>();
         List<PlaybackContext> contexts = new ArrayList<>();
@@ -369,9 +376,8 @@ class PlaybackSessionTest {
             public void onClose(PlaybackContext context) { calls.add("root-close"); }
         }, "")), 100);
         session.bindAnimationCallbacks(Map.of(repeated, List.of(new CallbackRegistry.Binding(callbacks, "node"))));
-        session.startCallbacks();
-        player.startEvents();
-        for (int tick = 1; tick <= 4; tick++) {
+        session.startPlayback();
+        for (int tick = 1; tick <= compiled.durationTicks(); tick++) {
             assertTrue(session.tick(100 + tick));
             player.advance();
             session.tickCallbacks();
@@ -386,6 +392,44 @@ class PlaybackSessionTest {
         assertNotSame(contexts.get(0), contexts.get(1));
         assertNull(contexts.get(0).userState());
         assertNull(contexts.get(1).userState());
+    }
+
+    @Test
+    void startCallbackSeesInitialVisibilityAndCommandsAndFinalTickRunsBeforeClose() {
+        EmoteAnimation source = PreparedAnimationFixture.create("test:prepared", "Prepared").animation();
+        var start = new EmoteAnimation.Event(new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
+            new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO), List.of("start-command"));
+        var stop = new EmoteAnimation.Event(start.source(), start.origin(), List.of("stop-command"));
+        var definition = new EmoteAnimation(source.id(), source.metadata(), source.settings(), source.molang(), source.nodes(),
+            new EmoteAnimation.Timeline(1, Map.of(), new EmoteAnimation.Events(List.of(start), List.of(), List.of(), List.of(stop))), List.of());
+        PreparedAnimation prepared = PreparedAnimation.from(new LoadedAnimation(Path.of("prepared.json"), "test", definition));
+        EmptyTimelineTarget target = new EmptyTimelineTarget();
+        AnimationPlayer player = new AnimationPlayer(prepared, target);
+        List<String> calls = new ArrayList<>();
+        player.bindEvents(event -> calls.addAll(event.event().commands()));
+        player.start();
+        player.deferInitialVisibility();
+        PlaybackSession session = new PlaybackSession(UUID.randomUUID(), Level.OVERWORLD, prepared.id(), prepared.id(),
+            new PlaybackNodes(SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0)), Map.of()), player,
+            prepared.playerBehavior(), participant(ParticipantRole.INITIATOR), null);
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                assertTrue(target.visibility.get("root"));
+                assertEquals(List.of("start-command"), calls);
+                calls.add("start-callback");
+            }
+            public void onTick(PlaybackContext context) { calls.add("tick:" + context.animationTick()); }
+            public void onClose(PlaybackContext context) { calls.add("close-callback"); }
+        }, "")), 100);
+        session.startPlayback();
+        session.tick(101);
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        session.tickCallbacks();
+        session.beginClose(PlaybackStopReason.FINISHED);
+        player.stop(PlaybackStopReason.FINISHED);
+        session.closeCallbacks();
+        session.completeClose();
+        assertEquals(List.of("start-command", "start-callback", "tick:1", "stop-command", "close-callback"), calls);
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
@@ -424,6 +468,7 @@ class PlaybackSessionTest {
             participant(ParticipantRole.INITIATOR),
             sequence
         );
+        session.animation().start();
         return new SessionFixture(session, offer);
     }
 
@@ -442,6 +487,7 @@ class PlaybackSessionTest {
     }
 
     private static final class EmptyTimelineTarget implements AnimationPlayer.TimelineTarget {
+        private final Map<String, Boolean> visibility = new java.util.HashMap<>();
         @Override
         public Transformation createTransformation(String nodeId, PreparedAnimation.PreparedTransform transform) {
             return new Transformation(new org.joml.Matrix4f());
@@ -453,7 +499,7 @@ class PlaybackSessionTest {
 
         @Override
         public void setVisible(String nodeId, boolean visible) {
-            
+            this.visibility.put(nodeId, visible);
         }
 
         @Override

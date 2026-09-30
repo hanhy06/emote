@@ -39,6 +39,7 @@ public final class AnimationPlayer {
     private Runnable loopListener = () -> {};
     private LifecycleListener lifecycleListener = new LifecycleListener() {};
     private int lifecycleSegment = -1;
+    private boolean pendingLoopCallback;
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
         this(emote, target, PlayerMolangQueries.EMPTY);
@@ -167,14 +168,14 @@ public final class AnimationPlayer {
             execute(this.emote.timelineEvents(this.currentTick));
         }
         if (result == AdvanceResult.LOOP_BOUNDARY && this.eventsStarted) {
-            this.loopListener.run();
-            if (this.eventsStopped) return AdvanceResult.FINISHED;
             execute(
                 this.animation.timeline().events().loop(),
                 this.animation.id(),
                 this.animation.settings().playback().loopEndTicks(),
                 AnimationEventPhase.LOOP
             );
+            if (this.eventsStopped) return AdvanceResult.FINISHED;
+            this.pendingLoopCallback = this.phase == PlaybackPhase.LOOP_BOUNDARY;
             if (continueAfterLoopBoundary && this.phase == PlaybackPhase.LOOP_BOUNDARY) {
                 result = continueAfterLoopEvent();
             } else if (this.phase != PlaybackPhase.LOOP_BOUNDARY) {
@@ -183,6 +184,10 @@ public final class AnimationPlayer {
         }
         if (result == AdvanceResult.RESTARTED) {
             execute(this.emote.timelineEvents(this.currentTick));
+            if (this.pendingLoopCallback && !this.eventsStopped) {
+                this.pendingLoopCallback = false;
+                this.loopListener.run();
+            }
         }
         return result;
     }
@@ -191,11 +196,12 @@ public final class AnimationPlayer {
         if (this.phase == PlaybackPhase.NOT_STARTED) throw new IllegalStateException("Timeline has not started");
         if (this.phase == PlaybackPhase.FINISHED || this.eventsStopped) return AdvanceResult.FINISHED;
         this.currentTick++;
+        boolean segmentFinished = false;
         if (this.lifecycleSegment >= 0) {
             PreparedAnimation.PlaybackSegment segment = this.emote.playbackSegments().get(this.lifecycleSegment);
             int localTick = this.currentTick - segment.startTick();
             applySegment(this.lifecycleSegment, this.currentTick);
-            applyHiddenNodes(this.currentTick);
+            if (this.currentTick < segment.endTick()) applyHiddenNodes(this.currentTick);
             execute(segment.animation().timelineEvents(localTick));
             if (this.eventsStopped) return AdvanceResult.FINISHED;
             this.lifecycleListener.onTick(localTick);
@@ -206,15 +212,18 @@ public final class AnimationPlayer {
                     || source.settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
                     execute(source.timeline().events().loop(), source.id(), localTick, AnimationEventPhase.LOOP);
                     if (this.eventsStopped) return AdvanceResult.FINISHED;
-                    this.lifecycleListener.onLoop();
-                    if (this.eventsStopped) return AdvanceResult.FINISHED;
                 }
                 closeSegment(PlaybackStopReason.FINISHED);
+                segmentFinished = true;
                 if (this.eventsStopped) return AdvanceResult.FINISHED;
             }
         }
         if (this.lifecycleSegment < 0) {
-            applyTick(this.currentTick);
+            int nextSegment = this.activePlaybackSegment + 1;
+            boolean nextPoseStarts = nextSegment < this.emote.playbackSegments().size()
+                && this.emote.playbackSegments().get(nextSegment).transitionStartTick() == this.currentTick;
+            if (!segmentFinished || nextPoseStarts) applyTick(this.currentTick);
+            else applyHiddenNodes(this.currentTick);
             if (this.eventsStarted) startSegmentEvents();
         }
         if (this.currentTick >= this.animation.timeline().durationTicks()) {
@@ -329,6 +338,7 @@ public final class AnimationPlayer {
         }
 
         this.phase = PlaybackPhase.OUTRO;
+        this.pendingLoopCallback = false;
         this.remainingLoopDelay = 0;
         if (this.currentTick < loopEnd) {
             this.currentTick = loopEnd;
@@ -601,7 +611,6 @@ public final class AnimationPlayer {
     public interface LifecycleListener {
         default void onStart(PreparedAnimation animation) {}
         default void onTick(int animationTick) {}
-        default void onLoop() {}
         default void onClose(PlaybackStopReason reason) {}
     }
 

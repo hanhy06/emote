@@ -286,9 +286,8 @@ public class PlaybackEngine implements ConfigListener {
                 return new PlayResult.Success(session.playbackInfo(player.getUUID()));
             }
             startedNotified = true;
-            session.startCallbacks();
+            session.startPlayback();
             if (playbackChanged(session)) return new PlayResult.Success(session.playbackInfo(player.getUUID()));
-            session.animation().startEvents();
             return new PlayResult.Success(session.playbackInfo(player.getUUID()));
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);
@@ -420,6 +419,13 @@ public class PlaybackEngine implements ConfigListener {
                         );
                     }
 
+                    for (PlaybackParticipant participant : session.participants()) {
+                        ServerPlayer participantPlayer = participant == initiator
+                            ? player
+                            : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
+                        this.playerVisibilityService.tick(participantPlayer, session, participant);
+                    }
+                    boolean timelineFinished = false;
                     if (session.state() == PlaybackSession.State.WAITING) {
                         if (session.reservedPartner() != null) {
                             activateMatched(session);
@@ -431,20 +437,13 @@ public class PlaybackEngine implements ConfigListener {
                         if (playbackChanged(session)) {
                             continue;
                         }
-                        if (result == AnimationPlayer.AdvanceResult.FINISHED) {
-                            stopReason = handleFinishedTimeline(session);
-                        }
+                        timelineFinished = result == AnimationPlayer.AdvanceResult.FINISHED;
                     }
 
                     if (stopReason == null && !playbackChanged(session)) {
                         session.tickCallbacks();
                         if (playbackChanged(session)) continue;
-                        for (PlaybackParticipant participant : session.participants()) {
-                            ServerPlayer participantPlayer = participant == initiator
-                                ? player
-                                : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
-                            this.playerVisibilityService.tick(participantPlayer, session, participant);
-                        }
+                        if (timelineFinished) stopReason = handleFinishedTimeline(session);
                     }
                 } catch (RuntimeException exception) {
                     EmoteMod.LOGGER.warn("Failed to play emote {}", session.id(), exception);
@@ -682,6 +681,11 @@ public class PlaybackEngine implements ConfigListener {
         @Nullable ServerPlayer knownPlayer
     ) {
         try {
+            try {
+                session.animation().stop(reason);
+            } catch (RuntimeException exception) {
+                EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
+            }
             session.closeCallbacks();
             releaseReservedPartner(session);
             for (PlaybackParticipant participant : session.participants()) {
@@ -700,20 +704,14 @@ public class PlaybackEngine implements ConfigListener {
             }
         } finally {
             try {
-                session.animation().stop();
-            } catch (RuntimeException exception) {
-                EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
+                ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
+                if (level != null) {
+                    this.entityController.remove(level, session.nodes());
+                }
             } finally {
-                try {
-                    ServerLevel level = EmoteMod.SERVER.getLevel(session.levelKey());
-                    if (level != null) {
-                        this.entityController.remove(level, session.nodes());
-                    }
-                } finally {
-                    session.completeClose();
-                    for (PlaybackParticipant participant : session.participants()) {
-                        this.closingPlayers.remove(participant.playerUuid());
-                    }
+                session.completeClose();
+                for (PlaybackParticipant participant : session.participants()) {
+                    this.closingPlayers.remove(participant.playerUuid());
                 }
             }
         }

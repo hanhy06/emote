@@ -8,10 +8,14 @@ import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationJsonParser;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -133,6 +137,37 @@ class AnimationPlayerTest {
         assertEquals(1, loops[0]);
         player.advance();
         assertEquals(2, loops[0]);
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 2})
+    void loopCallbackSeesRestartPoseAfterLoopDelayAndCommands(int delay) throws Exception {
+        JsonObject root = base();
+        root.getAsJsonObject("settings").add("playback", JsonParser.parseString(
+            "{\"mode\":\"loop\",\"loop_start\":\"4t\",\"loop_end\":\"10t\",\"loop_delay\":\"" + delay + "t\"}"));
+        root.getAsJsonObject("timeline").add("events", JsonParser.parseString("""
+            {"loop":[{"source":{"type":"server"},"origin":{"type":"root"},"commands":["loop-command"]}],
+             "timeline":[{"time":"4t","source":{"type":"server"},"origin":{"type":"root"},"commands":["restart-command"]}]}
+            """));
+        FakeTarget target = new FakeTarget();
+        AnimationPlayer player = player(root, target);
+        List<String> calls = new ArrayList<>();
+        player.bindEvents(event -> calls.addAll(event.event().commands()));
+        player.bindLoopListener(() -> {
+            assertEquals(4, player.currentTick());
+            assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+            calls.add("loop-callback");
+        });
+        player.start();
+        player.startEvents();
+        for (int tick = 0; tick < 9; tick++) player.advance();
+        calls.clear();
+        player.advance();
+        if (delay > 0) {
+            assertEquals(List.of("loop-command"), calls);
+            for (int tick = 0; tick < delay; tick++) player.advance();
+        }
+        assertEquals(List.of("loop-command", "restart-command", "loop-callback"), calls);
     }
 
     @Test

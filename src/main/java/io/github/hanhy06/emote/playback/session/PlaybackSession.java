@@ -46,17 +46,10 @@ public final class PlaybackSession {
         }
 
         public void onTick(int animationTick) {
+            for (Context context : animationCallbackContexts) context.localTick = animationTick;
             for (Context context : animationCallbackContexts) {
-                context.localTick = animationTick;
                 if (playbackState != PlaybackState.RUNNING) break;
                 invokeCallback(context, context.binding.callbacks()::onTick);
-            }
-        }
-
-        public void onLoop() {
-            for (Context context : animationCallbackContexts) {
-                if (playbackState != PlaybackState.RUNNING) break;
-                invokeCallback(context, context.binding.callbacks()::onLoop);
             }
         }
 
@@ -144,8 +137,11 @@ public final class PlaybackSession {
         this.animationBindings = Map.copyOf(bindings);
     }
 
-    public void startCallbacks() {
+    public void startPlayback() {
         if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
+        this.animation.restoreDeferredVisibility();
+        this.animation.startEvents();
+        if (this.playbackState != PlaybackState.RUNNING) return;
         this.callbacksStarted = true;
         for (Context context : this.callbackContexts) {
             context.started = true;
