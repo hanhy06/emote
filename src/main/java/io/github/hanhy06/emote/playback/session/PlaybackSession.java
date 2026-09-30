@@ -1,28 +1,28 @@
 package io.github.hanhy06.emote.playback.session;
 
+import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.PreparedSequence;
-import io.github.hanhy06.emote.playback.AnimationPlayer;
-import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackState;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.playback.AnimationPlayer;
+import io.github.hanhy06.emote.playback.CallbackRegistry;
+import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Vector3f;
-import java.util.function.Consumer;
-import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
-import net.minecraft.resources.ResourceKey;
-import net.minecraft.world.level.Level;
 import org.jspecify.annotations.Nullable;
 
 import java.util.*;
+import java.util.function.Consumer;
 
 public final class PlaybackSession {
     private final UUID sessionId;
@@ -75,7 +75,6 @@ public final class PlaybackSession {
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
         }
-
     }
 
     void addParticipant(PlaybackParticipant participant) {
@@ -87,6 +86,10 @@ public final class PlaybackSession {
 
     public UUID sessionId() {
         return this.sessionId;
+    }
+
+    public PlaybackState playbackState() {
+        return this.playbackState;
     }
 
     public PlaybackInfo playbackInfo(UUID playerUuid) {

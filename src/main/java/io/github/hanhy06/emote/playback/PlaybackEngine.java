@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.PlayResult;
+import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.config.Config;
@@ -648,7 +649,7 @@ public class PlaybackEngine implements ConfigListener {
         @Nullable ServerPlayer knownPlayer
     ) {
         if (session.deferCleanup(() -> cleanupSession(session, notifyListeners, reason, knownPlayer))) return;
-        if (session.playbackInfo(session.initiator().playerUuid()).state() != io.github.hanhy06.emote.api.PlaybackState.RUNNING) return;
+        if (session.playbackState() != PlaybackState.RUNNING) return;
         for (PlaybackParticipant participant : session.participants()) {
             this.closingPlayers.add(participant.playerUuid());
         }

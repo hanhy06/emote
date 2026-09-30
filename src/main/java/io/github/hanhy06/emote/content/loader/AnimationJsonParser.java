@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.content.loader;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -17,12 +17,11 @@ import net.minecraft.nbt.TagParser;
 import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
