@@ -595,8 +595,7 @@ class SequenceCompilerTest {
                 20,
                 List.of(new EmoteSequence.EmoteStep(id, 1)),
                 List.of(new EmoteSequence.EmoteStep(id, 1))
-            ))
-        );
+            )), List.of());
     }
 
     private static PreparedAnimation animation(
@@ -646,8 +645,7 @@ class SequenceCompilerTest {
             )),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(duration, tracks, events)
-        );
+            new EmoteAnimation.Timeline(duration, tracks, events), List.of());
         return PreparedAnimation.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             id,

@@ -7,6 +7,7 @@ import net.minecraft.resources.Identifier;
 
 import java.nio.file.Path;
 import java.util.Map;
+import java.util.List;
 import java.util.Objects;
 
 public final class PreparedAnimationFixture {
@@ -59,8 +60,7 @@ public final class PreparedAnimationFixture {
             new EmoteAnimation.Settings(standalone, cooldownTicks, 50.0F, 1, playerBehavior, new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)),
             EmoteAnimation.MolangPrograms.empty(),
             Map.of("root", new EmoteAnimation.AnchorNode(EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY)),
-            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
-        );
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
         return PreparedAnimation.from(new LoadedAnimation(
             Path.of(id.replace(':', '_') + ".json"),
             "0000000000000000000000000000000000000000000000000000000000000000",

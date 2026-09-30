@@ -126,8 +126,8 @@ class PlaybackSessionTest {
         assertThrows(IllegalArgumentException.class, () -> registry.register(id, new EmoteCallbacks() {}));
         PlaybackSession first = fixture(20).session();
         PlaybackSession second = fixture(20).session();
-        first.bindCallbacks(registry.find(id), 100);
-        second.bindCallbacks(registry.find(id), 100);
+        first.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
+        second.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
         first.startCallbacks();
         second.startCallbacks();
         assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
@@ -153,7 +153,7 @@ class PlaybackSessionTest {
     void callbackStopDefersCleanupUntilTheFunctionReturns() throws Exception {
         PlaybackSession session = fixture(20).session();
         List<String> calls = new ArrayList<>();
-        session.bindCallbacks(new EmoteCallbacks() {
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onStart(PlaybackContext context) {
                 calls.add("start");
                 assertTrue(session.deferCleanup(() -> {
@@ -163,7 +163,7 @@ class PlaybackSessionTest {
                 calls.add("returned");
             }
             public void onClose(PlaybackContext context) { calls.add("close"); }
-        }, 100);
+        }, "")), 100);
         session.startCallbacks();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertEquals(PlaybackState.CLOSED, session.playbackInfo(session.initiator().playerUuid()).state());
@@ -174,12 +174,12 @@ class PlaybackSessionTest {
         for (PlaybackStopReason reason : PlaybackStopReason.values()) {
             PlaybackSession session = fixture(20).session();
             List<PlaybackStopReason> closed = new ArrayList<>();
-            session.bindCallbacks(new EmoteCallbacks() {
+            session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
                 public void onClose(PlaybackContext context) {
                     closed.add(context.stopReason().orElseThrow());
                     throw new IllegalStateException("expected close failure");
                 }
-            }, 100);
+            }, "")), 100);
             session.startCallbacks();
             assertTrue(session.beginClose(reason));
             session.completeClose();
@@ -193,10 +193,10 @@ class PlaybackSessionTest {
     void callbackFailurePropagatesToEngineAndStillAllowsErrorCleanup() throws Exception {
         PlaybackSession session = fixture(20).session();
         List<PlaybackStopReason> closed = new ArrayList<>();
-        session.bindCallbacks(new EmoteCallbacks() {
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onTick(PlaybackContext context) { throw new IllegalStateException("expected tick failure"); }
             public void onClose(PlaybackContext context) { closed.add(context.stopReason().orElseThrow()); }
-        }, 100);
+        }, "")), 100);
         session.startCallbacks();
         session.tick(101);
         assertThrows(IllegalStateException.class, session::tickCallbacks);
@@ -212,10 +212,10 @@ class PlaybackSessionTest {
             SessionFixture fixture = fixture(20);
             PlaybackSession session = fixture.session();
             List<String> calls = new ArrayList<>();
-            session.bindCallbacks(new EmoteCallbacks() {
+            session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) { calls.add("start"); }
                 public void onLoop(PlaybackContext context) { calls.add("loop"); }
-            }, 100);
+            }, "")), 100);
             session.startCallbacks();
             var source = fixture.offer().animation();
             var settings = source.settings();
@@ -224,7 +224,7 @@ class PlaybackSessionTest {
                     settings.rotationDeadzone(), settings.displayInterpolationTicks(), settings.player(),
                     new io.github.hanhy06.emote.api.animation.EmoteAnimation.PlaybackSettings(
                         io.github.hanhy06.emote.api.animation.EmoteAnimation.LoopMode.LOOP, 0, 1, 0)),
-                source.molang(), source.nodes(), source.timeline());
+                source.molang(), source.nodes(), source.timeline(), List.of());
             AnimationPlayer branch = timeline(PreparedAnimation.from(new io.github.hanhy06.emote.content.LoadedAnimation(Path.of("loop.json"), "test", loop)));
             branch.start();
             if (matched) {
@@ -238,6 +238,78 @@ class PlaybackSessionTest {
             branch.advance();
             assertEquals(List.of("start", "loop"), calls);
         }
+    }
+
+    @Test
+    void commonCallbackReceivesEachStringAndKeepsEachUsageIndependent() throws Exception {
+        CallbackRegistry registry = new CallbackRegistry();
+        Identifier name = Identifier.parse("test:shared");
+        List<PlaybackContext> contexts = new ArrayList<>();
+        List<String> calls = new ArrayList<>();
+        registry.register(name, new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                contexts.add(context);
+                context.setUserState(new Object());
+                calls.add("start:" + context.payload());
+            }
+            public void onTick(PlaybackContext context) { calls.add("tick:" + context.payload()); }
+            public void onClose(PlaybackContext context) { calls.add("close:" + context.payload()); }
+        });
+        var definitions = List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(name, "one"),
+            new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(name, "two"));
+        PlaybackSession first = fixture(20).session();
+        PlaybackSession second = fixture(20).session();
+        first.bindCallbacks(registry.resolve(definitions), 100);
+        second.bindCallbacks(registry.resolve(definitions), 100);
+        first.startCallbacks();
+        second.startCallbacks();
+        assertEquals(4, contexts.size());
+        assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
+        assertNotSame(contexts.get(0).userState(), contexts.get(2).userState());
+        first.tick(101);
+        first.tickCallbacks();
+        first.beginClose(PlaybackStopReason.MANUAL);
+        first.completeClose();
+        assertNull(contexts.get(0).userState());
+        assertNull(contexts.get(1).userState());
+        assertNotNull(contexts.get(2).userState());
+        assertEquals(List.of("start:one", "start:two", "start:one", "start:two", "tick:one", "tick:two", "close:one", "close:two"), calls);
+        assertThrows(IllegalArgumentException.class, () -> registry.resolve(List.of(
+            new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(Identifier.parse("test:missing"), ""))));
+    }
+
+    @Test
+    void stopDuringFirstStartDoesNotStartOrCloseLaterCallbacks() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        List<String> calls = new ArrayList<>();
+        var first = new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) {
+                calls.add("first-start");
+                session.deferCleanup(() -> { session.beginClose(PlaybackStopReason.MANUAL); session.completeClose(); });
+            }
+            public void onClose(PlaybackContext context) { calls.add("first-close"); }
+        };
+        var second = new EmoteCallbacks() {
+            public void onStart(PlaybackContext context) { calls.add("second-start"); }
+            public void onClose(PlaybackContext context) { calls.add("second-close"); }
+        };
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(first, "a"), new CallbackRegistry.Binding(second, "b")), 100);
+        session.startCallbacks();
+        assertEquals(List.of("first-start", "first-close"), calls);
+    }
+
+    @Test
+    void sequenceRootCallbacksSurviveOfferMatchTimeoutAndPartnerLayoutExpansion() throws Exception {
+        SessionFixture fixture = fixture(20);
+        EmoteSequence source = fixture.session().partnerSequence().source();
+        var definitions = List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(
+            Identifier.parse("test:shared"), "sequence payload"));
+        EmoteSequence withCallbacks = new EmoteSequence(source.sourcePath(), source.id(), source.metadata(),
+            source.settings(), source.participants(), source.steps(), definitions);
+        PreparedSequence prepared = PreparedSequence.resolve(withCallbacks, Map.of(fixture.offer().id(), fixture.offer()));
+        assertEquals(definitions, prepared.compiledAnimation().animation().callbacks());
+        assertEquals(definitions, prepared.compileMatch(new java.util.Random(0)).animation().callbacks());
+        assertEquals(definitions, prepared.compileTimeout(new java.util.Random(0)).animation().callbacks());
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {
@@ -263,8 +335,7 @@ class PlaybackSessionTest {
                 timeoutTicks,
                 List.of(new EmoteSequence.EmoteStep(offerId, 1)),
                 List.of(new EmoteSequence.EmoteStep(offerId, 1))
-            ))
-        );
+            )), List.of());
         PreparedSequence sequence = PreparedSequence.resolve(source, Map.of(offer.id(), offer));
         PlaybackSession session = new PlaybackSession(
             UUID.randomUUID(),

@@ -398,6 +398,40 @@ class AnimationJsonParserTest {
         assertEquals("$", exception.fieldPath());
     }
 
+    @Test
+    void loadsRootCallbacksWithUninterpretedStringPayloads() throws Exception {
+        JsonObject root = readReference();
+        JsonObject first = new JsonObject();
+        first.addProperty("name", "test:shared");
+        first.addProperty("payload", "{\"value\":1}");
+        JsonObject second = new JsonObject();
+        second.addProperty("name", "test:shared");
+        JsonArray array = new JsonArray();
+        array.add(first);
+        array.add(second);
+        root.add("callbacks", array);
+        var callbacks = parse(root).animation().callbacks();
+        assertEquals(2, callbacks.size());
+        assertEquals(callbacks.get(0).name(), callbacks.get(1).name());
+        assertEquals("{\"value\":1}", callbacks.get(0).payload());
+        assertEquals("", callbacks.get(1).payload());
+    }
+
+    @Test
+    void rejectsNonStringRootCallbackPayloads() throws Exception {
+        for (String payload : List.of("{}", "[]", "null", "42", "true")) {
+            JsonObject root = readReference();
+            JsonObject callback = new JsonObject();
+            callback.addProperty("name", "test:shared");
+            callback.add("payload", JsonParser.parseString(payload));
+            JsonArray array = new JsonArray();
+            array.add(callback);
+            root.add("callbacks", array);
+            EmoteAnimationLoadException error = assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+            assertEquals("$.callbacks[0].payload", error.fieldPath());
+        }
+    }
+
     private JsonObject readReference() throws IOException {
         JsonObject root = JsonParser
             .parseString(Files.readString(REFERENCE_PATH))

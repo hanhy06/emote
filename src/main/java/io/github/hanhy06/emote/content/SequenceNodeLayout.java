@@ -49,8 +49,7 @@ final class SequenceNodeLayout {
                 animation.timeline().durationTicks(),
                 tracks,
                 animation.timeline().events()
-            )
-        );
+            ), animation.callbacks());
         return new Expansion(expanded, expandedPreparedData, true, partnerIds);
     }
 
@@ -90,8 +89,7 @@ final class SequenceNodeLayout {
             first.animation().settings(),
             EmoteAnimation.MolangPrograms.empty(),
             nodes,
-            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty())
-        );
+            new EmoteAnimation.Timeline(1, Map.of(), EmoteAnimation.Events.empty()), List.of());
         LoadedAnimation loaded = new LoadedAnimation(
             first.sourcePath(),
             first.source().sha256(),

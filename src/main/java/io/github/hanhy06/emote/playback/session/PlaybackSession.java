@@ -6,7 +6,7 @@ import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.EmoteCallbacks;
+import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackState;
@@ -26,8 +26,7 @@ import java.util.*;
 
 public final class PlaybackSession {
     private final UUID sessionId;
-    private final Context context = new Context();
-    private @Nullable EmoteCallbacks callbacks;
+    private List<Context> callbackContexts = List.of();
     private PlaybackState playbackState = PlaybackState.RUNNING;
     private @Nullable PlaybackStopReason stopReason;
     private long elapsedTicks;
@@ -95,8 +94,8 @@ public final class PlaybackSession {
             this.elapsedTicks, this.animation.emoteId(), this.animation.currentTick());
     }
 
-    public void bindCallbacks(@Nullable EmoteCallbacks callbacks, long serverTick) {
-        this.callbacks = callbacks;
+    public void bindCallbacks(List<CallbackRegistry.Binding> bindings, long serverTick) {
+        this.callbackContexts = bindings.stream().map(Context::new).toList();
         this.lastServerTick = serverTick;
         this.animation.bindLoopListener(this::loopCallbacks);
     }
@@ -104,7 +103,11 @@ public final class PlaybackSession {
     public void startCallbacks() {
         if (this.callbacksStarted) throw new IllegalStateException("Callbacks already started.");
         this.callbacksStarted = true;
-        if (this.callbacks != null) invokeCallback(this.callbacks::onStart);
+        for (Context context : this.callbackContexts) {
+            context.started = true;
+            invokeCallback(context, context.binding.callbacks()::onStart);
+            if (this.playbackState != PlaybackState.RUNNING) break;
+        }
     }
 
     public boolean tick(long serverTick) {
@@ -115,21 +118,25 @@ public final class PlaybackSession {
     }
 
     public void tickCallbacks() {
-        if (this.callbacks != null && this.callbacksStarted && this.playbackState == PlaybackState.RUNNING) {
-            invokeCallback(this.callbacks::onTick);
+        if (!this.callbacksStarted || this.playbackState != PlaybackState.RUNNING) return;
+        for (Context context : this.callbackContexts) {
+            invokeCallback(context, context.binding.callbacks()::onTick);
+            if (this.playbackState != PlaybackState.RUNNING) break;
         }
     }
 
     private void loopCallbacks() {
-        if (this.callbacks != null && this.callbacksStarted && this.playbackState == PlaybackState.RUNNING) {
-            invokeCallback(this.callbacks::onLoop);
+        if (!this.callbacksStarted || this.playbackState != PlaybackState.RUNNING) return;
+        for (Context context : this.callbackContexts) {
+            invokeCallback(context, context.binding.callbacks()::onLoop);
+            if (this.playbackState != PlaybackState.RUNNING) break;
         }
     }
 
-    private void invokeCallback(Consumer<PlaybackContext> callback) {
+    private void invokeCallback(Context context, Consumer<PlaybackContext> callback) {
         this.invokingCallback = true;
         try {
-            callback.accept(this.context);
+            callback.accept(context);
         } finally {
             this.invokingCallback = false;
             Runnable cleanup = this.deferredCleanup;
@@ -148,9 +155,10 @@ public final class PlaybackSession {
         if (this.playbackState != PlaybackState.RUNNING) return false;
         this.playbackState = PlaybackState.CLOSING;
         this.stopReason = Objects.requireNonNull(reason, "reason");
-        if (this.callbacks != null && this.callbacksStarted) {
+        for (Context context : this.callbackContexts) {
+            if (!context.started) continue;
             try {
-                this.callbacks.onClose(this.context);
+                context.binding.callbacks().onClose(context);
             } catch (RuntimeException exception) {
                 EmoteMod.LOGGER.warn("Emote close callback failed for {}", this.id, exception);
             }
@@ -160,11 +168,16 @@ public final class PlaybackSession {
 
     public void completeClose() {
         this.playbackState = PlaybackState.CLOSED;
-        this.context.userState = null;
+        for (Context context : this.callbackContexts) context.userState = null;
     }
 
     private final class Context implements PlaybackContext {
+        private final CallbackRegistry.Binding binding;
+        private boolean started;
         private @Nullable Object userState;
+
+        private Context(CallbackRegistry.Binding binding) { this.binding = binding; }
+        public String payload() { return this.binding.payload(); }
 
         public UUID sessionId() { return PlaybackSession.this.sessionId; }
         public MinecraftServer server() { return EmoteMod.SERVER; }

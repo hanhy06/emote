@@ -97,8 +97,7 @@ class AnimationEventTest {
                     original.timeline().events().loop(),
                     original.timeline().events().stop()
                 )
-            )
-        );
+            ), List.of());
         AnimationPlayer player = new AnimationPlayer(
             PreparedAnimation.from(new LoadedAnimation(Path.of("outro-event-test.json"), "test", animation)),
             new EmptyTimelineTarget()
@@ -162,8 +161,7 @@ class AnimationEventTest {
             )),
             EmoteAnimation.MolangPrograms.empty(),
             Map.of(),
-            new EmoteAnimation.Timeline(durationTicks, Map.of(), events)
-        );
+            new EmoteAnimation.Timeline(durationTicks, Map.of(), events), List.of());
     }
 
     private EmoteAnimation.Event event(String command) {

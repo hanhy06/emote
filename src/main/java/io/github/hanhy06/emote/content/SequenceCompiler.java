@@ -75,8 +75,7 @@ final class SequenceCompiler {
                 Math.max(requireTick(offset, sequence), 1),
                 Map.of(),
                 new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
-            )
-        );
+            ), sequence.callbacks());
         SequenceNodeLayout.Expansion layout = SequenceNodeLayout.expandPartnerLayout(
             sequence.participants() != null,
             compiledAnimation,

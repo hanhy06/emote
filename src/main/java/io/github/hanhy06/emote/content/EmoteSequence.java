@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import net.minecraft.commands.arguments.coordinates.Coordinates;
 import net.minecraft.resources.Identifier;
@@ -17,7 +18,8 @@ public record EmoteSequence(
     EmoteMetadata metadata,
     Settings settings,
     @Nullable Participants participants,
-    List<Step> steps
+    List<Step> steps,
+    List<EmoteAnimation.Callback> callbacks
 ) {
     public enum Control {
         CONTINUE(Identifier.parse("emote:continue")),
@@ -44,7 +46,7 @@ public record EmoteSequence(
     }
 
     public EmoteSequence(Path sourcePath, Identifier id, EmoteMetadata metadata, Settings settings, List<Step> steps) {
-        this(sourcePath, id, metadata, settings, null, steps);
+        this(sourcePath, id, metadata, settings, null, steps, List.of());
     }
 
     public EmoteSequence {
@@ -53,6 +55,7 @@ public record EmoteSequence(
         Objects.requireNonNull(metadata, "metadata");
         Objects.requireNonNull(settings, "settings");
         steps = List.copyOf(steps);
+        callbacks = List.copyOf(callbacks);
         if (steps.isEmpty()) {
             throw new IllegalArgumentException("sequence steps must not be empty");
         }

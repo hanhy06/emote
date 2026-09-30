@@ -43,7 +43,7 @@ public abstract class EmoteApi {
 
     public abstract Optional<PlaybackInfo> getPlayback(UUID sessionId);
 
-    public abstract CallbackRegistration registerCallbacks(Identifier emoteId, EmoteCallbacks callbacks);
+    public abstract CallbackRegistration registerCallbacks(Identifier name, EmoteCallbacks callbacks);
 
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);
 

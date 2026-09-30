@@ -31,9 +31,9 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
 public final class ExampleCallbacks {
-    public static final Identifier IDLE_BUTTERFLY_ID = Identifier.parse("sit:idle_butterfly");
-    public static final Identifier BAT_ID = Identifier.parse("emote:bat");
-    public static final Identifier TRUMPET_CAN_CAN_ID = Identifier.parse("music:trumpet_can_can");
+    public static final Identifier IDLE_BUTTERFLY_CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
+    public static final Identifier BAT_CALLBACK_ID = Identifier.parse("emote:idle_bat_callback");
+    public static final Identifier TRUMPET_CAN_CAN_CALLBACK_ID = Identifier.parse("emote:trumpet_can_can_callback");
 
     private static final double ALLAY_SCALE = 0.35D;
 
@@ -150,12 +150,12 @@ public final class ExampleCallbacks {
 
     private ExampleCallbacks(EmoteApi api) {
         this.registrations = List.of(
-            api.registerCallbacks(IDLE_BUTTERFLY_ID, new EmoteCallbacks() {
+            api.registerCallbacks(IDLE_BUTTERFLY_CALLBACK_ID, new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) { spawnAllay(context); }
                 public void onTick(PlaybackContext context) { moveAllay(context); }
                 public void onClose(PlaybackContext context) { removeEntity(context, true); }
             }),
-            api.registerCallbacks(BAT_ID, new EmoteCallbacks() {
+            api.registerCallbacks(BAT_CALLBACK_ID, new EmoteCallbacks() {
                 public void onTick(PlaybackContext context) {
                     int tick = context.animationTick();
                     if (tick >= 25 && tick < 210) {
@@ -168,7 +168,7 @@ public final class ExampleCallbacks {
                 }
                 public void onClose(PlaybackContext context) { removeEntity(context, false); }
             }),
-            api.registerCallbacks(TRUMPET_CAN_CAN_ID, new EmoteCallbacks() {
+            api.registerCallbacks(TRUMPET_CAN_CAN_CALLBACK_ID, new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) {
                     Vec3 origin = context.rootPosition();
                     List<HornListener> listeners = context.level().players().stream()
@@ -215,7 +215,7 @@ public final class ExampleCallbacks {
         }
 
         context.setUserState(allay);
-        Vec3 origin = context.nodeWorldPosition("butterfly");
+        Vec3 origin = context.nodeWorldPosition(context.payload());
         allay.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
@@ -235,7 +235,7 @@ public final class ExampleCallbacks {
         Object entity = context.userState();
         if (!(entity instanceof Allay allay) || allay.isRemoved()) return;
 
-        Vec3 destination = context.nodeWorldPosition("butterfly");
+        Vec3 destination = context.nodeWorldPosition(context.payload());
         Vec3 movement = destination.subtract(allay.position());
         if (movement.horizontalDistanceSqr() > 1.0E-6D) {
             float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
@@ -255,7 +255,7 @@ public final class ExampleCallbacks {
         if (bat == null) throw new IllegalStateException("Failed to create the idle Bat");
 
         context.setUserState(bat);
-        Vec3 origin = context.nodeWorldPosition("bat");
+        Vec3 origin = context.nodeWorldPosition(context.payload());
         bat.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
@@ -275,7 +275,7 @@ public final class ExampleCallbacks {
         Object entity = context.userState();
         if (!(entity instanceof Bat bat) || bat.isRemoved()) return;
 
-        Vec3 destination = context.nodeWorldPosition("bat");
+        Vec3 destination = context.nodeWorldPosition(context.payload());
         Vec3 movement = destination.subtract(bat.position());
         double horizontalDistance = movement.horizontalDistance();
         if (horizontalDistance > 1.0E-6D) {

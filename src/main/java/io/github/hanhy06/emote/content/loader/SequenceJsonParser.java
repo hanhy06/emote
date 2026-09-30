@@ -45,7 +45,7 @@ public final class SequenceJsonParser {
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", true, document);
         try {
-            return new EmoteSequence(document.sourcePath(), id, metadata, settings, participants, steps);
+            return new EmoteSequence(document.sourcePath(), id, metadata, settings, participants, steps, AnimationJsonParser.parseCallbacks(root, document));
         } catch (IllegalArgumentException | NullPointerException exception) {
             throw document.error("$.steps", exception.getMessage(), exception);
         }

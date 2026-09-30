@@ -110,12 +110,14 @@ class ExampleCallbacksTest {
         var parser = new AnimationJsonParser();
         var bat = parser.parse(Path.of("docs/sample/emote.bat.json")).animation();
         var butterfly = parser.parse(Path.of("docs/sample/sit/sit.idle_butterfly.json")).animation();
-        assertEquals(ExampleCallbacks.BAT_ID, bat.id());
+        assertEquals(Identifier.parse("emote:bat"), bat.id());
         assertTrue(bat.nodes().containsKey("bat"));
+        assertEquals(List.of(new EmoteAnimation.Callback(ExampleCallbacks.BAT_CALLBACK_ID, "bat")), bat.callbacks());
         assertTrue(bat.timeline().events().timeline().stream().allMatch(event -> !event.commands().isEmpty()));
-        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_ID, butterfly.id());
+        assertEquals(Identifier.parse("sit:idle_butterfly"), butterfly.id());
         var anchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
         assertEquals("butterfly_x", anchor.parentId());
+        assertEquals(List.of(new EmoteAnimation.Callback(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, "butterfly")), butterfly.callbacks());
         assertTrue(butterfly.timeline().events().timeline().isEmpty());
     }
 
@@ -192,7 +194,7 @@ class ExampleCallbacksTest {
         assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");
         assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(127, 12, 0.65F), 400L));
         assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 12, 0.65F), 400L));
-        assertEquals(java.util.Set.of(ExampleCallbacks.BAT_ID, ExampleCallbacks.IDLE_BUTTERFLY_ID, ExampleCallbacks.TRUMPET_CAN_CAN_ID), registeredCallbacks.keySet());
+        assertEquals(java.util.Set.of(ExampleCallbacks.BAT_CALLBACK_ID, ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID), registeredCallbacks.keySet());
         assertTrue(callbacks.unregister());
         assertFalse(callbacks.unregister());
         assertTrue(melodies.contains(soundingMelody), "Unregistration preserves existing playback until onClose");
@@ -200,21 +202,22 @@ class ExampleCallbacksTest {
         melodies.add(otherMelody);
         var context = new TestContext();
         context.setUserState(soundingMelody);
-        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
         assertFalse(melodies.contains(soundingMelody));
         assertTrue(melodies.contains(otherMelody));
         assertInstanceOf(net.minecraft.network.protocol.game.ClientboundStopSoundPacket.class, packets.getLast());
         int count = packets.size();
-        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
         assertEquals(count, packets.size(), "A closed note must not send a second stop packet");
         context.setUserState(null);
-        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
-        registeredCallbacks.get(ExampleCallbacks.BAT_ID).onTick(context);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID).onClose(context);
+        registeredCallbacks.get(ExampleCallbacks.BAT_CALLBACK_ID).onTick(context);
     }
 
     private static final class TestContext implements PlaybackContext {
         private Object state;
         public UUID sessionId() { return UUID.randomUUID(); }
+        public String payload() { return ""; }
         public net.minecraft.server.MinecraftServer server() { throw new UnsupportedOperationException(); }
         public net.minecraft.server.level.ServerLevel level() { throw new UnsupportedOperationException(); }
         public long elapsedTicks() { return 0; }

@@ -11,6 +11,7 @@ import java.util.UUID;
 
 public interface PlaybackContext {
     UUID sessionId();
+    String payload();
     MinecraftServer server();
     ServerLevel level();
     long elapsedTicks();

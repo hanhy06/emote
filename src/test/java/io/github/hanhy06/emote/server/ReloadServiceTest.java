@@ -128,8 +128,7 @@ class ReloadServiceTest {
                     List.of()
                 )),
                 EmoteAnimation.Events.empty()
-            )
-        );
+            ), List.of());
         var invalid = new LoadedAnimation(Path.of("invalid.json"), "invalid", invalidAnimation);
         ReloadService service = new ReloadService(
             configManager,

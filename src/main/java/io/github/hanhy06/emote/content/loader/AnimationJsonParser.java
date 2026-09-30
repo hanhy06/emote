@@ -1,6 +1,7 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -19,6 +20,9 @@ import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import static io.github.hanhy06.emote.api.animation.EmoteAnimation.*;
@@ -71,8 +75,22 @@ public final class AnimationJsonParser {
         return new LoadedAnimation(
             document.sourcePath(),
             Sha256.hashHex(document.bytes()),
-            new EmoteAnimation(id, metadata, settings, molang, nodes, timeline)
+            new EmoteAnimation(id, metadata, settings, molang, nodes, timeline, parseCallbacks(root, document))
         );
+    }
+
+    static List<Callback> parseCallbacks(JsonObject root, EmoteJsonDocument document) throws EmoteAnimationLoadException {
+        JsonArray array = document.optionalArray(root, "callbacks", "$");
+        if (array == null) return List.of();
+        List<Callback> callbacks = new ArrayList<>();
+        for (int index = 0; index < array.size(); index++) {
+            String path = "$.callbacks[" + index + "]";
+            JsonObject callback = document.requireObject(array.get(index), path);
+            Identifier name = document.requireIdentifier(document.requireString(callback, "name", path), path + ".name");
+            String payload = callback.has("payload") ? document.requireString(callback, "payload", path) : "";
+            callbacks.add(new Callback(name, payload));
+        }
+        return List.copyOf(callbacks);
     }
 
     private MolangPrograms parseMolang(JsonObject object, Settings settings, EmoteJsonDocument document)

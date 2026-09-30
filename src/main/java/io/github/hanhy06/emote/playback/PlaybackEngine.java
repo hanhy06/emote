@@ -182,6 +182,12 @@ public class PlaybackEngine implements ConfigListener {
             return PlayResult.failure("Too many emotes are active right now. Try again shortly.");
         }
 
+        List<CallbackRegistry.Binding> callbackBindings;
+        try {
+            callbackBindings = this.callbackRegistry.resolve(emote.animation().callbacks());
+        } catch (IllegalArgumentException exception) {
+            return PlayResult.failure(exception.getMessage());
+        }
         PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
             player,
             emote.skinBindings(ParticipantRole.INITIATOR)
@@ -197,7 +203,8 @@ public class PlaybackEngine implements ConfigListener {
             playerBehavior,
             roots,
             skinPreparation.preparedPlayerSkin(),
-            partnerSequence
+            partnerSequence,
+            callbackBindings
         );
     }
 
@@ -208,7 +215,8 @@ public class PlaybackEngine implements ConfigListener {
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
-        @Nullable PreparedSequence partnerSequence
+        @Nullable PreparedSequence partnerSequence,
+        List<CallbackRegistry.Binding> callbackBindings
     ) {
         PlaybackNodes nodes = null;
         PlaybackSession session = null;
@@ -251,7 +259,7 @@ public class PlaybackEngine implements ConfigListener {
                 initiator,
                 partnerSequence
             );
-            session.bindCallbacks(this.callbackRegistry.find(net.minecraft.resources.Identifier.parse(playbackId)), EmoteMod.SERVER.getTickCount());
+            session.bindCallbacks(callbackBindings, EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
             if (!notifyStarted(player, session, initiator)) {

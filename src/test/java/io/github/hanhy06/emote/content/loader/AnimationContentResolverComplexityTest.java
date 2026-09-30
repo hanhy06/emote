@@ -67,8 +67,7 @@ class AnimationContentResolverComplexityTest {
                 durationTicks,
                 Map.of(),
                 events
-            )
-        );
+            ), List.of());
         return new LoadedAnimation(Path.of("complexity.json"), "test", animation);
     }
 

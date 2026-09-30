@@ -16,6 +16,15 @@ class SequenceJsonParserTest {
     private final SequenceJsonParser parser = new SequenceJsonParser();
 
     @Test
+    void loadsRootStringCallbacks(@TempDir Path tempDir) throws Exception {
+        var root = com.google.gson.JsonParser.parseString(baseJson("{\"emote\":\"example:wave\"}")).getAsJsonObject();
+        root.add("callbacks", com.google.gson.JsonParser.parseString("[{\"name\":\"test:shared\",\"payload\":\"hello\"}]"));
+        EmoteSequence sequence = load(tempDir, "callback.json", root.toString());
+        assertEquals(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(
+            net.minecraft.resources.Identifier.parse("test:shared"), "hello")), sequence.callbacks());
+    }
+
+    @Test
     void loadsSchemaFourSettingsMetadataEmotesAndWait(@TempDir Path tempDir) throws Exception {
         EmoteSequence sequence = load(tempDir, "sit.json", baseJson("""
             {"emote": "example:sit_down"},

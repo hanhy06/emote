@@ -17,7 +17,8 @@ public record EmoteAnimation(
     Settings settings,
     MolangPrograms molang,
     Map<String, Node> nodes,
-    Timeline timeline
+    Timeline timeline,
+    List<Callback> callbacks
 ) {
     public EmoteAnimation {
         Objects.requireNonNull(id, "id");
@@ -26,6 +27,14 @@ public record EmoteAnimation(
         Objects.requireNonNull(molang, "molang");
         nodes = Map.copyOf(nodes);
         Objects.requireNonNull(timeline, "timeline");
+        callbacks = List.copyOf(callbacks);
+    }
+
+    public record Callback(Identifier name, String payload) {
+        public Callback {
+            Objects.requireNonNull(name, "name");
+            Objects.requireNonNull(payload, "payload");
+        }
     }
 
     public record MolangPrograms(String initialize, String tick) {
