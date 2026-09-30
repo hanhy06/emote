@@ -2,7 +2,7 @@ package io.github.hanhy06.emote.api;
 
 import net.minecraft.resources.Identifier;
 
-public interface EmoteRegistration {
+public interface Registration {
     Identifier id();
 
     boolean isRegistered();

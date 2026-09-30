@@ -1,10 +1,9 @@
 package io.github.hanhy06.emote.playback;
 
-import io.github.hanhy06.emote.api.CallbackRegistration;
 import io.github.hanhy06.emote.api.EmoteCallbacks;
+import io.github.hanhy06.emote.api.Registration;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
-import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
 import java.util.List;
@@ -12,27 +11,22 @@ import java.util.ArrayList;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class CallbackRegistry {
-    private final ConcurrentHashMap<Identifier, Registration> registrations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Identifier, RegisteredCallbacks> registrations = new ConcurrentHashMap<>();
 
-    public CallbackRegistration register(Identifier id, EmoteCallbacks callbacks) {
-        Registration registration = new Registration(Objects.requireNonNull(id, "id"), Objects.requireNonNull(callbacks, "callbacks"));
+    public Registration register(Identifier id, EmoteCallbacks callbacks) {
+        RegisteredCallbacks registration = new RegisteredCallbacks(Objects.requireNonNull(id, "id"), Objects.requireNonNull(callbacks, "callbacks"));
         if (this.registrations.putIfAbsent(id, registration) != null) {
             throw new IllegalArgumentException("Callbacks are already registered: " + id);
         }
         return registration;
     }
 
-    public @Nullable EmoteCallbacks find(Identifier id) {
-        Registration registration = this.registrations.get(id);
-        return registration == null ? null : registration.callbacks;
-    }
-
     public List<Binding> resolve(List<EmoteAnimation.Callback> definitions) {
         List<Binding> bindings = new ArrayList<>();
         for (EmoteAnimation.Callback definition : definitions) {
-            EmoteCallbacks callbacks = find(definition.name());
-            if (callbacks == null) throw new IllegalArgumentException("Unknown emote callback: " + definition.name());
-            bindings.add(new Binding(callbacks, definition.payload()));
+            RegisteredCallbacks registration = this.registrations.get(definition.name());
+            if (registration == null) throw new IllegalArgumentException("Unknown emote callback: " + definition.name());
+            bindings.add(new Binding(registration.callbacks, definition.payload()));
         }
         return List.copyOf(bindings);
     }
@@ -44,11 +38,11 @@ public final class CallbackRegistry {
         }
     }
 
-    private final class Registration implements CallbackRegistration {
+    private final class RegisteredCallbacks implements Registration {
         private final Identifier id;
         private final EmoteCallbacks callbacks;
 
-        private Registration(Identifier id, EmoteCallbacks callbacks) {
+        private RegisteredCallbacks(Identifier id, EmoteCallbacks callbacks) {
             this.id = id;
             this.callbacks = callbacks;
         }

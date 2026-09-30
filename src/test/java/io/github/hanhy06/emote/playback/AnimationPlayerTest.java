@@ -129,7 +129,9 @@ class AnimationPlayerTest {
         AnimationPlayer player = player(root, new FakeTarget());
         int[] loops = {0};
         player.bindEvents(event -> {});
-        player.bindLoopListener(() -> loops[0]++);
+        player.bindLifecycleListener(new AnimationPlayer.LifecycleListener() {
+            public void onLoop() { loops[0]++; }
+        });
         player.start();
         player.startEvents();
         assertEquals(0, loops[0]);
@@ -153,10 +155,12 @@ class AnimationPlayerTest {
         AnimationPlayer player = player(root, target);
         List<String> calls = new ArrayList<>();
         player.bindEvents(event -> calls.addAll(event.event().commands()));
-        player.bindLoopListener(() -> {
-            assertEquals(4, player.currentTick());
-            assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
-            calls.add("loop-callback");
+        player.bindLifecycleListener(new AnimationPlayer.LifecycleListener() {
+            public void onLoop() {
+                assertEquals(4, player.currentTick());
+                assertEquals(5.0F, target.matrix("display").m30(), 1.0E-5F);
+                calls.add("loop-callback");
+            }
         });
         player.start();
         player.startEvents();

@@ -134,14 +134,14 @@ class ExampleCallbacksTest {
             api = new EmoteApi() {
                 public PlayResult play(ServerPlayer player, Identifier id) { throw new UnsupportedOperationException(); }
                 public boolean stop(ServerPlayer player) { throw new UnsupportedOperationException(); }
-                public EmoteRegistration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
+                public Registration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
                 public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
                 public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
-                public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
+                public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
                     registeredCallbacks.put(id, callbacks);
-                    return new CallbackRegistration() {
+                    return new Registration() {
                         private boolean registered = true;
                         public Identifier id() { return id; }
                         public boolean isRegistered() { return registered; }

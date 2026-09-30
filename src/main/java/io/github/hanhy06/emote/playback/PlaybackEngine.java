@@ -278,8 +278,7 @@ public class PlaybackEngine implements ConfigListener {
                 initiator,
                 partnerSequence
             );
-            session.bindCallbacks(callbackBindings, EmoteMod.SERVER.getTickCount());
-            session.bindAnimationCallbacks(animationBindings);
+            session.bindCallbacks(callbackBindings, animationBindings, EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
             this.playerVisibilityService.start(player, session, initiator);
             if (!notifyStarted(player, session, initiator)) {
@@ -287,7 +286,6 @@ public class PlaybackEngine implements ConfigListener {
             }
             startedNotified = true;
             session.startPlayback();
-            if (playbackChanged(session)) return new PlayResult.Success(session.playbackInfo(player.getUUID()));
             return new PlayResult.Success(session.playbackInfo(player.getUUID()));
         } catch (RuntimeException exception) {
             EmoteMod.LOGGER.warn("Failed to start emote {} for player {}", emote.id(), player.getScoreboardName(), exception);

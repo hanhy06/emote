@@ -146,7 +146,7 @@ public final class ExampleCallbacks {
     );
 
     private final Set<TrumpetCanCan> activeMelodies = new HashSet<>();
-    private final List<CallbackRegistration> registrations;
+    private final List<Registration> registrations;
 
     private ExampleCallbacks(EmoteApi api) {
         this.registrations = List.of(
@@ -201,7 +201,7 @@ public final class ExampleCallbacks {
 
     public boolean unregister() {
         boolean removed = false;
-        for (CallbackRegistration registration : this.registrations) removed |= registration.unregister();
+        for (Registration registration : this.registrations) removed |= registration.unregister();
         return removed;
     }
 

@@ -36,7 +36,6 @@ public final class AnimationPlayer {
     private EventExecutor eventExecutor;
     private boolean eventsStarted;
     private boolean eventsStopped;
-    private Runnable loopListener = () -> {};
     private LifecycleListener lifecycleListener = new LifecycleListener() {};
     private int lifecycleSegment = -1;
     private boolean pendingLoopCallback;
@@ -126,10 +125,6 @@ public final class AnimationPlayer {
         this.eventExecutor = Objects.requireNonNull(eventExecutor, "eventExecutor");
     }
 
-    public void bindLoopListener(Runnable listener) {
-        this.loopListener = Objects.requireNonNull(listener, "listener");
-    }
-
     public void bindLifecycleListener(LifecycleListener listener) {
         this.lifecycleListener = Objects.requireNonNull(listener, "listener");
     }
@@ -143,14 +138,12 @@ public final class AnimationPlayer {
             startSegmentEvents();
             return;
         }
-        if (this.emote.playbackSegments().isEmpty()) {
-            execute(
-                this.animation.timeline().events().start(),
-                this.animation.id(),
-                this.currentTick,
-                AnimationEventPhase.START
-            );
-        }
+        execute(
+            this.animation.timeline().events().start(),
+            this.animation.id(),
+            this.currentTick,
+            AnimationEventPhase.START
+        );
         if (this.currentTick == 0) {
             execute(this.emote.timelineEvents(0));
         }
@@ -186,7 +179,7 @@ public final class AnimationPlayer {
             execute(this.emote.timelineEvents(this.currentTick));
             if (this.pendingLoopCallback && !this.eventsStopped) {
                 this.pendingLoopCallback = false;
-                this.loopListener.run();
+                this.lifecycleListener.onLoop();
             }
         }
         return result;
@@ -611,6 +604,7 @@ public final class AnimationPlayer {
     public interface LifecycleListener {
         default void onStart(PreparedAnimation animation) {}
         default void onTick(int animationTick) {}
+        default void onLoop() {}
         default void onClose(PlaybackStopReason reason) {}
     }
 

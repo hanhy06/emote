@@ -130,8 +130,8 @@ class PlaybackSessionTest {
         assertThrows(IllegalArgumentException.class, () -> registry.register(id, new EmoteCallbacks() {}));
         PlaybackSession first = fixture(20).session();
         PlaybackSession second = fixture(20).session();
-        first.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
-        second.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), 100);
+        first.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), Map.of(), 100);
+        second.bindCallbacks(registry.resolve(List.of(new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(id, ""))), Map.of(), 100);
         first.startPlayback();
         second.startPlayback();
         assertNotSame(contexts.get(0).userState(), contexts.get(1).userState());
@@ -173,7 +173,7 @@ class PlaybackSessionTest {
                 calls.add("returned");
             }
             public void onClose(PlaybackContext context) { calls.add("close"); }
-        }, "")), 100);
+        }, "")), Map.of(), 100);
         session.startPlayback();
         assertEquals(List.of("start", "returned", "close"), calls);
         assertFalse(session.isInvokingCallback());
@@ -190,7 +190,7 @@ class PlaybackSessionTest {
                     closed.add(context.stopReason().orElseThrow());
                     throw new IllegalStateException("expected close failure");
                 }
-            }, "")), 100);
+            }, "")), Map.of(), 100);
             session.startPlayback();
             assertTrue(session.beginClose(reason));
             session.closeCallbacks();
@@ -208,7 +208,7 @@ class PlaybackSessionTest {
         session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
             public void onTick(PlaybackContext context) { throw new IllegalStateException("expected tick failure"); }
             public void onClose(PlaybackContext context) { closed.add(context.stopReason().orElseThrow()); }
-        }, "")), 100);
+        }, "")), Map.of(), 100);
         session.startPlayback();
         session.tick(101);
         assertThrows(IllegalStateException.class, session::tickCallbacks);
@@ -228,7 +228,7 @@ class PlaybackSessionTest {
             session.bindCallbacks(List.of(new CallbackRegistry.Binding(new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) { calls.add("start"); }
                 public void onLoop(PlaybackContext context) { calls.add("loop"); }
-            }, "")), 100);
+            }, "")), Map.of(), 100);
             session.startPlayback();
             var source = fixture.offer().animation();
             var settings = source.settings();
@@ -272,8 +272,8 @@ class PlaybackSessionTest {
             new io.github.hanhy06.emote.api.animation.EmoteAnimation.Callback(name, "two"));
         PlaybackSession first = fixture(20).session();
         PlaybackSession second = fixture(20).session();
-        first.bindCallbacks(registry.resolve(definitions), 100);
-        second.bindCallbacks(registry.resolve(definitions), 100);
+        first.bindCallbacks(registry.resolve(definitions), Map.of(), 100);
+        second.bindCallbacks(registry.resolve(definitions), Map.of(), 100);
         first.startPlayback();
         second.startPlayback();
         assertEquals(4, contexts.size());
@@ -307,7 +307,7 @@ class PlaybackSessionTest {
             public void onStart(PlaybackContext context) { calls.add("second-start"); }
             public void onClose(PlaybackContext context) { calls.add("second-close"); }
         };
-        session.bindCallbacks(List.of(new CallbackRegistry.Binding(first, "a"), new CallbackRegistry.Binding(second, "b")), 100);
+        session.bindCallbacks(List.of(new CallbackRegistry.Binding(first, "a"), new CallbackRegistry.Binding(second, "b")), Map.of(), 100);
         session.startPlayback();
         assertEquals(List.of("first-start", "first-close"), calls);
     }
@@ -374,8 +374,7 @@ class PlaybackSessionTest {
             public void onStart(PlaybackContext context) { context.setUserState("root"); }
             public void onTick(PlaybackContext context) { assertEquals("root", context.userState()); }
             public void onClose(PlaybackContext context) { calls.add("root-close"); }
-        }, "")), 100);
-        session.bindAnimationCallbacks(Map.of(repeated, List.of(new CallbackRegistry.Binding(callbacks, "node"))));
+        }, "")), Map.of(repeated, List.of(new CallbackRegistry.Binding(callbacks, "node"))), 100);
         session.startPlayback();
         for (int tick = 1; tick <= compiled.durationTicks(); tick++) {
             assertTrue(session.tick(100 + tick));
@@ -420,7 +419,7 @@ class PlaybackSessionTest {
             }
             public void onTick(PlaybackContext context) { calls.add("tick:" + context.animationTick()); }
             public void onClose(PlaybackContext context) { calls.add("close-callback"); }
-        }, "")), 100);
+        }, "")), Map.of(), 100);
         session.startPlayback();
         session.tick(101);
         assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());

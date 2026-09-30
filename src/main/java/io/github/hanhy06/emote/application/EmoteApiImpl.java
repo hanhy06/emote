@@ -60,7 +60,7 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public EmoteRegistration register(EmoteAnimation animation) throws EmoteAnimationLoadException {
+    public Registration register(EmoteAnimation animation) throws EmoteAnimationLoadException {
         Objects.requireNonNull(animation, "animation");
         requireServerThread();
         Path sourcePath = Path.of("api", animation.id().getNamespace(), animation.id().getPath() + ".json");
@@ -113,7 +113,7 @@ public final class EmoteApiImpl extends EmoteApi {
     }
 
     @Override
-    public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
+    public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
         return this.playbackEngine.callbackRegistry().register(id, callbacks);
     }
 
@@ -133,7 +133,7 @@ public final class EmoteApiImpl extends EmoteApi {
         void notifyChanged();
     }
 
-    private final class ApiRegistration implements EmoteRegistration {
+    private final class ApiRegistration implements Registration {
         private final Identifier id;
         private final UUID registrationId;
 

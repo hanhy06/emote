@@ -33,7 +33,7 @@ public abstract class EmoteApi {
 
     public abstract boolean stop(ServerPlayer player);
 
-    public abstract EmoteRegistration register(EmoteAnimation animation) throws EmoteAnimationLoadException;
+    public abstract Registration register(EmoteAnimation animation) throws EmoteAnimationLoadException;
 
     public abstract Optional<EmoteInfo> find(Identifier emoteId);
 
@@ -43,7 +43,7 @@ public abstract class EmoteApi {
 
     public abstract Optional<PlaybackInfo> getPlayback(UUID sessionId);
 
-    public abstract CallbackRegistration registerCallbacks(Identifier name, EmoteCallbacks callbacks);
+    public abstract Registration registerCallbacks(Identifier name, EmoteCallbacks callbacks);
 
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);
 
