@@ -3,7 +3,7 @@ package io.github.hanhy06.emote.content;
 import com.google.gson.JsonPrimitive;
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteCallbackPhase;
+import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
@@ -34,9 +34,7 @@ class SequenceCompilerTest {
             1,
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of("say transitioned"),
-            List.of()
-        );
+            List.of("say transitioned"));
         PreparedAnimation second = animation(
             "demo:second",
             3,
@@ -107,9 +105,7 @@ class SequenceCompilerTest {
                     2,
                     new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
                     new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-                    List.of("say idle"),
-                    List.of()
-                )),
+                    List.of("say idle"))),
                 List.of(),
                 List.of()
             ),
@@ -203,15 +199,11 @@ class SequenceCompilerTest {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of("say start"),
-            List.of()
-        );
+            List.of("say start"));
         EmoteAnimation.Event loopEvent = new EmoteAnimation.Event(
-            startEvent.source(), startEvent.origin(), List.of("say loop"), List.of()
-        );
+            startEvent.source(), startEvent.origin(), List.of("say loop"));
         EmoteAnimation.Event stopEvent = new EmoteAnimation.Event(
-            startEvent.source(), startEvent.origin(), List.of("say stop"), List.of()
-        );
+            startEvent.source(), startEvent.origin(), List.of("say stop"));
         PreparedAnimation animation = animation(
             "demo:eventful",
             2,
@@ -227,9 +219,9 @@ class SequenceCompilerTest {
             Map.of(animation.id(), animation)
         ).compiledAnimation();
 
-        assertEquals(List.of(EmoteCallbackPhase.START), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::phase).toList());
+        assertEquals(List.of(AnimationEventPhase.START), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::phase).toList());
         assertEquals(
-            List.of(EmoteCallbackPhase.LOOP, EmoteCallbackPhase.STOP),
+            List.of(AnimationEventPhase.LOOP, AnimationEventPhase.STOP),
             compiled.timelineEvents(2).stream().map(PreparedAnimation.PreparedEvent::phase).toList()
         );
         assertTrue(compiled.timelineEvents(0).stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:eventful"))));
@@ -242,12 +234,9 @@ class SequenceCompilerTest {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            List.of("start"),
-            List.of()
-        );
+            List.of("start"));
         EmoteAnimation.Event stopEvent = new EmoteAnimation.Event(
-            startEvent.source(), startEvent.origin(), List.of("stop"), List.of()
-        );
+            startEvent.source(), startEvent.origin(), List.of("stop"));
         PreparedAnimation animation = animation(
             "demo:interruptible",
             4,
@@ -270,7 +259,7 @@ class SequenceCompilerTest {
         player.stop();
         player.stop();
 
-        assertEquals(List.of(EmoteCallbackPhase.START, EmoteCallbackPhase.STOP), executed.stream().map(PreparedAnimation.PreparedEvent::phase).toList());
+        assertEquals(List.of(AnimationEventPhase.START, AnimationEventPhase.STOP), executed.stream().map(PreparedAnimation.PreparedEvent::phase).toList());
         assertEquals(List.of(0, 0), executed.stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
         assertTrue(executed.stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:interruptible"))));
     }

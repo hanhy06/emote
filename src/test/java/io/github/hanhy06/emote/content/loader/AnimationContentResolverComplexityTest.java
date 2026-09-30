@@ -30,9 +30,7 @@ class AnimationContentResolverComplexityTest {
         EmoteAnimation.Event event = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
-            commands,
-            List.of()
-        );
+            commands);
         assertDoesNotThrow(() -> AnimationContentResolver.validateComplexity(loaded(
             nodes,
             20,

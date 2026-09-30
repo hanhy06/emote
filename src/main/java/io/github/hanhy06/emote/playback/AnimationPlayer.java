@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteCallbackPhase;
+import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
@@ -136,7 +136,7 @@ public final class AnimationPlayer {
                 this.animation.timeline().events().start(),
                 this.animation.id(),
                 this.currentTick,
-                EmoteCallbackPhase.START
+                AnimationEventPhase.START
             );
         }
         if (this.currentTick == 0) {
@@ -161,7 +161,7 @@ public final class AnimationPlayer {
                 this.animation.timeline().events().loop(),
                 this.animation.id(),
                 this.animation.settings().playback().loopEndTicks(),
-                EmoteCallbackPhase.LOOP
+                AnimationEventPhase.LOOP
             );
             if (continueAfterLoopBoundary && this.phase == PlaybackPhase.LOOP_BOUNDARY) {
                 result = continueAfterLoopEvent();
@@ -288,7 +288,7 @@ public final class AnimationPlayer {
                 this.animation.timeline().events().stop(),
                 this.animation.id(),
                 this.currentTick,
-                EmoteCallbackPhase.STOP
+                AnimationEventPhase.STOP
             );
             return;
         }
@@ -298,7 +298,7 @@ public final class AnimationPlayer {
                 segment.animation().animation().timeline().events().stop(),
                 segment.animation().animation().id(),
                 this.currentTick - segment.startTick(),
-                EmoteCallbackPhase.STOP
+                AnimationEventPhase.STOP
             );
         }
     }
@@ -512,7 +512,7 @@ public final class AnimationPlayer {
         List<EmoteAnimation.Event> events,
         Identifier animationId,
         int animationTick,
-        EmoteCallbackPhase phase
+        AnimationEventPhase phase
     ) {
         execute(events.stream().map(event -> new PreparedAnimation.PreparedEvent(event, animationId, animationTick, phase)).toList());
     }

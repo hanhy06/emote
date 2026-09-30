@@ -81,7 +81,7 @@ class ExampleCallbacksTest {
 
         assertEquals("music:trumpet_can_can", animation.id().toString());
         assertEquals(435, animation.timeline().durationTicks());
-        assertEquals(ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID, animation.timeline().events().start().getFirst().callbacks().getFirst().name());
+        assertTrue(animation.timeline().events().start().isEmpty());
         for (int tick = 0; tick <= animation.timeline().durationTicks(); tick++) {
             int at = tick;
             melody.advance(tick, note -> {
@@ -106,40 +106,28 @@ class ExampleCallbacksTest {
     }
 
     @Test
-    void newBatAndIdleButterflySamplesKeepTheirExampleCallbacks() throws Exception {
+    void samplesLoadWithoutJsonCallbacksAndKeepTheirNodes() throws Exception {
         var parser = new AnimationJsonParser();
         var bat = parser.parse(Path.of("docs/sample/emote.bat.json")).animation();
         var butterfly = parser.parse(Path.of("docs/sample/sit/sit.idle_butterfly.json")).animation();
-
-        var batCallbacks = bat.timeline().events().timeline().stream()
-            .flatMap(event -> event.callbacks().stream().map(callback -> Map.entry(event, callback)))
-            .toList();
-        assertFalse(batCallbacks.isEmpty());
-        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, batCallbacks.getFirst().getValue().name());
-        assertEquals("spawn", batCallbacks.getFirst().getValue().payload());
-        assertEquals("bat", batCallbacks.getFirst().getKey().origin().node());
-        assertEquals("remove", batCallbacks.getLast().getValue().payload());
-        assertEquals(ExampleCallbacks.IDLE_BAT_CALLBACK_ID, bat.timeline().events().stop().getFirst().callbacks().getFirst().name());
-
-        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().start().getFirst().callbacks().getFirst().name());
-        assertEquals("butterfly", butterfly.timeline().events().start().getFirst().origin().node());
-        var butterflyAnchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
-        assertEquals("butterfly_x", butterflyAnchor.parentId());
-        assertFalse(butterfly.timeline().events().timeline().isEmpty());
-        assertTrue(butterfly.timeline().events().timeline().stream()
-            .allMatch(event -> event.callbacks().getFirst().name().equals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID)));
-        assertTrue(butterfly.timeline().events().loop().isEmpty());
-        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, butterfly.timeline().events().stop().getFirst().callbacks().getFirst().name());
+        assertEquals(ExampleCallbacks.BAT_ID, bat.id());
+        assertTrue(bat.nodes().containsKey("bat"));
+        assertTrue(bat.timeline().events().timeline().stream().allMatch(event -> !event.commands().isEmpty()));
+        assertEquals(ExampleCallbacks.IDLE_BUTTERFLY_ID, butterfly.id());
+        var anchor = assertInstanceOf(EmoteAnimation.AnchorNode.class, butterfly.nodes().get("butterfly"));
+        assertEquals("butterfly_x", anchor.parentId());
+        assertTrue(butterfly.timeline().events().timeline().isEmpty());
     }
 
     @Test
     @SuppressWarnings("unchecked")
-    void outOfRangePitchesDoNotThrowAndStoppingCancelsCanCan() throws Exception {
+    void packetNotesKeepTimingAndCloseStopsOnlyItsSession() throws Exception {
         SharedConstants.tryDetectVersion();
         Bootstrap.bootStrap();
         EmoteApi previous = EmoteApi.INSTANCE;
         EmoteApi.INSTANCE = null;
         EmoteApi api;
+        Map<Identifier, EmoteCallbacks> registeredCallbacks = new java.util.HashMap<>();
         try {
             api = new EmoteApi() {
                 public PlayResult play(ServerPlayer player, Identifier id) { throw new UnsupportedOperationException(); }
@@ -149,26 +137,34 @@ class ExampleCallbacksTest {
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
                 public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
-                public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) { throw new UnsupportedOperationException(); }
+                public CallbackRegistration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
+                    registeredCallbacks.put(id, callbacks);
+                    return new CallbackRegistration() {
+                        private boolean registered = true;
+                        public Identifier id() { return id; }
+                        public boolean isRegistered() { return registered; }
+                        public boolean unregister() { boolean previous = registered; registered = false; return previous; }
+                    };
+                }
                 public ListenerRegistration addPlayListener(EmotePlayListener listener) { return () -> true; }
                 public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) { return () -> true; }
-                public ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener) { return () -> true; }
             };
         } finally {
             EmoteApi.INSTANCE = previous;
         }
         ExampleCallbacks callbacks = ExampleCallbacks.registerAll(api);
-        var field = ExampleCallbacks.class.getDeclaredField("trumpetCanCans");
+        var field = ExampleCallbacks.class.getDeclaredField("activeMelodies");
         field.setAccessible(true);
-        var melodies = (Map<UUID, ExampleCallbacks.TrumpetCanCan>) field.get(callbacks);
-        UUID performer = UUID.randomUUID();
-        var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", UUID.class, Vec3.class, ExampleCallbacks.HornNote.class, List.class);
+        var melodies = (java.util.Set<ExampleCallbacks.TrumpetCanCan>) field.get(callbacks);
+        var playHorn = ExampleCallbacks.class.getDeclaredMethod("playHorn", ExampleCallbacks.TrumpetCanCan.class, ExampleCallbacks.HornNote.class, long.class);
         playHorn.setAccessible(true);
         var listenerConstructor = Class.forName("io.github.hanhy06.emote.ExampleCallbacks$HornListener").getDeclaredConstructor(UUID.class, Consumer.class);
         listenerConstructor.setAccessible(true);
         var packets = new ArrayList<Packet<?>>();
         Object listener = listenerConstructor.newInstance(UUID.randomUUID(), (Consumer<Packet<?>>) packets::add);
         var packetMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
+        var soundingMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener));
+        melodies.add(soundingMelody);
         int sounds = 0;
         var particlePositions = new java.util.HashSet<Vec3>();
         for (int tick = 0; tick <= 435; tick++) {
@@ -176,7 +172,7 @@ class ExampleCallbacksTest {
             packetMelody.advance(tick, notes::add);
             for (var note : notes) {
                 packets.clear();
-                playHorn.invoke(callbacks, performer, Vec3.ZERO, note, List.of(listener));
+                playHorn.invoke(callbacks, soundingMelody, note, (long) tick);
                 assertInstanceOf(ClientboundSoundPacket.class, packets.get(packets.size() - 2));
                 var particle = assertInstanceOf(ClientboundLevelParticlesPacket.class, packets.getLast());
                 assertEquals(ParticleTypes.NOTE, particle.particle());
@@ -192,18 +188,43 @@ class ExampleCallbacksTest {
         assertEquals(99, sounds, "Every actual note, including retriggers, sends exactly one particle immediately after its sound");
         assertTrue(particlePositions.size() > 1, "Particle positions must vary between notes");
         packets.clear();
-        playHorn.invoke(callbacks, UUID.randomUUID(), Vec3.ZERO, new ExampleCallbacks.HornNote(55, 6, 0.65F), List.of(listener));
+        playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener)), new ExampleCallbacks.HornNote(55, 6, 0.65F), 400L);
         assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(127, 12, 0.65F), List.of()));
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, performer, Vec3.ZERO, new ExampleCallbacks.HornNote(0, 12, 0.65F), List.of()));
-        melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
-        var stop = ExampleCallbacks.class.getDeclaredMethod("stopTrumpetCanCan", UUID.class);
-        stop.setAccessible(true);
-
-        stop.invoke(callbacks, performer);
-        assertTrue(melodies.isEmpty());
-        melodies.put(performer, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(127, 12, 0.65F), 400L));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 12, 0.65F), 400L));
+        assertEquals(java.util.Set.of(ExampleCallbacks.BAT_ID, ExampleCallbacks.IDLE_BUTTERFLY_ID, ExampleCallbacks.TRUMPET_CAN_CAN_ID), registeredCallbacks.keySet());
         assertTrue(callbacks.unregister());
-        assertTrue(melodies.isEmpty());
+        assertFalse(callbacks.unregister());
+        assertTrue(melodies.contains(soundingMelody), "Unregistration preserves existing playback until onClose");
+        var otherMelody = new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of());
+        melodies.add(otherMelody);
+        var context = new TestContext();
+        context.setUserState(soundingMelody);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
+        assertFalse(melodies.contains(soundingMelody));
+        assertTrue(melodies.contains(otherMelody));
+        assertInstanceOf(net.minecraft.network.protocol.game.ClientboundStopSoundPacket.class, packets.getLast());
+        int count = packets.size();
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
+        assertEquals(count, packets.size(), "A closed note must not send a second stop packet");
+        context.setUserState(null);
+        registeredCallbacks.get(ExampleCallbacks.TRUMPET_CAN_CAN_ID).onClose(context);
+        registeredCallbacks.get(ExampleCallbacks.BAT_ID).onTick(context);
+    }
+
+    private static final class TestContext implements PlaybackContext {
+        private Object state;
+        public UUID sessionId() { return UUID.randomUUID(); }
+        public net.minecraft.server.MinecraftServer server() { throw new UnsupportedOperationException(); }
+        public net.minecraft.server.level.ServerLevel level() { throw new UnsupportedOperationException(); }
+        public long elapsedTicks() { return 0; }
+        public int animationTick() { return 24; }
+        public Optional<net.minecraft.world.entity.Entity> actor(String name) { throw new UnsupportedOperationException(); }
+        public Optional<net.minecraft.world.entity.Entity> nodeEntity(String node) { throw new UnsupportedOperationException(); }
+        public Vec3 nodeWorldPosition(String node) { throw new UnsupportedOperationException(); }
+        public Vec3 rootPosition() { return Vec3.ZERO; }
+        public Optional<PlaybackStopReason> stopReason() { return Optional.of(PlaybackStopReason.MANUAL); }
+        public Object userState() { return state; }
+        public void setUserState(Object state) { this.state = state; }
     }
 }

@@ -1,8 +1,6 @@
 package io.github.hanhy06.emote.playback.timeline;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.EmoteCallbackEvent;
-import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
@@ -22,18 +20,15 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
     private final ServerPlayer player;
     private final PlaybackNodes nodes;
     private final AnimationPlayer timeline;
-    private final NamedCallbackDispatcher callbacks;
 
     public EventCommandExecutor(
         ServerPlayer player,
         PlaybackNodes nodes,
-        AnimationPlayer timeline,
-        NamedCallbackDispatcher callbacks
+        AnimationPlayer timeline
     ) {
         this.player = Objects.requireNonNull(player, "player");
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.timeline = Objects.requireNonNull(timeline, "timeline");
-        this.callbacks = Objects.requireNonNull(callbacks, "callbacks");
     }
 
     @Override
@@ -50,28 +45,6 @@ public final class EventCommandExecutor implements AnimationPlayer.EventExecutor
                 EmoteMod.SERVER.getCommands().performPrefixedCommand(source, command);
             }
         }
-        ParticipantRole participant = resolveParticipant(event.source());
-        for (EmoteAnimation.Callback callback : event.callbacks()) {
-            this.callbacks.dispatch(new EmoteCallbackEvent(
-                this.player,
-                this.timeline.emoteId(),
-                preparedEvent.animationId(),
-                this.timeline.currentTick(),
-                preparedEvent.animationTick(),
-                preparedEvent.phase(),
-                participant,
-                origin,
-                callback.name(),
-                callback.payload()
-            ));
-        }
-    }
-
-    private ParticipantRole resolveParticipant(EmoteAnimation.CommandSource source) {
-        if (source.type() != EmoteAnimation.SourceType.NODE) return ParticipantRole.INITIATOR;
-        return requiredNode(source.node()).node().space() == EmoteAnimation.NodeSpace.PARTNER
-            ? ParticipantRole.PARTNER
-            : ParticipantRole.INITIATOR;
     }
 
     private CommandSourceStack createSource(EmoteAnimation.CommandSource source) {

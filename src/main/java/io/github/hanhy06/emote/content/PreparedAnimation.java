@@ -1,7 +1,7 @@
 package io.github.hanhy06.emote.content;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteCallbackPhase;
+import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
@@ -68,7 +68,7 @@ public final class PreparedAnimation implements PlayableEmote {
         Map<Integer, List<PreparedEvent>> eventsByTick = new HashMap<>();
         for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
             eventsByTick.computeIfAbsent(event.tick(), ignored -> new ArrayList<>()).add(new PreparedEvent(
-                event.event(), animation.id(), event.tick(), EmoteCallbackPhase.TIMELINE
+                event.event(), animation.id(), event.tick(), AnimationEventPhase.TIMELINE
             ));
         }
 
@@ -189,10 +189,10 @@ public final class PreparedAnimation implements PlayableEmote {
         Map<Integer, List<PreparedEvent>> eventsByTick = new HashMap<>();
         for (PlaybackSegment segment : segments) {
             EmoteAnimation animation = segment.animation().animation();
-            addEvents(eventsByTick, segment.startTick(), animation.timeline().events().start(), animation.id(), 0, EmoteCallbackPhase.START);
+            addEvents(eventsByTick, segment.startTick(), animation.timeline().events().start(), animation.id(), 0, AnimationEventPhase.START);
             for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
                 addEvent(eventsByTick, segment.startTick() + event.tick(), new PreparedEvent(
-                    event.event(), animation.id(), event.tick(), EmoteCallbackPhase.TIMELINE
+                    event.event(), animation.id(), event.tick(), AnimationEventPhase.TIMELINE
                 ));
             }
             if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
@@ -203,7 +203,7 @@ public final class PreparedAnimation implements PlayableEmote {
                     animation.timeline().events().loop(),
                     animation.id(),
                     animation.timeline().durationTicks(),
-                    EmoteCallbackPhase.LOOP
+                    AnimationEventPhase.LOOP
                 );
             }
             addEvents(
@@ -212,7 +212,7 @@ public final class PreparedAnimation implements PlayableEmote {
                 animation.timeline().events().stop(),
                 animation.id(),
                 animation.timeline().durationTicks(),
-                EmoteCallbackPhase.STOP
+                AnimationEventPhase.STOP
             );
         }
         return copyListMap(eventsByTick);
@@ -224,7 +224,7 @@ public final class PreparedAnimation implements PlayableEmote {
         List<EmoteAnimation.Event> events,
         Identifier animationId,
         int animationTick,
-        EmoteCallbackPhase phase
+        AnimationEventPhase phase
     ) {
         for (EmoteAnimation.Event event : events) {
             addEvent(eventsByTick, tick, new PreparedEvent(event, animationId, animationTick, phase));
@@ -281,7 +281,7 @@ public final class PreparedAnimation implements PlayableEmote {
         EmoteAnimation.Event event,
         Identifier animationId,
         int animationTick,
-        EmoteCallbackPhase phase
+        AnimationEventPhase phase
     ) {
         public PreparedEvent {
             Objects.requireNonNull(event, "event");

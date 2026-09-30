@@ -2,8 +2,6 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
@@ -24,30 +22,18 @@ import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 
-/**
- * Registers the example callbacks shipped with the mod. The idle butterfly callback is declared as follows:
- *
- * <pre>{@code
- * {
- *   "source": {"type": "server"},
- *   "origin": {"type": "node", "node": "butterfly"},
- *   "commands": [],
- *   "callbacks": [{"name": "emote:idle_butterfly_callback"}]
- * }
- * }</pre>
- */
 public final class ExampleCallbacks {
-    public static final Identifier IDLE_BUTTERFLY_CALLBACK_ID = Identifier.parse("emote:idle_butterfly_callback");
-    public static final Identifier IDLE_BAT_CALLBACK_ID = Identifier.parse("emote:idle_bat_callback");
-    public static final Identifier TRUMPET_CAN_CAN_CALLBACK_ID = Identifier.parse("emote:trumpet_can_can_callback");
+    public static final Identifier IDLE_BUTTERFLY_ID = Identifier.parse("sit:idle_butterfly");
+    public static final Identifier BAT_ID = Identifier.parse("emote:bat");
+    public static final Identifier TRUMPET_CAN_CAN_ID = Identifier.parse("music:trumpet_can_can");
 
     private static final double ALLAY_SCALE = 0.35D;
 
@@ -159,32 +145,54 @@ public final class ExampleCallbacks {
         new ScheduledHornNote(400, new HornNote(55, 6, 0.65F))
     );
 
-    private final Map<UUID, TrumpetCanCan> trumpetCanCans = new HashMap<>();
-    private final Map<UUID, ActiveHornNote> playingHorns = new HashMap<>();
-    private long hornTick;
-
-    private final Map<UUID, Entity> entitiesByPlayer = new HashMap<>();
-    private final List<ListenerRegistration> registrations;
-
-    private boolean registered = true;
+    private final Set<TrumpetCanCan> activeMelodies = new HashSet<>();
+    private final List<CallbackRegistration> registrations;
 
     private ExampleCallbacks(EmoteApi api) {
         this.registrations = List.of(
-            api.addCallbackListener(IDLE_BUTTERFLY_CALLBACK_ID, this::handleIdleButterfly),
-            api.addCallbackListener(IDLE_BAT_CALLBACK_ID, this::handleIdleBat),
-            api.addCallbackListener(TRUMPET_CAN_CAN_CALLBACK_ID, this::handleTrumpetCanCan),
-            api.addPlaybackListener(new EmotePlaybackListener() {
-                @Override
-                public void onStopped(PlaybackInfo playback, PlaybackStopReason reason) {
-                    removeEntity(playback.playerUuid(), true);
-                    stopTrumpetCanCan(playback.playerUuid());
+            api.registerCallbacks(IDLE_BUTTERFLY_ID, new EmoteCallbacks() {
+                public void onStart(PlaybackContext context) { spawnAllay(context); }
+                public void onTick(PlaybackContext context) { moveAllay(context); }
+                public void onClose(PlaybackContext context) { removeEntity(context, true); }
+            }),
+            api.registerCallbacks(BAT_ID, new EmoteCallbacks() {
+                public void onTick(PlaybackContext context) {
+                    int tick = context.animationTick();
+                    if (tick >= 25 && tick < 210) {
+                        if (context.userState() == null) spawnBat(context);
+                        moveBat(context);
+                    } else if (tick >= 210 && context.userState() != null) {
+                        moveBat(context);
+                        removeEntity(context, true);
+                    }
+                }
+                public void onClose(PlaybackContext context) { removeEntity(context, false); }
+            }),
+            api.registerCallbacks(TRUMPET_CAN_CAN_ID, new EmoteCallbacks() {
+                public void onStart(PlaybackContext context) {
+                    Vec3 origin = context.rootPosition();
+                    List<HornListener> listeners = context.level().players().stream()
+                        .filter(player -> player.position().distanceToSqr(origin) <= HORN_RANGE * HORN_RANGE)
+                        .map(player -> new HornListener(player.getUUID(), player.connection::send))
+                        .toList();
+                    TrumpetCanCan melody = new TrumpetCanCan(0, origin, listeners);
+                    context.setUserState(melody);
+                    activeMelodies.add(melody);
+                }
+                public void onTick(PlaybackContext context) {
+                    TrumpetCanCan melody = (TrumpetCanCan) context.userState();
+                    long tick = context.server().getTickCount();
+                    if (melody.activeNote != null && melody.activeNote.endTick() <= tick) melody.stopNote();
+                    melody.advance(context.elapsedTicks(), note -> playHorn(melody, note, tick));
+                }
+                public void onClose(PlaybackContext context) {
+                    if (context.userState() instanceof TrumpetCanCan melody) {
+                        activeMelodies.remove(melody);
+                        melody.stopNote();
+                    }
                 }
             })
         );
-        ServerTickEvents.START_SERVER_TICK.register(server -> {
-            if (this.registered) tickTrumpetCanCans();
-        });
-        ServerLifecycleEvents.SERVER_STOPPING.register(server -> clearTrumpetCanCans());
     }
 
     public static ExampleCallbacks registerAll(EmoteApi api) {
@@ -192,57 +200,23 @@ public final class ExampleCallbacks {
     }
 
     public boolean unregister() {
-        if (!this.registered) return false;
-        this.registered = false;
-
         boolean removed = false;
-        for (ListenerRegistration registration : this.registrations) {
-            removed |= registration.unregister();
-        }
-        this.entitiesByPlayer.values().forEach(Entity::discard);
-        this.entitiesByPlayer.clear();
-        clearTrumpetCanCans();
+        for (CallbackRegistration registration : this.registrations) removed |= registration.unregister();
         return removed;
     }
 
-    private void handleTrumpetCanCan(EmoteCallbackEvent event) {
-        switch (event.phase()) {
-            case START -> startTrumpetCanCan(event);
-            case STOP -> stopTrumpetCanCan(event.player().getUUID());
-            case TIMELINE, LOOP -> {}
-        }
-    }
+    private void spawnAllay(PlaybackContext context) {
+        removeEntity(context, false);
 
-    private void startTrumpetCanCan(EmoteCallbackEvent event) {
-        UUID performer = event.player().getUUID();
-        stopTrumpetCanCan(performer);
-        List<HornListener> listeners = event.player().level().players().stream()
-            .filter(player -> player.position().distanceToSqr(event.origin()) <= HORN_RANGE * HORN_RANGE)
-            .map(player -> new HornListener(player.getUUID(), player.connection::send))
-            .toList();
-        this.trumpetCanCans.put(performer, new TrumpetCanCan(this.hornTick, event.origin(), listeners));
-    }
-
-    private void handleIdleButterfly(EmoteCallbackEvent event) {
-        switch (event.phase()) {
-            case START -> spawnAllay(event);
-            case TIMELINE -> moveAllay(event);
-            case STOP -> removeEntity(event.player().getUUID(), true);
-            case LOOP -> {}
-        }
-    }
-
-    private void spawnAllay(EmoteCallbackEvent event) {
-        UUID playerUuid = event.player().getUUID();
-        removeEntity(playerUuid, false);
-
-        ServerLevel level = event.player().level();
+        ServerLevel level = context.level();
         Allay allay = EntityTypes.ALLAY.create(level, EntitySpawnReason.COMMAND);
         if (allay == null) {
             throw new IllegalStateException("Failed to create the idle butterfly Allay");
         }
 
-        allay.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
+        context.setUserState(allay);
+        Vec3 origin = context.nodeWorldPosition("butterfly");
+        allay.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
         allay.setNoAi(true);
         allay.setPermanentlyInvulnerable(true);
         allay.setSilent(true);
@@ -255,14 +229,13 @@ public final class ExampleCallbacks {
             throw new IllegalStateException("Failed to add the idle butterfly Allay to the level");
         }
         level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
-        this.entitiesByPlayer.put(playerUuid, allay);
     }
 
-    private void moveAllay(EmoteCallbackEvent event) {
-        Entity entity = this.entitiesByPlayer.get(event.player().getUUID());
+    private void moveAllay(PlaybackContext context) {
+        Object entity = context.userState();
         if (!(entity instanceof Allay allay) || allay.isRemoved()) return;
 
-        Vec3 destination = event.origin();
+        Vec3 destination = context.nodeWorldPosition("butterfly");
         Vec3 movement = destination.subtract(allay.position());
         if (movement.horizontalDistanceSqr() > 1.0E-6D) {
             float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
@@ -274,35 +247,16 @@ public final class ExampleCallbacks {
         allay.teleportTo(destination.x, destination.y, destination.z);
     }
 
-    private void handleIdleBat(EmoteCallbackEvent event) {
-        switch (event.phase()) {
-            case TIMELINE -> handleIdleBatTimeline(event);
-            case STOP -> removeEntity(event.player().getUUID(), false);
-            case START, LOOP -> {}
-        }
-    }
+    private void spawnBat(PlaybackContext context) {
+        removeEntity(context, false);
 
-    private void handleIdleBatTimeline(EmoteCallbackEvent event) {
-        switch (event.payload()) {
-            case "spawn" -> spawnBat(event);
-            case "move" -> moveBat(event);
-            case "remove" -> {
-                moveBat(event);
-                removeEntity(event.player().getUUID(), true);
-            }
-            default -> throw new IllegalArgumentException("Unknown idle bat callback payload: " + event.payload());
-        }
-    }
-
-    private void spawnBat(EmoteCallbackEvent event) {
-        UUID playerUuid = event.player().getUUID();
-        removeEntity(playerUuid, false);
-
-        ServerLevel level = event.player().level();
+        ServerLevel level = context.level();
         Bat bat = EntityTypes.BAT.create(level, EntitySpawnReason.COMMAND);
         if (bat == null) throw new IllegalStateException("Failed to create the idle Bat");
 
-        bat.snapTo(event.origin().x, event.origin().y, event.origin().z, event.player().getYRot(), 0.0F);
+        context.setUserState(bat);
+        Vec3 origin = context.nodeWorldPosition("bat");
+        bat.snapTo(origin.x, origin.y, origin.z, context.actor("initiator").orElseThrow().getYRot(), 0.0F);
         bat.setNoAi(true);
         bat.setNoGravity(true);
         bat.setPermanentlyInvulnerable(true);
@@ -315,14 +269,13 @@ public final class ExampleCallbacks {
             throw new IllegalStateException("Failed to add the idle Bat to the level");
         }
         level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
-        this.entitiesByPlayer.put(playerUuid, bat);
     }
 
-    private void moveBat(EmoteCallbackEvent event) {
-        Entity entity = this.entitiesByPlayer.get(event.player().getUUID());
+    private void moveBat(PlaybackContext context) {
+        Object entity = context.userState();
         if (!(entity instanceof Bat bat) || bat.isRemoved()) return;
 
-        Vec3 destination = event.origin();
+        Vec3 destination = context.nodeWorldPosition("bat");
         Vec3 movement = destination.subtract(bat.position());
         double horizontalDistance = movement.horizontalDistance();
         if (horizontalDistance > 1.0E-6D) {
@@ -336,9 +289,9 @@ public final class ExampleCallbacks {
         bat.teleportTo(destination.x, destination.y, destination.z);
     }
 
-    private void removeEntity(UUID playerUuid, boolean particles) {
-        Entity entity = this.entitiesByPlayer.remove(playerUuid);
-        if (entity == null) return;
+    private void removeEntity(PlaybackContext context, boolean particles) {
+        if (!(context.userState() instanceof Entity entity)) return;
+        context.setUserState(null);
         if (particles && !entity.isRemoved() && entity.level() instanceof ServerLevel level) {
             if (entity instanceof Allay) {
                 level.sendParticles(ParticleTypes.WHITE_SMOKE, entity.getX(), entity.getY(0.5D), entity.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
@@ -349,10 +302,11 @@ public final class ExampleCallbacks {
         entity.discard();
     }
 
-    private void playHorn(UUID performer, Vec3 origin, HornNote note, List<HornListener> listeners) {
+    private void playHorn(TrumpetCanCan melody, HornNote note, long tick) {
         double frequency = 440.0 * Math.pow(2.0, (note.midi() + HORN_PITCH_OFFSET - 12.0 - 69.0) / 12.0);
         float pitch = Mth.clamp((float) (frequency / HORN_BASE_FREQUENCY), 0.5F, 2.0F);
-        stopHornNote(performer);
+        melody.stopNote();
+        Vec3 origin = melody.origin;
 
         var random = ThreadLocalRandom.current();
         var particle = new ClientboundLevelParticlesPacket(
@@ -361,59 +315,24 @@ public final class ExampleCallbacks {
             (float) ((note.midi() % 12) / 12.0), 0.0F, 0.0F, 1.0F, 0
         );
         List<HornVoice> voices = new ArrayList<>();
-        for (HornListener listener : listeners) {
-            boolean soundOccupied = this.playingHorns.values().stream()
+        for (HornListener listener : melody.listeners) {
+            boolean soundOccupied = this.activeMelodies.stream()
+                .map(active -> active.activeNote)
+                .filter(active -> active != null && active.endTick() > tick)
                 .flatMap(active -> active.voices().stream())
                 .anyMatch(voice -> voice.listener().id().equals(listener.id()) && voice.sound().equals(HORN_SOUND));
             if (soundOccupied) continue;
             listener.send().accept(new ClientboundSoundPacket(
                 Holder.direct(SoundEvent.createFixedRangeEvent(HORN_SOUND, HORN_RANGE)), SoundSource.RECORDS,
-                origin.x, origin.y, origin.z, note.volume(), pitch, this.hornTick
+                origin.x, origin.y, origin.z, note.volume(), pitch, tick
             ));
             listener.send().accept(particle);
             voices.add(new HornVoice(listener, HORN_SOUND));
         }
         if (!voices.isEmpty()) {
-            long endTick = this.hornTick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
-            this.playingHorns.put(performer, new ActiveHornNote(endTick, List.copyOf(voices)));
+            long endTick = tick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
+            melody.activeNote = new ActiveHornNote(endTick, List.copyOf(voices));
         }
-    }
-
-    private void tickTrumpetCanCans() {
-        this.hornTick++;
-        var iterator = this.playingHorns.values().iterator();
-        while (iterator.hasNext()) {
-            ActiveHornNote note = iterator.next();
-            if (note.endTick() > this.hornTick) continue;
-            iterator.remove();
-            note.stop();
-        }
-        var melodies = this.trumpetCanCans.entrySet().iterator();
-        while (melodies.hasNext()) {
-            var entry = melodies.next();
-            TrumpetCanCan melody = entry.getValue();
-            if (melody.advance(this.hornTick, note -> playHorn(entry.getKey(), melody.origin, note, melody.listeners))) {
-                melodies.remove();
-            }
-        }
-    }
-
-    private void stopTrumpetCanCan(UUID performer) {
-        this.trumpetCanCans.remove(performer);
-        stopHornNote(performer);
-    }
-
-    private void stopHornNote(UUID performer) {
-        ActiveHornNote note = this.playingHorns.remove(performer);
-        if (note != null) {
-            note.stop();
-        }
-    }
-
-    private void clearTrumpetCanCans() {
-        this.trumpetCanCans.clear();
-        this.playingHorns.values().forEach(ActiveHornNote::stop);
-        this.playingHorns.clear();
     }
 
     record HornNote(double midi, int durationTicks, float volume) {
@@ -431,11 +350,18 @@ public final class ExampleCallbacks {
         private final Vec3 origin;
         private final List<HornListener> listeners;
         private int nextNote;
+        private ActiveHornNote activeNote;
 
         TrumpetCanCan(long startTick, Vec3 origin, List<HornListener> listeners) {
             this.startTick = startTick;
             this.origin = origin;
             this.listeners = listeners;
+        }
+
+        void stopNote() {
+            ActiveHornNote note = this.activeNote;
+            this.activeNote = null;
+            if (note != null) note.stop();
         }
 
         boolean advance(long tick, Consumer<HornNote> play) {

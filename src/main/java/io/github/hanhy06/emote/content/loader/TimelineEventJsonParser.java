@@ -4,7 +4,6 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
-import net.minecraft.resources.Identifier;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -92,7 +91,7 @@ final class TimelineEventJsonParser {
             }
             previousTick = tick;
             Event event = parseEvent(object, path, nodes, document);
-            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands(), event.callbacks()));
+            events.add(new TimelineEvent(tick, event.source(), event.origin(), event.commands()));
         }
         return List.copyOf(events);
     }
@@ -133,20 +132,10 @@ final class TimelineEventJsonParser {
             }
             commands.add(command);
         }
-        JsonArray callbackArray = document.optionalArray(object, "callbacks", path);
-        List<Callback> callbacks = new ArrayList<>();
-        if (callbackArray != null) {
-            for (int index = 0; index < callbackArray.size(); index++) {
-                String callbackPath = path + ".callbacks[" + index + "]";
-                JsonObject callback = document.requireObject(callbackArray.get(index), callbackPath);
-                String nameValue = document.requireString(callback, "name", callbackPath);
-                Identifier name = Identifier.tryParse(nameValue);
-                if (name == null) throw document.error(callbackPath + ".name", "must be a valid namespaced identifier");
-                String payload = callback.has("payload") ? document.requireString(callback, "payload", callbackPath) : "";
-                callbacks.add(new Callback(name, payload));
-            }
+        if (object.has("callbacks")) {
+            throw document.error(path + ".callbacks", "JSON callbacks have been removed; register Java lifecycle callbacks instead");
         }
-        return new Event(source, origin, commands, callbacks);
+        return new Event(source, origin, commands);
     }
 
     private CommandSource parseCommandSource(

@@ -11,7 +11,6 @@ import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlaybackEngine;
 import io.github.hanhy06.emote.playback.session.PlaybackParticipant;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
-import io.github.hanhy06.emote.playback.timeline.NamedCallbackDispatcher;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -26,7 +25,6 @@ public final class EmoteApiImpl extends EmoteApi {
     private final EmotePlayService playService;
     private final PlaybackEngine playbackEngine;
     private final ApiEventDispatcher events;
-    private final NamedCallbackDispatcher callbacks;
     private final ChangeNotifier changeNotifier;
     private final AnimationContentResolver contentResolver;
 
@@ -35,7 +33,6 @@ public final class EmoteApiImpl extends EmoteApi {
         EmotePlayService playService,
         PlaybackEngine playbackEngine,
         ApiEventDispatcher events,
-        NamedCallbackDispatcher callbacks,
         ChangeNotifier changeNotifier,
         AnimationContentResolver contentResolver
     ) {
@@ -43,7 +40,6 @@ public final class EmoteApiImpl extends EmoteApi {
         this.playService = Objects.requireNonNull(playService, "playService");
         this.playbackEngine = Objects.requireNonNull(playbackEngine, "playbackEngine");
         this.events = Objects.requireNonNull(events, "events");
-        this.callbacks = Objects.requireNonNull(callbacks, "callbacks");
         this.changeNotifier = Objects.requireNonNull(changeNotifier, "changeNotifier");
         this.contentResolver = Objects.requireNonNull(contentResolver, "contentResolver");
     }
@@ -124,11 +120,6 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public ListenerRegistration addPlaybackListener(EmotePlaybackListener listener) {
         return this.events.addPlaybackListener(listener);
-    }
-
-    @Override
-    public ListenerRegistration addCallbackListener(Identifier name, EmoteCallbackListener listener) {
-        return this.callbacks.addListener(name, listener);
     }
 
     private void requireServerThread() {
