@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.playback.session;
 
+import com.google.gson.JsonObject;
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
@@ -14,6 +15,7 @@ import io.github.hanhy06.emote.content.PreparedAnimationFixture;
 import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.PlaybackExecution;
+import io.github.hanhy06.emote.playback.RuntimeRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.runtime.SceneRootResolver;
@@ -199,6 +201,34 @@ class PlaybackSessionTest {
                 }
             }
         }, 100);
+    }
+
+    @Test
+    void actionRegistrationUsesScopedStateAndCannotRemoveItsReplacement() throws Exception {
+        PlaybackSession session = fixture(20).session();
+        PlaybackSessionRegistry sessions = new PlaybackSessionRegistry();
+        sessions.register(session);
+        bindExecution(session, sessions);
+        RuntimeRegistry registry = new RuntimeRegistry(() -> {}, execution -> execution.stop());
+        Identifier name = Identifier.parse("test:action");
+        List<String> calls = new ArrayList<>();
+        var registration = registry.registerAction(name, (context, arguments) -> {
+            assertEquals(session.sessionId(), context.playback().sessionId());
+            context.onClose(() -> calls.add("cleanup"));
+            context.everyTick(() -> calls.add(arguments.get("value").getAsString()));
+        });
+        JsonObject arguments = new JsonObject();
+        arguments.addProperty("value", "original");
+        registry.invokeAction(session.execution(), name, arguments, Vec3.ZERO);
+        arguments.addProperty("value", "changed");
+        session.execution().scheduler().tick(1);
+        assertEquals(List.of("original"), calls);
+        assertTrue(registration.unregister());
+        assertEquals(List.of("original", "cleanup"), calls);
+        assertEquals(PlaybackState.CLOSED, session.execution().state());
+        var replacement = registry.registerAction(name, (context, parameters) -> {});
+        assertFalse(registration.unregister());
+        assertTrue(replacement.isRegistered());
     }
 
     private SessionFixture fixture(int timeoutTicks) throws Exception {

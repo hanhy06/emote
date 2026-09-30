@@ -1,5 +1,6 @@
 package io.github.hanhy06.emote.application;
 
+import com.google.gson.JsonObject;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
@@ -114,6 +115,19 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         return Optional.ofNullable(this.playbackEngine.findSession(sessionId)).map(PlaybackSession::execution);
+    }
+
+    @Override
+    public RuntimeRegistration registerAction(Identifier id, EmoteAction action) {
+        requireServerThread();
+        return this.playbackEngine.runtimeRegistry().registerAction(id, action);
+    }
+
+    @Override
+    public TaskHandle invokeAction(UUID sessionId, Identifier id, JsonObject parameters) {
+        requireServerThread();
+        PlaybackSession session = Objects.requireNonNull(this.playbackEngine.findSession(sessionId), "Playback is not active.");
+        return this.playbackEngine.runtimeRegistry().invokeAction(session.execution(), id, parameters, session.nodes().root().position());
     }
 
     @Override

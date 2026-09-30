@@ -70,6 +70,14 @@ public class PlaybackEngine implements ConfigListener {
         }
     };
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
+    private final RuntimeRegistry runtimeRegistry = new RuntimeRegistry(this.playbackControl::requireServerThread, execution -> {
+        PlaybackSession session = findSession(execution.sessionId());
+        if (session != null) stopIfCurrent(session, PlaybackStopReason.EMOTE_REMOVED);
+    });
+
+    public RuntimeRegistry runtimeRegistry() {
+        return this.runtimeRegistry;
+    }
 
     public PlaybackEngine(PlayerSkinManager playerSkinManager, NamedCallbackDispatcher callbacks) {
         this.playerSkinManager = playerSkinManager;
@@ -397,6 +405,7 @@ public class PlaybackEngine implements ConfigListener {
                     if (!session.execution().tick(EmoteMod.SERVER.getTickCount())) {
                         continue;
                     }
+                    session.execution().scheduler().beginTick(session.execution().info().elapsedTicks());
                     if (session.playerBehavior().stopConditions().movementDistance() == 0.0D) {
                         this.entityController.moveSceneTo(session.nodes(), player.position());
                     }
@@ -426,6 +435,8 @@ public class PlaybackEngine implements ConfigListener {
                     }
 
                     if (stopReason == null && !playbackChanged(session)) {
+                        session.execution().scheduler().tick(session.execution().info().elapsedTicks());
+                        if (playbackChanged(session)) continue;
                         for (PlaybackParticipant participant : session.participants()) {
                             ServerPlayer participantPlayer = participant == initiator
                                 ? player
