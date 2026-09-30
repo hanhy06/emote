@@ -1,8 +1,10 @@
 import { useState } from "preact/hooks";
-import type { EmoteEvent } from "../format/emoteAnimation";
+import { parseCallbacks } from "../format/emoteAnimationRuntime";
+import type { EmoteCallback, EmoteEvent } from "../format/emoteAnimation";
 import type { ConversionAnimationEvents } from "../domain/conversionDocument";
 
 interface LifecycleEvents {
+  callbacks: EmoteCallback[];
   start: EmoteEvent[];
   loop: EmoteEvent[];
   stop: EmoteEvent[];
@@ -10,6 +12,7 @@ interface LifecycleEvents {
 
 interface EventPanelProps {
   events: ConversionAnimationEvents;
+  callbacks?: EmoteCallback[];
   tick: number | null;
   disabled: boolean;
   onLifecycleChange: (events: LifecycleEvents) => void;
@@ -17,10 +20,11 @@ interface EventPanelProps {
   onValidityChange: (valid: boolean) => void;
 }
 
-export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
+export function EventPanel({ events, callbacks, tick, disabled, onLifecycleChange, onTimelineChange, onValidityChange }: EventPanelProps) {
   const [error, setError] = useState("");
   const initialValue = tick === null
     ? JSON.stringify({
+      callbacks: callbacks ?? [],
       start: events.start,
       loop: events.loop,
       stop: events.stop,
@@ -50,7 +54,7 @@ export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimeli
         <div>
           <h3 id="event-editor-heading">Events</h3>
           <p>{tick === null
-            ? "Edit start, loop, and stop events as raw JSON. Changes are saved as soon as the JSON is valid."
+            ? "Edit callbacks and start, loop, and stop command events as raw JSON. Changes are saved as soon as the JSON is valid."
             : "Edit the events at this tick as a JSON array. The selected tick supplies the event time automatically."}</p>
         </div>
         <span className="event-scope">{tick === null ? "Create pose · Lifecycle" : `Tick ${tick} · Timeline`}</span>
@@ -74,6 +78,7 @@ export function EventPanel({ events, tick, disabled, onLifecycleChange, onTimeli
 function parseLifecycleEvents(value: unknown): LifecycleEvents {
   if (!isRecord(value)) throw new Error("Lifecycle events must be a JSON object.");
   return {
+    callbacks: parseCallbacks(value.callbacks),
     start: value.start === undefined ? [] : parseEventArray(value.start, "start"),
     loop: value.loop === undefined ? [] : parseEventArray(value.loop, "loop"),
     stop: value.stop === undefined ? [] : parseEventArray(value.stop, "stop"),

@@ -1,3 +1,5 @@
+import type { EmoteCallback } from "../../format/emoteAnimation";
+import { parseCallbacks } from "../../format/emoteAnimationRuntime";
 import { parseMinecraftTime } from "../../format/time";
 import { isResourceLocation } from "../../format/resourceLocation";
 import {
@@ -14,6 +16,7 @@ import { ConversionError } from "../../foundation/diagnostics";
 import { parseInputJson } from "../common/inputCache";
 
 export interface EmoteSequence {
+  callbacks?: EmoteCallback[];
   type: "sequence";
   schema_version: 4;
   target_minecraft_version?: string;
@@ -75,6 +78,7 @@ function requireSequence(value: unknown): EmoteSequence {
     type: "sequence", schema_version: 4,
     ...(typeof root.target_minecraft_version === "string" ? { target_minecraft_version: root.target_minecraft_version } : {}),
     id, metadata, settings: { cooldown, player }, steps,
+    ...(root.callbacks === undefined ? {} : { callbacks: parseCallbacks(root.callbacks) }),
   };
 }
 

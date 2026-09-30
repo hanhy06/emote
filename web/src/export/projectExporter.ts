@@ -83,6 +83,7 @@ function compileAnimationFiles(document: ConversionDocument, includeSequence: bo
       schema_version: 4,
       target_minecraft_version: document.targetMinecraftVersion,
       id: sequenceId,
+      ...(sequenceOutput.callbacks?.length ? { callbacks: sequenceOutput.callbacks.map((callback) => ({ ...callback })) } : {}),
       metadata: { ...sequenceOutput.additionalMetadata, name: sequenceOutput.displayName, description: sequenceOutput.description },
       settings: { cooldown: formatMinecraftTime(parseMinecraftTime(sequenceOutput.cooldown)), player: sequenceOutput.player },
       steps: sequenceOutput.steps

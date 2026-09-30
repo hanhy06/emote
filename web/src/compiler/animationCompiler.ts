@@ -75,6 +75,7 @@ export function compileConversionAnimationArtifact(
     target_minecraft_version: document.targetMinecraftVersion,
     id: `${namespace}:${sanitizeResourcePath(animation.id)}`,
     metadata: documentMetadata(output),
+    ...(entry.callbacks?.length ? { callbacks: entry.callbacks.map((callback) => ({ ...callback })) } : {}),
     settings: {
       standalone: output.standalone,
       cooldown: formatMinecraftTime(parseMinecraftTime(output.cooldown)),

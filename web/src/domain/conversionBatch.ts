@@ -95,6 +95,7 @@ function applyImportedSequence(document: ConversionDocument, sequence: ImportedS
       player: sequence.player,
       sourceReferenceId: sequence.id,
       steps: sequence.steps,
+      callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
     },
   };
 }

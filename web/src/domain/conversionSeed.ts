@@ -1,4 +1,4 @@
-import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, Matrix16, NodeSpace, Participant, PlayerSkinPart } from "../format/emoteAnimation";
 import type { BlockStateData, ItemStackData } from "./minecraftData";
 import type { GeneratedResource } from "./generatedResource";
 import type { ConversionIssue } from "../foundation/diagnostics";
@@ -57,6 +57,7 @@ export interface ImportedSkinPart {
 }
 
 export interface ImportedAnimation {
+  callbacks?: EmoteCallback[];
   id: string;
   sourceReferenceId?: string;
   name: string;

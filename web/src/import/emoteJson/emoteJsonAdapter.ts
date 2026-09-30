@@ -193,6 +193,7 @@ function importTimeline(animation: EmoteAnimation, id: string, sourceReferenceId
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
     loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
+    callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
     events: importEvents(animation),
     preview: { durationTicks, tracks: previewTracks, availability: { status: "full" } },
     exportAvailability: { exportable: true },
@@ -218,6 +219,7 @@ function importRuntimeTimeline(
     loopStartTicks: parseMinecraftTime(animation.settings.playback.loop_start ?? "0t"),
     loopEndTicks: parseMinecraftTime(animation.settings.playback.loop_end ?? "0t"),
     loopDelayTicks: parseMinecraftTime(animation.settings.playback.loop_delay ?? "0t"),
+    callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
     events: importEvents(animation),
     ...(previewTracks
       ? { preview: { durationTicks, tracks: previewTracks, availability: { status: "full" as const } } }

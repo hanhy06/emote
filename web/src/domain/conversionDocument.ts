@@ -1,5 +1,5 @@
 import type { ConversionIssue } from "../foundation/diagnostics";
-import type { EmoteEvent, EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, EmoteMetadata, EmotePlayerBehavior, NodeSpace, PlayerSkinPart } from "../format/emoteAnimation";
 import { normalizeResourceLocation } from "../format/resourceLocation";
 import { MINECRAFT_VERSION_PROFILES } from "../format/minecraftVersionProfiles";
 import type { GeneratedResource } from "./generatedResource";
@@ -57,6 +57,7 @@ export interface AnimationOutputSettings {
 }
 
 export interface ConversionAnimation {
+  callbacks?: EmoteCallback[];
   source: ConversionAnimationSource;
   preview: PreviewProjection;
   runtime: AnimationRuntimeProjection;
@@ -79,6 +80,7 @@ export interface ConversionAnimationEvents {
 }
 
 export interface SequenceOutputSettings {
+  callbacks?: EmoteCallback[];
   namespace: string;
   idPath?: string;
   displayName: string;
@@ -155,6 +157,7 @@ export function createConversionDocument(project: ImportedProject, adapterLabel:
           name: animation.name,
           ...(animation.sourceReferenceId ? { sourceReferenceId: animation.sourceReferenceId } : {}),
         },
+        callbacks: animation.callbacks?.map((callback) => ({ ...callback })),
         preview: animation.preview,
         runtime: createAnimationRuntimeProjection(animation),
         events: {
@@ -303,13 +306,14 @@ export function assignDocumentNodeSpace(
 export function updateDocumentAnimationLifecycleEvents(
   document: ConversionDocument,
   animationIndex: number,
-  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop">,
+  events: Pick<ConversionAnimationEvents, "start" | "loop" | "stop"> & { callbacks: EmoteCallback[] },
 ): ConversionDocument {
   if (!document.animations[animationIndex]) return document;
+  const { callbacks, ...commandEvents } = events;
   return {
     ...document,
     animations: document.animations.map((animation, index) => index === animationIndex
-      ? { ...animation, events: { ...animation.events, ...events } }
+      ? { ...animation, callbacks, events: { ...animation.events, ...commandEvents } }
       : animation),
   };
 }

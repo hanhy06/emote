@@ -11,7 +11,7 @@ import {
   type ConversionDocument,
 } from "./domain/conversionDocument";
 import type { ImportedProject } from "./domain/conversionSeed";
-import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { selectNode, selectNodes } from "./preview/skinParts";
 
 export type WorkspacePage = 0 | 1 | 2;
@@ -51,7 +51,7 @@ export type WorkspaceAction =
   | { type: "skin_order_assigned"; order: number }
   | { type: "animation_output_changed"; output: AnimationOutputSettings }
   | { type: "minecraft_version_changed"; version: string }
-  | { type: "lifecycle_events_changed"; events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
+  | { type: "lifecycle_events_changed"; events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] } }
   | { type: "timeline_events_changed"; tick: number; events: EmoteEvent[] };
 
 export const EMPTY_SELECTION = new Set<string>();

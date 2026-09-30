@@ -29,6 +29,7 @@ export const sequenceJsonAdapter: ImportAdapter<ImportedSequence> = {
       cooldown: sequence.settings.cooldown,
       player: { ...sequence.settings.player, stop_conditions: { ...(sequence.settings.player.stop_conditions as Record<string, unknown>) } } as EmotePlayerBehavior,
       steps: sequence.steps.map(importStep),
+      callbacks: sequence.callbacks?.map((callback) => ({ ...callback })),
     };
   },
 };

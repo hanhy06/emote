@@ -57,11 +57,12 @@ describe("lifecycle callback sample JSON round trips", () => {
     "docs/sample/emote.bat.json",
     "docs/sample/sit/sit.idle_butterfly.json",
     "docs/sample/music/music.trumpet_can_can.json",
-  ])("preserves command events in %s", async (path) => {
+  ])("preserves callbacks and command events in %s", async (path) => {
     const expected = await readJson(path) as EmoteAnimation;
     const imported = await importFixture(path, emoteJsonAdapter);
     const [actual] = compileImportedProject(imported, {});
     expect(actual.id).toBe(expected.id);
+    expect(actual.callbacks).toEqual(expected.callbacks);
     for (const phase of ["start", "timeline", "loop", "stop"] as const) {
       expect(actual.timeline.events?.[phase] ?? []).toEqual(expected.timeline.events?.[phase] ?? []);
     }

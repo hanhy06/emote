@@ -8,6 +8,11 @@ export type Vec3 = readonly [number, number, number];
 export type MolangScalar = number | string;
 export type MinecraftTime = string;
 
+export interface EmoteCallback {
+  name: string;
+  payload?: string;
+}
+
 export interface EmoteAnimation {
   type: "animation";
   schema_version: 4;
@@ -18,6 +23,7 @@ export interface EmoteAnimation {
   molang?: { initialize?: string; tick?: string };
   nodes: Record<string, EmoteNode>;
   timeline: EmoteTimeline;
+  callbacks?: EmoteCallback[];
 }
 
 export interface EmoteMetadata {

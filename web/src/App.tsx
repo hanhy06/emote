@@ -7,7 +7,7 @@ import { ExportPanel } from "./components/ExportPanel";
 import { SettingsPanel } from "./components/SettingsPanel";
 import { downloadExports } from "./export/download";
 import type { ExportResult } from "./export/types";
-import type { EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
+import type { EmoteCallback, EmoteEvent, NodeSpace, PlayerSkinPart } from "./format/emoteAnimation";
 import { IMPORT_ADAPTERS } from "./import/adapters";
 import { importFileBatch } from "./import/importBatch";
 import { conversionErrorMessage, groupConversionWarnings } from "./foundation/diagnostics";
@@ -155,7 +155,7 @@ export function App() {
     dispatch({ type: "skin_order_assigned", order });
   }
 
-  function changeLifecycleEvents(events: { start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
+  function changeLifecycleEvents(events: { callbacks: EmoteCallback[]; start: EmoteEvent[]; loop: EmoteEvent[]; stop: EmoteEvent[] }) {
     dispatch({ type: "lifecycle_events_changed", events });
   }
 
@@ -333,6 +333,7 @@ export function App() {
             {exportAvailability?.exportable && <EventPanel
               key={`${eventEditorRevision}:${animationIndex}:${previewTick === null ? "lifecycle" : previewTick}`}
               events={selectedAnimation.events}
+              callbacks={selectedAnimation.callbacks}
               tick={previewTick}
               disabled={busy}
               onLifecycleChange={changeLifecycleEvents}

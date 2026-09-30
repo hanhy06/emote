@@ -1,4 +1,5 @@
-import type { EmoteAnimation } from "./emoteAnimation";
+import { isResourceLocation } from "./resourceLocation";
+import type { EmoteAnimation, EmoteCallback } from "./emoteAnimation";
 import {
   optionalBoolean,
   optionalRecord,
@@ -34,7 +35,19 @@ export function requireEmoteAnimation(value: unknown): EmoteAnimation {
   }
   requireSchema4Nodes(root.nodes);
   requireSchema4Timeline(root.timeline);
-  return normalizeSchemaDefaults(root);
+  return normalizeSchemaDefaults({ ...root, ...(root.callbacks === undefined ? {} : { callbacks: parseCallbacks(root.callbacks) }) });
+}
+
+export function parseCallbacks(value: unknown): EmoteCallback[] {
+  if (value === undefined) return [];
+  return requireArray(value, "callbacks").map((value, index) => {
+    const path = `callbacks[${index}]`;
+    const callback = requireRecord(value, path);
+    const name = requireString(callback.name, `${path}.name`);
+    if (!isResourceLocation(name)) throw new Error(`${path}.name must be a Minecraft resource location.`);
+    const payload = callback.payload === undefined ? "" : requireString(callback.payload, `${path}.payload`);
+    return { name, payload };
+  });
 }
 
 function requireMetadata(value: unknown): void {
