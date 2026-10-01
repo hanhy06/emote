@@ -2,18 +2,15 @@ package io.github.hanhy06.emote;
 
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
-import net.minecraft.core.Holder;
+import io.github.hanhy06.emote.util.TrumpetPlayer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket;
-import net.minecraft.network.protocol.game.ClientboundSoundPacket;
-import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.sounds.SoundEvent;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -37,112 +34,108 @@ public final class ExampleCallbacks {
 
     private static final double ALLAY_SCALE = 0.35D;
 
-    private static final float HORN_RANGE = 24.0F;
     private static final int MAX_HORN_DURATION_TICKS = 7;
-    private static final Identifier HORN_SOUND = Identifier.parse("minecraft:item.goat_horn.sound.0");
-    private static final double HORN_BASE_FREQUENCY = 130.8D;
-    private static final double HORN_PITCH_OFFSET = 4.9D;
 
-    private static final List<ScheduledHornNote> TRUMPET_CAN_CAN_NOTES = List.of(
-        new ScheduledHornNote(28, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(34, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(40, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(43, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(46, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(49, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(52, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(58, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(64, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(67, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(70, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(73, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(76, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(82, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(88, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(91, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(94, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(97, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(100, new HornNote(55, 3, 0.65F)),
-        new ScheduledHornNote(103, new HornNote(67, 3, 0.65F)),
-        new ScheduledHornNote(106, new HornNote(66, 3, 0.65F)),
-        new ScheduledHornNote(109, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(112, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(115, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(118, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(121, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(124, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(130, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(136, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(139, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(142, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(145, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(148, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(154, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(160, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(163, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(166, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(169, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(172, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(178, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(184, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(187, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(190, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(193, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(196, new HornNote(55, 3, 0.65F)),
-        new ScheduledHornNote(199, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(202, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(205, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(208, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(214, new HornNote(50, 6, 0.65F)),
-        new ScheduledHornNote(220, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(226, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(232, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(235, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(238, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(241, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(244, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(250, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(256, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(259, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(262, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(265, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(268, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(274, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(280, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(283, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(286, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(289, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(292, new HornNote(55, 3, 0.65F)),
-        new ScheduledHornNote(295, new HornNote(67, 3, 0.65F)),
-        new ScheduledHornNote(298, new HornNote(66, 3, 0.65F)),
-        new ScheduledHornNote(301, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(304, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(307, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(310, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(313, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(316, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(322, new HornNote(55, 6, 0.65F)),
-        new ScheduledHornNote(328, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(331, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(334, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(337, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(340, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(346, new HornNote(62, 6, 0.65F)),
-        new ScheduledHornNote(352, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(355, new HornNote(64, 3, 0.65F)),
-        new ScheduledHornNote(358, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(361, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(364, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(370, new HornNote(57, 6, 0.65F)),
-        new ScheduledHornNote(376, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(379, new HornNote(60, 3, 0.65F)),
-        new ScheduledHornNote(382, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(385, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(388, new HornNote(55, 3, 0.65F)),
-        new ScheduledHornNote(391, new HornNote(62, 3, 0.65F)),
-        new ScheduledHornNote(394, new HornNote(57, 3, 0.65F)),
-        new ScheduledHornNote(397, new HornNote(59, 3, 0.65F)),
-        new ScheduledHornNote(400, new HornNote(55, 6, 0.65F))
+    private static final List<HornNote> TRUMPET_CAN_CAN_NOTES = List.of(
+        new HornNote(28, 55, 6, 0.65F),
+        new HornNote(34, 55, 6, 0.65F),
+        new HornNote(40, 57, 3, 0.65F),
+        new HornNote(43, 60, 3, 0.65F),
+        new HornNote(46, 59, 3, 0.65F),
+        new HornNote(49, 57, 3, 0.65F),
+        new HornNote(52, 62, 6, 0.65F),
+        new HornNote(58, 62, 6, 0.65F),
+        new HornNote(64, 62, 3, 0.65F),
+        new HornNote(67, 64, 3, 0.65F),
+        new HornNote(70, 59, 3, 0.65F),
+        new HornNote(73, 60, 3, 0.65F),
+        new HornNote(76, 57, 6, 0.65F),
+        new HornNote(82, 57, 6, 0.65F),
+        new HornNote(88, 57, 3, 0.65F),
+        new HornNote(91, 60, 3, 0.65F),
+        new HornNote(94, 59, 3, 0.65F),
+        new HornNote(97, 57, 3, 0.65F),
+        new HornNote(100, 55, 3, 0.65F),
+        new HornNote(103, 67, 3, 0.65F),
+        new HornNote(106, 66, 3, 0.65F),
+        new HornNote(109, 64, 3, 0.65F),
+        new HornNote(112, 62, 3, 0.65F),
+        new HornNote(115, 60, 3, 0.65F),
+        new HornNote(118, 59, 3, 0.65F),
+        new HornNote(121, 57, 3, 0.65F),
+        new HornNote(124, 55, 6, 0.65F),
+        new HornNote(130, 55, 6, 0.65F),
+        new HornNote(136, 57, 3, 0.65F),
+        new HornNote(139, 60, 3, 0.65F),
+        new HornNote(142, 59, 3, 0.65F),
+        new HornNote(145, 57, 3, 0.65F),
+        new HornNote(148, 62, 6, 0.65F),
+        new HornNote(154, 62, 6, 0.65F),
+        new HornNote(160, 62, 3, 0.65F),
+        new HornNote(163, 64, 3, 0.65F),
+        new HornNote(166, 59, 3, 0.65F),
+        new HornNote(169, 60, 3, 0.65F),
+        new HornNote(172, 57, 6, 0.65F),
+        new HornNote(178, 57, 6, 0.65F),
+        new HornNote(184, 57, 3, 0.65F),
+        new HornNote(187, 60, 3, 0.65F),
+        new HornNote(190, 59, 3, 0.65F),
+        new HornNote(193, 57, 3, 0.65F),
+        new HornNote(196, 55, 3, 0.65F),
+        new HornNote(199, 62, 3, 0.65F),
+        new HornNote(202, 57, 3, 0.65F),
+        new HornNote(205, 59, 3, 0.65F),
+        new HornNote(208, 55, 6, 0.65F),
+        new HornNote(214, 50, 6, 0.65F),
+        new HornNote(220, 55, 6, 0.65F),
+        new HornNote(226, 55, 6, 0.65F),
+        new HornNote(232, 57, 3, 0.65F),
+        new HornNote(235, 60, 3, 0.65F),
+        new HornNote(238, 59, 3, 0.65F),
+        new HornNote(241, 57, 3, 0.65F),
+        new HornNote(244, 62, 6, 0.65F),
+        new HornNote(250, 62, 6, 0.65F),
+        new HornNote(256, 62, 3, 0.65F),
+        new HornNote(259, 64, 3, 0.65F),
+        new HornNote(262, 59, 3, 0.65F),
+        new HornNote(265, 60, 3, 0.65F),
+        new HornNote(268, 57, 6, 0.65F),
+        new HornNote(274, 57, 6, 0.65F),
+        new HornNote(280, 57, 3, 0.65F),
+        new HornNote(283, 60, 3, 0.65F),
+        new HornNote(286, 59, 3, 0.65F),
+        new HornNote(289, 57, 3, 0.65F),
+        new HornNote(292, 55, 3, 0.65F),
+        new HornNote(295, 67, 3, 0.65F),
+        new HornNote(298, 66, 3, 0.65F),
+        new HornNote(301, 64, 3, 0.65F),
+        new HornNote(304, 62, 3, 0.65F),
+        new HornNote(307, 60, 3, 0.65F),
+        new HornNote(310, 59, 3, 0.65F),
+        new HornNote(313, 57, 3, 0.65F),
+        new HornNote(316, 55, 6, 0.65F),
+        new HornNote(322, 55, 6, 0.65F),
+        new HornNote(328, 57, 3, 0.65F),
+        new HornNote(331, 60, 3, 0.65F),
+        new HornNote(334, 59, 3, 0.65F),
+        new HornNote(337, 57, 3, 0.65F),
+        new HornNote(340, 62, 6, 0.65F),
+        new HornNote(346, 62, 6, 0.65F),
+        new HornNote(352, 62, 3, 0.65F),
+        new HornNote(355, 64, 3, 0.65F),
+        new HornNote(358, 59, 3, 0.65F),
+        new HornNote(361, 60, 3, 0.65F),
+        new HornNote(364, 57, 6, 0.65F),
+        new HornNote(370, 57, 6, 0.65F),
+        new HornNote(376, 57, 3, 0.65F),
+        new HornNote(379, 60, 3, 0.65F),
+        new HornNote(382, 59, 3, 0.65F),
+        new HornNote(385, 57, 3, 0.65F),
+        new HornNote(388, 55, 3, 0.65F),
+        new HornNote(391, 62, 3, 0.65F),
+        new HornNote(394, 57, 3, 0.65F),
+        new HornNote(397, 59, 3, 0.65F),
+        new HornNote(400, 55, 6, 0.65F)
     );
 
     private final Set<TrumpetCanCan> activeMelodies = new HashSet<>();
@@ -152,27 +145,30 @@ public final class ExampleCallbacks {
         this.registrations = List.of(
             api.registerCallbacks(IDLE_BUTTERFLY_CALLBACK_ID, new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) { spawnAllay(context); }
-                public void onTick(PlaybackContext context) { moveAllay(context); }
+                public void onTick(PlaybackContext context) { moveEntity(context, 0.35F); }
                 public void onClose(PlaybackContext context) { removeEntity(context, true); }
             }),
+
             api.registerCallbacks(BAT_CALLBACK_ID, new EmoteCallbacks() {
                 public void onTick(PlaybackContext context) {
                     int tick = context.animationTick();
                     if (tick >= 25 && tick < 210) {
                         if (context.userState() == null) spawnBat(context);
-                        moveBat(context);
+                        moveEntity(context, 0.6F);
                     } else if (tick >= 210 && context.userState() != null) {
-                        moveBat(context);
+                        moveEntity(context, 0.6F);
                         removeEntity(context, true);
                     }
                 }
                 public void onClose(PlaybackContext context) { removeEntity(context, false); }
             }),
+
+
             api.registerCallbacks(TRUMPET_CAN_CAN_CALLBACK_ID, new EmoteCallbacks() {
                 public void onStart(PlaybackContext context) {
                     Vec3 origin = context.rootPosition();
                     List<HornListener> listeners = context.level().players().stream()
-                        .filter(player -> player.position().distanceToSqr(origin) <= HORN_RANGE * HORN_RANGE)
+                        .filter(player -> player.position().distanceToSqr(origin) <= TrumpetPlayer.RANGE * TrumpetPlayer.RANGE)
                         .map(player -> new HornListener(player.getUUID(), player.connection::send))
                         .toList();
                     TrumpetCanCan melody = new TrumpetCanCan(0, origin, listeners);
@@ -231,22 +227,6 @@ public final class ExampleCallbacks {
         level.sendParticles(ParticleTypes.WHITE_SMOKE, allay.getX(), allay.getY(0.5D), allay.getZ(), 7, 0.08D, 0.08D, 0.08D, 0.02D);
     }
 
-    private void moveAllay(PlaybackContext context) {
-        Object entity = context.userState();
-        if (!(entity instanceof Allay allay) || allay.isRemoved()) return;
-
-        Vec3 destination = context.nodeWorldPosition(context.payload());
-        Vec3 movement = destination.subtract(allay.position());
-        if (movement.horizontalDistanceSqr() > 1.0E-6D) {
-            float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
-            float yaw = Mth.rotLerp(0.35F, allay.getYRot(), targetYaw);
-            allay.setYRot(yaw);
-            allay.setYBodyRot(yaw);
-            allay.setYHeadRot(yaw);
-        }
-        allay.teleportTo(destination.x, destination.y, destination.z);
-    }
-
     private void spawnBat(PlaybackContext context) {
         removeEntity(context, false);
 
@@ -271,22 +251,21 @@ public final class ExampleCallbacks {
         level.sendParticles(ParticleTypes.SMOKE, bat.getX(), bat.getY(0.5D), bat.getZ(), 12, 0.16D, 0.16D, 0.16D, 0.02D);
     }
 
-    private void moveBat(PlaybackContext context) {
-        Object entity = context.userState();
-        if (!(entity instanceof Bat bat) || bat.isRemoved()) return;
+    private void moveEntity(PlaybackContext context, float interpolationSpeed) {
+        if (!(context.userState() instanceof LivingEntity entity) || entity.isRemoved()) return;
 
         Vec3 destination = context.nodeWorldPosition(context.payload());
-        Vec3 movement = destination.subtract(bat.position());
+        Vec3 movement = destination.subtract(entity.position());
         double horizontalDistance = movement.horizontalDistance();
         if (horizontalDistance > 1.0E-6D) {
             float targetYaw = (float) (Mth.atan2(movement.z, movement.x) * Mth.RAD_TO_DEG) - 90.0F;
-            float yaw = Mth.rotLerp(0.6F, bat.getYRot(), targetYaw);
-            bat.setYRot(yaw);
-            bat.setYBodyRot(yaw);
-            bat.setYHeadRot(yaw);
-            bat.setXRot((float) Mth.clamp(-(Mth.atan2(movement.y, horizontalDistance) * Mth.RAD_TO_DEG), -35.0D, 35.0D));
+            float yaw = Mth.rotLerp(interpolationSpeed, entity.getYRot(), targetYaw);
+            entity.setYRot(yaw);
+            entity.setYBodyRot(yaw);
+            entity.setYHeadRot(yaw);
+            entity.setXRot((float) Mth.clamp(-(Mth.atan2(movement.y, horizontalDistance) * Mth.RAD_TO_DEG), -35.0D, 35.0D));
         }
-        bat.teleportTo(destination.x, destination.y, destination.z);
+        entity.teleportTo(destination.x, destination.y, destination.z);
     }
 
     private void removeEntity(PlaybackContext context, boolean particles) {
@@ -303,11 +282,8 @@ public final class ExampleCallbacks {
     }
 
     private void playHorn(TrumpetCanCan melody, HornNote note, long tick) {
-        double frequency = 440.0 * Math.pow(2.0, (note.midi() + HORN_PITCH_OFFSET - 12.0 - 69.0) / 12.0);
-        float pitch = Mth.clamp((float) (frequency / HORN_BASE_FREQUENCY), 0.5F, 2.0F);
         melody.stopNote();
         Vec3 origin = melody.origin;
-
         var random = ThreadLocalRandom.current();
         var particle = new ClientboundLevelParticlesPacket(
             ParticleTypes.NOTE, false, false,
@@ -320,14 +296,11 @@ public final class ExampleCallbacks {
                 .map(active -> active.activeNote)
                 .filter(active -> active != null && active.endTick() > tick)
                 .flatMap(active -> active.voices().stream())
-                .anyMatch(voice -> voice.listener().id().equals(listener.id()) && voice.sound().equals(HORN_SOUND));
+                .anyMatch(voice -> voice.listener().id().equals(listener.id()) && voice.sound().equals(TrumpetPlayer.SOUND));
             if (soundOccupied) continue;
-            listener.send().accept(new ClientboundSoundPacket(
-                Holder.direct(SoundEvent.createFixedRangeEvent(HORN_SOUND, HORN_RANGE)), SoundSource.RECORDS,
-                origin.x, origin.y, origin.z, note.volume(), pitch, tick
-            ));
+            TrumpetPlayer.play(melody.origin, note.midi(), note.volume(), tick, listener.send());
             listener.send().accept(particle);
-            voices.add(new HornVoice(listener, HORN_SOUND));
+            voices.add(new HornVoice(listener, TrumpetPlayer.SOUND));
         }
         if (!voices.isEmpty()) {
             long endTick = tick + Math.min(note.durationTicks(), MAX_HORN_DURATION_TICKS);
@@ -335,15 +308,7 @@ public final class ExampleCallbacks {
         }
     }
 
-    record HornNote(double midi, int durationTicks, float volume) {
-        HornNote {
-            if (!Double.isFinite(midi) || midi < 0 || midi > 127) throw new IllegalArgumentException("MIDI note must be between 0 and 127");
-            if (durationTicks < 1 || durationTicks > 200) throw new IllegalArgumentException("Horn duration must be between 1 and 200 ticks");
-            if (!Float.isFinite(volume) || volume <= 0 || volume > 1) throw new IllegalArgumentException("Horn volume must be greater than 0 and at most 1");
-        }
-    }
-
-    private record ScheduledHornNote(int tick, HornNote note) {}
+    record HornNote(int tick, double midi, int durationTicks, float volume) {}
 
     static final class TrumpetCanCan {
         private final long startTick;
@@ -366,10 +331,10 @@ public final class ExampleCallbacks {
 
         boolean advance(long tick, Consumer<HornNote> play) {
             while (this.nextNote < TRUMPET_CAN_CAN_NOTES.size()) {
-                ScheduledHornNote scheduled = TRUMPET_CAN_CAN_NOTES.get(this.nextNote);
-                if (tick - this.startTick < scheduled.tick()) return false;
+                HornNote note = TRUMPET_CAN_CAN_NOTES.get(this.nextNote);
+                if (tick - this.startTick < note.tick()) return false;
                 this.nextNote++;
-                play.accept(scheduled.note());
+                play.accept(note);
             }
             return true;
         }
@@ -380,7 +345,7 @@ public final class ExampleCallbacks {
     private record ActiveHornNote(long endTick, List<HornVoice> voices) {
         void stop() {
             for (HornVoice voice : this.voices) {
-                voice.listener().send().accept(new ClientboundStopSoundPacket(voice.sound(), SoundSource.RECORDS));
+                TrumpetPlayer.stop(voice.listener().send());
             }
         }
     }

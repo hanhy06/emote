@@ -33,21 +33,21 @@ class ExampleCallbacksTest {
         assertFalse(melody.advance(127, played::add));
         assertTrue(played.isEmpty());
         assertFalse(melody.advance(128, played::add));
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(28, 55, 6, 0.65F)), played);
         melody.advance(128, played::add);
         assertEquals(1, played.size());
         melody.advance(133, played::add);
         assertEquals(1, played.size());
         melody.advance(134, played::add);
-        assertEquals(List.of(new ExampleCallbacks.HornNote(55, 6, 0.65F), new ExampleCallbacks.HornNote(55, 6, 0.65F)), played);
+        assertEquals(List.of(new ExampleCallbacks.HornNote(28, 55, 6, 0.65F), new ExampleCallbacks.HornNote(34, 55, 6, 0.65F)), played);
         melody.advance(140, played::add);
-        assertEquals(new ExampleCallbacks.HornNote(57, 3, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(40, 57, 3, 0.65F), played.getLast());
 
         assertTrue(melody.advance(500, played::add));
         assertEquals(99, played.size());
         assertTrue(melody.advance(506, played::add));
         assertEquals(99, played.size());
-        assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), played.getLast());
+        assertEquals(new ExampleCallbacks.HornNote(400, 55, 6, 0.65F), played.getLast());
         assertTrue(melody.advance(535, played::add));
         assertEquals(99, played.size());
     }
@@ -91,7 +91,7 @@ class ExampleCallbacksTest {
                 assertTrue(pitch >= 0.5 && pitch <= 2.0, "Can-Can note must fit the vanilla sound pitch range");
                 assertTrue(note.durationTicks() <= 7, "Every breath must fit the user's 7-tick cap");
                 if (retriggerTicks.contains(at)) {
-                    assertEquals(new ExampleCallbacks.HornNote(55, 6, 0.65F), note);
+                    assertEquals(new ExampleCallbacks.HornNote(at, 55, 6, 0.65F), note);
                     assertEquals(at - 6, noteTicks.get(noteTicks.size() - 2));
                 }
                 assertTrue(at + note.durationTicks() < 419, "Notes must finish before the trumpet disappears");
@@ -190,10 +190,10 @@ class ExampleCallbacksTest {
         assertEquals(99, sounds, "Every actual note, including retriggers, sends exactly one particle immediately after its sound");
         assertTrue(particlePositions.size() > 1, "Particle positions must vary between notes");
         packets.clear();
-        playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener)), new ExampleCallbacks.HornNote(55, 6, 0.65F), 400L);
+        playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, (List) List.of(listener)), new ExampleCallbacks.HornNote(0, 55, 6, 0.65F), 400L);
         assertTrue(packets.isEmpty(), "A suppressed sound must not produce a particle");
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(127, 12, 0.65F), 400L));
-        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 12, 0.65F), 400L));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 127, 12, 0.65F), 400L));
+        assertDoesNotThrow(() -> playHorn.invoke(callbacks, new ExampleCallbacks.TrumpetCanCan(0, Vec3.ZERO, List.of()), new ExampleCallbacks.HornNote(0, 0, 12, 0.65F), 400L));
         assertEquals(java.util.Set.of(ExampleCallbacks.BAT_CALLBACK_ID, ExampleCallbacks.IDLE_BUTTERFLY_CALLBACK_ID, ExampleCallbacks.TRUMPET_CAN_CAN_CALLBACK_ID), registeredCallbacks.keySet());
         assertTrue(callbacks.unregister());
         assertFalse(callbacks.unregister());
