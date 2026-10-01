@@ -149,11 +149,6 @@ final class EmoteJsonDocument {
         }
     }
 
-    Integer optionalWheelTime(JsonObject settings) throws EmoteAnimationLoadException {
-        JsonElement value = settings.get("wheel_time");
-        return value == null || value.isJsonNull() ? null : requireTime(settings, "wheel_time", "$.settings", 0);
-    }
-
     int requireTime(JsonObject object, String key, String path, int minimumTicks)
         throws EmoteAnimationLoadException {
         String fieldPath = path + "." + key;

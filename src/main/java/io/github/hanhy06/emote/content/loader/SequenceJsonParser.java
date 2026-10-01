@@ -41,7 +41,7 @@ public final class SequenceJsonParser {
             "$.settings.player",
             document
         );
-        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player, document.optionalWheelTime(settingsObject));
+        EmoteSequence.Settings settings = new EmoteSequence.Settings(cooldownTicks, player);
 
         List<EmoteSequence.Step> steps = parseSteps(document.requireArray(root, "steps", "$"), "$.steps", true, document);
         try {

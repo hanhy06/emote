@@ -49,21 +49,9 @@ public record EmoteAnimation(
         float rotationDeadzone,
         int displayInterpolationTicks,
         EmotePlayerBehavior player,
-        PlaybackSettings playback,
-        Integer wheelTimeTicks
+        PlaybackSettings playback
     ) {
-        public Settings(boolean standalone, int cooldownTicks, float rotationDeadzone, int displayInterpolationTicks, EmotePlayerBehavior player, PlaybackSettings playback) {
-            this(standalone, cooldownTicks, rotationDeadzone, displayInterpolationTicks, player, playback, null);
-        }
-
-        public int wheelTime(int durationTicks) {
-            int tick = wheelTimeTicks == null ? (int) Math.floor(durationTicks * 0.35D) : wheelTimeTicks;
-            if (tick < 0 || tick > durationTicks) throw new IllegalArgumentException("wheel_time must be within 0..duration");
-            return tick;
-        }
-
         public Settings {
-            if (wheelTimeTicks != null && wheelTimeTicks < 0) throw new IllegalArgumentException("wheel_time must not be negative");
             if (cooldownTicks < 0) {
                 throw new IllegalArgumentException("cooldown must not be negative");
             }
