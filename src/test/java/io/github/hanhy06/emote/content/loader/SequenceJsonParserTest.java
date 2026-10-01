@@ -16,6 +16,18 @@ class SequenceJsonParserTest {
     private final SequenceJsonParser parser = new SequenceJsonParser();
 
     @Test
+    void readsOptionalWheelTime(@TempDir Path tempDir) throws Exception {
+        var root = com.google.gson.JsonParser.parseString(baseJson("{\"emote\":\"example:wave\"}")).getAsJsonObject();
+        assertNull(load(tempDir, "wheel.json", root.toString()).settings().wheelTimeTicks());
+        root.getAsJsonObject("settings").addProperty("wheel_time", "0t");
+        assertEquals(0, load(tempDir, "wheel.json", root.toString()).settings().wheelTimeTicks());
+        root.getAsJsonObject("settings").addProperty("wheel_time", "2s");
+        assertEquals(40, load(tempDir, "wheel.json", root.toString()).settings().wheelTimeTicks());
+        root.getAsJsonObject("settings").addProperty("wheel_time", "-1t");
+        assertThrows(EmoteAnimationLoadException.class, () -> load(tempDir, "wheel.json", root.toString()));
+    }
+
+    @Test
     void loadsRootStringCallbacks(@TempDir Path tempDir) throws Exception {
         var root = com.google.gson.JsonParser.parseString(baseJson("{\"emote\":\"example:wave\"}")).getAsJsonObject();
         root.add("callbacks", com.google.gson.JsonParser.parseString("[{\"name\":\"test:shared\",\"payload\":\"hello\"}]"));

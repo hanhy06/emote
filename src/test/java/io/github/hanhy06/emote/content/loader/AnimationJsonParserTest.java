@@ -432,6 +432,26 @@ class AnimationJsonParserTest {
         }
     }
 
+    @Test
+    void wheelTimeDefaultsAndExplicitTimes() throws Exception {
+        JsonObject root = readReference();
+        EmoteAnimation animation = parse(root).animation();
+        int duration = animation.timeline().durationTicks();
+        assertEquals((int) Math.floor(duration * 0.35D), animation.settings().wheelTime(duration));
+        root.getAsJsonObject("settings").addProperty("wheel_time", "0t");
+        assertEquals(0, parse(root).animation().settings().wheelTime(duration));
+        root.getAsJsonObject("settings").addProperty("wheel_time", "1s");
+        assertEquals(20, parse(root).animation().settings().wheelTime(duration));
+        root.getAsJsonObject("settings").addProperty("wheel_time", duration + "t");
+        assertEquals(duration, parse(root).animation().settings().wheelTime(duration));
+        root.getAsJsonObject("settings").addProperty("wheel_time", (duration + 1) + "t");
+        assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+        root.getAsJsonObject("settings").addProperty("wheel_time", "-1t");
+        assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+        root.getAsJsonObject("settings").addProperty("wheel_time", "bad");
+        assertThrows(EmoteAnimationLoadException.class, () -> parse(root));
+    }
+
     private JsonObject readReference() throws IOException {
         JsonObject root = JsonParser
             .parseString(Files.readString(REFERENCE_PATH))

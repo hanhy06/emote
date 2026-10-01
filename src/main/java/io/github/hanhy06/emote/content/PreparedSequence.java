@@ -32,11 +32,13 @@ public record PreparedSequence(
             case LinearPlayback linear -> selectFirstCandidates(linear.branch());
             case PartnerPlayback partner -> List.of(new SelectedEmoteStep(partner.offer(), false, 0));
         };
+        PreparedAnimation compiled = SequenceCompiler.compile(source, initialSteps, layoutAnchor, false);
+        compiled.animation().settings().wheelTime(compiled.durationTicks());
         return new PreparedSequence(
             source,
             playback,
             layoutAnchor,
-            SequenceCompiler.compile(source, initialSteps, layoutAnchor, false)
+            compiled
         );
     }
 

@@ -65,6 +65,11 @@ public final class AnimationJsonParser {
         Timeline timeline = this.timelineParser.parse(document.requireObject(root, "timeline", "$"), nodes, document);
         JsonObject settingsObject = document.requireObject(root, "settings", "$");
         Settings settings = parseSettings(settingsObject, timeline.durationTicks(), document);
+        try {
+            settings.wheelTime(timeline.durationTicks());
+        } catch (IllegalArgumentException exception) {
+            throw document.error("$.settings.wheel_time", exception.getMessage(), exception);
+        }
         MolangPrograms molang = parseMolang(document.optionalObject(root, "molang", "$"), settings, document);
         return new LoadedAnimation(
             document.sourcePath(),
@@ -188,7 +193,8 @@ public final class AnimationJsonParser {
             (float) rotationDeadzone,
             displayInterpolationTicks,
             player,
-            new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks)
+            new PlaybackSettings(mode, loopStartTicks, loopEndTicks, loopDelayTicks),
+            document.optionalWheelTime(object)
         );
     }
 

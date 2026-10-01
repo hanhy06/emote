@@ -67,7 +67,8 @@ final class SequenceCompiler {
                 layoutAnchor.animation().settings().rotationDeadzone(),
                 layoutAnchor.animation().settings().displayInterpolationTicks(),
                 sequence.settings().player(),
-                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0)
+                new EmoteAnimation.PlaybackSettings(EmoteAnimation.LoopMode.ONCE, 0, 0, 0),
+                sequence.settings().wheelTimeTicks()
             ),
             EmoteAnimation.MolangPrograms.empty(),
             layoutAnchor.animation().nodes(),

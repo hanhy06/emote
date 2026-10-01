@@ -73,8 +73,13 @@ public record EmoteSequence(
         }
     }
 
-    public record Settings(int cooldownTicks, EmotePlayerBehavior player) {
+    public record Settings(int cooldownTicks, EmotePlayerBehavior player, Integer wheelTimeTicks) {
+        public Settings(int cooldownTicks, EmotePlayerBehavior player) {
+            this(cooldownTicks, player, null);
+        }
+
         public Settings {
+            if (wheelTimeTicks != null && wheelTimeTicks < 0) throw new IllegalArgumentException("wheel_time must not be negative");
             if (cooldownTicks < 0) {
                 throw new IllegalArgumentException("cooldown must not be negative");
             }
