@@ -210,7 +210,7 @@ tasks.register("modrinth") {
                     project_id: "qUF0jygw",
                     file_parts: ["file"],
                     primary_file: "file",
-                    environment: "client_and_server"
+                    environment: "server_only_client_optional"
                 ]
                 String boundary = "----emote-${UUID.randomUUID()}"
                 byte[] body = createMultipartBody(metadata, build.artifact as File, boundary)
