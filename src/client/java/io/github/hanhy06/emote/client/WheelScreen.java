@@ -1,6 +1,9 @@
 package io.github.hanhy06.emote.client;
 
 import com.mojang.blaze3d.platform.InputConstants;
+import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.renderpearl.api.textures.FilterMode;
 import io.github.hanhy06.emote.application.EmoteSummary;
 import io.github.hanhy06.emote.client.WheelGeometry.SlotGeometry;
 import io.github.hanhy06.emote.client.WheelGeometry.WheelMetrics;
@@ -12,27 +15,26 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
-import net.minecraft.util.Mth;
 import org.jspecify.annotations.NonNull;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.awt.image.BufferedImage;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {
     private static final int EDIT_BUTTON_WIDTH = 50;
     private static final int LEFT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_LEFT;
     private static final int RIGHT_MOUSE_BUTTON = InputConstants.MOUSE_BUTTON_RIGHT;
-    private static final int BACKGROUND_TOP_COLOR = 0x7A101A22;
-    private static final int BACKGROUND_BOTTOM_COLOR = 0xAD091117;
-    private static final int SLOT_BORDER_COLOR = 0xFFA9C7D8;
-    private static final int SLOT_FILL_COLOR = 0xD0223240;
-    private static final int SLOT_HIGHLIGHT_FILL_COLOR = 0xF0517A94;
-    private static final int SLOT_EMPTY_FILL_COLOR = 0x7F1A2530;
-    private static final int CENTER_BORDER_COLOR = 0xFFDFE7EE;
-    private static final int CENTER_FILL_COLOR = 0xD018242F;
+    private static final int BACKGROUND_TOP_COLOR = 0x18101010;
+    private static final int BACKGROUND_BOTTOM_COLOR = 0x30101010;
+    private static final int SLOT_FILL_COLOR = 0x80252525;
+    private static final int SLOT_HIGHLIGHT_FILL_COLOR = 0x990078D7;
+    private static final int SLOT_EMPTY_FILL_COLOR = 0x501C1C1C;
+    private static final int CENTER_FILL_COLOR = 0x70202020;
     private static final int TITLE_COLOR = 0xFFF7FAFC;
     private static final int BODY_COLOR = 0xFFD1D9DF;
     private static final int MUTED_COLOR = 0xFF9DB0BC;
@@ -41,13 +43,14 @@ public class WheelScreen extends Screen {
     private final List<EmoteSummary> emotes;
     private final KeyMapping keyMapping;
     private final Component bindingLabel;
+    private final ScrollAccumulator scrollAccumulator = new ScrollAccumulator();
 
     private WheelMetrics metrics;
     private List<SlotGeometry> slotGeometries = List.of();
-    private int[] centerXPoints = new int[0];
-    private int[] centerYPoints = new int[0];
     private int pageIndex;
     private int hoveredSlotIndex = -1;
+    private DynamicTexture wheelTexture;
+    private int[] textureSlotColors = new int[0];
 
     public WheelScreen(WheelController controller, List<EmoteSummary> emotes, int pageIndex, KeyMapping keyMapping) {
         super(Component.translatable("screen.emote.wheel.title"));
@@ -60,20 +63,17 @@ public class WheelScreen extends Screen {
 
     @Override
     protected void init() {
+        if (this.wheelTexture != null) {
+            this.wheelTexture.close();
+            this.wheelTexture = null;
+        }
+        this.textureSlotColors = new int[0];
         this.metrics = WheelGeometry.createMetrics(this.width, this.height);
         List<SlotGeometry> slots = new ArrayList<>(WheelGeometry.SLOT_COUNT);
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             slots.add(WheelGeometry.createSlot(slotIndex, this.metrics));
         }
         this.slotGeometries = List.copyOf(slots);
-        this.centerXPoints = WheelGeometry.createHexagonXPoints(
-            this.metrics.centerX(),
-            this.metrics.centerRadius()
-        );
-        this.centerYPoints = WheelGeometry.createHexagonYPoints(
-            this.metrics.centerY(),
-            this.metrics.centerRadius()
-        );
         this.addRenderableWidget(Button.builder(
             Component.translatable("screen.emote.wheel.edit"),
             ignoredButton -> this.controller.openShortcutEditor()
@@ -84,6 +84,15 @@ public class WheelScreen extends Screen {
     @Override
     public boolean isPauseScreen() {
         return false;
+    }
+
+    @Override
+    public void removed() {
+        if (this.wheelTexture != null) {
+            this.wheelTexture.close();
+            this.wheelTexture = null;
+        }
+        super.removed();
     }
 
     @Override
@@ -105,15 +114,15 @@ public class WheelScreen extends Screen {
         List<EmoteSummary> pageEmotes = getCurrentPageEntries();
 
         graphics.centeredText(this.font, this.title, metrics.centerX(), 18, TITLE_COLOR);
+        drawWheel(graphics, pageEmotes);
 
         for (int slotIndex = 0; slotIndex < WheelGeometry.SLOT_COUNT; slotIndex++) {
             SlotGeometry slot = this.slotGeometries.get(slotIndex);
             EmoteSummary emoteSummary = slotIndex < pageEmotes.size() ? pageEmotes.get(slotIndex) : null;
-            boolean hovered = slotIndex == this.hoveredSlotIndex;
-            drawSlot(graphics, slot, emoteSummary, hovered);
+            drawSlot(graphics, slot, emoteSummary);
         }
 
-        drawCenterHex(graphics, metrics);
+        drawCenter(graphics, metrics, pageEmotes);
         drawFooter(graphics, metrics, pageEmotes);
     }
 
@@ -168,16 +177,14 @@ public class WheelScreen extends Screen {
             return false;
         }
 
-        int direction;
-        if (scrollY > 0.0D || scrollX > 0.0D) {
-            direction = -1;
-        } else if (scrollY < 0.0D || scrollX < 0.0D) {
-            direction = 1;
-        } else {
+        double amount = Math.abs(scrollY) >= Math.abs(scrollX) ? scrollY : scrollX;
+        if (amount == 0.0D || !Double.isFinite(amount)) {
             return false;
         }
-
-        changePage(direction, x, y);
+        int pages = this.scrollAccumulator.add(amount);
+        if (pages != 0) {
+            changePage(-pages, x, y);
+        }
         return true;
     }
 
@@ -196,14 +203,7 @@ public class WheelScreen extends Screen {
         updateHoveredSlot(mouseX, mouseY);
     }
 
-    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, EmoteSummary emoteSummary, boolean hovered) {
-        int fillColor = emoteSummary == null
-            ? SLOT_EMPTY_FILL_COLOR
-            : hovered
-            ? SLOT_HIGHLIGHT_FILL_COLOR
-            : SLOT_FILL_COLOR;
-        drawHex(graphics, slot.xPoints(), slot.yPoints(), fillColor, SLOT_BORDER_COLOR);
-
+    private void drawSlot(GuiGraphicsExtractor graphics, SlotGeometry slot, EmoteSummary emoteSummary) {
         if (emoteSummary == null) {
             return;
         }
@@ -217,8 +217,8 @@ public class WheelScreen extends Screen {
         );
     }
 
-    private void drawCenterHex(GuiGraphicsExtractor graphics, WheelMetrics metrics) {
-        drawHex(graphics, this.centerXPoints, this.centerYPoints, CENTER_FILL_COLOR, CENTER_BORDER_COLOR);
+    private void drawCenter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<EmoteSummary> pageEmotes) {
+        int radius = metrics.centerRadius();
 
         if (this.emotes.isEmpty()) {
             graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.no_shortcuts"), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
@@ -226,24 +226,30 @@ public class WheelScreen extends Screen {
             return;
         }
 
-        graphics.centeredText(this.font, (this.pageIndex + 1) + "/" + getPageCount(), metrics.centerX(), metrics.centerY() - 10, TITLE_COLOR);
+        EmoteSummary hoveredEmote = this.hoveredSlotIndex >= 0 && this.hoveredSlotIndex < pageEmotes.size()
+            ? pageEmotes.get(this.hoveredSlotIndex)
+            : null;
+        if (hoveredEmote != null) {
+            graphics.centeredText(this.font, fitText(hoveredEmote.displayName(), radius * 2 - 12), metrics.centerX(), metrics.centerY() - 12, TITLE_COLOR);
+        }
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.release"), metrics.centerX(), metrics.centerY() + 2, BODY_COLOR);
         graphics.centeredText(this.font, Component.translatable("screen.emote.wheel.center.to_play"), metrics.centerX(), metrics.centerY() + 12, BODY_COLOR);
     }
 
     private void drawFooter(GuiGraphicsExtractor graphics, WheelMetrics metrics, List<EmoteSummary> pageEmotes) {
-        int footerTop = Math.min(this.height - 70, metrics.centerY() + metrics.ringRadius() + metrics.slotRadius() + 14);
+        int pageY = metrics.centerY() + metrics.outerRadius() + 8;
+        graphics.centeredText(this.font, (this.pageIndex + 1) + " / " + getPageCount(), metrics.centerX(), pageY, MUTED_COLOR);
+        int footerTop = pageY + 18;
         EmoteSummary hoveredEmote = this.hoveredSlotIndex >= 0 && this.hoveredSlotIndex < pageEmotes.size()
             ? pageEmotes.get(this.hoveredSlotIndex)
             : null;
 
         if (hoveredEmote != null) {
-            graphics.centeredText(this.font, fitText(hoveredEmote.displayName(), metrics.descriptionWidth()), metrics.centerX(), footerTop, TITLE_COLOR);
             graphics.textWithWordWrap(
                 this.font,
                 Component.literal(hoveredEmote.description()),
                 metrics.centerX() - metrics.descriptionWidth() / 2,
-                footerTop + 14,
+                footerTop,
                 metrics.descriptionWidth(),
                 BODY_COLOR,
                 true
@@ -317,17 +323,24 @@ public class WheelScreen extends Screen {
         }
     }
 
-    private void drawHex(GuiGraphicsExtractor graphics, int[] xPoints, int[] yPoints, int fillColor, int borderColor) {
-        fillPolygon(graphics, xPoints, yPoints, borderColor);
-        int centerX = WheelGeometry.average(xPoints);
-        int centerY = WheelGeometry.average(yPoints);
-        int innerRadius = Math.max(8, WheelGeometry.estimateRadius(xPoints, centerX) - 3);
-        fillPolygon(
-            graphics,
-            WheelGeometry.createHexagonXPoints(centerX, innerRadius),
-            WheelGeometry.createHexagonYPoints(centerY, innerRadius),
-            fillColor
-        );
+    static final class ScrollAccumulator {
+        private double remainder;
+
+        int add(double amount) {
+            if (amount == 0.0D || !Double.isFinite(amount)) {
+                return 0;
+            }
+            if (this.remainder * amount < 0.0D) {
+                this.remainder = 0.0D;
+            }
+            this.remainder += amount / 5.0D;
+            int pages = (int) (this.remainder + Math.copySign(1.0E-9D, this.remainder));
+            this.remainder -= pages;
+            if (Math.abs(this.remainder) < 1.0E-9D) {
+                this.remainder = 0.0D;
+            }
+            return pages;
+        }
     }
 
     private Component fitText(String text, int maxWidth) {
@@ -339,53 +352,35 @@ public class WheelScreen extends Screen {
         return Component.literal(this.font.plainSubstrByWidth(text, Math.max(0, maxWidth - this.font.width(ellipsis))) + ellipsis);
     }
 
-    private void fillPolygon(GuiGraphicsExtractor graphics, int[] xPoints, int[] yPoints, int color) {
-        if (yPoints.length == 0) {
-            return;
+    private void drawWheel(GuiGraphicsExtractor graphics, List<EmoteSummary> pageEmotes) {
+        int[] colors = new int[WheelGeometry.SLOT_COUNT];
+        for (int index = 0; index < colors.length; index++) {
+            colors[index] = index >= pageEmotes.size() ? SLOT_EMPTY_FILL_COLOR
+                : index == this.hoveredSlotIndex ? SLOT_HIGHLIGHT_FILL_COLOR : SLOT_FILL_COLOR;
         }
-
-        int minY = yPoints[0];
-        int maxY = yPoints[0];
-        for (int y : yPoints) {
-            if (y < minY) {
-                minY = y;
-            }
-
-            if (y > maxY) {
-                maxY = y;
-            }
-        }
-
-        double[] intersections = new double[xPoints.length];
-
-        for (int y = minY; y <= maxY; y++) {
-            int intersectionCount = 0;
-            double scanY = y + 0.5D;
-
-            for (int currentIndex = 0, previousIndex = xPoints.length - 1; currentIndex < xPoints.length; previousIndex = currentIndex++) {
-                int currentY = yPoints[currentIndex];
-                int previousY = yPoints[previousIndex];
-                if (currentY == previousY) {
-                    continue;
+        if (this.wheelTexture == null || !Arrays.equals(colors, this.textureSlotColors)) {
+            BufferedImage image = WheelGeometry.createWheelImage(this.metrics, Math.max(1, this.minecraft.getWindow().getGuiScale()), colors, CENTER_FILL_COLOR);
+            NativeImage pixels = this.wheelTexture == null
+                ? new NativeImage(image.getWidth(), image.getHeight(), false)
+                : this.wheelTexture.getPixels();
+            for (int y = 0; y < image.getHeight(); y++) {
+                for (int x = 0; x < image.getWidth(); x++) {
+                    pixels.setPixel(x, y, image.getRGB(x, y));
                 }
-
-                double lowerY = Math.min(currentY, previousY);
-                double upperY = Math.max(currentY, previousY);
-                if (scanY < lowerY || scanY >= upperY) {
-                    continue;
-                }
-
-                int currentX = xPoints[currentIndex];
-                int previousX = xPoints[previousIndex];
-                intersections[intersectionCount++] = currentX + (scanY - currentY) * (previousX - currentX) / (previousY - currentY);
             }
-
-            Arrays.sort(intersections, 0, intersectionCount);
-            for (int index = 0; index + 1 < intersectionCount; index += 2) {
-                int startX = Mth.floor(intersections[index]);
-                int endX = Mth.ceil(intersections[index + 1]);
-                graphics.fill(startX, y, endX, y + 1, color);
+            if (this.wheelTexture == null) {
+                this.wheelTexture = new DynamicTexture(() -> "Emote wheel", pixels);
+            } else {
+                this.wheelTexture.upload();
             }
+            this.textureSlotColors = colors;
         }
+        int radius = this.metrics.outerRadius() + 1;
+        graphics.blit(
+            this.wheelTexture.getTextureView(), RenderSystem.getSamplerCache().getClampToEdge(FilterMode.LINEAR),
+            this.metrics.centerX() - radius, this.metrics.centerY() - radius,
+            this.metrics.centerX() + radius, this.metrics.centerY() + radius,
+            0.0F, 1.0F, 0.0F, 1.0F
+        );
     }
 }
