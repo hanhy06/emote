@@ -101,7 +101,7 @@ public final class PlaybackNodes {
     }
 
     public float orientationYaw(EmoteAnimation.NodeSpace space) {
-        return space == EmoteAnimation.NodeSpace.SCENE ? this.viewYaw : root(space).yaw();
+        return Mth.wrapDegrees(root(space).yaw() + root().relativeYaw(this.viewYaw));
     }
 
     public float viewYaw() {
