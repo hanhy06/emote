@@ -152,6 +152,7 @@ public final class IdlePlaybackService implements AccessConfigListener {
     @Override
     public void onAccessConfigReload(AccessConfig newConfig) {
         this.idleResolutions.clear();
+        this.playerStates.clear();
         this.ticksUntilCheck = 0;
     }
 

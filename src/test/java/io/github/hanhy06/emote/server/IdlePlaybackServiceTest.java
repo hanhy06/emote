@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.random.RandomGenerator;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -97,6 +98,29 @@ class IdlePlaybackServiceTest {
         service.tickPlayer(PLAYER_UUID, 5_000L, null);
 
         assertEquals(2, playCount.get());
+    }
+
+    @Test
+    void reloadReselectsIdleEmoteFromTheCurrentCatalogWithoutNewPlayerActivity() {
+        AccessConfig.IdleSettings idle = new AccessConfig.IdleSettings(200, List.of("demo:.*"));
+        AtomicLong clock = new AtomicLong(15_000L);
+        AtomicReference<Collection<String>> available = new AtomicReference<>(List.of("demo:removed"));
+        List<String> played = new ArrayList<>();
+        IdlePlaybackService service = new IdlePlaybackService(
+            player -> Optional.of(idle),
+            (player, id) -> {
+                played.add(id);
+                return available.get().contains(id) ? PlayResultFixture.SUCCESS : PlayResult.failure("Removed emote.");
+            },
+            player -> false, available::get, clock::get, new Random(0)
+        );
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        assertEquals(List.of("demo:removed"), played);
+        available.set(List.of("demo:replacement"));
+        service.onAccessConfigReload(AccessConfig.createDefault());
+        clock.set(16_000L);
+        service.tickPlayer(PLAYER_UUID, 5_000L, null);
+        assertEquals(List.of("demo:removed", "demo:replacement"), played);
     }
 
     @Test
