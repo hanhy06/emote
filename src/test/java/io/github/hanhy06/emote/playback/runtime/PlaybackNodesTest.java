@@ -13,6 +13,36 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackNodesTest {
     @Test
+    void restoresOnlyPatchedNbtFieldsAndKeepsUpdatedSkinDefaults() {
+        var node = new PlaybackNodes.NodeInstance("display", new EmoteAnimation.AnchorNode(
+            EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY), null, null);
+        CompoundTag baseline = new CompoundTag();
+        baseline.putBoolean("Glowing", false);
+        CompoundTag item = new CompoundTag();
+        item.putString("skin", "original");
+        baseline.put("item", item);
+        node.setInitialEntityData(baseline);
+        CompoundTag patch = new CompoundTag();
+        patch.putBoolean("Glowing", true);
+        patch.putString("CustomName", "temporary");
+        patch.put("item", new CompoundTag());
+        node.recordNbtFields(patch);
+        CompoundTag skinnedItem = new CompoundTag();
+        skinnedItem.putString("skin", "baked");
+        node.setInitialItem(skinnedItem);
+        CompoundTag current = patch.copy();
+        current.putString("Pos", "current position");
+        current.putString("Rotation", "current rotation");
+        assertEquals(java.util.Set.of("Glowing", "CustomName", "item"), node.restoreNbtFields(current));
+        assertFalse(current.getBooleanOr("Glowing", true));
+        assertFalse(current.contains("CustomName"));
+        assertEquals(skinnedItem, current.get("item"));
+        assertEquals("current position", current.getStringOr("Pos", ""));
+        assertEquals("current rotation", current.getStringOr("Rotation", ""));
+        assertFalse(node.hasModifiedNbt());
+    }
+
+    @Test
     void keepsViewYawInsideThresholdAndFollowsOnlyTheExcess() {
         PlaybackNodes nodes = new PlaybackNodes(
             SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),

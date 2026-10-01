@@ -4,6 +4,8 @@ import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.item.ItemStack;
@@ -128,6 +130,8 @@ public final class PlaybackNodes {
         private final Display entity;
 
         private DisplayContent displayContent;
+        private CompoundTag initialEntityData = new CompoundTag();
+        private final Set<String> modifiedNbtFields = new HashSet<>();
 
         public NodeInstance(
             String id,
@@ -166,6 +170,37 @@ public final class PlaybackNodes {
 
         void setDisplayContent(DisplayContent displayContent) {
             this.displayContent = Objects.requireNonNull(displayContent, "displayContent");
+        }
+
+        void setInitialEntityData(CompoundTag data) {
+            this.initialEntityData = data.copy();
+        }
+
+        CompoundTag initialEntityData() {
+            return this.initialEntityData.copy();
+        }
+
+        void setInitialItem(Tag item) {
+            this.initialEntityData.put("item", item.copy());
+        }
+
+        void recordNbtFields(CompoundTag patch) {
+            this.modifiedNbtFields.addAll(patch.keySet());
+        }
+
+        Set<String> restoreNbtFields(CompoundTag current) {
+            Set<String> restored = Set.copyOf(this.modifiedNbtFields);
+            for (String field : restored) {
+                Tag initial = this.initialEntityData.get(field);
+                if (initial == null) current.remove(field);
+                else current.put(field, initial.copy());
+            }
+            this.modifiedNbtFields.clear();
+            return restored;
+        }
+
+        boolean hasModifiedNbt() {
+            return !this.modifiedNbtFields.isEmpty();
         }
 
         public boolean isAnchor() {

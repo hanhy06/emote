@@ -21,6 +21,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.util.Mth;
+import net.minecraft.util.ProblemReporter;
 import net.minecraft.world.entity.Display;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
@@ -29,6 +30,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.TypedEntityData;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.storage.TagValueInput;
+import net.minecraft.world.level.storage.TagValueOutput;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
@@ -56,6 +59,14 @@ public final class PlaybackEntityController {
             }
             itemStack.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
             node.setItemStack(itemStack);
+            TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, itemDisplay.registryAccess());
+            ItemStack initialItem = TagValueInput.create(ProblemReporter.DISCARDING, itemDisplay.registryAccess(), node.initialEntityData())
+                .read("item", ItemStack.CODEC).orElse(ItemStack.EMPTY);
+            if (initialItem.is(Items.PLAYER_HEAD)) {
+                initialItem.set(DataComponents.PROFILE, PlayerHeadProfileFactory.createProfile(textureUrl));
+                output.store("item", ItemStack.CODEC, initialItem);
+                node.setInitialItem(output.buildResult().get("item"));
+            }
             SlotAccess itemSlot = itemDisplay.getSlot(0);
             if (!itemSlot.get().isEmpty()) {
                 itemSlot.set(itemStack);
@@ -158,6 +169,7 @@ public final class PlaybackEntityController {
 
     public void applyNbt(PlaybackNodes nodes, NodeInstance node, CompoundTag nbt) {
         if (node.isAnchor()) return;
+        node.recordNbtFields(nbt);
         TypedEntityData.of(node.entity().getType(), nbt).loadInto(node.entity());
         if (nbt.contains("item")) {
             ItemDisplayAccessor accessor = (ItemDisplayAccessor) node.entity();
@@ -166,6 +178,26 @@ public final class PlaybackEntityController {
             BlockDisplayAccessor accessor = (BlockDisplayAccessor) node.entity();
             node.setDisplayContent(new BlockContent(accessor.emote$getBlockState()));
         } else if (nbt.contains("text")) {
+            TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
+            Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
+            accessor.emote$setText(text);
+            node.setDisplayContent(new TextContent(text));
+        }
+        setVisible(node, nodes.effectiveVisibility(node.id()));
+    }
+
+    public void resetNbt(PlaybackNodes nodes, NodeInstance node) {
+        if (node.isAnchor() || !node.hasModifiedNbt()) return;
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, node.entity().registryAccess());
+        node.entity().saveWithoutId(output);
+        CompoundTag current = output.buildResult();
+        var restored = node.restoreNbtFields(current);
+        node.entity().load(TagValueInput.create(ProblemReporter.DISCARDING, node.entity().registryAccess(), current));
+        if (restored.contains("item")) {
+            node.setItemStack(((ItemDisplayAccessor) node.entity()).emote$getItemStack());
+        } else if (restored.contains("block_state")) {
+            node.setDisplayContent(new BlockContent(((BlockDisplayAccessor) node.entity()).emote$getBlockState()));
+        } else if (restored.contains("text")) {
             TextDisplayAccessor accessor = (TextDisplayAccessor) node.entity();
             Component text = resolveText((Display.TextDisplay) node.entity(), accessor.emote$getText());
             accessor.emote$setText(text);
@@ -232,7 +264,11 @@ public final class PlaybackEntityController {
         entity.addTag(RUNTIME_TAG);
 
         DisplayContent content = applyRuntimeData(entity, requirePreparedData(nodeId, preparedData));
-        return new NodeInstance(nodeId, node, entity, content);
+        NodeInstance instance = new NodeInstance(nodeId, node, entity, content);
+        TagValueOutput output = TagValueOutput.createWithContext(ProblemReporter.DISCARDING, entity.registryAccess());
+        entity.saveWithoutId(output);
+        instance.setInitialEntityData(output.buildResult());
+        return instance;
     }
 
     private Display createDisplay(ServerLevel level, EmoteAnimation.Node node) {

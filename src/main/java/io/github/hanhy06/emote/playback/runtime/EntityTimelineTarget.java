@@ -78,8 +78,14 @@ public final class EntityTimelineTarget implements AnimationPlayer.TimelineTarge
     }
 
     @Override
+    public void resetNbt(String nodeId) {
+        this.entityController.resetNbt(this.nodes, requiredNode(nodeId));
+    }
+
+    @Override
     public void resetAll() {
         this.nodes.nodes().forEach((nodeId, node) -> {
+            this.entityController.resetNbt(this.nodes, node);
             this.entityController.applyTransformation(
                 this.nodes,
                 node,

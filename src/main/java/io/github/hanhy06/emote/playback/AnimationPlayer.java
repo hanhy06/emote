@@ -470,6 +470,10 @@ public final class AnimationPlayer {
             }
             return;
         }
+        if (localTick == 0) {
+            this.appliedNbt.keySet().forEach(this.target::resetNbt);
+            this.appliedNbt.clear();
+        }
         applyEvaluator(tick == 0 || localTick == 0 ? 0 : this.evaluator.displayInterpolationTicks(), this.mirroredNodes);
     }
 
@@ -637,6 +641,8 @@ public final class AnimationPlayer {
         void setVisible(String nodeId, boolean visible);
 
         void applyNbt(String nodeId, CompoundTag nbt);
+
+        default void resetNbt(String nodeId) {}
 
         void resetAll();
     }
