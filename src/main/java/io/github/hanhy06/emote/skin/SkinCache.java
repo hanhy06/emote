@@ -120,6 +120,49 @@ public final class SkinCache {
         }
     }
 
+    public synchronized DefaultSkin loadDefault(String playerName) {
+        Path path = this.skinDirPath.resolve("default_skin.json");
+        if (playerName.isEmpty() || !Files.isRegularFile(path)) return null;
+        try {
+            JsonObject object = JsonFileStore.readObject(path);
+            if (object == null || !playerName.equalsIgnoreCase(readString(object, "player_name"))) return null;
+            String hash = readString(object, "texture_hash");
+            String url = readString(object, "source_texture_url");
+            JsonElement slim = object.get("slim_model");
+            JsonArray textures = readTextures(object);
+            if (hash == null || url == null || slim == null || textures == null) return null;
+            Map<PlayerSkinRegion, String> ready = new HashMap<>();
+            for (JsonElement texture : textures) {
+                PlayerSkinRegion region = readTextureKey(texture);
+                String textureUrl = readTextureUrl(texture);
+                if (region != null && textureUrl != null) ready.put(region, textureUrl);
+            }
+            return new DefaultSkin(playerName, hash, url, slim.getAsBoolean(), ready);
+        } catch (IOException | RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Failed to read default skin cache: {}", path, exception);
+            return null;
+        }
+    }
+
+    public synchronized boolean saveDefault(DefaultSkin skin) {
+        Path path = this.skinDirPath.resolve("default_skin.json");
+        JsonObject object = createSkinJson(skin.textureHash(), skin.slimModel(), skin.textures());
+        object.addProperty("player_name", skin.playerName());
+        object.addProperty("source_texture_url", skin.textureUrl());
+        try {
+            JsonFileStore.writeObjectAtomically(path, object, this.gson);
+            return true;
+        } catch (IOException exception) {
+            EmoteMod.LOGGER.warn("Failed to write default skin cache: {}", path, exception);
+            return false;
+        }
+    }
+
+    public record DefaultSkin(String playerName, String textureHash, String textureUrl, boolean slimModel,
+                              Map<PlayerSkinRegion, String> textures) {
+        public DefaultSkin { textures = Map.copyOf(textures); }
+    }
+
     public synchronized String loadContent(String contentHash) {
         Path filePath = resolveCacheFilePath(contentHash, "content");
         String cachedTextureUrl = this.contentTextureUrls.get(contentHash);
