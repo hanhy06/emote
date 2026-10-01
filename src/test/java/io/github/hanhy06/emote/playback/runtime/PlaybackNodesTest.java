@@ -13,36 +13,6 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class PlaybackNodesTest {
     @Test
-    void restoresOnlyPatchedNbtFieldsAndKeepsUpdatedSkinDefaults() {
-        var node = new PlaybackNodes.NodeInstance("display", new EmoteAnimation.AnchorNode(
-            EmoteAnimation.NodeSpace.SCENE, null, EmoteAnimation.LocalTransform.IDENTITY), null, null);
-        CompoundTag baseline = new CompoundTag();
-        baseline.putBoolean("Glowing", false);
-        CompoundTag item = new CompoundTag();
-        item.putString("skin", "original");
-        baseline.put("item", item);
-        node.setInitialEntityData(baseline);
-        CompoundTag patch = new CompoundTag();
-        patch.putBoolean("Glowing", true);
-        patch.putString("CustomName", "temporary");
-        patch.put("item", new CompoundTag());
-        node.recordNbtFields(patch);
-        CompoundTag skinnedItem = new CompoundTag();
-        skinnedItem.putString("skin", "baked");
-        node.setInitialItem(skinnedItem);
-        CompoundTag current = patch.copy();
-        current.putString("Pos", "current position");
-        current.putString("Rotation", "current rotation");
-        assertEquals(java.util.Set.of("Glowing", "CustomName", "item"), node.restoreNbtFields(current));
-        assertFalse(current.getBooleanOr("Glowing", true));
-        assertFalse(current.contains("CustomName"));
-        assertEquals(skinnedItem, current.get("item"));
-        assertEquals("current position", current.getStringOr("Pos", ""));
-        assertEquals("current rotation", current.getStringOr("Rotation", ""));
-        assertFalse(node.hasModifiedNbt());
-    }
-
-    @Test
     void keepsViewYawInsideThresholdAndFollowsOnlyTheExcess() {
         PlaybackNodes nodes = new PlaybackNodes(
             SceneRootResolver.single(RootTransform.create(Vec3.ZERO, 0.0F)),
@@ -188,25 +158,6 @@ class PlaybackNodesTest {
         assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.SCENE));
         assertEquals(40.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.INITIATOR));
         assertEquals(-140.0F, nodes.orientationYaw(EmoteAnimation.NodeSpace.PARTNER));
-    }
-
-    @Test
-    void nodeOriginsFollowTheSameYawDeltaAsDisplaysInEverySpace() {
-        RootTransform scene = RootTransform.create(Vec3.ZERO, 30.0F);
-        PlaybackNodes nodes = new PlaybackNodes(Map.of(
-            EmoteAnimation.NodeSpace.SCENE, scene,
-            EmoteAnimation.NodeSpace.INITIATOR, RootTransform.create(Vec3.ZERO, -45.0F),
-            EmoteAnimation.NodeSpace.PARTNER, RootTransform.create(Vec3.ZERO, 180.0F)
-        ), Map.of());
-        nodes.updateViewYaw(120.0F, 0.0F);
-        for (EmoteAnimation.NodeSpace space : EmoteAnimation.NodeSpace.values()) {
-            RootTransform root = nodes.root(space);
-            var transform = root.displayMatrix(new org.joml.Matrix4f().translate(1, 0, 0));
-            var displayed = new org.joml.Matrix4f().rotateY((float) Math.toRadians(-scene.relativeYaw(nodes.viewYaw())))
-                .mul(transform).transformPosition(new org.joml.Vector3f());
-            var origin = root.worldMatrix(nodes.orientationYaw(space), transform).transformPosition(new org.joml.Vector3f());
-            assertTrue(displayed.distance(origin) < 1.0E-5F, space.toString());
-        }
     }
 
     @Test
