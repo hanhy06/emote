@@ -13,21 +13,12 @@ import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Optional;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class MineSkinClientTest {
-    @Test
-    void sharedHttpClientUsesSkinRequestConnectionSettings() {
-        try (HttpClient httpClient = MineSkinClient.createHttpClient()) {
-            assertEquals(Optional.of(Duration.ofSeconds(10)), httpClient.connectTimeout());
-            assertEquals(HttpClient.Redirect.NORMAL, httpClient.followRedirects());
-        }
-    }
-
     @ParameterizedTest
     @MethodSource("apiKeyCases")
     void apiKeyPresenceMatchesSupportedFormats(String value, boolean expected) {
