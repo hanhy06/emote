@@ -94,7 +94,12 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private synchronized void publishDefault() {
         if (this.defaultSource == null || this.defaultRegions.isEmpty()) return;
         Map<PlayerSkinRegion, String> ready = this.cache.load(this.defaultSource.textureHash(), this.defaultSource.slimModel());
-        if (!ready.keySet().containsAll(this.defaultRegions)) return;
+        if (ready.isEmpty()) return;
+        SkinCache.DefaultSkin previous = this.cache.loadDefault(this.defaultName);
+        boolean changingSource = previous != null && (!previous.textureHash().equals(this.defaultSource.textureHash())
+            || previous.slimModel() != this.defaultSource.slimModel());
+        // Keep the previous complete skin while a changed source is still being prepared.
+        if (changingSource && !ready.keySet().containsAll(this.defaultRegions)) return;
         var saved = new SkinCache.DefaultSkin(this.defaultName, this.defaultSource.textureHash(), this.defaultSource.textureUrl(),
             this.defaultSource.slimModel(), ready);
         if (!this.cache.saveDefault(saved)) return;
@@ -152,6 +157,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
             this.defaultSkin = new PreparedPlayerSkin(stored.textures());
             this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName, stored.textureHash(), stored.textureUrl(), stored.slimModel());
         }
+        if (this.defaultSource != null) this.failures.remove(new SkinKey(this.defaultSource.textureHash(), this.defaultSource.slimModel()));
         prepareDefault();
         if (!this.defaultName.isEmpty()) {
             String name = this.defaultName;
@@ -167,6 +173,8 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                     synchronized (this) {
                         if (expectedDefaultGeneration != this.defaultGeneration) return;
                         this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, name, resolved.textureHash(), resolved.textureUrl(), resolved.slimModel());
+                        this.failures.remove(new SkinKey(resolved.textureHash(), resolved.slimModel()));
+                        EmoteMod.LOGGER.info("Preparing default skin for {} using the shared skin bake pipeline", name);
                         prepareDefault();
                     }
                 } catch (RuntimeException exception) {
@@ -284,6 +292,11 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                         this.cache.save(source.textureHash(), source.slimModel(), Map.of(region, url));
                         if (!url.equals(this.cache.load(source.textureHash(), source.slimModel()).get(region))) {
                             throw new IOException("Could not save baked skin texture");
+                        }
+                        if (bake.subscribers.contains(DEFAULT_SUBSCRIBER) && this.defaultSource != null
+                            && source.textureHash().equals(this.defaultSource.textureHash())
+                            && source.slimModel() == this.defaultSource.slimModel()) {
+                            publishDefault();
                         }
                     }
                 }

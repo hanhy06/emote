@@ -25,6 +25,53 @@ class SkinBakeCoordinatorTest {
     private static final PlayerSkinRegion HEAD = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
 
     @Test
+    void defaultSkinPersistsEachSharedBakeResultAndReloadRetriesMissingRegion(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        PlayerSkinRegion body = new PlayerSkinRegion(PlayerSkinPart.BODY, PlayerSkinSegment.FULL);
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) {
+                BufferedImage image = opaqueSkin();
+                for (int y = 0; y < 16; y++) for (int x = 0; x < 32; x++) image.setRGB(x, y, 0xFF0000FF);
+                return image;
+            }
+        };
+        AtomicInteger uploads = new AtomicInteger();
+        java.util.concurrent.atomic.AtomicBoolean fail = new java.util.concurrent.atomic.AtomicBoolean(true);
+        SkinBakeCoordinator.FallbackUploader uploader = new SkinBakeCoordinator.FallbackUploader() {
+            @Override public void configure(Config config) {}
+            @Override public boolean available() { return true; }
+            @Override public String upload(byte[] png, boolean slim) throws java.io.IOException {
+                int count = uploads.incrementAndGet();
+                if (count > 1 && fail.get()) throw new java.io.IOException("second region API failure");
+                return "texture-" + count;
+            }
+        };
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), uploader, name -> source(UUID.randomUUID(), "shared"));
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD, body));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, coordinator.processingStats().retryingJobs());
+            assertEquals(1, cache.loadDefault("Player").textures().size());
+            assertEquals(cache.load("shared", false), cache.loadDefault("Player").textures());
+            assertEquals(1, coordinator.defaultSkin().textureUrlMap().size());
+            fail.set(false);
+            coordinator.onConfigReload(defaultConfig("Player"));
+            deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.defaultSkin().textureUrlMap().size() != 2 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(2, coordinator.defaultSkin().textureUrlMap().size());
+            assertEquals(2, new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures().size());
+            assertEquals(3, uploads.get());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
     void freshDefaultSkinIsBakedAndSavedAtStartup(@TempDir Path tempDir) throws Exception {
         MinecraftAccountManager accounts = accountManager(tempDir);
         SkinCache cache = new SkinCache(tempDir.resolve("skin"));
