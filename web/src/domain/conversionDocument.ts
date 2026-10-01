@@ -297,7 +297,9 @@ export function assignDocumentNodeSpace(
     selectedGroups.has(node.binding.spaceGroupId ?? nodeId) ? { ...node, space } : node,
   ])) as ConversionDocument["nodes"];
   if (space !== "scene") return { ...document, nodes };
-  const selectedGroupIds = selectedSkinGroupIds(document, selectedNodeIds);
+  const selectedGroupIds = selectedSkinGroupIds(document, new Set(Object.entries(document.nodes)
+    .filter(([nodeId, node]) => selectedGroups.has(node.binding.spaceGroupId ?? nodeId))
+    .map(([nodeId]) => nodeId)));
   const skinGroups = { ...document.skinGroups };
   for (const groupId of selectedGroupIds) skinGroups[groupId] = { ...skinGroups[groupId], assignment: null };
   return { ...document, nodes, skinGroups };
