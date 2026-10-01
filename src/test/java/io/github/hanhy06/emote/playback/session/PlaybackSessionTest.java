@@ -1,21 +1,10 @@
 package io.github.hanhy06.emote.playback.session;
 
-import io.github.hanhy06.emote.api.EmoteCallbacks;
-import io.github.hanhy06.emote.api.PlaybackContext;
 import com.mojang.brigadier.StringReader;
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.api.EmoteMetadata;
-import io.github.hanhy06.emote.api.EmotePlayerBehavior;
-import io.github.hanhy06.emote.api.ParticipantRole;
-import io.github.hanhy06.emote.api.PlayResult;
-import io.github.hanhy06.emote.api.PlaybackState;
-import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.LoadedAnimation;
-import io.github.hanhy06.emote.content.EmoteSequence;
-import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedAnimationFixture;
-import io.github.hanhy06.emote.content.PreparedSequence;
+import io.github.hanhy06.emote.content.*;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -34,8 +23,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 
 import java.nio.file.Path;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -503,7 +492,7 @@ class PlaybackSessionTest {
 
         @Override
         public void applyNbt(String nodeId, net.minecraft.nbt.CompoundTag nbt) {
-            
+
         }
 
         @Override

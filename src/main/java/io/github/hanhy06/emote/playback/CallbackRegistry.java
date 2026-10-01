@@ -5,9 +5,9 @@ import io.github.hanhy06.emote.api.Registration;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.resources.Identifier;
 
-import java.util.Objects;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 public final class CallbackRegistry {

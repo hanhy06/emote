@@ -1,6 +1,9 @@
 package io.github.hanhy06.emote;
 
-import io.github.hanhy06.emote.api.*;
+import io.github.hanhy06.emote.api.EmoteApi;
+import io.github.hanhy06.emote.api.EmoteCallbacks;
+import io.github.hanhy06.emote.api.PlaybackContext;
+import io.github.hanhy06.emote.api.Registration;
 import io.github.hanhy06.emote.playback.runtime.PlaybackEntityController;
 import io.github.hanhy06.emote.util.TrumpetPlayer;
 import net.minecraft.core.particles.ParticleTypes;
@@ -10,20 +13,15 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.EntitySpawnReason;
 import net.minecraft.world.entity.EntityTypes;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ambient.Bat;
 import net.minecraft.world.entity.animal.allay.Allay;
 import net.minecraft.world.phys.Vec3;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 

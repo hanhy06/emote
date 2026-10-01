@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.content;
 
 import com.mojang.math.Transformation;
-import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;

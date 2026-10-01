@@ -11,17 +11,17 @@ import io.github.hanhy06.emote.resource.PolymerResourcePackDistributor;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static io.github.hanhy06.emote.content.PreparedAnimationFixture.create;
+import static org.junit.jupiter.api.Assertions.*;
 
 class ReloadServiceTest {
     @Test

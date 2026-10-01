@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.content;
 
 import io.github.hanhy06.emote.api.EmoteMetadata;
-import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import net.minecraft.commands.arguments.coordinates.Coordinates;
 import net.minecraft.resources.Identifier;
 import org.jspecify.annotations.Nullable;

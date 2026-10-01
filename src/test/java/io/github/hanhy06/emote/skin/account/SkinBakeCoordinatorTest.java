@@ -4,14 +4,13 @@ import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.skin.PlayerSkinBaker;
 import io.github.hanhy06.emote.skin.PlayerSkinProvider;
 import io.github.hanhy06.emote.skin.SkinBakeCoordinator;
-import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 import io.github.hanhy06.emote.skin.SkinCache;
+import io.github.hanhy06.emote.skin.account.MinecraftAccountClient.MinecraftSession;
 import io.github.hanhy06.emote.skin.model.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Set;
@@ -20,9 +19,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 class SkinBakeCoordinatorTest {
     private static final PlayerSkinRegion HEAD = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);

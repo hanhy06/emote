@@ -2,8 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
+import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import net.minecraft.nbt.CompoundTag;
