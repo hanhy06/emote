@@ -25,6 +25,142 @@ class SkinBakeCoordinatorTest {
     private static final PlayerSkinRegion HEAD = new PlayerSkinRegion(PlayerSkinPart.HEAD, PlayerSkinSegment.FULL);
 
     @Test
+    void freshDefaultSkinIsBakedAndSavedAtStartup(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) { return opaqueSkin(); }
+        };
+        RecordingFallback fallback = new RecordingFallback();
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), fallback, name -> source(UUID.randomUUID(), "fresh"));
+        CountDownLatch ready = new CountDownLatch(1);
+        coordinator.setListener(new PlayerSkinProvider.Listener() {
+            @Override public void onDefaultReady() { ready.countDown(); }
+        });
+        try {
+            coordinator.onConfigReload(defaultConfig("Player"));
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            assertEquals("fallback-texture", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("fresh", new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textureHash());
+            assertEquals(1, fallback.uploads.get());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void defaultSkinUsesPinnedCacheWithoutLookupAndBakesNewRegions(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        cache.saveDefault(new SkinCache.DefaultSkin("Player", "saved", "https://textures.example/saved", false,
+            java.util.Map.of(HEAD, "saved-head")));
+        CountDownLatch lookup = new CountDownLatch(1);
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) { return opaqueSkin(); }
+        };
+        RecordingFallback fallback = new RecordingFallback();
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), fallback, name -> { lookup.countDown(); return null; });
+        CountDownLatch ready = new CountDownLatch(1);
+        coordinator.setListener(new PlayerSkinProvider.Listener() {
+            @Override public void onDefaultReady() { ready.countDown(); }
+        });
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertTrue(lookup.await(5, TimeUnit.SECONDS));
+            assertEquals(0, fallback.uploads.get());
+            PlayerSkinRegion upper = new PlayerSkinRegion(PlayerSkinPart.LEFT_ARM, new PlayerSkinSegment(0, 4));
+            coordinator.setDefaultRegions(Set.of(HEAD, upper));
+            assertTrue(ready.await(5, TimeUnit.SECONDS));
+            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("fallback-texture", coordinator.defaultSkin().findTextureUrl(upper));
+            assertEquals(1, fallback.uploads.get());
+            assertEquals(coordinator.defaultSkin().textureUrlMap(), new SkinCache(tempDir.resolve("skin")).loadDefault("Player").textures());
+            coordinator.onConfigReload(defaultConfig("Other"));
+            assertNull(coordinator.defaultSkin());
+            coordinator.onConfigReload(defaultConfig(""));
+            assertNull(coordinator.defaultSkin());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void failedDefaultRefreshKeepsPreviousPinnedSkin(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        cache.saveDefault(new SkinCache.DefaultSkin("Player", "saved", "https://textures.example/saved", false,
+            java.util.Map.of(HEAD, "saved-head")));
+        MinecraftSkinClient skinClient = new MinecraftSkinClient() {
+            @Override public BufferedImage downloadSkin(String textureUrl) throws java.io.IOException {
+                throw new java.io.IOException("API unavailable");
+            }
+        };
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), new RecordingFallback(), name -> source(UUID.randomUUID(), "changed"));
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+            while (coordinator.processingStats().retryingJobs() == 0 && System.nanoTime() < deadline) Thread.sleep(10);
+            assertEquals(1, coordinator.processingStats().retryingJobs());
+            assertEquals("saved-head", coordinator.defaultSkin().findTextureUrl(HEAD));
+            assertEquals("saved", cache.loadDefault("Player").textureHash());
+        } finally {
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    @Test
+    void lateDefaultLookupCannotReplaceNewConfiguration(@TempDir Path tempDir) throws Exception {
+        MinecraftAccountManager accounts = accountManager(tempDir);
+        SkinCache cache = new SkinCache(tempDir.resolve("skin"));
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+        CountDownLatch finished = new CountDownLatch(1);
+        MinecraftSkinClient skinClient = new MinecraftSkinClient();
+        RecordingFallback fallback = new RecordingFallback();
+        SkinBakeCoordinator coordinator = new SkinBakeCoordinator(accounts, new PlayerSkinBaker(), skinClient, cache,
+            new AccountBakeQueue(accounts, skinClient), fallback, name -> {
+                started.countDown();
+                try { release.await(); } catch (InterruptedException exception) { Thread.currentThread().interrupt(); }
+                finished.countDown();
+                return source(UUID.randomUUID(), "late");
+            });
+        try {
+            coordinator.setDefaultRegions(Set.of(HEAD));
+            coordinator.onConfigReload(defaultConfig("Player"));
+            assertTrue(started.await(5, TimeUnit.SECONDS));
+            coordinator.onConfigReload(defaultConfig(""));
+            release.countDown();
+            assertTrue(finished.await(5, TimeUnit.SECONDS));
+            // Synchronize with the callback's generation check without sleeping for network work.
+            coordinator.cancelPendingBakes();
+            assertNull(coordinator.defaultSkin());
+            assertEquals(0, fallback.uploads.get());
+            assertNull(cache.loadDefault("Player"));
+        } finally {
+            release.countDown();
+            coordinator.cancelPendingBakes();
+            accounts.close();
+        }
+    }
+
+    private static Config defaultConfig(String name) {
+        Config defaults = Config.createDefault();
+        return new Config(defaults.schemaVersion(), defaults.menuPageSize(), defaults.mineSkinApiKey(),
+            defaults.mineSkinPollIntervalSeconds(), defaults.mineSkinCacheRetentionDays(), defaults.mineSkinCacheMaxMiB(),
+            defaults.maxActiveDisplayEntities(), name);
+    }
+
+    @Test
     void mergesSubscribersIntoOneBakeAndOneUpload(@TempDir Path tempDir) throws Exception {
         MinecraftAccountManager accounts = accountManager(tempDir);
         CountDownLatch downloadStarted = new CountDownLatch(1);

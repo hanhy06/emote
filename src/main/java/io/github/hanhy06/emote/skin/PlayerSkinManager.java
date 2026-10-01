@@ -3,12 +3,14 @@ package io.github.hanhy06.emote.skin;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
 import com.mojang.authlib.properties.Property;
+import com.mojang.authlib.GameProfile;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.config.Config;
 import io.github.hanhy06.emote.config.ConfigListener;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import io.github.hanhy06.emote.skin.model.PlayerSkinRegion;
 import io.github.hanhy06.emote.skin.model.PlayerSkinSource;
+import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -37,6 +39,12 @@ public class PlayerSkinManager implements ConfigListener {
         this.playerSkinSourceResolver = Objects.requireNonNull(playerSkinSourceResolver, "playerSkinSourceResolver");
         this.provider.setListener(new PlayerSkinProvider.Listener() {
             @Override
+            public void onDefaultReady() {
+                EmoteMod.SERVER.execute(() -> EmoteMod.SERVER.getPlayerList().getPlayers().forEach(player -> {
+                    for (Consumer<UUID> readyListener : readyListeners) readyListener.accept(player.getUUID());
+                }));
+            }
+            @Override
             public void onReady(UUID playerUuid) {
                 notifySkinReady(playerUuid);
             }
@@ -61,11 +69,24 @@ public class PlayerSkinManager implements ConfigListener {
         for (SkinBinding binding : skinBindings) {
             requiredTextureKeys.add(binding.region());
         }
-        PlayerSkinSource skinSource = this.playerSkinSourceResolver.apply(player);
-        if (skinSource == null) {
-            return new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0);
+        PlayerSkinSource skinSource = resolvePlayerSkinSource(player);
+        PlayerSkinPreparation preparation = skinSource == null
+            ? new PlayerSkinPreparation(null, PlayerSkinPreparation.State.UNAVAILABLE, 0)
+            : this.provider.prepare(skinSource, requiredTextureKeys);
+        return withDefaultSkin(preparation, requiredTextureKeys);
+    }
+
+    PlayerSkinPreparation withDefaultSkin(PlayerSkinPreparation preparation, Set<PlayerSkinRegion> regions) {
+        var fallback = this.provider.defaultSkin();
+        if (fallback == null || preparation.state() == PlayerSkinPreparation.State.READY || preparation.preparing()) return preparation;
+        Map<PlayerSkinRegion, String> merged = new HashMap<>();
+        for (PlayerSkinRegion region : regions) {
+            String texture = fallback.findTextureUrl(region);
+            if (texture != null) merged.put(region, texture);
         }
-        return this.provider.prepare(skinSource, requiredTextureKeys);
+        if (preparation.preparedPlayerSkin() != null) merged.putAll(preparation.preparedPlayerSkin().textureUrlMap());
+        return new PlayerSkinPreparation(merged.isEmpty() ? null : new PreparedPlayerSkin(merged),
+            preparation.state(), preparation.progressPercent());
     }
 
     public void setModelBindings(Collection<SkinBinding> bindings) {
@@ -74,10 +95,11 @@ public class PlayerSkinManager implements ConfigListener {
             regions.add(binding.region());
         }
         this.modelRegions = Set.copyOf(regions);
+        this.provider.setDefaultRegions(this.modelRegions);
     }
 
     public void checkPlayerSkin(ServerPlayer player) {
-        PlayerSkinSource source = this.playerSkinSourceResolver.apply(player);
+        PlayerSkinSource source = resolvePlayerSkinSource(player);
         if (source == null || this.modelRegions.isEmpty()) {
             return;
         }
@@ -123,6 +145,7 @@ public class PlayerSkinManager implements ConfigListener {
     private void notifySkinFailed(UUID playerUuid) {
         MinecraftServer server = EmoteMod.SERVER;
         server.execute(() -> {
+            for (Consumer<UUID> readyListener : this.readyListeners) readyListener.accept(playerUuid);
             ServerPlayer player = server.getPlayerList().getPlayer(playerUuid);
             if (player != null) {
                 player.sendSystemMessage(Component.literal("We could not prepare your skin. Try again later."));
@@ -131,8 +154,21 @@ public class PlayerSkinManager implements ConfigListener {
     }
 
     private static PlayerSkinSource readPlayerSkinSource(ServerPlayer player) {
+        return readSkinSource(player.getGameProfile());
+    }
+
+    private PlayerSkinSource resolvePlayerSkinSource(ServerPlayer player) {
+        try {
+            return this.playerSkinSourceResolver.apply(player);
+        } catch (RuntimeException exception) {
+            EmoteMod.LOGGER.warn("Could not resolve player skin; using any prepared default skin", exception);
+            return null;
+        }
+    }
+
+    static PlayerSkinSource readSkinSource(GameProfile profile) {
         MinecraftServer server = EmoteMod.SERVER;
-        Property packedTextures = server.services().sessionService().getPackedTextures(player.getGameProfile());
+        Property packedTextures = server.services().sessionService().getPackedTextures(profile);
         if (packedTextures == null) {
             return null;
         }
@@ -143,8 +179,8 @@ public class PlayerSkinManager implements ConfigListener {
         }
         boolean slimModel = "slim".equalsIgnoreCase(skinTexture.getMetadata("model"));
         return new PlayerSkinSource(
-            player.getUUID(),
-            player.getGameProfile().name(),
+            profile.id(),
+            profile.name(),
             skinTexture.getHash(),
             skinTexture.getUrl(),
             slimModel

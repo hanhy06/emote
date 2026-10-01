@@ -14,11 +14,13 @@ import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Function;
 
 public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private static final long FAILED_BAKE_RETRY_MILLIS = TimeUnit.MINUTES.toMillis(5);
     private static final long CACHE_CLEANUP_INTERVAL_MILLIS = TimeUnit.DAYS.toMillis(1);
     private static final long MEBIBYTE_BYTES = 1_024L * 1_024L;
+    private static final UUID DEFAULT_SUBSCRIBER = new UUID(0L, 0L);
 
     private final MinecraftAccountManager accounts;
     private final PlayerSkinBaker baker;
@@ -35,6 +37,12 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     private ScheduledFuture<?> cacheCleanup;
     private Listener listener = new Listener() {};
     private long generation;
+    private final Function<String, PlayerSkinSource> defaultSourceResolver;
+    private String defaultName = "";
+    private long defaultGeneration;
+    private Set<PlayerSkinRegion> defaultRegions = Set.of();
+    private PlayerSkinSource defaultSource;
+    private PreparedPlayerSkin defaultSkin;
 
     public SkinBakeCoordinator(
         MinecraftAccountManager accounts,
@@ -44,12 +52,57 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         AccountBakeQueue accountUploads,
         FallbackUploader fallbackUploader
     ) {
+        this(accounts, baker, skinClient, cache, accountUploads, fallbackUploader,
+            name -> EmoteMod.SERVER.services().profileResolver().fetchByName(name)
+                .map(PlayerSkinManager::readSkinSource).orElse(null));
+    }
+
+    public SkinBakeCoordinator(MinecraftAccountManager accounts, PlayerSkinBaker baker, MinecraftSkinClient skinClient,
+                               SkinCache cache, AccountBakeQueue accountUploads, FallbackUploader fallbackUploader,
+                               Function<String, PlayerSkinSource> defaultSourceResolver) {
         this.accounts = Objects.requireNonNull(accounts, "accounts");
         this.baker = Objects.requireNonNull(baker, "baker");
         this.skinClient = Objects.requireNonNull(skinClient, "skinClient");
         this.cache = Objects.requireNonNull(cache, "cache");
         this.accountUploads = Objects.requireNonNull(accountUploads, "accountUploads");
         this.fallbackUploader = Objects.requireNonNull(fallbackUploader, "fallbackUploader");
+        this.defaultSourceResolver = Objects.requireNonNull(defaultSourceResolver, "defaultSourceResolver");
+    }
+
+    @Override public synchronized PreparedPlayerSkin defaultSkin() { return this.defaultSkin; }
+
+    @Override
+    public synchronized void setDefaultRegions(Set<PlayerSkinRegion> regions) {
+        this.defaultRegions = Set.copyOf(regions);
+        prepareDefault();
+    }
+
+    private synchronized void prepareDefault() {
+        if (this.defaultSource == null || this.defaultRegions.isEmpty()) return;
+        // Seed the normal bake cache from the pinned result so only new regions need uploading.
+        SkinCache.DefaultSkin stored = this.cache.loadDefault(this.defaultName);
+        if (stored != null && stored.textureHash().equals(this.defaultSource.textureHash())
+            && stored.slimModel() == this.defaultSource.slimModel()) {
+            this.cache.save(stored.textureHash(), stored.slimModel(), stored.textures());
+        }
+        PlayerSkinPreparation preparation = prepare(this.defaultSource, this.defaultRegions);
+        if (preparation.state() == PlayerSkinPreparation.State.READY && preparation.preparedPlayerSkin() != null) {
+            publishDefault();
+        }
+    }
+
+    private synchronized void publishDefault() {
+        if (this.defaultSource == null || this.defaultRegions.isEmpty()) return;
+        Map<PlayerSkinRegion, String> ready = this.cache.load(this.defaultSource.textureHash(), this.defaultSource.slimModel());
+        if (!ready.keySet().containsAll(this.defaultRegions)) return;
+        var saved = new SkinCache.DefaultSkin(this.defaultName, this.defaultSource.textureHash(), this.defaultSource.textureUrl(),
+            this.defaultSource.slimModel(), ready);
+        if (!this.cache.saveDefault(saved)) return;
+        PreparedPlayerSkin updated = new PreparedPlayerSkin(ready);
+        if (!updated.equals(this.defaultSkin)) {
+            this.defaultSkin = updated;
+            this.listener.onDefaultReady();
+        }
     }
 
     @Override
@@ -90,6 +143,37 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
     @Override
     public synchronized void onConfigReload(Config config) {
         this.fallbackUploader.configure(config);
+        this.defaultGeneration++;
+        this.defaultName = config.defaultSkin();
+        this.defaultSource = null;
+        this.defaultSkin = null;
+        SkinCache.DefaultSkin stored = this.cache.loadDefault(this.defaultName);
+        if (stored != null) {
+            this.defaultSkin = new PreparedPlayerSkin(stored.textures());
+            this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, this.defaultName, stored.textureHash(), stored.textureUrl(), stored.slimModel());
+        }
+        prepareDefault();
+        if (!this.defaultName.isEmpty()) {
+            String name = this.defaultName;
+            long expectedDefaultGeneration = this.defaultGeneration;
+            ensureExecutor();
+            this.executor.execute(() -> {
+                try {
+                    PlayerSkinSource resolved = this.defaultSourceResolver.apply(name);
+                    if (resolved == null) {
+                        EmoteMod.LOGGER.warn("Could not resolve default skin for {}; retaining any saved default skin", name);
+                        return;
+                    }
+                    synchronized (this) {
+                        if (expectedDefaultGeneration != this.defaultGeneration) return;
+                        this.defaultSource = new PlayerSkinSource(DEFAULT_SUBSCRIBER, name, resolved.textureHash(), resolved.textureUrl(), resolved.slimModel());
+                        prepareDefault();
+                    }
+                } catch (RuntimeException exception) {
+                    EmoteMod.LOGGER.warn("Could not resolve default skin for {}; retaining any saved default skin", name, exception);
+                }
+            });
+        }
         if (!hasUploadProvider()) {
             EmoteMod.LOGGER.error("No bake accounts or MineSkin API key configured; only cached skin textures are available");
         }
@@ -116,6 +200,10 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
         List<CompletableFuture<String>> pendingUploads;
         synchronized (this) {
             this.generation++;
+            this.defaultGeneration++;
+            this.defaultSource = null;
+            this.defaultSkin = null;
+            this.defaultName = "";
             this.bakes.clear();
             this.failures.clear();
             pendingUploads = List.copyOf(this.uploads.values());
@@ -181,7 +269,8 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
                 }
                 if (completedSubscribers != null) {
                     Listener listener = completionListener;
-                    completedSubscribers.forEach(listener::onReady);
+                    if (completedSubscribers.contains(DEFAULT_SUBSCRIBER)) publishDefault();
+                    completedSubscribers.stream().filter(uuid -> !uuid.equals(DEFAULT_SUBSCRIBER)).forEach(listener::onReady);
                     return;
                 }
 
@@ -306,7 +395,7 @@ public final class SkinBakeCoordinator implements PlayerSkinProvider {
             subscribers = Set.copyOf(bake.subscribers);
             currentListener = this.listener;
         }
-        subscribers.forEach(currentListener::onFailed);
+        subscribers.stream().filter(uuid -> !uuid.equals(DEFAULT_SUBSCRIBER)).forEach(currentListener::onFailed);
         EmoteMod.LOGGER.warn("Skin bake failed for {}; retry later or check /emote account", bake.source.playerUuid(), exception);
     }
 
