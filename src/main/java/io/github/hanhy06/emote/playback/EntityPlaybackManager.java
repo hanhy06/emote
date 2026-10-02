@@ -99,12 +99,6 @@ public final class EntityPlaybackManager {
             entry.nextAttempt = tick + 20;
             return;
         }
-        if (PlaybackEngine.exceedsDisplayEntityLimit(PlaybackEngine.projectedDisplayEntityCount(
-            this.engine.activeDisplayEntityCount(), entry.session == null ? 0 : entry.session.nodes().displayEntityCount(),
-            animation.displayNodeCount()), this.engine.displayEntityLimit())) {
-            entry.nextAttempt = tick + 20;
-            return;
-        }
         entry.needsStart = false;
         entry.skinRevision = this.skinRevision;
         entry.skinBindings = animation.skinBindings();
@@ -143,6 +137,11 @@ public final class EntityPlaybackManager {
                 .withPosition(marker.position()).withRotation(marker.getRotationVector()),
             preparation.preparedPlayerSkin(), lifecycle), entry.session);
         if (result instanceof PlaybackEngine.StartResult.Failure failure) {
+            if (failure.reason() == PlaybackEngine.FailureReason.DISPLAY_LIMIT) {
+                entry.needsStart = true;
+                entry.nextAttempt = tick + 20;
+                return;
+            }
             entry.blocked = true;
             EmoteMod.LOGGER.warn("Failed to start marker {} emote {}: {}", marker.getUUID(), definition.id(), failure.message());
         }

@@ -60,26 +60,27 @@ public final class PlaybackEngine implements ConfigListener {
 
     public sealed interface StartResult {
         record Success(PlaybackSession session) implements StartResult {}
-        record Failure(String message) implements StartResult {}
+        record Failure(FailureReason reason, String message) implements StartResult {}
     }
+
+    public enum FailureReason { DISPLAY_LIMIT, START_REJECTED }
 
     public CallbackRegistry callbackRegistry() { return this.callbackRegistry; }
     public PlaybackEntityController entities() { return this.entityController; }
-    public int displayEntityLimit() { return this.maxActiveDisplayEntities; }
     @Override public void onConfigReload(Config config) { this.maxActiveDisplayEntities = config.maxActiveDisplayEntities(); }
 
     public StartResult start(Request request, @Nullable PlaybackSession replacedSession) {
         PreparedAnimation emote = request.animation();
         if (replacedSession != null && !contains(replacedSession)) {
-            return new StartResult.Failure("The playback being replaced is no longer active.");
+            return new StartResult.Failure(FailureReason.START_REJECTED, "The playback being replaced is no longer active.");
         }
         if (replacedSession != null && replacedSession.isInvokingCallback()) {
-            return new StartResult.Failure("Cannot replace an emote from its own callback.");
+            return new StartResult.Failure(FailureReason.START_REJECTED, "Cannot replace an emote from its own callback.");
         }
         int projected = projectedDisplayEntityCount(activeDisplayEntityCount(),
             replacedSession == null ? 0 : replacedSession.nodes().displayEntityCount(), emote.displayNodeCount());
         if (exceedsDisplayEntityLimit(projected, this.maxActiveDisplayEntities)) {
-            return new StartResult.Failure("Too many emotes are active right now. Try again shortly.");
+            return new StartResult.Failure(FailureReason.DISPLAY_LIMIT, "Too many emotes are active right now. Try again shortly.");
         }
         List<CallbackRegistry.Binding> bindings;
         Map<PreparedAnimation, List<CallbackRegistry.Binding>> segmentBindings = new HashMap<>();
@@ -89,7 +90,7 @@ public final class PlaybackEngine implements ConfigListener {
                 segmentBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
             }
         } catch (IllegalArgumentException exception) {
-            return new StartResult.Failure(exception.getMessage());
+            return new StartResult.Failure(FailureReason.START_REJECTED, exception.getMessage());
         }
         if (replacedSession != null) stop(replacedSession, PlaybackStopReason.REPLACED);
         PlaybackNodes nodes = null;
@@ -121,7 +122,7 @@ public final class PlaybackEngine implements ConfigListener {
             } else if (session == null && nodes != null) {
                 this.entityController.remove(request.level(), nodes);
             }
-            return new StartResult.Failure("Something went wrong while starting the emote.");
+            return new StartResult.Failure(FailureReason.START_REJECTED, "Something went wrong while starting the emote.");
         }
     }
 
