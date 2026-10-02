@@ -11,7 +11,9 @@ import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.Marker;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.server.level.ServerLevel;
 import org.jspecify.annotations.Nullable;
 
@@ -57,7 +59,7 @@ public final class EntityPlaybackManager {
         long tick = EmoteMod.SERVER.getTickCount();
         for (Entry entry : List.copyOf(this.markers.values())) {
             if (entry.marker.isRemoved()) continue;
-            MarkerEmoteSettings settings = ((MarkerEmoteAccess) entry.marker).emote$getSettings();
+            MarkerEmoteSettings settings = MarkerEmoteSettings.read(entry.marker.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY));
             if (!settings.equals(entry.settings) || entry.catalogRevision != this.catalogRevision) {
                 entry.settings = settings;
                 entry.catalogRevision = this.catalogRevision;

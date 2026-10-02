@@ -1,7 +1,6 @@
 package io.github.hanhy06.emote.playback;
 
-import net.minecraft.world.level.storage.ValueInput;
-import net.minecraft.world.level.storage.ValueOutput;
+import net.minecraft.world.item.component.CustomData;
 
 public record MarkerEmoteSettings(String emoteId, String skinName) {
     public static final MarkerEmoteSettings EMPTY = new MarkerEmoteSettings("", "");
@@ -11,12 +10,8 @@ public record MarkerEmoteSettings(String emoteId, String skinName) {
         skinName = skinName.strip();
     }
 
-    public static MarkerEmoteSettings read(ValueInput input) {
-        return new MarkerEmoteSettings(input.getStringOr("emote", ""), input.getStringOr("emote_skin", ""));
-    }
-
-    public void write(ValueOutput output) {
-        if (!emoteId.isEmpty()) output.putString("emote", emoteId);
-        if (!skinName.isEmpty()) output.putString("emote_skin", skinName);
+    public static MarkerEmoteSettings read(CustomData data) {
+        var tag = data.copyTag();
+        return new MarkerEmoteSettings(tag.getStringOr("emote", ""), tag.getStringOr("emote_skin", ""));
     }
 }
