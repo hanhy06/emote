@@ -42,7 +42,6 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private final Collection<PlaybackParticipant> participantView = Collections.unmodifiableCollection(this.participants.values());
     private final Map<ParticipantRole, PlaybackParticipant> participantMapView = Collections.unmodifiableMap(this.participants);
 
-    private @Nullable PlaybackStopReason pendingStopReason;
 
     public PlaybackSession(
         UUID sessionId,
@@ -314,21 +313,6 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
             }
         }
         return null;
-    }
-
-    public boolean requestStop(PlaybackStopReason reason) {
-        if (this.pendingStopReason != null) {
-            return true;
-        }
-        if (this.animation.requestOutro() == AnimationPlayer.OutroRequestResult.UNSUPPORTED) {
-            return false;
-        }
-        this.pendingStopReason = Objects.requireNonNull(reason, "reason");
-        return true;
-    }
-
-    public @Nullable PlaybackStopReason pendingStopReason() {
-        return this.pendingStopReason;
     }
 
     public Collection<PlaybackParticipant> participants() {

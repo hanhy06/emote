@@ -281,8 +281,7 @@ public final class AnimationPlayer {
 
         this.currentTick++;
         applyTick(this.currentTick);
-        if (this.phase != PlaybackPhase.OUTRO
-            && this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
+        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
             && this.currentTick >= this.animation.settings().playback().loopEndTicks()) {
             this.phase = PlaybackPhase.LOOP_BOUNDARY;
             return AdvanceResult.LOOP_BOUNDARY;
@@ -290,7 +289,7 @@ public final class AnimationPlayer {
         if (this.currentTick < this.animation.timeline().durationTicks()) {
             return AdvanceResult.CONTINUE;
         }
-        if (this.phase == PlaybackPhase.OUTRO || this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
+        if (this.animation.settings().playback().mode() == EmoteAnimation.LoopMode.ONCE) {
             this.phase = PlaybackPhase.FINISHED;
             return AdvanceResult.FINISHED;
         }
@@ -318,29 +317,6 @@ public final class AnimationPlayer {
         return AdvanceResult.CONTINUE;
     }
 
-    public OutroRequestResult requestOutro() {
-        int loopEnd = this.animation.settings().playback().loopEndTicks();
-        if (this.animation.settings().playback().mode() != EmoteAnimation.LoopMode.LOOP
-            || loopEnd >= this.animation.timeline().durationTicks()
-            || this.phase == PlaybackPhase.NOT_STARTED
-            || this.phase == PlaybackPhase.FINISHED) {
-            return OutroRequestResult.UNSUPPORTED;
-        }
-        if (this.phase == PlaybackPhase.OUTRO) {
-            return OutroRequestResult.ALREADY_RUNNING;
-        }
-
-        this.phase = PlaybackPhase.OUTRO;
-        this.pendingLoopCallback = false;
-        this.remainingLoopDelay = 0;
-        if (this.currentTick < loopEnd) {
-            this.currentTick = loopEnd;
-            applyTick(loopEnd);
-            if (this.eventsStarted) execute(this.emote.timelineEvents(loopEnd));
-        }
-        return OutroRequestResult.STARTED;
-    }
-
     public int currentTick() {
         return this.currentTick;
     }
@@ -362,6 +338,7 @@ public final class AnimationPlayer {
     }
 
     public void stop(PlaybackStopReason reason) {
+        this.phase = PlaybackPhase.FINISHED;
         if (!this.eventsStarted || this.eventsStopped) {
             return;
         }
@@ -566,18 +543,11 @@ public final class AnimationPlayer {
         FINISHED
     }
 
-    public enum OutroRequestResult {
-        STARTED,
-        ALREADY_RUNNING,
-        UNSUPPORTED
-    }
-
     private enum PlaybackPhase {
         NOT_STARTED,
         RUNNING,
         LOOP_BOUNDARY,
         LOOP_DELAY,
-        OUTRO,
         HOLDING,
         FINISHED
     }

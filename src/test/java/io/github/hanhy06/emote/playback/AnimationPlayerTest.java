@@ -194,7 +194,7 @@ class AnimationPlayerTest {
     }
 
     @Test
-    void loopsBetweenConfiguredBoundsThenPlaysOutro() throws Exception {
+    void loopsBetweenConfiguredBoundsAndStopsImmediately() throws Exception {
         JsonObject root = base();
         JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
         playback.addProperty("mode", "loop");
@@ -213,18 +213,12 @@ class AnimationPlayerTest {
         assertEquals(AnimationPlayer.AdvanceResult.RESTARTED, player.continueAfterLoopEvent());
         assertEquals(2, player.currentTick());
 
-        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
-        assertEquals(6, player.currentTick());
-        for (int tick = 7; tick < 10; tick++) {
-            assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        }
+        player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
         assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
-        assertEquals(10, player.currentTick());
-        assertEquals(11.0F, target.matrix("display").m30(), 1.0E-5F);
+        assertEquals(2, player.currentTick());
     }
-
     @Test
-    void stoppingDuringLoopDelayStartsOutroImmediately() throws Exception {
+    void stoppingDuringLoopDelayFinishesImmediately() throws Exception {
         JsonObject root = base();
         JsonObject playback = root.getAsJsonObject("settings").getAsJsonObject("playback");
         playback.addProperty("mode", "loop");
@@ -236,9 +230,9 @@ class AnimationPlayerTest {
         for (int tick = 0; tick < 6; tick++) player.advance(false);
         assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.continueAfterLoopEvent());
 
-        assertEquals(AnimationPlayer.OutroRequestResult.STARTED, player.requestOutro());
-        assertEquals(AnimationPlayer.AdvanceResult.CONTINUE, player.advance());
-        assertEquals(7, player.currentTick());
+        player.stop(io.github.hanhy06.emote.api.PlaybackStopReason.MANUAL);
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        assertEquals(6, player.currentTick());
     }
 
     @Test
