@@ -2,7 +2,10 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.content.*;
+import io.github.hanhy06.emote.content.EmoteCatalog;
+import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.molang.EntityMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
@@ -12,12 +15,15 @@ import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerEntityEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Marker;
 import net.minecraft.world.item.component.CustomData;
-import net.minecraft.server.level.ServerLevel;
 import org.jspecify.annotations.Nullable;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.random.RandomGenerator;
 
 public final class EntityPlaybackManager {

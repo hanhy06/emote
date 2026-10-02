@@ -135,6 +135,7 @@ class ExampleCallbacksTest {
                 public List<EmoteInfo> getAll() { return List.of(); }
                 public Optional<PlaybackInfo> getPlayback(ServerPlayer player) { return Optional.empty(); }
                 public Optional<PlaybackInfo> getPlayback(UUID sessionId) { return Optional.empty(); }
+                public Optional<PlaybackTimeline> getTimeline(UUID sessionId) { return Optional.empty(); }
                 public Registration registerCallbacks(Identifier id, EmoteCallbacks callbacks) {
                     registeredCallbacks.put(id, callbacks);
                     return new Registration() {

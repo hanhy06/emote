@@ -7,15 +7,15 @@ import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.permissions.LevelBasedPermissionSet;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
+import org.jspecify.annotations.Nullable;
 
 import java.util.Objects;
-import net.minecraft.server.level.ServerLevel;
-import org.jspecify.annotations.Nullable;
 
 public final class EventCommandExecutor implements AnimationPlayer.EventExecutor {
     private final ServerLevel level;

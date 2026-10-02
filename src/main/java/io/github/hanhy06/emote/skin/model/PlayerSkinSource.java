@@ -1,11 +1,12 @@
 package io.github.hanhy06.emote.skin.model;
 
 import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.minecraft.SessionService;
 import com.mojang.authlib.minecraft.MinecraftProfileTexture;
 import com.mojang.authlib.minecraft.MinecraftProfileTextures;
+import com.mojang.authlib.minecraft.SessionService;
 import com.mojang.authlib.properties.Property;
 import org.jspecify.annotations.Nullable;
+
 import java.util.Objects;
 import java.util.UUID;
 

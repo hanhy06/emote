@@ -10,12 +10,12 @@ import io.github.hanhy06.emote.skin.model.PreparedPlayerSkin;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Util;
 
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
-import net.minecraft.util.Util;
 import java.util.function.Consumer;
 import java.util.function.Function;
 

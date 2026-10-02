@@ -9,7 +9,6 @@ import io.github.hanhy06.emote.content.LoadedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.loader.AnimationContentResolver;
 import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
-import io.github.hanhy06.emote.playback.PlayerPlaybackState;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
@@ -92,6 +91,7 @@ public final class EmoteApiImpl extends EmoteApi {
     @Override
     public Optional<PlaybackInfo> getPlayback(ServerPlayer player) {
         Objects.requireNonNull(player, "player");
+        requireServerThread();
         PlaybackSession session = this.playerPlaybackManager.findActive(player.getUUID());
         if (session == null) {
             return Optional.empty();
@@ -109,6 +109,14 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
         return this.playerPlaybackManager.playbackInfo(sessionId);
+    }
+
+    @Override
+    public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        return this.playerPlaybackManager.playbackInfo(sessionId)
+            .map(playback -> this.playerPlaybackManager.engine().findSession(sessionId).animation().timeline());
     }
 
     @Override

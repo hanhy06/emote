@@ -85,13 +85,14 @@ public record PreparedSequence(
     private static List<SelectedStep> selectSteps(List<Step> steps, RandomGenerator random) {
         Objects.requireNonNull(random, "random");
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : steps) {
+        for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
+            Step step = steps.get(stepIndex);
             if (step instanceof WaitStep(int ticks)) {
-                selectedSteps.add(new SelectedWaitStep(ticks));
+                selectedSteps.add(new SelectedWaitStep(ticks, stepIndex));
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
+            List<SelectedEmoteStep> selectedAnimations = new ArrayList<>();
             int animationCandidateCount = (int) emoteStep.candidates().stream().filter(AnimationChoice.class::isInstance).count();
             int previousAnimationIndex = -1;
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
@@ -99,7 +100,7 @@ public record PreparedSequence(
                 int selectedIndex = WeightedChoiceSelector.selectIndex(random, emoteStep.candidates(), Choice::chance, excludedIndex);
                 Choice selected = emoteStep.candidates().get(selectedIndex);
                 if (selected instanceof AnimationChoice animation) {
-                    selectedAnimations.add(animation.animation());
+                    selectedAnimations.add(new SelectedEmoteStep(animation.animation(), false, emoteStep.transitionTicks(), stepIndex, repeat));
                     previousAnimationIndex = selectedIndex;
                 } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
                     break;
@@ -112,17 +113,18 @@ public record PreparedSequence(
 
     private static List<SelectedStep> selectFirstCandidates(List<Step> steps) {
         List<SelectedStep> selectedSteps = new ArrayList<>();
-        for (Step step : steps) {
+        for (int stepIndex = 0; stepIndex < steps.size(); stepIndex++) {
+            Step step = steps.get(stepIndex);
             if (step instanceof WaitStep(int ticks)) {
-                selectedSteps.add(new SelectedWaitStep(ticks));
+                selectedSteps.add(new SelectedWaitStep(ticks, stepIndex));
                 continue;
             }
             EmoteStep emoteStep = (EmoteStep) step;
-            List<PreparedAnimation> selectedAnimations = new ArrayList<>();
+            List<SelectedEmoteStep> selectedAnimations = new ArrayList<>();
             for (int repeat = 0; repeat < emoteStep.repeat(); repeat++) {
                 Choice selected = emoteStep.candidates().getFirst();
                 if (selected instanceof AnimationChoice animation) {
-                    selectedAnimations.add(animation.animation());
+                    selectedAnimations.add(new SelectedEmoteStep(animation.animation(), false, emoteStep.transitionTicks(), stepIndex, repeat));
                 } else if (((ControlChoice) selected).control() == EmoteSequence.Control.BREAK) {
                     break;
                 }
@@ -134,14 +136,17 @@ public record PreparedSequence(
 
     private static void appendSelectedAnimations(
         List<SelectedStep> selectedSteps,
-        List<PreparedAnimation> animations,
+        List<SelectedEmoteStep> animations,
         int transitionTicks
     ) {
         for (int index = 0; index < animations.size(); index++) {
+            SelectedEmoteStep selected = animations.get(index);
             selectedSteps.add(new SelectedEmoteStep(
-                animations.get(index),
+                selected.animation(),
                 index + 1 < animations.size(),
-                transitionTicks
+                transitionTicks,
+                selected.stepIndex(),
+                selected.repeatIndex()
             ));
         }
     }
@@ -246,7 +251,9 @@ public record PreparedSequence(
     record SelectedEmoteStep(
         PreparedAnimation animation,
         boolean loopDelayAfter,
-        int transitionTicks
+        int transitionTicks,
+        int stepIndex,
+        int repeatIndex
     ) implements SelectedStep {
         SelectedEmoteStep {
             Objects.requireNonNull(animation, "animation");
@@ -256,7 +263,7 @@ public record PreparedSequence(
         }
     }
 
-    record SelectedWaitStep(int ticks) implements SelectedStep {
+    record SelectedWaitStep(int ticks, int stepIndex) implements SelectedStep {
         SelectedWaitStep {
             if (ticks < 1) {
                 throw new IllegalArgumentException("sequence wait must be at least 1 tick");

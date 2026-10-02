@@ -2,6 +2,8 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.api.PlaybackPosition;
+import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.content.AnimationEventPhase;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -38,6 +40,8 @@ public final class AnimationPlayer {
     private LifecycleListener lifecycleListener = new LifecycleListener() {};
     private int lifecycleSegment = -1;
     private boolean pendingLoopCallback;
+    private long holdTicks;
+    private PlaybackPosition stoppedPosition;
 
     public AnimationPlayer(PreparedAnimation emote, TimelineTarget target) {
         this(emote, target, MolangQuerySource.EMPTY);
@@ -275,6 +279,7 @@ public final class AnimationPlayer {
         }
 
         if (this.phase == PlaybackPhase.HOLDING) {
+            this.holdTicks++;
             return AdvanceResult.CONTINUE;
         }
 
@@ -320,6 +325,48 @@ public final class AnimationPlayer {
         return this.currentTick;
     }
 
+    public PlaybackTimeline timeline() {
+        return this.emote.playbackTimeline();
+    }
+
+    public PlaybackPosition position() {
+        if (this.stoppedPosition != null) return this.stoppedPosition;
+        List<PlaybackTimeline.Segment> segments = timeline().segments();
+        PlaybackTimeline.Segment selected = segments.getLast();
+        long phaseTick;
+        if (this.emote.playbackSegments().isEmpty() && segments.getFirst().phase() == PlaybackTimeline.Phase.ANIMATION) {
+            if (this.phase == PlaybackPhase.LOOP_DELAY) {
+                selected = segments.getLast();
+                phaseTick = this.animation.settings().playback().loopDelayTicks() - this.remainingLoopDelay;
+            } else if (this.phase == PlaybackPhase.HOLDING) {
+                selected = segments.getLast();
+                phaseTick = this.holdTicks;
+            } else {
+                selected = segments.getFirst();
+                phaseTick = this.currentTick;
+            }
+        } else {
+            // At an animation's ending tick, its callbacks still observe that animation.
+            PreparedAnimation.PlaybackSegment active = this.lifecycleSegment < 0 ? null
+                : this.emote.playbackSegments().get(this.lifecycleSegment);
+            for (PlaybackTimeline.Segment segment : segments) {
+                if (active != null && segment.phase() == PlaybackTimeline.Phase.ANIMATION
+                    && segment.startTick() == active.startTick()) {
+                    selected = segment;
+                    break;
+                }
+                if (this.currentTick >= segment.startTick() && this.currentTick < segment.endTick()) {
+                    selected = segment;
+                    if (active == null) break;
+                }
+            }
+            phaseTick = this.currentTick - selected.startTick();
+        }
+        return new PlaybackPosition(selected.segmentIndex(), selected.stepIndex(), selected.repeatIndex(),
+            selected.phase(), phaseTick, selected.animationId(),
+            selected.phase() == PlaybackTimeline.Phase.ANIMATION ? (int) phaseTick : null);
+    }
+
     public Identifier emoteId() {
         return this.animation.id();
     }
@@ -337,6 +384,7 @@ public final class AnimationPlayer {
     }
 
     public void stop(PlaybackStopReason reason) {
+        if (this.stoppedPosition == null) this.stoppedPosition = position();
         this.phase = PlaybackPhase.FINISHED;
         if (!this.eventsStarted || this.eventsStopped) {
             return;

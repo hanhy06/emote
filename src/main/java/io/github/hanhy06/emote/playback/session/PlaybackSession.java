@@ -1,7 +1,10 @@
 package io.github.hanhy06.emote.playback.session;
 
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.*;
+import io.github.hanhy06.emote.api.PlaybackContext;
+import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackState;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
@@ -67,7 +70,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
 
     public PlaybackInfo playbackInfo(UUID playerUuid) {
         return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.id), this.playbackState,
-            this.elapsedTicks, this.animation.emoteId(), this.animation.currentTick());
+            this.elapsedTicks, this.animation.currentTick(), this.animation.position());
     }
 
     public void bindCallbacks(

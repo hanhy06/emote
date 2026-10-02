@@ -19,10 +19,10 @@ import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import org.jspecify.annotations.NonNull;
 
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.awt.image.BufferedImage;
 
 @Environment(EnvType.CLIENT)
 public class WheelScreen extends Screen {

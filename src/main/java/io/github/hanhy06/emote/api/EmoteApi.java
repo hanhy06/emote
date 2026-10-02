@@ -43,6 +43,9 @@ public abstract class EmoteApi {
 
     public abstract Optional<PlaybackInfo> getPlayback(UUID sessionId);
 
+    /** Returns the selected timeline of an active player playback. Call on the server thread. */
+    public abstract Optional<PlaybackTimeline> getTimeline(UUID sessionId);
+
     public abstract Registration registerCallbacks(Identifier name, EmoteCallbacks callbacks);
 
     public abstract ListenerRegistration addPlayListener(EmotePlayListener listener);

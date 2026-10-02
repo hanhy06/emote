@@ -1,8 +1,8 @@
 package io.github.hanhy06.emote.content.loader;
 
 import com.google.gson.*;
-import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation.Node;
+import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import io.github.hanhy06.emote.molang.MolangEngine;
 import io.github.hanhy06.emote.util.MinecraftTime;
 import net.minecraft.resources.Identifier;
@@ -11,8 +11,8 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Objects;
 import java.util.Map;
+import java.util.Objects;
 
 final class EmoteJsonDocument {
     static final int MAX_JSON_BYTES = 8 * 1_024 * 1_024;

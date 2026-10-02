@@ -2,25 +2,32 @@ package io.github.hanhy06.emote.playback;
 
 import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.EmoteMod;
-import io.github.hanhy06.emote.api.*;
-import io.github.hanhy06.emote.content.*;
+import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.PlayResult;
+import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackStopReason;
+import io.github.hanhy06.emote.content.PlayableEmote;
+import io.github.hanhy06.emote.content.PreparedAnimation;
+import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.mixin.accessor.EntitySharedFlagsAccessor;
 import io.github.hanhy06.emote.playback.molang.PlayerMolangQueries;
 import io.github.hanhy06.emote.playback.runtime.RootTransform;
-import io.github.hanhy06.emote.playback.session.*;
-import io.github.hanhy06.emote.skin.*;
+import io.github.hanhy06.emote.playback.session.PlaybackSession;
+import io.github.hanhy06.emote.skin.PlayerSkinManager;
+import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.model.PlayerSkinPreparation;
-import net.minecraft.server.level.ServerPlayer;
 import net.fabricmc.fabric.api.networking.v1.EntityTrackingEvents;
 import net.minecraft.network.protocol.game.ClientboundSetEntityDataPacket;
 import net.minecraft.network.protocol.game.ClientboundSetEquipmentPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import org.jspecify.annotations.Nullable;
+
 import java.util.*;
 import java.util.random.RandomGenerator;
 

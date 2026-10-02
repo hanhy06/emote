@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.content;
 import com.mojang.math.Transformation;
 import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
+import io.github.hanhy06.emote.api.PlaybackTimeline;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.skin.SkinBinding;
 import io.github.hanhy06.emote.skin.SkinBindingCompiler;
@@ -25,6 +26,7 @@ public final class PreparedAnimation implements PlayableEmote {
     private final int displayNodeCount;
     private final List<PlaybackSegment> playbackSegments;
     private final Map<Integer, Set<String>> hiddenNodes;
+    private final PlaybackTimeline playbackTimeline;
 
     private PreparedAnimation(
         LoadedAnimation source,
@@ -35,7 +37,8 @@ public final class PreparedAnimation implements PlayableEmote {
         Map<String, PreparedTransform> defaultTransforms,
         int displayNodeCount,
         List<PlaybackSegment> playbackSegments,
-        Map<Integer, Set<String>> hiddenNodes
+        Map<Integer, Set<String>> hiddenNodes,
+        PlaybackTimeline playbackTimeline
     ) {
         this.source = source;
         this.skinBindings = skinBindings;
@@ -46,6 +49,7 @@ public final class PreparedAnimation implements PlayableEmote {
         this.displayNodeCount = displayNodeCount;
         this.playbackSegments = playbackSegments;
         this.hiddenNodes = hiddenNodes;
+        this.playbackTimeline = playbackTimeline;
     }
 
     public static PreparedAnimation from(LoadedAnimation source) {
@@ -79,14 +83,16 @@ public final class PreparedAnimation implements PlayableEmote {
             Map.copyOf(defaultTransforms),
             (int) animation.nodes().values().stream().filter(node -> !(node instanceof EmoteAnimation.AnchorNode)).count(),
             List.of(),
-            Map.of()
+            Map.of(),
+            animationTimeline(animation)
         );
     }
 
     static PreparedAnimation sequence(
         PreparedAnimation layout,
         List<PlaybackSegment> playbackSegments,
-        Map<Integer, Set<String>> hiddenNodes
+        Map<Integer, Set<String>> hiddenNodes,
+        List<PlaybackTimeline.Segment> timelineSegments
     ) {
         Objects.requireNonNull(layout, "layout");
         Map<Integer, Set<String>> copiedHiddenNodes = new HashMap<>();
@@ -100,8 +106,26 @@ public final class PreparedAnimation implements PlayableEmote {
             compileSequenceDefaultTransforms(layout),
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
-            Map.copyOf(copiedHiddenNodes)
+            Map.copyOf(copiedHiddenNodes),
+            new PlaybackTimeline(layout.animation.id(), layout.durationTicks(), EmoteAnimation.LoopMode.ONCE,
+                0, timelineSegments)
         );
+    }
+
+    private static PlaybackTimeline animationTimeline(EmoteAnimation animation) {
+        int duration = animation.timeline().durationTicks();
+        var playback = animation.settings().playback();
+        List<PlaybackTimeline.Segment> segments = new ArrayList<>();
+        segments.add(new PlaybackTimeline.Segment(0, null, null, PlaybackTimeline.Phase.ANIMATION,
+            0, (long) duration, animation.id()));
+        if ((playback.mode() == EmoteAnimation.LoopMode.LOOP || playback.mode() == EmoteAnimation.LoopMode.SERVER_SYNC)
+            && playback.loopDelayTicks() > 0) {
+            segments.add(new PlaybackTimeline.Segment(1, null, null, PlaybackTimeline.Phase.LOOP_DELAY,
+                duration, (long) duration + playback.loopDelayTicks(), null));
+        } else if (playback.mode() == EmoteAnimation.LoopMode.HOLD) {
+            segments.add(new PlaybackTimeline.Segment(1, null, null, PlaybackTimeline.Phase.HOLD, duration, null, animation.id()));
+        }
+        return new PlaybackTimeline(animation.id(), duration, playback.mode(), playback.loopStartTicks(), segments);
     }
 
     private static Map<String, PreparedTransform> compileSequenceDefaultTransforms(PreparedAnimation layout) {
@@ -185,6 +209,10 @@ public final class PreparedAnimation implements PlayableEmote {
 
     public List<PlaybackSegment> playbackSegments() {
         return this.playbackSegments;
+    }
+
+    public PlaybackTimeline playbackTimeline() {
+        return this.playbackTimeline;
     }
 
     public Set<String> hiddenNodes(int tick) {
