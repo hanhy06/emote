@@ -96,7 +96,7 @@ public final class PreparedAnimation implements PlayableEmote {
             layout.skinBindings,
             layout.animation,
             layout.preparedTimeline,
-            compileSequenceEvents(playbackSegments),
+            Map.of(),
             compileSequenceDefaultTransforms(layout),
             layout.displayNodeCount,
             List.copyOf(playbackSegments),
@@ -177,56 +177,6 @@ public final class PreparedAnimation implements PlayableEmote {
 
     public List<PreparedEvent> timelineEvents(int tick) {
         return this.timelineEvents.getOrDefault(tick, List.of());
-    }
-
-    private static Map<Integer, List<PreparedEvent>> compileSequenceEvents(List<PlaybackSegment> segments) {
-        Map<Integer, List<PreparedEvent>> eventsByTick = new HashMap<>();
-        for (PlaybackSegment segment : segments) {
-            EmoteAnimation animation = segment.animation().animation();
-            addEvents(eventsByTick, segment.startTick(), animation.timeline().events().start(), animation.id(), 0, AnimationEventPhase.START);
-            for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
-                addEvent(eventsByTick, segment.startTick() + event.tick(), new PreparedEvent(
-                    event.event(), animation.id(), event.tick(), AnimationEventPhase.TIMELINE
-                ));
-            }
-            if (animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP
-                || animation.settings().playback().mode() == EmoteAnimation.LoopMode.SERVER_SYNC) {
-                addEvents(
-                    eventsByTick,
-                    segment.endTick(),
-                    animation.timeline().events().loop(),
-                    animation.id(),
-                    animation.timeline().durationTicks(),
-                    AnimationEventPhase.LOOP
-                );
-            }
-            addEvents(
-                eventsByTick,
-                segment.endTick(),
-                animation.timeline().events().stop(),
-                animation.id(),
-                animation.timeline().durationTicks(),
-                AnimationEventPhase.STOP
-            );
-        }
-        return copyListMap(eventsByTick);
-    }
-
-    private static void addEvents(
-        Map<Integer, List<PreparedEvent>> eventsByTick,
-        int tick,
-        List<EmoteAnimation.Event> events,
-        Identifier animationId,
-        int animationTick,
-        AnimationEventPhase phase
-    ) {
-        for (EmoteAnimation.Event event : events) {
-            addEvent(eventsByTick, tick, new PreparedEvent(event, animationId, animationTick, phase));
-        }
-    }
-
-    private static void addEvent(Map<Integer, List<PreparedEvent>> eventsByTick, int tick, PreparedEvent event) {
-        eventsByTick.computeIfAbsent(tick, ignored -> new ArrayList<>()).add(event);
     }
 
     public int displayNodeCount() {

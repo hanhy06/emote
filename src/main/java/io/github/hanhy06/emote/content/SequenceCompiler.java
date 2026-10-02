@@ -15,7 +15,6 @@ final class SequenceCompiler {
         List<PreparedSequence.SelectedStep> steps,
         PreparedAnimation layoutAnchor
     ) {
-        List<EmoteAnimation.TimelineEvent> timelineEvents = new ArrayList<>();
         List<PreparedAnimation.PlaybackSegment> playbackSegments = new ArrayList<>();
         Map<Integer, Set<String>> hiddenNodes = new HashMap<>();
         if (steps.isEmpty() || !(steps.getFirst() instanceof PreparedSequence.SelectedEmoteStep)) {
@@ -40,14 +39,6 @@ final class SequenceCompiler {
                 step.animation()
             ));
             hiddenNodes.put(segmentOffset, nodesToHide(layoutAnchor.animation(), animation));
-            for (EmoteAnimation.TimelineEvent event : animation.timeline().events().timeline()) {
-                timelineEvents.add(new EmoteAnimation.TimelineEvent(
-                    requireTick((long) segmentOffset + event.tick(), sequence),
-                    event.source(),
-                    event.origin(),
-                    event.commands()
-                ));
-            }
 
             offset += transitionTicks + animation.timeline().durationTicks();
             if (step.loopDelayAfter() && animation.settings().playback().mode() == EmoteAnimation.LoopMode.LOOP) {
@@ -72,7 +63,7 @@ final class SequenceCompiler {
             new EmoteAnimation.Timeline(
                 Math.max(requireTick(offset, sequence), 1),
                 Map.of(),
-                new EmoteAnimation.Events(List.of(), timelineEvents, List.of(), List.of())
+                EmoteAnimation.Events.empty()
             ), sequence.callbacks());
         LoadedAnimation loaded = new LoadedAnimation(sequence.sourcePath(), fingerprint(sequence, steps),
             compiledAnimation, layoutAnchor.source().preparedDisplayData());

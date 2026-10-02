@@ -57,8 +57,13 @@ class SequenceCompilerTest {
             .map(PreparedAnimation.PlaybackSegment::transitionStartTick).toList());
         assertEquals(List.of(0, 6), compiled.playbackSegments().stream()
             .map(PreparedAnimation.PlaybackSegment::startTick).toList());
-        assertEquals(List.of(7), compiled.animation().timeline().events().timeline().stream()
-            .map(EmoteAnimation.TimelineEvent::tick).toList());
+        List<Integer> eventTicks = new java.util.ArrayList<>();
+        AnimationPlayer player = new AnimationPlayer(compiled, new EmptyTimelineTarget());
+        player.bindEvents(executedEvent -> eventTicks.add(player.currentTick()));
+        player.start();
+        player.startEvents();
+        while (player.advance() != AnimationPlayer.AdvanceResult.FINISHED) {}
+        assertEquals(List.of(7), eventTicks);
     }
 
     @Test
@@ -125,9 +130,13 @@ class SequenceCompilerTest {
         assertEquals(EmoteAnimation.LoopMode.ONCE, compiled.settings().playback().mode());
         assertEquals(List.of(0, 2, 7), compiledPlan.playbackSegments().stream()
             .map(PreparedAnimation.PlaybackSegment::startTick).toList());
-        assertEquals(List.of(4, 9), compiled.timeline().events().timeline().stream()
-            .map(EmoteAnimation.TimelineEvent::tick)
-            .toList());
+        List<Integer> eventTicks = new java.util.ArrayList<>();
+        AnimationPlayer player = new AnimationPlayer(compiledPlan, new EmptyTimelineTarget());
+        player.bindEvents(executedEvent -> eventTicks.add(player.currentTick()));
+        player.start();
+        player.startEvents();
+        while (player.advance() != AnimationPlayer.AdvanceResult.FINISHED) {}
+        assertEquals(List.of(4, 9), eventTicks);
     }
 
     @Test
@@ -191,7 +200,7 @@ class SequenceCompilerTest {
     }
 
     @Test
-    void compilesLifecycleEventsWithTheirSourceAnimationContext() {
+    void executesLifecycleEventsWithTheirSourceAnimationContext() {
         EmoteAnimation.Event startEvent = new EmoteAnimation.Event(
             new EmoteAnimation.CommandSource(EmoteAnimation.SourceType.SERVER, null),
             new EmoteAnimation.CommandOrigin(EmoteAnimation.OriginType.ROOT, null, EmoteAnimation.Vec3.ZERO),
@@ -215,14 +224,19 @@ class SequenceCompilerTest {
             Map.of(animation.id(), animation)
         ).compiledAnimation();
 
-        assertEquals(List.of(AnimationEventPhase.START), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::phase).toList());
-        assertEquals(
-            List.of(AnimationEventPhase.LOOP, AnimationEventPhase.STOP),
-            compiled.timelineEvents(2).stream().map(PreparedAnimation.PreparedEvent::phase).toList()
-        );
-        assertTrue(compiled.timelineEvents(0).stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:eventful"))));
-        assertEquals(List.of(0), compiled.timelineEvents(0).stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
-        assertEquals(List.of(2, 2), compiled.timelineEvents(2).stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
+        List<PreparedAnimation.PreparedEvent> executed = new java.util.ArrayList<>();
+        AnimationPlayer player = new AnimationPlayer(compiled, new EmptyTimelineTarget());
+        player.bindEvents(executed::add);
+        player.start();
+        player.startEvents();
+        player.advance();
+        assertEquals(AnimationPlayer.AdvanceResult.FINISHED, player.advance());
+        player.stop();
+
+        assertEquals(List.of(AnimationEventPhase.START, AnimationEventPhase.LOOP, AnimationEventPhase.STOP),
+            executed.stream().map(PreparedAnimation.PreparedEvent::phase).toList());
+        assertTrue(executed.stream().allMatch(event -> event.animationId().equals(Identifier.parse("demo:eventful"))));
+        assertEquals(List.of(0, 2, 2), executed.stream().map(PreparedAnimation.PreparedEvent::animationTick).toList());
     }
 
     @Test
