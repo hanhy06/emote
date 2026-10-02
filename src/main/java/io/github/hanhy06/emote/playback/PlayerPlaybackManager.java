@@ -38,13 +38,13 @@ public final class PlayerPlaybackManager {
     }
     public @Nullable PlayerPlaybackState playerState(UUID playerId) {
         PlayerPlayback playback = this.playerSessions.get(playerId);
-        return playback == null ? null : playback.participant();
+        return playback == null ? null : playback.playerState();
     }
     public Optional<PlaybackInfo> playbackInfo(UUID sessionId) {
         return this.playerSessions.values().stream().filter(playback -> playback.session().sessionId().equals(sessionId))
-            .findFirst().map(playback -> playback.session().playbackInfo(playback.participant().playerUuid()));
+            .findFirst().map(playback -> playback.session().playbackInfo(playback.playerState().playerUuid()));
     }
-    public int activeParticipantCount() { return this.playerSessions.size(); }
+    public int activePlayerCount() { return this.playerSessions.size(); }
 
     public PlayResult start(ServerPlayer player, PlayableEmote definition) {
         if (this.closingPlayers.contains(player.getUUID())) return PlayResult.failure("Your previous emote is still closing.");
@@ -57,30 +57,30 @@ public final class PlayerPlaybackManager {
         RootTransform root = RootTransform.create(player.position(), player.getYRot());
         PlayerPlaybackState previousState = playerState(player.getUUID());
         boolean wasInvisible = previousState != null && previousState.behavior().hidden() ? previousState.wasInvisible() : player.isInvisible();
-        PlayerPlaybackState participant = new PlayerPlaybackState(player.getUUID(), root.position(), animation.skinBindings(), wasInvisible, definition.playerBehavior());
+        PlayerPlaybackState playerState = new PlayerPlaybackState(player.getUUID(), root.position(), animation.skinBindings(), wasInvisible, definition.playerBehavior());
         List<PlaybackStateListener> playbackListeners = List.copyOf(this.listeners);
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
             @Override public void onStarted(PlaybackSession session) {
-                playerSessions.put(player.getUUID(), new PlayerPlayback(session, participant));
-                visibility.start(player, participant);
+                playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState));
+                visibility.start(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
                     this.notifiedListeners++;
-                    listener.onStarted(player, session, participant);
+                    listener.onStarted(player, session, playerState);
                     if (!engine.contains(session)) break;
                 }
             }
             @Override public @Nullable PlaybackStopReason beforeTick(PlaybackSession session) {
                 if (!player.isAlive() || EmoteMod.SERVER.getPlayerList().getPlayer(player.getUUID()) != player
                     || !player.level().dimension().equals(session.levelKey())) return PlaybackStopReason.PLAYER_UNAVAILABLE;
-                if (participant.behavior().stopConditions().submerge() && player.isUnderWater()) return PlaybackStopReason.SUBMERGED;
-                if (movementResult(player, participant) == MovementResult.IMMEDIATE_STOP) return PlaybackStopReason.MOVED;
+                if (playerState.behavior().stopConditions().submerge() && player.isUnderWater()) return PlaybackStopReason.SUBMERGED;
+                if (shouldStopForMovement(player, playerState)) return PlaybackStopReason.MOVED;
                 return null;
             }
             @Override public void prepareFrame(PlaybackSession session) {
-                if (participant.behavior().stopConditions().movementDistance() == 0) engine.entities().moveSceneTo(session.nodes(), player.position());
+                if (playerState.behavior().stopConditions().movementDistance() == 0) engine.entities().moveSceneTo(session.nodes(), player.position());
                 engine.entities().updateViewRotation(session.nodes(), player.getYRot(), session.animation().rotationDeadzone());
-                visibility.tick(player, participant);
+                visibility.tick(player, playerState);
             }
             @Override public void onClosing(PlaybackSession session) {
                 playerSessions.remove(player.getUUID());
@@ -88,8 +88,8 @@ public final class PlayerPlaybackManager {
             }
             @Override public void onStopped(PlaybackSession session, PlaybackStopReason reason) {
                 try {
-                    visibility.stop(player, participant);
-                    for (int i = 0; i < this.notifiedListeners; i++) playbackListeners.get(i).onStopped(player, session, participant, reason);
+                    visibility.stop(player, playerState);
+                    for (int i = 0; i < this.notifiedListeners; i++) playbackListeners.get(i).onStopped(player, session, playerState, reason);
                 } finally { closingPlayers.remove(player.getUUID()); }
             }
         };
@@ -120,26 +120,20 @@ public final class PlayerPlaybackManager {
         this.engine.entities().applySkin(session.nodes(), bindings, preparation.preparedPlayerSkin());
     }
 
-    private MovementResult movementResult(ServerPlayer player, PlayerPlaybackState participant) {
-        double movementDistance = participant.behavior().stopConditions().movementDistance();
+    private boolean shouldStopForMovement(ServerPlayer player, PlayerPlaybackState playerState) {
+        double movementDistance = playerState.behavior().stopConditions().movementDistance();
         if (movementDistance == 0.0D) {
-            return MovementResult.NONE;
+            return false;
         }
         Vec3 currentPosition = player.position();
-        Vec3 startPosition = participant.startPosition();
+        Vec3 startPosition = playerState.startPosition();
         double xDistance = currentPosition.x - startPosition.x;
         double zDistance = currentPosition.z - startPosition.z;
         double horizontalDistanceSquared = xDistance * xDistance + zDistance * zDistance;
-        return movementResult(horizontalDistanceSquared, movementDistance);
+        return shouldStopForMovement(horizontalDistanceSquared, movementDistance);
     }
-    static MovementResult movementResult(double horizontalDistanceSquared, double movementDistance) {
-        if (movementDistance == 0.0D) {
-            return MovementResult.NONE;
-        }
-        if (horizontalDistanceSquared > movementDistance * movementDistance) {
-            return MovementResult.IMMEDIATE_STOP;
-        }
-        return MovementResult.NONE;
+    static boolean shouldStopForMovement(double horizontalDistanceSquared, double movementDistance) {
+        return movementDistance != 0.0D && horizontalDistanceSquared > movementDistance * movementDistance;
     }
 
     static boolean shouldStopFor(EmotePlayerBehavior.StopConditions conditions, PlaybackStopReason reason) {
@@ -158,7 +152,6 @@ public final class PlayerPlaybackManager {
         return this.skins.preparePlayerSkin(player, bindings);
     }
 
-    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState participant) {}
+    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState) {}
 
-    enum MovementResult { NONE, IMMEDIATE_STOP }
 }

@@ -44,9 +44,9 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant) {
-        PlaybackInfo playback = toPlaybackInfo(session, participant);
-        StartKey key = new StartKey(session.sessionId(), participant.playerUuid());
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState) {
+        PlaybackInfo playback = toPlaybackInfo(session, playerState);
+        StartKey key = new StartKey(session.sessionId(), playerState.playerUuid());
         StartDispatch dispatch = new StartDispatch(List.copyOf(this.playbackListeners));
         if (this.startingPlaybacks.putIfAbsent(key, dispatch) != null) {
             throw new IllegalStateException("Playback start is already being dispatched: " + session.sessionId());
@@ -72,11 +72,11 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
     public void onStopped(
         ServerPlayer player,
         PlaybackSession session,
-        PlayerPlaybackState participant,
+        PlayerPlaybackState playerState,
         PlaybackStopReason reason
     ) {
-        PlaybackInfo playback = toPlaybackInfo(session, participant);
-        StartDispatch startDispatch = this.startingPlaybacks.get(new StartKey(session.sessionId(), participant.playerUuid()));
+        PlaybackInfo playback = toPlaybackInfo(session, playerState);
+        StartDispatch startDispatch = this.startingPlaybacks.get(new StartKey(session.sessionId(), playerState.playerUuid()));
         List<EmotePlaybackListener> listeners;
         if (startDispatch == null) {
             listeners = List.copyOf(this.playbackListeners);
@@ -104,8 +104,8 @@ public final class ApiEventDispatcher implements PlaybackStateListener {
         );
     }
 
-    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlayerPlaybackState participant) {
-        return session.playbackInfo(participant.playerUuid());
+    public static PlaybackInfo toPlaybackInfo(PlaybackSession session, PlayerPlaybackState playerState) {
+        return session.playbackInfo(playerState.playerUuid());
     }
 
     private static <T> ListenerRegistration register(CopyOnWriteArrayList<T> listeners, T listener) {

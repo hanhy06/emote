@@ -40,13 +40,13 @@ public final class IdlePlaybackService implements AccessConfigListener {
     public IdlePlaybackService(
         PlaybackPolicyService playbackPolicy,
         EmotePlayService playService,
-        PlayerPlaybackManager playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         EmoteCatalog emoteCatalog
     ) {
         this(
             playbackPolicy::findIdleSettings,
             (player, id) -> playService.play(player, id, PlaySource.IDLE),
-            player -> playbackEngine.findActive(player.getUUID()) != null,
+            player -> playerPlaybackManager.findActive(player.getUUID()) != null,
             () -> emoteCatalog.emotes().stream().map(PlayableEmote::id).toList(),
             Util::getMillis,
             RandomGenerator.getDefault()

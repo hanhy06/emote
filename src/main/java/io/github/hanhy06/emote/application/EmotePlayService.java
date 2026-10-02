@@ -17,13 +17,13 @@ public class EmotePlayService {
     public EmotePlayService(
         EmoteCatalog emoteCatalog,
         PlaybackPolicyService playbackPolicy,
-        PlayerPlaybackManager playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         ApiEventDispatcher apiEvents
     ) {
         this(
             emoteCatalog,
             playbackPolicy,
-            playbackEngine::start,
+            playerPlaybackManager::start,
             apiEvents::beforePlay
         );
     }

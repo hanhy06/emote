@@ -30,7 +30,7 @@ import java.util.Map;
 
 public final class AdminCommand {
     private final EmoteCatalog emoteCatalog;
-    private final PlayerPlaybackManager playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final PermissionService permissionService;
     private final ReloadService reloadService;
     private final ConfigManager configManager;
@@ -39,19 +39,19 @@ public final class AdminCommand {
 
     public AdminCommand(
         EmoteCatalog emoteCatalog,
-        PlayerPlaybackManager playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         PermissionService permissionService,
         ReloadService reloadService,
         ConfigManager configManager,
         PlayerSkinManager playerSkinManager
     ) {
         this.emoteCatalog = emoteCatalog;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.permissionService = permissionService;
         this.reloadService = reloadService;
         this.configManager = configManager;
         this.playerSkinManager = playerSkinManager;
-        this.stressTestCommand = new StressTestCommand(emoteCatalog, playbackEngine, permissionService);
+        this.stressTestCommand = new StressTestCommand(emoteCatalog, playerPlaybackManager, permissionService);
     }
 
     void attachTo(LiteralArgumentBuilder<CommandSourceStack> root) {
@@ -73,9 +73,9 @@ public final class AdminCommand {
     private int info(CommandSourceStack source) {
         SkinProcessingStats skinStats = this.playerSkinManager.processingStats();
         AdminInfoSnapshot snapshot = new AdminInfoSnapshot(
-            this.playbackEngine.engine().activeSessionCount(),
-            this.playbackEngine.activeParticipantCount(),
-            this.playbackEngine.engine().activeDisplayEntityCount(),
+            this.playerPlaybackManager.engine().activeSessionCount(),
+            this.playerPlaybackManager.activePlayerCount(),
+            this.playerPlaybackManager.engine().activeDisplayEntityCount(),
             this.configManager.getConfig().maxActiveDisplayEntities(),
             skinStats,
             this.emoteCatalog.size(),
@@ -304,7 +304,7 @@ public final class AdminCommand {
         int stoppedCount = 0;
 
         for (ServerPlayer player : players) {
-            var session = this.playbackEngine.stop(player);
+            var session = this.playerPlaybackManager.stop(player);
             if (session == null) {
                 if (players.size() == 1) {
                     source.sendFailure(Component.literal(player.getName().getString() + " is not playing an emote."));
@@ -343,7 +343,7 @@ public final class AdminCommand {
             return 0;
         }
         if (!enabled) {
-            this.playbackEngine.engine().stopById(id);
+            this.playerPlaybackManager.engine().stopById(id);
         }
 
         this.reloadService.reload();

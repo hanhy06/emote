@@ -30,7 +30,7 @@ public class ServerLifecycle {
     private final PlayerSkinManager playerSkinManager;
     private final PlaybackCooldownService cooldowns;
     private final EmoteCatalog emoteCatalog;
-    private final PlayerPlaybackManager playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final EntityPlaybackManager entityPlayback;
     private final ReloadService reloadService;
     private final WheelSyncService wheelSyncService;
@@ -41,7 +41,7 @@ public class ServerLifecycle {
         PlayerSkinManager playerSkinManager,
         PlaybackCooldownService cooldowns,
         EmoteCatalog emoteCatalog,
-        PlayerPlaybackManager playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         EntityPlaybackManager entityPlayback,
         ReloadService reloadService,
         WheelSyncService wheelSyncService,
@@ -51,7 +51,7 @@ public class ServerLifecycle {
         this.playerSkinManager = playerSkinManager;
         this.cooldowns = cooldowns;
         this.emoteCatalog = emoteCatalog;
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.entityPlayback = entityPlayback;
         this.reloadService = reloadService;
         this.wheelSyncService = wheelSyncService;
@@ -65,18 +65,18 @@ public class ServerLifecycle {
         ServerLifecycleEvents.SERVER_STOPPED.register(this::handleServerStopped);
         ServerTickEvents.END_SERVER_TICK.register(ignoredServer -> {
             this.entityPlayback.tick();
-            this.playbackEngine.engine().tick();
+            this.playerPlaybackManager.engine().tick();
             this.idlePlaybackService.tick();
         });
-        PlaybackHooks.INTERRUPTION.register(this.playbackEngine::interrupt);
+        PlaybackHooks.INTERRUPTION.register(this.playerPlaybackManager::interrupt);
         ServerLivingEntityEvents.AFTER_DAMAGE.register((entity, ignoredSource, ignoredBaseDamage, damageTaken, ignoredBlocked) -> {
             if (damageTaken > 0.0F && entity instanceof ServerPlayer player) {
-                this.playbackEngine.interrupt(player, PlaybackStopReason.DAMAGED);
+                this.playerPlaybackManager.interrupt(player, PlaybackStopReason.DAMAGED);
             }
         });
         AttackEntityCallback.EVENT.register((player, ignoredLevel, ignoredHand, ignoredEntity, ignoredHitResult) -> {
             if (player instanceof ServerPlayer serverPlayer) {
-                this.playbackEngine.interrupt(serverPlayer, PlaybackStopReason.ATTACKED);
+                this.playerPlaybackManager.interrupt(serverPlayer, PlaybackStopReason.ATTACKED);
             }
             return InteractionResult.PASS;
         });
@@ -95,12 +95,12 @@ public class ServerLifecycle {
         ServerPlayConnectionEvents.DISCONNECT.register(
             (handler, ignoredServer) -> {
                 if (EmoteMod.SERVER.isSameThread()) {
-                    this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                    this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                     this.idlePlaybackService.removePlayer(handler.player);
                     this.playerSkinManager.removePlayer(handler.player.getUUID());
                 } else {
                     EmoteMod.SERVER.execute(() -> {
-                        this.playbackEngine.stop(handler.player, PlaybackStopReason.DISCONNECTED);
+                        this.playerPlaybackManager.stop(handler.player, PlaybackStopReason.DISCONNECTED);
                         this.idlePlaybackService.removePlayer(handler.player);
                         this.playerSkinManager.removePlayer(handler.player.getUUID());
                     });
@@ -131,7 +131,7 @@ public class ServerLifecycle {
     }
 
     private void handleServerStopping(MinecraftServer ignoredServer) {
-        this.playbackEngine.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
+        this.playerPlaybackManager.engine().stopAll(PlaybackStopReason.SERVER_STOPPING);
         this.cooldowns.clear();
         int removedApiEmotes = this.emoteCatalog.clearApiRegistrations();
         this.idlePlaybackService.clear();

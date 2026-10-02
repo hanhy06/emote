@@ -24,18 +24,18 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public final class UserCommand {
-    private final PlayerPlaybackManager playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
     private final EmoteMenu menu;
     private final EmoteQueryService emoteQueryService;
     private final EmotePlayService playService;
 
     public UserCommand(
-        PlayerPlaybackManager playbackEngine,
+        PlayerPlaybackManager playerPlaybackManager,
         EmoteMenu menu,
         EmoteQueryService emoteQueryService,
         EmotePlayService playService
     ) {
-        this.playbackEngine = playbackEngine;
+        this.playerPlaybackManager = playerPlaybackManager;
         this.menu = menu;
         this.emoteQueryService = emoteQueryService;
         this.playService = playService;
@@ -146,7 +146,7 @@ public final class UserCommand {
 
     private int stop(CommandSourceStack source) throws CommandSyntaxException {
         ServerPlayer player = source.getPlayerOrException();
-        return this.playbackEngine.stop(player) == null ? 0 : 1;
+        return this.playerPlaybackManager.stop(player) == null ? 0 : 1;
     }
 
     private static ServerPlayer findPlayer(CommandSourceStack source) {

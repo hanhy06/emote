@@ -78,11 +78,11 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
     }
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant) {
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState) {
     }
 
     @Override
-    public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant, PlaybackStopReason reason) {
+    public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
         onPlaybackEnded(player, session.id());
     }
 

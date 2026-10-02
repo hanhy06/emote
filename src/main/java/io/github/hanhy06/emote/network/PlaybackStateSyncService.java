@@ -12,12 +12,12 @@ public class PlaybackStateSyncService implements PlaybackStateListener {
     private static final PlaybackStatePayload INACTIVE_PAYLOAD = new PlaybackStatePayload(false, false);
 
     @Override
-    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant) {
-        sync(player, new PlaybackStatePayload(true, participant.behavior().hidden()));
+    public void onStarted(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState) {
+        sync(player, new PlaybackStatePayload(true, playerState.behavior().hidden()));
     }
 
     @Override
-    public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState participant, PlaybackStopReason reason) {
+    public void onStopped(ServerPlayer player, PlaybackSession session, PlayerPlaybackState playerState, PlaybackStopReason reason) {
         sync(player, INACTIVE_PAYLOAD);
     }
 

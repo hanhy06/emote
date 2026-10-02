@@ -31,10 +31,10 @@ public final class PlayerVisibilityService {
         .map(slot -> Pair.of(slot, ItemStack.EMPTY))
         .toList();
 
-    private final PlayerPlaybackManager playbackEngine;
+    private final PlayerPlaybackManager playerPlaybackManager;
 
-    public PlayerVisibilityService(PlayerPlaybackManager playbackEngine) {
-        this.playbackEngine = playbackEngine;
+    public PlayerVisibilityService(PlayerPlaybackManager playerPlaybackManager) {
+        this.playerPlaybackManager = playerPlaybackManager;
     }
 
     public void register() {
@@ -42,8 +42,8 @@ public final class PlayerVisibilityService {
         PlaybackHooks.EQUIPMENT_SYNC.register(this::handleEquipmentSync);
     }
 
-    public void start(ServerPlayer player, PlayerPlaybackState participant) {
-        if (!participant.behavior().hidden()) {
+    public void start(ServerPlayer player, PlayerPlaybackState playerState) {
+        if (!playerState.behavior().hidden()) {
             return;
         }
         player.setInvisible(true);
@@ -51,19 +51,19 @@ public final class PlayerVisibilityService {
         sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
     }
 
-    public void tick(ServerPlayer player, PlayerPlaybackState participant) {
-        if (!participant.behavior().hidden() || player.isInvisible()) {
+    public void tick(ServerPlayer player, PlayerPlaybackState playerState) {
+        if (!playerState.behavior().hidden() || player.isInvisible()) {
             return;
         }
         player.setInvisible(true);
         syncPlayerVisibility(player);
     }
 
-    public void stop(ServerPlayer player, PlayerPlaybackState participant) {
-        if (!participant.behavior().hidden()) {
+    public void stop(ServerPlayer player, PlayerPlaybackState playerState) {
+        if (!playerState.behavior().hidden()) {
             return;
         }
-        player.setInvisible(participant.wasInvisible());
+        player.setInvisible(playerState.wasInvisible());
         syncPlayerVisibility(player);
         sendToTrackingPlayers(player, createVisibleEquipment(player));
     }
@@ -72,8 +72,8 @@ public final class PlayerVisibilityService {
         if (!(entity instanceof ServerPlayer emotePlayer)) {
             return;
         }
-        PlayerPlaybackState participant = this.playbackEngine.playerState(emotePlayer.getUUID());
-        if (participant != null && participant.behavior().hidden()) {
+        PlayerPlaybackState playerState = this.playerPlaybackManager.playerState(emotePlayer.getUUID());
+        if (playerState != null && playerState.behavior().hidden()) {
             trackingPlayer.connection.send(new ClientboundSetEquipmentPacket(emotePlayer.getId(), EMPTY_EQUIPMENT));
         }
     }
@@ -82,8 +82,8 @@ public final class PlayerVisibilityService {
         if (PLAYER_EQUIPMENT_SLOTS.stream().noneMatch(changedItems::containsKey)) {
             return;
         }
-        PlayerPlaybackState participant = this.playbackEngine.playerState(player.getUUID());
-        if (participant != null && participant.behavior().hidden()) {
+        PlayerPlaybackState playerState = this.playerPlaybackManager.playerState(player.getUUID());
+        if (playerState != null && playerState.behavior().hidden()) {
             sendToTrackingPlayers(player, EMPTY_EQUIPMENT);
         }
     }
