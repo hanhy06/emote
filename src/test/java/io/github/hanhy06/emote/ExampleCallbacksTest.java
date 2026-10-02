@@ -129,7 +129,11 @@ class ExampleCallbacksTest {
         try {
             api = new EmoteApi() {
                 public PlayResult play(ServerPlayer player, Identifier id) { throw new UnsupportedOperationException(); }
+                public PlayResult play(ServerPlayer player, Identifier id, PlayOptions options) { throw new UnsupportedOperationException(); }
                 public boolean stop(ServerPlayer player) { throw new UnsupportedOperationException(); }
+                public boolean stop(UUID sessionId) { throw new UnsupportedOperationException(); }
+                public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) { throw new UnsupportedOperationException(); }
+                public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) { return Optional.empty(); }
                 public Registration register(EmoteAnimation animation) { throw new UnsupportedOperationException(); }
                 public Optional<EmoteInfo> find(Identifier id) { return Optional.empty(); }
                 public List<EmoteInfo> getAll() { return List.of(); }

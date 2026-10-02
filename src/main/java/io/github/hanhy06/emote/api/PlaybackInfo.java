@@ -12,7 +12,8 @@ public record PlaybackInfo(
     PlaybackState state,
     long elapsedTicks,
     int timelineTick,
-    PlaybackPosition position
+    PlaybackPosition position,
+    PlaybackPlacement placement
 ) {
     public PlaybackInfo {
         Objects.requireNonNull(sessionId, "sessionId");
@@ -20,5 +21,6 @@ public record PlaybackInfo(
         Objects.requireNonNull(emoteId, "emoteId");
         Objects.requireNonNull(state, "state");
         Objects.requireNonNull(position, "position");
+        Objects.requireNonNull(placement, "placement");
     }
 }

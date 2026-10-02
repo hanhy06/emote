@@ -12,6 +12,7 @@ import io.github.hanhy06.emote.playback.PlayerPlaybackManager;
 import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.nio.file.Path;
 import java.util.List;
@@ -45,10 +46,16 @@ public final class EmoteApiImpl extends EmoteApi {
 
     @Override
     public PlayResult play(ServerPlayer player, Identifier emoteId) {
+        return play(player, emoteId, PlayOptions.createDefault());
+    }
+
+    @Override
+    public PlayResult play(ServerPlayer player, Identifier emoteId, PlayOptions options) {
         Objects.requireNonNull(player, "player");
         Objects.requireNonNull(emoteId, "emoteId");
+        Objects.requireNonNull(options, "options");
         requireServerThread();
-        return this.playService.play(player, emoteId.toString(), PlaySource.API);
+        return this.playService.play(player, emoteId.toString(), PlaySource.API, options);
     }
 
     @Override
@@ -56,6 +63,30 @@ public final class EmoteApiImpl extends EmoteApi {
         Objects.requireNonNull(player, "player");
         requireServerThread();
         return this.playerPlaybackManager.stop(player, PlaybackStopReason.MANUAL) != null;
+    }
+
+    @Override
+    public boolean stop(UUID sessionId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        requireServerThread();
+        return this.playerPlaybackManager.stop(sessionId, PlaybackStopReason.MANUAL) != null;
+    }
+
+    @Override
+    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        Objects.requireNonNull(placement, "placement");
+        requireServerThread();
+        return this.playerPlaybackManager.setPlacement(sessionId, placement);
+    }
+
+    @Override
+    public Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId) {
+        Objects.requireNonNull(sessionId, "sessionId");
+        Objects.requireNonNull(nodeId, "nodeId");
+        requireServerThread();
+        return Optional.ofNullable(this.playerPlaybackManager.findSession(sessionId))
+            .flatMap(session -> session.nodeWorldPosition(nodeId));
     }
 
     @Override
@@ -115,8 +146,8 @@ public final class EmoteApiImpl extends EmoteApi {
     public Optional<PlaybackTimeline> getTimeline(UUID sessionId) {
         Objects.requireNonNull(sessionId, "sessionId");
         requireServerThread();
-        return this.playerPlaybackManager.playbackInfo(sessionId)
-            .map(playback -> this.playerPlaybackManager.engine().findSession(sessionId).animation().timeline());
+        return Optional.ofNullable(this.playerPlaybackManager.findSession(sessionId))
+            .map(session -> session.animation().timeline());
     }
 
     @Override

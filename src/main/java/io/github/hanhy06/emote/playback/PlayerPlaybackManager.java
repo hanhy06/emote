@@ -4,6 +4,8 @@ import com.mojang.datafixers.util.Pair;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlayResult;
+import io.github.hanhy06.emote.api.PlayOptions;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackInfo;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PlayableEmote;
@@ -65,12 +67,24 @@ public final class PlayerPlaybackManager {
         return playback == null ? null : playback.playerState();
     }
     public Optional<PlaybackInfo> playbackInfo(UUID sessionId) {
-        return this.playerSessions.values().stream().filter(playback -> playback.session().sessionId().equals(sessionId))
-            .findFirst().map(playback -> playback.session().playbackInfo(playback.playerState().playerUuid()));
+        return Optional.ofNullable(findPlayback(sessionId))
+            .map(playback -> playback.session().playbackInfo(playback.playerState().playerUuid()));
+    }
+    public @Nullable PlaybackSession findSession(UUID sessionId) {
+        PlayerPlayback playback = findPlayback(sessionId);
+        return playback == null ? null : playback.session();
+    }
+    private @Nullable PlayerPlayback findPlayback(UUID sessionId) {
+        return this.playerSessions.values().stream()
+            .filter(playback -> playback.session().sessionId().equals(sessionId)).findFirst().orElse(null);
     }
     public int activePlayerCount() { return this.playerSessions.size(); }
 
     public PlayResult start(ServerPlayer player, PlayableEmote definition) {
+        return start(player, definition, PlayOptions.createDefault());
+    }
+
+    public PlayResult start(ServerPlayer player, PlayableEmote definition, PlayOptions options) {
         if (this.closingPlayers.contains(player.getUUID())) return PlayResult.failure("Your previous emote is still closing.");
         PreparedAnimation animation = switch (definition) {
             case PreparedAnimation prepared -> prepared;
@@ -78,15 +92,19 @@ public final class PlayerPlaybackManager {
         };
         PlayerSkinPreparation preparation = this.skins.preparePlayerSkin(player, animation.skinBindings());
         if (preparation.preparing()) return PlayResult.failure("Preparing your skin… " + preparation.progressPercent() + "%");
-        RootTransform root = RootTransform.create(player.position(), player.getYRot());
+        PlaybackPlacement placement = options.placement();
+        RootTransform root = placement.mode() == PlaybackPlacement.Mode.EXTERNAL
+            ? RootTransform.create(placement.position(), placement.yaw())
+            : RootTransform.create(player.position(), player.getYRot());
         PlayerPlaybackState previousState = playerState(player.getUUID());
         boolean wasInvisible = previousState != null && previousState.behavior().hidden() ? previousState.wasInvisible() : player.isInvisible();
-        PlayerPlaybackState playerState = new PlayerPlaybackState(player.getUUID(), root.position(), animation.skinBindings(), wasInvisible, definition.playerBehavior());
+        PlayerPlaybackState playerState = new PlayerPlaybackState(player.getUUID(), player.position(), animation.skinBindings(), wasInvisible, definition.playerBehavior());
         List<PlaybackStateListener> playbackListeners = List.copyOf(this.listeners);
         PlaybackEngine.Lifecycle lifecycle = new PlaybackEngine.Lifecycle() {
             private int notifiedListeners;
             @Override public void onStarted(PlaybackSession session) {
-                playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState));
+                session.setPlacementMode(placement.mode());
+                playerSessions.put(player.getUUID(), new PlayerPlayback(session, playerState, player));
                 hidePlayer(player, playerState);
                 for (PlaybackStateListener listener : playbackListeners) {
                     this.notifiedListeners++;
@@ -102,8 +120,7 @@ public final class PlayerPlaybackManager {
                 return null;
             }
             @Override public void prepareFrame(PlaybackSession session) {
-                if (playerState.behavior().stopConditions().movementDistance() == 0) engine.entities().moveSceneTo(session.nodes(), player.position());
-                engine.entities().updateViewRotation(session.nodes(), player.getYRot(), session.animation().rotationDeadzone());
+                updatePlayerPlacement(session, player.position(), player.getYRot(), playerState.behavior());
                 if (playerState.behavior().hidden() && !player.isInvisible()) {
                     player.setInvisible(true);
                     syncPlayerVisibility(player);
@@ -133,6 +150,33 @@ public final class PlayerPlaybackManager {
     public @Nullable PlaybackSession stop(ServerPlayer player, PlaybackStopReason reason) {
         PlaybackSession session = findActive(player.getUUID());
         return session == null ? null : this.engine.stop(session, reason);
+    }
+    public @Nullable PlaybackSession stop(UUID sessionId, PlaybackStopReason reason) {
+        PlaybackSession session = findSession(sessionId);
+        return session == null ? null : this.engine.stop(session, reason);
+    }
+
+    public boolean setPlacement(UUID sessionId, PlaybackPlacement placement) {
+        PlayerPlayback playback = findPlayback(sessionId);
+        if (playback == null) return false;
+        PlaybackSession session = playback.session();
+        Vec3 position = placement.position();
+        float yaw = placement.yaw();
+        if (placement.mode() == PlaybackPlacement.Mode.PLAYER) {
+            position = playback.playerState().behavior().stopConditions().movementDistance() == 0
+                ? playback.player().position() : playback.playerState().startPosition();
+            yaw = playback.player().getYRot();
+        }
+        this.engine.entities().moveSceneTo(session.nodes(), position);
+        this.engine.entities().updateViewRotation(session.nodes(), yaw, 0);
+        session.setPlacementMode(placement.mode());
+        return true;
+    }
+
+    void updatePlayerPlacement(PlaybackSession session, Vec3 playerPosition, float playerYaw, EmotePlayerBehavior behavior) {
+        if (session.placement().mode() != PlaybackPlacement.Mode.PLAYER) return;
+        if (behavior.stopConditions().movementDistance() == 0) this.engine.entities().moveSceneTo(session.nodes(), playerPosition);
+        this.engine.entities().updateViewRotation(session.nodes(), playerYaw, session.animation().rotationDeadzone());
     }
     public void interrupt(ServerPlayer player, PlaybackStopReason reason) {
         PlaybackSession session = findActive(player.getUUID());
@@ -224,6 +268,6 @@ public final class PlayerPlaybackManager {
         return this.skins.preparePlayerSkin(player, bindings);
     }
 
-    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState) {}
+    private record PlayerPlayback(PlaybackSession session, PlayerPlaybackState playerState, ServerPlayer player) {}
 
 }

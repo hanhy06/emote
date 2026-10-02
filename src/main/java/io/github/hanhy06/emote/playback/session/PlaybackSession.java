@@ -3,6 +3,7 @@ package io.github.hanhy06.emote.playback.session;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.PlaybackContext;
 import io.github.hanhy06.emote.api.PlaybackInfo;
+import io.github.hanhy06.emote.api.PlaybackPlacement;
 import io.github.hanhy06.emote.api.PlaybackState;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
 import io.github.hanhy06.emote.content.PreparedAnimation;
@@ -41,6 +42,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private final PlaybackNodes nodes;
     private final AnimationPlayer animation;
     private final Map<String, Entity> actors;
+    private PlaybackPlacement.Mode placementMode = PlaybackPlacement.Mode.PLAYER;
 
     public PlaybackSession(
         UUID sessionId,
@@ -70,7 +72,23 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
 
     public PlaybackInfo playbackInfo(UUID playerUuid) {
         return new PlaybackInfo(this.sessionId, playerUuid, Identifier.parse(this.id), this.playbackState,
-            this.elapsedTicks, this.animation.currentTick(), this.animation.position());
+            this.elapsedTicks, this.animation.currentTick(), this.animation.position(), placement());
+    }
+
+    public PlaybackPlacement placement() {
+        return new PlaybackPlacement(this.placementMode, this.nodes.root().position(), this.nodes.orientationYaw());
+    }
+
+    public void setPlacementMode(PlaybackPlacement.Mode mode) {
+        this.placementMode = Objects.requireNonNull(mode, "mode");
+    }
+
+    public Optional<Vec3> nodeWorldPosition(String nodeId) {
+        Objects.requireNonNull(nodeId, "nodeId");
+        if (!this.nodes.nodes().containsKey(nodeId)) return Optional.empty();
+        var transform = this.animation.currentTransformation(nodeId).getMatrix();
+        Vector3f point = this.nodes.root().worldMatrix(this.nodes.orientationYaw(), transform).transformPosition(new Vector3f());
+        return Optional.of(this.nodes.root().position().add(point.x, point.y, point.z));
     }
 
     public void bindCallbacks(

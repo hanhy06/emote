@@ -4,6 +4,7 @@ import io.github.hanhy06.emote.api.animation.EmoteAnimation;
 import io.github.hanhy06.emote.api.animation.EmoteAnimationLoadException;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.Optional;
@@ -31,7 +32,18 @@ public abstract class EmoteApi {
 
     public abstract PlayResult play(ServerPlayer player, Identifier emoteId);
 
+    public abstract PlayResult play(ServerPlayer player, Identifier emoteId, PlayOptions options);
+
     public abstract boolean stop(ServerPlayer player);
+
+    /** Stops only the specified active player session, never a newer playback of that actor. */
+    public abstract boolean stop(UUID sessionId);
+
+    /** Applies scene placement immediately. Does not move the actor or change stop conditions. */
+    public abstract boolean setPlacement(UUID sessionId, PlaybackPlacement placement);
+
+    /** Empty for an inactive player session or an unknown node. Server-thread only. */
+    public abstract Optional<Vec3> getNodeWorldPosition(UUID sessionId, String nodeId);
 
     public abstract Registration register(EmoteAnimation animation) throws EmoteAnimationLoadException;
 
