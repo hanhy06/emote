@@ -49,7 +49,7 @@ File names are only for organization. The mod identifies emotes by `id` and reje
 | Field                            | Behavior                                                                                            |
 |----------------------------------|-----------------------------------------------------------------------------------------------------|
 | `menu_page_size`                 | Number of emotes shown on each `/emote` menu page. Minimum: `1`.                                    |
-| `mineskin_api_key`               | Used to convert player skins into display textures. Player-skin application is disabled when empty. |
+| `mineskin_api_key`               | Used to generate player-skin textures when no bake accounts are registered. Cached textures remain usable without a key or account. |
 | `mineskin_poll_interval_seconds` | Interval for checking MineSkin job status. Range: `1`–`60` seconds.                                 |
 | `mineskin_cache_retention_days`  | Skin-cache retention period. Range: `1`–`3650` days.                                                |
 | `mineskin_cache_max_mib`         | Maximum skin-cache size in MiB.                                                                     |

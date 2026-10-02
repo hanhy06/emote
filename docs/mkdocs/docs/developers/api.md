@@ -53,10 +53,31 @@ The API currently provides:
 - Current playback-state queries
 - Cancellable playback-request listeners
 - Playback start and stop lifecycle listeners
-- Named animation callback listeners
+- Named lifecycle callbacks
 
 API calls that change state must run on the Minecraft server thread.
 
-`EmoteCallbackEvent` exposes `playbackId`, `animationId`, `playbackTick`, `animationTick`, and `phase`. The playback ID identifies the requested Animation or Sequence; the animation ID identifies the Animation that declared the callback. The phase is one of `START`, `TIMELINE`, `LOOP`, or `STOP`.
-
 `EmoteApi.play` is a trusted server-side playback entry point. The calling mod is responsible for applying any desired `standalone`, disabled-ID, player-permission, and cooldown policy. Emote still requires a loaded ID, dispatches cancellable playback-request events, and enforces playback-engine limits and failures.
+
+## Lifecycle callbacks
+
+Register a named `EmoteCallbacks` implementation on the server thread. Override the lifecycle methods you need: `onStart`, `onTick`, `onLoop`, or `onClose`.
+
+```java
+EmoteApi.getInstance().registerCallbacks(Identifier.parse("example:wave"), new EmoteCallbacks() {
+    @Override
+    public void onStart(PlaybackContext context) {
+        context.setUserState(context.payload());
+    }
+});
+```
+
+Select the registered name in an Animation or Sequence's root `callbacks` array:
+
+```json
+"callbacks": [
+  {"name": "example:wave", "payload": "right_hand"}
+]
+```
+
+Store per-playback state in `PlaybackContext` with `userState()` and `setUserState(...)`. An unregistered name rejects playback.

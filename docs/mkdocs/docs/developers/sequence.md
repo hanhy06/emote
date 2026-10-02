@@ -43,7 +43,7 @@ Sequence files use schema version `4` and combine existing Animations into one e
 }
 ```
 
-Complete examples: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json) and [two-player Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/two-player-sequence.json).
+Complete example: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/docs/reference/sequence.json).
 
 ## Root fields
 
@@ -54,9 +54,9 @@ Complete examples: [linear Sequence](https://github.com/hanhy06/emote/blob/dev/d
 | `target_minecraft_version` | Optional converter output target, such as `26.3`. Reference information only; it does not constrain the server version or guarantee compatibility of referenced animations. |
 | `id` | A lowercase Minecraft identifier in `namespace:path` form. |
 | `metadata` | Display name, description, and custom metadata. |
-| `participants` | Participant placement required by two-player Sequences; omitted for single-player Sequences. |
 | `settings` | Cooldown and player behavior for the entire Sequence. |
-| `steps` | Animation steps, wait steps, or one `await_partner` step. |
+| `steps` | Animation steps or wait steps. |
+| `callbacks` | Optional named lifecycle callbacks; see the [Animation format](animation.md#callbacks). |
 
 Sequence JSON files are limited to 8 MiB.
 
@@ -96,7 +96,7 @@ Specify one Animation with `emote` and optionally add `repeat` or `transition`.
 {"emote": "emote:stand_up1", "transition": "4t"}
 ```
 
-It defaults to `0t` and applies before every real Animation selected by the step, including repetitions. The first Animation of a normal Sequence has no previous pose, so its transition is skipped. The first Animation of a cooperative `matched` or `timeout` branch transitions from the offer pose. Waits and loop delays hold the previous pose before the transition. Visibility, display data, timeline events, and Molang time change only when the next Animation begins.
+It defaults to `0t` and applies before every real Animation selected by the step, including repetitions. The first Animation of a Sequence has no previous pose, so its transition is skipped. Waits and loop delays hold the previous pose before the transition. Visibility, display data, timeline events, and Molang time change only when the next Animation begins.
 
 The referenced Animation must be loaded and valid. Animations with `standalone: false` may be used, but other Sequences and Animations using `hold` or `server_sync` playback may not be referenced.
 
@@ -153,7 +153,7 @@ Two reserved IDs control repetition of the current Animation step.
 }
 ```
 
-`emote:continue` may be selected consecutively. `emote:break` ends only the current Animation step, not the entire Sequence or cooperative branch. A Sequence must contain at least one real Animation candidate, and control IDs cannot be used in cooperative offer Animations.
+`emote:continue` may be selected consecutively. `emote:break` ends only the current Animation step, not the entire Sequence. A Sequence must contain at least one real Animation candidate.
 
 ## Wait steps
 
@@ -167,13 +167,13 @@ A wait step cannot be the first or last step, cannot be adjacent to another wait
 
 Animations in one Sequence may use different node IDs. The compiled Sequence creates the union of their nodes once, reuses those display entities throughout playback, and hides nodes that are absent from the active Animation step.
 
-All referenced Animations must use the same compiled player-skin layout: node IDs, participants, and body regions derived from `part`, `order`, and local Y scale.
+All referenced Animations must use the same compiled player-skin layout: node IDs and body regions derived from `part`, `order`, and local Y scale.
 
-When two Animations reuse the same node ID, that node must have the same inherited space and compatible display content:
+When two Animations reuse the same node ID, that node must have compatible display content:
 
 - Node types must match.
 - Item stacks, display contexts, block states, text, and entity NBT must match.
-- Player skin binding and participant-hand source must match.
+- Player skin binding must match.
 
 Local transforms, initial visibility, and timeline tracks may differ. Each Animation step evaluates its own node transforms, visibility, and Molang session. Control IDs are excluded from compatibility checks.
 
@@ -185,80 +185,4 @@ Referenced Animations are resolved and checked for compatibility when emotes are
 
 The Sequence's player settings replace those of referenced Animations. Stopping or interrupting the Sequence cancels all remaining steps.
 
-## Two-player Sequences
-
-A two-player Sequence adds `participants` at the root and contains one `await_partner` step.
-
-```json
-{
-  "participants": {
-    "initiator": {
-      "position": "~ ~ ~",
-      "rotation": "~ 0"
-    },
-    "partner": {
-      "position": "^ ^ ^1.2",
-      "rotation": "~180 0"
-    }
-  },
-  "steps": [
-    {
-      "await_partner": {
-        "emote": "emote:handshake_offer",
-        "timeout": "10s"
-      },
-      "matched": [
-        {"emote": "emote:handshake", "repeat": 2},
-        {"wait": "1s"},
-        {"emote": "emote:handshake_close"}
-      ],
-      "timeout": [
-        {"emote": "emote:handshake_close"}
-      ]
-    }
-  ]
-}
-```
-
-`participants` must define both `initiator` and `partner`. Positions use Minecraft relative coordinates. All three components must use either `~` or `^`; absolute coordinates are not allowed. `~` is relative to the scene origin, while `^` is relative to the initiating player's horizontal facing direction. Rotations use Minecraft rotation syntax.
-
-The Sequence must contain exactly one top-level step, and it must be `await_partner`.
-
-The server supports cooperative Sequences. The current web converter imports and exports only linear Sequence steps using `emote` and `wait`; it does not accept `participants` or `await_partner`.
-
-| Field | Description |
-|---|---|
-| `await_partner.emote` | Offer Animation played by the initiator while waiting |
-| `await_partner.timeout` | Positive time before entering the timeout branch |
-| `matched` | Nonempty branch played after a partner joins |
-| `timeout` | Nonempty branch played if no partner joins |
-
-The `await_partner` step cannot use `repeat`. `matched` and `timeout` follow the normal Animation and wait-step rules but cannot contain another `await_partner`.
-
-### Partner matching conditions
-
-The offer Animation plays for the initiator, and partner-space content remains hidden until a match. Another player joins by starting the same Sequence while all of these conditions are true:
-
-- Both players are alive and in the same dimension
-- Horizontal distance is at most 2 blocks and vertical distance at most 1 block
-- Each player faces the other within 45 degrees
-- The initiator has line of sight to the partner
-
-If several compatible offers exist, the nearest initiator is selected. Joining reserves the partner, and the matching conditions are checked again when the offer Animation ends. If the reservation becomes invalid, the initiator keeps waiting until another partner joins or the timeout expires.
-
-### Symmetric and asymmetric Animations
-
-If a compatible Animation has no `partner` nodes, every `initiator` node, skin binding, transformation track, and visibility track is duplicated automatically for the partner. The copies use the partner root, allowing a rotation such as `~180 0` to make the same local Animation face the initiator.
-
-If any `partner` node exists, the Animation is treated as explicitly asymmetric and partner nodes are not generated automatically.
-
-## Migrating from schema 1
-
-The web converter can import published schema 1 Sequences and export them as schema 4. The server only loads schema 4 directly.
-
-| Schema 1 | Schema 4 |
-|---|---|
-| `schema_version: 1` | `schema_version: 4` |
-| Root `player` | `settings.player` |
-| No cooldown | `settings.cooldown`; use `"0t"` when migrating |
-| References to schema 1 Animations | Convert each Animation to schema 4 |
+The Sequence and its referenced Animations have independent callbacks and per-playback state.

@@ -34,7 +34,6 @@ Animation files use schema version `4`. An Animation defines a hierarchy of disp
   "nodes": {
     "body": {
       "type": "anchor",
-      "space": "initiator",
       "transform": {
         "position": [0, 0, 0],
         "rotation": [0, 0, 0],
@@ -88,6 +87,7 @@ A complete [Animation reference JSON](https://github.com/hanhy06/emote/blob/dev/
 | [`molang`](molang.md) | Optional initialization and per-tick Molang programs.                |
 | `nodes`               | A nonempty map of display and anchor nodes keyed by stable node IDs. |
 | `timeline`            | Duration, node tracks, and command events.                           |
+| `callbacks`           | Optional named lifecycle callbacks registered by server-side mods. |
 
 Animation JSON files are limited to 8 MiB and timelines are limited to 10 minutes.
 
@@ -114,7 +114,7 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 ### Cooldown and rotation
 
 - `cooldown`: Nonnegative playback cooldown. It starts after a successful playback ends.
-- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback and partner offer/wait states, the display root follows the initiator's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
+- `rotation_deadzone`: Finite angle from `0` to `180` degrees. During standalone playback, the display root follows the player's yaw only when the difference exceeds this angle. `0` follows every yaw change without display rotation interpolation; positive values use three ticks of rotation interpolation, and `180` keeps the initial orientation. The interpolation setting updates with the active Animation step in a Sequence.
 
 ### Player behavior
 
@@ -128,10 +128,10 @@ Animation JSON files are limited to 8 MiB and timelines are limited to 10 minute
 |---|---|
 | `once` | Plays the timeline once. |
 | `hold` | Plays once, then holds the last frame until stopped; unavailable in Sequences. |
-| `loop` | Plays from tick `0` to `loop_end`, then repeats from `loop_start` to `loop_end` after each `loop_delay`. |
+| `loop` | Plays from tick `0` to the timeline end, then repeats from `loop_start` to the timeline end after each `loop_delay`. |
 | `server_sync` | Selects the current timeline position from server time so independently started playbacks remain synchronized; unavailable in Sequences. |
 
-`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. `loop_end` is optional and defaults to the timeline duration in `loop` mode. In `loop` mode, `loop_start` must be earlier than `loop_end`, and `loop_end` cannot exceed the timeline duration. Outside `loop` mode, `loop_start` and `loop_end` must be `0t`. `loop_delay` may be nonzero in `loop` and `server_sync` modes.
+`loop_start` and `loop_delay` are optional Minecraft times that default to `0t`. In `loop` mode, `loop_start` must be earlier than the timeline duration. Outside `loop` mode, `loop_start` must be `0t`. `loop_delay` may be nonzero in `loop` and `server_sync` modes.
 
 ## Nodes
 
@@ -147,19 +147,9 @@ Each property name in `nodes` is a stable node ID. Every node requires `type` an
 
 `position`, `rotation`, and `scale` each contain three finite numbers. Position and scale use the node's local coordinate system. Rotation is expressed as XYZ Euler angles in degrees.
 
-### Hierarchy and spaces
+### Hierarchy
 
-A root node has no `parent` and must declare one `space`:
-
-| Space | Root used in two-player playback |
-|---|---|
-| `scene` | Shared scene root created by the initiating player |
-| `initiator` | Initiator placement defined by Sequence `participants` |
-| `partner` | Partner placement defined by Sequence `participants` |
-
-All three spaces use the same player root in standalone playback and single-player Sequences. Their distinction matters in two-player Sequences.
-
-A child node declares `parent` instead of `space`. It inherits its root node's space, and its local transform is composed after the parent's transform. A parent must exist in the same file, and parent relationships cannot form a cycle.
+A root node has no `parent` and uses the playback root. A child node declares `parent`, and its local transform is composed after the parent's transform. A parent must exist in the same file, and parent relationships cannot form a cycle.
 
 ```json
 "child": {
@@ -196,9 +186,9 @@ Anchor nodes do not support `visible` or `entity_nbt`. They can have transform t
 
 ### Player skin binding
 
-`skin` requires a player-body `part` and a nonnegative `order`. `participant` defaults to `initiator` and may be `initiator` or `partner`; it must match the node's inherited space. `scene` nodes do not support skin binding.
+`skin` requires a player-body `part` and a nonnegative `order`.
 
-Supported parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes bound to the same participant and part receive skin data in `order` order.
+Supported parts are `head`, `body`, `left_arm`, `right_arm`, `left_leg`, and `right_leg`. Nodes bound to the same part receive skin data in `order` order.
 
 ## Timeline tracks
 
@@ -297,7 +287,7 @@ Optional `timeline.events` supports four event groups.
 | `loop` | After each repetition completes. |
 | `stop` | When playback stops. |
 
-Each event contains object-shaped `source` and `origin` fields, a `commands` array, and an optional `callbacks` array. Commands do not start with `/`. Callback names are namespaced identifiers; `payload` is an optional string passed through unchanged to the registered mod listener.
+Each event contains object-shaped `source` and `origin` fields and a `commands` array. Commands do not start with `/`.
 
 ```json
 {
@@ -307,10 +297,7 @@ Each event contains object-shaped `source` and `origin` fields, a `commands` arr
     "node": "effect_anchor",
     "offset": [0, 0.5, 0]
   },
-  "commands": ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal"],
-  "callbacks": [
-    {"name": "example:sword_swing", "payload": "right_hand"}
-  ]
+  "commands": ["particle minecraft:flame ~ ~ ~ 0 0 0 0 1 normal"]
 }
 ```
 
@@ -318,24 +305,18 @@ Each event contains object-shaped `source` and `origin` fields, a `commands` arr
 
 Timeline events must be ordered by time and occur before the end of the timeline.
 
-Named callbacks are dispatched to server-side listeners registered through `EmoteApi.addCallbackListener`. An unregistered name is ignored with a warning; one failing listener does not interrupt playback or the remaining listeners.
+## Callbacks
 
-Callback events identify both the top-level playback and the Animation that declared the callback. `playbackId` is the requested Animation or Sequence ID, while `animationId` is the currently executing Animation ID. `playbackTick` and `animationTick` provide the corresponding timeline positions, and `phase` is `START`, `TIMELINE`, `LOOP`, or `STOP`. For standalone playback, both IDs and both ticks refer to the same Animation.
+Select named lifecycle callbacks in the Animation's root `callbacks` array:
 
-## Migrating older Animations
+```json
+"callbacks": [
+  {"name": "example:wave", "payload": "right_hand"}
+]
+```
 
-The web converter can import published schema 1 and schema 3 Animations and export schema 4. The server only loads schema 4 directly.
+`name` is the registered callback identifier. `payload` is an optional string, defaults to empty, and is passed through unchanged. For registration, see the [Mod API](api.md#lifecycle-callbacks).
 
-The major schema 3 to 4 changes are:
+## Converter preview
 
-| Schema 3 | Schema 4 |
-|---|---|
-| `default_matrix` with 16 row-major values | `transform` with local `position`, `rotation`, and `scale` vectors |
-| Every node declares `space` | Root nodes declare `space`; child nodes declare `parent` |
-| One sorted `timeline.keyframes` array | Independent `position`, `rotation`, `scale`, and `visible` tracks per node |
-| Transform `matrix` values | Vector `value`, or `pre` and `post` values |
-| `interpolation_duration` | Segment interpolation is determined by adjacent track times |
-| Linear matrix interpolation | Step or eased linear vector interpolation, with quaternion rotation interpolation |
-| No dynamic values | Molang programs and Molang track components |
-
-The converter can migrate ordinary schema 3 files automatically. Schema 4 runtime data is preserved when exported again. The web converter bakes deterministic parented nodes, independent tracks, Molang, easing, and discontinuous `pre`/`post` values for preview. If a runtime value cannot be evaluated safely, export remains available and the preview falls back to the Create pose.
+Schema 4 runtime data is preserved when exported again. The web converter bakes deterministic parented nodes, independent tracks, Molang, easing, and discontinuous `pre`/`post` values for preview. If a runtime value cannot be evaluated safely, export remains available and the preview falls back to the Create pose.

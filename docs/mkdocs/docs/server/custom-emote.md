@@ -23,7 +23,7 @@ Select **Choose animation files** in the converter and open one or more source p
 
 ## 2. Configure and export
 
-In **Review**, select model parts and verify their player-skin assignments and coordinate spaces. You can reassign any parts that were detected incorrectly.
+In **Review**, select model parts and verify their player-skin assignments. You can reassign any parts that were detected incorrectly.
 
 In **Settings**, configure the ID, name, description, and playback behavior. The ID must use the `namespace:path` format and must not duplicate another emote on the server.
 

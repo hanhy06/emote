@@ -183,7 +183,4 @@ Intermediate Animations referenced by a Sequence are usually hidden from direct 
 
 If the Sequence does not load, check the server log for missing Animation IDs, incompatible nodes, unsupported playback modes, or invalid wait-step messages.
 
-!!! note "Complete example pack"
-    The repository includes a ready-to-install [two-player handshake sample](https://github.com/hanhy06/emote/tree/dev/docs/sample/handshake). The JSON on this page only demonstrates a linear Sequence and requires separate referenced Animation files.
-
-To create random selection, waits, repeat control, or two-player cooperative Sequences, see the [Sequence format specification](../developers/sequence.md).
+To create random selection, waits, or repeat control, see the [Sequence format specification](../developers/sequence.md).

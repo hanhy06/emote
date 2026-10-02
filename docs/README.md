@@ -20,7 +20,7 @@ Emote is a server-side emote mod that plays animations with Minecraft display en
 
 The web converter supports BD Engine, GeckoLib, and Animated Java. Configure skin parts, metadata, playback settings, and commands without editing Animation JSON.
 
-On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations or coordinate two players in a collaborative emote, with each player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
+On the server, LuckPerms permissions can assign emotes and idle emotes per player. Sequences can connect multiple animations, with the player's skin applied to compatible animations. A server API is also available for other mods to register emotes, control playback, and receive events.
 
 ## Commands
 
@@ -113,7 +113,7 @@ Set `mineskin_api_key` to generate player skin textures when no bake accounts ar
 
 For a step-by-step guide to converting and installing your own emotes, see [Adding Custom Emotes](https://hanhy06.github.io/emote/server/custom-emote/).
 
-Use the 3D preview to assign skin parts and coordinate spaces, then configure metadata, playback behavior, stop conditions, and frame commands.
+Use the 3D preview to assign skin parts, then configure metadata, playback behavior, stop conditions, and frame commands.
 
 ![Open a project](https://cdn.modrinth.com/data/qUF0jygw/images/69f77ef2095909af8e7dd5830e452c3b9c4d61b2.png)
 
@@ -156,42 +156,17 @@ Connect short animation clips in order and combine waits, weighted random choice
 
 - [Sequence format](https://hanhy06.github.io/emote/developers/sequence/)
 
-#### Collaborative emotes
-
-Combine animations for two players in a sequence to create a collaborative emote. Nearby players facing each other are connected, then the matched or timeout branch is played. Symmetrical motion is automatically mirrored for the other player, while separate `initiator` and `partner` nodes can create asymmetric performances with different motion and skins.
-
-```json
-{
-  "type": "sequence",
-  "schema_version": 4,
-  "id": "emote:handshake",
-  "participants": {
-    "initiator": {"position": "~ ~ ~", "rotation": "~ 0"},
-    "partner": {"position": "^ ^ ^1.2", "rotation": "~180 0"}
-  },
-  "steps": [{
-    "await_partner": {"emote": "handshake:offer", "timeout": "10s"},
-    "matched": [
-      {"emote": "handshake:shake", "repeat": 2},
-      {"wait": "1s"},
-      {"emote": "handshake:close"}
-    ],
-    "timeout": [{"emote": "handshake:close"}]
-  }]
-}
-```
-
 ## Mod API
 
-`EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, playback lifecycle listeners, and named animation callback listeners. State changes must run on the server thread, and runtime registrations survive reloads.
+`EmoteApi.getInstance()` provides playback control, runtime registration, state queries, cancellable play listeners, playback lifecycle listeners, and named lifecycle callbacks. Register callbacks with `EmoteApi.registerCallbacks` and select them in the Animation or Sequence's root `callbacks` array. State changes must run on the server thread, and runtime registrations survive reloads.
 
 ## Troubleshooting
 
 | Problem                              | Check                                                                                                                                                                                              |
 |--------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | An emote does not appear             | Check the `/emote reload` result, server log, duplicate IDs, `disabled`, and whether the animation is sequence-only.                                                                               |
-| A player skin is not applied         | Check the converter's skin part assignments and `/emote account` as OWNER. Without registered accounts, check `mineskin_api_key`. Run the emote again after skin processing finishes. Unavailable skin textures use the animation's default texture. |
-| A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. For two-player animations, also check the `initiator` and `partner` coordinate spaces.                                              |
+| A player skin is not applied         | Check the converter's skin part assignments and the skin provider configuration. Run the emote again after skin processing finishes. |
+| A player skin is applied incorrectly | Reassign each node's skin part and order in the web converter. |
 
 If the problem is not covered here, report it on [Discord](https://discord.gg/CRWqKbSebW) or [GitHub Issues](https://github.com/hanhy06/emote/issues).
 
