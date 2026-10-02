@@ -119,29 +119,6 @@ class EmotePlayServiceTest {
     }
 
     @Test
-    void reservationReleasedDuringPlaybackStartDoesNotLeaveStaleCooldown() {
-        AtomicLong tick = new AtomicLong();
-        EmoteCatalog catalog = catalogWithWave(20);
-        PlaybackCooldownService cooldowns = cooldowns(tick);
-        PlaybackPolicyService policy = allowedPolicy(catalog, cooldowns);
-        AtomicInteger starts = new AtomicInteger();
-        EmotePlayService service = new EmotePlayService(
-            catalog,
-            policy,
-            (ignoredPlayer, ignoredDefinition) -> {
-                starts.incrementAndGet();
-                cooldowns.onReservationReleased(new UUID(1L, 1L), "demo:wave");
-                return PlayResultFixture.SUCCESS;
-            },
-            (ignoredPlayer, ignoredEmote, ignoredSource) -> null
-        );
-
-        assertTrue(service.play(null, "demo:wave").isSuccess());
-        assertTrue(service.play(null, "demo:wave").isSuccess());
-        assertEquals(2, starts.get());
-    }
-
-    @Test
     void successfulPlaybackCannotRestartBeforeItsCooldownBegins() {
         AtomicLong tick = new AtomicLong();
         EmoteCatalog catalog = catalogWithWave(20);

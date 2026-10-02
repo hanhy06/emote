@@ -95,8 +95,7 @@ class ApiEventDispatcherTest {
             nodes,
             animation,
             EmotePlayerBehavior.createDefault(),
-            participant,
-            null
+            participant
         );
     }
 

@@ -3,7 +3,6 @@ package io.github.hanhy06.emote.playback.session;
 import io.github.hanhy06.emote.EmoteMod;
 import io.github.hanhy06.emote.api.*;
 import io.github.hanhy06.emote.content.PreparedAnimation;
-import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.CallbackRegistry;
 import io.github.hanhy06.emote.playback.runtime.PlaybackNodes;
@@ -37,16 +36,12 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
     private final String id;
     private final String animationId;
     private final PlaybackNodes nodes;
-    private AnimationPlayer animation;
+    private final AnimationPlayer animation;
     private final EmotePlayerBehavior playerBehavior;
-    private final @Nullable PreparedSequence partnerSequence;
     private final EnumMap<ParticipantRole, PlaybackParticipant> participants = new EnumMap<>(ParticipantRole.class);
     private final Collection<PlaybackParticipant> participantView = Collections.unmodifiableCollection(this.participants.values());
     private final Map<ParticipantRole, PlaybackParticipant> participantMapView = Collections.unmodifiableMap(this.participants);
 
-    private State state;
-    private int remainingTimeoutTicks;
-    private @Nullable PlaybackParticipant reservedPartner;
     private @Nullable PlaybackStopReason pendingStopReason;
 
     public PlaybackSession(
@@ -57,8 +52,7 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         PlaybackNodes nodes,
         AnimationPlayer animation,
         EmotePlayerBehavior playerBehavior,
-        PlaybackParticipant initiator,
-        @Nullable PreparedSequence partnerSequence
+        PlaybackParticipant initiator
     ) {
         this.sessionId = Objects.requireNonNull(sessionId, "sessionId");
         this.levelKey = Objects.requireNonNull(levelKey, "levelKey");
@@ -67,9 +61,6 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         this.nodes = Objects.requireNonNull(nodes, "nodes");
         this.animation = Objects.requireNonNull(animation, "animation");
         this.playerBehavior = Objects.requireNonNull(playerBehavior, "playerBehavior");
-        this.partnerSequence = partnerSequence;
-        this.state = partnerSequence == null ? State.SOLO : State.OFFERING;
-        this.remainingTimeoutTicks = partnerSequence == null ? 0 : partnerSequence.partnerPlayback().timeoutTicks();
         addParticipant(Objects.requireNonNull(initiator, "initiator"));
         if (initiator.role() != ParticipantRole.INITIATOR) {
             throw new IllegalArgumentException("A playback session must start with an initiator");
@@ -325,51 +316,6 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         return null;
     }
 
-    public boolean hasPartner() {
-        return this.partnerSequence != null;
-    }
-
-    public PreparedSequence partnerSequence() {
-        if (this.partnerSequence == null) {
-            throw new IllegalStateException("Solo sessions do not have a partner sequence");
-        }
-        return this.partnerSequence;
-    }
-
-    public State state() {
-        return this.state;
-    }
-
-    public void enterWaiting() {
-        if (this.state != State.OFFERING || this.reservedPartner != null) {
-            throw new IllegalStateException("Only an unreserved offer can start waiting for a partner");
-        }
-        this.state = State.WAITING;
-    }
-
-    public boolean tickTimeout() {
-        if (this.state != State.WAITING) {
-            throw new IllegalStateException("Session is not waiting for a partner");
-        }
-        return --this.remainingTimeoutTicks <= 0;
-    }
-
-    public void reservePartner(PlaybackParticipant participant) {
-        if (!acceptsPartner()) {
-            throw new IllegalStateException("Session is not accepting a partner");
-        }
-        if (participant.role() != ParticipantRole.PARTNER) {
-            throw new IllegalArgumentException("Reserved participant must use the partner role");
-        }
-        this.reservedPartner = participant;
-    }
-
-    public boolean acceptsPartner() {
-        return this.pendingStopReason == null
-            && (this.state == State.OFFERING || this.state == State.WAITING)
-            && this.reservedPartner == null;
-    }
-
     public boolean requestStop(PlaybackStopReason reason) {
         if (this.pendingStopReason != null) {
             return true;
@@ -385,41 +331,6 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         return this.pendingStopReason;
     }
 
-    public @Nullable PlaybackParticipant reservedPartner() {
-        return this.reservedPartner;
-    }
-
-    public PlaybackParticipant activateReservedPartner(AnimationPlayer animation) {
-        if (this.state != State.OFFERING && this.state != State.WAITING) {
-            throw new IllegalStateException("Session cannot activate a partner in state " + this.state);
-        }
-        PlaybackParticipant participant = Objects.requireNonNull(this.reservedPartner, "reservedPartner");
-        this.reservedPartner = null;
-        addParticipant(participant);
-        replaceAnimation(animation, State.MATCHED);
-        return participant;
-    }
-
-    public @Nullable PlaybackParticipant releaseReservedPartner() {
-        PlaybackParticipant participant = this.reservedPartner;
-        this.reservedPartner = null;
-        return participant;
-    }
-
-    public void beginTimeout(AnimationPlayer animation) {
-        if (this.state != State.WAITING || this.reservedPartner != null) {
-            throw new IllegalStateException("Only an unreserved waiting session can time out");
-        }
-        replaceAnimation(animation, State.TIMEOUT);
-    }
-
-    private void replaceAnimation(AnimationPlayer animation, State state) {
-        this.animation.stop(PlaybackStopReason.FINISHED);
-        this.animation = Objects.requireNonNull(animation, "animation");
-        this.animation.bindLifecycleListener(this);
-        this.state = Objects.requireNonNull(state, "state");
-    }
-
     public Collection<PlaybackParticipant> participants() {
         return this.participantView;
     }
@@ -428,11 +339,4 @@ public final class PlaybackSession implements AnimationPlayer.LifecycleListener 
         return this.participantMapView;
     }
 
-    public enum State {
-        SOLO,
-        OFFERING,
-        WAITING,
-        MATCHED,
-        TIMEOUT
-    }
 }

@@ -1,25 +1,20 @@
 package io.github.hanhy06.emote.playback.session;
 
-import io.github.hanhy06.emote.api.EmoteMetadata;
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.ParticipantRole;
 import io.github.hanhy06.emote.api.animation.EmoteAnimation;
-import io.github.hanhy06.emote.content.EmoteSequence;
 import io.github.hanhy06.emote.content.PreparedAnimation;
 import io.github.hanhy06.emote.content.PreparedAnimationFixture;
-import io.github.hanhy06.emote.content.PreparedSequence;
 import io.github.hanhy06.emote.playback.AnimationPlayer;
 import io.github.hanhy06.emote.playback.runtime.*;
 import net.minecraft.SharedConstants;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
 import net.minecraft.server.Bootstrap;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,42 +29,18 @@ class PlaybackSessionRegistryTest {
     }
 
     @Test
-    void keepsPartnerReservationsSeparateUntilActivation() {
-        PreparedAnimation emote = PreparedAnimationFixture.create("test:registry", "Registry");
-        PlaybackSession session = session(emote);
-        PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
-        PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
-        registry.register(session);
-
-        assertEquals(1, registry.activeDisplayEntityCount());
-
-        session.reservePartner(partner);
-        registry.reservePartner(session, partner.playerUuid());
-
-        assertNull(registry.findParticipant(partner.playerUuid()));
-        assertSame(session, registry.findReservation(partner.playerUuid()));
-
-        session.activateReservedPartner(timeline(emote));
-        registry.activatePartner(session, partner.playerUuid());
-
-        assertSame(session, registry.findParticipant(partner.playerUuid()));
-        assertNull(registry.findReservation(partner.playerUuid()));
-    }
-
-    @Test
-    void removingSessionClearsParticipantAndReservationIndexes() {
+    void removingSessionClearsIndexesAndDisplayCount() {
         PreparedAnimation emote = PreparedAnimationFixture.create("test:remove", "Remove");
         PlaybackSession session = session(emote);
         PlaybackSessionRegistry registry = new PlaybackSessionRegistry();
-        PlaybackParticipant partner = participant(ParticipantRole.PARTNER);
         registry.register(session);
-        session.reservePartner(partner);
-        registry.reservePartner(session, partner.playerUuid());
+        assertSame(session, registry.findParticipant(session.initiator().playerUuid()));
+        assertSame(session, registry.findSession(session.sessionId()));
+        assertEquals(1, registry.activeDisplayEntityCount());
 
         assertTrue(registry.remove(session));
 
         assertNull(registry.findParticipant(session.initiator().playerUuid()));
-        assertNull(registry.findReservation(partner.playerUuid()));
         assertTrue(registry.isEmpty());
         assertEquals(0, registry.activeDisplayEntityCount());
         assertTrue(!registry.remove(session));
@@ -77,32 +48,15 @@ class PlaybackSessionRegistryTest {
     }
 
     private static PlaybackSession session(PreparedAnimation emote) {
-        EmoteSequence source = new EmoteSequence(
-            Path.of("registry.json"),
-            Identifier.parse("test:registry"),
-            new EmoteMetadata("Registry", "Registry"),
-            new EmoteSequence.Settings(0, EmotePlayerBehavior.createDefault()),
-            List.of(new EmoteSequence.EmoteStep(emote.animation().id(), 1))
-        );
-        PreparedSequence.Branch branch = new PreparedSequence.Branch(List.of(
-            new PreparedSequence.EmoteStep(List.of(new PreparedSequence.AnimationChoice(emote, 0)), 1)
-        ));
-        PreparedSequence sequence = new PreparedSequence(
-            source,
-            new PreparedSequence.PartnerPlayback(emote, 20, branch, branch),
-            emote,
-            emote
-        );
         return new PlaybackSession(
             UUID.randomUUID(),
             Level.OVERWORLD,
-            sequence.id(),
+            emote.id(),
             emote.id(),
             playbackNodes(),
             timeline(emote),
             EmotePlayerBehavior.createDefault(),
-            participant(ParticipantRole.INITIATOR),
-            sequence
+            participant(ParticipantRole.INITIATOR)
         );
     }
 

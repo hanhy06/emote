@@ -86,18 +86,6 @@ public final class PlaybackCooldownService implements PlaybackStateListener {
         onPlaybackEnded(player, session.id());
     }
 
-    @Override
-    public void onReservationReleased(UUID playerUuid, String emoteId) {
-        Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerUuid);
-        if (playerStates == null) {
-            return;
-        }
-        CooldownState state = playerStates.get(emoteId);
-        if (state instanceof InUse) {
-            removeState(playerUuid, emoteId, state);
-        }
-    }
-
     void onPlaybackEnded(ServerPlayer player, String emoteId) {
         UUID playerId = this.playerIdResolver.apply(player);
         Map<String, CooldownState> playerStates = this.statesByPlayer.get(playerId);

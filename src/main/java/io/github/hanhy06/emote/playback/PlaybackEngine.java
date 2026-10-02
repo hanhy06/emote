@@ -43,8 +43,6 @@ public class PlaybackEngine implements ConfigListener {
     private final PlaybackEntityController entityController = new PlaybackEntityController();
     private final PlaybackStressTest stressTest = new PlaybackStressTest(this.entityController);
     private final PlayerVisibilityService playerVisibilityService;
-    private final SceneRootResolver sceneRootResolver = new SceneRootResolver();
-    private final PartnerMatcher partnerMatcher = new PartnerMatcher();
     private final RandomGenerator random = RandomGenerator.getDefault();
     private int maxActiveDisplayEntities = Config.DEFAULT_MAX_ACTIVE_DISPLAY_ENTITIES;
     private final CallbackRegistry callbackRegistry = new CallbackRegistry();
@@ -76,7 +74,6 @@ public class PlaybackEngine implements ConfigListener {
         if (this.closingPlayers.contains(player.getUUID())) {
             return PlayResult.failure("Your previous emote is still closing.");
         }
-        releasePlayerReservation(player.getUUID());
         return switch (definition) {
             case PreparedAnimation animation -> start(player, animation);
             case PreparedSequence sequence -> start(player, sequence);
@@ -89,76 +86,21 @@ public class PlaybackEngine implements ConfigListener {
             emote,
             emote.id(),
             emote.playerBehavior(),
-            SceneRootResolver.single(RootTransform.fromPlayer(player)),
-            null
+            SceneRootResolver.single(RootTransform.fromPlayer(player))
         );
     }
 
     private PlayResult start(ServerPlayer player, PreparedSequence sequence) {
         if (sequence.hasPartner()) {
-            return startPartnerPlayback(player, sequence);
+            return PlayResult.failure("Two-player matching is no longer supported.");
         }
         return startResolved(
             player,
             sequence.compile(this.random),
             sequence.id(),
             sequence.playerBehavior(),
-            SceneRootResolver.single(RootTransform.fromPlayer(player)),
-            null
+            SceneRootResolver.single(RootTransform.fromPlayer(player))
         );
-    }
-
-    private PlayResult startPartnerPlayback(ServerPlayer player, PreparedSequence sequence) {
-        if (findActive(player.getUUID()) == null) {
-            PlaybackSession waitingSession = this.partnerMatcher.find(player, sequence.id(), this.sessionRegistry.sessions());
-            if (waitingSession != null) {
-                return reservePartner(player, waitingSession);
-            }
-        }
-
-        Map<EmoteAnimation.NodeSpace, RootTransform> roots = this.sceneRootResolver.resolve(
-            player,
-            Objects.requireNonNull(sequence.source().participants(), "participants")
-        );
-        return startResolved(
-            player,
-            sequence.compiledAnimation(),
-            sequence.id(),
-            sequence.playerBehavior(),
-            roots,
-            sequence
-        );
-    }
-
-    private PlayResult reservePartner(ServerPlayer player, PlaybackSession session) {
-        PreparedSequence sequence = session.partnerSequence();
-        PreparedAnimation offer = sequence.compiledAnimation();
-        PlayerSkinPreparation skinPreparation = this.playerSkinManager.preparePlayerSkin(
-            player,
-            offer.skinBindings(ParticipantRole.PARTNER)
-        );
-        if (skinPreparation.preparing()) {
-            return PlayResult.failure("Preparing your skin… " + skinPreparation.progressPercent() + "%");
-        }
-
-        PlaybackParticipant partner = new PlaybackParticipant(
-            player.getUUID(),
-            ParticipantRole.PARTNER,
-            player.position(),
-            offer.skinBindings(ParticipantRole.PARTNER),
-            player.isInvisible()
-        );
-        session.reservePartner(partner);
-        this.sessionRegistry.reservePartner(session, player.getUUID());
-        this.entityController.applySkin(
-            session.nodes(),
-            partner.skinBindings(),
-            skinPreparation.preparedPlayerSkin()
-        );
-        if (session.state() == PlaybackSession.State.WAITING) {
-            activateMatched(session);
-        }
-        return new PlayResult.Success(session.playbackInfo(player.getUUID()));
     }
 
     private PlayResult startResolved(
@@ -166,8 +108,7 @@ public class PlaybackEngine implements ConfigListener {
         PreparedAnimation emote,
         String playbackId,
         EmotePlayerBehavior playerBehavior,
-        Map<EmoteAnimation.NodeSpace, RootTransform> roots,
-        @Nullable PreparedSequence partnerSequence
+        Map<EmoteAnimation.NodeSpace, RootTransform> roots
     ) {
         if (this.closingPlayers.contains(player.getUUID())) {
             return PlayResult.failure("Your previous emote is still closing.");
@@ -192,16 +133,6 @@ public class PlaybackEngine implements ConfigListener {
             for (PreparedAnimation.PlaybackSegment segment : emote.playbackSegments()) {
                 animationBindings.computeIfAbsent(segment.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
             }
-            if (partnerSequence != null) {
-                for (PreparedSequence.Step step : partnerSequence.playback().validationSteps()) {
-                    if (!(step instanceof PreparedSequence.EmoteStep animationStep)) continue;
-                    for (PreparedSequence.Choice choice : animationStep.candidates()) {
-                        if (choice instanceof PreparedSequence.AnimationChoice animationChoice) {
-                            animationBindings.computeIfAbsent(animationChoice.animation(), animation -> this.callbackRegistry.resolve(animation.animation().callbacks()));
-                        }
-                    }
-                }
-            }
         } catch (IllegalArgumentException exception) {
             return PlayResult.failure(exception.getMessage());
         }
@@ -220,7 +151,6 @@ public class PlaybackEngine implements ConfigListener {
             playerBehavior,
             roots,
             skinPreparation.preparedPlayerSkin(),
-            partnerSequence,
             callbackBindings,
             animationBindings
         );
@@ -233,7 +163,6 @@ public class PlaybackEngine implements ConfigListener {
         EmotePlayerBehavior playerBehavior,
         Map<EmoteAnimation.NodeSpace, RootTransform> roots,
         PreparedPlayerSkin preparedSkin,
-        @Nullable PreparedSequence partnerSequence,
         List<CallbackRegistry.Binding> callbackBindings,
         Map<PreparedAnimation, List<CallbackRegistry.Binding>> animationBindings
     ) {
@@ -275,8 +204,7 @@ public class PlaybackEngine implements ConfigListener {
                 nodes,
                 timeline,
                 playerBehavior,
-                initiator,
-                partnerSequence
+                initiator
             );
             session.bindCallbacks(callbackBindings, animationBindings, EmoteMod.SERVER.getTickCount());
             this.sessionRegistry.register(session);
@@ -342,7 +270,7 @@ public class PlaybackEngine implements ConfigListener {
     ) {
         PlaybackSession session = findActive(playerUuid);
         if (session == null) {
-            return releasePlayerReservation(playerUuid);
+            return null;
         }
         if (supportsOutro(reason) && requestOutro(session, reason)) {
             return session;
@@ -409,13 +337,11 @@ public class PlaybackEngine implements ConfigListener {
                         this.entityController.moveSceneTo(session.nodes(), player.position());
                     }
                     session.animation().restoreDeferredVisibility();
-                    if (followsInitiatorView(session.state())) {
-                        this.entityController.updateViewRotation(
-                            session.nodes(),
-                            player.getYRot(),
-                            session.animation().rotationDeadzone()
-                        );
-                    }
+                    this.entityController.updateViewRotation(
+                        session.nodes(),
+                        player.getYRot(),
+                        session.animation().rotationDeadzone()
+                    );
 
                     for (PlaybackParticipant participant : session.participants()) {
                         ServerPlayer participantPlayer = participant == initiator
@@ -423,20 +349,9 @@ public class PlaybackEngine implements ConfigListener {
                             : EmoteMod.SERVER.getPlayerList().getPlayer(participant.playerUuid());
                         this.playerVisibilityService.tick(participantPlayer, session, participant);
                     }
-                    boolean timelineFinished = false;
-                    if (session.state() == PlaybackSession.State.WAITING) {
-                        if (session.reservedPartner() != null) {
-                            activateMatched(session);
-                        } else if (session.tickTimeout()) {
-                            activateTimeout(session);
-                        }
-                    } else {
-                        AnimationPlayer.AdvanceResult result = session.animation().advance();
-                        if (playbackChanged(session)) {
-                            continue;
-                        }
-                        timelineFinished = result == AnimationPlayer.AdvanceResult.FINISHED;
-                    }
+                    AnimationPlayer.AdvanceResult result = session.animation().advance();
+                    if (playbackChanged(session)) continue;
+                    boolean timelineFinished = result == AnimationPlayer.AdvanceResult.FINISHED;
 
                     if (stopReason == null && !playbackChanged(session)) {
                         session.tickCallbacks();
@@ -467,89 +382,7 @@ public class PlaybackEngine implements ConfigListener {
         if (session.pendingStopReason() != null) {
             return session.pendingStopReason();
         }
-        return switch (session.state()) {
-            case SOLO, MATCHED, TIMEOUT -> PlaybackStopReason.FINISHED;
-            case OFFERING -> {
-                if (session.reservedPartner() == null || !activateMatched(session)) {
-                    session.enterWaiting();
-                }
-                yield null;
-            }
-            case WAITING -> throw new IllegalStateException("Waiting sessions do not advance their timeline");
-        };
-    }
-
-    private boolean activateMatched(PlaybackSession session) {
-        PlaybackParticipant reservedPartner = Objects.requireNonNull(session.reservedPartner(), "reservedPartner");
-        ServerPlayer player = EmoteMod.SERVER.getPlayerList().getPlayer(reservedPartner.playerUuid());
-        if (player == null || !player.isAlive() || !this.partnerMatcher.stillMatches(session, player)) {
-            releaseReservedPartner(session);
-            return false;
-        }
-
-        PreparedSequence sequence = session.partnerSequence();
-        PreparedAnimation matched = sequence.compileMatch(this.random);
-        AnimationPlayer animation = createBranchAnimation(session, matched);
-        PlaybackParticipant partner = session.activateReservedPartner(animation);
-        this.sessionRegistry.activatePartner(session, partner.playerUuid());
-        this.playerVisibilityService.start(player, session, partner);
-        this.entityController.activateSpace(session.nodes(), EmoteAnimation.NodeSpace.PARTNER);
-        if (!notifyStarted(player, session, partner)) {
-            return true;
-        }
-        animation.startEvents();
-        return true;
-    }
-
-    private void activateTimeout(PlaybackSession session) {
-        PreparedSequence sequence = session.partnerSequence();
-        PreparedAnimation timeout = sequence.compileTimeout(this.random);
-        AnimationPlayer animation = createBranchAnimation(session, timeout);
-        session.beginTimeout(animation);
-        animation.startEvents();
-    }
-
-    private AnimationPlayer createBranchAnimation(PlaybackSession session, PreparedAnimation emote) {
-        ServerPlayer initiator = sessionInitiatorPlayer(session);
-        AnimationPlayer animation = new AnimationPlayer(
-            emote,
-            new EntityTimelineTarget(emote, session.nodes(), this.entityController),
-            PlayerMolangQueries.forPlayer(initiator)
-        );
-        animation.bindEvents(new EventCommandExecutor(initiator, session.nodes(), animation));
-        animation.start();
-        return animation;
-    }
-
-    private void releaseReservedPartner(PlaybackSession session) {
-        PlaybackParticipant partner = session.releaseReservedPartner();
-        if (partner != null) {
-            this.sessionRegistry.releasePartner(session, partner.playerUuid());
-            for (PlaybackStateListener stateListener : this.stateListeners) {
-                stateListener.onReservationReleased(partner.playerUuid(), session.id());
-            }
-        }
-    }
-
-    private @Nullable PlaybackSession releasePlayerReservation(UUID playerUuid) {
-        PlaybackSession session = this.sessionRegistry.findReservation(playerUuid);
-        if (session == null) {
-            return null;
-        }
-        PlaybackParticipant partner = session.reservedPartner();
-        if (partner == null || !partner.playerUuid().equals(playerUuid)) {
-            throw new IllegalStateException("Partner reservation does not match its session");
-        }
-        releaseReservedPartner(session);
-        return session;
-    }
-
-    private ServerPlayer sessionInitiatorPlayer(PlaybackSession session) {
-        ServerPlayer initiator = EmoteMod.SERVER.getPlayerList().getPlayer(session.initiator().playerUuid());
-        if (initiator == null) {
-            throw new IllegalStateException("Initiator is unavailable");
-        }
-        return initiator;
+        return PlaybackStopReason.FINISHED;
     }
 
     public void stopAll() {
@@ -685,7 +518,6 @@ public class PlaybackEngine implements ConfigListener {
                 EmoteMod.LOGGER.warn("Failed to run stop events for emote {}", session.id(), exception);
             }
             session.closeCallbacks();
-            releaseReservedPartner(session);
             for (PlaybackParticipant participant : session.participants()) {
                 ServerPlayer player = knownPlayer != null && knownPlayer.getUUID().equals(participant.playerUuid())
                     ? knownPlayer
@@ -752,7 +584,6 @@ public class PlaybackEngine implements ConfigListener {
         if (!session.requestStop(reason)) {
             return false;
         }
-        releaseReservedPartner(session);
         return true;
     }
 
@@ -770,13 +601,6 @@ public class PlaybackEngine implements ConfigListener {
             case ATTACKED -> conditions.attack();
             case GAME_MODE_CHANGED -> conditions.gameModeChange();
             default -> false;
-        };
-    }
-
-    static boolean followsInitiatorView(PlaybackSession.State state) {
-        return switch (state) {
-            case SOLO, OFFERING, WAITING -> true;
-            case MATCHED, TIMEOUT -> false;
         };
     }
 

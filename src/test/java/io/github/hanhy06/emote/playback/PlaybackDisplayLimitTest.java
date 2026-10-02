@@ -2,7 +2,6 @@ package io.github.hanhy06.emote.playback;
 
 import io.github.hanhy06.emote.api.EmotePlayerBehavior;
 import io.github.hanhy06.emote.api.PlaybackStopReason;
-import io.github.hanhy06.emote.playback.session.PlaybackSession;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -36,12 +35,4 @@ class PlaybackDisplayLimitTest {
         assertFalse(PlaybackEngine.shouldStopFor(conditions, PlaybackStopReason.MANUAL));
     }
 
-    @Test
-    void followsInitiatorViewWhileOfferingAndWaitingForPartner() {
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.SOLO));
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.OFFERING));
-        assertTrue(PlaybackEngine.followsInitiatorView(PlaybackSession.State.WAITING));
-        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.MATCHED));
-        assertFalse(PlaybackEngine.followsInitiatorView(PlaybackSession.State.TIMEOUT));
-    }
 }

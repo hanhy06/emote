@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class PlaybackSessionRegistry {
     private final Map<UUID, PlaybackSession> sessions = new ConcurrentHashMap<>();
     private final Map<UUID, UUID> participantSessions = new ConcurrentHashMap<>();
-    private final Map<UUID, UUID> partnerReservations = new ConcurrentHashMap<>();
     private int activeDisplayEntityCount;
 
     public void register(PlaybackSession session) {
@@ -24,36 +23,12 @@ public final class PlaybackSessionRegistry {
         this.activeDisplayEntityCount += session.nodes().displayEntityCount();
     }
 
-    public void reservePartner(PlaybackSession session, UUID playerUuid) {
-        requireRegistered(session);
-        UUID previous = this.partnerReservations.putIfAbsent(playerUuid, session.sessionId());
-        if (previous != null) {
-            throw new IllegalStateException("Player already has a partner reservation: " + playerUuid);
-        }
-    }
-
-    public void activatePartner(PlaybackSession session, UUID playerUuid) {
-        requireRegistered(session);
-        if (!this.partnerReservations.remove(playerUuid, session.sessionId())) {
-            throw new IllegalStateException("Player is not reserved for playback session: " + playerUuid);
-        }
-        registerParticipant(session, playerUuid);
-    }
-
-    public void releasePartner(PlaybackSession session, UUID playerUuid) {
-        this.partnerReservations.remove(playerUuid, session.sessionId());
-    }
-
     public @Nullable PlaybackSession findParticipant(UUID playerUuid) {
         return find(this.participantSessions, playerUuid);
     }
 
     public @Nullable PlaybackSession findSession(UUID sessionId) {
         return this.sessions.get(sessionId);
-    }
-
-    public @Nullable PlaybackSession findReservation(UUID playerUuid) {
-        return find(this.partnerReservations, playerUuid);
     }
 
     public Collection<PlaybackSession> sessions() {
@@ -88,10 +63,6 @@ public final class PlaybackSessionRegistry {
         for (PlaybackParticipant participant : session.participants()) {
             this.participantSessions.remove(participant.playerUuid(), session.sessionId());
         }
-        PlaybackParticipant reservedPartner = session.reservedPartner();
-        if (reservedPartner != null) {
-            this.partnerReservations.remove(reservedPartner.playerUuid(), session.sessionId());
-        }
         return true;
     }
 
@@ -107,9 +78,4 @@ public final class PlaybackSessionRegistry {
         return sessionId == null ? null : this.sessions.get(sessionId);
     }
 
-    private void requireRegistered(PlaybackSession session) {
-        if (!contains(session)) {
-            throw new IllegalStateException("Playback session is not registered: " + session.sessionId());
-        }
-    }
 }
